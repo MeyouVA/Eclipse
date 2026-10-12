@@ -175,6 +175,39 @@ bool Document::setSwatchProtected(int id, bool on)
     return true;
 }
 
+bool Document::relinkFile(QString const& from, QString const& to)
+{
+    if (from == to || to.isEmpty())
+        return false;
+    bool used = false;
+    for (Layer const& layer : m_scene.layers) {
+        used = used || (layer.kind == Layer::Sound && layer.soundFile == from);
+        for (Drawing const& drawing : layer.drawings)
+            for (Picture const& picture : drawing.pictures)
+                used = used || (picture.linked && picture.file == from);
+    }
+    if (!used)
+        return false;
+    QImage const image(to);     // null when it is no picture: a sound, say
+    apply(tr("Relink File"), [&](Scene& s) {
+        for (Layer& layer : s.layers) {
+            if (layer.kind == Layer::Sound && layer.soundFile == from)
+                layer.soundFile = to;
+            for (Drawing& drawing : layer.drawings) {
+                for (Picture& picture : drawing.pictures) {
+                    if (!picture.linked || picture.file != from)
+                        continue;
+                    picture.file = to;
+                    picture.image = image;
+                    if (!image.isNull() && picture.size.isEmpty())
+                        picture.size = image.size();
+                }
+            }
+        }
+    });
+    return true;
+}
+
 void Document::removeSwatch(int id)
 {
     Swatch const* const found = m_scene.findSwatch(id);

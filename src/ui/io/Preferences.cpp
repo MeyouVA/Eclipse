@@ -11,7 +11,9 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QFileDialog>
 #include <QFileInfo>
+#include <QPushButton>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -52,23 +54,44 @@ QStringList MainWindow::sceneFiles(bool missingOnly) const
 
 void MainWindow::onActionCheckFiles()
 {
-    QStringList const all = sceneFiles(false), missing = sceneFiles(true);
     QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("CheckFilesDialog"));
     dialog.setWindowTitle(tr("Check Files"));
     QListWidget* const list = new QListWidget(&dialog);
+    list->setObjectName(QStringLiteral("CheckFilesList"));
     list->setMinimumSize(520, 240);
-    for (QString const& file : all) {
-        bool const gone = missing.contains(file);
-        QListWidgetItem* const item = new QListWidgetItem((gone ? tr("MISSING   ") : tr("found        ")) + QDir::toNativeSeparators(file), list);
-        if (gone)
-            item->setForeground(QColor(240, 110, 90));
-    }
-    QLabel* const summary = new QLabel(all.isEmpty() ? tr("The scene uses no files outside itself: everything is kept in the scene file.")
-                                                     : missing.isEmpty() ? tr("All %1 files the scene uses are where they should be.").arg(all.size())
-                                                                         : tr("%1 of the %2 files the scene uses cannot be found.").arg(missing.size()).arg(all.size()),
-                                       &dialog);
+    QLabel* const summary = new QLabel(&dialog);
+    auto fill = [this, list, summary] {
+        QStringList const all = sceneFiles(false), missing = sceneFiles(true);
+        list->clear();
+        for (QString const& file : all) {
+            bool const gone = missing.contains(file);
+            QListWidgetItem* const item = new QListWidgetItem((gone ? tr("MISSING   ") : tr("found        ")) + QDir::toNativeSeparators(file), list);
+            item->setData(Qt::UserRole, file);
+            if (gone)
+                item->setForeground(QColor(240, 110, 90));
+        }
+        summary->setText(all.isEmpty() ? tr("The scene uses no files outside itself: everything is kept in the scene file.")
+                         : missing.isEmpty() ? tr("All %1 files the scene uses are where they should be.").arg(all.size())
+                                             : tr("%1 of the %2 files the scene uses cannot be found.").arg(missing.size()).arg(all.size()));
+    };
+    fill();
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    // A file that has been moved: say where it is now.
+    QPushButton* const locate = buttons->addButton(tr("Locate..."), QDialogButtonBox::ActionRole);
+    locate->setObjectName(QStringLiteral("CheckFilesLocate"));
+    locate->setToolTip(tr("Point the file chosen in the list at where it is now."));
+    locate->setEnabled(false);
+    connect(list, &QListWidget::currentRowChanged, locate, [locate](int row) { locate->setEnabled(row >= 0); });
+    connect(locate, &QPushButton::clicked, &dialog, [this, list, fill, &dialog] {
+        if (!list->currentItem())
+            return;
+        QString const was = list->currentItem()->data(Qt::UserRole).toString();
+        QString const now = QFileDialog::getOpenFileName(&dialog, tr("Locate %1").arg(QFileInfo(was).fileName()), QFileInfo(was).absolutePath());
+        if (!now.isEmpty() && m_document->relinkFile(was, now))
+            fill();
+    });
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addWidget(summary);
     layout->addWidget(list);
