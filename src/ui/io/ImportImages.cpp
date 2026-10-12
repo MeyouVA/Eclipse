@@ -1,0 +1,207 @@
+// Eclipse - bringing in pictures: as drawings, traced or as they are.
+#include "ui/window/MainWindow.h"
+
+#include <functional>
+
+#include <algorithm>
+#include <cmath>
+
+#include <QApplication>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QImageReader>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QSpinBox>
+#include <QVBoxLayout>
+
+#include "audio/sound/Sound.h"
+#include "model/document/Commands.h"
+#include "model/geometry/Vectorize.h"
+#include "ui/canvas/Canvas.h"
+#include "ui/panels/LibraryView.h"
+#include "ui/io/MovieExport.h"
+#include "ui/panels/PalettePanel.h"
+#include "ui/timeline/Timeline.h"
+#include "ui/io/ImportExportPrivate.h"
+
+int MainWindow::importImages(ImageImport const& options, QString* error)
+{
+    auto fail = [&](QString const& why) {
+        if (error)
+            *error = why;
+        return -1;
+    };
+    Scene const& scene = m_document->scene();
+    if (options.files.isEmpty())
+        return fail(tr("No file was chosen."));
+    int const target = options.newLayer ? -1 : layer();
+    if (target >= 0 && !scene.layers[target].holdsDrawings())
+        return fail(tr("The current layer does not hold drawings. Choose a drawing layer, or import to a new layer."));
+
+    QVector<Drawing> drawings;
+    for (QString const& file : options.files) {
+        QImageReader reader(file);
+        reader.setAutoTransform(true);      // a photograph taken with the camera on its side
+        QImage image = reader.read();
+        if (image.isNull())
+            return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), reader.errorString()));
+        // In the middle of the frame: made to fit it, or at its own size.
+        double const scale = options.fit ? std::min(double(scene.width) / image.width(), double(scene.height) / image.height()) : 1.0;
+        QTransform placement = QTransform::fromScale(scale, scale);
+        placement *= QTransform::fromTranslate((scene.width - image.width() * scale) / 2.0, (scene.height - image.height() * scale) / 2.0);
+        Drawing drawing;
+        if (options.vectorize && options.colours > 0) {
+            // In colour: a painted shape for the area of each colour, the largest underneath.
+            for (Vectorize::ColourShape const& area : Vectorize::traceColours(image, options.colours)) {
+                Fill shape;
+                shape.color = area.colour;
+                for (QPolygonF const& outline : area.outlines)
+                    shape.outlines.push_back(placement.map(outline));
+                drawing.fills.push_back(shape);
+            }
+        } else if (options.vectorize) {
+            Fill shape;
+            shape.swatch = m_palette->currentSwatch();
+            shape.color = scene.resolve(shape.swatch, QColor(Qt::black));
+            for (QPolygonF const& outline : Vectorize::trace(image, options.threshold))
+                shape.outlines.push_back(placement.map(outline));
+            if (!shape.outlines.isEmpty())
+                drawing.fills.push_back(shape);
+        } else {
+            Picture picture;
+            picture.image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            picture.file = QFileInfo(file).absoluteFilePath();
+            picture.linked = options.linked;
+            picture.size = image.size();
+            picture.placement = placement;
+            drawing.pictures.push_back(picture);
+        }
+        drawings.push_back(drawing);
+    }
+    QString const name = options.layerName.trimmed().isEmpty() ? QFileInfo(options.files.first()).completeBaseName() : options.layerName.trimmed();
+    int const at = m_document->importDrawings(target, name, options.newLayer ? 0 : frame(), drawings, options.hold);
+    if (at < 0)
+        return fail(tr("The pictures could not be put on that layer."));
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, options.newLayer ? 0 : frame());
+    return at;
+}
+
+void MainWindow::askImportImages(bool linked)
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(linked ? tr("Link to Images") : tr("Import Images"));
+    dialog.setObjectName(QStringLiteral("ImportImagesDialog"));
+
+    QGroupBox* const filesBox = new QGroupBox(tr("Files"), &dialog);
+    QListWidget* const files = new QListWidget(filesBox);
+    files->setMinimumSize(380, 110);
+    QPushButton* const browse = new QPushButton(tr("Browse..."), filesBox);
+    QVBoxLayout* const filesLayout = new QVBoxLayout(filesBox);
+    filesLayout->addWidget(files);
+    filesLayout->addWidget(browse, 0, Qt::AlignRight);
+
+    QGroupBox* const layerBox = new QGroupBox(tr("Layer"), &dialog);
+    QRadioButton* const newLayer = new QRadioButton(tr("Create Single Layer Named:"), layerBox);
+    QLineEdit* const layerName = new QLineEdit(layerBox);
+    layerName->setPlaceholderText(tr("the name of the first file"));
+    QRadioButton* const currentLayer = new QRadioButton(tr("Add to the Current Layer, from the Current Frame"), layerBox);
+    currentLayer->setEnabled(m_document->scene().layers[layer()].holdsDrawings());
+    newLayer->setChecked(true);
+    QSpinBox* const hold = new QSpinBox(layerBox);
+    hold->setRange(1, 1000);
+    QHBoxLayout* const nameRow = new QHBoxLayout;
+    nameRow->addWidget(newLayer);
+    nameRow->addWidget(layerName, 1);
+    QFormLayout* const layerLayout = new QFormLayout(layerBox);
+    layerLayout->addRow(nameRow);
+    layerLayout->addRow(currentLayer);
+    layerLayout->addRow(tr("Frames for each image"), hold);
+
+    QGroupBox* const alignBox = new QGroupBox(tr("Alignment"), &dialog);
+    QComboBox* const alignment = new QComboBox(alignBox);
+    alignment->addItems({tr("Fit"), tr("Actual Size")});
+    QFormLayout* const alignLayout = new QFormLayout(alignBox);
+    alignLayout->addRow(tr("Rule"), alignment);
+
+    QGroupBox* const asBox = new QGroupBox(tr("Import As"), &dialog);
+    QRadioButton* const bitmap = new QRadioButton(tr("Keep As Original Bitmap"), asBox);
+    QRadioButton* const vector = new QRadioButton(tr("Vector Drawing (Black and White)"), asBox);
+    QRadioButton* const colourVector = new QRadioButton(tr("Vector Drawing (Colour)"), asBox);
+    QSpinBox* const colourCount = new QSpinBox(asBox);
+    colourCount->setRange(2, 64);
+    colourCount->setValue(8);
+    colourCount->setEnabled(false);
+    connect(colourVector, &QRadioButton::toggled, colourCount, &QSpinBox::setEnabled);
+    bitmap->setChecked(true);
+    vector->setEnabled(!linked);    // a traced picture is artwork of the scene, not a file to read again
+    colourVector->setEnabled(!linked);
+    QSpinBox* const threshold = new QSpinBox(asBox);
+    threshold->setRange(1, 255);
+    threshold->setValue(128);
+    threshold->setEnabled(false);
+    connect(vector, &QRadioButton::toggled, threshold, &QSpinBox::setEnabled);
+    QFormLayout* const asLayout = new QFormLayout(asBox);
+    asLayout->addRow(bitmap);
+    asLayout->addRow(vector);
+    asLayout->addRow(tr("Threshold (darker than this is line)"), threshold);
+    asLayout->addRow(colourVector);
+    asLayout->addRow(tr("Colours at most (white is left out as paper)"), colourCount);
+
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttons->button(QDialogButtonBox::Ok)->setEnabled(false);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QString const startFolder = m_path.isEmpty() ? QString() : QFileInfo(m_path).path();
+    auto choose = [&] {
+        QStringList chosen = QFileDialog::getOpenFileNames(&dialog, dialog.windowTitle(), startFolder, kImageFilter);
+        if (chosen.isEmpty())
+            return;
+        chosen.sort(Qt::CaseInsensitive);   // a numbered run of files in its order
+        files->clear();
+        files->addItems(chosen);
+        buttons->button(QDialogButtonBox::Ok)->setEnabled(true);
+    };
+    connect(browse, &QPushButton::clicked, &dialog, choose);
+
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(filesBox);
+    layout->addWidget(layerBox);
+    layout->addWidget(alignBox);
+    layout->addWidget(asBox);
+    layout->addWidget(buttons);
+    choose();       // straight to the files, as the first thing asked
+    if (files->count() == 0 || dialog.exec() != QDialog::Accepted)
+        return;
+
+    ImageImport options;
+    for (int i = 0; i < files->count(); ++i)
+        options.files << files->item(i)->text();
+    options.newLayer = newLayer->isChecked();
+    options.layerName = layerName->text();
+    options.fit = alignment->currentIndex() == 0;
+    options.vectorize = vector->isChecked() || colourVector->isChecked();
+    options.colours = colourVector->isChecked() ? colourCount->value() : 0;
+    options.threshold = threshold->value();
+    options.linked = linked;
+    options.hold = hold->value();
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString error;
+    int const at = importImages(options, &error);
+    QApplication::restoreOverrideCursor();
+    if (at < 0)
+        QMessageBox::critical(this, tr("Eclipse"), error);
+    else
+        statusBar()->showMessage(tr("%n image(s) imported.", nullptr, int(options.files.size())), 5000);
+}

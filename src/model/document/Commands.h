@@ -1,0 +1,293 @@
+// Eclipse - undoable edits.
+//
+// Every change to the scene goes through a Document, which pushes a command on its undo
+// stack and emits `changed`.  Two kinds of command are enough for now: adding one stroke
+// (cheap, the common case) and replacing the whole scene state (any structural edit).
+#pragma once
+
+#include "EclipseExport.h"
+
+#include <QObject>
+#include <QUndoStack>
+
+#include <functional>
+
+#include "model/scene/Scene.h"
+
+// A block of cells lifted out of the timeline: for each of its rows the drawings shown
+// and the keyframes, over a run of frames.
+struct CellBlock {
+    struct Row {
+        bool holdsDrawings = false;
+        QVector<Drawing> drawings;
+        QVector<int> cells;        // one per frame of the block: index into `drawings`, or -1
+        QVector<Keyframe> keys;    // their frames count from the start of the block
+    };
+    int frames = 0;
+    QVector<Row> rows;
+    bool isEmpty() const { return frames <= 0 || rows.isEmpty(); }
+    // Pasted, the block leaves the keyframes where it lands as they are (Paste Special without keyframes).
+    bool leaveKeys = false;
+    // The same cells from the last frame to the first.
+    CellBlock reversed() const;
+    // The block `times` times over, one after the other.
+    CellBlock repeated(int times) const;
+};
+
+class ECLIPSE_MODEL_API Document : public QObject {
+    Q_OBJECT
+
+public:
+    explicit Document(QObject* parent = nullptr);
+
+    Scene const& scene() const { return m_scene; }
+    QUndoStack* undoStack() { return &m_undo; }
+
+    // Replaces everything (new / open); clears the undo history.
+    void reset(Scene const& scene);
+
+    // ---- drawing ------------------------------------------------------------------------
+    // Adds a stroke to the drawing shown at (layer, frame); creates a drawing there when
+    // the cell is empty.
+    void addStroke(int layer, int frame, Stroke const& stroke);
+    // Removes every stroke of the drawing at (layer, frame) within `radius` of `p`.
+    // Returns how many were removed.
+    int eraseAt(int layer, int frame, QPointF p, double radius);
+
+    // Replaces the drawing shown at (layer, frame) - or creates one on an empty cell - as
+    // one undo step named `text`.  What the selection and paint tools use.
+    void setDrawing(int layer, int frame, Drawing const& drawing, QString const& text);
+
+    // ---- palette ------------------------------------------------------------------------
+    int addSwatch(QString const& name, QColor const& color, int palette = 0);
+    // Another palette of the scene, with one colour to start with.  Returns its place.
+    int addPalette(QString const& name);
+    void renamePalette(int palette, QString const& name);
+    // Takes a palette out with its colours; what was drawn with them keeps the colour it had.
+    // The last palette of a scene stays.
+    void removePalette(int palette);
+    void editSwatch(int id, QString const& name, QColor const& color);
+    // Makes a colour a gradient of these colours (two at least), or one colour again
+    // (Swatch::Solid: it keeps the colour it shows).
+    void setSwatchGradient(int id, Swatch::Kind kind, QVector<GradientStop> const& stops);
+    // Strokes and fills that used the swatch keep the colour it had.
+    void removeSwatch(int id);
+    // A colour moved up (-1) or down (+1) among those of its palette; and into another palette, at its end.
+    bool moveSwatch(int id, int by);
+    bool setSwatchPalette(int id, int palette);
+
+    // ---- exposure -----------------------------------------------------------------------
+    // A new empty drawing starting at `frame` (the rest of the old exposure keeps its drawing).
+    void newDrawing(int layer, int frame);
+    // Holds the drawing of the previous frame over `frame`.
+    void extendExposure(int layer, int frame);
+    // Copies the drawing at `frame` into a new drawing starting there.
+    void duplicateDrawing(int layer, int frame);
+    void clearCell(int layer, int frame);
+    // Takes the drawing shown at (layer, frame) out of the layer: every cell that showed it is empty.
+    void deleteDrawing(int layer, int frame);
+    // Shows another drawing of the layer on `frame` (to the end of its exposure).
+    void substituteDrawing(int layer, int frame, int drawing);
+    // The drawing after (+1) or before (-1) the one shown, going round at the ends.
+    void stepSubstitution(int layer, int frame, int direction);
+    // Puts `layer` just in front of (or with `behind`, just behind) layer `target`.
+    // Returns where it ended up.
+    int moveLayerBeside(int layer, int target, bool behind);
+
+    // ---- animation ----------------------------------------------------------------------
+    // Sets (or adds) the keyframe of `layer` at `frame`, as one undo step named `text`.
+    void setKeyframe(int layer, int frame, Pose const& pose, QString const& text);
+    // A keyframe at `frame` holding the pose the layer already has there.
+    void insertKeyframe(int layer, int frame);
+    void removeKeyframe(int layer, int frame);
+    // The keyframe on `from` put on `to` instead, as it is (pose, ease, kind).  False when
+    // there is none, or `to` has a keyframe already or is not a frame of the scene.
+    bool moveKeyframe(int layer, int from, int to);
+
+    // ---- morphing ---------------------------------------------------------------------------
+    // From the key drawing `frame` shows to the next key drawing of the layer: the frames in
+    // between show drawings made on the way from the one to the other.  False when there is
+    // no next key drawing, no frame in between, or a morphing there already.
+    bool createMorph(int layer, int frame);
+    // The morphing `frame` lies in taken away (the frames show the first drawing again).
+    bool deleteMorph(int layer, int frame);
+    bool setMorphEase(int layer, int frame, double easeIn, double easeOut);
+    // The drawings in between made real drawings of the layer, one a frame; the morphing goes.
+    bool convertMorph(int layer, int frame);
+    // Motion (tween to the next keyframe) or stop-motion (hold).  Applies to the keyframe
+    // at or before `frame`.
+    void setKeyTween(int layer, int frame, bool tween);
+    void clearKeyframes(int layer);
+    // The ease of the keyframe at exactly `frame` (0..1 each).
+    void setKeyEase(int layer, int frame, double easeIn, double easeOut);
+    void setEffects(int layer, QVector<Effect> const& effects, QString const& text);
+    // Takes effect `index` out, and its amounts out of the keyframes.
+    void removeEffect(int layer, int index);
+    // The amount of an animated effect on `frame`: sets a keyframe there.
+    void setEffectAmount(int layer, int frame, int index, double amount);
+    // Where the node of the layer stands in the Node View.
+    void setNodePos(int layer, QPointF pos);
+    // Which bone of its parent the layer rides on (-1: none).
+    void setParentBone(int layer, int bone);
+    // The joints of the bone chain of a drawing layer, at rest.
+    // Which camera the scene is seen through.
+    void setActiveCamera(int layer);
+    // The angle a camera sees, top to bottom (degrees).  A camera that has keyframes gets
+    // the angle on a keyframe at `frame`, so that it can change in time; one that has none
+    // simply has that angle.
+    void setFov(int layer, double degrees, int frame = 0);
+    void setBones(int layer, QVector<QPointF> const& joints, QString const& text);
+    // The curve or envelope deformer of a drawing layer (see Layer::warp); no points takes it away.
+    void setWarp(int layer, QVector<QPointF> const& points, bool closed, QString const& text);
+    // Moves the pivot without moving the artwork at any keyframe.
+    void setPivot(int layer, QPointF pivot);
+
+    // ---- structure ----------------------------------------------------------------------
+    int addLayer(int above);
+    int addPeg(int above);
+    // The camera of the scene, in front of everything; made if there is none yet.
+    int addCamera();
+    // A colour-card behind everything.
+    int addColourCard();
+    // An empty group just above `above`.
+    int addGroup(int above);
+    // A group in the place of `layer`, with `layer` in it.  Returns the index of the group.
+    int groupLayer(int layer);
+    // The same with several layers: the group goes over the front one of them.
+    int groupLayers(QVector<int> const& layers);
+    // Drawings brought in from outside (pictures, the frames of a movie): one after the other
+    // from `frame`, each shown for `hold` frames, on `layer` or - when that is -1 - on a new
+    // drawing layer in front called `name`.  The scene grows when they run past its end.
+    // Returns the layer.
+    int importDrawings(int layer, QString const& name, int frame, QVector<Drawing> const& drawings, int hold = 1);
+    // The layers of a template (a piece cut from a scene: see Scene::extract) brought in from
+    // `frame` on, as one undo step.  Returns the first of them, or -1.
+    int insertTemplate(Scene const& piece, int frame);
+    // One drawing layer in the place of several: on each frame what they showed, where they
+    // showed it (so the new layer needs no peg).  Returns its index; -1 with fewer than two
+    // drawing layers.
+    int mergeLayers(QVector<int> const& layers);
+    // A bone.  When `current` is a bone the new one is attached to it and starts at its
+    // tip; otherwise it stands on its own in the middle of the frame.
+    int addBone(int current);
+    // A quadmap just above `above`, its corners those of the frame.
+    int addQuadmap(int above);
+    void setCardColor(int layer, QColor const& color);
+    void setBoneLength(int layer, double length);
+    // The four corners of a quadmap: top left, top right, bottom right, bottom left.
+    // The corners of a quadmap.  One that has keyframes gets them on a keyframe at `frame`,
+    // so that the pull can change in time; one that has none simply has those corners.
+    void setQuad(int layer, QVector<QPointF> const& corners, int frame = 0);
+    // A deformer with one point more, at place `index` (see Deform::insertWarpPoint): what
+    // the keyframes did to the points after it stays with those points.
+    void insertWarpPoint(int layer, QVector<QPointF> const& points, int index, double along);
+    // The drawings of a layer made into what its deformer shows of them, frame by frame,
+    // and the deformer taken away.  False when the layer has none.
+    bool convertDeformed(int layer);
+    // A layer moved as a whole, in all its keyframes alike, by what takes pose `from` to
+    // pose `to` (animating switched off).  A layer without keyframes gets one, at `frame`.
+    void shiftPoses(int layer, int frame, Pose const& from, Pose const& to, QString const& text);
+    // A sound layer in front, named after the file, starting on `startFrame`.
+    int addSound(QString const& file, int startFrame);
+    void setSoundStart(int layer, int frame);
+    // Lip-sync (see Layer::lipsync): all the shapes of a sound layer at once; the shape of
+    // one frame of the scene; and the drawings of a layer put on its frames to match - the
+    // drawing `drawingFor[i]` wherever the sound has shape i (A, B ... X; -1: leave those
+    // frames as they are).  False when there is nothing to map.
+    void setLipSync(int layer, QString const& shapes, QString const& text);
+    void setMouth(int layer, int frame, QChar shape);
+    bool mapLipSync(int soundLayer, int target, QVector<int> const& drawingFor);
+    // A new peg just above `layer`, taking its place under its parent, with `layer`
+    // attached to it.  Returns the index of the peg.
+    int addParentPeg(int layer);
+    // -1 detaches.  False when it would make a loop.
+    bool setParent(int layer, int parent);
+    void removeLayer(int layer);
+    void moveLayer(int layer, int delta);
+    void renameLayer(int layer, QString const& name);
+    void setLayerVisible(int layer, bool visible);
+    void setLayerLocked(int layer, bool locked);
+    void setLayerSolo(int layer, bool solo);
+    void setLayerCollapsed(int layer, bool collapsed);
+    // An invalid colour gives the row its usual grey back.
+    void setLayerColor(int layer, QColor const& color);
+    // Every layer at once.  `except` (when not -1) is left as it is and the others
+    // changed: "lock all others", "disable all others".
+    void setAllLocked(bool locked, int except = -1);
+    void setAllVisible(bool visible, int except = -1);
+    void setAllCollapsed(bool collapsed);
+    void clearSolo();
+    // A copy of the layer in front of it.  Returns its index.
+    int duplicateLayer(int layer);
+
+    // ---- blocks of cells ----------------------------------------------------------------
+    // What is in the frames `first`..`last` of these layers.
+    CellBlock copyCells(QVector<int> const& layers, int first, int last) const;
+    // Empties those cells: no drawing shown, no keyframe.
+    void clearCells(QVector<int> const& layers, int first, int last, QString const& text);
+    // Puts a block down from `frame` on, its rows onto these layers in turn (rows without
+    // a layer, and frames past the end of the scene, are left out).
+    void pasteCells(QVector<int> const& layers, int frame, CellBlock const& block);
+    // Lifts the block out of `from` and puts it down from `frame` on, its rows onto `to` in
+    // turn (-1: that row is dropped).  With `copy` the cells it came from stay as they were.
+    void moveCells(QVector<int> const& from, int first, int last, QVector<int> const& to, int frame, bool copy);
+    // One change made to several layers, as one undo step.
+    void editLayers(QVector<int> const& layers, QString const& text, std::function<void(Layer&)> const& change);
+    void removeLayers(QVector<int> const& layers);
+
+    // ---- exposure, moving what follows --------------------------------------------------
+    // One more cell of the drawing at `frame`; the cells after move along (the last one
+    // of the layer falls off the end of the scene).
+    void increaseExposure(int layer, int frame);
+    // Takes the cell at `frame` out; the cells after move back.
+    void decreaseExposure(int layer, int frame);
+    // Makes the exposure `frame` is in exactly `length` cells long.
+    void setExposure(int layer, int frame, int length);
+    // An empty cell at `frame`, pushing the rest along.
+    void insertBlankCell(int layer, int frame);
+    // Takes the whole exposure `frame` is in out and pulls the rest back.
+    void clearExposureAndPull(int layer, int frame);
+    // Every empty cell after a drawing holds that drawing.
+    void fillEmptyCells(int layer);
+    // Shows these drawings of the layer (places in its list; kNoDrawing for none) on the
+    // frames from `first` on, one each.  Frames past the end, and drawings the layer has not, are left out.
+    void setCells(int layer, int first, QVector<int> const& drawings, QString const& text);
+    void setFrameCount(int count);
+    void setGuides(QVector<Scene::Guide> const& guides, QString const& text);
+    // The names and values kept with a layer, or - for -1 - with the scene.
+    void setMetadata(int layer, QVector<QPair<QString, QString>> const& pairs, QString const& text);
+    // The pictures of the Reference view.
+    void setReferences(QStringList const& files, QString const& text);
+    // A marker over `length` frames from `frame`; markers it would lie over give way.
+    // Returns its place among the markers.
+    int addMarker(int frame, int length, QString const& name, QColor const& color);
+    void editMarker(int index, QString const& name, QColor const& color);
+    void removeMarker(int index);
+    // Moves a marker so that it starts on `frame` (kept inside the scene).  False, and nothing
+    // done, when it would lie over another marker or would not move.
+    bool moveMarker(int index, int frame);
+    void setLayerOnion(int layer, bool onion);
+    // `count` empty frames before frame `at` (at == the number of frames: after the last);
+    // drawings, keyframes and sounds from there on move along.
+    void insertFrames(int at, int count);
+    // Takes the frames `first`..`last` out of the scene, which keeps one frame at least.
+    void removeFrames(int first, int last);
+    // The same exposure command on several layers, as one undo step.
+    void beginMacro(QString const& text) { m_undo.beginMacro(text); }
+    void endMacro() { m_undo.endMacro(); }
+    void setSceneSettings(int width, int height, double fps);
+
+signals:
+    void changed();
+
+private:
+    friend class SceneStateCommand;
+    friend class AddStrokeCommand;
+
+    // Runs `edit` on a copy of the scene and pushes the result as one undo step.
+    template <class Edit> void apply(QString const& text, Edit edit);
+    void setScene(Scene const& scene);
+
+    Scene m_scene;
+    QUndoStack m_undo;
+};

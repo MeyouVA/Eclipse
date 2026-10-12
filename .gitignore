@@ -1,0 +1,23 @@
+# What is built
+/out/
+/Release/
+/Release.new/
+*.log
+build_log.txt
+package_log.txt
+
+# Not part of the program as it is given out: tests, working notes, reference material, helper scripts
+/tests/
+/tools/
+/Ref programs/
+/TODO.md
+/HARMONY_NOTES.md
+
+# Editors and the system
+.vs/
+.vscode/
+.idea/
+.claude/
+*.user
+Thumbs.db
+desktop.ini

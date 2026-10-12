@@ -1,0 +1,291 @@
+/* Eclipse - the one stylesheet.  $[name] is replaced by the value of the theme in use
+   (see dark.vars). */
+
+QWidget {
+    background-color: $[window];
+    color: $[text];
+}
+QWidget:disabled {
+    color: $[textDim];
+}
+
+/* ---- menus ---- */
+QMenuBar {
+    background-color: $[window];
+    border-bottom: 1px solid $[border];
+}
+QMenuBar::item {
+    background: transparent;
+    padding: 5px 9px;
+}
+QMenuBar::item:selected, QMenuBar::item:pressed {
+    background-color: $[hover];
+}
+QMenu {
+    background-color: $[panel];
+    border: 1px solid $[border];
+    padding: 3px 0;
+}
+QMenu::item {
+    padding: 4px 26px 4px 8px;
+}
+QMenu::item:selected {
+    background-color: $[accent];
+    color: white;
+}
+QMenu::item:disabled {
+    color: $[textDim];
+}
+QMenu::separator {
+    height: 1px;
+    background-color: $[border];
+    margin: 3px 0;
+}
+QMenu::icon {
+    padding-left: 6px;
+}
+
+/* ---- toolbars ---- */
+QToolBar {
+    background-color: $[window];
+    border: none;
+    padding: 0px 1px;
+    spacing: 1px;
+}
+/* The strip along the bottom of the Camera view. */
+#CameraStatusBar {
+    background-color: $[window];
+    border-top: 1px solid $[border];
+}
+#CameraStatusBar QToolButton {
+    color: $[textDim];
+    padding: 1px 6px;
+}
+#CameraStatusBar QToolButton::menu-indicator {
+    subcontrol-position: right bottom;
+    subcontrol-origin: padding;
+}
+/* Tool Properties: the name of the tool over its settings. */
+#ToolProperties QLabel#ToolTitle, #ToolProperties QLabel#NoOptions {
+    color: $[textDim];
+}
+/* The Colour view: the palettes, then the colours of the one chosen, dark like a light box. */
+QListWidget#ColourList, QListWidget#PaletteList {
+    background-color: #171717;
+}
+#ColourBar QToolButton {
+    font-weight: bold;
+    padding: 1px 5px;
+}
+#ArtStrip {
+    background-color: $[window];
+    border-left: 1px solid $[border];
+}
+#CameraStatusBar QLabel {
+    color: $[textDim];
+    padding: 0 6px;
+}
+QToolBar::separator:horizontal {
+    width: 1px;
+    background-color: $[border];
+    margin: 3px 4px;
+}
+QToolBar::separator:vertical {
+    height: 1px;
+    background-color: $[border];
+    margin: 4px 3px;
+}
+QToolButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 3px;
+}
+QToolButton:hover {
+    background-color: $[hover];
+}
+QToolButton:pressed {
+    background-color: $[accentSoft];
+}
+QToolButton:checked {
+    background-color: $[accentSoft];
+    border: 1px solid $[accent];
+}
+
+/* ---- views: frames, titles and tabs ---- */
+/* The strip across the top of a panel: its tabs are at the right. */
+#ViewTitleBar {
+    background-color: $[window];
+}
+#ViewTitleBar QToolButton {
+    background: transparent;
+    border: none;
+    color: $[textDim];
+    padding: 0;
+}
+#ViewTitleBar QToolButton:hover {
+    color: white;
+}
+#ViewTitleBar QToolButton#ViewTab {
+    background-color: $[panel];
+    color: $[textDim];
+    border: 1px solid $[border];
+    border-bottom: none;
+    padding: 1px 6px;
+}
+#ViewTitleBar QToolButton#ViewTab[current="true"] {
+    background-color: $[raised];
+    color: white;
+}
+#ViewTitleBar QToolButton#ViewTab:hover {
+    background-color: $[hover];
+}
+/* The tabs Qt itself puts over views that share a panel are not shown: the strip has them. */
+QMainWindow > QTabBar {
+    max-height: 0px;
+    border: none;
+}
+QMainWindow > QTabBar::tab {
+    height: 0px;
+    min-height: 0px;
+    max-height: 0px;
+    padding: 0;
+    margin: 0;
+    border: none;
+}
+QMainWindow::separator {
+    background-color: $[border];
+    width: 4px;
+    height: 4px;
+}
+QMainWindow::separator:hover {
+    background-color: $[accent];
+}
+QTabBar::tab {
+    background-color: $[window];
+    color: $[textDim];
+    padding: 4px 12px;
+    border: 1px solid $[border];
+    border-bottom: none;
+    margin-right: 1px;
+}
+QTabBar::tab:selected {
+    background-color: $[panel];
+    color: $[text];
+    border-top: 2px solid $[accent];
+}
+QTabBar::tab:hover:!selected {
+    background-color: $[hover];
+}
+
+/* ---- fields ---- */
+/* Spin boxes are left to the style: a stylesheet border would take their arrows away. */
+QLineEdit, QComboBox, QKeySequenceEdit {
+    background-color: $[base];
+    border: 1px solid $[border];
+    border-radius: 2px;
+    padding: 2px 4px;
+    selection-background-color: $[accent];
+}
+QLineEdit:focus, QComboBox:focus {
+    border: 1px solid $[accent];
+}
+QComboBox QAbstractItemView {
+    background-color: $[panel];
+    border: 1px solid $[border];
+    selection-background-color: $[accent];
+}
+QPushButton {
+    background-color: $[raised];
+    border: 1px solid $[border];
+    border-radius: 3px;
+    padding: 4px 12px;
+}
+QPushButton:hover {
+    background-color: $[hover];
+}
+QPushButton:pressed, QPushButton:default {
+    border: 1px solid $[accent];
+}
+
+/* ---- lists ---- */
+QListWidget, QTreeWidget, QAbstractScrollArea {
+    background-color: $[base];
+    border: 1px solid $[border];
+}
+QListWidget::item:selected, QTreeWidget::item:selected {
+    background-color: $[accentSoft];
+    color: white;
+}
+QHeaderView::section {
+    background-color: $[panel];
+    border: none;
+    border-right: 1px solid $[border];
+    border-bottom: 1px solid $[border];
+    padding: 3px 6px;
+}
+
+/* ---- scroll bars ---- */
+QScrollBar:horizontal {
+    height: 12px;
+    background-color: $[base];
+    border: none;
+}
+QScrollBar:vertical {
+    width: 12px;
+    background-color: $[base];
+    border: none;
+}
+QScrollBar::handle {
+    background-color: $[raised];
+    border-radius: 3px;
+    margin: 2px;
+}
+QScrollBar::handle:horizontal {
+    min-width: 24px;
+}
+QScrollBar::handle:vertical {
+    min-height: 24px;
+}
+QScrollBar::handle:hover {
+    background-color: $[hover];
+}
+QScrollBar::add-line, QScrollBar::sub-line {
+    width: 0;
+    height: 0;
+}
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+}
+
+/* ---- sliders ---- */
+QSlider::groove:horizontal {
+    height: 4px;
+    background-color: $[base];
+    border: 1px solid $[border];
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    width: 10px;
+    margin: -6px 0;
+    background-color: $[accent];
+    border-radius: 3px;
+}
+
+/* ---- the rest ---- */
+QStatusBar {
+    background-color: $[window];
+    border-top: 1px solid $[border];
+}
+QStatusBar::item {
+    border: none;
+}
+QToolTip {
+    background-color: $[raised];
+    color: $[text];
+    border: 1px solid $[border];
+    padding: 3px;
+}
+QLabel {
+    background: transparent;
+}

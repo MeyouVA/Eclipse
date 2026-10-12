@@ -1,0 +1,101 @@
+// Eclipse - templates: a piece of the scene saved to the Library, and one brought in.
+#include "ui/window/MainWindow.h"
+
+#include <functional>
+
+#include <algorithm>
+#include <cmath>
+
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QInputDialog>
+#include <QRegularExpression>
+
+#include "audio/sound/Sound.h"
+#include "model/document/Commands.h"
+#include "ui/canvas/Canvas.h"
+#include "ui/panels/LibraryView.h"
+#include "ui/io/MovieExport.h"
+#include "ui/timeline/Timeline.h"
+#include "ui/io/ImportExportPrivate.h"
+
+bool MainWindow::saveTemplate(QString const& path, QString* error)
+{
+    Scene const& scene = m_document->scene();
+    // The frames selected; with none selected, the whole length of the scene.
+    bool const range = m_timeline->selectionLastFrame() > m_timeline->selectionFirstFrame();
+    int const first = range ? m_timeline->selectionFirstFrame() : 0;
+    int const last = range ? m_timeline->selectionLastFrame() : scene.frameCount() - 1;
+    Scene const piece = scene.extract(m_timeline->selectedLayers(), first, last);
+    if (piece.layers.isEmpty()) {
+        if (error)
+            *error = tr("Select the layers to keep as a template in the Timeline first.");
+        return false;
+    }
+    if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+        if (error)
+            *error = tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(QFileInfo(path).absolutePath()));
+        return false;
+    }
+    return piece.save(path, error);
+}
+
+int MainWindow::insertTemplate(QString const& path, int frame, QString* error)
+{
+    Scene piece;
+    if (!Scene::load(path, piece, error))
+        return -1;
+    int const at = m_document->insertTemplate(piece, std::clamp(frame, 0, m_document->scene().frameCount() - 1));
+    if (at < 0) {
+        if (error)
+            *error = tr("The template has nothing that can be put in this scene.");
+        return -1;
+    }
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, frame);
+    return at;
+}
+
+void MainWindow::dropTemplate(QString const& path, int frame)
+{
+    QString error;
+    if (insertTemplate(path, frame, &error) < 0)
+        QMessageBox::critical(this, tr("Eclipse"), tr("Could not use %1:\n%2").arg(QDir::toNativeSeparators(path), error));
+    else
+        statusBar()->showMessage(tr("Template %1 put in the scene from frame %2.").arg(QFileInfo(path).completeBaseName()).arg(frame + 1), 5000);
+}
+
+void MainWindow::onActionCreateTemplate()
+{
+    bool ok = false;
+    QString const suggested = m_document->scene().layers[layer()].name;
+    QString name = QInputDialog::getText(this, tr("Create Template"), tr("Name of the template:"), QLineEdit::Normal, suggested, &ok).trimmed();
+    if (!ok || name.isEmpty())
+        return;
+    // A name is a file name: what a file name cannot hold is left out.
+    name.remove(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")));
+    QString const path = QDir(m_library->currentFolder()).filePath(name + QLatin1Char('.') + LibraryView::kSuffix);
+    if (QFileInfo::exists(path)
+        && QMessageBox::question(this, tr("Eclipse"), tr("The library already has a template called \"%1\". Replace it?").arg(name)) != QMessageBox::Yes)
+        return;
+    QString error;
+    if (!saveTemplate(path, &error)) {
+        QMessageBox::critical(this, tr("Eclipse"), tr("The template could not be saved.\n%1").arg(error));
+        return;
+    }
+    showView(dockOf("LibraryDock"));
+    m_library->refresh();
+    m_library->setCurrentTemplate(path);
+    statusBar()->showMessage(tr("Template saved as %1").arg(QDir::toNativeSeparators(path)), 6000);
+}
+
+void MainWindow::onActionInsertTemplate()
+{
+    QString const path = QFileDialog::getOpenFileName(this, tr("Insert Template"), m_library->currentFolder(),
+                                                      tr("Eclipse Templates (*.%1);;Eclipse Scenes (*.ecl);;All Files (*)").arg(LibraryView::kSuffix));
+    if (!path.isEmpty())
+        dropTemplate(path, frame());
+}

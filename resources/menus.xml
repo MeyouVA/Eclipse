@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Eclipse menus.
+
+     item:        one command.  `icon` names a file under resources/icons (without .svg).  `slot` is called on the first of the `responder`s that has it.
+                  responder names: sceneUI (the main window), cameraView, timelineView,
+                  paletteView, xsheetView, Node View, and firstResponder (the view that has the keyboard focus).
+                  A slot taking (bool) receives the checked state of a checkable item; one
+                  taking (QString) or (int) receives `itemParameter`.
+                  The same id used in several places is the same command.
+     submenu:     inserts the top-level menu with that id.
+     placeholder: a menu filled by the program: `aboutToShowSlot` is called each time it opens. -->
+<menus>
+
+ <menu id="Scene UI Menu Bar" text="Scene UI Menu Bar" type="global">
+  <menu id="File" text="&amp;File">
+   <item id="New" icon="file/new" text="&amp;New..." shortcut="NEW_KEY" responder="sceneUI" slot="onActionNewScene()"/>
+   <item id="Open" icon="file/open" text="&amp;Open..." shortcut="OPEN_KEY" responder="sceneUI" slot="onActionOpenScene()"/>
+   <menu id="FileOpenRecent" text="Open &amp;Recent" responder="sceneUI" aboutToShowSlot="onShowRecent(QMenu*)"/>
+   <item id="CloseScene" icon="file/close" text="&amp;Close" shortcut="CLOSE_SCENE_KEY" responder="sceneUI" slot="onActionCloseScene()"/>
+   <separator/>
+   <item id="Save" icon="file/save" text="&amp;Save" shortcut="SAVE_KEY" responder="sceneUI" slot="onActionSave()"/>
+   <item id="SaveAs" icon="file/saveas" text="Save &amp;As..." shortcut="SAVE_AS_KEY" responder="sceneUI" slot="onActionSaveAs()"/>
+   <item id="SaveNewVersion" icon="file/saveversion" text="Save as New &amp;Version" responder="sceneUI" slot="onActionSaveNewVersion()"/>
+   <item id="BackupScene" icon="file/backup" text="&amp;Backup Scene" responder="sceneUI" slot="onActionBackupScene()"/>
+   <separator/>
+   <menu id="Import" text="&amp;Import">
+    <item id="ImportImages" icon="file/importimages" text="&amp;Images..." responder="sceneUI" slot="onActionImportImages()"/>
+    <item id="LinkImages" icon="file/linkimages" text="&amp;Link to Images..." responder="sceneUI" slot="onActionLinkImages()"/>
+    <item id="ImportMovie" icon="file/importmovie" text="&amp;Movie..." shortcut="IMPORT_MOVIE_KEY" responder="sceneUI" slot="onActionImportMovie()"/>
+    <item id="ImportSound" icon="timeline/addsound" text="&amp;Sound..." responder="sceneUI" slot="onActionImportSound()"/>
+    <item id="ImportReference" icon="file/importreference" text="To &amp;Reference View..." responder="sceneUI" slot="onActionImportReference()"/>
+   </menu>
+   <menu id="Export" text="&amp;Export">
+    <item id="ExportFrames" icon="file/exportframes" text="&amp;Images..." shortcut="EXPORT_FRAMES_KEY" responder="sceneUI" slot="onActionExportFrames()"/>
+    <item id="ExportMovie" icon="file/exportmovie" text="&amp;Movie..." shortcut="EXPORT_MOVIE_KEY" responder="sceneUI" slot="onActionExportMovie()"/>
+    <item id="ExportGif" icon="file/exportgif" text="Animated &amp;GIF..." shortcut="EXPORT_GIF_KEY" responder="sceneUI" slot="onActionExportGif()"/>
+    <item id="ExportOpenGLFrames" icon="file/exportopengl" text="&amp;OpenGL Frames..." responder="sceneUI" slot="onActionExportOpenGLFrames()"/>
+    <separator/>
+    <item id="ExportAudio" icon="file/exportaudio" text="&amp;Audio..." responder="sceneUI" slot="onActionExportAudio()"/>
+   </menu>
+   <separator/>
+   <item id="Print" icon="file/print" text="&amp;Print..." responder="sceneUI" slot="onActionPrint()"/>
+   <separator/>
+   <item id="Exit" icon="file/quit" text="&amp;Quit" shortcut="QUIT_KEY" responder="sceneUI" slot="close()"/>
+  </menu>
+
+  <menu id="Edit" text="&amp;Edit">
+   <item id="EditUndo" icon="edit/undo" text="&amp;Undo" shortcut="UNDO_KEY" responder="sceneUI" slot="onActionUndo()"/>
+   <item id="EditRedo" icon="edit/redo" text="&amp;Redo" shortcut="REDO_KEY" responder="sceneUI" slot="onActionRedo()"/>
+   <separator/>
+   <item id="EditCut" icon="edit/cut" text="Cu&amp;t" shortcut="CUT_KEY" responder="firstResponder,cameraView" slot="cut()"/>
+   <item id="EditCopy" icon="edit/copy" text="&amp;Copy" shortcut="COPY_KEY" responder="firstResponder,cameraView" slot="copy()"/>
+   <item id="EditPaste" icon="edit/paste" text="&amp;Paste" shortcut="PASTE_KEY" responder="firstResponder,cameraView" slot="paste()"/>
+   <item id="PasteInPlace" icon="edit/pasteinplace" text="Paste Drawing Object in P&amp;lace" responder="cameraView" slot="paste()"/>
+   <item id="PasteCycle" icon="edit/pastecycle" text="Paste C&amp;ycle..." shortcut="PASTE_CYCLE_KEY" responder="sceneUI" slot="onActionPasteCycle()"/>
+   <item id="PasteSpecial" icon="edit/pastespecial" text="Paste &amp;Special..." responder="sceneUI" slot="onActionPasteSpecial()"/>
+   <item id="PasteReverse" icon="edit/pastereverse" text="Paste &amp;Reverse" shortcut="PASTE_REVERSE_KEY" responder="sceneUI" slot="onActionPasteReverse()"/>
+   <item id="EditDelete" icon="edit/delete" text="&amp;Delete" shortcut="DELETE_KEY" responder="firstResponder,cameraView" slot="deleteSelection()"/>
+   <separator/>
+   <item id="EditSelectAll" icon="edit/selectall" text="Select &amp;All" shortcut="SELECT_ALL_KEY" responder="firstResponder,cameraView" slot="selectAll()"/>
+   <item id="EditDeselectAll" icon="edit/deselectall" text="Dese&amp;lect All" shortcut="DESELECT_ALL_KEY" responder="firstResponder,cameraView" slot="deselectAll()"/>
+   <separator/>
+   <item id="CreateTemplate"/>
+   <item id="InsertTemplate"/>
+   <menu id="EditGroup" text="&amp;Group">
+    <item id="GroupSelection"/>
+    <item id="UngroupLayers" icon="timeline/ungroup" text="&amp;Ungroup Selected Layers" shortcut="UNGROUP_KEY" responder="sceneUI" slot="onActionUngroupLayers()"/>
+    <item id="MoveToParentGroup" icon="timeline/toparentgroup" text="&amp;Move to Parent Group" responder="sceneUI" slot="onActionMoveToParentGroup()"/>
+   </menu>
+   <separator/>
+   <item id="Preferences" icon="misc/preferences" text="Pre&amp;ferences..." shortcut="PREFERENCES_KEY" responder="sceneUI" slot="onActionPreferences()"/>
+   <item id="EditShortcuts" icon="misc/shortcuts" text="&amp;Keyboard Shortcuts..." shortcut="EDIT_SHORTCUTS" responder="sceneUI" slot="onActionEditShortcuts()"/>
+  </menu>
+
+  <menu id="View" text="&amp;View">
+   <item id="ToggleFullScreen" icon="view/fullscreen" text="Toggle &amp;Full Screen" shortcut="TOGGLE_FULLSCREEN_KEY" checkable="true" responder="sceneUI" slot="onActionToggleFullScreen(bool)"/>
+   <separator/>
+   <item id="ZoomIn" icon="view/zoomin" text="Zoom &amp;In" shortcut="ZOOM_IN_KEY" responder="cameraView" slot="onActionZoomIn()"/>
+   <item id="ZoomOut" icon="view/zoomout" text="Zoom &amp;Out" shortcut="ZOOM_OUT_KEY" responder="cameraView" slot="onActionZoomOut()"/>
+   <item id="RotateViewCW" icon="view/rotatecw" text="Rotate View C&amp;W" shortcut="ROTATE_VIEW_CW_KEY" responder="cameraView" slot="onActionRotateViewCW()"/>
+   <item id="RotateViewCCW" icon="view/rotateccw" text="Rotate View &amp;CCW" shortcut="ROTATE_VIEW_CCW_KEY" responder="cameraView" slot="onActionRotateViewCCW()"/>
+   <item id="MirrorView" icon="view/mirror" text="&amp;Mirror View" shortcut="MIRROR_VIEW_KEY" checkable="true" responder="cameraView" slot="onActionMirrorView(bool)"/>
+   <separator/>
+   <item id="ResetZoom" icon="view/resetzoom" text="Reset &amp;Zoom" shortcut="RESET_ZOOM_KEY" responder="cameraView" slot="onActionResetZoom()"/>
+   <item id="ResetRotation" icon="view/resetrotation" text="Reset Ro&amp;tation" shortcut="RESET_ROTATION_KEY" responder="cameraView" slot="onActionResetRotation()"/>
+   <item id="ResetPan" icon="view/resetpan" text="Reset &amp;Pan" shortcut="RESET_PAN_KEY" responder="cameraView" slot="onActionResetPan()"/>
+   <item id="ResetView" icon="view/resetview" text="&amp;Reset View" shortcut="RESET_VIEW_KEY" responder="cameraView" slot="onActionResetView()"/>
+   <separator/>
+   <item id="NextColour" icon="misc/nextcolour" text="Next C&amp;olour" shortcut="NEXT_COLOUR_KEY" responder="sceneUI" slot="onActionNextColour()"/>
+   <item id="PreviousColour" icon="misc/prevcolour" text="Previous Colo&amp;ur" shortcut="PREV_COLOUR_KEY" responder="sceneUI" slot="onActionPreviousColour()"/>
+   <separator/>
+   <submenu id="GRID_MENU_ID" text="&amp;Grid"/>
+   <submenu id="ONION_SKIN_MENU_ID" text="Onion &amp;Skin"/>
+   <item id="LightTable" icon="view/lighttable" text="&amp;Light Table" shortcut="LIGHT_TABLE_KEY" checkable="true" responder="cameraView" slot="onActionLightTable(bool)"/>
+   <item id="Backlight" icon="view/backlight" text="&amp;Backlight" shortcut="BACKLIGHT_KEY" checkable="true" responder="cameraView" slot="onActionBacklight(bool)"/>
+   <menu id="ViewShow" text="S&amp;how">
+    <item id="ShowSafeArea" icon="view/safearea" text="Safe &amp;Area" shortcut="SAFE_AREA_KEY" checkable="true" responder="cameraView" slot="onActionShowSafeArea(bool)"/>
+    <item id="CameraMask" icon="view/cameramask" text="Camera Mas&amp;k" shortcut="CAMERA_MASK_KEY" checkable="true" responder="cameraView" slot="onActionCameraMask(bool)"/>
+    <item id="ShowControl" icon="view/showcontrol" text="Show &amp;Control" shortcut="SHOW_CONTROL_KEY" checkable="true" responder="cameraView" slot="onActionShowControl(bool)"/>
+    <item id="CurrentDrawingOnTop" icon="view/drawingontop" text="Current &amp;Drawing on Top" shortcut="DRAWING_ON_TOP_KEY" checkable="true" responder="cameraView" slot="onActionCurrentDrawingOnTop(bool)"/>
+    <item id="OutlineLocked" icon="view/outlinelocked" text="&amp;Outline Locked Drawings" checkable="true" responder="cameraView" slot="onActionOutlineLocked(bool)"/>
+    <item id="ShowStrokes"/>
+    <item id="ShowStrokesWash"/>
+   </menu>
+   <item id="HideAllControls" icon="view/hidecontrols" text="&amp;Hide All Controls" shortcut="HIDE_ALL_CONTROLS_KEY" responder="cameraView" slot="onActionHideAllControls()"/>
+  </menu>
+
+  <menu id="Play" text="&amp;Play">
+   <item id="PlayToggle" icon="play/play" text="&amp;Play" shortcut="TOGGLE_PLAYBACK_KEY" checkable="true" responder="sceneUI" slot="onActionTogglePlayback()"/>
+   <item id="PlayStop" icon="play/stop" text="S&amp;top" responder="sceneUI" slot="onActionStopPlayback()"/>
+   <item id="PlaybackSpeed" icon="play/speed" text="Playback Spee&amp;d..." responder="sceneUI" slot="onActionPlaybackSpeed()"/>
+   <separator/>
+   <item id="PlaySound" icon="play/sound" text="Enable &amp;Sound" checkable="true" checked="true" responder="sceneUI" slot="onActionToggleSound(bool)"/>
+   <item id="PlayScrub" icon="play/scrub" text="Enable Sound Scru&amp;bbing" checkable="true" responder="sceneUI" slot="onActionToggleSoundScrubbing(bool)"/>
+   <item id="PlayLoop" icon="play/loop" text="&amp;Loop" checkable="true" checked="true" responder="sceneUI" slot="onActionToggleLoop(bool)"/>
+   <separator/>
+   <item id="PlayFirstFrame" icon="play/first" text="&amp;First Frame" shortcut="FIRST_FRAME_KEY" responder="sceneUI" slot="onActionFirstFrame()"/>
+   <item id="PlayPrevFrame" icon="play/prev" text="P&amp;revious Frame" shortcut="PREV_FRAME_KEY" responder="sceneUI" slot="onActionPreviousFrame()"/>
+   <item id="PlayNextFrame" icon="play/next" text="&amp;Next Frame" shortcut="NEXT_FRAME_KEY" responder="sceneUI" slot="onActionNextFrame()"/>
+   <item id="PlayLastFrame" icon="play/last" text="L&amp;ast Frame" shortcut="LAST_FRAME_KEY" responder="sceneUI" slot="onActionLastFrame()"/>
+   <item id="PlayGotoFrame" icon="play/gotoframe" text="&amp;Go to Frame..." shortcut="GOTO_FRAME_KEY" responder="sceneUI" slot="onActionGotoFrame()"/>
+  </menu>
+
+  <menu id="Insert" text="&amp;Insert">
+   <item id="InsertDrawing" icon="timeline/adddrawing" text="&amp;Drawing" shortcut="ADD_DRAWING_KEY" responder="sceneUI" slot="onActionAddDrawingLayer()"/>
+   <item id="InsertPeg" icon="timeline/addpeg" text="&amp;Peg" shortcut="ADD_PEG_KEY" responder="sceneUI" slot="onActionAddPeg()"/>
+   <item id="InsertCamera" icon="timeline/addcamera" text="&amp;Camera" shortcut="ADD_CAMERA_KEY" responder="sceneUI" slot="onActionAddCamera()"/>
+   <item id="InsertParentPeg" icon="timeline/addparentpeg" text="P&amp;arent Peg" shortcut="ADD_PARENT_PEG_KEY" responder="sceneUI" slot="onActionAddParentPeg()"/>
+   <item id="InsertColourCard" icon="timeline/addcolourcard" text="Co&amp;lour-Card" responder="sceneUI" slot="onActionAddColourCard()"/>
+   <item id="InsertGroup" icon="timeline/addgroup" text="&amp;Group" responder="sceneUI" slot="onActionAddGroup()"/>
+   <item id="InsertBone" icon="timeline/addbone" text="Game &amp;Bone" responder="sceneUI" slot="onActionAddBone()"/>
+   <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" responder="sceneUI" slot="onActionAddQuadmap()"/>
+   <separator/>
+   <item id="InsertKeyframe" icon="timeline/addkey" text="&amp;Keyframe" shortcut="INSERT_KEYFRAME_KEY" responder="sceneUI" slot="onActionInsertKeyframe()"/>
+  </menu>
+
+  <menu id="Scene" text="&amp;Scene">
+   <item id="SceneLength" icon="misc/scenelength" text="Scene &amp;Length..." responder="sceneUI" slot="onActionSceneLength()"/>
+   <menu id="SceneFrame" text="&amp;Frame">
+    <item id="AddFramesAtStart" icon="misc/framesstart" text="Add Frames at &amp;Start..." responder="sceneUI" slot="onActionAddFramesAtStart()"/>
+    <item id="AddFramesAtEnd" icon="misc/framesend" text="Add Frames at &amp;End..." responder="sceneUI" slot="onActionAddFramesAtEnd()"/>
+    <item id="AddFramesBeforeSelection" icon="misc/framesbefore" text="Add Frames &amp;Before Selection..." shortcut="ADD_FRAMES_BEFORE_KEY" responder="sceneUI" slot="onActionAddFramesBeforeSelection()"/>
+    <item id="AddFramesAfterSelection" icon="misc/framesafter" text="Add Frames &amp;After Selection..." shortcut="ADD_FRAMES_AFTER_KEY" responder="sceneUI" slot="onActionAddFramesAfterSelection()"/>
+    <separator/>
+    <item id="RemoveSelectedFrames" icon="misc/framesremove" text="&amp;Remove Selected Frames" responder="sceneUI" slot="onActionRemoveSelectedFrames()"/>
+   </menu>
+   <separator/>
+   <menu id="SceneCamera" text="&amp;Camera" responder="sceneUI" aboutToShowSlot="onShowCameras(QMenu*)"/>
+   <item id="SceneSettings" icon="misc/scenesettings" text="Scene &amp;Settings..." responder="sceneUI" slot="onActionSceneSettings()"/>
+   <separator/>
+   <item id="CheckFiles" icon="misc/checkfiles" text="&amp;Check Files..." responder="sceneUI" slot="onActionCheckFiles()"/>
+  </menu>
+
+  <menu id="Drawing" text="&amp;Drawing">
+   <submenu id="DRAWING_TOOLS_MENU_ID" text="Drawing &amp;Tools"/>
+   <separator/>
+   <item id="CreateEmptyDrawing" icon="timeline/newdrawing" text="Create &amp;Empty Drawing" shortcut="CREATE_EMPTY_DRAWING_KEY" responder="sceneUI" slot="onActionCreateEmptyDrawing()"/>
+   <item id="DuplicateDrawing" icon="timeline/duplicatedrawing" text="&amp;Duplicate Drawings" shortcut="DUPLICATE_DRAWING_KEY" responder="sceneUI" slot="onActionDuplicateDrawing()"/>
+   <item id="DeleteDrawing" icon="timeline/deletedrawing" text="Delete Selected Dra&amp;wings" responder="sceneUI" slot="onActionDeleteDrawing()"/>
+   <separator/>
+   <submenu id="ART_MENU_ID" text="Art &amp;Layer"/>
+   <submenu id="TRANSFORM_MENU_ID" text="T&amp;ransform"/>
+   <item id="Flatten" icon="anim/flatten" text="&amp;Flatten" shortcut="FLATTEN_KEY" responder="cameraView" slot="onActionFlatten()"/>
+   <item id="GroupArtwork" icon="anim/groupart" text="&amp;Group" responder="cameraView" slot="onActionGroupArtwork()"/>
+   <item id="UngroupArtwork" icon="anim/ungroupart" text="&amp;Ungroup" responder="cameraView" slot="onActionUngroupArtwork()"/>
+   <item id="NewToolPreset" icon="tool/newpreset" text="New Tool Pre&amp;set..." shortcut="NEW_TOOL_PRESET_KEY" responder="sceneUI" slot="onActionNewToolPreset()"/>
+   <item id="ManagePresets" icon="tool/managepresets" text="&amp;Manage Presets..." shortcut="MANAGE_PRESETS_KEY" responder="sceneUI" slot="onActionManagePresets()"/>
+   <item id="ImportPresets" icon="tool/importpresets" text="&amp;Import Presets..." responder="sceneUI" slot="onActionImportPresets()"/>
+   <item id="ExportPresets" icon="tool/exportpresets" text="E&amp;xport Presets..." responder="sceneUI" slot="onActionExportPresets()"/>
+   <item id="DistributeToLayers" icon="anim/distribute" text="&amp;Distribute to Layers" responder="cameraView" slot="onActionDistributeToLayers()"/>
+   <submenu id="ARRANGE_MENU_ID" text="&amp;Arrange"/>
+   <submenu id="CONVERT_MENU_ID" text="&amp;Convert"/>
+   <menu id="DrawingOptimize" text="&amp;Optimize">
+    <item id="Flatten"/>
+    <item id="Smooth" icon="anim/smooth" text="&amp;Smooth" shortcut="SMOOTH_KEY" responder="cameraView" slot="onActionSmooth()"/>
+    <item id="ReducePoints" icon="anim/reducepoints" text="&amp;Reduce Points" responder="cameraView" slot="onActionReducePoints()"/>
+   </menu>
+   <separator/>
+   <item id="PreviousLayer" icon="timeline/prevlayer" text="Previous La&amp;yer" shortcut="PREV_LAYER_KEY" responder="sceneUI" slot="onActionPreviousLayer()"/>
+   <item id="NextLayer" icon="timeline/nextlayer" text="Ne&amp;xt Layer" shortcut="NEXT_LAYER_KEY" responder="sceneUI" slot="onActionNextLayer()"/>
+   <item id="PreviousDrawing" icon="timeline/prevdrawing" text="&amp;Previous Drawing" shortcut="PREV_DRAWING_KEY" responder="sceneUI" slot="onActionPreviousDrawing()"/>
+   <item id="NextDrawing" icon="timeline/nextdrawing" text="&amp;Next Drawing" shortcut="NEXT_DRAWING_KEY" responder="sceneUI" slot="onActionNextDrawing()"/>
+  </menu>
+
+  <menu id="Rigging" text="&amp;Rigging">
+   <item id="ToolRigging" icon="tool/rigging" text="&amp;Rigging Tool" shortcut="TOOL_RIGGING_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="rigging"/>
+   <separator/>
+   <menu id="AnimationDeformation" text="&amp;Deformation">
+    <item id="ResetDeformer" icon="anim/deformreset" text="&amp;Reset Deformer" responder="sceneUI" slot="onActionResetDeformer()"/>
+    <item id="RemoveDeformer" icon="anim/deformremove" text="Re&amp;move Deformer" responder="sceneUI" slot="onActionRemoveDeformer()"/>
+    <separator/>
+    <item id="ConvertDeformed" icon="anim/deformconvert" text="&amp;Convert Deformed Drawings to Drawings" responder="sceneUI" slot="onActionConvertDeformed()"/>
+   </menu>
+   <menu id="RiggingEnvelopeCreator" text="&amp;Envelope Creator">
+    <item id="CreateEnvelope" icon="anim/envelopecreate" text="Create &amp;Envelope" responder="sceneUI" slot="onActionCreateEnvelope()"/>
+   </menu>
+  </menu>
+
+  <menu id="Animation" text="&amp;Animation">
+   <menu id="AnimationAnimate" text="A&amp;nimate">
+    <item id="AnimateCurrentFrame" icon="anim/animateon" text="Animate &amp;Current Frame" checkable="true" checked="true" group="animate" responder="cameraView" slot="onActionAnimateCurrentFrame()"/>
+    <item id="AnimateOff" icon="anim/animateoff" text="Animate &amp;Off" checkable="true" group="animate" responder="cameraView" slot="onActionAnimateOff()"/>
+   </menu>
+   <item id="SetStopMotionKeyframe" icon="timeline/stopmotionkey" text="&amp;Stop-Motion Keyframe" shortcut="STOP_MOTION_KEYFRAME_KEY" responder="sceneUI" slot="onActionSetStopMotionKeyframe()"/>
+   <item id="SetMotionKeyframe" icon="timeline/motionkey" text="Set &amp;Motion Keyframe" shortcut="MOTION_KEYFRAME_KEY" responder="sceneUI" slot="onActionSetMotionKeyframe()"/>
+   <item id="DeleteKeyframe" icon="timeline/deletekey" text="&amp;Delete Keyframe" shortcut="DELETE_KEYFRAME_KEY" responder="sceneUI" slot="onActionDeleteKeyframe()"/>
+   <separator/>
+   <menu id="AnimationTools" text="&amp;Tools">
+    <item id="ToolTransform" icon="tool/transform" text="&amp;Transform" shortcut="TOOL_TRANSFORM_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="transform"/>
+    <item id="ToolIK" icon="tool/ik" text="&amp;Inverse Kinematics" shortcut="TOOL_IK_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="ik"/>
+   </menu>
+   <menu id="AnimationCell" text="&amp;Cell">
+    <item id="ExtendExposure" icon="timeline/extend" text="&amp;Extend Exposure" shortcut="EXTEND_EXPOSURE_KEY" responder="sceneUI" slot="onActionExtendExposure()"/>
+    <item id="ClearExposure" icon="timeline/clear" text="&amp;Clear Exposure" shortcut="CLEAR_EXPOSURE_KEY" responder="sceneUI" slot="onActionClearExposure()"/>
+    <item id="CreateCycle" icon="timeline/createcycle" text="Create C&amp;ycle..." responder="sceneUI" slot="onActionCreateCycle()"/>
+    <separator/>
+    <item id="IncreaseExposure"/>
+    <item id="DecreaseExposure"/>
+    <item id="FillEmptyCells"/>
+    <item id="InsertBlankCell"/>
+    <item id="ClearExposureAndPull"/>
+    <separator/>
+    <item id="FillSelection" icon="timeline/fillselection" text="Fill &amp;Selection" responder="sceneUI" slot="onActionFillSelection()"/>
+    <item id="SequenceFill" icon="timeline/sequencefill" text="Se&amp;quence Fill..." responder="sceneUI" slot="onActionSequenceFill()"/>
+    <item id="HoldExposure" icon="timeline/holdexposure" text="&amp;Hold Exposure..." responder="sceneUI" slot="onActionHoldExposure()"/>
+   </menu>
+   <menu id="AnimationEase" text="Set &amp;Ease">
+    <item id="EaseIn" icon="anim/easein" text="Ease &amp;In" responder="sceneUI" slot="onActionSetEase(QString)" itemParameter="in"/>
+    <item id="EaseOut" icon="anim/easeout" text="Ease &amp;Out" responder="sceneUI" slot="onActionSetEase(QString)" itemParameter="out"/>
+    <item id="EaseBoth" icon="anim/easeboth" text="Ease In &amp;and Out" responder="sceneUI" slot="onActionSetEase(QString)" itemParameter="both"/>
+    <item id="EaseNone" icon="anim/easenone" text="&amp;No Ease" responder="sceneUI" slot="onActionSetEase(QString)" itemParameter="none"/>
+   </menu>
+   <menu id="AnimationMorphing" text="&amp;Morphing">
+    <item id="CreateMorphing" icon="anim/morphcreate" text="&amp;Create Morphing" shortcut="CREATE_MORPHING_KEY" responder="sceneUI" slot="onActionCreateMorphing()"/>
+    <item id="DeleteMorphing" icon="anim/morphdelete" text="&amp;Delete Morphing" responder="sceneUI" slot="onActionDeleteMorphing()"/>
+    <item id="MorphingEase" icon="anim/morphease" text="Morphing &amp;Ease..." responder="sceneUI" slot="onActionMorphingEase()"/>
+    <item id="ConvertMorphing" icon="anim/morphconvert" text="Convert Morphing to Dra&amp;wings" responder="sceneUI" slot="onActionConvertMorphing()"/>
+   </menu>
+   <menu id="AnimationLipSync" text="&amp;Lip-Sync">
+    <item id="AutoLipSync" icon="anim/lipsyncauto" text="&amp;Auto Lip-Sync Detection" responder="sceneUI" slot="onActionAutoLipSync()"/>
+    <item id="MapLipSync" icon="anim/lipsyncmap" text="&amp;Map Lip-Sync..." responder="sceneUI" slot="onActionMapLipSync()"/>
+    <menu id="AnimationMouthShape" text="&amp;Change Mouth Shape to">
+     <item id="MouthA" icon="anim/mouth_a" text="&amp;A - closed (m, b, p)" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="A"/>
+     <item id="MouthB" icon="anim/mouth_b" text="&amp;B - teeth together (s, t, d, k, i)" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="B"/>
+     <item id="MouthC" icon="anim/mouth_c" text="&amp;C - open (e)" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="C"/>
+     <item id="MouthD" icon="anim/mouth_d" text="&amp;D - wide open (a)" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="D"/>
+     <item id="MouthE" icon="anim/mouth_e" text="&amp;E - round (o)" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="E"/>
+     <item id="MouthF" icon="anim/mouth_f" text="&amp;F - small and pushed out (u, w)" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="F"/>
+     <item id="MouthG" icon="anim/mouth_g" text="&amp;G - teeth on the lip (f, v)" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="G"/>
+     <item id="MouthX" icon="anim/mouth_x" text="&amp;X - at rest" responder="sceneUI" slot="onActionMouthShape(QString)" itemParameter="X"/>
+    </menu>
+    <item id="ClearLipSync" icon="anim/lipsyncclear" text="&amp;Clear Lip-Sync" responder="sceneUI" slot="onActionClearLipSync()"/>
+   </menu>
+   <menu id="AnimationFlip" text="&amp;Flip">
+    <item id="FlipHorizontalAnimation" icon="anim/fliphanim" text="Flip &amp;Horizontal" shortcut="FLIP_H_ANIMATION_KEY" responder="sceneUI" slot="onActionFlipHorizontalAnimation()"/>
+    <item id="FlipVerticalAnimation" icon="anim/flipvanim" text="Flip &amp;Vertical" shortcut="FLIP_V_ANIMATION_KEY" responder="sceneUI" slot="onActionFlipVerticalAnimation()"/>
+   </menu>
+   <separator/>
+   <item id="SubstitutePrevious" icon="anim/substituteprev" text="Substitute Drawing Pre&amp;vious" shortcut="SUBSTITUTE_PREV_KEY" responder="sceneUI" slot="onActionSubstitutePrevious()"/>
+   <item id="SubstituteNext" icon="anim/substitutenext" text="Substitute Drawing Ne&amp;xt" shortcut="SUBSTITUTE_NEXT_KEY" responder="sceneUI" slot="onActionSubstituteNext()"/>
+   <item id="GotoPrevKeyframe" icon="timeline/prevkey" text="Go to &amp;Previous Keyframe" shortcut="PREV_KEYFRAME_KEY" responder="sceneUI" slot="onActionGotoPreviousKeyframe()"/>
+   <item id="GotoNextKeyframe" icon="timeline/nextkey" text="Go to &amp;Next Keyframe" shortcut="NEXT_KEYFRAME_KEY" responder="sceneUI" slot="onActionGotoNextKeyframe()"/>
+   <separator/>
+   <item id="SelectChildSkippingEffects" icon="anim/selectchild" text="Select Child Skipping E&amp;ffects" responder="sceneUI" slot="onActionSelectChild()"/>
+   <item id="SelectChild" icon="anim/selectchild" text="Select C&amp;hild" shortcut="SELECT_CHILD_KEY" responder="sceneUI" slot="onActionSelectChild()"/>
+   <item id="SelectChildren" icon="anim/selectchildren" text="Select Childre&amp;n" responder="sceneUI" slot="onActionSelectChildren()"/>
+   <item id="SelectParentSkippingEffects" icon="anim/selectparent" text="Select Parent Skipping &amp;Effects" responder="sceneUI" slot="onActionSelectParent()"/>
+   <item id="SelectParent" icon="anim/selectparent" text="Select P&amp;arent" shortcut="SELECT_PARENT_KEY" responder="sceneUI" slot="onActionSelectParent()"/>
+   <item id="SelectPreviousSibling" icon="anim/prevsibling" text="Select Previous Si&amp;bling" shortcut="SELECT_PREV_SIBLING_KEY" responder="sceneUI" slot="onActionSelectPreviousSibling()"/>
+   <item id="SelectNextSibling" icon="anim/nextsibling" text="Select Next Sib&amp;ling" shortcut="SELECT_NEXT_SIBLING_KEY" responder="sceneUI" slot="onActionSelectNextSibling()"/>
+   <separator/>
+   <item id="AttachLayer" icon="anim/attach" text="&amp;Attach To..." responder="sceneUI" slot="onActionAttachTo()"/>
+   <item id="DetachLayer" icon="anim/detach" text="D&amp;etach" responder="sceneUI" slot="onActionDetach()"/>
+   <separator/>
+   <menu id="AnimationLock" text="Loc&amp;k">
+    <item id="LockLayer"/>
+    <item id="UnlockLayer"/>
+    <item id="LockAll"/>
+    <item id="UnlockAll"/>
+    <item id="LockAllOthers"/>
+   </menu>
+   <item id="ResetTransformation" icon="anim/reset" text="&amp;Reset" shortcut="RESET_TRANSFORMATION_KEY" responder="sceneUI" slot="onActionResetTransformation()"/>
+   <item id="ResetAll" icon="anim/resetall" text="Reset A&amp;ll" shortcut="RESET_ALL_KEY" responder="sceneUI" slot="onActionResetAll()"/>
+   <item id="ResetAllExceptZ" icon="anim/resetallz" text="Reset All Except &amp;Z" responder="sceneUI" slot="onActionResetAllExceptZ()"/>
+   <separator/>
+   <item id="LayerProperties" icon="timeline/layerprops" text="Layer Proper&amp;ties..." responder="sceneUI" slot="onActionShowLayerProperties()"/>
+  </menu>
+
+  <menu id="Windows" text="&amp;Windows">
+   <item id="RestoreDefaultWorkspace" icon="view/workspace" text="&amp;Restore Default Workspace" responder="sceneUI" slot="onActionRestoreDefaultWorkspace()"/>
+   <separator/>
+   <menu id="WindowsWorkspace" text="&amp;Workspace" responder="sceneUI" aboutToShowSlot="onShowWorkspaces(QMenu*)"/>
+   <separator/>
+   <menu id="WindowsToolbars" text="&amp;Toolbars" responder="sceneUI" aboutToShowSlot="onShowToolbars(QMenu*)"/>
+   <separator/>
+   <placeholder id="Windows Placeholder" responder="sceneUI" aboutToShowSlot="onShowWindows(QMenu*)"/>
+  </menu>
+
+  <menu id="Help" text="&amp;Help">
+   <item id="ShowWelcome" icon="misc/welcome" text="Show &amp;Welcome Screen" responder="sceneUI" slot="onActionShowWelcome()"/>
+   <item id="ShowMessageLog" icon="misc/messagelog" text="&amp;Message Log" responder="sceneUI" slot="onActionShowMessageLog()"/>
+   <separator/>
+   <item id="About" icon="misc/about" text="&amp;About..." responder="sceneUI" slot="onActionAbout()"/>
+  </menu>
+ </menu>
+
+ <!-- Shared menus, used from the menu bar and from the views. -->
+ <menu id="TRANSFORM_MENU_ID" text="Transform">
+  <item id="FlipHorizontal" icon="anim/fliph" text="Flip &amp;Horizontal" shortcut="FLIP_HORIZONTAL_KEY" responder="cameraView" slot="onActionFlipHorizontal()"/>
+  <item id="FlipVertical" icon="anim/flipv" text="Flip &amp;Vertical" shortcut="FLIP_VERTICAL_KEY" responder="cameraView" slot="onActionFlipVertical()"/>
+  <item id="Rotate90CW" icon="anim/rotatecw" text="Rotate 90 &amp;CW" shortcut="ROTATE_90_CW_KEY" responder="cameraView" slot="onActionRotate90CW()"/>
+  <item id="Rotate90CCW" icon="anim/rotateccw" text="Rotate 90 CC&amp;W" shortcut="ROTATE_90_CCW_KEY" responder="cameraView" slot="onActionRotate90CCW()"/>
+  <item id="Rotate180" icon="anim/rotate180" text="Rotate &amp;180" shortcut="ROTATE_180_KEY" responder="cameraView" slot="onActionRotate180()"/>
+ </menu>
+ <menu id="ARRANGE_MENU_ID" text="Arrange">
+  <item id="BringToFront" icon="anim/tofront" text="Bring to &amp;Front" shortcut="BRING_TO_FRONT_KEY" responder="cameraView" slot="onActionBringToFront()"/>
+  <item id="BringForward" icon="anim/forward" text="Bring F&amp;orward" shortcut="BRING_FORWARD_KEY" responder="cameraView" slot="onActionBringForward()"/>
+  <item id="SendBackward" icon="anim/backward" text="Send Back&amp;ward" shortcut="SEND_BACKWARD_KEY" responder="cameraView" slot="onActionSendBackward()"/>
+  <item id="SendToBack" icon="anim/toback" text="Send to &amp;Back" shortcut="SEND_TO_BACK_KEY" responder="cameraView" slot="onActionSendToBack()"/>
+ </menu>
+ <menu id="CONVERT_MENU_ID" text="Convert">
+  <item id="ConvertBrushToPencil" icon="anim/topencil" text="&amp;Brush Strokes to Pencil Lines" shortcut="CONVERT_TO_PENCIL_KEY" responder="cameraView" slot="onActionConvertBrushToPencil()"/>
+  <item id="ConvertPencilToBrush" icon="anim/tobrush" text="&amp;Pencil Lines to Brush Strokes" shortcut="CONVERT_TO_BRUSH_KEY" responder="cameraView" slot="onActionConvertPencilToBrush()"/>
+ </menu>
+ <menu id="ART_MENU_ID" text="Art Layer">
+  <item id="SetOverlayArt" icon="art/overlay" text="&amp;Overlay Art" shortcut="OVERLAY_ART_KEY" checkable="true" group="art" responder="cameraView" slot="onActionSetOverlayArt()"/>
+  <item id="SetLineArt" icon="art/line" text="&amp;Line Art" shortcut="LINE_ART_KEY" checkable="true" checked="true" group="art" responder="cameraView" slot="onActionSetLineArt()"/>
+  <item id="SetColourArt" icon="art/colour" text="&amp;Colour Art" shortcut="COLOUR_ART_KEY" checkable="true" group="art" responder="cameraView" slot="onActionSetColourArt()"/>
+  <item id="SetUnderlayArt" icon="art/underlay" text="&amp;Underlay Art" shortcut="UNDERLAY_ART_KEY" checkable="true" group="art" responder="cameraView" slot="onActionSetUnderlayArt()"/>
+  <item id="CreateColourArt" icon="art/createcolour" text="Create Colour Art from Line Art" responder="cameraView" slot="onActionCreateColourArt()"/>
+  <item id="SnapToContour" icon="art/snapcontour" text="Snap to Contour" checkable="true" responder="cameraView" slot="onActionSnapToContour(bool)"/>
+  <item id="SnapToGrid" icon="art/snapgrid" text="Snap to Grid" checkable="true" responder="cameraView" slot="onActionSnapToGrid(bool)"/>
+  <item id="SwitchArt" icon="art/switch" text="Switch To Colour Art" shortcut="SWITCH_ART_KEY" responder="cameraView" slot="onActionSwitchArt()"/>
+  <item id="PreviewAllArt" icon="art/preview" text="Preview Line Art and Colour Art" shortcut="PREVIEW_ALL_ART_KEY" checkable="true" checked="true" responder="cameraView" slot="onActionPreviewAllArt(bool)"/>
+ </menu>
+ <menu id="GRID_MENU_ID" text="Grid">
+  <item id="ShowGrid" icon="view/grid" text="Show &amp;Grid" shortcut="SHOW_GRID_KEY" checkable="true" responder="cameraView" slot="onActionShowGrid(bool)"/>
+  <item id="GridOutlineOnly" text="Grid &amp;Outline Only" checkable="true" responder="cameraView" slot="onActionGridOutlineOnly(bool)"/>
+  <separator/>
+  <item id="GridUnderlay" text="&amp;Underlay" checkable="true" responder="cameraView" slot="onActionGridUnderlay(bool)"/>
+  <separator/>
+  <item id="Grid12" text="&amp;12 Field Grid" checkable="true" checked="true" group="gridkind" responder="cameraView" slot="onActionGridKind(int)" itemParameter="0"/>
+  <item id="Grid16" text="1&amp;6 Field Grid" checkable="true" group="gridkind" responder="cameraView" slot="onActionGridKind(int)" itemParameter="1"/>
+  <item id="Grid16x12" text="16&amp;x12 Field Grid" checkable="true" group="gridkind" responder="cameraView" slot="onActionGridKind(int)" itemParameter="2"/>
+  <item id="GridSquare" text="&amp;Square Grid" checkable="true" group="gridkind" responder="cameraView" slot="onActionGridKind(int)" itemParameter="3"/>
+ </menu>
+ <menu id="ANIMATION_TOOLS_MENU_ID" text="Animation Tools">
+  <item id="ToolTransform"/>
+  <item id="ToolRigging"/>
+  <item id="ToolIK"/>
+ </menu>
+ <menu id="DRAWING_TOOLS_MENU_ID" text="Drawing Tools">
+  <item id="ToolSelect" icon="tool/select" text="&amp;Select" shortcut="TOOL_SELECT_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="select"/>
+  <item id="ToolCutter" icon="tool/cutter" text="C&amp;utter" shortcut="TOOL_CUTTER_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="cutter"/>
+<item id="ToolContourEditor" icon="tool/contour" text="&amp;Contour Editor" shortcut="TOOL_CONTOUR_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="contour"/>
+  <item id="ToolBrush" icon="tool/brush" text="&amp;Brush" shortcut="TOOL_BRUSH_KEY" checkable="true" checked="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="brush"/>
+<item id="ToolPencil" icon="tool/pencil" text="Pe&amp;ncil" shortcut="TOOL_PENCIL_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="pencil"/>
+  <item id="ToolEraser" icon="tool/eraser" text="&amp;Eraser" shortcut="TOOL_ERASER_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="eraser"/>
+<item id="ToolRectangle" icon="tool/rectangle" text="&amp;Rectangle" shortcut="TOOL_RECTANGLE_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="rectangle"/>
+  <item id="ToolEllipse" icon="tool/ellipse" text="E&amp;llipse" shortcut="TOOL_ELLIPSE_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="ellipse"/>
+  <item id="ToolStroke" icon="tool/stroke" text="Stro&amp;ke" shortcut="TOOL_STROKE_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="stroke"/>
+  <item id="ToolCloseGap" icon="tool/closegap" text="Close &amp;Gap" shortcut="TOOL_CLOSE_GAP_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="closegap"/>
+  <item id="ToolEditGradient" icon="tool/gradient" text="Edit Gra&amp;dient" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="gradient"/>
+  <item id="ToolLine" icon="tool/line" text="L&amp;ine" shortcut="TOOL_LINE_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="line"/>
+  <item id="ToolPolyline" icon="tool/polyline" text="Pol&amp;yline" shortcut="TOOL_POLYLINE_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="polyline"/>
+  <item id="ToolText" icon="tool/text" text="Te&amp;xt" shortcut="TOOL_TEXT_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="text"/>
+  <item id="ToolPaint" icon="tool/paint" text="&amp;Paint" shortcut="TOOL_PAINT_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="paint"/>
+  <separator/>
+  <item id="ToolPaintUnpainted" icon="tool/paintunpainted" text="Paint &amp;Unpainted" shortcut="TOOL_PAINT_UNPAINTED_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="paintunpainted"/>
+  <item id="ToolRepaint" icon="tool/repaint" text="Rep&amp;aint" shortcut="TOOL_REPAINT_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="repaint"/>
+  <item id="ToolUnpaint" icon="tool/unpaint" text="U&amp;npaint" shortcut="TOOL_UNPAINT_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="unpaint"/>
+  <item id="ToolDropper" icon="tool/dropper" text="&amp;Dropper" shortcut="TOOL_DROPPER_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="dropper"/>
+  <item id="ToolZoom" icon="tool/zoom" text="&amp;Zoom" shortcut="TOOL_ZOOM_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="zoom"/>
+  <item id="ToolHand" icon="tool/hand" text="&amp;Hand" shortcut="TOOL_HAND_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="hand"/>
+  <item id="ToolRotateView" icon="tool/rotateview" text="Rotate &amp;View" shortcut="TOOL_ROTATE_VIEW_KEY" checkable="true" group="tools" responder="sceneUI" slot="onActionChooseTool(QString)" itemParameter="rotateview"/>
+ </menu>
+
+ <menu id="ONION_SKIN_MENU_ID" text="Onion Skin">
+  <item id="OnionSkinToggle" icon="view/onionskin" text="&amp;Show Onion Skin" shortcut="ONION_SKIN_KEY" checkable="true" checked="true" responder="cameraView" slot="onActionToggleOnionSkin(bool)"/>
+  <separator/>
+  <item id="OnionAddPrevious" icon="view/onionaddprev" text="Add One &amp;Previous Drawing" shortcut="ONION_ADD_PREV_KEY" responder="cameraView" slot="onActionOnionAddPrevious()"/>
+  <item id="OnionReducePrevious" icon="view/onionreduceprev" text="Reduce One P&amp;revious Drawing" shortcut="ONION_REDUCE_PREV_KEY" responder="cameraView" slot="onActionOnionReducePrevious()"/>
+  <item id="OnionReduceNext" icon="view/onionreducenext" text="Reduce One Ne&amp;xt Drawing" shortcut="ONION_REDUCE_NEXT_KEY" responder="cameraView" slot="onActionOnionReduceNext()"/>
+  <item id="OnionAddNext" icon="view/onionaddnext" text="Add One &amp;Next Drawing" shortcut="ONION_ADD_NEXT_KEY" responder="cameraView" slot="onActionOnionAddNext()"/>
+  <item id="TopLight" icon="view/toplight" text="&amp;Top Light..." shortcut="TOP_LIGHT_KEY" responder="sceneUI" slot="onActionTopLight()"/>
+ </menu>
+
+ <!-- Right-click menus of the views. -->
+ <menu id="CAMERA_VIEW_POPUP_MENU" text="Camera View Popup Menu">
+  <submenu id="ANIMATION_TOOLS_MENU_ID" text="Animation Tools"/>
+  <submenu id="DRAWING_TOOLS_MENU_ID" text="Drawing Tools"/>
+  <separator/>
+  <item id="EditCut"/>
+  <item id="EditCopy"/>
+  <item id="EditPaste"/>
+  <item id="EditDelete"/>
+  <separator/>
+  <item id="EditSelectAll"/>
+  <item id="EditDeselectAll"/>
+  <item id="SelectWithCurrentColour" icon="edit/selectcolour" text="Select Strokes with Current Colour" shortcut="SELECT_CURRENT_COLOUR_KEY" responder="cameraView" slot="onActionSelectWithCurrentColour()"/>
+  <item id="InvertSelection" icon="edit/invertselection" text="Invert Selection" shortcut="INVERT_SELECTION_KEY" responder="cameraView" slot="onActionInvertSelection()"/>
+  <separator/>
+  <item id="SwitchArt"/>
+  <item id="PreviewAllArt"/>
+  <separator/>
+  <item id="LightTable"/>
+  <submenu id="GRID_MENU_ID" text="Grid"/>
+  <item id="ShowStrokes" icon="view/showstrokes" text="Show Strokes" shortcut="SHOW_STROKES_KEY" checkable="true" responder="cameraView" slot="onActionShowStrokes(bool)"/>
+  <item id="ShowStrokesWash" icon="view/strokeswash" text="Show Strokes with Colour Wash" shortcut="SHOW_STROKES_WASH_KEY" checkable="true" responder="cameraView" slot="onActionShowStrokesWash(bool)"/>
+  <separator/>
+  <submenu id="ARRANGE_MENU_ID" text="Arrange"/>
+  <separator/>
+  <item id="DuplicateDrawing"/>
+  <item id="CreateEmptyDrawing"/>
+  <separator/>
+  <submenu id="CONVERT_MENU_ID" text="Convert"/>
+  <submenu id="TRANSFORM_MENU_ID" text="Transform"/>
+ </menu>
+
+ <menu id="Timeline Popup Menu" text="Timeline Popup Menu">
+  <menu id="TimelineInsert" text="Insert">
+   <item id="InsertDrawing"/>
+   <item id="InsertPeg"/>
+   <item id="InsertParentPeg"/>
+   <item id="InsertCamera"/>
+   <item id="InsertColourCard"/>
+   <item id="InsertGroup"/>
+   <item id="InsertBone"/>
+   <item id="InsertQuadmap"/>
+   <item id="ImportSound"/>
+  </menu>
+  <item id="CreateTemplate" icon="misc/templatecreate" text="Create Template from Selection..." responder="sceneUI" slot="onActionCreateTemplate()"/>
+  <item id="InsertTemplate" icon="misc/templateinsert" text="Insert Template from File..." responder="sceneUI" slot="onActionInsertTemplate()"/>
+  <separator/>
+  <item id="GroupSelection" icon="timeline/group" text="Group Selected Layers" shortcut="GROUP_SELECTION_KEY" responder="sceneUI" slot="onActionGroupSelection()"/>
+  <item id="UngroupLayers"/>
+  <item id="MoveToParentGroup"/>
+  <item id="MoveSoundHere" icon="timeline/movesound" text="Start Sound on This Frame" responder="sceneUI" slot="onActionMoveSoundHere()"/>
+  <item id="DeleteLayers" icon="timeline/deletelayer" text="Delete Layers" shortcut="DELETE_LAYER_KEY" responder="sceneUI" slot="onActionDeleteLayer()"/>
+  <item id="DuplicateLayer" icon="timeline/duplicatelayer" text="Duplicate Selected Layers" responder="sceneUI" slot="onActionDuplicateLayer()"/>
+  <item id="MergeLayers" icon="timeline/mergelayers" text="Merge Selected Layers" shortcut="MERGE_LAYERS_KEY" responder="sceneUI" slot="onActionMergeLayers()"/>
+  <item id="RenameLayer" icon="timeline/renamelayer" text="Rename Layer..." responder="sceneUI" slot="onActionRenameLayer()"/>
+  <item id="MoveLayerUp" icon="timeline/layerup" text="Move Layer Up" shortcut="MOVE_LAYER_UP_KEY" responder="sceneUI" slot="onActionMoveLayerUp()"/>
+  <item id="MoveLayerDown" icon="timeline/layerdown" text="Move Layer Down" shortcut="MOVE_LAYER_DOWN_KEY" responder="sceneUI" slot="onActionMoveLayerDown()"/>
+  <item id="AttachLayer"/>
+  <item id="DetachLayer"/>
+  <separator/>
+  <menu id="TimelineCollapse" text="Collapse/Expand">
+   <item id="CollapseExpand" icon="timeline/collapseexpand" text="Collapse/Expand" responder="sceneUI" slot="onActionCollapseExpand()"/>
+   <item id="CollapseAll" icon="timeline/collapseall" text="Collapse All" responder="sceneUI" slot="onActionCollapseAll()"/>
+   <item id="ExpandAll" icon="timeline/expandall" text="Expand All" responder="sceneUI" slot="onActionExpandAll()"/>
+  </menu>
+  <menu id="TimelineLock" text="Lock">
+   <item id="LockLayer" icon="timeline/lock" text="Lock" responder="sceneUI" slot="onActionLockLayer()"/>
+   <item id="UnlockLayer" icon="timeline/unlock" text="Unlock" responder="sceneUI" slot="onActionUnlockLayer()"/>
+   <item id="LockAll" icon="timeline/lockall" text="Lock All" responder="sceneUI" slot="onActionLockAll()"/>
+   <item id="UnlockAll" icon="timeline/unlockall" text="Unlock All" responder="sceneUI" slot="onActionUnlockAll()"/>
+   <item id="LockAllOthers" icon="timeline/lockothers" text="Lock All Others" responder="sceneUI" slot="onActionLockAllOthers()"/>
+  </menu>
+  <menu id="TimelineEnable" text="Enable">
+   <item id="ToggleLayerEnabled" icon="timeline/enable" text="Enable/Disable" responder="sceneUI" slot="onActionToggleLayerEnabled()"/>
+   <item id="EnableAll" icon="timeline/enableall" text="Enable All" responder="sceneUI" slot="onActionEnableAll()"/>
+   <item id="DisableAllOthers" icon="timeline/disableothers" text="Disable All Others" responder="sceneUI" slot="onActionDisableAllOthers()"/>
+   <item id="ToggleSolo" icon="timeline/solo" text="Solo On/Off" responder="sceneUI" slot="onActionToggleSolo()"/>
+  </menu>
+  <item id="ChangeTrackColour" icon="timeline/trackcolour" text="Change Track Colour..." responder="sceneUI" slot="onActionChangeTrackColour()"/>
+  <item id="DefaultTrackColour" icon="timeline/defaulttrackcolour" text="Default Track Colour" responder="sceneUI" slot="onActionDefaultTrackColour()"/>
+  <separator/>
+  <menu id="TimelineDrawings" text="Drawings">
+   <item id="CreateEmptyDrawing"/>
+   <item id="DuplicateDrawing"/>
+   <item id="DeleteDrawing"/>
+  </menu>
+  <menu id="TimelineExposure" text="Exposure">
+   <item id="IncreaseExposure" icon="timeline/increaseexposure" text="Increase Exposure" shortcut="INCREASE_EXPOSURE_KEY" responder="sceneUI" slot="onActionIncreaseExposure()"/>
+   <item id="DecreaseExposure" icon="timeline/decreaseexposure" text="Decrease Exposure" shortcut="DECREASE_EXPOSURE_KEY" responder="sceneUI" slot="onActionDecreaseExposure()"/>
+   <separator/>
+   <item id="SetExposure1" text="Set Exposure to 1" responder="sceneUI" slot="onActionSetExposure(int)" itemParameter="1"/>
+   <item id="SetExposure2" text="Set Exposure to 2" responder="sceneUI" slot="onActionSetExposure(int)" itemParameter="2"/>
+   <item id="SetExposure3" text="Set Exposure to 3" responder="sceneUI" slot="onActionSetExposure(int)" itemParameter="3"/>
+   <separator/>
+   <item id="ExtendExposure"/>
+   <item id="FillEmptyCells" icon="timeline/fillemptycells" text="Fill Empty Cells" responder="sceneUI" slot="onActionFillEmptyCells()"/>
+   <item id="FillSelection"/>
+   <item id="SequenceFill"/>
+   <item id="HoldExposure"/>
+   <item id="InsertBlankCell" icon="timeline/insertblankcell" text="Insert Blank Cell" responder="sceneUI" slot="onActionInsertBlankCell()"/>
+   <separator/>
+   <item id="ClearExposure"/>
+   <item id="CreateCycle"/>
+   <item id="ClearExposureAndPull" icon="timeline/clearandpull" text="Clear Exposure and Pull" responder="sceneUI" slot="onActionClearExposureAndPull()"/>
+  </menu>
+  <separator/>
+  <item id="InsertKeyframe"/>
+  <item id="DeleteKeyframe"/>
+  <item id="SetMotionKeyframe"/>
+  <item id="SetStopMotionKeyframe"/>
+  <item id="ResetTransformation"/>
+  <item id="FlipHorizontalAnimation"/>
+  <item id="FlipVerticalAnimation"/>
+  <menu id="TimelineEase" text="Set Ease">
+   <item id="EaseIn"/>
+   <item id="EaseOut"/>
+   <item id="EaseBoth"/>
+   <item id="EaseNone"/>
+  </menu>
+  <item id="LayerProperties"/>
+  <menu id="TimelineLipSync" text="Lip-Sync">
+   <item id="AutoLipSync"/>
+   <item id="MapLipSync"/>
+   <menu id="TimelineMouthShape" text="Change Mouth Shape to">
+    <item id="MouthA"/>
+    <item id="MouthB"/>
+    <item id="MouthC"/>
+    <item id="MouthD"/>
+    <item id="MouthE"/>
+    <item id="MouthF"/>
+    <item id="MouthG"/>
+    <item id="MouthX"/>
+   </menu>
+   <item id="ClearLipSync"/>
+  </menu>
+  <menu id="TimelineMorphing" text="Morphing">
+   <item id="CreateMorphing"/>
+   <item id="DeleteMorphing"/>
+   <item id="MorphingEase"/>
+   <item id="ConvertMorphing"/>
+  </menu>
+  <separator/>
+  <item id="ShowWaveforms" icon="timeline/waveforms" text="Show Sound Waveforms" checkable="true" checked="true" responder="sceneUI" slot="onActionToggleWaveforms(bool)"/>
+  <menu id="TimelineMarkers" text="Scene Markers">
+   <item id="CreateSceneMarker" icon="timeline/markeradd" text="Create Scene Marker..." responder="sceneUI" slot="onActionCreateSceneMarker()"/>
+   <item id="EditSceneMarker" icon="timeline/markeredit" text="Edit Scene Marker..." responder="sceneUI" slot="onActionEditSceneMarker()"/>
+   <item id="DeleteSceneMarker" icon="timeline/markerdelete" text="Delete Scene Marker" responder="sceneUI" slot="onActionDeleteSceneMarker()"/>
+  </menu>
+  <item id="ToggleLayerOnion" icon="timeline/onionlayer" text="Onion Skin on Selected Layers" responder="sceneUI" slot="onActionToggleLayerOnion()"/>
+  <item id="PlayGotoFrame"/>
+  <item id="PlaybackStartFrame" icon="play/startframe" text="Playback Start Frame..." responder="sceneUI" slot="onActionPlaybackStartFrame()"/>
+  <item id="PlaybackStopFrame" icon="play/stopframe" text="Playback Stop Frame..." responder="sceneUI" slot="onActionPlaybackStopFrame()"/>
+ </menu>
+
+ <menu id="Xsheet Popup Menu" text="Xsheet Popup Menu">
+  <menu id="XsheetDrawings" text="Drawings">
+   <item id="CreateEmptyDrawing"/>
+   <item id="DuplicateDrawing"/>
+  </menu>
+  <menu id="XsheetExposure" text="Exposure">
+   <item id="ExtendExposure"/>
+   <item id="ClearExposure"/>
+  </menu>
+  <separator/>
+  <item id="InsertKeyframe"/>
+  <item id="DeleteKeyframe"/>
+  <separator/>
+  <menu id="XsheetInsert" text="Insert">
+   <item id="InsertDrawing"/>
+   <item id="InsertPeg"/>
+  </menu>
+  <item id="DeleteLayers"/>
+  <item id="RenameLayer"/>
+ </menu>
+
+ <menu id="Node View Popup Menu" text="Node View Popup Menu">
+  <menu id="NodeViewInsert" text="Insert">
+   <item id="InsertDrawing"/>
+   <item id="InsertPeg"/>
+   <item id="InsertParentPeg"/>
+   <item id="InsertCamera"/>
+  </menu>
+  <item id="DeleteLayers"/>
+  <item id="RenameLayer"/>
+  <separator/>
+  <item id="AttachLayer"/>
+  <item id="DetachLayer"/>
+  <separator/>
+  <item id="NodeViewResetView" icon="view/resetview" text="Reset View" responder="Node View" slot="onActionResetView()"/>
+ </menu>
+
+</menus>

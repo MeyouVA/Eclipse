@@ -1,0 +1,609 @@
+// Eclipse - the drawing view: shows the current frame and takes pen / mouse input.
+#pragma once
+
+#include "EclipseExport.h"
+
+#include <QTransform>
+#include <QFont>
+#include <QWidget>
+
+#include <functional>
+
+#include "model/scene/Scene.h"
+
+class Document;
+
+class ECLIPSE_UI_API Canvas : public QWidget {
+    Q_OBJECT
+
+public:
+    enum Tool {
+        Select, Transform, Brush, Eraser, Paint, Hand, Pencil, Line, Rectangle, Ellipse, ContourEditor, Rigging, IK,
+        // Takes the colour of what is clicked on.
+        Dropper,
+        // Click to look closer, Alt-click to draw back.
+        Zoom,
+        // A line of straight pieces: a click for each point, a double click (or Enter) for the last.
+        Polyline,
+        // The paint bucket's other ways: only areas that have no paint yet; only what is
+        // painted already; and taking paint away.
+        PaintUnpainted, Repaint, Unpaint,
+        // Click, type, Enter: the words become painted shapes of the current colour.
+        Text,
+        // Drag to turn the view about its middle.
+        RotateView,
+        // Draw round a part of the artwork: it is cut loose from the rest, and selected,
+        // to be moved, turned, scaled or deleted like anything selected.
+        Cutter,
+        // Lines with no thickness: they are not seen in the picture, but paint stops at them.
+        // The Stroke tool draws one freehand; Close Gap draws a straight one across a gap.
+        StrokeTool, CloseGap, EditGradient,
+    };
+    // True for the paint bucket in any of its ways.
+    static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
+
+    explicit Canvas(Document* document, QWidget* parent = nullptr);
+
+    // Which sheet of the drawing the tools work on.
+    enum Art { LineArt, ColourArt, OverlayArt, UnderlayArt };
+    Art art() const { return m_art; }
+    void setArt(Art art);
+    bool previewsAllArt() const { return m_previewAllArt; }
+
+    void setTool(Tool tool);
+    Tool tool() const { return m_tool; }
+    // The palette swatch new strokes and fills are linked to.
+    void setSwatch(int id) { m_swatch = id; }
+    int swatch() const { return m_swatch; }
+    void setBrushWidth(double width) { m_brushWidth = width; }
+    double brushWidth() const { return m_brushWidth; }
+    // How much a drawn line is smoothed when the pen lifts: 0 keeps every wobble, 100
+    // irons out a lot.
+    void setSmoothing(int percent) { m_smoothing = percent; }
+    // Turns sharper than this stay corners; gentler ones are rounded.
+    void setCornerAngle(int degrees) { m_cornerAngle = degrees; }
+    // How new lines are finished at corners and ends.  Lines that are selected (or shown
+    // in the contour editor) are changed too.
+    void setJoinStyle(int join);
+    void setStartCap(int cap);
+    void setEndCap(int cap);
+    void setOnionSkin(bool on);
+    bool onionSkin() const { return m_onionSkin; }
+    // The Drawing view: the drawing of the current cell alone and flat - not moved by its
+    // layer, its pegs or the camera - on white paper.  The other layers show, faint and as
+    // flat, only with the light table on.
+    bool drawingView() const { return m_drawingView; }
+    void setDrawingView(bool on);
+    int gridKind() const { return m_gridKind; }
+    bool backlight() const { return m_backlight; }
+    // While playing, nothing but the frame itself is shown (no onion skin, no editing).
+    void setPlaying(bool playing);
+
+    void fitToWindow();
+    // Where a point of the scene is in the widget.
+    QPointF mapFromScene(QPointF scenePos) const { return viewTransform().map(scenePos); }
+    QPointF mapToScene(QPointF widgetPos) const { return toScene(widgetPos); }
+
+    // ---- selection (Select tool) --------------------------------------------------------
+    bool hasSelection() const { return !m_selStrokes.isEmpty() || !m_selFills.isEmpty(); }
+    // The Select tool or the Cutter: what is selected can be handled with either.
+    bool selecting() const { return m_tool == Select || m_tool == Cutter; }
+    // The points picked with the Contour Editor besides contourPoint(), on the same curve.
+    QVector<int> contourPointsPicked() const;
+    void clearSelection();
+    // The point picked with the Contour Editor: which line and which point of it (-1: none);
+    // and where its two handles are, in the coordinates of the view.
+    int contourStroke() const { return m_ceStroke; }
+    int contourPoint() const { return m_cePoint; }
+    QPointF contourHandlePos(int handle) const;
+    // How the Select tool takes things when dragged over empty space: round a shape drawn
+    // freehand (lasso), or in a rectangle (marquee).
+    // What the Brush tool makes: a contour shape (a filled area with an editable outline, as
+    // in Harmony), or - when off - a centre line with a thickness, as the Pencil does.
+    // Auto Flatten: a stroke of the brush joins the shapes of its own colour that it
+    // overlaps (one shape, with points where they met), and cuts itself out of shapes of
+    // other colours under it.
+    bool autoFlatten() const { return m_autoFlatten; }
+    void setAutoFlatten(bool on) { m_autoFlatten = on; }
+    // The eraser cuts the part it passes over out of lines and painted areas (as in
+    // Harmony); off, it takes away every whole line it touches.
+    bool eraserCuts() const { return m_eraserCuts; }
+    void setEraserCuts(bool on) { m_eraserCuts = on; }
+    // Draw Behind: what the brush draws goes under the artwork already in the drawing.
+    bool drawBehind() const { return m_drawBehind; }
+    // What the Rigging tool lays down: a chain of bones, a curve the drawing bends along, or
+    // an envelope round it.
+    enum RigMode { RigBones, RigCurve, RigEnvelope };
+    RigMode rigMode() const { return m_rigMode; }
+    void setRigMode(RigMode mode) { m_rigMode = mode; update(); }
+    void setDrawBehind(bool on) { m_drawBehind = on; }
+    bool brushShapes() const { return m_brushShapes; }
+    void setBrushShapes(bool on) { m_brushShapes = on; }
+    // The contour of a brush shape picked with the Contour Editor: which painted area (-1:
+    // none, or a line is picked instead).
+    int contourFill() const { return m_ceFill; }
+    bool lasso() const { return m_lasso; }
+    bool snapsToContour() const { return m_snapContour; }
+    // Guides (Scene::guides): seen and snapped to, or not.
+    bool showsGuides() const { return m_showGuides; }
+    // The preview: frames of the scene rendered beforehand (the Preview Manager), shown
+    // while playing in place of drawing every layer again.
+    void setPreview(QVector<QImage> const& frames);
+    int previewFrames() const { return int(m_preview.size()); }
+    QSize previewSize() const { return m_preview.isEmpty() ? QSize() : m_preview.first().size(); }
+    bool usesPreview() const { return m_usePreview; }
+    bool snapsToGrid() const { return m_snapGrid; }
+    bool animates() const { return m_animate; }
+    void setLasso(bool on);
+    // The box round what is selected, in the coordinates of the drawing; null with nothing selected.
+    QRectF selectionRect() const { return hasSelection() ? selectionBounds() : QRectF(); }
+    // Moves and stretches what is selected so that it fills this box.
+    void setSelectionRect(QRectF const& box);
+    // Turns what is selected about its middle, clockwise.
+    void rotateSelection(double degrees);
+    void copySelection();
+    void cutSelection();
+    // Zooms about the middle of the view.
+    void zoomBy(double factor);
+    // The same, keeping the point of the view under `anchor` where it is.
+    void zoomAt(QPointF anchor, double factor);
+    double zoom() const { return m_zoom; }
+    double viewRotation() const { return m_viewRotation; }
+    bool viewMirrored() const { return m_mirror; }
+    void rotateView(double degrees);
+    void setOnionRange(int previous, int next);
+    int onionPrevious() const { return m_onionPrev; }
+    int onionNext() const { return m_onionNext; }
+    // How strongly the onion skin shows, 5 to 100 per cent.
+    void setOnionOpacity(int percent);
+    int onionOpacity() const { return m_onionOpacity; }
+    bool showsControl() const { return m_showControl; }
+    // The points of the polyline being laid down (empty when there is none).
+    int polylinePoints() const { return m_polyActive ? int(m_stroke.points.size()) : 0; }
+    // Ends the polyline being laid down: kept (when it has two points), or thrown away.
+    void finishPolyline(bool keep);
+
+    // The font the Text tool writes in.  Its pixel size is the height of the letters in
+    // the units of the scene.
+    void setTextFont(QFont const& font) { m_textFont = font; }
+    QFont textFont() const { return m_textFont; }
+    // How the lines of words stand to the place clicked (0 left, 1 centred, 2 right) and how
+    // far apart they are, as a percentage of what the font gives.  In the entry, Shift+Enter
+    // starts a new line (shown as a bent arrow).
+    void setTextAlign(int align) { m_textAlign = std::clamp(align, 0, 2); }
+    int textAlign() const { return m_textAlign; }
+    void setTextLineSpacing(int percent) { m_textSpacing = std::clamp(percent, 20, 1000); }
+    int textLineSpacing() const { return m_textSpacing; }
+    // And how far apart the letters are, likewise.
+    void setTextKerning(int percent) { m_textKerning = std::clamp(percent, 50, 400); }
+    int textKerning() const { return m_textKerning; }
+    static constexpr char16_t kLineBreak = 0x21B5;
+    // The Select tool: what is moved, scaled, turned or deleted is so in every drawing of
+    // the layer - in the others, whatever lies within the place the selection had.
+    void setApplyToAllDrawings(bool on) { m_applyAll = on; }
+    bool appliesToAllDrawings() const { return m_applyAll; }
+    // Onion skin by frame: the frames just before and after, instead of the neighbouring drawings.
+    void setOnionByFrame(bool on);
+    bool onionByFrame() const { return m_onionByFrame; }
+    void setOnionColours(QColor const& before, QColor const& after);
+    QColor onionBefore() const { return m_onionBefore; }
+    QColor onionAfter() const { return m_onionAfter; }
+    // Writes `text` into the current drawing, its first line standing on `layerPos`.
+    // The letters are painted shapes from then on: they are not typed text any more.
+    void addText(QPointF layerPos, QString const& text);
+    // The words being changed with the Text tool: which painted area of the drawing (-1: new words).
+    int textEdited() const { return m_textEdit; }
+    // The Edit Gradient tool: the area whose gradient is in hand (its place among the
+    // painted areas of the art being worked on), or -1.
+    int gradientPicked() const { return gradientValid() ? m_gradFill : -1; }
+
+    // The thickness of the point picked with the Contour Editor, as a percentage of the
+    // width of its line; -1 when no point is picked.
+    int pointThickness() const;
+    void setPointThickness(int percent);
+    static bool canPaste();
+    // The sheet of a drawing an art layer of the view stands for (Drawing::Sheet).
+    static int sheetOf(Art art);
+
+    // Renders one frame of a scene the way the canvas shows it, without the editing aids.
+    static void paintFrame(QPainter& painter, Scene const& scene, int frame);
+    static void paintDrawing(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity,
+                             QColor const* tint = nullptr);
+    // The drawing of a layer with the effects of the layer applied.  The painter is set up
+    // for the coordinates of the layer; `sceneToDevice` is what it would be for those of
+    // the scene (the matte of a cutter is another layer, found from there).
+    static void paintLayerDrawing(QPainter& painter, Scene const& scene, int layer, int frame, Drawing const& drawing,
+                                  double opacity, QTransform const& sceneToDevice);
+    static void paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
+    static void paintFill(QPainter& painter, Fill const& fill, QBrush const& color);
+
+public slots:
+    void setCurrentCell(int layer, int frame);
+
+    // ---- what the menus call (this view is the "cameraView" responder) -------------------
+    void cut() { cutSelection(); }
+    void copy() { copySelection(); }
+    void paste();
+    void deleteSelection();
+    void selectAll();
+    void deselectAll() { clearSelection(); }
+    void onActionZoomIn() { zoomBy(1.25); }
+    void onActionZoomOut() { zoomBy(0.8); }
+    void onActionResetView() { fitToWindow(); }
+    void onActionToggleOnionSkin(bool on) { setOnionSkin(on); }
+    // The view turned on the screen (the scene is not changed), seen as in a mirror, and
+    // each of the three put back on its own.
+    void onActionRotateViewCW() { rotateView(30.0); }
+    void onActionRotateViewCCW() { rotateView(-30.0); }
+    void onActionMirrorView(bool on);
+    void onActionResetRotation() { rotateView(-m_viewRotation); }
+    void onActionResetZoom() { zoomBy(1.0 / m_zoom); }
+    void onActionResetPan();
+    // Aids drawn over the picture: a field grid, the safe areas; and the layers that are
+    // not being drawn on shown faintly.
+    void onActionShowGrid(bool on);
+    // Which grid: 0 twelve fields, 1 sixteen fields, 2 sixteen across by twelve down, 3 squares.
+    void onActionGridKind(int kind);
+    void onActionGridOutlineOnly(bool on);
+    // Behind the drawings instead of over them.
+    void onActionGridUnderlay(bool on);
+    // Everything drawn shown as a dark shape, to judge its outline.
+    void onActionBacklight(bool on);
+    // Layers that are locked shown as outlines, so that they do not hide what is worked on.
+    void onActionOutlineLocked(bool on);
+    void onActionShowSafeArea(bool on);
+    void onActionLightTable(bool on);
+    // The layer being drawn on painted over the others, whatever its place among them.
+    void onActionCurrentDrawingOnTop(bool on);
+    // What lies outside the camera frame darkened.
+    void onActionCameraMask(bool on);
+    // The pivot and the bones of the current layer shown whatever tool is in hand.
+    void onActionShowControl(bool on);
+    // That put away again, and nothing selected.
+    void onActionHideAllControls();
+    // How many drawings before and after the current one the onion skin shows.
+    void onActionOnionAddPrevious() { setOnionRange(m_onionPrev + 1, m_onionNext); }
+    void onActionOnionReducePrevious() { setOnionRange(m_onionPrev - 1, m_onionNext); }
+    void onActionOnionReduceNext() { setOnionRange(m_onionPrev, m_onionNext - 1); }
+    void onActionOnionAddNext() { setOnionRange(m_onionPrev, m_onionNext + 1); }
+    // Joins the selected painted areas of one colour into one area.
+    void onActionFlatten();
+    // What is selected made one group (picked together from then on); and groups among it taken apart.
+    void onActionGroupArtwork();
+    // The lines of the line art copied into the colour art as lines with no thickness: the
+    // areas to paint there are then closed by lines of the colour art's own.
+    void onActionCreateColourArt();
+    // A point dragged with the Contour Editor goes onto a point of another line or contour that is near.
+    void onActionSnapToContour(bool on) { m_snapContour = on; }
+    void setShowGuides(bool on)
+    {
+        m_showGuides = on;
+        update();
+    }
+    void setUsePreview(bool on)
+    {
+        m_usePreview = on;
+        update();
+    }
+    // Points placed and shapes drawn go to the crossings of the grid when they come near one.
+    void onActionSnapToGrid(bool on) { m_snapGrid = on; }
+    // Animating: what the Transform tool does to a layer goes on a keyframe at the current
+    // frame.  Off: the layer is moved as a whole, in all its keyframes alike.
+    void onActionAnimateCurrentFrame()
+    {
+        m_animate = true;
+        emit animateChanged(true);
+    }
+    void onActionAnimateOff()
+    {
+        m_animate = false;
+        emit animateChanged(false);
+    }
+    // Each thing selected (a group counts as one) goes to a layer of its own, attached to this one.
+    void onActionDistributeToLayers();
+    void onActionUngroupArtwork();
+    // The selected lines with their wobbles evened out; and with the points they can do without taken out.
+    void onActionSmooth();
+    void onActionReducePoints();
+    // The other sheet of the drawing; one by name; and both shown, or only the one worked on.
+    void onActionSwitchArt() { setArt(m_art == LineArt ? ColourArt : LineArt); }
+    void onActionSetLineArt() { setArt(LineArt); }
+    void onActionSetColourArt() { setArt(ColourArt); }
+    void onActionSetOverlayArt() { setArt(OverlayArt); }
+    void onActionSetUnderlayArt() { setArt(UnderlayArt); }
+    void onActionPreviewAllArt(bool on);
+    // On what is selected with the Select tool.
+    void onActionFlipHorizontal();
+    void onActionFlipVertical();
+    void onActionRotate90CW();
+    void onActionRotate90CCW();
+    void onActionBringToFront();
+    void onActionSendToBack();
+    void onActionBringForward();
+    void onActionSendBackward();
+    void onActionRotate180();
+    // Everything in the drawing of the colour in hand; and what is not selected in place of what is.
+    void onActionSelectWithCurrentColour();
+    void onActionInvertSelection();
+    // The lines themselves (where the pen went) drawn thin over the artwork; with the
+    // wash, the artwork is faint under them.
+    void onActionShowStrokes(bool on);
+    void onActionShowStrokesWash(bool on);
+    // A selected line with the pen's swelling taken out of it; and a selected line turned
+    // into the painted shape it covers.
+    void onActionConvertBrushToPencil();
+    void onActionConvertPencilToBrush();
+
+signals:
+    void selectionChanged();
+    void toolChanged(int tool);
+    // Where the pointer is over the view, in the scene (pixels from its top left corner).
+    void pointerMoved(QPointF scenePos);
+    // The transform tool was pressed on the artwork of another layer.
+    void layerPicked(int layer);
+    // The dropper was clicked on something of this colour (`swatch` is Scene::kNoSwatch
+    // when the colour is not one of the palette).
+    void colourPicked(int swatch, QColor const& colour);
+    // A point was picked with the Contour Editor, or none is any more (-1).
+    void pointPicked(int thicknessPercent);
+    // The view is closer or further than it was.
+    void zoomChanged();
+    void showControlChanged(bool on);
+    void artChanged(int art);
+    void drawingViewChanged(bool on);
+    // A template dragged out of the Library was let go over the view.
+    void templateDropped(QString const& path);
+    void lassoChanged(bool on);
+    // The Text tool was pressed on words: this is the font they are in.
+    void textFontPicked(QFont const& font);
+    void textLayoutPicked(int align, int spacingPercent, int kerningPercent);
+    void animateChanged(bool on);
+    // Onion skin is on or off, or shows more or fewer drawings, or fainter ones.
+    void onionChanged();
+    // Something the user should know (shown in the status bar).
+    void message(QString const& text);
+
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+    void mousePressEvent(QMouseEvent*) override;
+    void mouseMoveEvent(QMouseEvent*) override;
+    void dragEnterEvent(QDragEnterEvent*) override;
+    void dropEvent(QDropEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
+    void mouseDoubleClickEvent(QMouseEvent*) override;
+    bool event(QEvent*) override;
+    bool eventFilter(QObject*, QEvent*) override;
+    void tabletEvent(QTabletEvent*) override;
+    void wheelEvent(QWheelEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+    void keyReleaseEvent(QKeyEvent*) override;
+
+private:
+    enum Handle { NoHandle, TopLeft, TopRight, BottomRight, BottomLeft, Rotate };
+
+    // From the picture (what the camera sees) to the widget: the zoom and pan of the view.
+    QTransform cameraViewTransform() const;
+    // From the scene to the widget: through the camera of the scene, then the above.
+    QTransform viewTransform() const;
+    QPointF toScene(QPointF widgetPos) const;
+    // From the coordinates of a layer to those of the scene at a frame, with the pose being
+    // dragged by the transform tool in place of the stored one.
+    QTransform worldOf(int layer, int frame) const;
+    // What is being dragged, for the scene to work with in place of what it has stored.
+    PoseOverride dragged() const;
+    // From the coordinates of the parent of the current layer to those of the scene, at the
+    // depth the current layer stands at: what a drag across the view is measured in.
+    QTransform parentSeen() const;
+    // From the coordinates of the current layer to those of the widget.
+    QTransform layerViewTransform() const;
+    // Where the pointer is in the coordinates of the current layer: what the drawing tools use.
+    QPointF toLayer(QPointF widgetPos) const;
+    bool posing() const { return m_drag == DragPoseMove || m_drag == DragPoseScale || m_drag == DragPoseRotate || m_drag == DragBone || m_drag == DragIK || m_drag == DragWarp; }
+    // The pose of a layer on a frame, with the one being dragged in place of the stored one.
+    Pose poseOf(int layer, int frame) const;
+    // A drawing as it is shown: bent along the bones of its layer, except on the layer
+    // being drawn on, which is shown at rest so that the pen lands where it is put.
+    Drawing shown(int layer, int frame, Drawing const& drawing) const;
+    bool showsRest(int layer) const;
+    void riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
+    // The point or handle of a deformer under the pointer (its place in Layer::warp), or -1.
+    int warpAt(QVector<QPointF> const& points, QPointF widgetPos) const;
+    // The deformer at rest with the point being dragged by the Rigging tool where the pointer has it.
+    QVector<QPointF> warpRestDragged() const;
+    void paintWarp(QPainter& painter, QVector<QPointF> const& points, bool closed, int picked);
+    void ikDown(QPointF widgetPos);
+    void paintBones(QPainter& painter, QVector<QPointF> const& joints, int picked);
+    // What the transform tool acts on - the current layer and all that hangs under it - as
+    // a rectangle in the coordinates of the current layer.
+    QRectF subjectBounds() const;
+    // The topmost visible drawing layer with artwork under the point, or -1.
+    int layerUnder(QPointF scenePos) const;
+    void transformDown(QPointF widgetPos);
+    // The line, rectangle or ellipse from where the drag began to `p`.
+    void updateShape(QPointF p, Qt::KeyboardModifiers modifiers);
+    void contourDown(QPointF p, Qt::KeyboardModifiers modifiers);
+    void paintContourAids(QPainter& painter);
+    bool contourValid() const;
+    void paintTransformAids(QPainter& painter);
+    void penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);
+    void penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers);
+    void penUp();
+    void updateCursor();
+    void onDocumentChanged();
+
+    // The whole drawing shown in the current cell (both sheets), or null.
+    Drawing const* realDrawing() const;
+    // The sheet of it the tools work on, as a drawing of its own, or null when the cell
+    // is empty.  For the colour art this is a copy kept by the view.
+    Drawing const* currentDrawing() const;
+    // The whole drawing with the sheet worked on replaced by `art`.
+    Drawing withArt(Drawing const& art) const;
+    void addStrokeToArt(Stroke const& stroke);
+    void eraseArtAt(QPointF p, double radius);
+    // The current drawing with the transform being dragged applied to the selection.
+    Drawing previewDrawing() const;
+    void commitDrawing(Drawing const& drawing, QString const& text);
+
+    void paintAt(QPointF scenePos);
+    QRectF selectionBounds() const;
+    QPointF handlePos(Handle handle, QRectF const& bounds) const;  // in scene coordinates
+    Handle handleAt(QPointF widgetPos) const;
+    // Selects (or with `toggle`, flips) the item under the point; false when there is none.
+    bool selectAt(QPointF scenePos, bool toggle);
+    void selectInRect(QRectF const& rect, bool add);
+    void setSelection(QVector<int> const& strokes, QVector<int> const& fills);
+
+    Document* m_document;
+    Tool m_tool = Brush;
+    int m_swatch = Scene::kNoSwatch;
+    double m_brushWidth = 6.0;
+    int m_smoothing = 25;
+    int m_cornerAngle = 50;
+    Stroke::Join m_join = Stroke::RoundJoin;
+    Stroke::Cap m_capStart = Stroke::RoundCap;
+    Stroke::Cap m_capEnd = Stroke::RoundCap;
+    template <class Change> void restyleSelection(QString const& text, Change change);
+    bool m_onionSkin = true;
+    bool m_playing = false;
+    int m_layer = 0;
+    int m_frame = 0;
+
+    // view
+    double m_zoom = 1.0;
+    QPointF m_pan;          // widget-space offset of the centre of the scene from that of the widget
+    bool m_fitted = true;   // keep fitting on resize until the user zooms or pans
+    double m_viewRotation = 0.0;   // degrees, clockwise on the screen
+    bool m_mirror = false;
+    bool m_drawingView = false;
+    bool m_grid = false;
+    int m_gridKind = 0;
+    bool m_gridOutline = false;
+    bool m_gridUnder = false;
+    bool m_backlight = false;
+    bool m_outlineLocked = false;
+    void paintGrid(QPainter& painter, QRectF const& frameRect) const;
+    bool m_safeArea = false;
+    bool m_lightTable = false;
+    bool m_currentOnTop = false;
+    bool m_cameraMask = false;
+    Art m_art = LineArt;
+    bool m_previewAllArt = true;
+    mutable Drawing m_artView;   // the colour art of the current drawing, for currentDrawing()
+    bool m_showStrokes = false;
+    bool m_strokesWash = false;
+    void stepSelection(int direction);
+    bool m_showControl = false;
+    int m_onionPrev = 1;
+    int m_onionNext = 1;
+    int m_onionOpacity = 35;
+
+    // interaction
+    enum Drag {
+        DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient
+    } m_drag = DragNone;
+    bool m_spaceDown = false;
+    bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
+    QPointF m_polyHover;         // where its next point would go (layer coordinates)
+    void pickColourAt(QPointF widgetPos);
+    QFont m_textFont;
+    int m_textAlign = 0;
+    int m_textSpacing = 100;
+    int m_textKerning = 100;
+    bool m_applyAll = false;
+    bool m_onionByFrame = false;
+    QColor m_onionBefore = QColor(220, 60, 60);
+    QColor m_onionAfter = QColor(50, 160, 80);
+    // Does to the other drawings of the layer what was done to the selection: moves what
+    // lies within `region` by `transform`, or takes it away when there is none.
+    void alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text);
+    int m_quadCorner = -1;          // the corner of the quadmap being dragged
+    QVector<QPointF> m_dragQuad;    // and where its corners are meanwhile
+    void paintBoneLayers(QPainter& painter);
+    void paintQuadAids(QPainter& painter);
+    class QLineEdit* m_textEntry = nullptr;   // where the Text tool is being typed into
+    QPointF m_textAt;                         // and where the words will stand (layer coordinates)
+    void beginText(QPointF widgetPos, QPointF layerPos, QString const& words = QString());
+    int m_textEdit = -1;                      // the painted area whose words are being changed; -1: new words
+    void endText(bool keep);
+    void transformSelection(QTransform const& about, QString const& text);
+    void arrangeSelection(bool front);
+    bool m_tabletActive = false;  // a pen is driving: ignore the mouse events Qt synthesises
+    QPointF m_lastWidgetPos;
+    Stroke m_stroke;        // the stroke being drawn
+
+    // selection: indices into the current drawing
+    QVector<int> m_selStrokes;
+    QVector<int> m_selFills;
+    bool m_committing = false;    // our own edit is going through: keep the selection
+    QPointF m_dragStart;          // scene position where the drag began
+    QPointF m_dragNow;
+    QRectF m_dragBounds;          // selection bounds when the drag began
+    Handle m_dragHandle = NoHandle;
+    QTransform m_dragTransform;   // applied to the selection while dragging
+    bool m_marqueeAdds = false;
+    bool m_lasso = true;
+    bool m_snapContour = false;
+    bool m_showGuides = true;
+    QVector<QImage> m_preview;
+    bool m_usePreview = true;
+    bool m_snapGrid = false;
+    bool m_animate = true;
+    void paintMotionPath(QPainter& painter);
+    QPointF snapped(QPointF p) const;
+    bool m_dragLasso = true;      // for the drag going on: Alt gives the other of the two
+    QPolygonF m_lassoPath;        // the shape being drawn round things, in layer coordinates
+    void selectInside(std::function<bool(QPointF)> const& inside, bool add);
+    // The Cutter: what lies inside the shape is cut loose from what lies outside, and selected.
+    void cutInside(QPolygonF const& shape);
+    // The paint bucket dragged: every line and painted area with a point inside is painted (or unpainted).
+    void paintInside(std::function<bool(QPointF)> const& inside, QRectF const& reach);
+
+    // contour editor: the stroke whose points are shown, and the point picked on it
+    int m_ceStroke = -1;
+    int m_cePoint = -1;
+    QVector<int> m_ceExtra;   // other points of that curve picked with it (Shift, or a box dragged round them)
+    // Instead of a line, the Contour Editor may have a contour of a brush shape: contour
+    // `m_ceContour` of fill `m_ceFill` (then m_ceStroke is -1).
+    int m_ceFill = -1;
+    int m_ceContour = 0;
+    bool m_brushShapes = true;
+    bool m_autoFlatten = false;
+    bool m_drawBehind = false;
+    bool m_eraserCuts = true;
+    // Cuts what the eraser passed over (the line `m_stroke`, as thick as the eraser) out of the drawing.
+    void cutWithEraser();
+    void eraseStretch(int from);    // cuts the eraser's way from that point on out of m_eraseArt
+    Drawing m_eraseArt;             // the art being erased, as it is so far in the drag
+    // the Edit Gradient tool
+    int m_gradFill = -1;
+    int m_gradHandle = 0;           // 0: drawn out afresh, 1: its start, 2: its end
+    bool m_gradMoved = false;
+    QPointF m_gradFrom, m_gradTo, m_gradStart;
+    QPointF m_gradStartWidget;
+    bool gradientValid() const;
+    void gradientDown(QPointF widgetPos, QPointF p);
+    void paintGradientAids(QPainter& painter);
+    bool m_eraseAny = false;        // whether the drag has taken anything yet
+    // The curve the Contour Editor is working on, in a drawing; null when there is none.
+    Stroke const* contourLine(Drawing const& drawing) const;
+    Stroke* contourLine(Drawing& drawing) const;
+    // After that curve was changed: a brush shape draws its outline out again.
+    void contourEdited(Drawing& drawing) const;
+    int m_ceHandle = -1;      // the handle of that point being dragged: 0 the one before it, 1 the one after
+    bool m_ceBreak = false;   // Alt: the handle moves alone, and the point becomes a cusp
+
+    // bones: the joint being dragged (rigging tool) or the bone being turned (transform tool)
+    int m_bone = -1;
+    // deformers: the point or handle being dragged (its place in Layer::warp)
+    int m_warpIndex = -1;
+    RigMode m_rigMode = RigBones;
+
+    // transform tool
+    Pose m_poseStart;             // the pose of the layer when the drag began
+    Pose m_dragPose;              // the pose while dragging
+    QPointF m_dragPivot;          // the pivot while dragging it, in layer coordinates
+    QTransform m_world0;          // layer to scene when the drag began
+    QPointF m_dragStartScene;
+};

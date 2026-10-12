@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Eclipse toolbars.  Items refer to the commands of menus.xml by id (or define their own
+     in the same way).  `visible="false"` items are not shown until the user adds them
+     (right-click the toolbar, Customize).  `customizable="false"` fixes a toolbar.
+     A multibutton shows one of its tools and offers the others in a menu. -->
+<toolbars>
+
+ <toolbar id="FileToolbar" text="File">
+  <item id="New" toolbarText="New"/>
+  <item id="Open" toolbarText="Open"/>
+  <item id="Save" toolbarText="Save"/>
+  <item id="SaveAs" toolbarText="Save As"/>
+  <item id="SaveAs" visible="false"/>
+  <item id="ExportMovie" visible="false"/>
+  <item id="ExportFrames" visible="false"/>
+  <item id="ImportSound" visible="false"/>
+ </toolbar>
+
+ <toolbar id="EditToolbar" text="Edit">
+  <item id="EditUndo" toolbarText="Undo"/>
+  <item id="EditRedo" toolbarText="Redo"/>
+  <separator/>
+  <item id="EditCut" toolbarText="Cut"/>
+  <item id="EditCopy" toolbarText="Copy"/>
+  <item id="EditPaste" toolbarText="Paste"/>
+  <item id="EditDelete" toolbarText="Delete"/>
+  <item id="EditDelete" visible="false"/>
+  <item id="EditSelectAll" visible="false"/>
+  <item id="EditDeselectAll" visible="false"/>
+  <item id="EditShortcuts" visible="false"/>
+ </toolbar>
+
+ <toolbar id="DrawingToolToolbar" text="Tools" orientation="vertical">
+  <multibutton id="selectTools1">
+   <item id="ToolSelect"/>
+   <item id="ToolCutter"/>
+  </multibutton>
+  <multibutton id="selectTools2">
+   <item id="ToolContourEditor"/>
+  </multibutton>
+  <multibutton id="brushTools">
+   <item id="ToolBrush"/>
+  </multibutton>
+  <item id="ToolPencil"/>
+  <item id="ToolEraser"/>
+  <item id="ToolText"/>
+  <multibutton id="shapeTools">
+   <item id="ToolRectangle"/>
+   <item id="ToolEllipse"/>
+   <item id="ToolLine"/>
+   <item id="ToolPolyline"/>
+  </multibutton>
+  <multibutton id="paintTools">
+   <item id="ToolPaint"/>
+   <item id="ToolPaintUnpainted"/>
+   <item id="ToolRepaint"/>
+   <item id="ToolUnpaint"/>
+   <item id="ToolStroke"/>
+   <item id="ToolCloseGap"/>
+   <item id="ToolEditGradient"/>
+  </multibutton>
+  <item id="ToolDropper"/>
+  <multibutton id="canvasTools">
+   <item id="ToolHand"/>
+   <item id="ToolZoom"/>
+   <item id="ToolRotateView"/>
+  </multibutton>
+  <separator/>
+  <item id="ToolTransform"/>
+  <item id="ToolRigging"/>
+  <item id="ToolIK"/>
+  <item id="OnionSkinToggle" toolbarText="Onion"/>
+ </toolbar>
+
+ <toolbar id="PlaybackToolbar" text="Playback">
+  <item id="PlayToggle"/>
+  <item id="PlayLoop"/>
+  <item id="PlaySound"/>
+  <item id="PlayFirstFrame" toolbarText="|&lt;" visible="false"/>
+  <item id="PlayPrevFrame" toolbarText="&lt;" visible="false"/>
+  <item id="PlayNextFrame" toolbarText="&gt;" visible="false"/>
+  <item id="PlayLastFrame" toolbarText="&gt;|" visible="false"/>
+  <item id="PlayGotoFrame" visible="false"/>
+ </toolbar>
+
+ <!-- Belongs to the Timeline view and sits inside it. -->
+ <toolbar id="TimelineViewToolbar" text="Timeline View">
+  <item id="InsertDrawing" toolbarText="+ Drawing"/>
+  <item id="InsertPeg" toolbarText="+ Peg"/>
+  <item id="InsertCamera"/>
+  <item id="ImportSound"/>
+  <item id="DeleteLayers" toolbarText="- Layer"/>
+  <separator/>
+  <item id="CreateEmptyDrawing" toolbarText="New Drawing"/>
+  <item id="DuplicateDrawing" toolbarText="Duplicate"/>
+  <separator/>
+  <item id="InsertKeyframe" toolbarText="+ Key"/>
+  <item id="DeleteKeyframe" toolbarText="- Key"/>
+  <item id="GotoPrevKeyframe" toolbarText="&lt; Key"/>
+  <item id="GotoNextKeyframe" toolbarText="Key &gt;"/>
+  <item id="SetMotionKeyframe" toolbarText="Motion"/>
+  <item id="SetStopMotionKeyframe" toolbarText="Stop-Motion"/>
+  <item id="ExtendExposure" visible="false"/>
+  <item id="ClearExposure" visible="false"/>
+  <item id="InsertParentPeg" visible="false"/>
+  <item id="MoveLayerUp" visible="false"/>
+  <item id="MoveLayerDown" visible="false"/>
+  <item id="RenameLayer" visible="false"/>
+  <item id="AttachLayer" visible="false"/>
+  <item id="DetachLayer" visible="false"/>
+  <item id="SubstitutePrevious" visible="false"/>
+  <item id="SubstituteNext" visible="false"/>
+  <item id="SelectParent" visible="false"/>
+  <item id="SelectChild" visible="false"/>
+  <item id="ResetTransformation" visible="false"/>
+ </toolbar>
+
+ <!-- Belongs to the Camera view. -->
+ <toolbar id="CameraViewToolbar" text="Camera View">
+  <item id="NewToolPreset" toolbarText="New Preset"/>
+  <item id="ManagePresets" toolbarText="Presets"/>
+  <separator/>
+  <item id="ShowGrid" toolbarText="Grid"/>
+  <item id="ResetTransformation" toolbarText="Reset"/>
+  <item id="Flatten" toolbarText="Flatten"/>
+  <item id="LockLayer" toolbarText="Lock"/>
+  <item id="UnlockAll" toolbarText="Unlock All"/>
+  <item id="ShowControl" toolbarText="Control"/>
+  <item id="HideAllControls" toolbarText="Hide Controls"/>
+  <item id="TopLight" toolbarText="Top Light"/>
+  <item id="MirrorView" toolbarText="Mirror"/>
+  <item id="OnionAddPrevious" toolbarText="Onion +Prev"/>
+  <item id="OnionReducePrevious" toolbarText="Onion -Prev"/>
+  <item id="OnionReduceNext" toolbarText="Onion -Next"/>
+  <item id="OnionAddNext" toolbarText="Onion +Next"/>
+  <item id="FlipHorizontalAnimation" toolbarText="Flip H"/>
+  <item id="FlipVerticalAnimation" toolbarText="Flip V"/>
+  <item id="ZoomIn" toolbarText="Zoom +" visible="false"/>
+  <item id="ZoomOut" toolbarText="Zoom -" visible="false"/>
+  <item id="ResetView" toolbarText="Reset View" visible="false"/>
+  <item id="ResetZoom" toolbarText="100%" visible="false"/>
+  <item id="RotateViewCCW" toolbarText="Turn Left" visible="false"/>
+  <item id="RotateViewCW" toolbarText="Turn Right" visible="false"/>
+  <item id="ResetRotation" toolbarText="Level" visible="false"/>
+  <item id="ShowSafeArea" toolbarText="Safe Area" visible="false"/>
+  <item id="LightTable" toolbarText="Light Table" visible="false"/>
+  <item id="OnionSkinToggle" toolbarText="Onion Skin" visible="false"/>
+  <item id="InsertKeyframe" visible="false"/>
+  <item id="DeleteKeyframe" visible="false"/>
+  <item id="SetMotionKeyframe" visible="false"/>
+  <item id="SetStopMotionKeyframe" visible="false"/>
+  <item id="CreateEmptyDrawing" visible="false"/>
+  <item id="DuplicateDrawing" visible="false"/>
+  <item id="PreviousDrawing" visible="false"/>
+  <item id="NextDrawing" visible="false"/>
+  <item id="ToggleFullScreen" visible="false"/>
+ </toolbar>
+
+</toolbars>

@@ -1,0 +1,130 @@
+// Eclipse - Scene > Check Files, and Edit > Preferences.
+#include "ui/window/MainWindow.h"
+
+#include <functional>
+
+#include <algorithm>
+#include <cmath>
+
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QLabel>
+#include <QListWidget>
+#include <QSettings>
+#include <QSpinBox>
+#include <QVBoxLayout>
+
+#include "audio/sound/Sound.h"
+#include "model/document/Commands.h"
+#include "ui/canvas/Canvas.h"
+#include "ui/panels/LibraryView.h"
+#include "ui/io/MovieExport.h"
+#include "ui/panels/PalettePanel.h"
+#include "ui/io/ImportExportPrivate.h"
+
+QStringList MainWindow::sceneFiles(bool missingOnly) const
+{
+    QStringList files;
+    auto add = [&](QString const& file) {
+        if (!file.isEmpty() && !files.contains(file) && !(missingOnly && QFileInfo::exists(file)))
+            files << file;
+    };
+    for (Layer const& layer : m_document->scene().layers) {
+        if (layer.kind == Layer::Sound)
+            add(layer.soundFile);
+        for (Drawing const& drawing : layer.drawings)
+            for (Picture const& picture : drawing.pictures)
+                if (picture.linked)
+                    add(picture.file);
+    }
+    return files;
+}
+
+void MainWindow::onActionCheckFiles()
+{
+    QStringList const all = sceneFiles(false), missing = sceneFiles(true);
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Check Files"));
+    QListWidget* const list = new QListWidget(&dialog);
+    list->setMinimumSize(520, 240);
+    for (QString const& file : all) {
+        bool const gone = missing.contains(file);
+        QListWidgetItem* const item = new QListWidgetItem((gone ? tr("MISSING   ") : tr("found        ")) + QDir::toNativeSeparators(file), list);
+        if (gone)
+            item->setForeground(QColor(240, 110, 90));
+    }
+    QLabel* const summary = new QLabel(all.isEmpty() ? tr("The scene uses no files outside itself: everything is kept in the scene file.")
+                                                     : missing.isEmpty() ? tr("All %1 files the scene uses are where they should be.").arg(all.size())
+                                                                         : tr("%1 of the %2 files the scene uses cannot be found.").arg(missing.size()).arg(all.size()),
+                                       &dialog);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(summary);
+    layout->addWidget(list);
+    layout->addWidget(buttons);
+    dialog.exec();
+}
+
+static QSettings preferences()
+{
+    return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+}
+
+void MainWindow::applyPreferences()
+{
+    QSettings const s = preferences();
+    m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
+    m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
+    m_autoSave.stop();
+    if (m_autoSaveMinutes > 0)
+        m_autoSave.start(m_autoSaveMinutes * 60 * 1000);
+}
+
+void MainWindow::onActionPreferences()
+{
+    QSettings s = preferences();
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Preferences"));
+
+    QGroupBox* const general = new QGroupBox(tr("General"), &dialog);
+    QCheckBox* const welcome = new QCheckBox(tr("Show the welcome screen when Eclipse starts"), general);
+    welcome->setChecked(!s.value(QStringLiteral("welcome/hide"), false).toBool());
+    QSpinBox* const autoSave = new QSpinBox(general);
+    autoSave->setRange(0, 240);
+    autoSave->setSpecialValueText(tr("Never"));
+    autoSave->setSuffix(tr(" minutes"));
+    autoSave->setValue(m_autoSaveMinutes);
+    QFormLayout* const generalLayout = new QFormLayout(general);
+    generalLayout->addRow(welcome);
+    generalLayout->addRow(tr("Save the scene by itself every"), autoSave);
+    generalLayout->addRow(new QLabel(tr("(Only a scene that has been saved once, and only when it has changed.)"), general));
+
+    QGroupBox* const camera = new QGroupBox(tr("Camera"), &dialog);
+    QComboBox* const selectMode = new QComboBox(camera);
+    selectMode->addItems({tr("Lasso"), tr("Marquee")});
+    selectMode->setCurrentIndex(s.value(QStringLiteral("prefs/lasso"), true).toBool() ? 0 : 1);
+    QFormLayout* const cameraLayout = new QFormLayout(camera);
+    cameraLayout->addRow(tr("The Select tool starts with"), selectMode);
+
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(general);
+    layout->addWidget(camera);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    s.setValue(QStringLiteral("welcome/hide"), !welcome->isChecked());
+    s.setValue(QStringLiteral("prefs/autosaveMinutes"), autoSave->value());
+    s.setValue(QStringLiteral("prefs/lasso"), selectMode->currentIndex() == 0);
+    s.sync();
+    applyPreferences();
+}

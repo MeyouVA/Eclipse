@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Eclipse keyboard shortcuts.  Menus and toolbars refer to a shortcut by its id; the key
+     itself is only written here (and in the user's own changes, kept in the settings). -->
+<shortcuts>
+ <category id="General" text="General">
+  <shortcut id="NEW_KEY" text="New" value="Ctrl+N"/>
+  <shortcut id="OPEN_KEY" text="Open" value="Ctrl+O"/>
+  <shortcut id="SAVE_KEY" text="Save" value="Ctrl+S"/>
+  <shortcut id="SAVE_AS_KEY" text="Save As" value="Ctrl+Shift+S"/>
+  <shortcut id="EXPORT_FRAMES_KEY" text="Export Frames" value="Ctrl+Shift+E"/>
+  <shortcut id="IMPORT_MOVIE_KEY" text="Import Movie" value=""/>
+  <shortcut id="EXPORT_GIF_KEY" text="Export Animated GIF" value=""/>
+  <shortcut id="EXPORT_MOVIE_KEY" text="Export Movie" value="Ctrl+Shift+M"/>
+  <shortcut id="CLOSE_SCENE_KEY" text="Close Scene" value="Ctrl+W"/>
+  <shortcut id="QUIT_KEY" text="Quit" value="Ctrl+Q"/>
+  <shortcut id="UNDO_KEY" text="Undo" value="Ctrl+Z"/>
+  <shortcut id="REDO_KEY" text="Redo" value="Ctrl+Shift+Z"/>
+  <shortcut id="CUT_KEY" text="Cut" value="Ctrl+X"/>
+  <shortcut id="COPY_KEY" text="Copy" value="Ctrl+C"/>
+  <shortcut id="PASTE_KEY" text="Paste" value="Ctrl+V"/>
+  <shortcut id="PASTE_CYCLE_KEY" text="Paste Cycle" value="Ctrl+/"/>
+  <shortcut id="PASTE_REVERSE_KEY" text="Paste Reverse" value="Ctrl+."/>
+  <shortcut id="DELETE_KEY" text="Delete" value="Del"/>
+  <shortcut id="SELECT_ALL_KEY" text="Select All" value="Ctrl+A"/>
+  <shortcut id="DESELECT_ALL_KEY" text="Deselect All" value="Esc"/>
+  <shortcut id="PREFERENCES_KEY" text="Preferences" value="Ctrl+U"/>
+  <shortcut id="UNGROUP_KEY" text="Ungroup Selected Layers" value="Ctrl+Shift+G"/>
+  <shortcut id="EDIT_SHORTCUTS" text="Keyboard Shortcuts" value=""/>
+  <shortcut id="TOGGLE_FULLSCREEN_KEY" text="Toggle Full Screen" value="Ctrl+F"/>
+ </category>
+ <category id="Playback" text="Playback">
+  <shortcut id="TOGGLE_PLAYBACK_KEY" text="Toggle Playback" value="Return"/>
+  <shortcut id="PREV_FRAME_KEY" text="Previous Frame" value=","/>
+  <shortcut id="NEXT_FRAME_KEY" text="Next Frame" value="."/>
+  <shortcut id="FIRST_FRAME_KEY" text="First Frame" value="Home"/>
+  <shortcut id="LAST_FRAME_KEY" text="Last Frame" value="End"/>
+  <shortcut id="GOTO_FRAME_KEY" text="Go to Frame" value=""/>
+ </category>
+ <category id="Camera" text="Camera">
+  <shortcut id="BACKLIGHT_KEY" text="Backlight" value=""/>
+  <shortcut id="ZOOM_IN_KEY" text="Zoom In" value="2"/>
+  <shortcut id="ZOOM_OUT_KEY" text="Zoom Out" value="1"/>
+  <shortcut id="ROTATE_VIEW_CW_KEY" text="Rotate View CW" value="V"/>
+  <shortcut id="ROTATE_VIEW_CCW_KEY" text="Rotate View CCW" value="C"/>
+  <shortcut id="MIRROR_VIEW_KEY" text="Mirror View" value=""/>
+  <shortcut id="RESET_ZOOM_KEY" text="Reset Zoom" value="Shift+Z"/>
+  <shortcut id="RESET_ROTATION_KEY" text="Reset Rotation" value="Shift+X"/>
+  <shortcut id="RESET_PAN_KEY" text="Reset Pan" value="Shift+N"/>
+  <shortcut id="SHOW_GRID_KEY" text="Show Grid" value="Ctrl+'"/>
+  <shortcut id="SAFE_AREA_KEY" text="Safe Area" value=""/>
+  <shortcut id="LIGHT_TABLE_KEY" text="Light Table" value="Shift+L"/>
+  <shortcut id="SHOW_CONTROL_KEY" text="Show Control" value="Shift+F11"/>
+  <shortcut id="HIDE_ALL_CONTROLS_KEY" text="Hide All Controls" value="Shift+C"/>
+  <shortcut id="DRAWING_ON_TOP_KEY" text="Current Drawing on Top" value=""/>
+  <shortcut id="CAMERA_MASK_KEY" text="Camera Mask" value=""/>
+  <shortcut id="ONION_ADD_PREV_KEY" text="Onion Skin Add One Previous Drawing" value=""/>
+  <shortcut id="ONION_REDUCE_PREV_KEY" text="Onion Skin Reduce One Previous Drawing" value=""/>
+  <shortcut id="ONION_REDUCE_NEXT_KEY" text="Onion Skin Reduce One Next Drawing" value=""/>
+  <shortcut id="ONION_ADD_NEXT_KEY" text="Onion Skin Add One Next Drawing" value=""/>
+  <shortcut id="TOP_LIGHT_KEY" text="Top Light" value=""/>
+  <shortcut id="FLATTEN_KEY" text="Flatten" value="Alt+Shift+F"/>
+  <shortcut id="NEW_TOOL_PRESET_KEY" text="New Tool Preset" value=""/>
+  <shortcut id="MANAGE_PRESETS_KEY" text="Manage Presets" value=""/>
+  <shortcut id="FLIP_H_ANIMATION_KEY" text="Flip Horizontal (Animation)" value=""/>
+  <shortcut id="FLIP_V_ANIMATION_KEY" text="Flip Vertical (Animation)" value=""/>
+  <shortcut id="ROTATE_180_KEY" text="Rotate 180" value=""/>
+  <shortcut id="BRING_FORWARD_KEY" text="Bring Forward" value="Ctrl+PgUp"/>
+  <shortcut id="SEND_BACKWARD_KEY" text="Send Backward" value="Ctrl+PgDown"/>
+  <shortcut id="CONVERT_TO_PENCIL_KEY" text="Convert Brush Strokes to Pencil Lines" value=""/>
+  <shortcut id="CONVERT_TO_BRUSH_KEY" text="Convert Pencil Lines to Brush Strokes" value=""/>
+  <shortcut id="SELECT_CURRENT_COLOUR_KEY" text="Select Strokes with Current Colour" value="Ctrl+Shift+A"/>
+  <shortcut id="INVERT_SELECTION_KEY" text="Invert Selection" value="Ctrl+Shift+I"/>
+  <shortcut id="SHOW_STROKES_KEY" text="Show Strokes" value="K"/>
+  <shortcut id="SHOW_STROKES_WASH_KEY" text="Show Strokes with Colour Wash" value=""/>
+  <shortcut id="SWITCH_ART_KEY" text="Switch Between Line Art and Colour Art" value="L"/>
+  <shortcut id="PREVIEW_ALL_ART_KEY" text="Preview Line Art and Colour Art" value="P"/>
+  <shortcut id="LINE_ART_KEY" text="Line Art" value=""/>
+  <shortcut id="COLOUR_ART_KEY" text="Colour Art" value=""/>
+  <shortcut id="OVERLAY_ART_KEY" text="Overlay Art" value=""/>
+  <shortcut id="UNDERLAY_ART_KEY" text="Underlay Art" value=""/>
+  <shortcut id="RESET_VIEW_KEY" text="Reset View" value="Shift+M"/>
+  <shortcut id="ONION_SKIN_KEY" text="Show Onion Skin" value="Alt+O"/>
+ </category>
+ <category id="Timeline" text="Timeline">
+  <shortcut id="ADD_DRAWING_KEY" text="Add Drawing Layer" value="Ctrl+R"/>
+  <shortcut id="ADD_PEG_KEY" text="Add Peg" value="Ctrl+P"/>
+  <shortcut id="ADD_CAMERA_KEY" text="Add Camera" value=""/>
+  <shortcut id="ADD_PARENT_PEG_KEY" text="Add Parent Peg" value="Ctrl+Shift+P"/>
+  <shortcut id="DELETE_LAYER_KEY" text="Delete Layers" value=""/>
+  <shortcut id="MOVE_LAYER_UP_KEY" text="Move Layer Up" value="Ctrl+]"/>
+  <shortcut id="MOVE_LAYER_DOWN_KEY" text="Move Layer Down" value="Ctrl+["/>
+  <shortcut id="INCREASE_EXPOSURE_KEY" text="Increase Exposure" value="+"/>
+  <shortcut id="DECREASE_EXPOSURE_KEY" text="Decrease Exposure" value="-"/>
+  <shortcut id="ADD_FRAMES_BEFORE_KEY" text="Add Frames Before Selection" value=""/>
+  <shortcut id="ADD_FRAMES_AFTER_KEY" text="Add Frames After Selection" value=""/>
+  <shortcut id="PREV_LAYER_KEY" text="Previous Layer" value=""/>
+  <shortcut id="NEXT_LAYER_KEY" text="Next Layer" value=""/>
+  <shortcut id="PREV_COLOUR_KEY" text="Previous Colour" value=""/>
+  <shortcut id="NEXT_COLOUR_KEY" text="Next Colour" value=""/>
+  <shortcut id="MERGE_LAYERS_KEY" text="Merge Selected Layers" value=""/>
+  <shortcut id="EXTEND_EXPOSURE_KEY" text="Extend Exposure" value="F5"/>
+  <shortcut id="CLEAR_EXPOSURE_KEY" text="Clear Exposure" value=""/>
+  <shortcut id="INSERT_KEYFRAME_KEY" text="Insert Keyframe" value="F6"/>
+  <shortcut id="DELETE_KEYFRAME_KEY" text="Delete Keyframe" value="F7"/>
+  <shortcut id="MOTION_KEYFRAME_KEY" text="Set Motion Keyframe" value="Ctrl+K"/>
+  <shortcut id="STOP_MOTION_KEYFRAME_KEY" text="Set Stop-Motion Keyframe" value="Ctrl+L"/>
+  <shortcut id="PREV_KEYFRAME_KEY" text="Go to Previous Keyframe" value=";"/>
+  <shortcut id="NEXT_KEYFRAME_KEY" text="Go to Next Keyframe" value="'"/>
+  <shortcut id="SUBSTITUTE_PREV_KEY" text="Substitute Drawing Previous" value="["/>
+  <shortcut id="SUBSTITUTE_NEXT_KEY" text="Substitute Drawing Next" value="]"/>
+  <shortcut id="SELECT_PARENT_KEY" text="Select Parent" value="B"/>
+  <shortcut id="SELECT_CHILD_KEY" text="Select Child" value="Shift+B"/>
+  <shortcut id="SELECT_PREV_SIBLING_KEY" text="Select Previous Sibling" value=""/>
+  <shortcut id="SELECT_NEXT_SIBLING_KEY" text="Select Next Sibling" value=""/>
+  <shortcut id="RESET_ALL_KEY" text="Reset All" value=""/>
+  <shortcut id="RESET_TRANSFORMATION_KEY" text="Reset Transformation" value=""/>
+ </category>
+ <category id="Drawing Mode" text="Drawing Mode">
+  <shortcut id="SMOOTH_KEY" text="Smooth" value="Alt+Shift+S"/>
+  <shortcut id="CREATE_EMPTY_DRAWING_KEY" text="Create Empty Drawing" value="Alt+Shift+R"/>
+  <shortcut id="DUPLICATE_DRAWING_KEY" text="Duplicate Drawing" value="Alt+Shift+D"/>
+  <shortcut id="PREV_DRAWING_KEY" text="Go to Previous Drawing" value="F"/>
+  <shortcut id="NEXT_DRAWING_KEY" text="Go to Next Drawing" value="G"/>
+  <shortcut id="TOOL_SELECT_KEY" text="Select Tool" value="Alt+S"/>
+  <shortcut id="TOOL_CUTTER_KEY" text="Cutter Tool" value="Alt+T"/>
+  <shortcut id="CREATE_MORPHING_KEY" text="Create Morphing" value="Alt+M"/>
+  <shortcut id="TOOL_STROKE_KEY" text="Stroke Tool" value="Alt+V"/>
+  <shortcut id="TOOL_CLOSE_GAP_KEY" text="Close Gap Tool" value="Alt+C"/>
+  <shortcut id="TOOL_TRANSFORM_KEY" text="Transform Tool" value="Shift+T"/>
+  <shortcut id="TOOL_BRUSH_KEY" text="Brush Tool" value="Alt+B"/>
+  <shortcut id="TOOL_CONTOUR_KEY" text="Contour Editor Tool" value="Alt+Q"/>
+  <shortcut id="TOOL_PENCIL_KEY" text="Pencil Tool" value="Alt+/"/>
+  <shortcut id="TOOL_RECTANGLE_KEY" text="Rectangle Tool" value="Alt+7"/>
+  <shortcut id="TOOL_ELLIPSE_KEY" text="Ellipse Tool" value="Alt+="/>
+  <shortcut id="TOOL_LINE_KEY" text="Line Tool" value="Alt+\"/>
+  <shortcut id="TOOL_ERASER_KEY" text="Eraser Tool" value="Alt+E"/>
+  <shortcut id="TOOL_PAINT_KEY" text="Paint Tool" value="Alt+I"/>
+  <shortcut id="TOOL_IK_KEY" text="Inverse Kinematics Tool" value=""/>
+  <shortcut id="TOOL_RIGGING_KEY" text="Rigging Tool" value=""/>
+  <shortcut id="TOOL_POLYLINE_KEY" text="Polyline Tool" value="Alt+_"/>
+  <shortcut id="TOOL_PAINT_UNPAINTED_KEY" text="Paint Unpainted Tool" value="Alt+Y"/>
+  <shortcut id="TOOL_REPAINT_KEY" text="Repaint Tool" value="Alt+R"/>
+  <shortcut id="TOOL_UNPAINT_KEY" text="Unpaint Tool" value="Alt+U"/>
+  <shortcut id="TOOL_DROPPER_KEY" text="Dropper Tool" value="Alt+D"/>
+  <shortcut id="TOOL_ZOOM_KEY" text="Zoom Tool" value="Alt+Z"/>
+  <shortcut id="TOOL_ROTATE_VIEW_KEY" text="Rotate View Tool" value=""/>
+  <shortcut id="TOOL_TEXT_KEY" text="Text Tool" value="Alt+9"/>
+  <shortcut id="FLIP_HORIZONTAL_KEY" text="Flip Horizontal" value="4"/>
+  <shortcut id="FLIP_VERTICAL_KEY" text="Flip Vertical" value="5"/>
+  <shortcut id="ROTATE_90_CW_KEY" text="Rotate 90 CW" value="Ctrl+7"/>
+  <shortcut id="ROTATE_90_CCW_KEY" text="Rotate 90 CCW" value="Ctrl+9"/>
+  <shortcut id="BRING_TO_FRONT_KEY" text="Bring to Front" value="Ctrl+Shift+PgUp"/>
+  <shortcut id="SEND_TO_BACK_KEY" text="Send to Back" value="Ctrl+Shift+PgDown"/>
+  <shortcut id="GROUP_SELECTION_KEY" text="Group Selection" value="Ctrl+G"/>
+  <shortcut id="TOOL_HAND_KEY" text="Hand Tool" value="H"/>
+ </category>
+</shortcuts>
