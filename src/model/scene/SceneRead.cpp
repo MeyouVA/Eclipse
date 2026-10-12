@@ -123,9 +123,19 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.height = std::max(1, json["height"].toInt(1080));
     scene.fps = std::clamp(json["fps"].toDouble(24.0), 1.0, 240.0);
     scene.activeCamera = json["camera"].toInt(0);
-    for (QJsonValue const& gv : json["guides"].toArray())
-        if (gv.toArray().size() == 2)
+    for (QJsonValue const& gv : json["guides"].toArray()) {
+        if (gv.isArray() && gv.toArray().size() == 2) {
             scene.guides.push_back({gv.toArray().at(0).toBool(), gv.toArray().at(1).toDouble()});
+        } else if (gv.isObject()) {
+            // A guide to draw along: its kind and its points.
+            QJsonObject const g = gv.toObject();
+            Guide guide;
+            guide.kind = Guide::Kind(std::clamp(g["kind"].toInt(1), 1, int(Guide::ThreePoint)));
+            for (QJsonValue const& pv : g["points"].toArray())
+                guide.points.push_back(QPointF(pv.toArray().at(0).toDouble(), pv.toArray().at(1).toDouble()));
+            scene.guides.push_back(guide);
+        }
+    }
     scene.metadata = pairsFromJson(json["metadata"].toArray());
     for (QJsonValue const& rv : json["references"].toArray())
         scene.references << found(folder, rv.toObject()["file"].toString(), rv.toObject()["relative"].toString());

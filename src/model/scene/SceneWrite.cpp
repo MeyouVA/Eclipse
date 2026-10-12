@@ -293,8 +293,16 @@ QJsonObject Scene::toJson(QString const& folder) const
     for (Marker const& m : markers)
         markerArray.append(QJsonObject{{"frame", m.frame}, {"length", m.length}, {"name", m.name}, {"color", m.color.name()}});
     QJsonArray guideArray;
-    for (Guide const& guide : guides)
-        guideArray.append(QJsonArray{guide.vertical, guide.at});
+    for (Guide const& guide : guides) {
+        if (guide.kind == Guide::Line) {
+            guideArray.append(QJsonArray{guide.vertical, guide.at});
+            continue;
+        }
+        QJsonArray points;
+        for (QPointF const& point : guide.points)
+            points.append(QJsonArray{point.x(), point.y()});
+        guideArray.append(QJsonObject{{"kind", int(guide.kind)}, {"points", points}});
+    }
     QJsonArray referenceArray;
     for (QString const& file : references)
         referenceArray.append(QJsonObject{{"file", file}, {"relative", pathFrom(folder, file)}});

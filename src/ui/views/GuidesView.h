@@ -18,6 +18,8 @@ public:
     GuidesView(Document* document, Canvas* canvas, QWidget* parent = nullptr);
     // A guide across (`vertical` false) or down the picture, at that place.  Its place in the list.
     int addGuide(bool vertical, double at);
+    // A guide to draw along (Scene::Guide::Kind), set out for the scene.  Its place in the list.
+    int addDrawingGuide(int kind);
 
 private:
     void rebuild();

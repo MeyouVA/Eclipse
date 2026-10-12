@@ -126,6 +126,12 @@ public:
     bool snapsToContour() const { return m_snapContour; }
     // Guides (Scene::guides): seen and snapped to, or not.
     bool showsGuides() const { return m_showGuides; }
+    // The guide in use (a place in Scene::guides, or -1): one to draw along is shown, its
+    // points can be dragged, and the brush and pencil are kept to the ways it runs.
+    int activeGuide() const { return m_activeGuide; }
+    void setActiveGuide(int index);
+    // Where a point of the guide in use is in the view (a null point when there is none).
+    QPointF guidePointInView(int point) const;
     // The preview: frames of the scene rendered beforehand (the Preview Manager), shown
     // while playing in place of drawing every layer again.
     void setPreview(QVector<QImage> const& frames);
@@ -507,7 +513,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -552,6 +558,20 @@ private:
     bool m_lasso = true;
     bool m_snapContour = false;
     bool m_showGuides = true;
+    int m_activeGuide = -1;
+    QPointF m_guideStart;        // where the line being drawn along the guide began (in the frame)
+    QPointF m_guideWay;          // the way it was settled to run (null until the pen has moved)
+    QPointF m_hoverFrame;        // where the pointer is (in the frame)
+    bool m_hoverKnown = false;
+    QVector<Scene::Guide> m_guideEdit;   // the guides while a point of one is dragged
+    int m_guidePoint = -1;
+    Scene::Guide const* drawingGuide() const;
+    bool guideTool() const;
+    QPointF toFrame(QPointF widgetPos) const;
+    int guideHandleAt(QPointF widgetPos) const;
+    void beginGuidedStroke(QPointF widgetPos);
+    QPointF guided(QPointF widgetPos);
+    void paintGuide(QPainter& painter);
     QVector<QImage> m_preview;
     bool m_usePreview = true;
     bool m_snapGrid = false;

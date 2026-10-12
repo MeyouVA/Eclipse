@@ -490,14 +490,30 @@ public:
         bool operator==(Marker const&) const = default;
     };
     QVector<Marker> markers;    // sorted by frame
-    // Guides: straight lines across or down the picture (in the coordinates of the frame),
-    // to draw and snap to.  They are seen in the Camera view and never rendered.
+    // Guides (in the coordinates of the frame), seen in the Camera view and never rendered.
+    // A plain line across or down the picture is snapped to.  The other kinds are drawn
+    // along: with one of them in use, a line drawn with the brush or pencil is kept straight
+    // and running one of the ways the guide has at the place where it starts.
     struct Guide {
-        bool vertical = false;      // runs down the picture, at an x; else across it, at a y
+        bool vertical = false;      // a Line: runs down the picture, at an x; else across it, at a y
         double at = 0.0;
+        enum Kind { Line, Ruler, SquareGrid, Isometric, OnePoint, TwoPoint, ThreePoint };
+        Kind kind = Line;
+        // Ruler: two points on it.  The perspectives: their vanishing points (the first two
+        // of a two- or three-point one lie on the horizon).
+        QVector<QPointF> points;
         bool operator==(Guide const&) const = default;
     };
     QVector<Guide> guides;
+    static QString guideName(Guide::Kind kind);
+    // A guide of a kind, set out to suit the size of this scene.
+    Guide makeGuide(Guide::Kind kind) const;
+    // The ways a line may run from a place (each of length one; a line runs either way along it).
+    static QVector<QPointF> guideDirections(Guide const& guide, QPointF at);
+    // Which of those is nearest to the way the pen has gone (-1: there are none) ...
+    static int nearestGuideDirection(QVector<QPointF> const& ways, QPointF drag);
+    // ... and the place on the line from `from` running `way` that is nearest to `to`.
+    static QPointF alongGuide(QPointF from, QPointF to, QPointF way);
     // Names and values kept with the scene.
     QVector<QPair<QString, QString>> metadata;
     // The pictures of the Reference view: the files they are read from.

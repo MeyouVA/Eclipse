@@ -9,6 +9,16 @@
 void Canvas::penUp()
 {
     Drag const drag = m_drag;
+    if (drag == DragGuide) {
+        m_drag = DragNone;
+        QVector<Scene::Guide> const moved = m_guideEdit;
+        m_guideEdit.clear();
+        m_guidePoint = -1;
+        if (moved != m_document->scene().guides)
+            m_document->setGuides(moved, tr("Move Guide"));
+        update();
+        return;
+    }
     if (drag == DragGradient) {
         m_drag = DragNone;
         Drawing const* const d = currentDrawing();

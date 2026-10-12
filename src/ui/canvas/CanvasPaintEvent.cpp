@@ -230,6 +230,8 @@ void Canvas::paintEvent(QPaintEvent*)
         painter.setPen(guidePen);
         double const reach = 100000.0;
         for (Scene::Guide const& guide : scene.guides) {
+            if (guide.kind != Scene::Guide::Line)
+                continue;
             if (guide.vertical)
                 painter.drawLine(QPointF(guide.at, -reach), QPointF(guide.at, reach));
             else
@@ -237,6 +239,7 @@ void Canvas::paintEvent(QPaintEvent*)
         }
         painter.restore();
     }
+    paintGuide(painter);
     if (m_safeArea && !m_playing) {
         // Inside these the picture and the titles are safe from being cut off by a screen.
         QPen action(QColor(40, 40, 40, 200));

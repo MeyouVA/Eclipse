@@ -100,6 +100,8 @@ QPointF Canvas::snapped(QPointF p) const
         bool moved = false;
         QPointF const from = q;
         for (Scene::Guide const& guide : scene.guides) {
+            if (guide.kind != Scene::Guide::Line)
+                continue;       // one to draw along, not to snap to
             double const off = std::abs((guide.vertical ? from.x() : from.y()) - guide.at);
             if (guide.vertical && off < nearX) {
                 nearX = off;

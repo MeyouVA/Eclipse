@@ -68,6 +68,10 @@ void Canvas::mousePressEvent(QMouseEvent* event)
 void Canvas::mouseMoveEvent(QMouseEvent* event)
 {
     emit pointerMoved(toScene(event->position()));
+    m_hoverFrame = toFrame(event->position());
+    m_hoverKnown = true;
+    if (drawingGuide())
+        update();       // its lines follow the pointer
     if (!m_tabletActive && m_drag != DragNone)
         penMove(event->position(), 1.0f, event->modifiers());
     if (m_polyActive && m_drag == DragNone) {

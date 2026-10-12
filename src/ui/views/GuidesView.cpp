@@ -1,4 +1,4 @@
-// Eclipse - the Guides view: straight lines across the picture to draw and snap to.
+// Eclipse - the Guides view: lines across the picture to snap to, and rulers, grids and perspectives to draw along.
 #include "ui/views/GuidesView.h"
 
 #include <QCheckBox>
@@ -6,6 +6,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QMenu>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
@@ -35,9 +36,24 @@ GuidesView::GuidesView(Document* document, Canvas* canvas, QWidget* parent) : QW
     across->setObjectName(QStringLiteral("GuideAddHorizontal"));
     QPushButton* const down = new QPushButton(tr("Add Down"), this);
     down->setObjectName(QStringLiteral("GuideAddVertical"));
+    // The guides that are drawn along: a ruler, a grid, a perspective.
+    QPushButton* const more = new QPushButton(tr("Add Guide"), this);
+    more->setObjectName(QStringLiteral("GuideAddMenu"));
+    more->setToolTip(tr("A guide to draw along: with it chosen in the list, a line drawn with the brush or the pencil is kept straight\n"
+                        "and runs one of the ways the guide has. Its points can be dragged in the Camera view with a drawing tool."));
+    {
+        QMenu* const kinds = new QMenu(more);
+        for (int kind = Scene::Guide::Ruler; kind <= Scene::Guide::ThreePoint; ++kind) {
+            QAction* const a = kinds->addAction(Scene::guideName(Scene::Guide::Kind(kind)));
+            a->setObjectName(QStringLiteral("GuideKind%1").arg(kind));
+            connect(a, &QAction::triggered, this, [this, kind] { addDrawingGuide(kind); });
+        }
+        more->setMenu(kinds);
+    }
     QPushButton* const remove = new QPushButton(tr("Remove"), this);
     remove->setObjectName(QStringLiteral("GuideRemove"));
     QHBoxLayout* const buttons = new QHBoxLayout;
+    buttons->addWidget(more);
     buttons->addWidget(across);
     buttons->addWidget(down);
     buttons->addWidget(remove);
@@ -74,9 +90,11 @@ GuidesView::GuidesView(Document* document, Canvas* canvas, QWidget* parent) : QW
     connect(m_list, &QListWidget::currentRowChanged, this, [this](int row) {
         QVector<Scene::Guide> const& guides = m_document->scene().guides;
         QSignalBlocker const block(m_position);
-        m_position->setEnabled(row >= 0 && row < guides.size());
-        if (row >= 0 && row < guides.size())
+        bool const line = row >= 0 && row < guides.size() && guides[row].kind == Scene::Guide::Line;
+        m_position->setEnabled(line);
+        if (line)
             m_position->setValue(guides[row].at);
+        m_canvas->setActiveGuide(row);     // the one chosen is the one in use
     });
     connect(m_document, &Document::changed, this, &GuidesView::rebuild);
     rebuild();
@@ -91,6 +109,17 @@ int GuidesView::addGuide(bool vertical, double at)
     return int(guides.size()) - 1;
 }
 
+int GuidesView::addDrawingGuide(int kind)
+{
+    if (kind <= Scene::Guide::Line || kind > Scene::Guide::ThreePoint)
+        return -1;
+    QVector<Scene::Guide> guides = m_document->scene().guides;
+    guides.push_back(m_document->scene().makeGuide(Scene::Guide::Kind(kind)));
+    m_document->setGuides(guides, tr("Add Guide"));
+    m_list->setCurrentRow(int(guides.size()) - 1);
+    return int(guides.size()) - 1;
+}
+
 void GuidesView::rebuild()
 {
     QVector<Scene::Guide> const& guides = m_document->scene().guides;
@@ -100,13 +129,16 @@ void GuidesView::rebuild()
         QSignalBlocker const block(m_list);
         m_list->clear();
         for (Scene::Guide const& guide : guides)
-            m_list->addItem(guide.vertical ? tr("Down, %1 from the left").arg(guide.at, 0, 'f', 1) : tr("Across, %1 from the top").arg(guide.at, 0, 'f', 1));
+            m_list->addItem(guide.kind != Scene::Guide::Line ? Scene::guideName(guide.kind)
+                            : guide.vertical ? tr("Down, %1 from the left").arg(guide.at, 0, 'f', 1) : tr("Across, %1 from the top").arg(guide.at, 0, 'f', 1));
         m_list->setCurrentRow(guides.isEmpty() ? -1 : std::clamp(row, 0, int(guides.size()) - 1));
     }
     int const now = m_list->currentRow();
     QSignalBlocker const block(m_position);
-    m_position->setEnabled(now >= 0);
-    if (now >= 0)
+    bool const line = now >= 0 && guides[now].kind == Scene::Guide::Line;
+    m_position->setEnabled(line);
+    if (line)
         m_position->setValue(guides[now].at);
+    m_canvas->setActiveGuide(now);
     m_rebuilding = false;
 }

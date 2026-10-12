@@ -31,6 +31,14 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         pickColourAt(widgetPos);
         return;
     }
+    // A point of the guide in use, taken hold of with a drawing tool: it is dragged.
+    if (int const point = guideHandleAt(widgetPos); point >= 0) {
+        m_guideEdit = scene.guides;
+        m_guidePoint = point;
+        m_drag = DragGuide;
+        return;
+    }
+    beginGuidedStroke(widgetPos);
     if (m_tool == Transform) {
         transformDown(widgetPos);
         update();
