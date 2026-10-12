@@ -88,6 +88,12 @@ void Canvas::onActionShowSafeArea(bool on)
     update();
 }
 
+void Canvas::onActionProportionGrid(bool on)
+{
+    m_proportionGrid = on;
+    update();
+}
+
 QPointF Canvas::snapped(QPointF p) const
 {
     Drawing const* const d = currentDrawing();

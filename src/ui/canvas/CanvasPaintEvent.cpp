@@ -240,6 +240,17 @@ void Canvas::paintEvent(QPaintEvent*)
         painter.restore();
     }
     paintGuide(painter);
+    if (m_proportionGrid && !m_playing) {
+        // The frame in thirds each way, to compose the picture by.
+        QPen thirds(QColor(111, 168, 232, 200));
+        thirds.setCosmetic(true);
+        painter.setPen(thirds);
+        for (int i = 1; i < 3; ++i) {
+            double const x = frameRect.left() + frameRect.width() * i / 3.0, y = frameRect.top() + frameRect.height() * i / 3.0;
+            painter.drawLine(QPointF(x, frameRect.top()), QPointF(x, frameRect.bottom()));
+            painter.drawLine(QPointF(frameRect.left(), y), QPointF(frameRect.right(), y));
+        }
+    }
     if (m_safeArea && !m_playing) {
         // Inside these the picture and the titles are safe from being cut off by a screen.
         QPen action(QColor(40, 40, 40, 200));

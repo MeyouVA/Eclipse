@@ -138,7 +138,7 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
         for (StrokePoint const& point : stroke.points)
             inside = inside || within(point.pos);
         // Lines take the colour from Paint and Repaint; they have one already, and are never unpainted.
-        inside = inside && !m_document->scene().protects(stroke.swatch);      // a protected colour is left as it is
+        inside = inside && !keepsColour(stroke.swatch);      // a protected colour is left as it is
         if (inside && (m_tool == Paint || m_tool == Repaint) && (stroke.swatch != m_swatch || stroke.color != color)) {
             stroke.swatch = m_swatch;
             stroke.color = color;
@@ -151,7 +151,7 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
         for (QPolygonF const& outline : fill.outlines)
             for (QPointF const& q : outline)
                 inside = inside || within(q);
-        inside = inside && !m_document->scene().protects(fill.swatch);
+        inside = inside && !keepsColour(fill.swatch);
         if (inside && m_tool == Unpaint) {
             any = true;
             continue;       // the paint goes

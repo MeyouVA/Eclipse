@@ -23,7 +23,7 @@ void Canvas::paintAt(QPointF p)
         // On a line: it loses its paint - it is there still, to bound areas, but is not seen.
         for (int i = int(edited.strokes.size()) - 1; i >= 0; --i) {
             if (edited.strokes[i].width > 0.0f && edited.strokes[i].hit(p, 0.5 / m_zoom)) {
-                if (scene.protects(edited.strokes[i].swatch)) {
+                if (keepsColour(edited.strokes[i].swatch)) {
                     emit message(kept);
                     return;
                 }
@@ -35,7 +35,7 @@ void Canvas::paintAt(QPointF p)
         // Otherwise the paint under the point goes.
         for (int i = int(edited.fills.size()) - 1; i >= 0; --i) {
             if (edited.fills[i].contains(p)) {
-                if (scene.protects(edited.fills[i].swatch)) {
+                if (keepsColour(edited.fills[i].swatch)) {
                     emit message(kept);
                     return;
                 }
@@ -51,7 +51,7 @@ void Canvas::paintAt(QPointF p)
         if (edited.strokes[i].hit(p, 0.5 / m_zoom)) {
             if (m_tool == PaintUnpainted)
                 return;  // it has its colour already
-            if (scene.protects(edited.strokes[i].swatch)) {
+            if (keepsColour(edited.strokes[i].swatch)) {
                 emit message(kept);
                 return;
             }
@@ -68,7 +68,7 @@ void Canvas::paintAt(QPointF p)
         if (edited.fills[i].contains(p)) {
             if (m_tool == PaintUnpainted)
                 return;  // painted already: left as it is
-            if (scene.protects(edited.fills[i].swatch)) {
+            if (keepsColour(edited.fills[i].swatch)) {
                 emit message(kept);
                 return;
             }

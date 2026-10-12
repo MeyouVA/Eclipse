@@ -120,6 +120,14 @@ public:
     // out of the drawing (of what is selected, when something is); and open lines shorter than
     // `length`.  Each says how many went.
     int removeDirt(double size);
+    // Open lines whose end lies within `gap` of another line (or of their own other end) are
+    // joined to it by a line with no thickness; says how many were made.
+    int closeGaps(double gap);
+    // Whether the paint tools are to leave what has this colour alone: it is protected, and
+    // protection is being respected.
+    bool keepsColour(int swatch) const;
+    bool respectsProtected() const { return m_respectProtected; }
+    bool proportionGrid() const { return m_proportionGrid; }
     int removeHair(double length);
     // The dropper looks at every layer, or only at the one being worked on.
     bool dropperAllLayers() const { return m_dropperAllLayers; }
@@ -364,6 +372,11 @@ public slots:
     void onActionRemoveHair();
     void onActionRemoveArtInside();
     void onActionRemoveArtOutside();
+    void onActionSelectionArt(QString const& how);
+    void onActionRespectProtected(bool on);
+    void onActionCloseGaps();
+    void onActionStrokesToPencil();
+    void onActionProportionGrid(bool on);
     void onActionHighlightColour(bool on);
 
 signals:
@@ -622,6 +635,8 @@ private:
     bool m_drawBehind = false;
     bool m_dropperAllLayers = true;
     bool m_highlightColour = false;
+    bool m_respectProtected = true;
+    bool m_proportionGrid = false;
     bool m_eraserCuts = true;
     // Cuts what the eraser passed over (the line `m_stroke`, as thick as the eraser) out of the drawing.
     void cutWithEraser();

@@ -52,6 +52,8 @@ bool PalettePanel::exportPalette(QString const& path, QString* error) const
             colour[QStringLiteral("kind")] = int(swatch.kind);
             colour[QStringLiteral("stops")] = swatch.stopsJson();
         }
+        if (swatch.isProtected)
+            colour[QStringLiteral("protected")] = true;
         colours.push_back(colour);
     }
     QJsonObject root;
@@ -96,6 +98,8 @@ bool PalettePanel::importPalette(QString const& path, QString* error)
         read.setStopsJson(colour[QStringLiteral("stops")].toArray());
         if (read.stops.size() >= 2)
             m_document->setSwatchGradient(made, Swatch::Kind(std::clamp(colour[QStringLiteral("kind")].toInt(1), 1, 2)), read.stops);
+        if (colour[QStringLiteral("protected")].toBool(false))
+            m_document->setSwatchProtected(made, true);
     }
     if (given != Scene::kNoSwatch)
         m_document->removeSwatch(given);

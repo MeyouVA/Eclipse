@@ -95,6 +95,7 @@
    <item id="Backlight" icon="view/backlight" text="&amp;Backlight" shortcut="shortcut.backlight" checkable="true" responder="camera" slot="onActionBacklight(bool)"/>
    <menu id="ViewShow" text="S&amp;how">
     <item id="ShowSafeArea" icon="view/safearea" text="Safe &amp;Area" shortcut="shortcut.safeArea" checkable="true" responder="camera" slot="onActionShowSafeArea(bool)"/>
+    <item id="ProportionGrid" icon="view/proportiongrid" text="&amp;Proportion Grid" shortcut="shortcut.proportionGrid" checkable="true" responder="camera" slot="onActionProportionGrid(bool)"/>
     <item id="CameraMask" icon="view/cameramask" text="Camera Mas&amp;k" shortcut="shortcut.cameraMask" checkable="true" responder="camera" slot="onActionCameraMask(bool)"/>
     <item id="ShowControl" icon="view/showcontrol" text="Show &amp;Control" shortcut="shortcut.showControl" checkable="true" responder="camera" slot="onActionShowControl(bool)"/>
     <item id="CurrentDrawingOnTop" icon="view/drawingontop" text="Current &amp;Drawing on Top" shortcut="shortcut.drawingOnTop" checkable="true" responder="camera" slot="onActionCurrentDrawingOnTop(bool)"/>
@@ -171,12 +172,28 @@
    <item id="DistributeToLayers" icon="anim/distribute" text="&amp;Distribute to Layers" responder="camera" slot="onActionDistributeToLayers()"/>
    <submenu id="menu.arrange" text="&amp;Arrange"/>
    <submenu id="menu.convert" text="&amp;Convert"/>
+   <menu id="DrawingPaint" text="&amp;Paint">
+    <item id="UnpaintSelection" icon="anim/unpaintsel" text="&amp;Unpaint Selection" shortcut="shortcut.unpaintSelection" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaint"/>
+    <item id="UnpaintSelectionAll" icon="anim/unpaintsel" text="Unpaint Selection on All Drawings" shortcut="shortcut.unpaintSelectionAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaintAll"/>
+    <item id="UnpaintOutside" icon="anim/unpaintout" text="Unpaint &amp;Outside Selection" shortcut="shortcut.unpaintOutside" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaintOutside"/>
+    <item id="UnpaintOutsideAll" icon="anim/unpaintout" text="Unpaint Outside Selection on All Drawings" shortcut="shortcut.unpaintOutsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaintOutsideAll"/>
+    <separator/>
+    <item id="RepaintSelection" icon="anim/repaintsel" text="&amp;Repaint Selection" shortcut="shortcut.repaintSelection" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="repaint"/>
+    <item id="RepaintSelectionAll" icon="anim/repaintsel" text="Repaint Selection on All Drawings" shortcut="shortcut.repaintSelectionAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="repaintAll"/>
+    <item id="RepaintOutside" icon="anim/repaintout" text="Repaint Ou&amp;tside Selection" shortcut="shortcut.repaintOutside" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="repaintOutside"/>
+    <item id="RepaintOutsideAll" icon="anim/repaintout" text="Repaint Outside Selection on All Drawings" shortcut="shortcut.repaintOutsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="repaintOutsideAll"/>
+    <separator/>
+    <item id="RespectProtected" icon="anim/respectprotected" text="Respect &amp;Protected Colour" shortcut="shortcut.respectProtected" checkable="true" checked="true" responder="camera" slot="onActionRespectProtected(bool)"/>
+   </menu>
    <menu id="DrawingCleanUp" text="C&amp;lean Up">
     <item id="RemoveDirt" icon="anim/removedirt" text="Remove &amp;Dirt..." shortcut="shortcut.removeDirt" responder="camera" slot="onActionRemoveDirt()"/>
     <item id="RemoveHair" icon="anim/removehair" text="Remove &amp;Hair..." shortcut="shortcut.removeHair" responder="camera" slot="onActionRemoveHair()"/>
+    <item id="CloseGaps" icon="anim/closegaps" text="&amp;Close Gaps..." shortcut="shortcut.closeGaps" responder="camera" slot="onActionCloseGaps()"/>
     <separator/>
     <item id="RemoveArtInside" icon="anim/removeinside" text="Remove Art &amp;Inside Selection" shortcut="shortcut.removeArtInside" responder="camera" slot="onActionRemoveArtInside()"/>
+    <item id="RemoveArtInsideAll" icon="anim/removeinside" text="Remove Art Inside Selection on All Drawings" shortcut="shortcut.removeArtInsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="removeAll"/>
     <item id="RemoveArtOutside" icon="anim/removeoutside" text="Remove Art &amp;Outside Selection" shortcut="shortcut.removeArtOutside" responder="camera" slot="onActionRemoveArtOutside()"/>
+    <item id="RemoveArtOutsideAll" icon="anim/removeoutside" text="Remove Art Outside Selection on All Drawings" shortcut="shortcut.removeArtOutsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="removeOutsideAll"/>
    </menu>
    <menu id="DrawingOptimize" text="&amp;Optimize">
     <item id="Flatten"/>
@@ -329,6 +346,7 @@
  <menu id="menu.convert" text="Convert">
   <item id="ConvertBrushToPencil" icon="anim/topencil" text="&amp;Brush Strokes to Pencil Lines" shortcut="shortcut.convertToPencil" responder="camera" slot="onActionConvertBrushToPencil()"/>
   <item id="ConvertPencilToBrush" icon="anim/tobrush" text="&amp;Pencil Lines to Brush Strokes" shortcut="shortcut.convertToBrush" responder="camera" slot="onActionConvertPencilToBrush()"/>
+  <item id="StrokesToPencil" icon="anim/strokestopencil" text="&amp;Strokes to Pencil Lines" shortcut="shortcut.strokesToPencil" responder="camera" slot="onActionStrokesToPencil()"/>
   <item id="BreakApartText" icon="anim/breaktext" text="Break Apart &amp;Text" shortcut="shortcut.breakApartText" responder="camera" slot="onActionBreakApartText()"/>
  </menu>
  <menu id="menu.art" text="Art Layer">
