@@ -150,6 +150,7 @@
   <shortcut id="shortcut.nextDrawing" text="Go to Next Drawing" value="G"/>
   <shortcut id="shortcut.toolSelect" text="Select Tool" value="Alt+S"/>
   <shortcut id="shortcut.toolCutter" text="Cutter Tool" value="Alt+T"/>
+  <shortcut id="shortcut.toolReposition" text="Reposition All Drawings Tool" value=""/>
   <shortcut id="shortcut.createMorphing" text="Create Morphing" value="Alt+M"/>
   <shortcut id="shortcut.toolStroke" text="Stroke Tool" value="Alt+V"/>
   <shortcut id="shortcut.toolCloseGap" text="Close Gap Tool" value="Alt+C"/>

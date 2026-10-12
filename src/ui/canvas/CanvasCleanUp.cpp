@@ -156,6 +156,49 @@ void Canvas::onActionSelectionArt(QString const& how)
     update();
 }
 
+// ---- Reposition All Drawings ------------------------------------------------------------------
+
+void Canvas::repositionOthers(QTransform const& done, QString const& text)
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return;
+    // A copy: the scene changes under us with every drawing set.
+    QVector<Drawing> const drawings = scene.layers[m_layer].drawings;
+    QVector<int> const cells = scene.layers[m_layer].cells;
+    int const current = m_frame >= 0 && m_frame < cells.size() ? cells[m_frame] : -1;
+    int const mine = sheetOf(m_art);
+    QVector<bool> seen(drawings.size(), false);
+    m_committing = true;
+    for (int f = 0; f < cells.size(); ++f) {
+        int const index = cells[f];
+        if (index < 0 || index >= drawings.size() || seen[index])
+            continue;
+        seen[index] = true;
+        Drawing whole = drawings[index];
+        bool changed = false;
+        for (int sheet : {int(Drawing::UnderlaySheet), int(Drawing::ColourSheet), int(Drawing::LineSheet), int(Drawing::OverlaySheet)}) {
+            if (index == current && sheet == mine)
+                continue;       // that one has been seen to
+            for (Stroke& stroke : whole.strokesOf(sheet)) {
+                stroke.transform(done);
+                changed = true;
+            }
+            for (Fill& fill : whole.fillsOf(sheet)) {
+                fill.transform(done);
+                changed = true;
+            }
+        }
+        for (Picture& picture : whole.pictures) {
+            picture.placement = picture.placement * done;
+            changed = true;
+        }
+        if (changed)
+            m_document->setDrawing(m_layer, f, whole, text);
+    }
+    m_committing = false;
+}
+
 // ---- Close Gaps ---------------------------------------------------------------------------------
 
 int Canvas::closeGaps(double gap)

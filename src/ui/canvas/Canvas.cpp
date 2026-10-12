@@ -29,6 +29,8 @@ void Canvas::onDocumentChanged()
     if (!m_committing) {
         setSelection({}, {});
         m_ceStroke = m_cePoint = m_ceFill = -1;
+        if (m_tool == Reposition)
+            selectAll();        // that tool has all of the drawing in hand, always
     }
     update();
 }
@@ -41,8 +43,10 @@ void Canvas::setTool(Tool tool)
         endText(true);
     }
     m_tool = tool;
-    if (tool != Select && tool != Cutter)
+    if (tool != Select && tool != Cutter && tool != Reposition)
         clearSelection();
+    if (tool == Reposition)
+        selectAll();
     m_ceStroke = m_cePoint = m_ceFill = -1;
     emit pointPicked(-1);
     updateCursor();
@@ -93,6 +97,8 @@ void Canvas::setCurrentCell(int layer, int frame)
     }
     m_layer = layer;
     m_frame = frame;
+    if (m_tool == Reposition)
+        selectAll();
     update();
 }
 

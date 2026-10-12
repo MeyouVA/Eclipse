@@ -196,6 +196,8 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         m_dragStart = m_dragNow = p;
         m_lassoPath = QPolygonF({p});
     } else if (selecting()) {
+        if (m_tool == Reposition)
+            selectAll();        // whatever drawing this is: all of it
         m_dragStart = m_dragNow = p;
         m_dragTransform = QTransform();
         m_dragBounds = selectionBounds();
@@ -208,7 +210,9 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         } else {
             // Press inside the selection drags it.  Otherwise press on an item selects it
             // (and drags it); on empty space, start a marquee.  Shift adds or removes.
-            if (hasSelection() && !shift && m_dragBounds.contains(p)) {
+            if (m_tool == Reposition) {
+                m_drag = hasSelection() ? DragMove : DragNone;      // pressed anywhere, it all moves
+            } else if (hasSelection() && !shift && m_dragBounds.contains(p)) {
                 m_drag = DragMove;
             } else if (m_tool != Cutter && selectAt(p, shift)) {
                 m_dragBounds = selectionBounds();

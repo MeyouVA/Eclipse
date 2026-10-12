@@ -38,6 +38,9 @@ public:
         // Lines with no thickness: they are not seen in the picture, but paint stops at them.
         // The Stroke tool draws one freehand; Close Gap draws a straight one across a gap.
         StrokeTool, CloseGap, EditGradient,
+        // Everything in the drawing is in hand at once; moved, scaled or turned, it is so in
+        // every drawing of the layer - all of each drawing, on every one of its sheets.
+        Reposition,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -94,7 +97,7 @@ public:
     // How many lines and painted areas are selected.
     int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size()); }
     // The Select tool or the Cutter: what is selected can be handled with either.
-    bool selecting() const { return m_tool == Select || m_tool == Cutter; }
+    bool selecting() const { return m_tool == Select || m_tool == Cutter || m_tool == Reposition; }
     // The points picked with the Contour Editor besides contourPoint(), on the same curve.
     QVector<int> contourPointsPicked() const;
     void clearSelection();
@@ -593,6 +596,9 @@ private:
     int m_textEdit = -1;                      // the painted area whose words are being changed; -1: new words
     void endText(bool keep);
     void transformSelection(QTransform const& about, QString const& text);
+    // Reposition All Drawings: what was just done to the sheet in hand is done to the rest of
+    // the drawing and to all the other drawings of the layer.
+    void repositionOthers(QTransform const& done, QString const& text);
     void arrangeSelection(bool front);
     bool m_tabletActive = false;  // a pen is driving: ignore the mouse events Qt synthesises
     QPointF m_lastWidgetPos;

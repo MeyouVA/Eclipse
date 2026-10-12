@@ -206,9 +206,14 @@ void Canvas::penUp()
             bool const everywhere = m_applyAll && m_tool == Select;
             QRectF const region = everywhere ? selectionBounds() : QRectF();
             QTransform const done = m_dragTransform;
-            if (everywhere)
+            bool const all = m_tool == Reposition;
+            if (everywhere || all)
                 m_document->beginMacro(text);
             commitDrawing(edited, text);
+            if (all) {
+                repositionOthers(done, text);
+                m_document->endMacro();
+            }
             if (everywhere) {
                 alsoInOtherDrawings(region, &done, text);
                 m_document->endMacro();

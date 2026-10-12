@@ -28,6 +28,8 @@ void Canvas::setPointThickness(int percent)
 
 void Canvas::transformSelection(QTransform const& about, QString const& text)
 {
+    if (m_tool == Reposition)
+        selectAll();        // that tool has all of the drawing in hand, always
     Drawing const* const d = currentDrawing();
     if (!selecting() || !d || !hasSelection())
         return;
@@ -39,7 +41,14 @@ void Canvas::transformSelection(QTransform const& about, QString const& text)
         edited.strokes[i].transform(t);
     for (int i : std::as_const(m_selFills))
         edited.fills[i].transform(t);
+    bool const all = m_tool == Reposition;
+    if (all)
+        m_document->beginMacro(text);
     commitDrawing(edited, text);
+    if (all) {
+        repositionOthers(t, text);
+        m_document->endMacro();
+    }
     update();
 }
 

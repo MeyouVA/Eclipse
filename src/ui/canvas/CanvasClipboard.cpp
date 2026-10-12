@@ -13,6 +13,8 @@ static Drawing s_clipboard;
 
 void Canvas::deleteSelection()
 {
+    if (m_tool == Reposition)
+        return;     // it puts drawings elsewhere; it takes nothing away
     if (m_tool == Rigging && m_rigMode != RigBones) {
         // The last point of the deformer; the one before it then ends the curve.
         Scene const& scene = m_document->scene();
