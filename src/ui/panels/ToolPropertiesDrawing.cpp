@@ -102,6 +102,11 @@ void ToolProperties::addSelectRows()
                               "in the other drawings, whatever lies within the place the selection had."));
     connect(m_applyAll, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToAllDrawings);
     m_form->addRow(m_applyAll);
+    m_byColour = new QCheckBox(tr("Select by Colour"), this);
+    m_byColour->setObjectName(QStringLiteral("SelectByColour"));
+    m_byColour->setToolTip(tr("A click on a line or on paint selects everything of that colour in the drawing."));
+    connect(m_byColour, &QCheckBox::toggled, m_canvas, &Canvas::setSelectByColour);
+    m_form->addRow(m_byColour);
     // The Dropper: the colour of whatever is seen there, or only of what is on the layer worked on.
     m_dropperAll = new QCheckBox(tr("Sample All Layers"), this);
     m_dropperAll->setObjectName(QStringLiteral("DropperAllLayers"));

@@ -104,6 +104,14 @@
     <item id="ShowStrokesWash"/>
     <item id="HighlightColour" icon="view/highlightcolour" text="&amp;Highlight Selected Colour" shortcut="shortcut.highlightColour" checkable="true" responder="camera" slot="onActionHighlightColour(bool)"/>
    </menu>
+   <menu id="ViewAlignmentGuides" text="&amp;Alignment Guides">
+    <item id="ShowGuides" icon="view/guidesshow" text="&amp;Show Alignment Guides" shortcut="shortcut.showGuides" checkable="true" checked="true" responder="camera" slot="onActionShowGuides(bool)"/>
+    <item id="LockGuides" icon="view/guideslock" text="&amp;Lock Alignment Guides" shortcut="shortcut.lockGuides" checkable="true" responder="camera" slot="onActionLockGuides(bool)"/>
+    <item id="ClearGuides" icon="view/guidesclear" text="&amp;Clear Alignment Guides" shortcut="shortcut.clearGuides" responder="camera" slot="onActionClearGuides()"/>
+    <separator/>
+    <item id="NewHorizontalGuide" icon="view/guidehorizontal" text="New &amp;Horizontal Alignment Guide" shortcut="shortcut.newHorizontalGuide" responder="camera" slot="onActionNewGuide(QString)" itemParameter="horizontal"/>
+    <item id="NewVerticalGuide" icon="view/guidevertical" text="New &amp;Vertical Alignment Guide" shortcut="shortcut.newVerticalGuide" responder="camera" slot="onActionNewGuide(QString)" itemParameter="vertical"/>
+   </menu>
    <item id="HideAllControls" icon="view/hidecontrols" text="&amp;Hide All Controls" shortcut="shortcut.hideAllControls" responder="camera" slot="onActionHideAllControls()"/>
   </menu>
 
@@ -199,6 +207,8 @@
     <item id="Flatten"/>
     <item id="Smooth" icon="anim/smooth" text="&amp;Smooth" shortcut="shortcut.smooth" responder="camera" slot="onActionSmooth()"/>
     <item id="ReducePoints" icon="anim/reducepoints" text="&amp;Reduce Points" responder="camera" slot="onActionReducePoints()"/>
+    <item id="CreateContourStrokes" icon="anim/contourcreate" text="&amp;Create Contour Strokes" shortcut="shortcut.createContourStrokes" responder="camera" slot="onActionCreateContourStrokes()"/>
+    <item id="RemoveContourStrokes" icon="anim/contourremove" text="Re&amp;move Contour Strokes" shortcut="shortcut.removeContourStrokes" responder="camera" slot="onActionRemoveContourStrokes()"/>
    </menu>
    <separator/>
    <item id="PreviousLayer" icon="timeline/prevlayer" text="Previous La&amp;yer" shortcut="shortcut.prevLayer" responder="window" slot="onActionPreviousLayer()"/>

@@ -91,6 +91,8 @@ public:
 
     // ---- selection (Select tool) --------------------------------------------------------
     bool hasSelection() const { return !m_selStrokes.isEmpty() || !m_selFills.isEmpty(); }
+    // How many lines and painted areas are selected.
+    int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size()); }
     // The Select tool or the Cutter: what is selected can be handled with either.
     bool selecting() const { return m_tool == Select || m_tool == Cutter; }
     // The points picked with the Contour Editor besides contourPoint(), on the same curve.
@@ -149,6 +151,10 @@ public:
     bool snapsToContour() const { return m_snapContour; }
     // Guides (Scene::guides): seen and snapped to, or not.
     bool showsGuides() const { return m_showGuides; }
+    bool guidesLocked() const { return m_guidesLocked; }
+    bool selectsByColour() const { return m_selectByColour; }
+    // Where a plain guide (a place in Scene::guides) crosses the view, level with `widgetPos`: to take hold of it.
+    QPointF guideLineInView(int guide, QPointF widgetPos) const;
     // The guide in use (a place in Scene::guides, or -1): one to draw along is shown, its
     // points can be dragged, and the brush and pencil are kept to the ways it runs.
     int activeGuide() const { return m_activeGuide; }
@@ -311,9 +317,21 @@ public slots:
     void onActionSnapToContour(bool on) { m_snapContour = on; }
     void setShowGuides(bool on)
     {
+        if (m_showGuides == on)
+            return;
         m_showGuides = on;
+        emit showGuidesChanged(on);
         update();
     }
+    // View > Alignment Guides.  `which` is "horizontal" or "vertical".
+    void onActionShowGuides(bool on) { setShowGuides(on); }
+    void onActionLockGuides(bool on) { m_guidesLocked = on; }
+    void onActionClearGuides();
+    void onActionNewGuide(QString const& which);
+    void onActionCreateContourStrokes();
+    void onActionRemoveContourStrokes();
+    // The Select tool: a click on something picks everything of its colour.
+    void setSelectByColour(bool on) { m_selectByColour = on; }
     void setUsePreview(bool on)
     {
         m_usePreview = on;
@@ -399,6 +417,7 @@ signals:
     // A template dragged out of the Library was let go over the view.
     void templateDropped(QString const& path);
     void lassoChanged(bool on);
+    void showGuidesChanged(bool on);
     // The Text tool was pressed on words: this is the font they are in.
     void textFontPicked(QFont const& font);
     void textLayoutPicked(int align, int spacingPercent, int kerningPercent);
@@ -599,6 +618,10 @@ private:
     bool m_hoverKnown = false;
     QVector<Scene::Guide> m_guideEdit;   // the guides while a point of one is dragged
     int m_guidePoint = -1;
+    int m_guideLine = -1;        // the plain guide being dragged with the Select tool
+    bool m_guidesLocked = false;
+    bool m_selectByColour = false;
+    int lineGuideAt(QPointF widgetPos) const;
     Scene::Guide const* drawingGuide() const;
     bool guideTool() const;
     QPointF toFrame(QPointF widgetPos) const;

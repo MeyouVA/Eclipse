@@ -47,6 +47,57 @@ int Canvas::guideHandleAt(QPointF widgetPos) const
     return -1;
 }
 
+// A plain guide within a few pixels of the pointer (the last one drawn is on top).
+int Canvas::lineGuideAt(QPointF widgetPos) const
+{
+    if (!m_showGuides || m_guidesLocked || m_playing)
+        return -1;
+    QVector<Scene::Guide> const& guides = m_document->scene().guides;
+    QTransform const view = cameraViewTransform();
+    QPointF const at = view.inverted().map(widgetPos);
+    double const perPixel = 1.0 / std::max(std::sqrt(std::abs(view.determinant())), 1e-9);
+    for (int i = int(guides.size()) - 1; i >= 0; --i)
+        if (guides[i].kind == Scene::Guide::Line && std::abs((guides[i].vertical ? at.x() : at.y()) - guides[i].at) <= 4.0 * perPixel)
+            return i;
+    return -1;
+}
+
+QPointF Canvas::guideLineInView(int guide, QPointF widgetPos) const
+{
+    QVector<Scene::Guide> const& guides = m_document->scene().guides;
+    if (guide < 0 || guide >= guides.size() || guides[guide].kind != Scene::Guide::Line)
+        return QPointF();
+    QTransform const view = cameraViewTransform();
+    QPointF at = view.inverted().map(widgetPos);
+    if (guides[guide].vertical)
+        at.setX(guides[guide].at);
+    else
+        at.setY(guides[guide].at);
+    return view.map(at);
+}
+
+void Canvas::onActionClearGuides()
+{
+    // The plain lines go; the guides to draw along are kept.
+    QVector<Scene::Guide> left;
+    for (Scene::Guide const& guide : m_document->scene().guides)
+        if (guide.kind != Scene::Guide::Line)
+            left.push_back(guide);
+    if (left.size() != m_document->scene().guides.size())
+        m_document->setGuides(left, tr("Clear Alignment Guides"));
+}
+
+void Canvas::onActionNewGuide(QString const& which)
+{
+    // Through the middle of the frame, to be dragged to where it is wanted.
+    Scene const& scene = m_document->scene();
+    bool const vertical = which == QLatin1String("vertical");
+    QVector<Scene::Guide> guides = scene.guides;
+    guides.push_back(Scene::Guide{vertical, vertical ? scene.width / 2.0 : scene.height / 2.0});
+    m_document->setGuides(guides, tr("Add Guide"));
+    setShowGuides(true);
+}
+
 void Canvas::beginGuidedStroke(QPointF widgetPos)
 {
     m_guideStart = toFrame(widgetPos);

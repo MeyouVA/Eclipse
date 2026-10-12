@@ -38,6 +38,25 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         m_drag = DragGuide;
         return;
     }
+    // A plain guide, taken hold of with the Select tool where there is nothing else to pick: it is dragged.
+    if (m_tool == Select && handleAt(widgetPos) == NoHandle) {
+        if (int const line = lineGuideAt(widgetPos); line >= 0) {
+            QPointF const p = toLayer(widgetPos);
+            bool taken = hasSelection() && selectionBounds().contains(p);
+            if (Drawing const* const d = currentDrawing()) {
+                for (Stroke const& stroke : d->strokes)
+                    taken = taken || stroke.hit(p, 4.0 / m_zoom);
+                for (Fill const& fill : d->fills)
+                    taken = taken || fill.contains(p);
+            }
+            if (!taken) {
+                m_guideEdit = scene.guides;
+                m_guideLine = line;
+                m_drag = DragGuide;
+                return;
+            }
+        }
+    }
     beginGuidedStroke(widgetPos);
     if (m_tool == Transform) {
         transformDown(widgetPos);

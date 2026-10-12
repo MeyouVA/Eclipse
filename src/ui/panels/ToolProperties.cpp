@@ -213,6 +213,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_paraRow, text);
     m_form->setRowVisible(m_applyAll, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
+    m_form->setRowVisible(m_byColour, tool == T::Select);
     m_form->setRowVisible(m_presetsTitle, draws);
     m_form->setRowVisible(m_presets, draws);
     m_preview->set(m_size->value(), brush);

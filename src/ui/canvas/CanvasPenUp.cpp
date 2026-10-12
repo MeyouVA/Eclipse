@@ -14,6 +14,7 @@ void Canvas::penUp()
         QVector<Scene::Guide> const moved = m_guideEdit;
         m_guideEdit.clear();
         m_guidePoint = -1;
+        m_guideLine = -1;
         if (moved != m_document->scene().guides)
             m_document->setGuides(moved, tr("Move Guide"));
         update();

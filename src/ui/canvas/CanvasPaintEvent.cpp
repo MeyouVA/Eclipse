@@ -229,7 +229,8 @@ void Canvas::paintEvent(QPaintEvent*)
         guidePen.setCosmetic(true);
         painter.setPen(guidePen);
         double const reach = 100000.0;
-        for (Scene::Guide const& guide : scene.guides) {
+        // (While one is dragged: as they are being put.)
+        for (Scene::Guide const& guide : m_drag == DragGuide ? m_guideEdit : scene.guides) {
             if (guide.kind != Scene::Guide::Line)
                 continue;
             if (guide.vertical)

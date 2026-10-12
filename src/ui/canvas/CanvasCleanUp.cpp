@@ -244,6 +244,74 @@ void Canvas::onActionCloseGaps()
     emit message(tr("%n gap(s) closed.", nullptr, closeGaps(gap)));
 }
 
+// ---- contour strokes ------------------------------------------------------------------------------
+
+void Canvas::onActionCreateContourStrokes()
+{
+    Drawing const* const d = currentDrawing();
+    if (!selecting() || !d || m_selFills.isEmpty()) {
+        emit message(tr("Select painted areas with the Select tool to put strokes round them."));
+        return;
+    }
+    // Round each outline of each area, a closed line with no thickness: not seen, but paint stops at it.
+    Drawing edited = *d;
+    for (int i : std::as_const(m_selFills)) {
+        Fill const& fill = d->fills[i];
+        bool const curves = fill.contours.size() == fill.outlines.size();
+        for (int k = 0; k < fill.outlines.size(); ++k) {
+            Stroke round;
+            if (curves) {
+                round = fill.contours[k];
+            } else {
+                QPolygonF outline = fill.outlines[k];
+                if (outline.size() > 1 && outline.first() == outline.last())
+                    outline.removeLast();
+                for (QPointF const& point : std::as_const(outline))
+                    round.points.push_back({point, 1.0f});
+            }
+            if (round.points.size() < 3)
+                continue;
+            round.closed = true;
+            round.width = 0.0f;
+            round.swatch = fill.swatch;
+            round.color = fill.color;
+            round.group = fill.group;
+            edited.strokes.push_back(round);
+        }
+    }
+    if (edited.strokes.size() != d->strokes.size())
+        commitDrawing(edited, tr("Create Contour Strokes"));
+    update();
+}
+
+void Canvas::onActionRemoveContourStrokes()
+{
+    Drawing const* const d = currentDrawing();
+    if (!selecting() || !d || !hasSelection()) {
+        emit message(tr("Select the artwork to take the strokes with no thickness out of."));
+        return;
+    }
+    Drawing edited = *d;
+    edited.strokes.clear();
+    QVector<int> lines;
+    for (int i = 0; i < d->strokes.size(); ++i) {
+        if (m_selStrokes.contains(i) && d->strokes[i].width <= 0.0f)
+            continue;
+        if (m_selStrokes.contains(i))
+            lines.push_back(int(edited.strokes.size()));
+        edited.strokes.push_back(d->strokes[i]);
+    }
+    if (edited.strokes.size() == d->strokes.size())
+        return;
+    QVector<int> const paints = m_selFills;
+    clearSelection();
+    commitDrawing(edited, tr("Remove Contour Strokes"));
+    m_selStrokes = lines;
+    m_selFills = paints;
+    emit selectionChanged();
+    update();
+}
+
 // ---- Strokes to Pencil Lines ---------------------------------------------------------------------
 
 void Canvas::onActionStrokesToPencil()

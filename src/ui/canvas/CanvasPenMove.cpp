@@ -10,6 +10,14 @@
 
 void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers)
 {
+    if (m_drag == DragGuide && m_guideLine >= 0) {
+        if (m_guideLine < m_guideEdit.size()) {
+            QPointF const at = toFrame(widgetPos);
+            m_guideEdit[m_guideLine].at = std::round(m_guideEdit[m_guideLine].vertical ? at.x() : at.y());
+        }
+        update();
+        return;
+    }
     if (m_drag == DragGuide) {
         if (m_activeGuide >= 0 && m_activeGuide < m_guideEdit.size() && m_guidePoint >= 0 && m_guidePoint < m_guideEdit[m_activeGuide].points.size())
             m_guideEdit[m_activeGuide].points[m_guidePoint] = toFrame(widgetPos);

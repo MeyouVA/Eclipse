@@ -87,6 +87,13 @@
   <shortcut id="shortcut.removeArtOutsideAll" text="Remove Art Outside Selection on All Drawings" value=""/>
   <shortcut id="shortcut.strokesToPencil" text="Strokes to Pencil Lines" value="Shift+F12"/>
   <shortcut id="shortcut.proportionGrid" text="Proportion Grid" value=""/>
+  <shortcut id="shortcut.showGuides" text="Show Alignment Guides" value=""/>
+  <shortcut id="shortcut.lockGuides" text="Lock Alignment Guides" value=""/>
+  <shortcut id="shortcut.clearGuides" text="Clear Alignment Guides" value=""/>
+  <shortcut id="shortcut.newHorizontalGuide" text="New Horizontal Alignment Guide" value=""/>
+  <shortcut id="shortcut.newVerticalGuide" text="New Vertical Alignment Guide" value=""/>
+  <shortcut id="shortcut.createContourStrokes" text="Create Contour Strokes" value=""/>
+  <shortcut id="shortcut.removeContourStrokes" text="Remove Contour Strokes" value=""/>
   <shortcut id="shortcut.highlightColour" text="Highlight Selected Colour" value=""/>
   <shortcut id="shortcut.selectCurrentColour" text="Select Strokes with Current Colour" value="Ctrl+Shift+A"/>
   <shortcut id="shortcut.invertSelection" text="Invert Selection" value="Ctrl+Shift+I"/>

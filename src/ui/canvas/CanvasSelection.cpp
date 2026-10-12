@@ -104,6 +104,17 @@ Canvas::Handle Canvas::handleAt(QPointF widgetPos) const
     return NoHandle;
 }
 
+// Adds every line and painted area of that colour to the lists.
+static void sameColour(Drawing const& d, int swatch, QColor const& colour, QVector<int>& strokes, QVector<int>& fills)
+{
+    for (int i = 0; i < d.strokes.size(); ++i)
+        if (d.strokes[i].swatch == swatch && d.strokes[i].color == colour && !strokes.contains(i))
+            strokes.push_back(i);
+    for (int i = 0; i < d.fills.size(); ++i)
+        if (d.fills[i].swatch == swatch && d.fills[i].color == colour && !fills.contains(i))
+            fills.push_back(i);
+}
+
 bool Canvas::selectAt(QPointF p, bool toggle)
 {
     Drawing const* const d = currentDrawing();
@@ -120,6 +131,11 @@ bool Canvas::selectAt(QPointF p, bool toggle)
         double const reach = 4.0 / m_zoom;
         for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
             if (d->strokes[i].hit(p, reach)) {
+                if (m_selectByColour) {
+                    sameColour(*d, d->strokes[i].swatch, d->strokes[i].color, strokes, fills);
+                    setSelection(strokes, fills);
+                    return true;
+                }
                 flip(strokes, i);
                 setSelection(strokes, fills);
                 return true;
@@ -127,6 +143,11 @@ bool Canvas::selectAt(QPointF p, bool toggle)
         }
         for (int i = int(d->fills.size()) - 1; i >= 0; --i) {
             if (d->fills[i].contains(p)) {
+                if (m_selectByColour) {
+                    sameColour(*d, d->fills[i].swatch, d->fills[i].color, strokes, fills);
+                    setSelection(strokes, fills);
+                    return true;
+                }
                 flip(fills, i);
                 setSelection(strokes, fills);
                 return true;

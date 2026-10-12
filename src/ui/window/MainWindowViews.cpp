@@ -211,6 +211,7 @@ void MainWindow::createCameraView()
         across->addWidget(m_canvas, 1);
         across->addWidget(strip);
     }
+    connect(m_canvas, &Canvas::showGuidesChanged, this, [this](bool on) { m_actions->setChecked(QStringLiteral("ShowGuides"), on); });
     connect(m_canvas, &Canvas::artChanged, this, [this](int art) {
         m_actions->setChecked(art == Canvas::ColourArt ? QStringLiteral("SetColourArt") : art == Canvas::OverlayArt ? QStringLiteral("SetOverlayArt")
                               : art == Canvas::UnderlayArt ? QStringLiteral("SetUnderlayArt") : QStringLiteral("SetLineArt"), true);

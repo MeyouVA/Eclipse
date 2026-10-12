@@ -68,6 +68,7 @@ GuidesView::GuidesView(Document* document, Canvas* canvas, QWidget* parent) : QW
     layout->addLayout(place);
     layout->addLayout(buttons);
     connect(m_show, &QCheckBox::toggled, m_canvas, &Canvas::setShowGuides);
+    connect(m_canvas, &Canvas::showGuidesChanged, m_show, &QCheckBox::setChecked);
     // A new guide lies through the middle of the frame, to be put where it is wanted.
     connect(across, &QPushButton::clicked, this, [this] { addGuide(false, m_document->scene().height / 2.0); });
     connect(down, &QPushButton::clicked, this, [this] { addGuide(true, m_document->scene().width / 2.0); });
