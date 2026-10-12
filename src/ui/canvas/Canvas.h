@@ -220,7 +220,7 @@ public:
 public slots:
     void setCurrentCell(int layer, int frame);
 
-    // ---- what the menus call (this view is the "cameraView" responder) -------------------
+    // ---- what the menus call (this view is the "camera" responder) -------------------
     void cut() { cutSelection(); }
     void copy() { copySelection(); }
     void paste();

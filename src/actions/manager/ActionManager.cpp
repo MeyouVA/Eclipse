@@ -205,10 +205,10 @@ QObject* ActionManager::resolve(QString const& responders, QByteArray const& slo
 {
     QStringList names = responders.split(QLatin1Char(','), Qt::SkipEmptyParts);
     if (names.isEmpty())
-        names << QStringLiteral("sceneUI");
+        names << QStringLiteral("window");
     for (QString const& raw : std::as_const(names)) {
         QString const name = raw.trimmed();
-        if (name == QLatin1String("firstResponder")) {
+        if (name == QLatin1String("focus")) {
             // From the widget with the focus outwards: the first registered responder that
             // knows the slot.
             for (QWidget* w = QApplication::focusWidget(); w; w = w->parentWidget()) {

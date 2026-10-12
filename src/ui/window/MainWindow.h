@@ -1,5 +1,5 @@
 // Eclipse - the main window.  Its menus, toolbars and shortcuts come from the resource
-// files through the action manager; the window is the "sceneUI" responder, and the slots
+// files through the action manager; the window is the "window" responder, and the slots
 // below are what those files call.
 #pragma once
 

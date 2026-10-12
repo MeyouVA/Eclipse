@@ -43,26 +43,26 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     if (centralWidget())
         centralWidget()->installEventFilter(this);
 
-    m_actions->registerResponder(QStringLiteral("sceneUI"), this);
-    m_actions->registerResponder(QStringLiteral("cameraView"), m_canvas);
+    m_actions->registerResponder(QStringLiteral("window"), this);
+    m_actions->registerResponder(QStringLiteral("camera"), m_canvas);
     m_actions->registerResponder(QStringLiteral("timelineView"), m_timeline);
     m_actions->registerResponder(QStringLiteral("paletteView"), m_palette);
     m_actions->registerResponder(QStringLiteral("xsheetView"), m_xsheet);
-    m_actions->registerResponder(QStringLiteral("Node View"), m_nodeView);
-    m_actions->populateMenuBar(QStringLiteral("Scene UI Menu Bar"), menuBar());
+    m_actions->registerResponder(QStringLiteral("nodeView"), m_nodeView);
+    m_actions->populateMenuBar(QStringLiteral("menu.main"), menuBar());
     createToolbars();
     m_actions->installShortcuts(this);
 
     // Right-click menus of the views.
     m_canvas->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_canvas, &QWidget::customContextMenuRequested, this, [this](QPoint const& pos) {
-        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("CAMERA_VIEW_POPUP_MENU"), this)) {
+        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.cameraView"), this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
             menu->popup(m_canvas->mapToGlobal(pos));
         }
     });
     connect(m_timeline, &Timeline::contextMenuRequested, this, [this](QPoint const& globalPos) {
-        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("Timeline Popup Menu"), this)) {
+        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.timeline"), this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
             menu->popup(globalPos);
         }
@@ -79,13 +79,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(m_nodeView, &NodeView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
     connect(m_nodeView, &NodeView::renameRequested, this, &MainWindow::renameLayer);
     connect(m_nodeView, &NodeView::contextMenuRequested, this, [this](QPoint const& globalPos) {
-        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("Node View Popup Menu"), this)) {
+        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.nodeView"), this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
             menu->popup(globalPos);
         }
     });
     connect(m_xsheet, &Xsheet::contextMenuRequested, this, [this](QPoint const& globalPos) {
-        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("Xsheet Popup Menu"), this)) {
+        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.xsheet"), this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
             menu->popup(globalPos);
         }

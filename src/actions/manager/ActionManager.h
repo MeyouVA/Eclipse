@@ -3,7 +3,7 @@
 // Menus, toolbars and keyboard shortcuts are not written in the program: they are read from
 // resources/menus.xml, toolbars.xml and shortcuts.xml.  Each command names a slot and the
 // responders to try it on; a responder is an object registered here under a name (the main
-// window, a view), or "firstResponder" for whichever registered view has the keyboard focus.
+// window, a view), or "focus" for whichever registered view has the keyboard focus.
 // So one Delete command does the right thing in the timeline and in the camera view.
 #pragma once
 
