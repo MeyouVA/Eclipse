@@ -1,5 +1,5 @@
 // Eclipse - Tool Properties: what the Select tool has selected - the commands that turn it over
-// and round, and where it is and how big, as numbers that can be typed.
+// and round, and boxes to type how far to move it, by how much to scale it, and how far to turn it.
 #include "ui/panels/ToolProperties.h"
 
 #include <algorithm>
@@ -66,11 +66,20 @@ void ToolProperties::addSelectionRows()
         QGridLayout* const grid = new QGridLayout;
         char const* const names[4] = {"SelX", "SelY", "SelWidth", "SelHeight"};
         QString const labels[4] = {tr("X"), tr("Y"), tr("Width"), tr("Height")};
+        QString const tips[4] = {tr("Type a distance to move what is selected across by it"), tr("Type a distance to move what is selected down by it"),
+                                 tr("Type a percentage to make what is selected that much wider or narrower"),
+                                 tr("Type a percentage to make what is selected that much taller or shorter")};
         for (int i = 0; i < 4; ++i) {
             QDoubleSpinBox* const box = new QDoubleSpinBox(selection);
             box->setObjectName(QLatin1String(names[i]));
-            box->setDecimals(2);
-            box->setRange(i < 2 ? -100000.0 : 0.01, 100000.0);
+            // Each is a change to make, not a place or a size: the first two stand at nought and
+            // the other two at a hundred per cent, and go back there once what was typed is done.
+            box->setDecimals(i < 2 ? 2 : 1);
+            box->setRange(i < 2 ? -100000.0 : 1.0, i < 2 ? 100000.0 : 10000.0);
+            box->setValue(i < 2 ? 0.0 : 100.0);
+            if (i >= 2)
+                box->setSuffix(QStringLiteral(" %"));
+            box->setToolTip(tips[i]);
             box->setKeyboardTracking(false);    // a number is taken when it is done, not at each key
             grid->addWidget(new QLabel(labels[i], selection), i % 2, (i / 2) * 2);
             grid->addWidget(box, i % 2, (i / 2) * 2 + 1);
@@ -106,33 +115,33 @@ void ToolProperties::addSelectionRows()
     QDoubleSpinBox* const selY = selBoxes[1];
     QDoubleSpinBox* const selW = selBoxes[2];
     QDoubleSpinBox* const selH = selBoxes[3];
-    // The numbers follow what is selected (its middle, its width and height) ...
+    // The boxes are live while something is selected, and stand at "no change".
     auto showSelection = [this, selX, selY, selW, selH] {
         QRectF const box = m_canvas->selectionRect();
         bool const any = m_canvas->selecting() && !box.isNull();
         QDoubleSpinBox* const boxes[4] = {selX, selY, selW, selH};
-        double const values[4] = {box.center().x(), box.center().y(), box.width(), box.height()};
         for (int i = 0; i < 4; ++i) {
             QSignalBlocker const block(boxes[i]);
             boxes[i]->setEnabled(any);
-            boxes[i]->setValue(any ? values[i] : 0.0);
+            boxes[i]->setValue(i < 2 ? 0.0 : 100.0);
         }
     };
-    // ... and what is selected follows a number typed.
+    // A number typed is done to what is selected: moved by so much, or scaled about its middle
+    // by so many per cent (both ways at once with the lock on).  Then the box is back at no change.
     auto applySelection = [this, selX, selY, selW, selH, selLock, showSelection](int changed) {
         QRectF const now = m_canvas->selectionRect();
         if (now.isNull())
             return;
-        double width = std::max(selW->value(), 0.01), height = std::max(selH->value(), 0.01);
-        if (selLock->isChecked() && now.width() > 1e-9 && now.height() > 1e-9) {
-            if (changed == 2)
-                height = now.height() * width / now.width();
-            else if (changed == 3)
-                width = now.width() * height / now.height();
+        QRectF box = now;
+        if (changed < 2) {
+            box.translate(changed == 0 ? selX->value() : 0.0, changed == 1 ? selY->value() : 0.0);
+        } else {
+            double const factor = (changed == 2 ? selW->value() : selH->value()) / 100.0;
+            bool const both = selLock->isChecked();
+            box.setSize(QSizeF(now.width() * (changed == 2 || both ? factor : 1.0), now.height() * (changed == 3 || both ? factor : 1.0)));
+            box.moveCenter(now.center());
         }
-        QRectF box(0, 0, now.width() > 1e-9 ? width : now.width(), now.height() > 1e-9 ? height : now.height());
-        box.moveCenter(QPointF(selX->value(), selY->value()));
-        if (box.width() > 0.0 && box.height() > 0.0)
+        if (box != now && (box.width() > 0.0 || now.width() <= 1e-9) && (box.height() > 0.0 || now.height() <= 1e-9))
             m_canvas->setSelectionRect(box);
         showSelection();
     };
