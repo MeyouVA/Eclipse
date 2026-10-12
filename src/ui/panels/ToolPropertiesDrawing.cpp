@@ -44,7 +44,7 @@ void ToolProperties::addSizeRows()
 
 void ToolProperties::addBrushRows()
 {
-    // What the Brush makes: a contour shape (as in Harmony), or a centre line with a thickness.
+    // What the Brush makes: a contour shape, or a centre line with a thickness.
     m_brushShape = new QCheckBox(tr("Draw as a contour shape"), this);
     m_brushShape->setObjectName(QStringLiteral("BrushShape"));
     m_brushShape->setToolTip(tr("On: a brush stroke is a filled shape with an outline of its own, which the Contour Editor can pull about.\n"

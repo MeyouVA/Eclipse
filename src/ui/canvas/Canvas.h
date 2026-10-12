@@ -98,15 +98,15 @@ public:
     QPointF contourHandlePos(int handle) const;
     // How the Select tool takes things when dragged over empty space: round a shape drawn
     // freehand (lasso), or in a rectangle (marquee).
-    // What the Brush tool makes: a contour shape (a filled area with an editable outline, as
-    // in Harmony), or - when off - a centre line with a thickness, as the Pencil does.
+    // What the Brush tool makes: a contour shape (a filled area with an editable
+    // outline), or - when off - a centre line with a thickness, as the Pencil does.
     // Auto Flatten: a stroke of the brush joins the shapes of its own colour that it
     // overlaps (one shape, with points where they met), and cuts itself out of shapes of
     // other colours under it.
     bool autoFlatten() const { return m_autoFlatten; }
     void setAutoFlatten(bool on) { m_autoFlatten = on; }
-    // The eraser cuts the part it passes over out of lines and painted areas (as in
-    // Harmony); off, it takes away every whole line it touches.
+    // The eraser cuts the part it passes over out of lines and painted areas;
+    // off, it takes away every whole line it touches.
     bool eraserCuts() const { return m_eraserCuts; }
     void setEraserCuts(bool on) { m_eraserCuts = on; }
     // Draw Behind: what the brush draws goes under the artwork already in the drawing.

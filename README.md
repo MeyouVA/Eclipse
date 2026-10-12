@@ -130,3 +130,10 @@ the program starts from the `resources` folder beside it (`menus.xml`, `toolbars
 
 Windows 10 or later, 64-bit. Sound playback uses the Windows multimedia API, so the
 program does not build on other systems as it stands.
+
+## Licence
+
+Eclipse is free to use, change and share, including in commercial work, under the
+[zlib licence](LICENSE). The one thing you may not do is pass it off as your own: you
+must not claim you wrote the original, changed versions must be marked as changed, and
+the licence notice stays with the source.

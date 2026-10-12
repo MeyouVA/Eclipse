@@ -191,7 +191,7 @@ struct Drawing {
     // colour art, where areas are painted without touching the lines over them.
     QVector<Fill> colourFills;
     QVector<Stroke> colourStrokes;
-    // And two more, as in Harmony: an underlay beneath the colour art and an overlay over
+    // And two more: an underlay beneath the colour art and an overlay over
     // the lines - for a rough, for notes, for highlights and shadows kept apart.
     QVector<Fill> underlayFills;
     QVector<Stroke> underlayStrokes;

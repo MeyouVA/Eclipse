@@ -86,7 +86,7 @@ void MainWindow::applyBuiltinWorkspace(QString const& name)
         resizeDocks({layerProps}, {270}, Qt::Horizontal);
         resizeDocks({timeline}, {300}, Qt::Vertical);
     } else {
-        // As Harmony's Default workspace has it: Tool Properties with the Library behind it over
+        // The usual arrangement of animation software: Tool Properties with the Library behind it over
         // the colours (with the Node View behind them) down the right; the Timeline along the
         // bottom with the Node Library behind it.  The other views are opened from the Windows menu.
         place(tool, Qt::RightDockWidgetArea);
