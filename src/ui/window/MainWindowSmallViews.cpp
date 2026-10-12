@@ -1,5 +1,8 @@
 // Eclipse - the main window: three views made of plain controls - Onion Skin, Message Log, Scene Markers.
 #include "ui/window/MainWindow.h"
+#include <QFrame>
+#include <QLabel>
+#include <QVector>
 
 #include <QCheckBox>
 #include <QColorDialog>
@@ -56,6 +59,46 @@ QWidget* MainWindow::createOnionSkinView()
     opacity->setObjectName(QStringLiteral("OnionOpacity"));
     opacity->setRange(5, 100);
     onionForm->addRow(show);
+    // A slider for each drawing shown: those before at the left (the furthest off first), those
+    // after at the right (the nearest first), each setting how strongly that one drawing shows.
+    QWidget* const bank = new QWidget(onion);
+    bank->setObjectName(QStringLiteral("OnionBank"));
+    QSlider* strengths[2][Canvas::kOnionSteps] = {};
+    {
+        QHBoxLayout* const across = new QHBoxLayout(bank);
+        across->setContentsMargins(0, 0, 0, 0);
+        across->setSpacing(3);
+        auto one = [this, bank, across, &strengths](bool after, int step) {
+            QSlider* const slider = new QSlider(Qt::Vertical, bank);
+            slider->setObjectName((after ? QStringLiteral("OnionAfter%1") : QStringLiteral("OnionBefore%1")).arg(step + 1));
+            slider->setRange(0, 100);
+            slider->setFixedHeight(84);
+            slider->setToolTip(after ? tr("How strongly drawing %1 after this one shows").arg(step + 1) : tr("How strongly drawing %1 before this one shows").arg(step + 1));
+            QLabel* const number = new QLabel(QString::number(step + 1), bank);
+            number->setAlignment(Qt::AlignHCenter);
+            QVBoxLayout* const column = new QVBoxLayout;
+            column->setSpacing(1);
+            column->addWidget(number);
+            column->addWidget(slider, 0, Qt::AlignHCenter);
+            across->addLayout(column);
+            strengths[after ? 1 : 0][step] = slider;
+            connect(slider, &QSlider::valueChanged, this, [this, after, step](int percent) { m_canvas->setOnionStrength(after, step, percent); });
+        };
+        for (int step = Canvas::kOnionSteps - 1; step >= 0; --step)
+            one(false, step);
+        QFrame* const middle = new QFrame(bank);
+        middle->setFrameShape(QFrame::VLine);
+        across->addWidget(middle);
+        for (int step = 0; step < Canvas::kOnionSteps; ++step)
+            one(true, step);
+        across->addStretch(1);
+    }
+    onionForm->addRow(bank);
+    QVector<QSlider*> beforeSliders, afterSliders;
+    for (int step = 0; step < Canvas::kOnionSteps; ++step) {
+        beforeSliders << strengths[0][step];
+        afterSliders << strengths[1][step];
+    }
     onionForm->addRow(tr("Previous drawings"), previous);
     onionForm->addRow(tr("Next drawings"), next);
     onionForm->addRow(tr("Opacity"), opacity);
@@ -81,7 +124,15 @@ QWidget* MainWindow::createOnionSkinView()
         if (chosen.isValid())
             m_canvas->setOnionColours(m_canvas->onionBefore(), chosen);
     });
-    auto follow = [this, show, previous, next, opacity, mode, beforeColour, afterColour] {
+    auto follow = [this, show, previous, next, opacity, mode, beforeColour, afterColour, beforeSliders, afterSliders] {
+        // A slider is live for a drawing that is shown: as many before and after as are asked for.
+        for (int step = 0; step < Canvas::kOnionSteps; ++step) {
+            QSignalBlocker const x(beforeSliders[step]), y(afterSliders[step]);
+            beforeSliders[step]->setValue(m_canvas->onionStrength(false, step));
+            afterSliders[step]->setValue(m_canvas->onionStrength(true, step));
+            beforeSliders[step]->setEnabled(step < m_canvas->onionPrevious());
+            afterSliders[step]->setEnabled(step < m_canvas->onionNext());
+        }
         QSignalBlocker const a(show), b(previous), c(next), d(opacity), e(mode);
         mode->setCurrentIndex(m_canvas->onionByFrame() ? 1 : 0);
         beforeColour->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px;").arg(m_canvas->onionBefore().name()));
@@ -99,6 +150,10 @@ QWidget* MainWindow::createOnionSkinView()
         m_canvas->setOnionByFrame(s.value(QStringLiteral("onion/byFrame"), false).toBool());
         m_canvas->setOnionColours(QColor(s.value(QStringLiteral("onion/before"), m_canvas->onionBefore().name()).toString()),
                                   QColor(s.value(QStringLiteral("onion/after"), m_canvas->onionAfter().name()).toString()));
+        QStringList const kept = s.value(QStringLiteral("onion/strengths")).toString().split(QLatin1Char(','), Qt::SkipEmptyParts);
+        if (kept.size() == 2 * Canvas::kOnionSteps)
+            for (int i = 0; i < kept.size(); ++i)
+                m_canvas->setOnionStrength(i >= Canvas::kOnionSteps, i % Canvas::kOnionSteps, kept[i].toInt());
     }
     follow();
     connect(m_canvas, &Canvas::onionChanged, this, follow);
@@ -107,6 +162,10 @@ QWidget* MainWindow::createOnionSkinView()
         s.setValue(QStringLiteral("onion/byFrame"), m_canvas->onionByFrame());
         s.setValue(QStringLiteral("onion/before"), m_canvas->onionBefore().name());
         s.setValue(QStringLiteral("onion/after"), m_canvas->onionAfter().name());
+        QStringList strengths;
+        for (int i = 0; i < 2 * Canvas::kOnionSteps; ++i)
+            strengths << QString::number(m_canvas->onionStrength(i >= Canvas::kOnionSteps, i % Canvas::kOnionSteps));
+        s.setValue(QStringLiteral("onion/strengths"), strengths.join(QLatin1Char(',')));
     });
     connect(show, &QCheckBox::toggled, this, [this](bool on) {
         m_canvas->setOnionSkin(on);

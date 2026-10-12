@@ -1,4 +1,5 @@
-// Eclipse - Coord. and Control Points: the keyframes of the current layer as a table of numbers.
+// Eclipse - Coord. and Control Points: where the current layer is on the current frame, as numbers
+// that can be typed (Selection Coordinates), and its keyframes as a table.
 #pragma once
 
 #include "EclipseExport.h"
@@ -6,7 +7,9 @@
 #include <QWidget>
 
 class Document;
+class QCheckBox;
 class QLabel;
+class QLineEdit;
 class QTableWidget;
 
 class ECLIPSE_UI_API CoordView : public QWidget {
@@ -14,6 +17,11 @@ class ECLIPSE_UI_API CoordView : public QWidget {
 
 public:
     explicit CoordView(Document* document, QWidget* parent = nullptr);
+    // A distance across (`axis` 0), up (1) or towards the camera (2), written in fields with
+    // the letter of its direction: "7.5862 E", "2.1241 S", "3 F".  And read back from that
+    // (false when it is not a number); a letter is not needed, the sign will do.
+    static QString fieldText(double pixels, int axis, double sceneHeight);
+    static bool fieldValue(QString const& text, int axis, double sceneHeight, double* pixels);
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -24,10 +32,17 @@ signals:
 private:
     void rebuild();
     void cellEdited(int row, int column);
+    // The form: shows the layer as it is on the current frame; takes what was typed in one of its boxes.
+    void showCoordinates();
+    void applyCoordinate(int which);
+    QWidget* section(QString const& title, char const* objectName, class QFormLayout** form);
     Document* m_document;
     int m_layer = 0;
     int m_frame = 0;
     QTableWidget* m_table;
     QLabel* m_title;
+    QLineEdit* m_name = nullptr;
+    QLineEdit* m_fields[7] = {};       // x, y, z, scale x, scale y, angle - and the depth it comes to (not typed)
+    QCheckBox* m_separateScale = nullptr;
     bool m_rebuilding = false;
 };

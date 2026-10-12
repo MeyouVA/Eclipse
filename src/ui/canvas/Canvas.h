@@ -157,6 +157,11 @@ public:
     // How strongly the onion skin shows, 5 to 100 per cent.
     void setOnionOpacity(int percent);
     int onionOpacity() const { return m_onionOpacity; }
+    // Each of the drawings shown before and after has a strength of its own, 0 to 100 per cent of
+    // what it would show at: `step` 0 is the nearest drawing, 5 the furthest off.
+    static constexpr int kOnionSteps = 6;
+    void setOnionStrength(bool after, int step, int percent);
+    int onionStrength(bool after, int step) const { return step >= 0 && step < kOnionSteps ? m_onionStrength[after ? 1 : 0][step] : 0; }
     bool showsControl() const { return m_showControl; }
     // The points of the polyline being laid down (empty when there is none).
     int polylinePoints() const { return m_polyActive ? int(m_stroke.points.size()) : 0; }
@@ -497,6 +502,7 @@ private:
     int m_onionPrev = 1;
     int m_onionNext = 1;
     int m_onionOpacity = 35;
+    int m_onionStrength[2][kOnionSteps] = {{100, 100, 100, 100, 100, 100}, {100, 100, 100, 100, 100, 100}};
 
     // interaction
     enum Drag {

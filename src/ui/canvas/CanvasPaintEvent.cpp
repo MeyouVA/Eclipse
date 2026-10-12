@@ -88,7 +88,9 @@ void Canvas::paintEvent(QPaintEvent*)
                 if (layer.drawingAt(prev) == Layer::kNoDrawing)
                     continue;       // an empty frame: nothing of it to show
                 painter.setTransform(worldOf(l, prev) * view);
-                paintDrawing(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]), strength * (m_onionPrev - i) / m_onionPrev, &before);
+                if (m_onionStrength[0][i] > 0)
+                    paintDrawing(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
+                                 strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, &before);
             }
             for (int i = 0, next = m_frame; i < m_onionNext; ++i) {
                 next = m_onionByFrame ? next + 1 : layer.nextDrawingFrame(next);
@@ -97,7 +99,9 @@ void Canvas::paintEvent(QPaintEvent*)
                 if (layer.drawingAt(next) == Layer::kNoDrawing)
                     continue;
                 painter.setTransform(worldOf(l, next) * view);
-                paintDrawing(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]), strength * 0.86 * (m_onionNext - i) / m_onionNext, &after);
+                if (m_onionStrength[1][i] > 0)
+                    paintDrawing(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
+                                 strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, &after);
             }
             painter.setTransform(worldOf(l, m_frame) * view);
         }

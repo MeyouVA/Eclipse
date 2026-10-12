@@ -121,6 +121,18 @@ void Canvas::setOnionOpacity(int percent)
     emit onionChanged();
 }
 
+void Canvas::setOnionStrength(bool after, int step, int percent)
+{
+    if (step < 0 || step >= kOnionSteps)
+        return;
+    int const value = std::clamp(percent, 0, 100);
+    if (m_onionStrength[after ? 1 : 0][step] == value)
+        return;
+    m_onionStrength[after ? 1 : 0][step] = value;
+    update();
+    emit onionChanged();
+}
+
 void Canvas::onActionLightTable(bool on)
 {
     m_lightTable = on;
