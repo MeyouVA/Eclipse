@@ -133,6 +133,24 @@ public:
     bool keepsColour(int swatch) const;
     bool respectsProtected() const { return m_respectProtected; }
     bool proportionGrid() const { return m_proportionGrid; }
+    // From Preferences: how far an arrow key nudges what is selected (pixels); how many parts the
+    // proportion grid has each way; how much of the frame, at each edge, lies outside the safe area.
+    double nudgeStep() const { return m_nudgeStep; }
+    void setNudgeStep(double pixels) { m_nudgeStep = pixels; }
+    int proportionAcross() const { return m_propAcross; }
+    int proportionDown() const { return m_propDown; }
+    void setProportionParts(int across, int down)
+    {
+        m_propAcross = across;
+        m_propDown = down;
+        update();
+    }
+    double safeMargin() const { return m_safeMargin; }
+    void setSafeMargin(double part)
+    {
+        m_safeMargin = part;
+        update();
+    }
     int removeHair(double length);
     // The dropper looks at every layer, or only at the one being worked on.
     bool dropperAllLayers() const { return m_dropperAllLayers; }
@@ -666,6 +684,10 @@ private:
     bool m_highlightColour = false;
     bool m_respectProtected = true;
     bool m_proportionGrid = false;
+    double m_nudgeStep = 1.0;
+    int m_propAcross = 3;
+    int m_propDown = 3;
+    double m_safeMargin = 0.1;
     bool m_eraserCuts = true;
     // Cuts what the eraser passed over (the line `m_stroke`, as thick as the eraser) out of the drawing.
     void cutWithEraser();

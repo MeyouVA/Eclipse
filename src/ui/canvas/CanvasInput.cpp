@@ -165,10 +165,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         update();
         return;
     }
-    // The arrow keys nudge what the Select tool has selected: a pixel, or ten with Shift.
+    // The arrow keys nudge what the Select tool has selected: a pixel (or what Preferences says), ten times that with Shift.
     if (m_tool == Select && hasSelection() && m_drag == DragNone
         && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right || event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)) {
-        double const step = event->modifiers() & Qt::ShiftModifier ? 10.0 : 1.0;
+        double const step = m_nudgeStep * (event->modifiers() & Qt::ShiftModifier ? 10.0 : 1.0);
         QPointF const by(event->key() == Qt::Key_Left ? -step : event->key() == Qt::Key_Right ? step : 0.0,
                          event->key() == Qt::Key_Up ? -step : event->key() == Qt::Key_Down ? step : 0.0);
         transformSelection(QTransform::fromTranslate(by.x(), by.y()), tr("Nudge"));

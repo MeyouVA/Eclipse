@@ -14,6 +14,7 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
 #include <QSettings>
@@ -95,6 +96,10 @@ void MainWindow::applyPreferences()
     }
     if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
         m_canvas->setArt(Canvas::LineArt);
+    m_canvas->setNudgeStep(std::clamp(s.value(QStringLiteral("prefs/nudge"), 1).toInt(), 1, 100));
+    m_canvas->setProportionParts(std::clamp(s.value(QStringLiteral("prefs/proportionAcross"), 3).toInt(), 2, 12),
+                                 std::clamp(s.value(QStringLiteral("prefs/proportionDown"), 3).toInt(), 2, 12));
+    m_canvas->setSafeMargin(std::clamp(s.value(QStringLiteral("prefs/safeMargin"), 10).toInt(), 1, 30) / 100.0);
     m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
     m_autoSave.stop();
     if (m_autoSaveMinutes > 0)
@@ -126,6 +131,35 @@ void MainWindow::onActionPreferences()
     selectMode->setCurrentIndex(s.value(QStringLiteral("prefs/lasso"), true).toBool() ? 0 : 1);
     QFormLayout* const cameraLayout = new QFormLayout(camera);
     cameraLayout->addRow(tr("The Select tool starts with"), selectMode);
+    QSpinBox* const nudge = new QSpinBox(camera);
+    nudge->setObjectName(QStringLiteral("PrefNudge"));
+    nudge->setRange(1, 100);
+    nudge->setSuffix(tr(" pixels"));
+    nudge->setToolTip(tr("How far an arrow key moves what the Select tool has selected (ten times as far with Shift)."));
+    nudge->setValue(int(m_canvas->nudgeStep()));
+    cameraLayout->addRow(tr("Nudging factor"), nudge);
+    QSpinBox* const gridAcross = new QSpinBox(camera);
+    gridAcross->setObjectName(QStringLiteral("PrefGridAcross"));
+    gridAcross->setRange(2, 12);
+    gridAcross->setValue(m_canvas->proportionAcross());
+    QSpinBox* const gridDown = new QSpinBox(camera);
+    gridDown->setObjectName(QStringLiteral("PrefGridDown"));
+    gridDown->setRange(2, 12);
+    gridDown->setValue(m_canvas->proportionDown());
+    QHBoxLayout* const gridParts = new QHBoxLayout;
+    gridParts->addWidget(gridAcross);
+    gridParts->addWidget(new QLabel(tr("across by"), camera));
+    gridParts->addWidget(gridDown);
+    gridParts->addWidget(new QLabel(tr("down"), camera));
+    gridParts->addStretch(1);
+    cameraLayout->addRow(tr("Proportion grid"), gridParts);
+    QSpinBox* const safe = new QSpinBox(camera);
+    safe->setObjectName(QStringLiteral("PrefSafeMargin"));
+    safe->setRange(1, 30);
+    safe->setSuffix(tr(" %"));
+    safe->setToolTip(tr("How much of the frame, at each edge, lies outside the safe area (the title-safe area leaves twice as much)."));
+    safe->setValue(int(std::lround(m_canvas->safeMargin() * 100.0)));
+    cameraLayout->addRow(tr("TV safety"), safe);
 
     QGroupBox* const advanced = new QGroupBox(tr("Advanced"), &dialog);
     QCheckBox* const moreArt = new QCheckBox(tr("Support Overlay and Underlay Arts"), advanced);
@@ -149,6 +183,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/autosaveMinutes"), autoSave->value());
     s.setValue(QStringLiteral("prefs/lasso"), selectMode->currentIndex() == 0);
     s.setValue(QStringLiteral("prefs/overlayUnderlay"), moreArt->isChecked());
+    s.setValue(QStringLiteral("prefs/nudge"), nudge->value());
+    s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
+    s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());
+    s.setValue(QStringLiteral("prefs/safeMargin"), safe->value());
     s.sync();
     applyPreferences();
 }

@@ -242,13 +242,16 @@ void Canvas::paintEvent(QPaintEvent*)
     }
     paintGuide(painter);
     if (m_proportionGrid && !m_playing) {
-        // The frame in thirds each way, to compose the picture by.
+        // The frame in thirds each way (or as many parts as Preferences says), to compose the picture by.
         QPen thirds(QColor(111, 168, 232, 200));
         thirds.setCosmetic(true);
         painter.setPen(thirds);
-        for (int i = 1; i < 3; ++i) {
-            double const x = frameRect.left() + frameRect.width() * i / 3.0, y = frameRect.top() + frameRect.height() * i / 3.0;
+        for (int i = 1; i < m_propAcross; ++i) {
+            double const x = frameRect.left() + frameRect.width() * i / m_propAcross;
             painter.drawLine(QPointF(x, frameRect.top()), QPointF(x, frameRect.bottom()));
+        }
+        for (int i = 1; i < m_propDown; ++i) {
+            double const y = frameRect.top() + frameRect.height() * i / m_propDown;
             painter.drawLine(QPointF(frameRect.left(), y), QPointF(frameRect.right(), y));
         }
     }
@@ -264,11 +267,11 @@ void Canvas::paintEvent(QPaintEvent*)
             return QRectF(c.x() - frameRect.width() * part / 2, c.y() - frameRect.height() * part / 2, frameRect.width() * part, frameRect.height() * part);
         };
         painter.setPen(action);
-        painter.drawRect(inner(0.9));
+        painter.drawRect(inner(1.0 - m_safeMargin));
         painter.drawLine(c - QPointF(frameRect.width() * 0.02, 0), c + QPointF(frameRect.width() * 0.02, 0));
         painter.drawLine(c - QPointF(0, frameRect.width() * 0.02), c + QPointF(0, frameRect.width() * 0.02));
         painter.setPen(title);
-        painter.drawRect(inner(0.8));
+        painter.drawRect(inner(1.0 - 2.0 * m_safeMargin));
     }
 
     if (!m_playing)
