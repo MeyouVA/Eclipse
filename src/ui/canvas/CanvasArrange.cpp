@@ -260,6 +260,58 @@ void Canvas::onActionConvertPencilToBrush()
     commitDrawing(edited, tr("Convert to Brush Strokes"));
 }
 
+void Canvas::onActionBreakApartText()
+{
+    Drawing const* const d = currentDrawing();
+    bool words = false;
+    if (selecting() && d)
+        for (int i : std::as_const(m_selFills))
+            words = words || (i >= 0 && i < d->fills.size() && !d->fills[i].text.isEmpty());
+    if (!words) {
+        emit message(tr("Select words written with the Text tool to break them apart."));
+        return;
+    }
+    // Each letter becomes a painted shape of its own, where it stands; they are words no longer.
+    Drawing edited = *d;
+    edited.fills.clear();
+    QVector<int> picked;
+    for (int i = 0; i < d->fills.size(); ++i) {
+        Fill const& fill = d->fills[i];
+        if (!m_selFills.contains(i) || fill.text.isEmpty()) {
+            if (m_selFills.contains(i))
+                picked.push_back(int(edited.fills.size()));
+            edited.fills.push_back(fill);
+            continue;
+        }
+        // How many outlines each letter has, in the order they were made: an i has two.
+        QVector<int> counts;
+        QFont font;
+        if (font.fromString(fill.textFont)) {
+            font.setLetterSpacing(QFont::PercentageSpacing, fill.textKerning);
+            for (QChar const letter : fill.text) {
+                QPainterPath path;
+                path.addText(QPointF(), font, QString(letter));
+                int count = 0;
+                for (QPolygonF const& outline : path.toSubpathPolygons())
+                    count += outline.size() >= 3 ? 1 : 0;
+                if (count > 0)
+                    counts.push_back(count);
+            }
+        }
+        for (Fill const& letter : fill.pieces(counts)) {
+            picked.push_back(int(edited.fills.size()));
+            edited.fills.push_back(letter);
+        }
+    }
+    QVector<int> const lines = m_selStrokes;
+    clearSelection();
+    commitDrawing(edited, tr("Break Apart Text"));
+    m_selStrokes = lines;
+    m_selFills = picked;
+    emit selectionChanged();
+    update();
+}
+
 void Canvas::onActionBringToFront()
 {
     arrangeSelection(true);

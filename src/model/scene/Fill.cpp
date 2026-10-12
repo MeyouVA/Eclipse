@@ -192,6 +192,73 @@ QVector<Fill> areasOf(QPainterPath const& result, Fill const& like, QVector<Fill
 
 }  // namespace
 
+QVector<Fill> Fill::pieces(QVector<int> const& counts) const
+{
+    Fill blank = *this;
+    blank.outlines.clear();
+    blank.contours.clear();
+    blank.text.clear();
+    blank.textFont.clear();
+    blank.textAt = QPointF();
+    bool const curves = contours.size() == outlines.size();
+    QVector<Fill> made;
+    auto put = [&](Fill& piece, int outline) {
+        piece.outlines.push_back(outlines[outline]);
+        if (curves)
+            piece.contours.push_back(contours[outline]);
+    };
+    int total = 0;
+    bool sound = !counts.isEmpty();
+    for (int count : counts) {
+        sound = sound && count > 0;
+        total += count;
+    }
+    if (sound && total == outlines.size()) {
+        int next = 0;
+        for (int count : counts) {
+            Fill piece = blank;
+            for (int k = 0; k < count; ++k)
+                put(piece, next++);
+            made.push_back(piece);
+        }
+        return made;
+    }
+    // An outline inside an odd number of the others is a hole: it goes with the smallest
+    // outline round it that is a shape.
+    QVector<int> depth(outlines.size(), 0);
+    for (int i = 0; i < outlines.size(); ++i)
+        for (int j = 0; j < outlines.size(); ++j)
+            if (i != j && !outlines[i].isEmpty() && outlines[j].containsPoint(outlines[i].first(), Qt::OddEvenFill))
+                ++depth[i];
+    QVector<int> pieceOf(outlines.size(), -1);
+    for (int i = 0; i < outlines.size(); ++i) {
+        if (depth[i] % 2 != 0)
+            continue;
+        pieceOf[i] = int(made.size());
+        made.push_back(blank);
+        put(made.last(), i);
+    }
+    for (int i = 0; i < outlines.size(); ++i) {
+        if (depth[i] % 2 == 0)
+            continue;
+        int round = -1;
+        double least = 0.0;
+        for (int j = 0; j < outlines.size(); ++j) {
+            if (pieceOf[j] < 0 || !outlines[j].containsPoint(outlines[i].first(), Qt::OddEvenFill))
+                continue;
+            QRectF const box = outlines[j].boundingRect();
+            double const size = box.width() * box.height();
+            if (round < 0 || size < least) {
+                round = j;
+                least = size;
+            }
+        }
+        if (round >= 0)
+            put(made[pieceOf[round]], i);
+    }
+    return made;
+}
+
 bool Fill::overlaps(Fill const& other) const
 {
     if (!bounds().intersects(other.bounds()))

@@ -101,6 +101,7 @@
     <item id="OutlineLocked" icon="view/outlinelocked" text="&amp;Outline Locked Drawings" checkable="true" responder="camera" slot="onActionOutlineLocked(bool)"/>
     <item id="ShowStrokes"/>
     <item id="ShowStrokesWash"/>
+    <item id="HighlightColour" icon="view/highlightcolour" text="&amp;Highlight Selected Colour" shortcut="shortcut.highlightColour" checkable="true" responder="camera" slot="onActionHighlightColour(bool)"/>
    </menu>
    <item id="HideAllControls" icon="view/hidecontrols" text="&amp;Hide All Controls" shortcut="shortcut.hideAllControls" responder="camera" slot="onActionHideAllControls()"/>
   </menu>
@@ -321,6 +322,7 @@
  <menu id="menu.convert" text="Convert">
   <item id="ConvertBrushToPencil" icon="anim/topencil" text="&amp;Brush Strokes to Pencil Lines" shortcut="shortcut.convertToPencil" responder="camera" slot="onActionConvertBrushToPencil()"/>
   <item id="ConvertPencilToBrush" icon="anim/tobrush" text="&amp;Pencil Lines to Brush Strokes" shortcut="shortcut.convertToBrush" responder="camera" slot="onActionConvertPencilToBrush()"/>
+  <item id="BreakApartText" icon="anim/breaktext" text="Break Apart &amp;Text" shortcut="shortcut.breakApartText" responder="camera" slot="onActionBreakApartText()"/>
  </menu>
  <menu id="menu.art" text="Art Layer">
   <item id="SetOverlayArt" icon="art/overlay" text="&amp;Overlay Art" shortcut="shortcut.overlayArt" checkable="true" group="art" responder="camera" slot="onActionSetOverlayArt()"/>

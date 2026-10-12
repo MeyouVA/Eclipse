@@ -102,6 +102,16 @@ void ToolProperties::addSelectRows()
                               "in the other drawings, whatever lies within the place the selection had."));
     connect(m_applyAll, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToAllDrawings);
     m_form->addRow(m_applyAll);
+    // The Dropper: the colour of whatever is seen there, or only of what is on the layer worked on.
+    m_dropperAll = new QCheckBox(tr("Sample All Layers"), this);
+    m_dropperAll->setObjectName(QStringLiteral("DropperAllLayers"));
+    m_dropperAll->setToolTip(tr("On: the dropper takes the colour of whatever is in front where you click, on any layer.\n"
+                               "Off: it looks only at the layer you are working on."));
+    m_canvas->setDropperAllLayers(settings().value(QStringLiteral("tools/dropperAllLayers"), true).toBool());
+    m_dropperAll->setChecked(m_canvas->dropperAllLayers());
+    connect(m_dropperAll, &QCheckBox::toggled, m_canvas, &Canvas::setDropperAllLayers);
+    connect(m_dropperAll, &QCheckBox::clicked, this, [](bool on) { settings().setValue(QStringLiteral("tools/dropperAllLayers"), on); });
+    m_form->addRow(m_dropperAll);
 }
 
 void ToolProperties::addAutoFlattenRow()

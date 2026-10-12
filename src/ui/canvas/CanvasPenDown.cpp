@@ -126,12 +126,13 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         }
         // A click on the point just made adds nothing (the second click of a double click).
         if (m_stroke.points.isEmpty() || QLineF(layerViewTransform().map(m_stroke.points.last().pos), widgetPos).length() > 2) {
-            StrokePoint point{snapped(p), 1.0f};
+            // (With a guide in use, each piece runs one of its ways from the point before.)
+            StrokePoint point{snapped(m_stroke.points.isEmpty() ? p : toLayer(guidedFrom(layerViewTransform().map(m_stroke.points.last().pos), widgetPos))), 1.0f};
             point.corner = m_stroke.curve;      // on a line that bends elsewhere, a point clicked is a corner
             m_stroke.points.push_back(point);
             m_drag = DragPolyHandle;            // dragged on from here, the line bends through it
         }
-        m_polyHover = snapped(p);
+        m_polyHover = m_stroke.points.isEmpty() ? snapped(p) : m_stroke.points.last().pos;
     } else if (m_tool == Line || m_tool == Rectangle || m_tool == Ellipse || m_tool == CloseGap) {
         m_drag = DragShape;
         m_dragStart = snapped(p);

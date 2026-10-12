@@ -197,10 +197,33 @@ bool Canvas::showsRest(int layer) const
 
 Drawing Canvas::shown(int layer, int frame, Drawing const& drawing) const
 {
-    Layer const& l = m_document->scene().layers[layer];
-    if ((l.bones.size() < 2 && !l.hasWarp()) || showsRest(layer))
-        return drawing;
-    return Deform::shown(drawing, l, poseOf(layer, frame));
+    Scene const& scene = m_document->scene();
+    Layer const& l = scene.layers[layer];
+    bool const plain = (l.bones.size() < 2 && !l.hasWarp()) || showsRest(layer);
+    if (!m_highlightColour || m_playing)
+        return plain ? drawing : Deform::shown(drawing, l, poseOf(layer, frame));
+    // Highlight Selected Colour: what is not of the colour in hand is shown faint.
+    Drawing made = plain ? drawing : Deform::shown(drawing, l, poseOf(layer, frame));
+    auto fade = [&](int& swatch, QColor& colour) {
+        if (swatch == m_swatch)
+            return;
+        colour = scene.resolve(swatch, colour);
+        colour.setAlphaF(colour.alphaF() * 0.18f);
+        swatch = Scene::kNoSwatch;
+    };
+    for (int sheet : {int(Drawing::UnderlaySheet), int(Drawing::ColourSheet), int(Drawing::LineSheet), int(Drawing::OverlaySheet)}) {
+        for (Fill& fill : made.fillsOf(sheet))
+            fade(fill.swatch, fill.color);
+        for (Stroke& stroke : made.strokesOf(sheet))
+            fade(stroke.swatch, stroke.color);
+    }
+    return made;
+}
+
+void Canvas::onActionHighlightColour(bool on)
+{
+    m_highlightColour = on;
+    update();
 }
 
 QTransform Canvas::layerViewTransform() const

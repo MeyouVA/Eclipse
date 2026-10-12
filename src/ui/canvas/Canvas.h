@@ -53,7 +53,12 @@ public:
     void setTool(Tool tool);
     Tool tool() const { return m_tool; }
     // The palette swatch new strokes and fills are linked to.
-    void setSwatch(int id) { m_swatch = id; }
+    void setSwatch(int id)
+    {
+        m_swatch = id;
+        if (m_highlightColour)
+            update();
+    }
     int swatch() const { return m_swatch; }
     void setBrushWidth(double width) { m_brushWidth = width; }
     double brushWidth() const { return m_brushWidth; }
@@ -111,6 +116,11 @@ public:
     void setEraserCuts(bool on) { m_eraserCuts = on; }
     // Draw Behind: what the brush draws goes under the artwork already in the drawing.
     bool drawBehind() const { return m_drawBehind; }
+    // The dropper looks at every layer, or only at the one being worked on.
+    bool dropperAllLayers() const { return m_dropperAllLayers; }
+    void setDropperAllLayers(bool on) { m_dropperAllLayers = on; }
+    // Everything that is not of the colour in hand shown faint.
+    bool highlightColour() const { return m_highlightColour; }
     // What the Rigging tool lays down: a chain of bones, a curve the drawing bends along, or
     // an envelope round it.
     enum RigMode { RigBones, RigCurve, RigEnvelope };
@@ -344,6 +354,8 @@ public slots:
     // into the painted shape it covers.
     void onActionConvertBrushToPencil();
     void onActionConvertPencilToBrush();
+    void onActionBreakApartText();
+    void onActionHighlightColour(bool on);
 
 signals:
     void selectionChanged();
@@ -571,6 +583,8 @@ private:
     int guideHandleAt(QPointF widgetPos) const;
     void beginGuidedStroke(QPointF widgetPos);
     QPointF guided(QPointF widgetPos);
+    // For a straight line from `fromWidget`: where it ends, kept to the way of the guide nearest to it.
+    QPointF guidedFrom(QPointF fromWidget, QPointF widgetPos) const;
     void paintGuide(QPainter& painter);
     QVector<QImage> m_preview;
     bool m_usePreview = true;
@@ -597,6 +611,8 @@ private:
     bool m_brushShapes = true;
     bool m_autoFlatten = false;
     bool m_drawBehind = false;
+    bool m_dropperAllLayers = true;
+    bool m_highlightColour = false;
     bool m_eraserCuts = true;
     // Cuts what the eraser passed over (the line `m_stroke`, as thick as the eraser) out of the drawing.
     void cutWithEraser();

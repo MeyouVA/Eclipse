@@ -68,6 +68,8 @@
   <shortcut id="shortcut.sendBackward" text="Send Backward" value="Ctrl+PgDown"/>
   <shortcut id="shortcut.convertToPencil" text="Convert Brush Strokes to Pencil Lines" value=""/>
   <shortcut id="shortcut.convertToBrush" text="Convert Pencil Lines to Brush Strokes" value=""/>
+  <shortcut id="shortcut.breakApartText" text="Break Apart Text" value=""/>
+  <shortcut id="shortcut.highlightColour" text="Highlight Selected Colour" value=""/>
   <shortcut id="shortcut.selectCurrentColour" text="Select Strokes with Current Colour" value="Ctrl+Shift+A"/>
   <shortcut id="shortcut.invertSelection" text="Invert Selection" value="Ctrl+Shift+I"/>
   <shortcut id="shortcut.showStrokes" text="Show Strokes" value="K"/>

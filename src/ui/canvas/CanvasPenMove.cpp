@@ -19,6 +19,8 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     // With a guide in use the brush and the pencil draw along it.
     if (m_drag == DragDraw && (m_tool == Brush || m_tool == Pencil))
         widgetPos = guided(widgetPos);
+    else if (m_drag == DragShape && m_tool == Line)
+        widgetPos = guidedFrom(layerViewTransform().map(m_dragStart), widgetPos);
     // While a pose is being dragged the layer moves under the pointer: those drags work
     // from the scene position instead.
     QPointF const p = posing() || m_drag == DragPivot || m_drag == DragPan || m_drag == DragJoint || m_drag == DragWarpRest || m_drag == DragQuad || m_drag == DragRotateView ? QPointF() : toLayer(widgetPos);

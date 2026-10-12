@@ -103,7 +103,7 @@ void Canvas::pickColourAt(QPointF widgetPos)
         int const l = order[place];
         Layer const& layer = scene.layers[l];
         int const index = layer.drawingAt(m_frame);
-        if (!scene.shows(l) || !layer.holdsDrawings() || index == Layer::kNoDrawing)
+        if (!scene.shows(l) || !layer.holdsDrawings() || index == Layer::kNoDrawing || (!m_dropperAllLayers && l != m_layer))
             continue;
         QPointF const p = scene.worldTransform(l, m_frame).inverted().map(at);
         Drawing const& drawing = layer.drawings[index];

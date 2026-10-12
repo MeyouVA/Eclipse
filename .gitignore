@@ -21,3 +21,4 @@ package_log.txt
 *.user
 Thumbs.db
 desktop.ini
+/bak*/

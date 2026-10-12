@@ -1,5 +1,5 @@
 // Eclipse - the Camera view: drawing guides - the one in use shown, its points dragged, and the
-// brush and pencil kept to the ways it runs.
+// brush, the pencil, the Line tool and the Polyline kept to the ways it runs.
 #include "ui/canvas/Canvas.h"
 
 #include <cmath>
@@ -73,6 +73,18 @@ QPointF Canvas::guided(QPointF widgetPos)
     return cameraViewTransform().map(Scene::alongGuide(m_guideStart, at, m_guideWay));
 }
 
+QPointF Canvas::guidedFrom(QPointF fromWidget, QPointF widgetPos) const
+{
+    Scene::Guide const* const guide = drawingGuide();
+    if (!guide || QLineF(fromWidget, widgetPos).length() < 3.0)
+        return widgetPos;
+    // A straight line may still change its mind: the way is chosen afresh as its end moves.
+    QPointF const from = toFrame(fromWidget), at = toFrame(widgetPos);
+    QVector<QPointF> const ways = Scene::guideDirections(*guide, from);
+    int const which = Scene::nearestGuideDirection(ways, at - from);
+    return which < 0 ? widgetPos : cameraViewTransform().map(Scene::alongGuide(from, at, ways[which]));
+}
+
 void Canvas::paintGuide(QPainter& painter)
 {
     Scene::Guide const* const guide = drawingGuide();
@@ -97,7 +109,9 @@ void Canvas::paintGuide(QPainter& painter)
     }
     // Through the pointer, the ways a line may run from there.
     if (m_hoverKnown && guideTool() && m_drag != DragGuide) {
-        QPointF const from = m_drag == DragDraw ? m_guideStart : m_hoverFrame;
+        // (From where the line being drawn began, when there is one.)
+        QPointF const from = m_drag == DragDraw || m_drag == DragShape ? m_guideStart
+                             : m_polyActive && !m_stroke.points.isEmpty() ? toFrame(layerViewTransform().map(m_stroke.points.last().pos)) : m_hoverFrame;
         QPen dotted(QColor(60, 60, 64, 170));
         dotted.setCosmetic(true);
         dotted.setStyle(Qt::DotLine);

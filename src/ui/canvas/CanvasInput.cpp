@@ -75,7 +75,8 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
     if (!m_tabletActive && m_drag != DragNone)
         penMove(event->position(), 1.0f, event->modifiers());
     if (m_polyActive && m_drag == DragNone) {
-        m_polyHover = snapped(toLayer(event->position()));
+        m_polyHover = snapped(toLayer(m_stroke.points.isEmpty() ? event->position()
+                                                               : guidedFrom(layerViewTransform().map(m_stroke.points.last().pos), event->position())));
         update();
     }
 }

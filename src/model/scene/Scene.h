@@ -155,6 +155,11 @@ struct Fill {
     // The two areas as one, in the colour of this one; false (and nothing done) when they do not meet.
     bool mergeWith(Fill const& other, double tolerance);
     bool overlaps(Fill const& other) const;
+    // The area as the separate things it is made of, each an area of its own in the same
+    // colour and words no longer.  `counts` says how many outlines, in order, each one has
+    // (the letters of words); when they do not add up to the outlines there are, an outline
+    // goes with the outline it lies inside (a hole with its shape).
+    QVector<Fill> pieces(QVector<int> const& counts = {}) const;
     // The shape a line covers, as a contour shape of the line's colour: what a brush stroke
     // becomes.  `tolerance` is how far its contour may stray from the true edge of the line.
     static Fill fromStroke(Stroke const& stroke, double tolerance);

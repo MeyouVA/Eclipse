@@ -49,20 +49,26 @@ void ToolProperties::addSelectionRows()
         column->addWidget(new QLabel(tr("Selection"), selection));
         column->addLayout(modes);
         column->addWidget(new QLabel(tr("Operations"), selection));
-        QHBoxLayout* const operations = new QHBoxLayout;
-        operations->setSpacing(2);
-        for (char const* id : {"FlipHorizontal", "FlipVertical", "Rotate90CW", "Rotate90CCW", "Rotate180", "Flatten", "Smooth", "ReducePoints"}) {
-            if (QAction* const a = m_actions->action(QLatin1String(id))) {
-                QToolButton* const b = new QToolButton(selection);
-                b->setObjectName(QStringLiteral("Op") + QLatin1String(id));
-                b->setDefaultAction(a);
-                b->setAutoRaise(true);
-                b->setIconSize(QSize(20, 20));
-                operations->addWidget(b);
+        // Two rows of them: turning over and round and tidying, then grouping and converting.
+        std::initializer_list<char const*> const rows[2] = {
+            {"FlipHorizontal", "FlipVertical", "Rotate90CW", "Rotate90CCW", "Rotate180", "Flatten", "Smooth", "ReducePoints"},
+            {"GroupArtwork", "UngroupArtwork", "ConvertBrushToPencil", "ConvertPencilToBrush", "BreakApartText"}};
+        for (std::initializer_list<char const*> const& row : rows) {
+            QHBoxLayout* const operations = new QHBoxLayout;
+            operations->setSpacing(2);
+            for (char const* id : row) {
+                if (QAction* const a = m_actions->action(QLatin1String(id))) {
+                    QToolButton* const b = new QToolButton(selection);
+                    b->setObjectName(QStringLiteral("Op") + QLatin1String(id));
+                    b->setDefaultAction(a);
+                    b->setAutoRaise(true);
+                    b->setIconSize(QSize(20, 20));
+                    operations->addWidget(b);
+                }
             }
+            operations->addStretch(1);
+            column->addLayout(operations);
         }
-        operations->addStretch(1);
-        column->addLayout(operations);
         QGridLayout* const grid = new QGridLayout;
         char const* const names[4] = {"SelX", "SelY", "SelWidth", "SelHeight"};
         QString const labels[4] = {tr("X"), tr("Y"), tr("Width"), tr("Height")};
