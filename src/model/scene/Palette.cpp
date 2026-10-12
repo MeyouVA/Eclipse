@@ -19,6 +19,12 @@ Swatch const* Scene::findSwatch(int id) const
     return nullptr;
 }
 
+bool Scene::protects(int swatch) const
+{
+    Swatch const* const found = findSwatch(swatch);
+    return found && found->isProtected;
+}
+
 QColor Swatch::colourAt(QVector<GradientStop> const& stops, double at)
 {
     if (stops.isEmpty())

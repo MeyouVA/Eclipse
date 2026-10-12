@@ -18,10 +18,27 @@ void Canvas::paintAt(QPointF p)
     QColor const color = scene.resolve(m_swatch, Qt::black);
     Drawing edited = *d;
 
+    QString const kept = tr("That colour is protected: the paint tools leave it as it is. (Colour view: right-click the colour.)");
     if (m_tool == Unpaint) {
-        // Takes the paint under the point away.  Lines stay.
+        // On a line: it loses its paint - it is there still, to bound areas, but is not seen.
+        for (int i = int(edited.strokes.size()) - 1; i >= 0; --i) {
+            if (edited.strokes[i].width > 0.0f && edited.strokes[i].hit(p, 0.5 / m_zoom)) {
+                if (scene.protects(edited.strokes[i].swatch)) {
+                    emit message(kept);
+                    return;
+                }
+                edited.strokes[i].width = 0.0f;
+                commitDrawing(edited, tr("Unpaint Line"));
+                return;
+            }
+        }
+        // Otherwise the paint under the point goes.
         for (int i = int(edited.fills.size()) - 1; i >= 0; --i) {
             if (edited.fills[i].contains(p)) {
+                if (scene.protects(edited.fills[i].swatch)) {
+                    emit message(kept);
+                    return;
+                }
                 edited.fills.removeAt(i);
                 commitDrawing(edited, tr("Unpaint"));
                 return;
@@ -34,6 +51,10 @@ void Canvas::paintAt(QPointF p)
         if (edited.strokes[i].hit(p, 0.5 / m_zoom)) {
             if (m_tool == PaintUnpainted)
                 return;  // it has its colour already
+            if (scene.protects(edited.strokes[i].swatch)) {
+                emit message(kept);
+                return;
+            }
             if (edited.strokes[i].swatch == m_swatch && edited.strokes[i].color == color)
                 return;
             edited.strokes[i].swatch = m_swatch;
@@ -47,6 +68,10 @@ void Canvas::paintAt(QPointF p)
         if (edited.fills[i].contains(p)) {
             if (m_tool == PaintUnpainted)
                 return;  // painted already: left as it is
+            if (scene.protects(edited.fills[i].swatch)) {
+                emit message(kept);
+                return;
+            }
             if (edited.fills[i].swatch == m_swatch && edited.fills[i].color == color)
                 return;
             edited.fills[i].swatch = m_swatch;

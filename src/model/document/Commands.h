@@ -75,6 +75,8 @@ public:
     // A colour moved up (-1) or down (+1) among those of its palette; and into another palette, at its end.
     bool moveSwatch(int id, int by);
     bool setSwatchPalette(int id, int palette);
+    // Protected: the paint tools leave what has this colour as it is.
+    bool setSwatchProtected(int id, bool on);
 
     // ---- exposure -----------------------------------------------------------------------
     // A new empty drawing starting at `frame` (the rest of the old exposure keeps its drawing).

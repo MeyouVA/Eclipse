@@ -171,6 +171,13 @@
    <item id="DistributeToLayers" icon="anim/distribute" text="&amp;Distribute to Layers" responder="camera" slot="onActionDistributeToLayers()"/>
    <submenu id="menu.arrange" text="&amp;Arrange"/>
    <submenu id="menu.convert" text="&amp;Convert"/>
+   <menu id="DrawingCleanUp" text="C&amp;lean Up">
+    <item id="RemoveDirt" icon="anim/removedirt" text="Remove &amp;Dirt..." shortcut="shortcut.removeDirt" responder="camera" slot="onActionRemoveDirt()"/>
+    <item id="RemoveHair" icon="anim/removehair" text="Remove &amp;Hair..." shortcut="shortcut.removeHair" responder="camera" slot="onActionRemoveHair()"/>
+    <separator/>
+    <item id="RemoveArtInside" icon="anim/removeinside" text="Remove Art &amp;Inside Selection" shortcut="shortcut.removeArtInside" responder="camera" slot="onActionRemoveArtInside()"/>
+    <item id="RemoveArtOutside" icon="anim/removeoutside" text="Remove Art &amp;Outside Selection" shortcut="shortcut.removeArtOutside" responder="camera" slot="onActionRemoveArtOutside()"/>
+   </menu>
    <menu id="DrawingOptimize" text="&amp;Optimize">
     <item id="Flatten"/>
     <item id="Smooth" icon="anim/smooth" text="&amp;Smooth" shortcut="shortcut.smooth" responder="camera" slot="onActionSmooth()"/>

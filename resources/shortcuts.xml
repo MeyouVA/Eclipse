@@ -69,6 +69,10 @@
   <shortcut id="shortcut.convertToPencil" text="Convert Brush Strokes to Pencil Lines" value=""/>
   <shortcut id="shortcut.convertToBrush" text="Convert Pencil Lines to Brush Strokes" value=""/>
   <shortcut id="shortcut.breakApartText" text="Break Apart Text" value=""/>
+  <shortcut id="shortcut.removeDirt" text="Remove Dirt" value="Shift+D"/>
+  <shortcut id="shortcut.removeHair" text="Remove Hair" value=""/>
+  <shortcut id="shortcut.removeArtInside" text="Remove Art Inside Selection" value=""/>
+  <shortcut id="shortcut.removeArtOutside" text="Remove Art Outside Selection" value=""/>
   <shortcut id="shortcut.highlightColour" text="Highlight Selected Colour" value=""/>
   <shortcut id="shortcut.selectCurrentColour" text="Select Strokes with Current Colour" value="Ctrl+Shift+A"/>
   <shortcut id="shortcut.invertSelection" text="Invert Selection" value="Ctrl+Shift+I"/>

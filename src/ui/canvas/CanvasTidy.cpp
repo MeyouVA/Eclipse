@@ -1,13 +1,16 @@
 // Eclipse - the Camera view: tidying what is drawn - smooth, reduce points, flatten, group, colour art from lines.
 #include "ui/canvas/Canvas.h"
 
+#include <QInputDialog>
 #include <QPainterPath>
+#include <QSettings>
 
 #include <cmath>
 #include <numeric>
 
 #include "model/document/Commands.h"
 #include "ui/panels/Effects.h"
+#include "ui/window/MainWindowPrivate.h"
 
 void Canvas::onActionSmooth()
 {
@@ -74,6 +77,138 @@ static void keepNeeded(QVector<StrokePoint> const& points, int first, int last, 
     keep[at] = true;
     keepNeeded(points, first, at, tolerance, keep);
     keepNeeded(points, at, last, tolerance, keep);
+}
+
+// ---- Clean Up ---------------------------------------------------------------------------------
+
+int Canvas::removeDirt(double size)
+{
+    Drawing const* const d = currentDrawing();
+    if (!d)
+        return 0;
+    // Within what is selected, when something is; otherwise the whole of the drawing.
+    bool const some = selecting() && hasSelection();
+    auto small = [size](QRectF const& box) { return std::max(box.width(), box.height()) <= size; };
+    Drawing edited = *d;
+    edited.strokes.clear();
+    edited.fills.clear();
+    for (int i = 0; i < d->strokes.size(); ++i)
+        if (!((!some || m_selStrokes.contains(i)) && small(d->strokes[i].bounds())))
+            edited.strokes.push_back(d->strokes[i]);
+    for (int i = 0; i < d->fills.size(); ++i)
+        if (!((!some || m_selFills.contains(i)) && small(d->fills[i].bounds())))
+            edited.fills.push_back(d->fills[i]);
+    int const gone = int(d->strokes.size() - edited.strokes.size() + d->fills.size() - edited.fills.size());
+    if (gone > 0) {
+        clearSelection();
+        commitDrawing(edited, tr("Remove Dirt"));
+    }
+    return gone;
+}
+
+int Canvas::removeHair(double length)
+{
+    Drawing const* const d = currentDrawing();
+    if (!d)
+        return 0;
+    bool const some = selecting() && hasSelection();
+    Drawing edited = *d;
+    edited.strokes.clear();
+    for (int i = 0; i < d->strokes.size(); ++i) {
+        Stroke const& stroke = d->strokes[i];
+        double along = 0.0;
+        QVector<StrokePoint> const path = stroke.path();
+        for (int k = 1; k < path.size(); ++k)
+            along += QLineF(path[k - 1].pos, path[k].pos).length();
+        if (!((!some || m_selStrokes.contains(i)) && !stroke.closed && along < length))
+            edited.strokes.push_back(stroke);
+    }
+    int const gone = int(d->strokes.size() - edited.strokes.size());
+    if (gone > 0) {
+        clearSelection();
+        commitDrawing(edited, tr("Remove Hair"));
+    }
+    return gone;
+}
+
+void Canvas::onActionRemoveDirt()
+{
+    if (!currentDrawing()) {
+        emit message(tr("There is no drawing on this frame to clean up."));
+        return;
+    }
+    bool ok = false;
+    int const size = QInputDialog::getInt(this, tr("Remove Dirt"), tr("Take out specks no bigger than (pixels):"),
+                                          settings().value(QStringLiteral("tools/dirtSize"), 6).toInt(), 1, 500, 1, &ok);
+    if (!ok)
+        return;
+    settings().setValue(QStringLiteral("tools/dirtSize"), size);
+    emit message(tr("%n speck(s) taken out.", nullptr, removeDirt(size)));
+}
+
+void Canvas::onActionRemoveHair()
+{
+    if (!currentDrawing()) {
+        emit message(tr("There is no drawing on this frame to clean up."));
+        return;
+    }
+    bool ok = false;
+    int const length = QInputDialog::getInt(this, tr("Remove Hair"), tr("Take out lines shorter than (pixels):"),
+                                            settings().value(QStringLiteral("tools/hairLength"), 20).toInt(), 1, 1000, 1, &ok);
+    if (!ok)
+        return;
+    settings().setValue(QStringLiteral("tools/hairLength"), length);
+    emit message(tr("%n short line(s) taken out.", nullptr, removeHair(length)));
+}
+
+void Canvas::onActionRemoveArtInside()
+{
+    Drawing const* const d = currentDrawing();
+    if (!selecting() || !d || !hasSelection()) {
+        emit message(tr("Select the artwork to take out with the Select tool."));
+        return;
+    }
+    Drawing edited = *d;
+    edited.strokes.clear();
+    edited.fills.clear();
+    for (int i = 0; i < d->strokes.size(); ++i)
+        if (!m_selStrokes.contains(i))
+            edited.strokes.push_back(d->strokes[i]);
+    for (int i = 0; i < d->fills.size(); ++i)
+        if (!m_selFills.contains(i))
+            edited.fills.push_back(d->fills[i]);
+    clearSelection();
+    commitDrawing(edited, tr("Remove Art Inside Selection"));
+}
+
+void Canvas::onActionRemoveArtOutside()
+{
+    Drawing const* const d = currentDrawing();
+    if (!selecting() || !d || !hasSelection()) {
+        emit message(tr("Select the artwork to keep with the Select tool."));
+        return;
+    }
+    Drawing edited = *d;
+    edited.strokes.clear();
+    edited.fills.clear();
+    for (int i = 0; i < d->strokes.size(); ++i)
+        if (m_selStrokes.contains(i))
+            edited.strokes.push_back(d->strokes[i]);
+    for (int i = 0; i < d->fills.size(); ++i)
+        if (m_selFills.contains(i))
+            edited.fills.push_back(d->fills[i]);
+    if (edited.strokes.size() == d->strokes.size() && edited.fills.size() == d->fills.size())
+        return;     // there is nothing outside it
+    int const lines = int(edited.strokes.size()), paints = int(edited.fills.size());
+    clearSelection();
+    commitDrawing(edited, tr("Remove Art Outside Selection"));
+    // What was kept is still what is selected: it is all there is now.
+    for (int i = 0; i < lines; ++i)
+        m_selStrokes.push_back(i);
+    for (int i = 0; i < paints; ++i)
+        m_selFills.push_back(i);
+    emit selectionChanged();
+    update();
 }
 
 void Canvas::onActionReducePoints()

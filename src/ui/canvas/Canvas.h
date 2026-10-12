@@ -116,6 +116,11 @@ public:
     void setEraserCuts(bool on) { m_eraserCuts = on; }
     // Draw Behind: what the brush draws goes under the artwork already in the drawing.
     bool drawBehind() const { return m_drawBehind; }
+    // Clean Up.  Specks - lines and painted shapes no bigger than `size` either way - are taken
+    // out of the drawing (of what is selected, when something is); and open lines shorter than
+    // `length`.  Each says how many went.
+    int removeDirt(double size);
+    int removeHair(double length);
     // The dropper looks at every layer, or only at the one being worked on.
     bool dropperAllLayers() const { return m_dropperAllLayers; }
     void setDropperAllLayers(bool on) { m_dropperAllLayers = on; }
@@ -355,6 +360,10 @@ public slots:
     void onActionConvertBrushToPencil();
     void onActionConvertPencilToBrush();
     void onActionBreakApartText();
+    void onActionRemoveDirt();
+    void onActionRemoveHair();
+    void onActionRemoveArtInside();
+    void onActionRemoveArtOutside();
     void onActionHighlightColour(bool on);
 
 signals:

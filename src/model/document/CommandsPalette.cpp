@@ -162,6 +162,19 @@ bool Document::setSwatchPalette(int id, int palette)
     return true;
 }
 
+bool Document::setSwatchProtected(int id, bool on)
+{
+    Swatch const* const found = m_scene.findSwatch(id);
+    if (!found || found->isProtected == on)
+        return false;
+    apply(on ? tr("Protect Colour") : tr("Unprotect Colour"), [&](Scene& s) {
+        for (Swatch& swatch : s.palette)
+            if (swatch.id == id)
+                swatch.isProtected = on;
+    });
+    return true;
+}
+
 void Document::removeSwatch(int id)
 {
     Swatch const* const found = m_scene.findSwatch(id);

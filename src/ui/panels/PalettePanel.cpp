@@ -236,6 +236,15 @@ void PalettePanel::showColourMenu(QPoint const& pos)
     connect(menu.addAction(tr("Edit Gradient...")), &QAction::triggered, this, [this, picked] { editGradient(picked); });
     connect(menu.addAction(tr("New Gradient Colour")), &QAction::triggered, this, [this] { editGradient(addGradientSwatch()); });
     menu.addSeparator();
+    {
+        // Protected: Paint, Repaint and Unpaint leave what has this colour as it is.
+        Swatch const* const swatch = m_document->scene().findSwatch(picked);
+        QAction* const protect = menu.addAction(tr("Protect Colour"));
+        protect->setCheckable(true);
+        protect->setChecked(swatch && swatch->isProtected);
+        connect(protect, &QAction::triggered, this, [this, picked](bool on) { m_document->setSwatchProtected(picked, on); });
+    }
+    menu.addSeparator();
     connect(menu.addAction(tr("Move Up")), &QAction::triggered, this, [this] { moveCurrentSwatch(-1); });
     connect(menu.addAction(tr("Move Down")), &QAction::triggered, this, [this] { moveCurrentSwatch(+1); });
     QMenu* const to = menu.addMenu(tr("Move to Palette"));
@@ -283,6 +292,13 @@ void PalettePanel::rebuild()
             item->setToolTip(swatch.name);
         else
             item->setFlags(item->flags() | Qt::ItemIsEditable);
+        if (swatch.isProtected) {
+            // A protected colour is told apart by its slanted name.
+            QFont slanted = item->font();
+            slanted.setItalic(true);
+            item->setFont(slanted);
+            item->setToolTip(tr("%1 - protected: the paint tools leave it as it is").arg(swatch.name));
+        }
     }
     // Keep the same swatch current; if it is gone, fall back to the first.
     if (!scene.findSwatch(m_current))

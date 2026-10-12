@@ -309,6 +309,8 @@ struct Swatch {
     void setStopsJson(QJsonArray const& array);
     // Which of the palettes of the scene it is in (a place in Scene::paletteNames).
     int palette = 0;
+    // Protected: what is drawn or painted in it is left as it is by the paint tools.
+    bool isProtected = false;
 };
 
 // Something done to the picture of a layer before it goes into the frame.  The effects of
@@ -542,6 +544,8 @@ public:
     // Where the gradient of an area lies: where it was placed, or across the area.
     void gradientLine(Fill const& fill, QPointF& from, QPointF& to) const;
     Swatch const* findSwatch(int id) const;
+    // Whether the paint tools are to leave what has this colour alone.
+    bool protects(int swatch) const;
     int addSwatch(QString const& name, QColor const& color, int inPalette = 0);
 
     int frameCount() const { return m_frameCount; }
