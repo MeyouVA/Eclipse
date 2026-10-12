@@ -149,6 +149,9 @@ void ToolProperties::addPresetRows()
     m_presets->setObjectName(QStringLiteral("Presets"));
     m_presets->setIconSize(QSize(120, 26));
     m_presets->setUniformItemSizes(true);
+    // Room for a handful of them: when the view is too small for that, the view scrolls -
+    // the list is not squeezed down to a row or two.
+    m_presets->setMinimumHeight(150);
     m_form->addRow(m_presetsTitle);
     m_form->addRow(m_presets);
     connect(m_presets, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {

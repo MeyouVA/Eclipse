@@ -213,6 +213,11 @@ QListWidget, QTreeWidget, QAbstractScrollArea {
     background-color: $[base];
     border: 1px solid $[border];
 }
+/* A view of settings that scrolls when its panel is too small: it looks like any other panel. */
+QScrollArea#ViewScroll, QScrollArea#ViewScroll > QWidget {
+    background-color: $[window];
+    border: none;
+}
 QListWidget::item:selected, QTreeWidget::item:selected {
     background-color: $[accentSoft];
     color: white;

@@ -1,6 +1,8 @@
 // Eclipse - what the parts of the main window (MainWindow*.cpp) have in common and nobody else needs.
 #pragma once
 
+#include <QFrame>
+#include <QScrollArea>
 #include <QSettings>
 #include <QString>
 
@@ -13,4 +15,16 @@ inline int const kLayoutVersion = 8;
 inline QSettings settings()
 {
     return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+}
+
+// A view made of settings, put where it can be scrolled: when its panel is too small for
+// all of it, a scroll bar shows instead of the bottom (or the side) being cut off.
+inline QWidget* scrollingView(QWidget* view)
+{
+    QScrollArea* const area = new QScrollArea(view->parentWidget());
+    area->setObjectName(QStringLiteral("ViewScroll"));
+    area->setFrameShape(QFrame::NoFrame);
+    area->setWidgetResizable(true);     // it still fills the panel when there is room
+    area->setWidget(view);
+    return area;
 }

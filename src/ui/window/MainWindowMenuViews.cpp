@@ -57,7 +57,7 @@ void MainWindow::createWindowsMenuViews()
     {
         GuidesView* const view = new GuidesView(m_document, m_canvas, this);
         view->setObjectName(QStringLiteral("GuidesView"));
-        addView(tr("Guides"), QStringLiteral("GuidesDock"), view, Qt::RightDockWidgetArea)->hide();
+        addView(tr("Guides"), QStringLiteral("GuidesDock"), scrollingView(view), Qt::RightDockWidgetArea)->hide();
     }
     // Coord. and Control Points: the keyframes of the current layer as numbers.
     {
@@ -86,7 +86,7 @@ void MainWindow::createWindowsMenuViews()
     {
         PreviewManagerView* const view = new PreviewManagerView(m_document, m_canvas, this);
         view->setObjectName(QStringLiteral("PreviewManagerView"));
-        addView(tr("Preview Manager"), QStringLiteral("PreviewManagerDock"), view, Qt::RightDockWidgetArea)->hide();
+        addView(tr("Preview Manager"), QStringLiteral("PreviewManagerDock"), scrollingView(view), Qt::RightDockWidgetArea)->hide();
     }
     // Lip-Sync: the sound frame by frame with the shape of the mouth on each, and the chart of shapes.
     {

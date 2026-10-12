@@ -113,10 +113,10 @@ void MainWindow::createViews()
     ToolProperties* const properties = new ToolProperties(m_document, m_canvas, m_actions, m_envelopePoints, this);
     connect(properties, &ToolProperties::envelopePointsChanged, this, [this](int count) { m_envelopePoints = count; });
     m_refreshToolProperties = [properties] { properties->refresh(); };
-    addView(tr("Tool Properties"), QStringLiteral("ToolPropertiesDock"), properties, Qt::RightDockWidgetArea);
+    addView(tr("Tool Properties"), QStringLiteral("ToolPropertiesDock"), scrollingView(properties), Qt::RightDockWidgetArea);
 
     m_layerPanel = new LayerPanel(m_document, this);
-    addView(tr("Layer Properties"), QStringLiteral("LayerPropertiesDock"), m_layerPanel, Qt::RightDockWidgetArea);
+    addView(tr("Layer Properties"), QStringLiteral("LayerPropertiesDock"), scrollingView(m_layerPanel), Qt::RightDockWidgetArea);
 
     m_substitution = new SubstitutionPanel(m_document, this);
     addView(tr("Drawing Substitution"), QStringLiteral("DrawingSubstitutionDock"), m_substitution, Qt::RightDockWidgetArea);
@@ -129,7 +129,7 @@ void MainWindow::createViews()
 
     // ---- views that are not in the usual arrangement: opened from the Windows menu ----
     createWindowsMenuViews();
-    addView(tr("Onion Skin"), QStringLiteral("OnionSkinDock"), createOnionSkinView(), Qt::RightDockWidgetArea)->hide();
+    addView(tr("Onion Skin"), QStringLiteral("OnionSkinDock"), scrollingView(createOnionSkinView()), Qt::RightDockWidgetArea)->hide();
 
     // Library: templates kept in folders, put into the scene by a double click or by dragging.
     m_library = new LibraryView(this);
