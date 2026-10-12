@@ -1,4 +1,5 @@
 #include "ui/panels/SubstitutionPanel.h"
+#include <algorithm>
 
 #include <QListWidget>
 #include <QPainter>
@@ -46,8 +47,13 @@ SubstitutionPanel::SubstitutionPanel(Document* document, QWidget* parent) : QWid
     layout->addWidget(m_list);
 
     connect(m_list, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
-        if (!m_rebuilding)
-            m_document->substituteDrawing(m_layer, m_frame, item->data(Qt::UserRole).toInt());
+        if (m_rebuilding)
+            return;
+        int const drawing = item->data(Qt::UserRole).toInt();
+        if (drawing >= 0)
+            m_document->substituteDrawing(m_layer, m_frame, drawing);
+        else
+            m_document->clearCell(m_layer, m_frame);    // No Exposure: nothing is shown on the frame
     });
     connect(m_document, &Document::changed, this, &SubstitutionPanel::rebuild);
     rebuild();
@@ -55,7 +61,24 @@ SubstitutionPanel::SubstitutionPanel(Document* document, QWidget* parent) : QWid
 
 int SubstitutionPanel::count() const
 {
-    return m_list->count();
+    return std::max(0, m_list->count() - 1);    // the first tile is No Exposure
+}
+
+// A dark tile with a cross: the frame shows no drawing.
+static QIcon noExposureIcon()
+{
+    QPixmap pixmap(kThumbWidth, kThumbHeight);
+    pixmap.fill(QColor(14, 14, 14));
+    QPainter p(&pixmap);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(QPen(QColor(150, 150, 150), 1.5));
+    double const m = std::min(kThumbWidth, kThumbHeight) * 0.22;
+    p.drawLine(QPointF(kThumbWidth / 2.0 - m, kThumbHeight / 2.0 - m), QPointF(kThumbWidth / 2.0 + m, kThumbHeight / 2.0 + m));
+    p.drawLine(QPointF(kThumbWidth / 2.0 + m, kThumbHeight / 2.0 - m), QPointF(kThumbWidth / 2.0 - m, kThumbHeight / 2.0 + m));
+    QIcon icon;
+    icon.addPixmap(pixmap, QIcon::Normal);
+    icon.addPixmap(pixmap, QIcon::Selected);
+    return icon;
 }
 
 void SubstitutionPanel::setCurrentCell(int layer, int frame)
@@ -71,7 +94,7 @@ void SubstitutionPanel::setCurrentCell(int layer, int frame)
     Scene const& scene = m_document->scene();
     int const shown = m_layer >= 0 && m_layer < scene.layers.size() ? scene.layers[m_layer].drawingAt(m_frame) : Layer::kNoDrawing;
     m_rebuilding = true;
-    m_list->setCurrentRow(shown);  // -1 clears
+    m_list->setCurrentRow(shown + 1);  // the first tile is No Exposure: an empty frame picks it
     m_rebuilding = false;
 }
 
@@ -82,11 +105,13 @@ void SubstitutionPanel::rebuild()
     m_list->clear();
     if (m_layer >= 0 && m_layer < scene.layers.size()) {
         Layer const& layer = scene.layers[m_layer];
+        QListWidgetItem* const none = new QListWidgetItem(noExposureIcon(), tr("No Exposure"), m_list);
+        none->setData(Qt::UserRole, -1);
         for (int i = 0; i < layer.drawings.size(); ++i) {
             QListWidgetItem* const item = new QListWidgetItem(thumbnail(scene, layer.drawings[i]), QString::number(i + 1), m_list);
             item->setData(Qt::UserRole, i);
         }
-        m_list->setCurrentRow(layer.drawingAt(m_frame));
+        m_list->setCurrentRow(layer.drawingAt(m_frame) + 1);
     }
     m_rebuilding = false;
 }

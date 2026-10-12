@@ -23,6 +23,9 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "ui/canvas/Canvas.h"
+#include "actions/manager/ActionManager.h"
+#include <QAction>
+#include <QToolButton>
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
 #include "ui/panels/PalettePanel.h"
@@ -81,6 +84,17 @@ void MainWindow::applyPreferences()
 {
     QSettings const s = preferences();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
+    // A drawing has four sheets; two of them - overlay and underlay - are out of the way
+    // unless they are asked for.
+    bool const moreArt = s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool();
+    for (char const* id : {"SetOverlayArt", "SetUnderlayArt"}) {
+        if (QAction* const a = m_actions->action(QLatin1String(id)))
+            a->setVisible(moreArt);
+        if (QToolButton* const b = findChild<QToolButton*>(QStringLiteral("Art") + QLatin1String(id)))
+            b->setVisible(moreArt);
+    }
+    if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
+        m_canvas->setArt(Canvas::LineArt);
     m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
     m_autoSave.stop();
     if (m_autoSaveMinutes > 0)
@@ -113,18 +127,28 @@ void MainWindow::onActionPreferences()
     QFormLayout* const cameraLayout = new QFormLayout(camera);
     cameraLayout->addRow(tr("The Select tool starts with"), selectMode);
 
+    QGroupBox* const advanced = new QGroupBox(tr("Advanced"), &dialog);
+    QCheckBox* const moreArt = new QCheckBox(tr("Support Overlay and Underlay Arts"), advanced);
+    moreArt->setObjectName(QStringLiteral("PrefOverlayUnderlay"));
+    moreArt->setToolTip(tr("Two more sheets in every drawing: an overlay over the line art and an underlay beneath the colour art."));
+    moreArt->setChecked(s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool());
+    QFormLayout* const advancedLayout = new QFormLayout(advanced);
+    advancedLayout->addRow(moreArt);
+
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addWidget(general);
     layout->addWidget(camera);
+    layout->addWidget(advanced);
     layout->addWidget(buttons);
     if (dialog.exec() != QDialog::Accepted)
         return;
     s.setValue(QStringLiteral("welcome/hide"), !welcome->isChecked());
     s.setValue(QStringLiteral("prefs/autosaveMinutes"), autoSave->value());
     s.setValue(QStringLiteral("prefs/lasso"), selectMode->currentIndex() == 0);
+    s.setValue(QStringLiteral("prefs/overlayUnderlay"), moreArt->isChecked());
     s.sync();
     applyPreferences();
 }

@@ -1,5 +1,13 @@
 // Eclipse - the main window: the layer commands - add, delete, lock, colour, rename, move, attach.
 #include "ui/window/MainWindow.h"
+#include <QCheckBox>
+#include <QDialog>
+#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QVBoxLayout>
 
 #include <QColorDialog>
 #include <QInputDialog>
@@ -25,10 +33,81 @@
 #include "ui/window/MainWindowPrivate.h"
 #include <QStatusBar>
 
+int MainWindow::addDrawingLayer(QString const& name, bool wholeScene)
+{
+    m_document->beginMacro(tr("Add Drawing Layer"));
+    int const at = m_document->addLayer(layer());
+    QString const wanted = name.trimmed();
+    if (!wanted.isEmpty() && wanted != m_document->scene().layers[at].name)
+        m_document->renameLayer(at, wanted);
+    if (wholeScene) {
+        m_document->newDrawing(at, 0);
+        m_document->setExposure(at, 0, m_document->scene().frameCount());
+    }
+    m_document->endMacro();
+    m_timeline->setCurrentCell(at, frame());
+    return at;
+}
+
 void MainWindow::onActionAddDrawingLayer()
 {
-    int const at = m_document->addLayer(layer());
-    m_timeline->setCurrentCell(at, frame());
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("AddDrawingLayer"));
+    dialog.setWindowTitle(tr("Add Drawing Layer"));
+    QLineEdit* const name = new QLineEdit(tr("Drawing"), &dialog);
+    name->setObjectName(QStringLiteral("LayerName"));
+    name->selectAll();
+    // What each sheet of its drawings is made of.  Eclipse draws in vectors.
+    auto kinds = [&dialog, this](char const* objectName) {
+        QWidget* const row = new QWidget(&dialog);
+        row->setObjectName(QLatin1String(objectName));
+        QRadioButton* const vector = new QRadioButton(tr("Vector"), row);
+        QRadioButton* const bitmap = new QRadioButton(tr("Bitmap"), row);
+        vector->setChecked(true);
+        bitmap->setEnabled(false);
+        bitmap->setToolTip(tr("Eclipse draws in vectors; pictures are brought in with File > Import."));
+        QHBoxLayout* const across = new QHBoxLayout(row);
+        across->setContentsMargins(0, 0, 0, 0);
+        across->addWidget(vector);
+        across->addWidget(bitmap);
+        across->addStretch(1);
+        return row;
+    };
+    QCheckBox* const wholeScene = new QCheckBox(tr("Extend Exposure for Scene Duration"), &dialog);
+    wholeScene->setObjectName(QStringLiteral("LayerWholeScene"));
+    wholeScene->setToolTip(tr("The layer starts with an empty drawing held from the first frame to the last."));
+    QFormLayout* const form = new QFormLayout;
+    form->addRow(tr("Name:"), name);
+    form->addRow(tr("Line Art"), kinds("LayerLineArt"));
+    form->addRow(tr("Colour Art"), kinds("LayerColourArt"));
+    form->addRow(wholeScene);
+    QPushButton* const addAndClose = new QPushButton(tr("Add and Close"), &dialog);
+    addAndClose->setObjectName(QStringLiteral("LayerAddAndClose"));
+    addAndClose->setDefault(true);
+    QPushButton* const add = new QPushButton(tr("Add"), &dialog);
+    add->setObjectName(QStringLiteral("LayerAdd"));
+    QPushButton* const close = new QPushButton(tr("Close"), &dialog);
+    close->setObjectName(QStringLiteral("LayerClose"));
+    QHBoxLayout* const buttons = new QHBoxLayout;
+    buttons->addStretch(1);
+    buttons->addWidget(addAndClose);
+    buttons->addWidget(add);
+    buttons->addWidget(close);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addLayout(form);
+    layout->addLayout(buttons);
+    auto addOne = [this, name, wholeScene] {
+        addDrawingLayer(name->text(), wholeScene->isChecked());
+        name->setFocus();
+        name->selectAll();
+    };
+    connect(add, &QPushButton::clicked, &dialog, addOne);
+    connect(addAndClose, &QPushButton::clicked, &dialog, [&dialog, addOne] {
+        addOne();
+        dialog.accept();
+    });
+    connect(close, &QPushButton::clicked, &dialog, &QDialog::reject);
+    dialog.exec();
 }
 
 void MainWindow::onActionAddPeg()

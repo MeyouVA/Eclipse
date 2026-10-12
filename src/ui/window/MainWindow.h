@@ -100,6 +100,9 @@ public:
     // Takes up what Edit > Preferences keeps: how the Select tool takes things, how often
     // the scene is saved by itself (0: never).
     void applyPreferences();
+    // A drawing layer over the current one, called `name` (when that is not empty); with
+    // `wholeScene`, an empty drawing in it held from the first frame to the last.  Its place.
+    int addDrawingLayer(QString const& name, bool wholeScene);
     int autoSaveMinutes() const { return m_autoSaveMinutes; }
     // Pictures to look at while drawing, shown in the Reference view (which comes up).
     // Returns how many could be read.
