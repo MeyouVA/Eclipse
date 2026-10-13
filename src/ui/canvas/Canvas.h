@@ -613,6 +613,10 @@ private:
     QVector<QPointF> warpRestDragged() const;
     void paintWarp(QPainter& painter, QVector<QPointF> const& points, bool closed, int picked);
     void ikDown(QPointF widgetPos);
+    // The IK tool on rigid bones: the bone in hand and those it hangs on turn so that its tip follows the pointer.
+    void boneIkMove(QPointF widgetPos);
+    QVector<int> m_ikChain;     // the bone taken hold of, then the bones it hangs on, nearest first
+    bool m_ikBegun = false;     // whether anything has been turned yet in this drag
     void paintBones(QPainter& painter, QVector<QPointF> const& joints, int picked);
     // What the transform tool acts on - the current layer and all that hangs under it - as
     // a rectangle in the coordinates of the current layer.
@@ -714,7 +718,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke

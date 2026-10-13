@@ -144,6 +144,15 @@ void Canvas::penUp()
         update();
         return;
     }
+    if (drag == DragBoneIK) {
+        m_drag = DragNone;
+        if (m_ikBegun)
+            m_document->endMacro();
+        m_ikBegun = false;
+        m_ikChain.clear();
+        update();
+        return;
+    }
     if (drag == DragErase && m_eraserCuts) {
         m_drag = DragNone;
         cutWithEraser();

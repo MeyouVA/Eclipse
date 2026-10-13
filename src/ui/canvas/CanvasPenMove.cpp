@@ -149,6 +149,9 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     }
+    case DragBoneIK:
+        boneIkMove(widgetPos);
+        break;
     case DragIK:
         // From the angles it has now, so that the arm keeps bending the way it bends.
         m_dragPose.bend = Deform::solveIK(m_document->scene().layers[m_layer].bones, m_dragPose.bend, m_bone,

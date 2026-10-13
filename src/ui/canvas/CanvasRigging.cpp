@@ -489,9 +489,80 @@ void Canvas::paintBones(QPainter& painter, QVector<QPointF> const& joints, int p
 // Inverse kinematics tool: drag a joint and the bones before it turn so that it follows.
 // Pressed on a layer that rides on a bone of its parent (a hand), it takes hold of the end
 // of that bone instead, so that the hand can be pulled and the arm comes along.
+void Canvas::boneIkMove(QPointF widgetPos)
+{
+    Scene const& now = m_document->scene();
+    if (m_ikChain.isEmpty())
+        return;
+    for (int l : std::as_const(m_ikChain))
+        if (l < 0 || l >= now.layers.size() || now.layers[l].kind != Layer::Bone)
+            return;
+    // Worked out on a copy of the scene: each bone in turn, from the one in hand up to the first of the
+    // chain, is turned about where it hangs so that the tip comes nearer the pointer; and round again.
+    Scene posed = now;
+    QPointF const target = toScene(widgetPos);
+    int const grabbed = m_ikChain.first();
+    auto tip = [&] {
+        Layer const& bone = posed.layers[grabbed];
+        return posed.worldTransform(grabbed, m_frame).map(bone.pivot + QPointF(bone.boneLength, 0.0));
+    };
+    for (int round = 0; round < 24 && QLineF(tip(), target).length() > 0.2; ++round) {
+        for (int l : std::as_const(m_ikChain)) {
+            Layer& bone = posed.layers[l];
+            QPointF const base = posed.worldTransform(l, m_frame).map(bone.pivot);
+            QPointF const end = tip();
+            double turn = (std::atan2(target.y() - base.y(), target.x() - base.x()) - std::atan2(end.y() - base.y(), end.x() - base.x())) * 180.0 / 3.14159265358979323846;
+            while (turn > 180.0)
+                turn -= 360.0;
+            while (turn < -180.0)
+                turn += 360.0;
+            if (std::abs(turn) < 1e-4)
+                continue;
+            Pose const was = bone.poseAt(m_frame);
+            Pose keep = was;
+            double best = QLineF(end, target).length();
+            // (Whichever way round brings it nearer: a chain that was flipped turns the other way.)
+            for (double const way : {1.0, -1.0}) {
+                Pose tried = was;
+                tried.rotation = was.rotation + way * turn;
+                bone.setKey(m_frame, tried);
+                double const off = QLineF(tip(), target).length();
+                if (off < best - 1e-9) {
+                    best = off;
+                    keep = tried;
+                }
+            }
+            bone.setKey(m_frame, keep);
+        }
+    }
+    // What changed goes to the scene as it is dragged, all of it one step when the pen lifts.
+    m_committing = true;
+    for (int l : std::as_const(m_ikChain)) {
+        Pose const pose = posed.layers[l].poseAt(m_frame);
+        if (pose == m_document->scene().layers[l].poseAt(m_frame))
+            continue;
+        if (!m_ikBegun) {
+            m_ikBegun = true;
+            m_document->beginMacro(tr("Inverse Kinematics"));
+        }
+        m_document->setKeyframe(l, m_frame, pose, tr("Inverse Kinematics"));
+    }
+    m_committing = false;
+    update();
+}
+
 void Canvas::ikDown(QPointF widgetPos)
 {
     Scene const& scene = m_document->scene();
+    if (scene.layers[m_layer].kind == Layer::Bone) {
+        // A rigid bone: it and the bones it hangs on.
+        m_ikChain = {m_layer};
+        for (int guard = 0, l = scene.parentIndex(m_layer); l >= 0 && guard < 64 && scene.layers[l].kind == Layer::Bone; ++guard, l = scene.parentIndex(l))
+            m_ikChain.push_back(l);
+        m_ikBegun = false;
+        m_drag = DragBoneIK;
+        return;
+    }
     int grabbed = -1;
     if (scene.layers[m_layer].bones.size() < 2) {
         int const parent = scene.parentIndex(m_layer);
