@@ -676,6 +676,19 @@
   <menu id="XsheetDrawings" text="Drawings">
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>
+   <item id="DeleteDrawing"/>
+   <separator/>
+   <item id="RenameDrawing"/>
+   <item id="RenameWithPrefix"/>
+   <item id="RenameByFrame"/>
+   <separator/>
+   <item id="MarkKey"/>
+   <item id="MarkBreakdown"/>
+   <item id="MarkInBetween"/>
+   <item id="MarkNone"/>
+   <separator/>
+   <item id="SubstitutePrevious"/>
+   <item id="SubstituteNext"/>
   </menu>
   <menu id="XsheetExposure" text="Exposure">
    <item id="ExtendExposure"/>

@@ -60,7 +60,10 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
             break;
         }
         QTransform const parent = parentSeen().inverted();
-        QPointF const d = parent.map(toScene(widgetPos)) - parent.map(m_dragStartScene);
+        QPointF d = parent.map(toScene(widgetPos)) - parent.map(m_dragStartScene);
+        // With Shift the layer keeps level or upright: only the greater of across and down counts.
+        if (modifiers & Qt::ShiftModifier)
+            d = std::abs(d.x()) >= std::abs(d.y()) ? QPointF(d.x(), 0.0) : QPointF(0.0, d.y());
         m_dragPose = m_poseStart;
         m_dragPose.x += d.x();
         m_dragPose.y += d.y();
@@ -224,6 +227,13 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     case DragDraw: {
         if (m_tool == Pencil)
             pressure = 1.0f;
+        // With Shift the line is a straight one, from where the pen went down to where it is.
+        if ((modifiers & Qt::ShiftModifier) && (m_tool == Brush || m_tool == Pencil) && !m_stroke.points.isEmpty()) {
+            m_stroke.points.resize(1);
+            m_stroke.points.push_back({p, m_stroke.points.first().pressure});
+            update();
+            break;
+        }
         // Skip samples that did not move: they add weight to the file and nothing to the line.
         QPointF const d = p - m_stroke.points.last().pos;
         if (std::hypot(d.x(), d.y()) * m_zoom >= 1.0) {
@@ -309,7 +319,11 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     case DragMove: {
-        QPointF const by = aligned(p - m_dragStart);
+        // With Shift it keeps level or upright: only the greater of across and down counts.
+        QPointF pulled = p - m_dragStart;
+        if (modifiers & Qt::ShiftModifier)
+            pulled = std::abs(pulled.x()) >= std::abs(pulled.y()) ? QPointF(pulled.x(), 0.0) : QPointF(0.0, pulled.y());
+        QPointF const by = aligned(pulled);
         m_dragTransform = QTransform::fromTranslate(by.x(), by.y());
         update();
         break;

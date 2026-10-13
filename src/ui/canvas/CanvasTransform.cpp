@@ -323,7 +323,8 @@ void Canvas::updateShape(QPointF p, Qt::KeyboardModifiers modifiers)
         double const side = std::max(std::abs(p.x() - a.x()), std::abs(p.y() - a.y()));
         p = a + QPointF(p.x() < a.x() ? -side : side, p.y() < a.y() ? -side : side);
     }
-    QRectF const r = QRectF(a, p).normalized();
+    // With Alt it is drawn out from its middle: where the pen went down is the centre of it.
+    QRectF const r = (modifiers & Qt::AltModifier ? QRectF(a - (p - a), p) : QRectF(a, p)).normalized();
     m_stroke.closed = true;
     if (m_tool == Rectangle) {
         m_stroke.points = {{r.topLeft(), 1.0f}, {r.topRight(), 1.0f}, {r.bottomRight(), 1.0f}, {r.bottomLeft(), 1.0f}};
