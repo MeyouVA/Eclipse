@@ -72,6 +72,8 @@
     <item id="EditSymbol" icon="edit/symboledit" text="&amp;Edit Symbol" shortcut="shortcut.editSymbol" responder="window" slot="onActionEditSymbol()"/>
     <item id="LeaveSymbol" icon="edit/symbolleave" text="&amp;Leave Symbol" shortcut="shortcut.leaveSymbol" responder="window" slot="onActionLeaveSymbol()"/>
     <separator/>
+    <item id="AddSyncedLayer" icon="timeline/addsynced" text="Add S&amp;ynced Drawing Layer" responder="window" slot="onActionAddSyncedLayer()"/>
+    <item id="SyncLayerWith" icon="timeline/syncwith" text="Sync Layer &amp;With..." responder="window" slot="onActionSyncLayerWith()"/>
     <item id="CloneLayer" icon="edit/symbolduplicate" text="Clo&amp;ne Layer" responder="window" slot="onActionCloneLayer()"/>
     <item id="DuplicateSymbol" icon="edit/symbolduplicate" text="&amp;Duplicate Symbol" responder="window" slot="onActionDuplicateSymbol()"/>
     <item id="ExpandSymbol" icon="edit/symbolexpand" text="E&amp;xpand Symbol" responder="window" slot="onActionExpandSymbol()"/>

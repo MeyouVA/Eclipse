@@ -340,6 +340,56 @@ void MainWindow::onActionLeaveSymbol()
     updateActionStates();
 }
 
+void MainWindow::onActionAddSyncedLayer()
+{
+    int const at = m_document->addSyncedLayer(layer());
+    if (at < 0) {
+        statusBar()->showMessage(tr("Select a drawing layer to add a synced layer to."), 5000);
+        return;
+    }
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, frame());
+    updateActionStates();
+    statusBar()->showMessage(tr("The two layers keep the same timing: change the exposure of one and the other follows, each with drawings of its own."), 8000);
+}
+
+void MainWindow::onActionSyncLayerWith()
+{
+    Scene const& scene = m_document->scene();
+    int const current = layer();
+    if (current < 0 || current >= scene.layers.size() || !scene.layers[current].holdsDrawings() || scene.layers[current].showsSymbol()) {
+        statusBar()->showMessage(tr("Select a drawing layer to sync."), 5000);
+        return;
+    }
+    // The drawing layers it could keep time with; and, when it is synced, the way out.
+    QStringList names;
+    QVector<int> which;
+    if (scene.layers[current].syncGroup != 0) {
+        names << tr("(none - remove the sync)");
+        which << -1;
+    }
+    int now = 0;
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        if (l == current || !scene.layers[l].holdsDrawings() || scene.layers[l].showsSymbol())
+            continue;
+        if (scene.layers[l].syncGroup != 0 && scene.layers[l].syncGroup == scene.layers[current].syncGroup)
+            now = int(names.size());
+        names << scene.layers[l].name;
+        which << l;
+    }
+    if (which.isEmpty()) {
+        statusBar()->showMessage(tr("There is no other drawing layer to sync with."), 5000);
+        return;
+    }
+    bool ok = false;
+    QString const picked = QInputDialog::getItem(this, tr("Sync Layer With"), tr("Keep the timing of \"%1\" the same as that of:").arg(scene.layers[current].name),
+                                                 names, now, false, &ok);
+    if (!ok || names.indexOf(picked) < 0)
+        return;
+    m_document->syncLayerWith(current, which[names.indexOf(picked)]);
+    updateActionStates();
+}
+
 void MainWindow::onActionCloneLayer()
 {
     int const at = m_document->cloneLayer(layer());

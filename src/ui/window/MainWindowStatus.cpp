@@ -53,6 +53,8 @@ void MainWindow::updateActionStates()
     set("DuplicateSymbol", current.showsSymbol());
     set("LeaveSymbol", m_document->insideSymbol());
     set("CloneLayer", current.holdsDrawings());
+    set("AddSyncedLayer", current.holdsDrawings() && !current.showsSymbol());
+    set("SyncLayerWith", current.holdsDrawings() && !current.showsSymbol());
     set("InsertSymbol", !scene.symbols.isEmpty());
     // Keyframes.
     bool const keyHere = current.keyIndex(f) >= 0;

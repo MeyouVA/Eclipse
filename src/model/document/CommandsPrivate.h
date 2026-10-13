@@ -26,6 +26,8 @@ template <class Edit> void Document::apply(QString const& text, Edit edit)
 {
     Scene after = m_scene;
     edit(after);
+    // (Synced layers keep the same timing.)
+    after.followSyncedTiming(m_scene);
     // (Key exposures that mark nothing any more - their drawing gone or changed - are not kept.)
     for (Layer& layer : after.layers)
         layer.tidyKeyExposures();

@@ -527,6 +527,9 @@ struct Layer {
     // each frame shows.  Its drawings are made for it - one for each frame of the symbol, all that the symbol
     // shows there in one - and are not to be drawn on: the symbol itself is what is painted.
     int symbolId = 0;
+    // Synced layers: drawing layers of the same number here (0: none) keep the same timing - where one starts a
+    // drawing, holds it or shows nothing, so do the others, each with drawings of its own.
+    int syncGroup = 0;
     bool showsSymbol() const { return symbolId != 0; }
     // Frames of the layer marked with a colour in the Timeline (a note to oneself: "redo", "hold" ...).
     QMap<int, QColor> frameMarks;
@@ -773,6 +776,14 @@ public:
     Drawing symbolPicture(int symbolId, int frame, int depth = 0) const;
     // Gives the layers that show a symbol (this one, or - 0 - any) their drawings anew.
     void refreshSymbolInstances(int symbolId = 0);
+    // Synced layers.  Gives layer `to` the timing of layer `from` (its drawings stay its own; where the timing
+    // asks for one it has not got, it gets an empty one).
+    void copyTiming(int from, int to);
+    // After a change: the synced layers whose timing was not touched take that of the one whose timing was.
+    void followSyncedTiming(Scene const& before);
+    // A new drawing layer over `layer`, synced with it; and a layer synced with another (-1: with none any more).
+    int addSyncedLayer(int layer);
+    void syncLayerWith(int layer, int other);
     // Makes a symbol of these layers and everything attached to them; one layer shows it in their place.
     // Returns where that layer is, or -1.
     int makeSymbol(QVector<int> const& layers, QString const& name);

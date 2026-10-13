@@ -238,6 +238,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         for (QJsonValue const& kv : lo["keyExposures"].toArray())
             layer.keyExposures.push_back(kv.toInt());
         layer.symbolId = lo["symbol"].toInt(0);
+        layer.syncGroup = std::max(0, lo["sync"].toInt(0));
         layer.ikExcluded = lo["ikExcluded"].toBool(false);
         if (QJsonArray const limits = lo["ikLimits"].toArray(); limits.size() == 2) {
             layer.ikLimited = true;

@@ -242,6 +242,10 @@ public:
     int addQuadmap(int above);
     void setCardColor(int layer, QColor const& color);
     void setBoneLength(int layer, double length);
+    // Synced layers: a new drawing layer with the timing of `layer`, kept the same from then on; and a layer
+    // synced with another (-1: with none any more).
+    int addSyncedLayer(int layer);
+    void syncLayerWith(int layer, int other);
     // IK constraints of a bone: left out of IK; and whether it is turned only between two angles, and which.
     void setIkConstraints(int layer, bool excluded, bool limited, double minimum, double maximum);
     // The four corners of a quadmap: top left, top right, bottom right, bottom left.

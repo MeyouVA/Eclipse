@@ -412,6 +412,24 @@ bool Document::duplicateSymbol(int layer)
     return true;
 }
 
+int Document::addSyncedLayer(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())
+        return -1;
+    int at = -1;
+    apply(tr("Add Synced Drawing Layer"), [&](Scene& s) { at = s.addSyncedLayer(layer); });
+    return at;
+}
+
+void Document::syncLayerWith(int layer, int other)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())
+        return;
+    if (other < 0 && m_scene.layers[layer].syncGroup == 0)
+        return;
+    apply(other < 0 ? tr("Remove Sync") : tr("Sync Layer"), [&](Scene& s) { s.syncLayerWith(layer, other); });
+}
+
 int Document::cloneLayer(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings())

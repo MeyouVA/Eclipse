@@ -362,3 +362,96 @@ int Scene::cloneLayer(int layer)
     layers.insert(layer + 1, twin);
     return layer + 1;
 }
+
+void Scene::copyTiming(int from, int to)
+{
+    if (from < 0 || from >= layers.size() || to < 0 || to >= layers.size() || from == to)
+        return;
+    Layer const& source = layers[from];
+    Layer& target = layers[to];
+    // Each drawing of the one stands for a drawing of the other: the one that was shown where it first
+    // appears, when that is not spoken for already - else a new, empty one.
+    QHash<int, int> standsFor;
+    QVector<int> spoken;
+    QVector<int> cells(target.cells.size(), Layer::kNoDrawing);
+    for (int frame = 0; frame < cells.size() && frame < source.cells.size(); ++frame) {
+        int const shown = source.cells[frame];
+        if (shown == Layer::kNoDrawing)
+            continue;
+        auto found = standsFor.constFind(shown);
+        if (found == standsFor.constEnd()) {
+            int own = target.cells[frame];
+            if (own == Layer::kNoDrawing || spoken.contains(own)) {
+                own = int(target.drawings.size());
+                target.drawings.push_back(Drawing());
+            }
+            spoken.push_back(own);
+            found = standsFor.insert(shown, own);
+        }
+        cells[frame] = *found;
+    }
+    target.cells = cells;
+}
+
+void Scene::followSyncedTiming(Scene const& before)
+{
+    // The layer of each group whose timing this change touched (the first, should there be several).
+    QHash<int, int> touched;
+    QVector<bool> same(layers.size(), false);
+    for (int l = 0; l < layers.size(); ++l) {
+        if (layers[l].syncGroup == 0)
+            continue;
+        int const was = before.layerIndex(layers[l].id);
+        // (A layer new to its group counts as untouched: it is the one that follows.)
+        bool const changed = was >= 0 && before.layers[was].syncGroup == layers[l].syncGroup && before.layers[was].cells != layers[l].cells;
+        same[l] = !changed;
+        if (changed && !touched.contains(layers[l].syncGroup))
+            touched.insert(layers[l].syncGroup, l);
+    }
+    for (int l = 0; l < layers.size(); ++l) {
+        if (layers[l].syncGroup == 0 || !same[l])
+            continue;
+        auto leader = touched.constFind(layers[l].syncGroup);
+        if (leader != touched.constEnd() && layers[*leader].cells.size() == layers[l].cells.size())
+            copyTiming(*leader, l);
+    }
+}
+
+void Scene::syncLayerWith(int layer, int other)
+{
+    if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())
+        return;
+    if (other < 0 || other >= layers.size() || other == layer || !layers[other].holdsDrawings() || layers[other].showsSymbol()) {
+        layers[layer].syncGroup = 0;
+    } else {
+        if (layers[other].syncGroup == 0) {
+            int next = 1;
+            for (Layer const& l : std::as_const(layers))
+                next = std::max(next, l.syncGroup + 1);
+            layers[other].syncGroup = next;
+        }
+        layers[layer].syncGroup = layers[other].syncGroup;
+        copyTiming(other, layer);
+    }
+    // A layer left alone in its group is synced with nothing.
+    QHash<int, int> members;
+    for (Layer const& l : std::as_const(layers))
+        if (l.syncGroup != 0)
+            ++members[l.syncGroup];
+    for (Layer& l : layers)
+        if (l.syncGroup != 0 && members.value(l.syncGroup) < 2)
+            l.syncGroup = 0;
+}
+
+int Scene::addSyncedLayer(int layer)
+{
+    if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())
+        return -1;
+    int const id = layers[layer].id, parent = layers[layer].parent;
+    int const at = addLayer(layers[layer].name + QStringLiteral(" Sync"), layer + 1);
+    int const from = layerIndex(id);
+    layers[at].parent = parent;
+    layers[at].parentBone = layers[from].parentBone;
+    syncLayerWith(at, from);
+    return at;
+}
