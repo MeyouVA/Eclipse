@@ -192,6 +192,22 @@ public:
     int createSymbol(QVector<int> const& layers, QString const& name);
     int insertSymbol(int symbolId, int above);
     int expandSymbol(int layer);
+    // A new symbol with one empty drawing layer, and a layer above `above` that shows it.  Returns that layer.
+    int insertEmptySymbol(QString const& name, int above);
+    // The layer gets a symbol of its own: a copy of the one it shows.
+    bool duplicateSymbol(int layer);
+    // Working inside a symbol: its layers become the scene that is worked on (with a list of things to undo of
+    // its own), until it is left again - and every layer that shows the symbol shows what was done.
+    bool enterSymbol(int symbolId);
+    bool leaveSymbol();
+    bool insideSymbol() const { return !m_around.isEmpty(); }
+    // The symbols gone into, the outermost first, by name.
+    QStringList symbolTrail() const;
+    // The scene as it is to be saved: the outermost one, with what is being worked on inside symbols put back.
+    Scene wholeScene() const;
+    // Whether there is anything that has not been saved; and that it has just been saved.
+    bool unsaved() const { return m_unsavedInside || !m_undo.isClean(); }
+    void setSaved();
     int addPeg(int above);
     // The camera of the scene, in front of everything; made if there is none yet.
     int addCamera();
@@ -348,6 +364,12 @@ private:
     void setScene(Scene const& scene);
 
     Scene m_scene;
+    struct Around {
+        Scene scene;        // the scene the symbol was gone into from
+        int symbolId = 0;
+    };
+    QVector<Around> m_around;
+    bool m_unsavedInside = false;       // (going in and out empties the list of things to undo: what was not saved is remembered here)
     bool m_extendPrevious = false;
     bool m_nameByFrame = false;
     int m_undoLevels = 0;

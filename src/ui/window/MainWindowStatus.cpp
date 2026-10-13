@@ -31,7 +31,10 @@
 void MainWindow::updateTitle()
 {
     QString const name = m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).fileName();
-    setWindowTitle(QStringLiteral("%1%2 - Eclipse").arg(name, m_document->undoStack()->isClean() ? QString() : QStringLiteral("*")));
+    // (Inside a symbol: which, after the name of the scene.)
+    QStringList const trail = m_document->symbolTrail();
+    QString const inside = trail.isEmpty() ? QString() : QStringLiteral(" [%1]").arg(trail.join(QStringLiteral(" > ")));
+    setWindowTitle(QStringLiteral("%1%2%3 - Eclipse").arg(name, m_document->unsaved() ? QStringLiteral("*") : QString(), inside));
 }
 
 void MainWindow::updateActionStates()
@@ -45,6 +48,11 @@ void MainWindow::updateActionStates()
         if (QAction* const a = m_actions->action(QLatin1String(id)))
             a->setEnabled(enabled);
     };
+    set("ExpandSymbol", current.showsSymbol());
+    set("EditSymbol", current.showsSymbol());
+    set("DuplicateSymbol", current.showsSymbol());
+    set("LeaveSymbol", m_document->insideSymbol());
+    set("InsertSymbol", !scene.symbols.isEmpty());
     // Keyframes.
     bool const keyHere = current.keyIndex(f) >= 0;
     bool const keyBefore = keyHere || current.previousKeyFrame(f) >= 0;

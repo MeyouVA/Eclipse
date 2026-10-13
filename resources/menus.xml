@@ -64,6 +64,17 @@
    <separator/>
    <item id="CreateTemplate"/>
    <item id="InsertTemplate"/>
+   <menu id="EditSymbols" text="S&amp;ymbol">
+    <item id="CreateSymbol" icon="edit/symbolcreate" text="&amp;Create Symbol" shortcut="shortcut.createSymbol" responder="window" slot="onActionCreateSymbol()"/>
+    <item id="CreateEmptySymbol" icon="edit/symbolinsert" text="Create E&amp;mpty Symbol" responder="window" slot="onActionCreateEmptySymbol()"/>
+    <item id="InsertSymbol" icon="edit/symbolinsert" text="&amp;Insert Symbol..." responder="window" slot="onActionInsertSymbol()"/>
+    <separator/>
+    <item id="EditSymbol" icon="edit/symboledit" text="&amp;Edit Symbol" shortcut="shortcut.editSymbol" responder="window" slot="onActionEditSymbol()"/>
+    <item id="LeaveSymbol" icon="edit/symbolleave" text="&amp;Leave Symbol" shortcut="shortcut.leaveSymbol" responder="window" slot="onActionLeaveSymbol()"/>
+    <separator/>
+    <item id="DuplicateSymbol" icon="edit/symbolduplicate" text="&amp;Duplicate Symbol" responder="window" slot="onActionDuplicateSymbol()"/>
+    <item id="ExpandSymbol" icon="edit/symbolexpand" text="E&amp;xpand Symbol" responder="window" slot="onActionExpandSymbol()"/>
+   </menu>
    <menu id="EditGroup" text="&amp;Group">
     <item id="GroupSelection"/>
     <item id="UngroupLayers" icon="timeline/ungroup" text="&amp;Ungroup Selected Layers" shortcut="shortcut.ungroup" responder="window" slot="onActionUngroupLayers()"/>

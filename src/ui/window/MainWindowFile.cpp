@@ -38,7 +38,7 @@
 
 bool MainWindow::confirmDiscard()
 {
-    if (m_document->undoStack()->isClean())
+    if (!m_document->unsaved())
         return true;
     QMessageBox::StandardButton const answer =
         QMessageBox::warning(this, tr("Eclipse"), tr("The scene has unsaved changes. Save them?"),
@@ -173,12 +173,12 @@ void MainWindow::onShowRecent(QMenu* menu)
 bool MainWindow::saveTo(QString const& path)
 {
     QString error;
-    if (!m_document->scene().save(path, &error)) {
+    if (!m_document->wholeScene().save(path, &error)) {
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not save %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;
     }
     m_path = path;
-    m_document->undoStack()->setClean();
+    m_document->setSaved();
     updateTitle();
     addRecent(path);
     statusBar()->showMessage(tr("Saved %1").arg(QDir::toNativeSeparators(path)), 4000);

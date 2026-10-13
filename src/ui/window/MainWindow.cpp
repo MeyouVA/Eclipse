@@ -178,7 +178,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(&m_playTimer, &QTimer::timeout, this, &MainWindow::advanceFrame);
     // Saving by itself (Edit > Preferences): a scene that has a file, has changed, and is not playing.
     connect(&m_autoSave, &QTimer::timeout, this, [this] {
-        if (!m_path.isEmpty() && !m_document->undoStack()->isClean() && !m_playTimer.isActive())
+        if (!m_path.isEmpty() && m_document->unsaved() && !m_playTimer.isActive())
             saveTo(m_path);
     });
     m_playTimer.setTimerType(Qt::PreciseTimer);

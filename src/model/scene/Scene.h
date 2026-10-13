@@ -737,6 +737,13 @@ public:
     // The layer that shows a symbol becomes a peg, with copies of the symbol's layers attached to it.  Returns
     // where the peg is, or -1.
     int expandSymbol(int layer);
+    // What was worked on as a scene of its own (symbolScene) becomes the symbol again: its layers and length;
+    // and the colours and the other symbols as they are there now.
+    void takeSymbol(int symbolId, Scene const& worked);
+    // A symbol with one empty drawing layer in it.  Its id.
+    int addEmptySymbol(QString const& name);
+    // A symbol of its own for a layer that shows one: a copy, to change without changing the other.  Its id, or 0.
+    int duplicateSymbol(int layer);
     static bool fromJson(QJsonObject const& json, Scene& out, QString* error, QString const& folder = QString());
     bool save(QString const& path, QString* error) const;
     static bool load(QString const& path, Scene& out, QString* error);

@@ -51,7 +51,7 @@ bool MainWindow::backupScene(QString* madePath)
     QString const copy = info.dir().filePath(QStringLiteral("%1_backup_%2.%3")
                                                  .arg(info.completeBaseName(), QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss-zzz")), info.suffix()));
     QString error;
-    if (!m_document->scene().save(copy, &error)) {
+    if (!m_document->wholeScene().save(copy, &error)) {
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not save %1:\n%2").arg(QDir::toNativeSeparators(copy), error));
         return false;
     }

@@ -244,3 +244,80 @@ int Scene::expandSymbol(int layer)
     refreshSymbolInstances();
     return layer;
 }
+
+void Scene::takeSymbol(int symbolId, Scene const& worked)
+{
+    // (Symbols made, or changed, while inside this one are the scene's too.)
+    QVector<Symbol> all = worked.symbols;
+    bool found = false;
+    for (Symbol& symbol : all) {
+        if (symbol.id != symbolId)
+            continue;
+        symbol.layers = worked.layers;
+        symbol.frameCount = worked.frameCount();
+        found = true;
+    }
+    if (!found)
+        return;
+    symbols = all;
+    palette = worked.palette;
+    paletteNames = worked.paletteNames;
+    paletteLinks = worked.paletteLinks;
+    m_nextSwatchId = std::max(m_nextSwatchId, worked.m_nextSwatchId);
+    m_nextLayerId = std::max(m_nextLayerId, worked.m_nextLayerId);
+    refreshSymbolInstances();
+}
+
+int Scene::addEmptySymbol(QString const& name)
+{
+    Symbol symbol;
+    symbol.id = 1;
+    for (Symbol const& other : std::as_const(symbols))
+        symbol.id = std::max(symbol.id, other.id + 1);
+    QString const base = name.trimmed().isEmpty() ? QStringLiteral("Symbol") : name.trimmed();
+    symbol.name = base;
+    for (int n = 2;; ++n) {
+        bool taken = false;
+        for (Symbol const& other : std::as_const(symbols))
+            taken = taken || other.name == symbol.name;
+        if (!taken)
+            break;
+        symbol.name = QStringLiteral("%1 %2").arg(base).arg(n);
+    }
+    symbol.frameCount = m_frameCount;
+    Layer sheet;
+    sheet.id = m_nextLayerId++;
+    sheet.kind = Layer::DrawingLayer;
+    sheet.name = QStringLiteral("Drawing");
+    sheet.pivot = QPointF(width / 2.0, height / 2.0);
+    sheet.cells.fill(Layer::kNoDrawing, m_frameCount);
+    symbol.layers = {sheet};
+    symbols.push_back(symbol);
+    return symbol.id;
+}
+
+int Scene::duplicateSymbol(int layer)
+{
+    if (layer < 0 || layer >= layers.size() || !layers[layer].showsSymbol())
+        return 0;
+    Symbol const* const from = findSymbol(layers[layer].symbolId);
+    if (!from)
+        return 0;
+    Symbol copy = *from;
+    copy.id = 1;
+    for (Symbol const& other : std::as_const(symbols))
+        copy.id = std::max(copy.id, other.id + 1);
+    QString const base = from->name;
+    for (int n = 2;; ++n) {
+        copy.name = QStringLiteral("%1 %2").arg(base).arg(n);
+        bool taken = false;
+        for (Symbol const& other : std::as_const(symbols))
+            taken = taken || other.name == copy.name;
+        if (!taken)
+            break;
+    }
+    symbols.push_back(copy);
+    layers[layer].symbolId = copy.id;
+    refreshSymbolInstances(copy.id);
+    return copy.id;
+}

@@ -244,6 +244,119 @@ void MainWindow::onActionTimelineShowKind(QString const& which)
     }
 }
 
+// ---- symbols ------------------------------------------------------------------------------------
+
+void MainWindow::onActionCreateSymbol()
+{
+    // The layers selected - and what is attached to them - become a symbol, named after the first of them.
+    QVector<int> const picked = m_timeline->selectedLayers();
+    Scene const& scene = m_document->scene();
+    QString const name = !picked.isEmpty() && picked.first() >= 0 && picked.first() < scene.layers.size() ? scene.layers[picked.first()].name : QString();
+    int const at = m_document->createSymbol(picked, name);
+    if (at < 0) {
+        statusBar()->showMessage(tr("Select the layers to make a symbol of. (A camera and a sound stay in the scene.)"), 6000);
+        return;
+    }
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, frame());
+    updateActionStates();
+    statusBar()->showMessage(tr("Symbol %1 made. Edit > Symbol > Edit Symbol goes inside it; Insert Symbol shows it on another layer.")
+                                 .arg(m_document->scene().layers[at].name), 7000);
+}
+
+void MainWindow::onActionCreateEmptySymbol()
+{
+    int const at = m_document->insertEmptySymbol(QString(), layer());
+    if (at < 0)
+        return;
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, frame());
+    statusBar()->showMessage(tr("An empty symbol, on a layer of its own. Edit > Symbol > Edit Symbol goes inside it to draw."), 7000);
+}
+
+void MainWindow::onActionInsertSymbol()
+{
+    Scene const& scene = m_document->scene();
+    if (scene.symbols.isEmpty()) {
+        statusBar()->showMessage(tr("The scene has no symbols yet: select layers and use Edit > Symbol > Create Symbol."), 6000);
+        return;
+    }
+    QStringList names;
+    for (Scene::Symbol const& symbol : scene.symbols)
+        names << symbol.name;
+    bool ok = names.size() == 1;
+    QString const chosen = ok ? names.first() : QInputDialog::getItem(this, tr("Insert Symbol"), tr("Symbol"), names, 0, false, &ok);
+    if (!ok)
+        return;
+    int const id = scene.symbols[std::max(0, int(names.indexOf(chosen)))].id;
+    int const at = m_document->insertSymbol(id, layer());
+    if (at >= 0) {
+        m_timeline->clearRange();
+        m_timeline->setCurrentCell(at, frame());
+    }
+    updateActionStates();
+}
+
+void MainWindow::onActionEditSymbol()
+{
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size() || !scene.layers[layer()].showsSymbol()) {
+        statusBar()->showMessage(tr("Select a layer that shows a symbol."), 5000);
+        return;
+    }
+    // The frame of the symbol the layer shows here is the frame to begin on inside it.
+    int const inside = scene.layers[layer()].drawingAt(frame());
+    if (m_playTimer.isActive())
+        stop();
+    m_canvas->clearSelection();
+    if (!m_document->enterSymbol(scene.layers[layer()].symbolId))
+        return;
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(int(m_document->scene().layers.size()) - 1, std::clamp(inside, 0, m_document->scene().frameCount() - 1));
+    updateTitle();
+    updateActionStates();
+    statusBar()->showMessage(tr("Inside the symbol %1. Edit > Symbol > Leave Symbol goes back to the scene.").arg(m_document->symbolTrail().last()), 7000);
+}
+
+void MainWindow::onActionLeaveSymbol()
+{
+    if (!m_document->insideSymbol())
+        return;
+    if (m_playTimer.isActive())
+        stop();
+    m_canvas->clearSelection();
+    QString const was = m_document->symbolTrail().last();
+    m_document->leaveSymbol();
+    // Back on a layer that shows it, if there is one.
+    int back = int(m_document->scene().layers.size()) - 1;
+    for (int l = 0; l < m_document->scene().layers.size(); ++l) {
+        Scene::Symbol const* const symbol = m_document->scene().findSymbol(m_document->scene().layers[l].symbolId);
+        if (symbol && symbol->name == was)
+            back = l;
+    }
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(back, std::clamp(frame(), 0, m_document->scene().frameCount() - 1));
+    updateTitle();
+    updateActionStates();
+}
+
+void MainWindow::onActionDuplicateSymbol()
+{
+    if (!m_document->duplicateSymbol(layer()))
+        statusBar()->showMessage(tr("Select a layer that shows a symbol."), 5000);
+}
+
+void MainWindow::onActionExpandSymbol()
+{
+    int const at = m_document->expandSymbol(layer());
+    if (at < 0) {
+        statusBar()->showMessage(tr("Select a layer that shows a symbol."), 5000);
+        return;
+    }
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, frame());
+}
+
 void MainWindow::onActionCreateStampFromDrawings()
 {
     Scene const& scene = m_document->scene();

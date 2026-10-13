@@ -38,8 +38,67 @@ void Document::setUndoLevels(int levels)
         m_undo.setUndoLimit(m_undoLevels);
 }
 
+bool Document::enterSymbol(int symbolId)
+{
+    Scene::Symbol const* const symbol = m_scene.findSymbol(symbolId);
+    if (!symbol || m_around.size() >= Scene::kSymbolDepth)
+        return false;
+    Scene inner = m_scene.symbolScene(*symbol);
+    inner.refreshSymbolInstances();
+    m_unsavedInside = unsaved();
+    m_around.push_back({m_scene, symbolId});
+    m_undo.clear();
+    m_undo.setUndoLimit(m_undoLevels);
+    m_scene = inner;
+    emit changed();
+    return true;
+}
+
+bool Document::leaveSymbol()
+{
+    if (m_around.isEmpty())
+        return false;
+    Around const around = m_around.takeLast();
+    Scene outer = around.scene;
+    outer.takeSymbol(around.symbolId, m_scene);
+    m_unsavedInside = unsaved();
+    m_undo.clear();
+    m_undo.setUndoLimit(m_undoLevels);
+    m_scene = outer;
+    emit changed();
+    return true;
+}
+
+QStringList Document::symbolTrail() const
+{
+    QStringList names;
+    for (Around const& around : m_around)
+        if (Scene::Symbol const* const symbol = around.scene.findSymbol(around.symbolId))
+            names << symbol->name;
+    return names;
+}
+
+Scene Document::wholeScene() const
+{
+    Scene whole = m_scene;
+    for (int i = int(m_around.size()) - 1; i >= 0; --i) {
+        Scene outer = m_around[i].scene;
+        outer.takeSymbol(m_around[i].symbolId, whole);
+        whole = outer;
+    }
+    return whole;
+}
+
+void Document::setSaved()
+{
+    m_unsavedInside = false;
+    m_undo.setClean();
+}
+
 void Document::reset(Scene const& scene)
 {
+    m_around.clear();
+    m_unsavedInside = false;
     m_undo.clear();
     m_undo.setUndoLimit(m_undoLevels);
     m_scene = scene;

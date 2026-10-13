@@ -377,6 +377,24 @@ int Document::insertSymbol(int symbolId, int above)
     return at;
 }
 
+int Document::insertEmptySymbol(QString const& name, int above)
+{
+    int at = -1;
+    apply(tr("Create Empty Symbol"), [&](Scene& s) {
+        int const id = s.addEmptySymbol(name);
+        at = s.addSymbolInstance(id, above >= 0 && above < s.layers.size() ? above + 1 : -1);
+    });
+    return at;
+}
+
+bool Document::duplicateSymbol(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].showsSymbol() || !m_scene.findSymbol(m_scene.layers[layer].symbolId))
+        return false;
+    apply(tr("Duplicate Symbol"), [&](Scene& s) { s.duplicateSymbol(layer); });
+    return true;
+}
+
 int Document::expandSymbol(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].showsSymbol() || !m_scene.findSymbol(m_scene.layers[layer].symbolId))
