@@ -18,16 +18,22 @@ Eclipse is under active development. Expect rough edges.
 **Drawing**
 
 - Brush, pencil, eraser, line, rectangle, ellipse and polyline tools; a paint bucket with
-  several modes; a text tool; a cutter; a dropper.
+  several modes; a text tool; a cutter; a dropper; a stamp; a tool that repositions every
+  drawing of a layer at once.
 - Vector artwork: lines keep their points and can be reshaped with the Contour Editor.
 - Four art layers in every drawing: overlay, line art, colour art and underlay.
 - Colour palettes whose colours are linked to the artwork (change a colour and everything
   painted with it changes), including gradients.
-- Onion skin, light table, grids, guides, and a rotating, mirrorable view.
+- Guides to draw along: rulers, grids, 1-, 2- and 3-point perspective, and a symmetry axis
+  that mirrors what you draw.
+- Clean-up commands: remove dirt and stray lines, close gaps, unpaint or repaint a
+  selection; protected colours that the paint tools leave alone.
+- Onion skin, light table, grids, alignment guides, and a rotating, mirrorable view.
 
 **Animating**
 
-- A Timeline and an Xsheet, with exposure commands (extend, hold, fill, cycle, sequence).
+- A Timeline and an Xsheet, with exposure commands (extend, hold, fill, cycle, sequence);
+  drawings can be named and typed into the Xsheet.
 - Keyframes with ease, motion and stop-motion keyframes, and a Function view of the curves.
 - Pegs, layer hierarchies, bones, curve and envelope deformers, and inverse kinematics.
 - Morphing between two drawings.
@@ -56,6 +62,7 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
   Movies and some sound formats are read and written through [FFmpeg](https://ffmpeg.org/),
   which has to be installed and on the `PATH` for those features.
 - Templates can be kept in a Library and dropped into other scenes.
+- Help pages are built in (Help > Eclipse Help, F1).
 
 ## Building
 
