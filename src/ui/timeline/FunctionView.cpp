@@ -516,16 +516,38 @@ void FunctionGraph::mouseReleaseEvent(QMouseEvent*)
         Pose pose = at.pose;
         bool const valued = Timeline::parameterOf(pose, param) != value;
         bool const moved = m_dragFrame != at.frame;
+        // The other layers shown with it: their keyframes on that frame go up or down by as much.
+        QVector<QPair<int, Pose>> along;
+        if (valued && !moved && param != Timeline::Fov) {
+            double const by = value - Timeline::parameterOf(at.pose, param);
+            for (int other : std::as_const(m_others)) {
+                if (other < 0 || other >= scene.layers.size() || other == m_layer)
+                    continue;
+                int const theirs = scene.layers[other].keyIndex(at.frame);
+                if (theirs < 0)
+                    continue;
+                Pose changed = scene.layers[other].keys[theirs].pose;
+                double to = Timeline::parameterOf(changed, param) + by;
+                if (param == Timeline::Opacity)
+                    to = std::clamp(to, 0.0, 1.0);
+                Timeline::setParameterOf(changed, param, to);
+                along.push_back({other, changed});
+            }
+        }
         Timeline::setParameterOf(pose, param, value);
-        if (moved && valued)
-            m_document->beginMacro(tr("Move Keyframe"));
+        bool const several = (moved && valued) || !along.isEmpty();
+        QString const setting = tr("Set %1").arg(Timeline::parameterName(param));
+        if (several)
+            m_document->beginMacro(moved ? tr("Move Keyframe") : setting);
         if (moved)
             m_document->moveKeyframe(m_layer, at.frame, m_dragFrame);
         if (valued && param == Timeline::Fov)
             m_document->setFov(m_layer, value, moved ? m_dragFrame : at.frame);     // the other keyframes are given the angle they stood for
         else if (valued)
-            m_document->setKeyframe(m_layer, moved ? m_dragFrame : at.frame, pose, tr("Set %1").arg(Timeline::parameterName(param)));
-        if (moved && valued)
+            m_document->setKeyframe(m_layer, moved ? m_dragFrame : at.frame, pose, setting);
+        for (QPair<int, Pose> const& other : std::as_const(along))
+            m_document->setKeyframe(other.first, at.frame, other.second, setting);
+        if (several)
             m_document->endMacro();
         if (moved)
             emit framePicked(m_dragFrame);
