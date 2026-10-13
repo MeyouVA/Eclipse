@@ -365,6 +365,12 @@ void MainWindow::onActionMarkDrawing(QString const& as)
     m_document->markDrawing(layer(), frame(), mark);
 }
 
+void MainWindow::onActionRenameByFrame()
+{
+    if (!m_document->renameDrawingsByFrame(layer()))
+        statusBar()->showMessage(tr("The drawings of this layer are named after their frames already, or it has none."), 5000);
+}
+
 void MainWindow::onActionRenameDrawing()
 {
     Scene const& scene = m_document->scene();

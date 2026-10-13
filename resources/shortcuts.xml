@@ -150,6 +150,7 @@
   <shortcut id="shortcut.nextDrawing" text="Go to Next Drawing" value="G"/>
   <shortcut id="shortcut.toolSelect" text="Select Tool" value="Alt+S"/>
   <shortcut id="shortcut.help" text="Eclipse Help" value="F1"/>
+  <shortcut id="shortcut.renameByFrame" text="Rename Drawings by Frame" value=""/>
   <shortcut id="shortcut.toolTranslate" text="Translate Tool" value="Alt+2"/>
   <shortcut id="shortcut.toolRotate" text="Rotate Tool" value="Alt+3"/>
   <shortcut id="shortcut.toolScale" text="Scale Tool" value="Alt+4"/>

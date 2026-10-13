@@ -169,6 +169,7 @@
    <item id="CreateEmptyDrawing" icon="timeline/newdrawing" text="Create &amp;Empty Drawing" shortcut="shortcut.createEmptyDrawing" responder="window" slot="onActionCreateEmptyDrawing()"/>
    <item id="DuplicateDrawing" icon="timeline/duplicatedrawing" text="&amp;Duplicate Drawings" shortcut="shortcut.duplicateDrawing" responder="window" slot="onActionDuplicateDrawing()"/>
    <item id="DeleteDrawing" icon="timeline/deletedrawing" text="Delete Selected Dra&amp;wings" responder="window" slot="onActionDeleteDrawing()"/>
+   <item id="RenameByFrame" icon="timeline/renamebyframe" text="Rename &amp;by Frame" shortcut="shortcut.renameByFrame" responder="window" slot="onActionRenameByFrame()"/>
    <menu id="DrawingMark" text="Mar&amp;k Drawing As">
     <item id="MarkKey" icon="timeline/markkey" text="&amp;Key Drawing" shortcut="shortcut.markKey" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="key"/>
     <item id="MarkBreakdown" icon="timeline/markbreakdown" text="&amp;Breakdown Drawing" shortcut="shortcut.markBreakdown" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="breakdown"/>

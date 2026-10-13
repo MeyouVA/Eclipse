@@ -197,6 +197,7 @@ public slots:
     void onActionExportAudio();
     void onActionDeleteDrawing();
     void onActionRenameDrawing();
+    void onActionRenameByFrame();
     void onActionMarkDrawing(QString const& as);
     bool onActionSaveNewVersion();
     void onActionBackupScene();

@@ -73,6 +73,29 @@ bool Document::exposeDrawing(int layer, int frame, QString const& label)
     return true;
 }
 
+bool Document::renameDrawingsByFrame(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings())
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    QVector<QString> names(l.drawings.size());
+    bool any = false;
+    for (int i = 0; i < l.drawings.size(); ++i) {
+        names[i] = l.drawings[i].name;
+        int const first = int(l.cells.indexOf(i));
+        if (first >= 0)
+            names[i] = QString::number(first + 1);
+        any = any || names[i] != l.drawings[i].name;
+    }
+    if (!any)
+        return false;
+    apply(tr("Rename Drawings by Frame"), [&](Scene& s) {
+        for (int i = 0; i < names.size(); ++i)
+            s.layers[layer].drawings[i].name = names[i];
+    });
+    return true;
+}
+
 bool Document::markDrawing(int layer, int frame, int mark)
 {
     if (!validCell(m_scene, layer, frame) || mark < Drawing::NoMark || mark > Drawing::InBetweenMark)

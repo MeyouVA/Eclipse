@@ -99,6 +99,8 @@ public:
     bool renameDrawing(int layer, int frame, QString const& name);
     // The drawing shown on that frame is marked (Drawing::Mark) as a key, a breakdown or an in-between - or as nothing.
     bool markDrawing(int layer, int frame, int mark);
+    // Every drawing of the layer is named after the frame it is first shown on.  False when that changes nothing.
+    bool renameDrawingsByFrame(int layer);
     // What is typed into a cell of the Xsheet: that frame shows the drawing of the layer called
     // `label` (its name or its number) - a new, empty one of that name when there is none; nothing
     // typed empties the cell.  False when nothing changed.
