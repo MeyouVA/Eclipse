@@ -222,6 +222,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_permanent, tool == T::Select);
     m_form->setRowVisible(m_snapAlign, tool == T::Select);
     m_form->setRowVisible(m_stampScale, tool == T::Stamp);
+    m_form->setRowVisible(m_stampRow, tool == T::Stamp);
     m_form->setRowVisible(m_presetsTitle, draws);
     m_form->setRowVisible(m_presets, draws);
     m_preview->set(m_size->value(), brush);

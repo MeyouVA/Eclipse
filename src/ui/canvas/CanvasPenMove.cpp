@@ -344,8 +344,9 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         Handle const opposite = Handle((int(m_dragHandle) - TopLeft + 2) % 4 + TopLeft);
         QPointF const anchor = handlePos(opposite, m_dragBounds);
         QPointF const corner = handlePos(m_dragHandle, m_dragBounds);
-        double sx = std::abs(corner.x() - anchor.x()) > 1e-6 ? (p.x() - anchor.x()) / (corner.x() - anchor.x()) : 1.0;
-        double sy = std::abs(corner.y() - anchor.y()) > 1e-6 ? (p.y() - anchor.y()) / (corner.y() - anchor.y()) : 1.0;
+        QPointF const to = alignedCorner(p);        // Snap and Align: onto the edges of the other artwork
+        double sx = std::abs(corner.x() - anchor.x()) > 1e-6 ? (to.x() - anchor.x()) / (corner.x() - anchor.x()) : 1.0;
+        double sy = std::abs(corner.y() - anchor.y()) > 1e-6 ? (to.y() - anchor.y()) / (corner.y() - anchor.y()) : 1.0;
         if (modifiers & Qt::ShiftModifier) {  // keep proportions
             double const s = std::max(std::abs(sx), std::abs(sy));
             sx = sx < 0 ? -s : s;

@@ -446,7 +446,7 @@ void Canvas::paintEvent(QPaintEvent*)
         // Bounding box and handles, drawn in widget space so they keep their size when zooming.
         QRectF const bounds = m_drag != DragNone ? m_dragTransform.mapRect(m_dragBounds) : selectionBounds();
         painter.resetTransform();
-        if (m_drag == DragMove && !m_alignLines.isEmpty()) {
+        if ((m_drag == DragMove || m_drag == DragScale) && !m_alignLines.isEmpty()) {
             // What it is in line with.
             painter.setPen(QPen(QColor(240, 90, 160), 1.0));
             for (QLineF const& line : std::as_const(m_alignLines))

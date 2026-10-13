@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
+#include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSlider>
@@ -143,6 +144,33 @@ void ToolProperties::addSelectRows()
     m_stampScale->setToolTip(tr("How big the stamp comes out. To stamp artwork of your own: select it, then Drawing > Create Stamp from Selection."));
     connect(m_stampScale, &QSpinBox::valueChanged, m_canvas, &Canvas::setStampScale);
     m_form->addRow(tr("Scale"), m_stampScale);
+    {
+        // Which stamp: the star, or one of those made with Create Stamp from Selection.
+        m_stampRow = new QWidget(this);
+        auto* const row = new QHBoxLayout(m_stampRow);
+        row->setContentsMargins(0, 0, 0, 0);
+        m_stampList = new QComboBox(m_stampRow);
+        m_stampList->setObjectName(QStringLiteral("StampList"));
+        m_stampList->setToolTip(tr("The stamp to use: the star, or artwork of your own (select it, then Drawing > Create Stamp from Selection)."));
+        auto* const remove = new QPushButton(tr("Remove"), m_stampRow);
+        remove->setObjectName(QStringLiteral("StampRemove"));
+        remove->setToolTip(tr("Takes the chosen stamp off the list."));
+        row->addWidget(m_stampList, 1);
+        row->addWidget(remove);
+        auto fill = [this, remove] {
+            QSignalBlocker const quiet(m_stampList);
+            m_stampList->clear();
+            m_stampList->addItem(tr("Star"));
+            m_stampList->addItems(m_canvas->stampNames());
+            m_stampList->setCurrentIndex(m_canvas->currentStamp() + 1);
+            remove->setEnabled(m_canvas->currentStamp() >= 0);
+        };
+        fill();
+        connect(m_canvas, &Canvas::stampsChanged, this, fill);
+        connect(m_stampList, &QComboBox::activated, this, [this](int index) { m_canvas->chooseStamp(index - 1); });
+        connect(remove, &QPushButton::clicked, this, [this] { m_canvas->removeStamp(m_stampList->currentIndex() - 1); });
+        m_form->addRow(tr("Stamp"), m_stampRow);
+    }
     m_byColour = new QCheckBox(tr("Select by Colour"), this);
     m_byColour->setObjectName(QStringLiteral("SelectByColour"));
     m_byColour->setToolTip(tr("A click on a line or on paint selects everything of that colour in the drawing."));

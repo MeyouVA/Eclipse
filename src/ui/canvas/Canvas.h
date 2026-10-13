@@ -184,6 +184,12 @@ public:
     void clearStamp();
     // The stamp of the user's own is kept between sessions: taken up again when the program starts.
     void loadStamp();
+    // The stamps made so far are kept in a list: their names, which is in hand (-1: the star),
+    // taking up another, and taking one off the list.
+    QStringList stampNames() const;
+    int currentStamp() const;
+    void chooseStamp(int index);
+    void removeStamp(int index);
     // Whether the paint tools are to leave what has this colour alone: it is protected, and
     // protection is being respected.
     bool keepsColour(int swatch) const;
@@ -551,6 +557,7 @@ signals:
     void onionChanged();
     // Something the user should know (shown in the status bar).
     void message(QString const& text);
+    void stampsChanged();
 
 protected:
     void paintEvent(QPaintEvent*) override;
@@ -771,6 +778,7 @@ private:
     bool m_snapAlign = false;
     QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)
     QPointF aligned(QPointF by);
+    QPointF alignedCorner(QPointF corner);     // the same for the corner a selection is scaled by
     int lineGuideAt(QPointF widgetPos) const;
     Scene::Guide const* drawingGuide() const;
     bool guideTool() const;

@@ -241,7 +241,23 @@ void Canvas::loadStamp()
     for (Fill& fill : m_stamp.fills)
         fill.swatch = Scene::kNoSwatch;
     m_stampOwn = true;
+    {
+        // One from before there was a list goes onto it.
+        QSettings store = settings();
+        QVariantList list = store.value(QStringLiteral("tools/stampList")).toList();
+        bool listed = false;
+        for (QVariant const& one : std::as_const(list))
+            listed = listed || one.toByteArray() == kept;
+        if (!listed) {
+            QStringList names = store.value(QStringLiteral("tools/stampNames")).toStringList();
+            list.push_back(kept);
+            names.push_back(tr("Stamp %1").arg(list.size()));
+            store.setValue(QStringLiteral("tools/stampList"), list);
+            store.setValue(QStringLiteral("tools/stampNames"), names);
+        }
+    }
     update();
+    emit stampsChanged();
 }
 
 void Canvas::clearStamp()
@@ -250,6 +266,61 @@ void Canvas::clearStamp()
     m_stampOwn = false;
     settings().remove(QStringLiteral("tools/stamp"));
     update();
+    emit stampsChanged();
+}
+
+QStringList Canvas::stampNames() const
+{
+    QSettings const store = settings();
+    QStringList names = store.value(QStringLiteral("tools/stampNames")).toStringList();
+    qsizetype const count = store.value(QStringLiteral("tools/stampList")).toList().size();
+    while (names.size() < count)
+        names.push_back(tr("Stamp %1").arg(names.size() + 1));
+    names.resize(count);
+    return names;
+}
+
+int Canvas::currentStamp() const
+{
+    if (!m_stampOwn)
+        return -1;
+    QSettings const store = settings();
+    QByteArray const now = store.value(QStringLiteral("tools/stamp")).toByteArray();
+    QVariantList const list = store.value(QStringLiteral("tools/stampList")).toList();
+    for (int i = 0; i < list.size(); ++i)
+        if (list[i].toByteArray() == now)
+            return i;
+    return -1;
+}
+
+void Canvas::chooseStamp(int index)
+{
+    QVariantList const list = settings().value(QStringLiteral("tools/stampList")).toList();
+    if (index < 0 || index >= list.size()) {
+        clearStamp();       // the star
+        return;
+    }
+    settings().setValue(QStringLiteral("tools/stamp"), list[index].toByteArray());
+    loadStamp();
+}
+
+void Canvas::removeStamp(int index)
+{
+    QSettings store = settings();
+    QVariantList list = store.value(QStringLiteral("tools/stampList")).toList();
+    if (index < 0 || index >= list.size())
+        return;
+    QStringList names = stampNames();
+    bool const inHand = index == currentStamp();
+    list.removeAt(index);
+    names.removeAt(index);
+    store.setValue(QStringLiteral("tools/stampList"), list);
+    store.setValue(QStringLiteral("tools/stampNames"), names);
+    store.sync();
+    if (inHand)
+        clearStamp();
+    else
+        emit stampsChanged();
 }
 
 void Canvas::onActionCreateStamp()
@@ -286,8 +357,26 @@ void Canvas::onActionCreateStamp()
         only.drawings = {plain};
         only.cells = QVector<int>(keep.frameCount(), 0);
         keep.layers = {only};
-        settings().setValue(QStringLiteral("tools/stamp"), QJsonDocument(keep.toJson()).toJson(QJsonDocument::Compact));
+        QByteArray const bytes = QJsonDocument(keep.toJson()).toJson(QJsonDocument::Compact);
+        QSettings store = settings();
+        store.setValue(QStringLiteral("tools/stamp"), bytes);
+        // And onto the list of stamps, under a name no other has.
+        QVariantList list = store.value(QStringLiteral("tools/stampList")).toList();
+        QStringList names = stampNames();
+        bool listed = false;
+        for (QVariant const& one : std::as_const(list))
+            listed = listed || one.toByteArray() == bytes;
+        if (!listed) {
+            int number = int(list.size()) + 1;
+            while (names.contains(tr("Stamp %1").arg(number)))
+                ++number;
+            list.push_back(bytes);
+            names.push_back(tr("Stamp %1").arg(number));
+            store.setValue(QStringLiteral("tools/stampList"), list);
+            store.setValue(QStringLiteral("tools/stampNames"), names);
+        }
     }
+    emit stampsChanged();
     emit message(tr("The Stamp tool now stamps this artwork."));
 }
 

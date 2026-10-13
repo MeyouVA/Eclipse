@@ -156,6 +156,50 @@ QPointF Canvas::aligned(QPointF by)
     return by + QPointF(moveX, moveY);
 }
 
+// Snap and Align while scaling: the corner in hand goes onto an edge or the middle of something
+// else in the drawing when it comes within a few pixels of it.
+QPointF Canvas::alignedCorner(QPointF corner)
+{
+    m_alignLines.clear();
+    Drawing const* const d = currentDrawing();
+    if (!m_snapAlign || m_tool != Select || !d)
+        return corner;
+    double const near = 6.0 / std::max(m_zoom, 1e-6);
+    double bestX = near, bestY = near;
+    QPointF to = corner;
+    QRectF withX, withY;
+    bool foundX = false, foundY = false;
+    auto look = [&](QRectF const& other) {
+        double const theirsX[3] = {other.left(), other.center().x(), other.right()};
+        double const theirsY[3] = {other.top(), other.center().y(), other.bottom()};
+        for (int k = 0; k < 3; ++k) {
+            if (std::abs(theirsX[k] - corner.x()) < bestX) {
+                bestX = std::abs(theirsX[k] - corner.x());
+                to.setX(theirsX[k]);
+                withX = other;
+                foundX = true;
+            }
+            if (std::abs(theirsY[k] - corner.y()) < bestY) {
+                bestY = std::abs(theirsY[k] - corner.y());
+                to.setY(theirsY[k]);
+                withY = other;
+                foundY = true;
+            }
+        }
+    };
+    for (int i = 0; i < d->strokes.size(); ++i)
+        if (!m_selStrokes.contains(i))
+            look(d->strokes[i].bounds());
+    for (int i = 0; i < d->fills.size(); ++i)
+        if (!m_selFills.contains(i))
+            look(d->fills[i].bounds());
+    if (foundX)
+        m_alignLines.push_back(QLineF(to.x(), std::min(to.y(), withX.top()), to.x(), std::max(to.y(), withX.bottom())));
+    if (foundY)
+        m_alignLines.push_back(QLineF(std::min(to.x(), withY.left()), to.y(), std::max(to.x(), withY.right()), to.y()));
+    return to;
+}
+
 // Adds every line and painted area of that colour to the lists.
 static void sameColour(Drawing const& d, int swatch, QColor const& colour, QVector<int>& strokes, QVector<int>& fills)
 {
