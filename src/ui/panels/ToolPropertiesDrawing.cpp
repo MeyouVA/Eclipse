@@ -16,6 +16,7 @@
 #include <QSpinBox>
 
 #include "ui/canvas/Canvas.h"
+#include "ui/canvas/PencilTexture.h"
 #include "ui/window/MainWindowPrivate.h"
 #include <QFormLayout>
 
@@ -297,6 +298,43 @@ void ToolProperties::addLineShapeRows()
                 {tr("Round"), tr("Mitre"), tr("Bevel")}, [this](int index) { m_canvas->setJoinStyle(index); });
     m_shapeRow->addStretch();
     m_form->addRow(m_shapeRow);
+
+    // The pencil texture: the grain a line is drawn with, and how much of it shows.
+    m_textureRow = new QHBoxLayout;
+    QComboBox* const texture = new QComboBox(this);
+    texture->setObjectName(QStringLiteral("LineTexture"));
+    texture->setIconSize(QSize(72, 20));
+    for (int kind = 0; kind <= PencilTexture::count(); ++kind)
+        texture->addItem(PencilTexture::icon(kind), PencilTexture::name(kind));
+    texture->setToolTip(tr("The pencil texture: the grain the line is drawn with in place of solid ink.") + applies);
+    QSpinBox* const amount = new QSpinBox(this);
+    amount->setObjectName(QStringLiteral("LineTextureAmount"));
+    amount->setRange(0, 100);
+    amount->setSingleStep(5);
+    amount->setSuffix(QStringLiteral(" %"));
+    amount->setToolTip(tr("How much of the texture shows: 100 the grain as it is, 0 a solid line after all.") + applies);
+    {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/lineTexture"), 0).toInt(), 0, PencilTexture::count());
+        int const keptAmount = std::clamp(settings().value(QStringLiteral("tools/lineTextureAmount"), 100).toInt(), 0, 100);
+        texture->setCurrentIndex(kept);
+        amount->setValue(keptAmount);
+        amount->setEnabled(kept != 0);
+        m_canvas->setLineTextureAmount(keptAmount);
+        m_canvas->setLineTexture(kept);
+    }
+    connect(texture, &QComboBox::currentIndexChanged, this, [this, amount](int index) {
+        m_canvas->setLineTexture(index);
+        amount->setEnabled(index != 0);
+        settings().setValue(QStringLiteral("tools/lineTexture"), index);
+    });
+    connect(amount, &QSpinBox::valueChanged, this, [this](int v) {
+        m_canvas->setLineTextureAmount(v);
+        settings().setValue(QStringLiteral("tools/lineTextureAmount"), v);
+    });
+    m_textureRow->addWidget(new QLabel(tr("Texture"), this));
+    m_textureRow->addWidget(texture, 1);
+    m_textureRow->addWidget(amount);
+    m_form->addRow(m_textureRow);
 }
 
 // The thickness of the line at the point picked with the Contour Editor: how a line

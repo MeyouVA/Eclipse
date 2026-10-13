@@ -106,6 +106,12 @@ public:
     void setJoinStyle(int join);
     void setStartCap(int cap);
     void setEndCap(int cap);
+    // The pencil texture new lines are drawn with (0: solid ink), and how much of it shows (per cent).
+    // Lines that are selected are changed too.
+    void setLineTexture(int texture);
+    int lineTexture() const { return m_lineTexture; }
+    void setLineTextureAmount(int percent);
+    int lineTextureAmount() const { return m_lineTextureAmount; }
     void setOnionSkin(bool on);
     bool onionSkin() const { return m_onionSkin; }
     // The Drawing view: the drawing of the current cell alone and flat - not moved by its
@@ -546,6 +552,11 @@ public slots:
     void onActionRotate180();
     // Everything in the drawing of the colour in hand; and what is not selected in place of what is.
     void onActionSelectWithCurrentColour();
+    // Every line of the drawing drawn with the pencil texture in hand.
+    void onActionSelectWithCurrentTexture();
+    // The selected lines: how much of their texture shows; and their thickness, texture and all in one window.
+    void onActionAdjustLineTextureOpacity();
+    void onActionPencilLineProperties();
     void onActionInvertSelection();
     // The lines themselves (where the pen went) drawn thin over the artwork; with the
     // wash, the artwork is faint under them.
@@ -714,6 +725,10 @@ private:
     Stroke::Join m_join = Stroke::RoundJoin;
     Stroke::Cap m_capStart = Stroke::RoundCap;
     Stroke::Cap m_capEnd = Stroke::RoundCap;
+    int m_lineTexture = 0;
+    int m_lineTextureAmount = 100;
+    // Whether the tool in hand draws lines that take the pencil texture (the brush and the Stroke tool do not).
+    void textureNewLine(Stroke& stroke) const;
     template <class Change> void restyleSelection(QString const& text, Change change);
     bool m_onionSkin = true;
     bool m_playing = false;

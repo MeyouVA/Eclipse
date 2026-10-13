@@ -72,6 +72,12 @@ struct Stroke {
     bool gradPlaced = false;
     QPointF gradFrom;
     QPointF gradTo;
+    // A pencil texture: the grain the line is drawn with in place of solid ink (0: none; 1 to
+    // kTextureCount: chalk, charcoal, crayon, dry brush, stipple), and how much of it shows -
+    // 1 the grain as it is, 0 a solid line after all.
+    static constexpr int kTextureCount = 5;
+    int texture = 0;
+    float textureAmount = 1.0f;
 
     void transform(QTransform const& t);
 

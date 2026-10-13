@@ -97,6 +97,9 @@
   <shortcut id="shortcut.removeExtraStrokes" text="Remove Extra Strokes" value=""/>
   <shortcut id="shortcut.highlightColour" text="Highlight Selected Colour" value=""/>
   <shortcut id="shortcut.selectCurrentColour" text="Select Strokes with Current Colour" value="Ctrl+Shift+A"/>
+  <shortcut id="shortcut.selectCurrentTexture" text="Select Strokes with Current Pencil Texture" value=""/>
+  <shortcut id="shortcut.pencilLineProperties" text="Edit Pencil Lines Properties" value=""/>
+  <shortcut id="shortcut.lineTextureOpacity" text="Adjust Line Texture Opacity" value=""/>
   <shortcut id="shortcut.invertSelection" text="Invert Selection" value="Ctrl+Shift+I"/>
   <shortcut id="shortcut.showStrokes" text="Show Strokes" value="K"/>
   <shortcut id="shortcut.showStrokesWash" text="Show Strokes with Colour Wash" value=""/>

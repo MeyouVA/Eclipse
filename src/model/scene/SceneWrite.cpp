@@ -30,6 +30,10 @@ static QJsonObject strokeToJson(Stroke const& s)
         o["group"] = s.group;
     if (s.gradPlaced)
         o["grad"] = QJsonArray{s.gradFrom.x(), s.gradFrom.y(), s.gradTo.x(), s.gradTo.y()};
+    if (s.texture != 0) {
+        o["texture"] = s.texture;
+        o["textureAmount"] = std::round(double(s.textureAmount) * 1000.0) / 1000.0;
+    }
     QJsonArray corners;
     for (int i = 0; i < s.points.size(); ++i)
         if (s.points[i].corner)

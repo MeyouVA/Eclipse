@@ -9,13 +9,108 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
+#include "ui/canvas/PencilTexture.h"
 #include "ui/panels/Effects.h"
+
+// A line with a pencil texture: the line as it would be in solid ink, seen through the grain laid along it.
+static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
+{
+    QTransform const world = painter.combinedTransform();
+    double const reach = double(stroke.width) * 2.0 + 2.0;
+    QRectF const covers = stroke.bounds().adjusted(-reach, -reach, reach, reach);
+    // Only what is in sight is worked out.
+    QRect const seen = world.mapRect(covers).toAlignedRect().adjusted(-2, -2, 2, 2) & painter.viewport();
+    if (seen.isEmpty())
+        return;
+    double const ratio = painter.device() ? painter.device()->devicePixelRatioF() : 1.0;
+    QSize const pixels(int(std::ceil(seen.width() * ratio)), int(std::ceil(seen.height() * ratio)));
+    auto sheet = [&] {
+        QImage image(pixels, QImage::Format_ARGB32_Premultiplied);
+        image.setDevicePixelRatio(ratio);
+        image.fill(Qt::transparent);
+        return image;
+    };
+    auto begin = [&](QPainter& p) {
+        p.setRenderHints(painter.renderHints());
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        p.translate(-seen.topLeft());
+        p.setTransform(world, true);
+    };
+    // The line in solid ink.
+    QImage ink = sheet();
+    {
+        QPainter p(&ink);
+        begin(p);
+        Stroke solid = stroke;
+        solid.texture = 0;
+        Canvas::paintStroke(p, solid, color);
+    }
+    // The grain: the strip laid along the line piece by piece, each piece taking it up where the last left it.
+    QImage grain = sheet();
+    {
+        QPainter p(&grain);
+        begin(p);
+        QImage const& tile = PencilTexture::tile(stroke.texture);
+        double const width = std::max(0.3, double(stroke.width)), scale = width / tile.height();
+        // (Under it all, the grain lying flat: what shows at the outside of a sharp corner, where no piece reaches.)
+        {
+            QBrush flat(tile);
+            flat.setTransform(QTransform::fromScale(scale, scale));
+            p.fillRect(covers, flat);
+        }
+        p.setCompositionMode(QPainter::CompositionMode_Source);
+        p.setRenderHint(QPainter::Antialiasing, false);
+        QVector<StrokePoint> const line = stroke.path();
+        double run = 0.0;
+        int const pieces = int(line.size()) - 1 + (stroke.closed ? 1 : 0);
+        for (int i = 0; i < pieces; ++i) {
+            QPointF const a = line[i].pos, b = line[(i + 1) % line.size()].pos;
+            double const length = QLineF(a, b).length();
+            if (length < 1e-6)
+                continue;
+            QBrush along(tile);
+            QTransform place;
+            place.translate(-run, -width / 2.0);
+            place.scale(scale, scale);
+            along.setTransform(place);
+            p.save();
+            p.translate(a);
+            p.rotate(std::atan2(b.y() - a.y(), b.x() - a.x()) * 180.0 / 3.14159265358979323846);
+            // (A little over at each end - right over the tip, at the two ends of the line - and well over at the
+            // sides: the ink decides where the line stops.)
+            double const before = !stroke.closed && i == 0 ? width : 0.25, after = !stroke.closed && i == pieces - 1 ? width : 0.25;
+            p.fillRect(QRectF(-before, -width, length + before + after, 2.0 * width), along);
+            p.restore();
+            run += length;
+        }
+        // How much of it shows: the less, the more solid the line.
+        if (stroke.textureAmount < 1.0f) {
+            p.resetTransform();
+            p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+            p.setOpacity(1.0 - std::clamp(double(stroke.textureAmount), 0.0, 1.0));
+            p.fillRect(QRect(QPoint(0, 0), seen.size()), Qt::white);
+        }
+    }
+    {
+        QPainter p(&ink);
+        p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+        p.drawImage(QPoint(0, 0), grain);
+    }
+    painter.save();
+    painter.resetTransform();
+    painter.drawImage(seen.topLeft(), ink);
+    painter.restore();
+}
 
 // A stroke is drawn as round-capped segments whose width follows the pressure.
 void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
 {
     if (stroke.points.isEmpty() || stroke.width <= 0.0f)
         return;     // nothing drawn; or a line with no thickness, which is not seen
+    if (stroke.texture != 0 && stroke.textureAmount > 0.0f) {
+        paintTexturedStroke(painter, stroke, color);
+        return;
+    }
     QVector<StrokePoint> const line = stroke.path();
     QPen pen(color, 1.0);
     pen.setCapStyle(Qt::RoundCap);

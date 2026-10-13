@@ -93,6 +93,7 @@ private:
     QComboBox* m_stampList = nullptr;
     QCheckBox* m_autoFlatten = nullptr;
     QHBoxLayout* m_shapeRow = nullptr;
+    QHBoxLayout* m_textureRow = nullptr;     // the pencil texture, and how much of it shows
     QLayout* m_thicknessRow = nullptr;
     QWidget* m_fontRow = nullptr;
     QLayout* m_textRow = nullptr;

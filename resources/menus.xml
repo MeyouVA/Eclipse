@@ -219,6 +219,8 @@
    <item id="DistributeToLayers" icon="anim/distribute" text="&amp;Distribute to Layers" responder="camera" slot="onActionDistributeToLayers()"/>
    <submenu id="menu.arrange" text="&amp;Arrange"/>
    <submenu id="menu.convert" text="&amp;Convert"/>
+   <item id="PencilLineProperties" icon="anim/pencilprops" text="Edit Pencil &amp;Lines Properties..." shortcut="shortcut.pencilLineProperties" responder="camera" slot="onActionPencilLineProperties()"/>
+   <item id="AdjustLineTextureOpacity" icon="anim/textureopacity" text="Adjust Line Texture &amp;Opacity..." shortcut="shortcut.lineTextureOpacity" responder="camera" slot="onActionAdjustLineTextureOpacity()"/>
    <menu id="DrawingPaint" text="&amp;Paint">
     <item id="UnpaintSelection" icon="anim/unpaintsel" text="&amp;Unpaint Selection" shortcut="shortcut.unpaintSelection" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaint"/>
     <item id="UnpaintSelectionAll" icon="anim/unpaintsel" text="Unpaint Selection on All Drawings" shortcut="shortcut.unpaintSelectionAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaintAll"/>
@@ -518,6 +520,7 @@
   <item id="EditSelectAll"/>
   <item id="EditDeselectAll"/>
   <item id="SelectWithCurrentColour" icon="edit/selectcolour" text="Select Strokes with Current Colour" shortcut="shortcut.selectCurrentColour" responder="camera" slot="onActionSelectWithCurrentColour()"/>
+  <item id="SelectWithCurrentTexture" icon="edit/selecttexture" text="Select Strokes with Current Pencil Texture" shortcut="shortcut.selectCurrentTexture" responder="camera" slot="onActionSelectWithCurrentTexture()"/>
   <item id="InvertSelection" icon="edit/invertselection" text="Invert Selection" shortcut="shortcut.invertSelection" responder="camera" slot="onActionInvertSelection()"/>
   <separator/>
   <item id="SwitchArt"/>

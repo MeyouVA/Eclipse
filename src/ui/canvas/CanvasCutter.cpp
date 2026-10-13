@@ -4,6 +4,16 @@
 #include <cmath>
 #include <numeric>
 
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDoubleSpinBox>
+#include <QFormLayout>
+#include <QInputDialog>
+#include <QSpinBox>
+
+#include "ui/canvas/PencilTexture.h"
+
 #include "model/document/Commands.h"
 #include "model/geometry/FillRegion.h"
 
@@ -24,7 +34,8 @@ template <class Change> void Canvas::restyleSelection(QString const& text, Chang
         Stroke const before = edited.strokes[i];
         change(edited.strokes[i]);
         changed = changed || before.join != edited.strokes[i].join || before.capStart != edited.strokes[i].capStart
-                  || before.capEnd != edited.strokes[i].capEnd;
+                  || before.capEnd != edited.strokes[i].capEnd || before.width != edited.strokes[i].width
+                  || before.texture != edited.strokes[i].texture || before.textureAmount != edited.strokes[i].textureAmount;
     }
     if (changed)
         commitDrawing(edited, text);
@@ -47,6 +58,109 @@ void Canvas::setEndCap(int cap)
 {
     m_capEnd = Stroke::Cap(std::clamp(cap, 0, 1));
     restyleSelection(tr("Change Line End"), [this](Stroke& s) { s.capEnd = m_capEnd; });
+}
+
+void Canvas::textureNewLine(Stroke& stroke) const
+{
+    if (m_tool == Brush || m_tool == StrokeTool || m_tool == CloseGap)
+        return;
+    stroke.texture = m_lineTexture;
+    stroke.textureAmount = float(m_lineTextureAmount) / 100.0f;
+}
+
+void Canvas::setLineTexture(int texture)
+{
+    m_lineTexture = std::clamp(texture, 0, int(Stroke::kTextureCount));
+    restyleSelection(tr("Change Pencil Texture"), [this](Stroke& s) {
+        s.texture = m_lineTexture;
+        s.textureAmount = float(m_lineTextureAmount) / 100.0f;
+    });
+}
+
+void Canvas::setLineTextureAmount(int percent)
+{
+    m_lineTextureAmount = std::clamp(percent, 0, 100);
+    restyleSelection(tr("Adjust Line Texture Opacity"), [this](Stroke& s) {
+        if (s.texture != 0)
+            s.textureAmount = float(m_lineTextureAmount) / 100.0f;
+    });
+}
+
+void Canvas::onActionAdjustLineTextureOpacity()
+{
+    Drawing const* const d = currentDrawing();
+    int first = -1;
+    if (selecting() && d)
+        for (int i : std::as_const(m_selStrokes))
+            if (first < 0 && i >= 0 && i < d->strokes.size() && d->strokes[i].texture != 0)
+                first = i;
+    if (first < 0) {
+        emit message(tr("Select lines drawn with a pencil texture with the Select tool."));
+        return;
+    }
+    bool ok = false;
+    int const percent = QInputDialog::getInt(this, tr("Adjust Line Texture Opacity"), tr("How much of the texture shows (0: a solid line):"),
+                                             int(std::lround(d->strokes[first].textureAmount * 100.0f)), 0, 100, 5, &ok);
+    if (!ok)
+        return;
+    restyleSelection(tr("Adjust Line Texture Opacity"), [percent](Stroke& s) {
+        if (s.texture != 0)
+            s.textureAmount = float(percent) / 100.0f;
+    });
+}
+
+void Canvas::onActionPencilLineProperties()
+{
+    Drawing const* const d = currentDrawing();
+    int first = -1;
+    if (selecting() && d)
+        for (int i : std::as_const(m_selStrokes))
+            if (first < 0 && i >= 0 && i < d->strokes.size() && d->strokes[i].width > 0.0f)
+                first = i;
+    if (first < 0) {
+        emit message(tr("Select pencil lines with the Select tool."));
+        return;
+    }
+    Stroke const& shown = d->strokes[first];
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Pencil Line Properties"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QDoubleSpinBox* const thickness = new QDoubleSpinBox(&dialog);
+    thickness->setRange(0.1, 500.0);
+    thickness->setDecimals(1);
+    thickness->setValue(double(shown.width));
+    QComboBox* const texture = new QComboBox(&dialog);
+    texture->setIconSize(QSize(72, 20));
+    for (int kind = 0; kind <= PencilTexture::count(); ++kind)
+        texture->addItem(PencilTexture::icon(kind), PencilTexture::name(kind));
+    texture->setCurrentIndex(shown.texture);
+    QSpinBox* const amount = new QSpinBox(&dialog);
+    amount->setRange(0, 100);
+    amount->setSuffix(QStringLiteral(" %"));
+    amount->setValue(int(std::lround(shown.textureAmount * 100.0f)));
+    QComboBox* const join = new QComboBox(&dialog);
+    join->addItems({tr("Round"), tr("Mitre"), tr("Bevel")});
+    join->setCurrentIndex(int(shown.join));
+    form->addRow(tr("Thickness"), thickness);
+    form->addRow(tr("Texture"), texture);
+    form->addRow(tr("Texture opacity"), amount);
+    form->addRow(tr("Corners"), join);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    float const width = float(thickness->value()), shows = float(amount->value()) / 100.0f;
+    int const kind = texture->currentIndex(), corners = join->currentIndex();
+    restyleSelection(tr("Pencil Line Properties"), [=](Stroke& s) {
+        if (s.width <= 0.0f)
+            return;     // an invisible line stays one
+        s.width = width;
+        s.texture = kind;
+        s.textureAmount = shows;
+        s.join = Stroke::Join(corners);
+    });
 }
 
 QVector<int> Canvas::contourPointsPicked() const

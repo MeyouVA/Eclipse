@@ -341,6 +341,21 @@ void Canvas::onActionSelectWithCurrentColour()
     setSelection(strokes, fills);
 }
 
+void Canvas::onActionSelectWithCurrentTexture()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d)
+        return;
+    int const texture = m_lineTexture;      // (taking up the Select tool does not change it)
+    if (!selecting())
+        setTool(Select);
+    QVector<int> strokes;
+    for (int i = 0; i < d->strokes.size(); ++i)
+        if (d->strokes[i].texture == texture && d->strokes[i].width > 0.0f)
+            strokes.push_back(i);
+    setSelection(strokes, {});
+}
+
 void Canvas::onActionInvertSelection()
 {
     Drawing const* const d = currentDrawing();

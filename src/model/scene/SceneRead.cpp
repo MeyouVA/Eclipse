@@ -75,6 +75,8 @@ static Stroke strokeFromJson(QJsonObject const& o)
         s.gradFrom = QPointF(grad[0].toDouble(), grad[1].toDouble());
         s.gradTo = QPointF(grad[2].toDouble(), grad[3].toDouble());
     }
+    s.texture = std::clamp(o["texture"].toInt(0), 0, Stroke::kTextureCount);
+    s.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
     QJsonArray const pts = o["points"].toArray();
     for (int i = 0; i + 2 < pts.size(); i += 3)
         s.points.push_back({QPointF(pts[i].toDouble(), pts[i + 1].toDouble()), float(pts[i + 2].toDouble(1.0))});

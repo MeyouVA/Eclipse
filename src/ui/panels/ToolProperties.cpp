@@ -210,6 +210,7 @@ void ToolProperties::showFor(int tool)
     m_autoFlatten->setEnabled(m_canvas->brushShapes());
     m_brushShape->setChecked(m_canvas->brushShapes());
     m_form->setRowVisible(static_cast<QLayout*>(m_shapeRow), lines);
+    m_form->setRowVisible(static_cast<QLayout*>(m_textureRow), lines && !brush);
     m_form->setRowVisible(m_thicknessRow, contour);
     m_form->setRowVisible(m_selection, tool == T::Select || tool == T::Cutter || Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_fontRow, text);

@@ -171,6 +171,7 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
             m_stroke.join = m_join;
             m_stroke.capStart = m_capStart;
             m_stroke.capEnd = m_capEnd;
+            textureNewLine(m_stroke);
             setMouseTracking(true);
         } else if (m_stroke.points.size() >= 3 && QLineF(layerViewTransform().map(m_stroke.points.first().pos), widgetPos).length() <= 7) {
             // Back on the first point: the line closes into a shape.
@@ -198,6 +199,7 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         m_stroke.join = m_join;
         m_stroke.capStart = m_capStart;
         m_stroke.capEnd = m_capEnd;
+        textureNewLine(m_stroke);
         updateShape(snapped(p), modifiers);
     } else if (m_tool == Brush || m_tool == Pencil || m_tool == StrokeTool) {
         m_drag = DragDraw;
@@ -208,6 +210,7 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         m_stroke.join = m_join;
         m_stroke.capStart = m_capStart;
         m_stroke.capEnd = m_capEnd;
+        textureNewLine(m_stroke);
         m_stroke.points.push_back({p, pressure});
     } else if (m_tool == Eraser) {
         m_drag = DragErase;
