@@ -315,6 +315,8 @@ public slots:
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
     void onActionHelp();
+    void onActionPasteSpecialAgain();
+    void onActionRenameWithPrefix();
     void onActionOnionLayers(QString const& which);
     void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();
@@ -389,6 +391,9 @@ private:
     // The sound of one frame, heard.
     void playFrameSound(int frame);
     int m_envelopePoints = 8;      // how many points Create Envelope puts round a drawing
+    // Paste Special as it was last asked for (Paste Special Again does the same without asking).
+    bool m_pasteDrawings = true, m_pasteKeys = true, m_pasteReverse = false;
+    int m_pasteCycles = 1;
     bool m_envelopeOutline = true; // ... round the outline of the artwork itself, not the hull round it
     QStringList m_referenceFiles;
     // Brings a view up: back where it was, or as a tab behind Tool Properties.

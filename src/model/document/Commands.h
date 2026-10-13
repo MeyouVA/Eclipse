@@ -101,6 +101,8 @@ public:
     bool markDrawing(int layer, int frame, int mark);
     // Every drawing of the layer is named after the frame it is first shown on.  False when that changes nothing.
     bool renameDrawingsByFrame(int layer);
+    // ... or `prefix` and then its number in the layer ("arm-1", "arm-2" ...).
+    bool renameDrawingsWithPrefix(int layer, QString const& prefix);
     // What is typed into a cell of the Xsheet: that frame shows the drawing of the layer called
     // `label` (its name or its number) - a new, empty one of that name when there is none; nothing
     // typed empties the cell.  False when nothing changed.

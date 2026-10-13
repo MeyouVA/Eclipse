@@ -384,6 +384,20 @@ void MainWindow::onActionOnionLayers(QString const& which)
         m_document->editLayers(layers, on ? tr("Onion Skin On") : tr("Onion Skin Off"), [on](Layer& l) { l.onion = on; });
 }
 
+void MainWindow::onActionRenameWithPrefix()
+{
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size() || scene.layers[layer()].drawings.isEmpty()) {
+        statusBar()->showMessage(tr("This layer has no drawings to rename."), 4000);
+        return;
+    }
+    bool ok = false;
+    QString const prefix = QInputDialog::getText(this, tr("Rename Drawing with Prefix"), tr("What every drawing of the layer is to be called, before its number:"),
+                                                 QLineEdit::Normal, scene.layers[layer()].name + QLatin1Char('-'), &ok);
+    if (ok)
+        m_document->renameDrawingsWithPrefix(layer(), prefix);
+}
+
 void MainWindow::onActionRenameByFrame()
 {
     if (!m_document->renameDrawingsByFrame(layer()))

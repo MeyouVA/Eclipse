@@ -150,6 +150,8 @@
   <shortcut id="shortcut.nextDrawing" text="Go to Next Drawing" value="G"/>
   <shortcut id="shortcut.toolSelect" text="Select Tool" value="Alt+S"/>
   <shortcut id="shortcut.help" text="Eclipse Help" value="F1"/>
+  <shortcut id="shortcut.pasteSpecialAgain" text="Paste Special Again" value=""/>
+  <shortcut id="shortcut.renameWithPrefix" text="Rename Drawing with Prefix" value=""/>
   <shortcut id="shortcut.onionNoPrevious" text="Onion Skin: No Previous Drawing" value="~"/>
   <shortcut id="shortcut.onionOnePrevious" text="Onion Skin: Previous Drawing" value="!"/>
   <shortcut id="shortcut.onionTwoPrevious" text="Onion Skin: Previous Two Drawings" value="@"/>

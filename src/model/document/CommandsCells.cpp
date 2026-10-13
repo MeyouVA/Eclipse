@@ -73,6 +73,23 @@ bool Document::exposeDrawing(int layer, int frame, QString const& label)
     return true;
 }
 
+bool Document::renameDrawingsWithPrefix(int layer, QString const& prefix)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || prefix.trimmed().isEmpty())
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    bool any = false;
+    for (int i = 0; i < l.drawings.size(); ++i)
+        any = any || l.drawings[i].name != prefix.trimmed() + QString::number(i + 1);
+    if (!any)
+        return false;
+    apply(tr("Rename Drawings with Prefix"), [&](Scene& s) {
+        for (int i = 0; i < s.layers[layer].drawings.size(); ++i)
+            s.layers[layer].drawings[i].name = prefix.trimmed() + QString::number(i + 1);
+    });
+    return true;
+}
+
 bool Document::renameDrawingsByFrame(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings())

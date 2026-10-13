@@ -54,6 +54,7 @@
    <item id="PasteInPlace" icon="edit/pasteinplace" text="Paste Drawing Object in P&amp;lace" responder="camera" slot="paste()"/>
    <item id="PasteCycle" icon="edit/pastecycle" text="Paste C&amp;ycle..." shortcut="shortcut.pasteCycle" responder="window" slot="onActionPasteCycle()"/>
    <item id="PasteSpecial" icon="edit/pastespecial" text="Paste &amp;Special..." responder="window" slot="onActionPasteSpecial()"/>
+   <item id="PasteSpecialAgain" icon="edit/pastespecialagain" text="Paste Special A&amp;gain" shortcut="shortcut.pasteSpecialAgain" responder="window" slot="onActionPasteSpecialAgain()"/>
    <item id="PasteReverse" icon="edit/pastereverse" text="Paste &amp;Reverse" shortcut="shortcut.pasteReverse" responder="window" slot="onActionPasteReverse()"/>
    <item id="EditDelete" icon="edit/delete" text="&amp;Delete" shortcut="shortcut.delete" responder="focus,camera" slot="deleteSelection()"/>
    <separator/>
@@ -169,6 +170,7 @@
    <item id="CreateEmptyDrawing" icon="timeline/newdrawing" text="Create &amp;Empty Drawing" shortcut="shortcut.createEmptyDrawing" responder="window" slot="onActionCreateEmptyDrawing()"/>
    <item id="DuplicateDrawing" icon="timeline/duplicatedrawing" text="&amp;Duplicate Drawings" shortcut="shortcut.duplicateDrawing" responder="window" slot="onActionDuplicateDrawing()"/>
    <item id="DeleteDrawing" icon="timeline/deletedrawing" text="Delete Selected Dra&amp;wings" responder="window" slot="onActionDeleteDrawing()"/>
+   <item id="RenameWithPrefix" icon="timeline/renameprefix" text="Rename Drawing with &amp;Prefix..." shortcut="shortcut.renameWithPrefix" responder="window" slot="onActionRenameWithPrefix()"/>
    <item id="RenameByFrame" icon="timeline/renamebyframe" text="Rename &amp;by Frame" shortcut="shortcut.renameByFrame" responder="window" slot="onActionRenameByFrame()"/>
    <menu id="DrawingMark" text="Mar&amp;k Drawing As">
     <item id="MarkKey" icon="timeline/markkey" text="&amp;Key Drawing" shortcut="shortcut.markKey" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="key"/>

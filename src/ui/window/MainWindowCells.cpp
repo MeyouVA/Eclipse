@@ -87,13 +87,15 @@ void MainWindow::onActionPasteSpecial()
     QFormLayout* const form = new QFormLayout(&dialog);
     QCheckBox* const drawings = new QCheckBox(tr("Drawings (the exposure)"), &dialog);
     drawings->setObjectName(QStringLiteral("PasteDrawings"));
-    drawings->setChecked(true);
+    drawings->setChecked(m_pasteDrawings);
     QCheckBox* const keys = new QCheckBox(tr("Keyframes"), &dialog);
     keys->setObjectName(QStringLiteral("PasteKeyframes"));
-    keys->setChecked(true);
+    keys->setChecked(m_pasteKeys);
     QSpinBox* const cycles = new QSpinBox(&dialog);
     cycles->setRange(1, 1000);
+    cycles->setValue(m_pasteCycles);
     QCheckBox* const reverse = new QCheckBox(tr("From the last frame to the first"), &dialog);
+    reverse->setChecked(m_pasteReverse);
     form->addRow(drawings);
     form->addRow(keys);
     form->addRow(tr("Number of cycles"), cycles);
@@ -102,8 +104,23 @@ void MainWindow::onActionPasteSpecial()
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    if (dialog.exec() == QDialog::Accepted)
-        m_timeline->pasteSpecial(drawings->isChecked(), keys->isChecked(), cycles->value(), reverse->isChecked());
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    m_pasteDrawings = drawings->isChecked();
+    m_pasteKeys = keys->isChecked();
+    m_pasteCycles = cycles->value();
+    m_pasteReverse = reverse->isChecked();
+    m_timeline->pasteSpecial(m_pasteDrawings, m_pasteKeys, m_pasteCycles, m_pasteReverse);
+}
+
+// The same again, as Paste Special was last set, without asking.
+void MainWindow::onActionPasteSpecialAgain()
+{
+    if (!Timeline::canPasteCells()) {
+        statusBar()->showMessage(tr("Copy cells in the Timeline or the Xsheet first."), 5000);
+        return;
+    }
+    m_timeline->pasteSpecial(m_pasteDrawings, m_pasteKeys, m_pasteCycles, m_pasteReverse);
 }
 
 void MainWindow::onActionPasteReverse()
