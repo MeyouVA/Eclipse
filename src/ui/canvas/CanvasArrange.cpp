@@ -41,6 +41,10 @@ void Canvas::transformSelection(QTransform const& about, QString const& text)
         edited.strokes[i].transform(t);
     for (int i : std::as_const(m_selFills))
         edited.fills[i].transform(t);
+    if (m_art == LineArt)
+        for (int i : std::as_const(m_selPictures))
+            if (i >= 0 && i < edited.pictures.size())
+                edited.pictures[i].transform(t);
     bool const all = m_tool == Reposition;
     if (all)
         m_document->beginMacro(text);

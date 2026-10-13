@@ -7,9 +7,11 @@
 #include "model/document/Commands.h"
 #include "ui/panels/Effects.h"
 
-void Canvas::setSelection(QVector<int> const& strokes, QVector<int> const& fills)
+void Canvas::setSelection(QVector<int> const& strokes, QVector<int> const& fills, QVector<int> const& pictures)
 {
     QVector<int> allStrokes = strokes, allFills = fills;
+    QVector<int> allPictures = pictures;
+    std::sort(allPictures.begin(), allPictures.end());
     // What is grouped with something picked is picked too.
     if (Drawing const* const d = currentDrawing()) {
         QVector<int> groups;
@@ -30,10 +32,11 @@ void Canvas::setSelection(QVector<int> const& strokes, QVector<int> const& fills
     }
     std::sort(allStrokes.begin(), allStrokes.end());
     std::sort(allFills.begin(), allFills.end());
-    if (allStrokes == m_selStrokes && allFills == m_selFills)
+    if (allStrokes == m_selStrokes && allFills == m_selFills && allPictures == m_selPictures)
         return;
     m_selStrokes = allStrokes;
     m_selFills = allFills;
+    m_selPictures = allPictures;
     std::sort(m_selStrokes.begin(), m_selStrokes.end());
     std::sort(m_selFills.begin(), m_selFills.end());
     update();
@@ -69,6 +72,10 @@ QRectF Canvas::selectionBounds() const
         add(d->strokes[i].bounds());
     for (int i : m_selFills)
         add(d->fills[i].bounds());
+    if (m_art == LineArt)
+        for (int i : m_selPictures)
+            if (i >= 0 && i < d->pictures.size())
+                add(d->pictures[i].bounds());
     return r;
 }
 
@@ -216,6 +223,7 @@ bool Canvas::selectAt(QPointF p, bool toggle)
     Drawing const* const d = currentDrawing();
     QVector<int> strokes = toggle ? m_selStrokes : QVector<int>();
     QVector<int> fills = toggle ? m_selFills : QVector<int>();
+    QVector<int> pictures = toggle ? m_selPictures : QVector<int>();
     auto flip = [](QVector<int>& list, int i) {
         if (list.contains(i))
             list.removeAll(i);
@@ -233,7 +241,7 @@ bool Canvas::selectAt(QPointF p, bool toggle)
                     return true;
                 }
                 flip(strokes, i);
-                setSelection(strokes, fills);
+                setSelection(strokes, fills, pictures);
                 return true;
             }
         }
@@ -245,9 +253,18 @@ bool Canvas::selectAt(QPointF p, bool toggle)
                     return true;
                 }
                 flip(fills, i);
-                setSelection(strokes, fills);
+                setSelection(strokes, fills, pictures);
                 return true;
             }
+        }
+        // A picture, under the lines and the paint: pressed anywhere on it.  (They are picked on the line art, which they lie with.)
+        for (int i = m_art == LineArt ? int(d->pictures.size()) - 1 : -1; i >= 0; --i) {
+            Picture const& picture = d->pictures[i];
+            if (!picture.placement.isInvertible() || !QRectF(QPointF(0, 0), QSizeF(picture.size)).contains(picture.placement.inverted().map(p)))
+                continue;
+            flip(pictures, i);
+            setSelection(strokes, fills, pictures);
+            return true;
         }
     }
     if (!toggle)
@@ -265,7 +282,19 @@ void Canvas::selectInside(std::function<bool(QPointF)> const& within, bool add)
     Drawing const* const d = currentDrawing();
     QVector<int> strokes = add ? m_selStrokes : QVector<int>();
     QVector<int> fills = add ? m_selFills : QVector<int>();
+    QVector<int> pictures = add ? m_selPictures : QVector<int>();
     if (d) {
+        // A picture is taken when all of it is inside the shape.
+        for (int i = 0; m_art == LineArt && i < d->pictures.size(); ++i) {
+            if (pictures.contains(i))
+                continue;
+            QPolygonF const corners = d->pictures[i].placement.map(QPolygonF(QRectF(QPointF(0, 0), QSizeF(d->pictures[i].size))));
+            bool inside = !corners.isEmpty();
+            for (QPointF const& corner : corners)
+                inside = inside && within(corner);
+            if (inside)
+                pictures.push_back(i);
+        }
         // An item is taken when any of its points is inside the shape.
         for (int i = 0; i < d->strokes.size(); ++i) {
             if (strokes.contains(i))
@@ -288,7 +317,7 @@ void Canvas::selectInside(std::function<bool(QPointF)> const& within, bool add)
                 fills.push_back(i);
         }
     }
-    setSelection(strokes, fills);
+    setSelection(strokes, fills, pictures);
 }
 
 void Canvas::onActionSelectWithCurrentColour()

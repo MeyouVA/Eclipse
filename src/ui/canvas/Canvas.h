@@ -124,9 +124,11 @@ public:
     QPointF mapToScene(QPointF widgetPos) const { return toScene(widgetPos); }
 
     // ---- selection (Select tool) --------------------------------------------------------
-    bool hasSelection() const { return !m_selStrokes.isEmpty() || !m_selFills.isEmpty(); }
+    bool hasSelection() const { return !m_selStrokes.isEmpty() || !m_selFills.isEmpty() || !m_selPictures.isEmpty(); }
     // How many lines and painted areas are selected.
-    int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size()); }
+    int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size() + m_selPictures.size()); }
+    // How many of the things selected are pictures (imported bitmaps: picked with the Select tool on the line art).
+    int selectedPictureCount() const { return int(m_selPictures.size()); }
     // The Select tool or the Cutter: what is selected can be handled with either.
     bool selecting() const { return m_tool == Select || m_tool == Cutter || m_tool == Reposition || m_tool == Perspective || m_tool == Envelope; }
     // The points picked with the Contour Editor besides contourPoint(), on the same curve.
@@ -667,7 +669,7 @@ private:
     // Selects (or with `toggle`, flips) the item under the point; false when there is none.
     bool selectAt(QPointF scenePos, bool toggle);
     void selectInRect(QRectF const& rect, bool add);
-    void setSelection(QVector<int> const& strokes, QVector<int> const& fills);
+    void setSelection(QVector<int> const& strokes, QVector<int> const& fills, QVector<int> const& pictures = {});
 
     Document* m_document;
     Tool m_tool = Brush;
@@ -764,6 +766,10 @@ private:
     // selection: indices into the current drawing
     QVector<int> m_selStrokes;
     QVector<int> m_selFills;
+    // The pictures of the drawing that are selected.  They belong to the drawing as its line art does, and are
+    // picked, moved, scaled, turned and deleted there; the other commands of the Select tool leave them be.
+    QVector<int> m_selPictures;
+    bool m_keepNoPictures = false;      // the drawing being committed has had its last picture taken away
     bool m_committing = false;    // our own edit is going through: keep the selection
     QPointF m_dragStart;          // scene position where the drag began
     QPointF m_dragNow;

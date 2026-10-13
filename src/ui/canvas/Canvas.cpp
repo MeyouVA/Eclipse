@@ -208,7 +208,7 @@ Drawing Canvas::withArt(Drawing const& art) const
             whole.pinned = real->pinned;
             whole.name = real->name;
             whole.mark = real->mark;
-            if (whole.pictures.isEmpty())
+            if (whole.pictures.isEmpty() && !m_keepNoPictures)
                 whole.pictures = real->pictures;        // (the tools do not touch pictures: one made afresh has none)
         }
         return whole;
@@ -316,6 +316,7 @@ void Canvas::eraseStretch(int from)
         // What was picked may be gone or in pieces.
         m_selStrokes.clear();
         m_selFills.clear();
+    m_selPictures.clear();
         m_ceStroke = m_cePoint = m_ceFill = -1;
         emit selectionChanged();
     }
@@ -399,6 +400,7 @@ void Canvas::cutWithEraser()
     // What was picked may be gone or in pieces.
     m_selStrokes.clear();
     m_selFills.clear();
+    m_selPictures.clear();
     m_ceStroke = m_cePoint = m_ceFill = -1;
     emit selectionChanged();
 }

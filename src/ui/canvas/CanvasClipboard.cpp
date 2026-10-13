@@ -95,10 +95,18 @@ void Canvas::deleteSelection()
     for (int i = 0; i < d->fills.size(); ++i)
         if (!m_selFills.contains(i))
             kept.fills.push_back(d->fills[i]);
+    // The pictures selected go too (they lie with the line art).
+    bool const picturesGo = m_art == LineArt && !m_selPictures.isEmpty();
+    if (picturesGo)
+        for (int i = 0; i < d->pictures.size(); ++i)
+            if (!m_selPictures.contains(i))
+                kept.pictures.push_back(d->pictures[i]);
     QRectF const region = selectionBounds();
     if (m_applyAll && m_tool == Select)
         m_document->beginMacro(tr("Delete"));
+    m_keepNoPictures = picturesGo;
     commitDrawing(kept, tr("Delete"));
+    m_keepNoPictures = false;
     if (m_applyAll && m_tool == Select) {
         alsoInOtherDrawings(region, nullptr, tr("Delete"));
         m_document->endMacro();
