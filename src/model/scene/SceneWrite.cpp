@@ -320,6 +320,10 @@ QJsonObject Scene::toJson(QString const& folder) const
         }
         if (layer.showsSymbol())
             layerObject["symbol"] = layer.symbolId;
+        if (layer.ikExcluded)
+            layerObject["ikExcluded"] = true;
+        if (layer.ikLimited)
+            layerObject["ikLimits"] = QJsonArray{layer.ikMin, layer.ikMax};
         layerArray.append(layerObject);
     }
     QJsonArray paletteArray;

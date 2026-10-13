@@ -565,6 +565,8 @@ void Canvas::boneIkMove(QPointF widgetPos)
     for (int round = 0; round < 24 && QLineF(tip(), target).length() > 0.2; ++round) {
         for (int l : std::as_const(m_ikChain)) {
             Layer& bone = posed.layers[l];
+            if (bone.ikExcluded)
+                continue;       // left out of IK: it stays as it is
             QPointF const base = posed.worldTransform(l, m_frame).map(bone.pivot);
             QPointF const end = tip();
             double turn = (std::atan2(target.y() - base.y(), target.x() - base.x()) - std::atan2(end.y() - base.y(), end.x() - base.x())) * 180.0 / 3.14159265358979323846;
@@ -581,6 +583,8 @@ void Canvas::boneIkMove(QPointF widgetPos)
             for (double const way : {1.0, -1.0}) {
                 Pose tried = was;
                 tried.rotation = was.rotation + way * turn;
+                if (bone.ikLimited)
+                    tried.rotation = std::clamp(tried.rotation, bone.ikMin, bone.ikMax);       // no further than it may turn
                 bone.setKey(m_frame, tried);
                 double const off = QLineF(tip(), target).length();
                 if (off < best - 1e-9) {

@@ -1,6 +1,8 @@
 #include "ui/panels/LayerPanel.h"
 
+#include <QCheckBox>
 #include <QComboBox>
+#include <QVBoxLayout>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -69,6 +71,38 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     m_length = number(1, 100000, 10.0, 1);
     m_length->setObjectName(QStringLiteral("BoneLength"));
     m_length->setToolTip(tr("How long the bone is. Bones attached to it start at its tip."));
+    {
+        // IK constraints: the bone left out of IK, or turned only between two angles.
+        m_ikRow = new QWidget(this);
+        QVBoxLayout* const column = new QVBoxLayout(m_ikRow);
+        column->setContentsMargins(0, 0, 0, 0);
+        column->setSpacing(2);
+        m_ikExcluded = new QCheckBox(tr("Leave out of IK"), m_ikRow);
+        m_ikExcluded->setObjectName(QStringLiteral("IkExcluded"));
+        m_ikExcluded->setToolTip(tr("The IK tool does not turn this bone when a bone that hangs on it is pulled."));
+        m_ikLimited = new QCheckBox(tr("Turn only between"), m_ikRow);
+        m_ikLimited->setObjectName(QStringLiteral("IkLimited"));
+        m_ikLimited->setToolTip(tr("The IK tool turns this bone no further than these two angles - an elbow that does not bend backwards."));
+        m_ikMin = number(-360, 360, 5.0, 1);
+        m_ikMin->setObjectName(QStringLiteral("IkMin"));
+        m_ikMax = number(-360, 360, 5.0, 1);
+        m_ikMax->setObjectName(QStringLiteral("IkMax"));
+        QHBoxLayout* const angles = new QHBoxLayout;
+        angles->addWidget(m_ikLimited);
+        angles->addWidget(m_ikMin, 1);
+        angles->addWidget(new QLabel(tr("and"), m_ikRow));
+        angles->addWidget(m_ikMax, 1);
+        column->addWidget(m_ikExcluded);
+        column->addLayout(angles);
+        auto changed = [this] {
+            if (!m_refreshing)
+                m_document->setIkConstraints(m_layer, m_ikExcluded->isChecked(), m_ikLimited->isChecked(), m_ikMin->value(), m_ikMax->value());
+        };
+        connect(m_ikExcluded, &QCheckBox::toggled, this, changed);
+        connect(m_ikLimited, &QCheckBox::toggled, this, changed);
+        connect(m_ikMin, &QDoubleSpinBox::valueChanged, this, changed);
+        connect(m_ikMax, &QDoubleSpinBox::valueChanged, this, changed);
+    }
     m_easeIn->setSuffix(QStringLiteral(" %"));
     m_easeOut->setSuffix(QStringLiteral(" %"));
     m_easeIn->setToolTip(tr("How gently the motion arrives at the keyframe on this frame."));
@@ -88,6 +122,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("Type"), m_kind);
     form->addRow(tr("Colour"), m_card);
     form->addRow(tr("Length"), m_length);
+    form->addRow(tr("IK"), m_ikRow);
     form->addRow(tr("Attached to"), m_parent);
     form->addRow(tr("Rides on"), m_bone);
     form->addRow(tr("Position"), pair(m_x, m_y));
@@ -174,6 +209,13 @@ void LayerPanel::refresh()
     m_form->setRowVisible(m_turnRow, layer.kind != Layer::Camera);
     m_card->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px;").arg(layer.cardColor.name()));
     m_length->setValue(layer.boneLength);
+    m_form->setRowVisible(m_ikRow, layer.kind == Layer::Bone);
+    m_ikExcluded->setChecked(layer.ikExcluded);
+    m_ikLimited->setChecked(layer.ikLimited);
+    m_ikMin->setValue(layer.ikMin);
+    m_ikMax->setValue(layer.ikMax);
+    m_ikMin->setEnabled(layer.ikLimited);
+    m_ikMax->setEnabled(layer.ikLimited);
     // Ease belongs to a keyframe: there is something to set only on one.
     int const key = layer.keyIndex(m_frame);
     m_easeIn->setEnabled(key >= 0);

@@ -242,6 +242,8 @@ public:
     int addQuadmap(int above);
     void setCardColor(int layer, QColor const& color);
     void setBoneLength(int layer, double length);
+    // IK constraints of a bone: left out of IK; and whether it is turned only between two angles, and which.
+    void setIkConstraints(int layer, bool excluded, bool limited, double minimum, double maximum);
     // The four corners of a quadmap: top left, top right, bottom right, bottom left.
     // The corners of a quadmap.  One that has keyframes gets them on a keyframe at `frame`,
     // so that the pull can change in time; one that has none simply has those corners.

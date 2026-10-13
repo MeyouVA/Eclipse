@@ -212,6 +212,12 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         for (QJsonValue const& kv : lo["keyExposures"].toArray())
             layer.keyExposures.push_back(kv.toInt());
         layer.symbolId = lo["symbol"].toInt(0);
+        layer.ikExcluded = lo["ikExcluded"].toBool(false);
+        if (QJsonArray const limits = lo["ikLimits"].toArray(); limits.size() == 2) {
+            layer.ikLimited = true;
+            layer.ikMin = std::min(limits[0].toDouble(), limits[1].toDouble());
+            layer.ikMax = std::max(limits[0].toDouble(), limits[1].toDouble());
+        }
         layer.collapsed = lo["collapsed"].toBool(false);
         if (QString const track = lo["track"].toString(); !track.isEmpty())
             layer.trackColor = QColor(track);

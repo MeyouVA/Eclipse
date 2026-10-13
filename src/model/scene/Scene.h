@@ -424,6 +424,12 @@ struct Layer {
     double effectAmount(int index, Pose const& pose) const;
     QColor cardColor = Qt::white;   // a colour-card: its colour
     double boneLength = 200.0;      // a bone: from its pivot, along its x axis
+    // A bone and the IK tool: left out of it (it is not turned when a bone hanging on it is pulled), or turned
+    // only between two angles (degrees, as its rotation is told).
+    bool ikExcluded = false;
+    bool ikLimited = false;
+    double ikMin = -90.0;
+    double ikMax = 90.0;
     // A camera: the angle it sees from the top of the frame to the bottom (degrees).  It
     // sets how far the camera stands from the artwork that has no depth, and so how
     // strongly depth shows: a wide angle stands close, and near things loom.

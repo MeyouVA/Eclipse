@@ -246,6 +246,23 @@ void Document::setCardColor(int layer, QColor const& color)
     apply(tr("Change Colour-Card"), [&](Scene& s) { s.layers[layer].cardColor = color; });
 }
 
+void Document::setIkConstraints(int layer, bool excluded, bool limited, double minimum, double maximum)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return;
+    if (minimum > maximum)
+        std::swap(minimum, maximum);
+    Layer const& now = m_scene.layers[layer];
+    if (now.ikExcluded == excluded && now.ikLimited == limited && now.ikMin == minimum && now.ikMax == maximum)
+        return;
+    apply(tr("IK Constraints"), [&](Scene& s) {
+        s.layers[layer].ikExcluded = excluded;
+        s.layers[layer].ikLimited = limited;
+        s.layers[layer].ikMin = minimum;
+        s.layers[layer].ikMax = maximum;
+    });
+}
+
 void Document::setBoneLength(int layer, double length)
 {
     length = std::max(1.0, length);

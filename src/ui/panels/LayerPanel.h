@@ -10,6 +10,7 @@
 class Document;
 class EffectsPanel;
 class QComboBox;
+class QCheckBox;
 class QDoubleSpinBox;
 class QLabel;
 class QLineEdit;
@@ -61,6 +62,11 @@ private:
     QDoubleSpinBox* m_opacity;
     class QPushButton* m_card;      // a colour-card: its colour
     QDoubleSpinBox* m_length;       // a bone: how long it is
+    QWidget* m_ikRow = nullptr;     // a bone: its IK constraints
+    QCheckBox* m_ikExcluded = nullptr;
+    QCheckBox* m_ikLimited = nullptr;
+    QDoubleSpinBox* m_ikMin = nullptr;
+    QDoubleSpinBox* m_ikMax = nullptr;
     class QFormLayout* m_form;
     EffectsPanel* m_effects;
 };
