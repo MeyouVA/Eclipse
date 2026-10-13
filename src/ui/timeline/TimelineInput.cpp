@@ -289,7 +289,8 @@ void Timeline::dropEvent(QDropEvent* event)
     QPoint const pos = event->position().toPoint();
     int const frame = pos.x() >= kHeaderWidth ? std::clamp(frameAt(pos.x()), 0, m_document->scene().frameCount() - 1) : m_frame;
     event->acceptProposedAction();
-    emit templateDropped(QString::fromUtf8(event->mimeData()->data(QLatin1String(kTemplateMime))), frame);
+    // (Over the cells it goes onto the layers of the same names, when the scene has them; over the names it comes as new layers.)
+    emit templateDropped(QString::fromUtf8(event->mimeData()->data(QLatin1String(kTemplateMime))), frame, pos.x() >= kHeaderWidth);
 }
 
 void Timeline::contextMenuEvent(QContextMenuEvent* event)

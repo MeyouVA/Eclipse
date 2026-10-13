@@ -398,7 +398,8 @@ private:
     QWidget* makeReferenceView();
     QListWidget* m_references = nullptr;
     class LibraryView* m_library = nullptr;
-    void dropTemplate(QString const& path, int frame);
+    // (`onto`: put on the layers of the same names when the scene has them all - a drop on the cells of the Timeline.)
+    void dropTemplate(QString const& path, int frame, bool onto = false);
     void askExportImages(bool preview);
     void exportMovieTo(QString const& path, struct MovieChoices const* choices = nullptr);
     void syncReferences();

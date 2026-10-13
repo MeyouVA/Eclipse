@@ -657,6 +657,11 @@ public:
     // scene has already (the same name and colour) are used; the others join the palette.
     // Returns the index of the first layer brought in, or -1 when there was none.
     int insert(Scene const& piece, int frame);
+    // The same piece put onto layers the scene has already: each layer of the piece goes to the layer of
+    // the same name and kind, its drawings and keyframes taking the place of what that layer had over
+    // those frames.  -1, and nothing done, unless every layer of the piece has such a layer; else the
+    // index of the first of them.
+    int pasteOnto(Scene const& piece, int frame);
 
     // `folder` is where the scene file is: the files the scene uses (linked pictures,
     // sounds) are then also written by their path from there, and looked for there when

@@ -136,7 +136,7 @@ signals:
     void trackColourRequested(int layer);
     void selectionChanged();
     // A template dragged out of the Library was let go over this frame.
-    void templateDropped(QString const& path, int frame);
+    void templateDropped(QString const& path, int frame, bool onCells);
 
 protected:
     void paintEvent(QPaintEvent*) override;

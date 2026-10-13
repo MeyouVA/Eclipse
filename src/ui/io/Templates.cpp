@@ -59,9 +59,23 @@ int MainWindow::insertTemplate(QString const& path, int frame, QString* error)
     return at;
 }
 
-void MainWindow::dropTemplate(QString const& path, int frame)
+void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
 {
     QString error;
+    if (onto) {
+        // Onto the layers it was made from, or others of the same names, when they are all here.
+        Scene piece;
+        if (Scene::load(path, piece, &error)) {
+            int const at = m_document->pasteTemplateOnto(piece, std::clamp(frame, 0, m_document->scene().frameCount() - 1));
+            if (at >= 0) {
+                m_timeline->clearRange();
+                m_timeline->setCurrentCell(at, frame);
+                statusBar()->showMessage(tr("Template %1 pasted onto the layers of the same names from frame %2.").arg(QFileInfo(path).completeBaseName()).arg(frame + 1), 5000);
+                return;
+            }
+        }
+        error.clear();
+    }
     if (insertTemplate(path, frame, &error) < 0)
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not use %1:\n%2").arg(QDir::toNativeSeparators(path), error));
     else

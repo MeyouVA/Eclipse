@@ -78,6 +78,87 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
     return piece;
 }
 
+int Scene::pasteOnto(Scene const& piece, int frame)
+{
+    if (piece.layers.isEmpty() || frame < 0)
+        return -1;
+    // Which layer each of them goes to.
+    QVector<int> target;
+    for (Layer const& theirs : piece.layers) {
+        int found = -1;
+        for (int l = 0; l < layers.size() && found < 0; ++l)
+            if (layers[l].name == theirs.name && layers[l].kind == theirs.kind && !target.contains(l))
+                found = l;
+        if (found < 0)
+            return -1;
+        target.push_back(found);
+    }
+    if (frame + piece.frameCount() > m_frameCount)
+        setFrameCount(frame + piece.frameCount());
+    // The colours, as when a piece is brought in as layers of its own.
+    QHash<int, int> swatchOf;
+    for (Swatch const& theirs : piece.palette) {
+        int mine = kNoSwatch;
+        for (Swatch const& have : palette)
+            if (have.name == theirs.name && have.color == theirs.color)
+                mine = have.id;
+        swatchOf.insert(theirs.id, mine);
+    }
+    auto relink = [&](int& swatch, QColor const& colour) {
+        if (swatch == kNoSwatch)
+            return;
+        auto found = swatchOf.find(swatch);
+        if (found == swatchOf.end()) {
+            swatch = kNoSwatch;
+            return;
+        }
+        if (found.value() == kNoSwatch) {
+            Swatch const* const theirs = piece.findSwatch(swatch);
+            found.value() = addSwatch(theirs ? theirs->name : QStringLiteral("Colour"), theirs ? theirs->color : colour, 0);
+        }
+        swatch = found.value();
+    };
+    int const count = piece.frameCount();
+    for (int i = 0; i < piece.layers.size(); ++i) {
+        Layer const& theirs = piece.layers[i];
+        Layer& mine = layers[target[i]];
+        if (mine.holdsDrawings()) {
+            // Each drawing of theirs that is shown comes over once; the frames show what theirs showed.
+            QHash<int, int> brought;
+            for (int f = 0; f < count && f < theirs.cells.size() && frame + f < mine.cells.size(); ++f) {
+                int const index = theirs.cells[f];
+                if (index == Layer::kNoDrawing || index < 0 || index >= theirs.drawings.size()) {
+                    mine.cells[frame + f] = Layer::kNoDrawing;
+                    continue;
+                }
+                auto have = brought.find(index);
+                if (have == brought.end()) {
+                    Drawing d = theirs.drawings[index];
+                    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                        for (Stroke& stroke : d.strokesOf(sheet))
+                            relink(stroke.swatch, stroke.color);
+                        for (Fill& fill : d.fillsOf(sheet))
+                            relink(fill.swatch, fill.color);
+                    }
+                    d.name.clear();     // (a name belongs to one drawing of a layer)
+                    mine.drawings.push_back(d);
+                    have = brought.insert(index, int(mine.drawings.size()) - 1);
+                }
+                mine.cells[frame + f] = have.value();
+            }
+            mine.compact();
+        }
+        // The keyframes over those frames are theirs.
+        for (int k = int(mine.keys.size()) - 1; k >= 0; --k)
+            if (mine.keys[k].frame >= frame && mine.keys[k].frame < frame + count)
+                mine.keys.removeAt(k);
+        for (Keyframe const& key : theirs.keys)
+            if (key.frame >= 0 && key.frame < count)
+                mine.setKey(frame + key.frame, key.pose);
+    }
+    return *std::min_element(target.begin(), target.end());
+}
+
 int Scene::insert(Scene const& piece, int frame)
 {
     if (piece.layers.isEmpty() || frame < 0)
