@@ -47,6 +47,8 @@ public:
         // Press on a point of a pencil line and pull away from it or towards it: the line is
         // that much thicker or thinner there.
         PencilEditor,
+        // What is selected is put in perspective: each corner of its box is pulled on its own.
+        Perspective,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -113,7 +115,7 @@ public:
     // How many lines and painted areas are selected.
     int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size()); }
     // The Select tool or the Cutter: what is selected can be handled with either.
-    bool selecting() const { return m_tool == Select || m_tool == Cutter || m_tool == Reposition; }
+    bool selecting() const { return m_tool == Select || m_tool == Cutter || m_tool == Reposition || m_tool == Perspective; }
     // The points picked with the Contour Editor besides contourPoint(), on the same curve.
     QVector<int> contourPointsPicked() const;
     void clearSelection();

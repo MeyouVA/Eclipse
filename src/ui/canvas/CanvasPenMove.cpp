@@ -278,6 +278,17 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     }
     case DragScale: {
+        if (m_tool == Perspective) {
+            // The corner in hand goes with the pointer; the other three stay: the box becomes any four-sided shape.
+            QPolygonF const from({m_dragBounds.topLeft(), m_dragBounds.topRight(), m_dragBounds.bottomRight(), m_dragBounds.bottomLeft()});
+            QPolygonF to = from;
+            to[int(m_dragHandle) - int(TopLeft)] = p;
+            QTransform pulled;
+            if (QTransform::quadToQuad(from, to, pulled))
+                m_dragTransform = pulled;
+            update();
+            break;
+        }
         // Scale about the corner opposite the one being dragged.
         Handle const opposite = Handle((int(m_dragHandle) - TopLeft + 2) % 4 + TopLeft);
         QPointF const anchor = handlePos(opposite, m_dragBounds);

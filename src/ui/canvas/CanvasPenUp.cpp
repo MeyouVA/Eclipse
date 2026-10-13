@@ -250,7 +250,7 @@ void Canvas::penUp()
         if (!m_dragTransform.isIdentity()) {
             Drawing const edited = previewDrawing();
             m_drag = DragNone;
-            QString const text = drag == DragMove ? tr("Move") : drag == DragScale ? tr("Scale") : tr("Rotate");
+            QString const text = drag == DragMove ? tr("Move") : drag == DragScale ? (m_tool == Perspective ? tr("Perspective") : tr("Scale")) : tr("Rotate");
             bool const everywhere = m_applyAll && m_tool == Select;
             QRectF const region = everywhere ? selectionBounds() : QRectF();
             QTransform const done = m_dragTransform;

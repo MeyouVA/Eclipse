@@ -43,7 +43,7 @@ void Canvas::setTool(Tool tool)
         endText(true);
     }
     m_tool = tool;
-    if (tool != Select && tool != Cutter && tool != Reposition)
+    if (tool != Select && tool != Cutter && tool != Reposition && tool != Perspective)
         clearSelection();
     if (tool == Reposition)
         selectAll();

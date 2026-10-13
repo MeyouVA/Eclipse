@@ -97,6 +97,8 @@ Canvas::Handle Canvas::handleAt(QPointF widgetPos) const
     QRectF const bounds = selectionBounds();
     QTransform const view = layerViewTransform();
     for (Handle h : {Rotate, TopLeft, TopRight, BottomRight, BottomLeft}) {
+        if (h == Rotate && m_tool == Perspective)
+            continue;       // that tool pulls corners only
         QPointF const p = view.map(handlePos(h, bounds));
         if (std::abs(p.x() - widgetPos.x()) <= 7 && std::abs(p.y() - widgetPos.y()) <= 7)
             return h;

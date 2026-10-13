@@ -427,7 +427,7 @@ void Canvas::paintEvent(QPaintEvent*)
         QPen box(accent);
         box.setStyle(Qt::DashLine);
         painter.setPen(box);
-        if (m_drag == DragRotate) {
+        if (m_drag == DragRotate || (m_tool == Perspective && m_drag == DragScale)) {
             painter.drawPolygon(layerView.map(m_dragTransform.map(QPolygonF(m_dragBounds))));
         } else {
             painter.drawPolygon(layerView.map(QPolygonF(bounds)));
