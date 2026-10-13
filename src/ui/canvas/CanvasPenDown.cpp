@@ -102,6 +102,15 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         thicknessDown(p);
         return;
     }
+    if (m_tool == Ink) {
+        if (Drawing const* const d = currentDrawing()) {
+            m_eraseArt = *d;
+            m_inked = false;
+            m_drag = DragInk;
+            inkAt(p);
+        }
+        return;
+    }
     if (m_tool == Pencil || m_tool == StrokeTool)
         pressure = 1.0f;  // a pencil line has one thickness
     if (m_tool == Rigging) {

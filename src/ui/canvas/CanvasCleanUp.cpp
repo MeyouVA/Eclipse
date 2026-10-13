@@ -396,6 +396,23 @@ void Canvas::thicknessDown(QPointF p)
     update();
 }
 
+// ---- the Ink tool -----------------------------------------------------------------------------------
+
+void Canvas::inkAt(QPointF p)
+{
+    QColor const colour = m_document->scene().resolve(m_swatch, Qt::black);
+    // A few pixels either side of the line will do: the tool is for lines, and nothing else is in its way.
+    double const reach = 4.0 / std::max(m_zoom, 1e-6);
+    for (Stroke& stroke : m_eraseArt.strokes) {
+        if (stroke.width <= 0.0f || (stroke.swatch == m_swatch && stroke.color == colour) || keepsColour(stroke.swatch) || !stroke.hit(p, reach))
+            continue;
+        stroke.swatch = m_swatch;
+        stroke.color = colour;
+        m_inked = true;
+    }
+    update();
+}
+
 // ---- Close Gaps ---------------------------------------------------------------------------------
 
 int Canvas::closeGaps(double gap)

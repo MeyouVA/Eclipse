@@ -231,6 +231,9 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         m_dragNow = p;
         update();
         break;
+    case DragInk:
+        inkAt(p);
+        break;
     case DragThickness:
         if (m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size() && m_thickPoint >= 0 && m_thickPoint < m_eraseArt.strokes[m_thickStroke].points.size()) {
             // How far the pointer is from the point is half of how thick the line is there.

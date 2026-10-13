@@ -49,6 +49,8 @@ public:
         PencilEditor,
         // What is selected is put in perspective: each corner of its box is pulled on its own.
         Perspective,
+        // The lines the pen passes over take the colour in hand; paint is left alone.
+        Ink,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -654,7 +656,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -770,6 +772,8 @@ private:
     int m_thickStroke = -1;      // the Pencil Editor: the line and the point of it in hand
     int m_thickPoint = -1;
     void thicknessDown(QPointF p);
+    bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
+    void inkAt(QPointF p);
     double m_nudgeStep = 1.0;
     int m_propAcross = 3;
     int m_propDown = 3;

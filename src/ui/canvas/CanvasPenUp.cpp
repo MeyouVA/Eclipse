@@ -91,6 +91,17 @@ void Canvas::penUp()
         update();
         return;
     }
+    if (drag == DragInk) {
+        m_drag = DragNone;
+        if (m_inked) {
+            Drawing const art = m_eraseArt;
+            commitDrawing(art, tr("Ink"));
+        }
+        m_eraseArt = Drawing();
+        m_inked = false;
+        update();
+        return;
+    }
     if (drag == DragThickness) {
         m_drag = DragNone;
         Drawing const* const d = currentDrawing();
