@@ -277,7 +277,8 @@ void Canvas::penUp()
         if (!(m_dragPose == m_poseStart) && !m_animate)
             m_document->shiftPoses(m_layer, m_frame, m_poseStart, m_dragPose,
                                    drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
-                                   : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : tr("Rotate Layer"));
+                                   : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : tr("Rotate Layer"),
+                                   m_animateRange ? std::max(0, m_frame - m_onionPrev) : -1, m_animateRange ? m_frame + m_onionNext : -1);
         else if (!(m_dragPose == m_poseStart) && m_keyFrameOne && m_frame > 0 && m_document->scene().layers[m_layer].keys.isEmpty()) {
             // Its first keyframe, and not on the first frame: the first frame gets one too, of the layer as it was.
             QString const text = drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : drag == DragPoseRotate ? tr("Rotate Layer")

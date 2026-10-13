@@ -455,13 +455,24 @@ public slots:
     void onActionAnimateCurrentFrame()
     {
         m_animate = true;
+        m_animateRange = false;
         emit animateChanged(true);
     }
     void onActionAnimateOff()
     {
         m_animate = false;
+        m_animateRange = false;
         emit animateChanged(false);
     }
+    // Animate Onion Skin Range: the keyframes within the onion skin's reach, before and after this
+    // frame, go along with what the Transform tool does; those further off stay.
+    void onActionAnimateOnionRange()
+    {
+        m_animate = false;
+        m_animateRange = true;
+        emit animateChanged(false);
+    }
+    bool animatesOnionRange() const { return m_animateRange; }
     // Each thing selected (a group counts as one) goes to a layer of its own, attached to this one.
     void onActionDistributeToLayers();
     void onActionUngroupArtwork();
@@ -775,6 +786,7 @@ private:
     bool m_snapGrid = false;
     bool m_animate = true;
     bool m_keyFrameOne = false;
+    bool m_animateRange = false;
     int m_transformMode = TransformAll;
     bool m_noZDrag = false;
     bool m_maintaining = false;         // the move being dragged is Maintain Size

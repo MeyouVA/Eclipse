@@ -248,9 +248,11 @@
   </menu>
 
   <menu id="Animation" text="&amp;Animation">
+   <item id="LinearMotion" icon="anim/easenone" text="&amp;Linear Motion" responder="window" slot="onActionSetEase(QString)" itemParameter="none"/>
    <item id="NoZDragging" icon="anim/nozdrag" text="No &amp;Z Dragging" shortcut="shortcut.noZDragging" checkable="true" responder="camera" slot="onActionNoZDragging(bool)"/>
    <menu id="AnimationAnimate" text="A&amp;nimate">
     <item id="AnimateCurrentFrame" icon="anim/animateon" text="Animate &amp;Current Frame" checkable="true" checked="true" group="animate" responder="camera" slot="onActionAnimateCurrentFrame()"/>
+    <item id="AnimateOnionRange" icon="anim/animaterange" text="Animate Onion Skin &amp;Range" checkable="true" group="animate" responder="camera" slot="onActionAnimateOnionRange()"/>
     <item id="AnimateOff" icon="anim/animateoff" text="Animate &amp;Off" checkable="true" group="animate" responder="camera" slot="onActionAnimateOff()"/>
    </menu>
    <item id="SetStopMotionKeyframe" icon="timeline/stopmotionkey" text="&amp;Stop-Motion Keyframe" shortcut="shortcut.stopMotionKeyframe" responder="window" slot="onActionSetStopMotionKeyframe()"/>

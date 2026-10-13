@@ -223,7 +223,8 @@ public:
     bool convertDeformed(int layer);
     // A layer moved as a whole, in all its keyframes alike, by what takes pose `from` to
     // pose `to` (animating switched off).  A layer without keyframes gets one, at `frame`.
-    void shiftPoses(int layer, int frame, Pose const& from, Pose const& to, QString const& text);
+    // (`first` to `last`: only the keyframes on those frames go along, the others stay.)
+    void shiftPoses(int layer, int frame, Pose const& from, Pose const& to, QString const& text, int first = -1, int last = -1);
     // A sound layer in front, named after the file, starting on `startFrame`.
     int addSound(QString const& file, int startFrame);
     void setSoundStart(int layer, int frame);

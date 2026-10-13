@@ -241,18 +241,24 @@ void Document::setQuad(int layer, QVector<QPointF> const& corners, int frame)
     });
 }
 
-void Document::shiftPoses(int layer, int frame, Pose const& from, Pose const& to, QString const& text)
+void Document::shiftPoses(int layer, int frame, Pose const& from, Pose const& to, QString const& text, int first, int last)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || from == to)
         return;
     apply(text, [&](Scene& s) {
         Layer& l = s.layers[layer];
-        if (l.keys.isEmpty()) {
-            l.setKey(frame, to);    // one keyframe: the same pose on every frame
+        bool const ranged = first >= 0 && last >= first;
+        bool within = false;
+        for (Keyframe const& k : std::as_const(l.keys))
+            within = within || (k.frame >= first && k.frame <= last);
+        if (l.keys.isEmpty() || (ranged && !within)) {
+            l.setKey(frame, to);    // one keyframe: the same pose on every frame (or none in the range: this frame's)
             return;
         }
         auto ratio = [](double was, double is) { return std::abs(was) > 1e-9 ? is / was : 1.0; };
         for (Keyframe& k : l.keys) {
+            if (ranged && (k.frame < first || k.frame > last))
+                continue;
             Pose& p = k.pose;
             p.x += to.x - from.x;
             p.y += to.y - from.y;
