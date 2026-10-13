@@ -150,6 +150,7 @@
   <shortcut id="shortcut.nextDrawing" text="Go to Next Drawing" value="G"/>
   <shortcut id="shortcut.toolSelect" text="Select Tool" value="Alt+S"/>
   <shortcut id="shortcut.help" text="Eclipse Help" value="F1"/>
+  <shortcut id="shortcut.autoMatte" text="Generate Auto-Matte" value=""/>
   <shortcut id="shortcut.toolStamp" text="Stamp Tool" value=""/>
   <shortcut id="shortcut.createStamp" text="Create Stamp from Selection" value=""/>
   <shortcut id="shortcut.renameDrawing" text="Rename Drawing" value="Ctrl+D"/>

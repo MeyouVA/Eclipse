@@ -6,6 +6,8 @@
 #include <functional>
 
 #include <QInputDialog>
+#include <QPainterPath>
+#include <QPainterPathStroker>
 #include <QSettings>
 
 #include "model/document/Commands.h"
@@ -277,6 +279,81 @@ void Canvas::stampAt(QPointF p)
         edited.strokes.push_back(stroke);
     }
     commitDrawing(edited, tr("Stamp"));
+    update();
+}
+
+// ---- Generate Auto-Matte ---------------------------------------------------------------------------
+
+// A painted shape, in the colour in hand, that covers everything inside the outline of the line art:
+// put at the back of the colour art, to stand behind the drawing or to be cut with.
+void Canvas::onActionAutoMatte()
+{
+    Drawing const* const real = realDrawing();
+    if (!real || (real->strokes.isEmpty() && real->fills.isEmpty())) {
+        emit message(tr("There is no line art on this frame to make a matte of."));
+        return;
+    }
+    // All that the line art covers, as one area.
+    QPainterPath all;
+    all.setFillRule(Qt::WindingFill);
+    for (Stroke const& stroke : real->strokes) {
+        QVector<StrokePoint> const line = stroke.path();
+        if (line.size() < 2)
+            continue;
+        QPainterPath centre;
+        float widest = 0.0f;
+        centre.moveTo(line.first().pos);
+        for (StrokePoint const& point : line) {
+            centre.lineTo(point.pos);
+            widest = std::max(widest, point.pressure);
+        }
+        if (stroke.closed) {
+            centre.closeSubpath();
+            QPainterPath inside = centre;
+            inside.setFillRule(Qt::WindingFill);
+            all = all.united(inside);       // what a closed line goes round is inside the drawing
+        }
+        if (stroke.width > 0.0f) {
+            QPainterPathStroker stroker;
+            stroker.setWidth(std::max(0.1, double(stroke.width) * widest));
+            stroker.setJoinStyle(Qt::RoundJoin);
+            stroker.setCapStyle(Qt::RoundCap);
+            all = all.united(stroker.createStroke(centre));
+        }
+    }
+    for (Fill const& fill : real->fills) {
+        QPainterPath area;
+        for (QPolygonF const& outline : fill.outlines)
+            area.addPolygon(outline);
+        area.closeSubpath();
+        all = all.united(area);
+    }
+    // Its outer edges only: what they go round - a gap in the middle too - is covered.
+    QList<QPolygonF> const edges = all.simplified().toSubpathPolygons();
+    Fill matte;
+    for (int i = 0; i < edges.size(); ++i) {
+        if (edges[i].size() < 3)
+            continue;
+        bool inner = false;
+        for (int k = 0; k < edges.size() && !inner; ++k)
+            inner = k != i && edges[k].size() >= 3 && edges[k].boundingRect().contains(edges[i].boundingRect())
+                    && edges[k].containsPoint(edges[i].first(), Qt::OddEvenFill);
+        if (!inner)
+            matte.outlines.push_back(edges[i]);
+    }
+    if (matte.outlines.isEmpty()) {
+        emit message(tr("There is no line art on this frame to make a matte of."));
+        return;
+    }
+    matte.swatch = m_swatch;
+    matte.color = m_document->scene().resolve(m_swatch, Qt::black);
+    Drawing whole = *real;
+    whole.colourFills.push_front(matte);
+    clearSelection();
+    m_committing = true;
+    m_document->setDrawing(m_layer, m_frame, whole, tr("Generate Auto-Matte"));
+    m_committing = false;
+    emit message(tr("The matte is in the colour art, behind the lines."));
     update();
 }
 

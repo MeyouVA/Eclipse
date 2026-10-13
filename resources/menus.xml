@@ -180,6 +180,7 @@
    <item id="ManagePresets" icon="tool/managepresets" text="&amp;Manage Presets..." shortcut="shortcut.managePresets" responder="window" slot="onActionManagePresets()"/>
    <item id="ImportPresets" icon="tool/importpresets" text="&amp;Import Presets..." responder="window" slot="onActionImportPresets()"/>
    <item id="ExportPresets" icon="tool/exportpresets" text="E&amp;xport Presets..." responder="window" slot="onActionExportPresets()"/>
+   <item id="AutoMatte" icon="anim/automatte" text="Generate Auto-&amp;Matte" shortcut="shortcut.autoMatte" responder="camera" slot="onActionAutoMatte()"/>
    <item id="DistributeToLayers" icon="anim/distribute" text="&amp;Distribute to Layers" responder="camera" slot="onActionDistributeToLayers()"/>
    <submenu id="menu.arrange" text="&amp;Arrange"/>
    <submenu id="menu.convert" text="&amp;Convert"/>
