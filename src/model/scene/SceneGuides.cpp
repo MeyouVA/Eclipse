@@ -14,6 +14,7 @@ QString Scene::guideName(Guide::Kind kind)
     case Guide::OnePoint: return QCoreApplication::translate("Scene", "1-Point Perspective");
     case Guide::TwoPoint: return QCoreApplication::translate("Scene", "2-Point Perspective");
     case Guide::ThreePoint: return QCoreApplication::translate("Scene", "3-Point Perspective");
+    case Guide::Symmetry: return QCoreApplication::translate("Scene", "Symmetry");
     default: return QCoreApplication::translate("Scene", "Line");
     }
 }
@@ -38,6 +39,10 @@ Scene::Guide Scene::makeGuide(Guide::Kind kind) const
     case Guide::ThreePoint:
         // ... and the third far below: the scene looked down on.
         guide.points = {QPointF(-w * 0.5, h * 0.35), QPointF(w * 1.5, h * 0.35), QPointF(w * 0.5, h * 2.5)};
+        break;
+    case Guide::Symmetry:
+        // An upright axis down the middle of the picture: what is drawn on one side appears on the other.
+        guide.points = {QPointF(w * 0.5, h * 0.2), QPointF(w * 0.5, h * 0.8)};
         break;
     default:
         break;      // a grid has no points: it is the same everywhere

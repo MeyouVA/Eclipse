@@ -511,7 +511,7 @@ public:
     struct Guide {
         bool vertical = false;      // a Line: runs down the picture, at an x; else across it, at a y
         double at = 0.0;
-        enum Kind { Line, Ruler, SquareGrid, Isometric, OnePoint, TwoPoint, ThreePoint };
+        enum Kind { Line, Ruler, SquareGrid, Isometric, OnePoint, TwoPoint, ThreePoint, Symmetry };
         Kind kind = Line;
         // Ruler: two points on it.  The perspectives: their vanishing points (the first two
         // of a two- or three-point one lie on the horizon).

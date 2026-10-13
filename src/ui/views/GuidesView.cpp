@@ -43,7 +43,7 @@ GuidesView::GuidesView(Document* document, Canvas* canvas, QWidget* parent) : QW
                         "and runs one of the ways the guide has. Its points can be dragged in the Camera view with a drawing tool."));
     {
         QMenu* const kinds = new QMenu(more);
-        for (int kind = Scene::Guide::Ruler; kind <= Scene::Guide::ThreePoint; ++kind) {
+        for (int kind = Scene::Guide::Ruler; kind <= Scene::Guide::Symmetry; ++kind) {
             QAction* const a = kinds->addAction(Scene::guideName(Scene::Guide::Kind(kind)));
             a->setObjectName(QStringLiteral("GuideKind%1").arg(kind));
             connect(a, &QAction::triggered, this, [this, kind] { addDrawingGuide(kind); });
@@ -112,7 +112,7 @@ int GuidesView::addGuide(bool vertical, double at)
 
 int GuidesView::addDrawingGuide(int kind)
 {
-    if (kind <= Scene::Guide::Line || kind > Scene::Guide::ThreePoint)
+    if (kind <= Scene::Guide::Line || kind > Scene::Guide::Symmetry)
         return -1;
     QVector<Scene::Guide> guides = m_document->scene().guides;
     guides.push_back(m_document->scene().makeGuide(Scene::Guide::Kind(kind)));

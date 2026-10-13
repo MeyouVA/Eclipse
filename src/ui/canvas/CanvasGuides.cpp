@@ -98,6 +98,27 @@ void Canvas::onActionNewGuide(QString const& which)
     setShowGuides(true);
 }
 
+bool Canvas::symmetry(QTransform* mirror) const
+{
+    Scene::Guide const* const guide = drawingGuide();
+    Scene const& scene = m_document->scene();
+    if (!guide || guide->kind != Scene::Guide::Symmetry || guide->points.size() < 2 || m_layer < 0 || m_layer >= scene.layers.size())
+        return false;
+    QPointF const a = guide->points[0], along = guide->points[1] - guide->points[0];
+    if (std::hypot(along.x(), along.y()) < 1e-9)
+        return false;
+    // About the axis, on the picture: brought level, turned over, and put back.
+    double const degrees = std::atan2(along.y(), along.x()) * 180.0 / 3.14159265358979323846;
+    QTransform const over = QTransform::fromTranslate(-a.x(), -a.y()) * QTransform().rotate(-degrees) * QTransform::fromScale(1.0, -1.0)
+                            * QTransform().rotate(degrees) * QTransform::fromTranslate(a.x(), a.y());
+    // The layer's own coordinates to the picture and back.
+    QTransform const toPicture = m_drawingView ? QTransform() : worldOf(m_layer, m_frame) * scene.cameraTransform(m_frame);
+    if (!toPicture.isInvertible())
+        return false;
+    *mirror = toPicture * over * toPicture.inverted();
+    return true;
+}
+
 void Canvas::beginGuidedStroke(QPointF widgetPos)
 {
     m_guideStart = toFrame(widgetPos);
@@ -149,7 +170,16 @@ void Canvas::paintGuide(QPainter& painter)
     line.setCosmetic(true);
     painter.setPen(line);
     // What the guide itself is: a ruler, or the horizon its vanishing points lie on.
-    if (guide->kind == Scene::Guide::Ruler && guide->points.size() >= 2) {
+    if (guide->kind == Scene::Guide::Symmetry && guide->points.size() >= 2) {
+        // The axis: what is drawn on one side of it appears on the other.
+        QPen axis(QColor(230, 120, 200, 220));
+        axis.setCosmetic(true);
+        axis.setStyle(Qt::DashLine);
+        painter.setPen(axis);
+        QPointF const way = guide->points[1] - guide->points[0];
+        painter.drawLine(guide->points[0] - way * 1000.0, guide->points[1] + way * 1000.0);
+        painter.setPen(line);
+    } else if (guide->kind == Scene::Guide::Ruler && guide->points.size() >= 2) {
         QPointF const way = guide->points[1] - guide->points[0];
         painter.drawLine(guide->points[0] - way * 1000.0, guide->points[1] + way * 1000.0);
     } else if (guide->kind == Scene::Guide::OnePoint && !guide->points.isEmpty()) {

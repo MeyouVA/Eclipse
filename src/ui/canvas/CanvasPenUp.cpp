@@ -6,6 +6,77 @@
 
 #include "model/document/Commands.h"
 
+void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
+{
+    if (m_tool == Brush && m_brushShapes) {
+        // A brush stroke is a shape, not a line: the area the stroke covers, with a
+        // contour of its own that the Contour Editor can pull about.
+        double const fine = std::max(tolerance * 0.5, 0.05);
+        Fill shape = Fill::fromStroke(stroke, fine);
+        if (!shape.outlines.isEmpty()) {
+            Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
+            // Drawn behind, the stroke is the one that gives way: what lies over it is cut out of it.
+            QVector<Fill> mine{shape};
+            if (m_autoFlatten) {
+                // Flattened as it is drawn: the shapes of its colour that it overlaps
+                // become part of it, and it is cut out of the others it lies over.
+                QVector<Fill> kept;
+                for (Fill const& under : std::as_const(art.fills)) {
+                    if (!under.overlaps(shape)) {
+                        kept.push_back(under);
+                    } else if (under.swatch == shape.swatch && under.color == shape.color) {
+                        for (Fill& piece : mine)
+                            if (piece.mergeWith(under, fine))
+                                break;
+                    } else if (m_drawBehind) {
+                        kept.push_back(under);
+                        QVector<Fill> left;
+                        for (Fill const& piece : std::as_const(mine))
+                            left += piece.minus(under.outlines, fine);
+                        mine = left;
+                    } else {
+                        kept += under.minus(shape.outlines, fine);
+                    }
+                }
+                art.fills = kept;
+            }
+            if (m_drawBehind)
+                art.fills = mine + art.fills;
+            else
+                art.fills += mine;
+            if (!mine.isEmpty())
+                commitDrawing(art, tr("Draw Brush Stroke"));
+        }
+    } else if (m_tool == Brush && m_drawBehind) {
+        Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
+        art.strokes.push_front(stroke);
+        commitDrawing(art, tr("Draw Stroke"));
+    } else {
+        addStrokeToArt(stroke);
+    }
+}
+
+void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
+{
+    QTransform mirror;
+    bool const twin = symmetry(&mirror);
+    if (twin)
+        m_document->beginMacro(tr("Draw Stroke"));
+    if (fromPen)
+        commitPenStroke(stroke, tolerance);
+    else
+        addStrokeToArt(stroke);
+    if (twin) {
+        Stroke other = stroke;
+        other.transform(mirror);
+        if (fromPen)
+            commitPenStroke(other, tolerance);
+        else
+            addStrokeToArt(other);
+        m_document->endMacro();
+    }
+}
+
 void Canvas::penUp()
 {
     Drag const drag = m_drag;
@@ -49,57 +120,12 @@ void Canvas::penUp()
         // from the samples: from a fifth of a pixel to four.
         double const tolerance = (0.2 + m_smoothing * 0.038) / m_zoom;
         m_stroke.fit(tolerance, m_cornerAngle);
-        if (m_tool == Brush && m_brushShapes) {
-            // A brush stroke is a shape, not a line: the area the stroke covers, with a
-            // contour of its own that the Contour Editor can pull about.
-            double const fine = std::max(tolerance * 0.5, 0.05);
-            Fill shape = Fill::fromStroke(m_stroke, fine);
-            if (!shape.outlines.isEmpty()) {
-                Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
-                // Drawn behind, the stroke is the one that gives way: what lies over it is cut out of it.
-                QVector<Fill> mine{shape};
-                if (m_autoFlatten) {
-                    // Flattened as it is drawn: the shapes of its colour that it overlaps
-                    // become part of it, and it is cut out of the others it lies over.
-                    QVector<Fill> kept;
-                    for (Fill const& under : std::as_const(art.fills)) {
-                        if (!under.overlaps(shape)) {
-                            kept.push_back(under);
-                        } else if (under.swatch == shape.swatch && under.color == shape.color) {
-                            for (Fill& piece : mine)
-                                if (piece.mergeWith(under, fine))
-                                    break;
-                        } else if (m_drawBehind) {
-                            kept.push_back(under);
-                            QVector<Fill> left;
-                            for (Fill const& piece : std::as_const(mine))
-                                left += piece.minus(under.outlines, fine);
-                            mine = left;
-                        } else {
-                            kept += under.minus(shape.outlines, fine);
-                        }
-                    }
-                    art.fills = kept;
-                }
-                if (m_drawBehind)
-                    art.fills = mine + art.fills;
-                else
-                    art.fills += mine;
-                if (!mine.isEmpty())
-                    commitDrawing(art, tr("Draw Brush Stroke"));
-            }
-        } else if (m_tool == Brush && m_drawBehind) {
-            Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
-            art.strokes.push_front(m_stroke);
-            commitDrawing(art, tr("Draw Stroke"));
-        } else {
-            addStrokeToArt(m_stroke);
-        }
+        keepStroke(m_stroke, true, tolerance);
     } else if (drag == DragShape) {
         m_drag = DragNone;
         // A click without a drag draws nothing.
         if (m_stroke.bounds().width() * m_zoom > m_stroke.width * m_zoom + 3 || m_stroke.bounds().height() * m_zoom > m_stroke.width * m_zoom + 3)
-            addStrokeToArt(m_stroke);
+            keepStroke(m_stroke, false);
     } else if (drag == DragPoint) {
         if (contourValid() && contourLine(*currentDrawing())->points[m_cePoint].pos != m_dragNow) {
             Drawing const edited = previewDrawing();
@@ -237,5 +263,5 @@ void Canvas::finishPolyline(bool keep)
     m_stroke = Stroke();
     update();
     if (keep && line.points.size() >= 2 && m_layer >= 0 && m_layer < m_document->scene().layers.size())
-        addStrokeToArt(line);
+        keepStroke(line, false);
 }

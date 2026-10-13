@@ -541,6 +541,12 @@ private:
     // The whole drawing with the sheet worked on replaced by `art`.
     Drawing withArt(Drawing const& art) const;
     void addStrokeToArt(Stroke const& stroke);
+    // What the pen drew, as the tool in hand keeps it: a brush shape, or a line.
+    void commitPenStroke(Stroke const& stroke, double tolerance);
+    // With a Symmetry guide in use: the turn-over about its axis, for what is on the layer.
+    bool symmetry(QTransform* mirror) const;
+    // Keeps a line drawn - and, with a Symmetry guide in use, its twin on the other side, as one step.
+    void keepStroke(Stroke const& stroke, bool fromPen, double tolerance = 0.0);
     void eraseArtAt(QPointF p, double radius);
     // The current drawing with the transform being dragged applied to the selection.
     Drawing previewDrawing() const;

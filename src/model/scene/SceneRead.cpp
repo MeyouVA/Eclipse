@@ -130,7 +130,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             // A guide to draw along: its kind and its points.
             QJsonObject const g = gv.toObject();
             Guide guide;
-            guide.kind = Guide::Kind(std::clamp(g["kind"].toInt(1), 1, int(Guide::ThreePoint)));
+            guide.kind = Guide::Kind(std::clamp(g["kind"].toInt(1), 1, int(Guide::Symmetry)));
             for (QJsonValue const& pv : g["points"].toArray())
                 guide.points.push_back(QPointF(pv.toArray().at(0).toDouble(), pv.toArray().at(1).toDouble()));
             scene.guides.push_back(guide);
