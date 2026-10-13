@@ -62,7 +62,8 @@ int insertWarpPoint(QVector<QPointF>& points, bool closed, QPointF near, double 
 QVector<QPointF> envelopeAround(Drawing const& drawing, int points = 8, double margin = 12.0, bool followOutline = false);
 // The outer edges of what the artwork of a drawing covers - of one sheet, or (-1) of all of
 // them: each a closed outline; what an edge goes round, gaps in the middle too, is inside it.
-QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet = -1);
+// (`grow`: the edges are that far out from the artwork all round.)
+QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet = -1, double grow = 0.0);
 // The drawing reshaped by the deformer.
 Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);
 QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);

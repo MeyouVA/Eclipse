@@ -88,6 +88,9 @@ void Canvas::setPlaying(bool playing)
 
 void Canvas::setCurrentCell(int layer, int frame)
 {
+    // Permanent Selection: what lies in the place of the selection on the frame gone to is selected there.
+    QRectF const held = m_permanentSelection && m_tool == Select && hasSelection() && layer == m_layer && frame != m_frame
+                        ? selectionBounds().adjusted(-1.5, -1.5, 1.5, 1.5) : QRectF();
     if (layer != m_layer || frame != m_frame) {
         finishPolyline(true);  // it belongs to the drawing it was begun on
         endText(true);
@@ -99,6 +102,18 @@ void Canvas::setCurrentCell(int layer, int frame)
     m_frame = frame;
     if (m_tool == Reposition)
         selectAll();
+    if (!held.isNull()) {
+        if (Drawing const* const d = currentDrawing()) {
+            QVector<int> strokes, fills;
+            for (int i = 0; i < d->strokes.size(); ++i)
+                if (held.contains(d->strokes[i].bounds()))
+                    strokes.push_back(i);
+            for (int i = 0; i < d->fills.size(); ++i)
+                if (held.contains(d->fills[i].bounds()))
+                    fills.push_back(i);
+            setSelection(strokes, fills);
+        }
+    }
     update();
 }
 

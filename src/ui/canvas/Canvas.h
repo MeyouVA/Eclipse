@@ -144,6 +144,12 @@ public:
     // Open lines whose end lies within `gap` of another line (or of their own other end) are
     // joined to it by a line with no thickness; says how many were made.
     int closeGaps(double gap);
+    // Generate Auto-Matte: a painted shape in the colour in hand covering all that the line art goes
+    // round, `radius` further out all round, at the back of the colour art.  False when there is nothing to cover.
+    bool autoMatte(double radius);
+    // The Select tool: what is selected stays selected on another frame - whatever lies in the same place there.
+    void setPermanentSelection(bool on) { m_permanentSelection = on; }
+    bool permanentSelection() const { return m_permanentSelection; }
     // The Stamp tool: how big the stamp comes out (per cent), and whether it is one of the user's own.
     int stampScale() const { return m_stampScale; }
     void setStampScale(int percent)
@@ -695,6 +701,7 @@ private:
     int m_guideLine = -1;        // the plain guide being dragged with the Select tool
     bool m_guidesLocked = false;
     bool m_selectByColour = false;
+    bool m_permanentSelection = false;
     bool m_snapAlign = false;
     QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)
     QPointF aligned(QPointF by);

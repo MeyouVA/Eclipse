@@ -135,6 +135,11 @@ void ToolProperties::addSelectRows()
     m_byColour->setToolTip(tr("A click on a line or on paint selects everything of that colour in the drawing."));
     connect(m_byColour, &QCheckBox::toggled, m_canvas, &Canvas::setSelectByColour);
     m_form->addRow(m_byColour);
+    m_permanent = new QCheckBox(tr("Permanent Selection"), this);
+    m_permanent->setObjectName(QStringLiteral("SelectPermanent"));
+    m_permanent->setToolTip(tr("What is selected stays selected when you go to another frame: whatever lies in the same place in the drawing there."));
+    connect(m_permanent, &QCheckBox::toggled, m_canvas, &Canvas::setPermanentSelection);
+    m_form->addRow(m_permanent);
     m_snapAlign = new QCheckBox(tr("Snap and Align"), this);
     m_snapAlign->setObjectName(QStringLiteral("SelectSnapAlign"));
     m_snapAlign->setToolTip(tr("What you drag goes edge to edge, or middle to middle, with the other artwork of the drawing when it comes near."));

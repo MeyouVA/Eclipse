@@ -417,7 +417,7 @@ int insertWarpPoint(QVector<QPointF>& points, bool closed, QPointF near, double 
     return place;
 }
 
-QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet)
+QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet, double grow)
 {
     // All that the artwork covers, as one area.
     QPainterPath all;
@@ -457,6 +457,13 @@ QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet)
             area.closeSubpath();
             all = all.united(area);
         }
+    }
+    if (grow > 0.0) {
+        // A band round it, twice as wide as it is to grow: half of that is outside.
+        QPainterPathStroker band;
+        band.setWidth(grow * 2.0);
+        band.setJoinStyle(Qt::RoundJoin);
+        all = all.united(band.createStroke(all));
     }
     // Its outer edges only.
     QList<QPolygonF> const edges = all.simplified().toSubpathPolygons();

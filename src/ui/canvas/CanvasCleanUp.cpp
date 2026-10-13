@@ -331,12 +331,25 @@ void Canvas::onActionAutoMatte()
         emit message(tr("There is no line art on this frame to make a matte of."));
         return;
     }
-    Fill matte;
-    matte.outlines = Deform::outerEdges(*real, Drawing::LineSheet);
-    if (matte.outlines.isEmpty()) {
-        emit message(tr("There is no line art on this frame to make a matte of."));
+    bool ok = false;
+    double const radius = QInputDialog::getDouble(this, tr("Generate Auto-Matte"), tr("How far out from the line art the matte reaches (pixels):"),
+                                                  settings().value(QStringLiteral("tools/matteRadius"), 0.0).toDouble(), 0.0, 500.0, 1, &ok);
+    if (!ok)
         return;
-    }
+    settings().setValue(QStringLiteral("tools/matteRadius"), radius);
+    if (!autoMatte(radius))
+        emit message(tr("There is no line art on this frame to make a matte of."));
+}
+
+bool Canvas::autoMatte(double radius)
+{
+    Drawing const* const real = realDrawing();
+    if (!real)
+        return false;
+    Fill matte;
+    matte.outlines = Deform::outerEdges(*real, Drawing::LineSheet, radius);
+    if (matte.outlines.isEmpty())
+        return false;
     matte.swatch = m_swatch;
     matte.color = m_document->scene().resolve(m_swatch, Qt::black);
     Drawing whole = *real;
@@ -347,6 +360,7 @@ void Canvas::onActionAutoMatte()
     m_committing = false;
     emit message(tr("The matte is in the colour art, behind the lines."));
     update();
+    return true;
 }
 
 // ---- the Pencil Editor ------------------------------------------------------------------------------
