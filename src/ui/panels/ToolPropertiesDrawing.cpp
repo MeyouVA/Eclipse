@@ -192,6 +192,12 @@ void ToolProperties::addSelectRows()
     m_paintAll->setToolTip(tr("What you paint, repaint, unpaint or erase is painted, repainted, unpainted or erased in the same place in every drawing of the layer."));
     connect(m_paintAll, &QCheckBox::toggled, m_canvas, &Canvas::setPaintAllDrawings);
     m_form->addRow(m_paintAll);
+    m_paintLayers = new QCheckBox(tr("Apply to All Layers"), this);
+    m_paintLayers->setObjectName(QStringLiteral("PaintAllLayers"));
+    m_paintLayers->setToolTip(tr("What you paint, repaint or unpaint is painted, repainted or unpainted in the same place of the picture on every drawing layer\n"
+                                 "that is shown and not locked, as one step."));
+    connect(m_paintLayers, &QCheckBox::toggled, m_canvas, &Canvas::setPaintAllLayers);
+    m_form->addRow(m_paintLayers);
     m_permanent = new QCheckBox(tr("Permanent Selection"), this);
     m_permanent->setObjectName(QStringLiteral("SelectPermanent"));
     m_permanent->setToolTip(tr("What is selected stays selected when you go to another frame: whatever lies in the same place in the drawing there."));

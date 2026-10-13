@@ -219,6 +219,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
     m_form->setRowVisible(m_byColour, tool == T::Select);
     m_form->setRowVisible(m_paintAll, tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool)));
+    m_form->setRowVisible(m_paintLayers, Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_permanent, tool == T::Select);
     m_form->setRowVisible(m_bothArts, tool == T::Eraser);
     m_form->setRowVisible(m_snapAlign, tool == T::Select);

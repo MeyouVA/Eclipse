@@ -219,7 +219,54 @@ void Canvas::penUp()
                 paintInside([&rect](QPointF q) { return rect.contains(q); }, rect);
         };
         Scene const& scene = m_document->scene();
-        if (!m_paintAll || m_layer < 0 || m_layer >= scene.layers.size()) {
+        // Apply to All Layers: the other drawing layers that are seen and may be drawn on, each with the way from
+        // this layer's sheet to its own.
+        QVector<QPair<int, QTransform>> others;
+        if (m_paintLayers && isPaintTool(m_tool) && m_layer >= 0 && m_layer < scene.layers.size()) {
+            for (int l = 0; l < scene.layers.size(); ++l) {
+                if (l == m_layer || !scene.layers[l].holdsDrawings() || scene.layers[l].locked || !scene.shows(l))
+                    continue;
+                QTransform const theirs = worldOf(l, m_frame);
+                if (theirs.isInvertible())
+                    others.push_back({l, worldOf(m_layer, m_frame) * theirs.inverted()});
+            }
+        }
+        if (!others.isEmpty()) {
+            bool const small = reach.width() * m_zoom <= 3 && reach.height() * m_zoom <= 3;
+            int const mine = m_layer, here = m_frame;
+            m_document->beginMacro(m_tool == Unpaint ? tr("Unpaint") : tr("Paint"));
+            others.push_front({mine, QTransform()});
+            for (auto const& [l, to] : std::as_const(others)) {
+                // (With Apply to All Drawings as well: every drawing of each of them.)
+                QVector<int> frames = {here};
+                if (m_paintAll) {
+                    frames.clear();
+                    QVector<int> const cells = m_document->scene().layers[l].cells;
+                    QVector<int> seen;
+                    for (int f = 0; f < cells.size(); ++f) {
+                        if (cells[f] == Layer::kNoDrawing || seen.contains(cells[f]))
+                            continue;
+                        seen.push_back(cells[f]);
+                        frames.push_back(f);
+                    }
+                }
+                QPolygonF const there = to.map(lasso ? shape : QPolygonF(rect));
+                m_layer = l;
+                for (int f : std::as_const(frames)) {
+                    if (m_document->scene().layers[l].drawingAt(f) == Layer::kNoDrawing)
+                        continue;
+                    m_frame = f;
+                    if (small)
+                        paintAt(to.map(at));
+                    else
+                        paintInside([&there](QPointF q) { return there.containsPoint(q, Qt::OddEvenFill); }, there.boundingRect());
+                }
+            }
+            m_layer = mine;
+            m_frame = here;
+            m_document->endMacro();
+            update();
+        } else if (!m_paintAll || m_layer < 0 || m_layer >= scene.layers.size()) {
             paint();
         } else {
             // The same in every drawing of the layer, as one step: each drawing is come to in turn, by a frame that shows it.

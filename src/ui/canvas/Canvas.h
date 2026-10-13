@@ -181,6 +181,10 @@ public:
     double closeGapSize() const { return m_gapSize; }
     void setCloseGapSize(double pixels) { m_gapSize = pixels; }
     bool paintsAllDrawings() const { return m_paintAll; }
+    // Apply to All Layers: the paint tools work on every drawing layer that is seen and not locked, in the same
+    // place of the picture, as one step.
+    void setPaintAllLayers(bool on) { m_paintLayers = on; }
+    bool paintsAllLayers() const { return m_paintLayers; }
     void setPermanentSelection(bool on) { m_permanentSelection = on; }
     bool permanentSelection() const { return m_permanentSelection; }
     // The Stamp tool: how big the stamp comes out (per cent), and whether it is one of the user's own.
@@ -812,6 +816,7 @@ private:
     int m_envCount = 8;
     double m_gapSize = 2.0;
     bool m_paintAll = false;
+    bool m_paintLayers = false;
     bool m_bothArts = false;
     bool m_permanentSelection = false;
     bool m_snapAlign = false;
