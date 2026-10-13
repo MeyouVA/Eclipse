@@ -30,6 +30,7 @@ static QIcon swatchIcon(Swatch const& swatch)
         for (int x = 0; x < 34; x += 7)
             painter.fillRect(x, y, 7, 7, ((x + y) / 7) % 2 ? QColor(200, 200, 200) : QColor(255, 255, 255));
     // A gradient shows as one: along the patch, or out from its middle.
+    // (And a texture: its picture, as wide as the patch.)
     painter.fillRect(pixmap.rect(), swatch.kind == Swatch::Radial ? swatch.brush(QPointF(17, 7), QPointF(34, 7)) : swatch.brush(QPointF(0, 7), QPointF(34, 7)));
     painter.setPen(QColor(240, 240, 240));
     painter.drawRect(0, 0, 33, 13);
@@ -238,6 +239,20 @@ void PalettePanel::showColourMenu(QPoint const& pos)
     int const picked = m_list->currentItem()->data(Qt::UserRole).toInt();
     connect(menu.addAction(tr("Edit Gradient...")), &QAction::triggered, this, [this, picked] { editGradient(picked); });
     connect(menu.addAction(tr("New Gradient Colour")), &QAction::triggered, this, [this] { editGradient(addGradientSwatch()); });
+    connect(menu.addAction(tr("New Texture Colour...")), &QAction::triggered, this, [this] {
+        QString const file = QFileDialog::getOpenFileName(this, tr("New Texture Colour"), QString(), tr("Pictures (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)"));
+        if (file.isEmpty())
+            return;
+        QImage const picture(file);
+        if (!picture.isNull())
+            addTextureSwatch(picture, QFileInfo(file).completeBaseName());
+    });
+    {
+        Swatch const* const swatch = m_document->scene().findSwatch(picked);
+        QAction* const plain = menu.addAction(tr("Make Plain Colour"));
+        plain->setEnabled(swatch && swatch->isTexture());
+        connect(plain, &QAction::triggered, this, [this, picked] { m_document->setSwatchTexture(picked, QImage()); });
+    }
     menu.addSeparator();
     {
         // Protected: Paint, Repaint and Unpaint leave what has this colour as it is.

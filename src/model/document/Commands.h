@@ -81,6 +81,8 @@ public:
     // Makes a colour a gradient of these colours (two at least), or one colour again
     // (Swatch::Solid: it keeps the colour it shows).
     void setSwatchGradient(int id, Swatch::Kind kind, QVector<GradientStop> const& stops);
+    // Makes a colour a texture colour: what has it shows this picture (a null picture: one colour again).
+    void setSwatchTexture(int id, QImage const& texture);
     // Strokes and fills that used the swatch keep the colour it had.
     void removeSwatch(int id);
     // A colour moved up (-1) or down (+1) among those of its palette; and into another palette, at its end.

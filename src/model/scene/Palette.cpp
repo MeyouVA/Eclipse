@@ -1,4 +1,5 @@
 // Eclipse - the scene: the palette - colours and gradients, and what an area or a line is painted with.
+#include <QBuffer>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -36,6 +37,8 @@ QJsonObject Scene::paletteJson(int inPalette) const
             colour[QStringLiteral("kind")] = int(swatch.kind);
             colour[QStringLiteral("stops")] = swatch.stopsJson();
         }
+        if (swatch.isTexture())
+            colour[QStringLiteral("texture")] = swatch.textureText();
         if (swatch.isProtected)
             colour[QStringLiteral("protected")] = true;
         colours.push_back(colour);
@@ -70,6 +73,7 @@ bool Scene::takePaletteJson(int inPalette, QJsonObject const& root)
             swatch.setStopsJson(colour[QStringLiteral("stops")].toArray());
             swatch.kind = swatch.stops.size() >= 2 ? Swatch::Kind(std::clamp(colour[QStringLiteral("kind")].toInt(1), 1, 2)) : Swatch::Solid;
             swatch.isProtected = colour[QStringLiteral("protected")].toBool(false);
+            swatch.setTextureText(colour[QStringLiteral("texture")].toString());
         }
     }
     return true;
@@ -112,8 +116,41 @@ QColor Swatch::colourAt(QVector<GradientStop> const& stops, double at)
     return stops.last().color;
 }
 
+QString Swatch::textureText() const
+{
+    if (texture.isNull())
+        return QString();
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    texture.save(&buffer, "PNG");
+    return QString::fromLatin1(bytes.toBase64());
+}
+
+void Swatch::setTextureText(QString const& text)
+{
+    texture = QImage();
+    if (!text.isEmpty())
+        texture.loadFromData(QByteArray::fromBase64(text.toLatin1()), "PNG");
+}
+
 QBrush Swatch::brush(QPointF from, QPointF to) const
 {
+    if (isTexture()) {
+        // The picture lies with the middle of its left side at `from` and of its right side at `to` - as big
+        // and as turned as that makes it - and is repeated all round.
+        QBrush picture(texture);
+        double const length = QLineF(from, to).length();
+        double const scale = length > 1e-6 ? length / texture.width() : 1.0;
+        double const angle = length > 1e-6 ? std::atan2(to.y() - from.y(), to.x() - from.x()) * 180.0 / 3.14159265358979323846 : 0.0;
+        QTransform place;
+        place.translate(from.x(), from.y());
+        place.rotate(angle);
+        place.scale(scale, scale);
+        place.translate(0.0, -texture.height() / 2.0);
+        picture.setTransform(place);
+        return picture;
+    }
     if (!isGradient())
         return QBrush(color);
     if (kind == Radial) {
@@ -158,7 +195,11 @@ void Scene::gradientLine(Fill const& fill, QPointF& from, QPointF& to) const
     }
     Swatch const* const s = findSwatch(fill.swatch);
     QRectF const box = fill.bounds();
-    if (s && s->kind == Swatch::Radial) {
+    if (s && s->isTexture()) {
+        // A texture not placed: at its own size, from the top left corner of the area.
+        from = QPointF(box.left(), box.top() + s->texture.height() / 2.0);
+        to = from + QPointF(s->texture.width(), 0);
+    } else if (s && s->kind == Swatch::Radial) {
         // From the middle of the area out to its furthest side.
         from = box.center();
         to = from + QPointF(std::max(box.width(), box.height()) / 2.0, 0);
@@ -173,7 +214,7 @@ QBrush Scene::brushFor(Fill const& fill) const
     Swatch const* const s = findSwatch(fill.swatch);
     if (!s)
         return QBrush(fill.color);
-    if (!s->isGradient())
+    if (!s->isPlaced())
         return QBrush(s->color);
     QPointF from, to;
     gradientLine(fill, from, to);
@@ -185,7 +226,7 @@ QBrush Scene::brushFor(Stroke const& stroke) const
     Swatch const* const s = findSwatch(stroke.swatch);
     if (!s)
         return QBrush(stroke.color);
-    if (!s->isGradient())
+    if (!s->isPlaced())
         return QBrush(s->color);
     QPointF from, to;
     gradientLine(stroke, from, to);
@@ -202,7 +243,10 @@ void Scene::gradientLine(Stroke const& stroke, QPointF& from, QPointF& to) const
     // Along a line the gradient goes from the one end of what it covers to the other.
     Swatch const* const s = findSwatch(stroke.swatch);
     QRectF const box = stroke.bounds();
-    if (s && s->kind == Swatch::Radial) {
+    if (s && s->isTexture()) {
+        from = QPointF(box.left(), box.top() + s->texture.height() / 2.0);
+        to = from + QPointF(s->texture.width(), 0);
+    } else if (s && s->kind == Swatch::Radial) {
         from = box.center();
         to = from + QPointF(std::max(box.width(), box.height()) / 2.0, 0);
     } else {

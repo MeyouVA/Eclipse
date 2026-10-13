@@ -322,6 +322,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             swatch["kind"] = int(s.kind);
             swatch["stops"] = s.stopsJson();
         }
+        if (s.isTexture())
+            swatch["texture"] = s.textureText();
         if (s.isProtected)
             swatch["protected"] = true;
         paletteArray.append(swatch);

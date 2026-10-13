@@ -3,6 +3,7 @@
 #include "ui/panels/GradientBar.h"
 
 #include <QColorDialog>
+#include <QFileDialog>
 
 #include <algorithm>
 #include <cmath>
@@ -43,6 +44,14 @@ void PalettePanel::editColor(QListWidgetItem* item)
         editGradient(id);
         return;
     }
+    // A texture: another picture for it.
+    if (swatch->isTexture()) {
+        QString const file = QFileDialog::getOpenFileName(this, tr("Texture"), QString(), tr("Pictures (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)"));
+        QImage const picture = file.isEmpty() ? QImage() : QImage(file);
+        if (!picture.isNull())
+            m_document->setSwatchTexture(id, picture);
+        return;
+    }
     QString const name = swatch->name;
     QColor const color = QColorDialog::getColor(swatch->color, this, tr("Colour"), QColorDialog::ShowAlphaChannel);
     if (color.isValid())
@@ -70,6 +79,19 @@ int PalettePanel::addGradientSwatch()
     m_document->beginMacro(tr("New Gradient Colour"));
     int const id = m_document->addSwatch(tr("Gradient %1").arg(m_document->scene().palette.size() + 1), QColor(Qt::black), m_palette);
     m_document->setSwatchGradient(id, Swatch::Linear, {{0.0, QColor(Qt::black)}, {1.0, QColor(Qt::white)}});
+    m_document->endMacro();
+    m_current = id;
+    rebuild();
+    return id;
+}
+
+int PalettePanel::addTextureSwatch(QImage const& texture, QString const& name)
+{
+    if (texture.isNull())
+        return -1;
+    m_document->beginMacro(tr("New Texture Colour"));
+    int const id = m_document->addSwatch(name.isEmpty() ? tr("Texture %1").arg(m_document->scene().palette.size() + 1) : name, QColor(Qt::gray), m_palette);
+    m_document->setSwatchTexture(id, texture);
     m_document->endMacro();
     m_current = id;
     rebuild();

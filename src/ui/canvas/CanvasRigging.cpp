@@ -348,12 +348,12 @@ bool Canvas::gradientValid() const
     Drawing const* const d = currentDrawing();
     if (d && m_gradStroke >= 0 && m_gradStroke < d->strokes.size()) {
         Swatch const* const s = m_document->scene().findSwatch(d->strokes[m_gradStroke].swatch);
-        return s && s->isGradient();
+        return s && s->isPlaced();
     }
     if (!d || m_gradFill < 0 || m_gradFill >= d->fills.size())
         return false;
     Swatch const* const s = m_document->scene().findSwatch(d->fills[m_gradFill].swatch);
-    return s && s->isGradient();
+    return s && s->isPlaced();
 }
 
 void Canvas::gradientDown(QPointF widgetPos, QPointF p)
@@ -389,7 +389,7 @@ void Canvas::gradientDown(QPointF widgetPos, QPointF p)
     // A line drawn in a gradient colour, under the pointer (lines lie over the paint) ...
     for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
         Swatch const* const s = scene.findSwatch(d->strokes[i].swatch);
-        if (!s || !s->isGradient() || !d->strokes[i].hit(p, std::max(double(d->strokes[i].width) / 2.0, 4.0 / std::max(m_zoom, 1e-6))))
+        if (!s || !s->isPlaced() || !d->strokes[i].hit(p, std::max(double(d->strokes[i].width) / 2.0, 4.0 / std::max(m_zoom, 1e-6))))
             continue;
         m_gradStroke = i;
         m_gradFill = -1;
@@ -404,7 +404,7 @@ void Canvas::gradientDown(QPointF widgetPos, QPointF p)
     // ... or the topmost area under it that is painted with one.
     for (int i = int(d->fills.size()) - 1; i >= 0; --i) {
         Swatch const* const s = scene.findSwatch(d->fills[i].swatch);
-        if (!s || !s->isGradient() || !d->fills[i].contains(p))
+        if (!s || !s->isPlaced() || !d->fills[i].contains(p))
             continue;
         m_gradFill = i;
         m_gradHandle = 0;
@@ -415,7 +415,7 @@ void Canvas::gradientDown(QPointF widgetPos, QPointF p)
         return;
     }
     m_gradFill = -1;
-    emit message(tr("Click an area painted with a gradient colour. (A colour is made a gradient in the Colour view: right-click it, Edit Gradient.)"));
+    emit message(tr("Click an area painted with a gradient or a texture colour. (A colour is made one in the Colour view: right-click it.)"));
     update();
 }
 

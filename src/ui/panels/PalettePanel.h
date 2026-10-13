@@ -53,6 +53,8 @@ public:
     void editGradient(int id);
     // A new colour that is a gradient from black to white, to change from there.  Its id.
     int addGradientSwatch();
+    // A new colour that is a texture: what has it shows this picture.  Its id (-1 for no picture).
+    int addTextureSwatch(QImage const& texture, QString const& name = QString());
 
 signals:
     void currentSwatchChanged(int id);

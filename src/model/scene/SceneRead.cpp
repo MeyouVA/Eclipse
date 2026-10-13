@@ -187,6 +187,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             s.kind = s.stops.size() >= 2 ? Swatch::Kind(std::clamp(so["kind"].toInt(0), 0, 2)) : Swatch::Solid;
             if (s.kind == Swatch::Solid)
                 s.stops.clear();
+            s.setTextureText(so["texture"].toString());
             if (s.id > 0 && !scene.findSwatch(s.id)) {
                 scene.palette.push_back(s);
                 scene.m_nextSwatchId = std::max(scene.m_nextSwatchId, s.id + 1);

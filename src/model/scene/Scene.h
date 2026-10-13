@@ -328,6 +328,15 @@ struct Swatch {
     Kind kind = Solid;
     QVector<GradientStop> stops;    // a gradient: two or more, in order
     bool isGradient() const { return kind != Solid && stops.size() >= 2; }
+    // A texture colour: what is drawn or painted with it shows this picture, laid side by side, instead of
+    // one colour (`color` is then the colour of the picture taken all together).
+    QImage texture;
+    bool isTexture() const { return !texture.isNull(); }
+    // Whether where it lies in an area or along a line can be placed by hand (the Edit Gradient tool).
+    bool isPlaced() const { return isGradient() || isTexture(); }
+    // The picture as text, to keep in a file; and back.
+    QString textureText() const;
+    void setTextureText(QString const& text);
     // What to paint with when the gradient lies from `from` to `to`.
     QBrush brush(QPointF from, QPointF to) const;
     // The colour the gradient has at a place along it.

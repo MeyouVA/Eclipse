@@ -122,6 +122,30 @@ void Document::setSwatchGradient(int id, Swatch::Kind kind, QVector<GradientStop
     });
 }
 
+void Document::setSwatchTexture(int id, QImage const& texture)
+{
+    Swatch const* const now = m_scene.findSwatch(id);
+    if (!now || (now->texture.isNull() && texture.isNull()))
+        return;
+    // No bigger than need be: it is kept in the scene file.
+    QImage kept = texture.isNull() ? QImage() : texture.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    if (!kept.isNull() && std::max(kept.width(), kept.height()) > 1024)
+        kept = kept.scaled(1024, 1024, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    apply(tr("Edit Colour"), [&](Scene& s) {
+        for (Swatch& swatch : s.palette) {
+            if (swatch.id != id)
+                continue;
+            swatch.texture = kept;
+            if (!kept.isNull()) {
+                // A texture is no gradient; and its one colour is that of the picture taken all together.
+                swatch.kind = Swatch::Solid;
+                swatch.stops.clear();
+                swatch.color = kept.scaled(1, 1, Qt::IgnoreAspectRatio, Qt::SmoothTransformation).pixelColor(0, 0);
+            }
+        }
+    });
+}
+
 bool Document::moveSwatch(int id, int by)
 {
     int at = -1;
