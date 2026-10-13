@@ -228,7 +228,15 @@ void Canvas::penUp()
             m_document->shiftPoses(m_layer, m_frame, m_poseStart, m_dragPose,
                                    drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
                                    : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : tr("Rotate Layer"));
-        else if (!(m_dragPose == m_poseStart))
+        else if (!(m_dragPose == m_poseStart) && m_keyFrameOne && m_frame > 0 && m_document->scene().layers[m_layer].keys.isEmpty()) {
+            // Its first keyframe, and not on the first frame: the first frame gets one too, of the layer as it was.
+            QString const text = drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : drag == DragPoseRotate ? tr("Rotate Layer")
+                                 : drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : tr("Turn Bone");
+            m_document->beginMacro(text);
+            m_document->setKeyframe(m_layer, 0, m_poseStart, text);
+            m_document->setKeyframe(m_layer, m_frame, m_dragPose, text);
+            m_document->endMacro();
+        } else if (!(m_dragPose == m_poseStart))
             m_document->setKeyframe(m_layer, m_frame, m_dragPose,
                                     drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone") : drag == DragPoseMove ? tr("Move Layer")
                                     : drag == DragPoseScale ? tr("Scale Layer") : tr("Rotate Layer"));

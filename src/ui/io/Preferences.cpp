@@ -120,6 +120,7 @@ void MainWindow::applyPreferences()
     if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
         m_canvas->setArt(Canvas::LineArt);
     m_document->setExtendPreviousExposure(s.value(QStringLiteral("prefs/extendExposure"), true).toBool());
+    m_canvas->setKeysFrameOne(s.value(QStringLiteral("prefs/keyFrameOne"), true).toBool());
     m_canvas->setNudgeStep(std::clamp(s.value(QStringLiteral("prefs/nudge"), 1).toInt(), 1, 100));
     m_canvas->setProportionParts(std::clamp(s.value(QStringLiteral("prefs/proportionAcross"), 3).toInt(), 2, 12),
                                  std::clamp(s.value(QStringLiteral("prefs/proportionDown"), 3).toInt(), 2, 12));
@@ -162,6 +163,11 @@ void MainWindow::onActionPreferences()
     nudge->setToolTip(tr("How far an arrow key moves what the Select tool has selected (ten times as far with Shift)."));
     nudge->setValue(int(m_canvas->nudgeStep()));
     cameraLayout->addRow(tr("Nudging factor"), nudge);
+    QCheckBox* const frameOne = new QCheckBox(tr("Set Keyframe at Frame One with First Application of the Transform Tool"), camera);
+    frameOne->setObjectName(QStringLiteral("PrefKeyFrameOne"));
+    frameOne->setToolTip(tr("The first time a layer is moved, on a frame after the first, the first frame gets a keyframe of the layer as it was: it goes from there to where you put it."));
+    frameOne->setChecked(m_canvas->keysFrameOne());
+    cameraLayout->addRow(frameOne);
     QSpinBox* const gridAcross = new QSpinBox(camera);
     gridAcross->setObjectName(QStringLiteral("PrefGridAcross"));
     gridAcross->setRange(2, 12);
@@ -218,6 +224,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/lasso"), selectMode->currentIndex() == 0);
     s.setValue(QStringLiteral("prefs/overlayUnderlay"), moreArt->isChecked());
     s.setValue(QStringLiteral("prefs/nudge"), nudge->value());
+    s.setValue(QStringLiteral("prefs/keyFrameOne"), frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), extend->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
     s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());

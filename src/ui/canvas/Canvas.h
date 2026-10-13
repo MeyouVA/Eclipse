@@ -224,6 +224,11 @@ public:
     bool usesPreview() const { return m_usePreview; }
     bool snapsToGrid() const { return m_snapGrid; }
     bool animates() const { return m_animate; }
+    // The first time the Transform tool moves a layer that has no keyframes, on a frame after the
+    // first: with this on, the first frame gets a keyframe too, of the layer as it was - so the
+    // layer goes from there to where it was put, instead of being there all along.
+    bool keysFrameOne() const { return m_keyFrameOne; }
+    void setKeysFrameOne(bool on) { m_keyFrameOne = on; }
     void setLasso(bool on);
     // The box round what is selected, in the coordinates of the drawing; null with nothing selected.
     QRectF selectionRect() const { return hasSelection() ? selectionBounds() : QRectF(); }
@@ -719,6 +724,7 @@ private:
     bool m_usePreview = true;
     bool m_snapGrid = false;
     bool m_animate = true;
+    bool m_keyFrameOne = false;
     void paintMotionPath(QPainter& painter);
     QPointF snapped(QPointF p) const;
     bool m_dragLasso = true;      // for the drag going on: Alt gives the other of the two
