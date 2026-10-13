@@ -197,6 +197,7 @@
    <item id="GroupArtwork" icon="anim/groupart" text="&amp;Group" responder="camera" slot="onActionGroupArtwork()"/>
    <item id="UngroupArtwork" icon="anim/ungroupart" text="&amp;Ungroup" responder="camera" slot="onActionUngroupArtwork()"/>
    <item id="CreateStamp" icon="anim/stampcreate" text="Create Stamp from Se&amp;lection" shortcut="shortcut.createStamp" responder="camera" slot="onActionCreateStamp()"/>
+   <item id="CreateStampDrawings" icon="anim/stampcreate" text="Create Stamp from Selected &amp;Drawings" responder="window" slot="onActionCreateStampFromDrawings()"/>
    <item id="NewToolPreset" icon="tool/newpreset" text="New Tool Pre&amp;set..." shortcut="shortcut.newToolPreset" responder="window" slot="onActionNewToolPreset()"/>
    <item id="ManagePresets" icon="tool/managepresets" text="&amp;Manage Presets..." shortcut="shortcut.managePresets" responder="window" slot="onActionManagePresets()"/>
    <item id="ImportPresets" icon="tool/importpresets" text="&amp;Import Presets..." responder="window" slot="onActionImportPresets()"/>

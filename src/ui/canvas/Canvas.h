@@ -191,6 +191,13 @@ public:
         update();
     }
     bool hasOwnStamp() const { return m_stampOwn; }
+    // A stamp may hold several drawings: each click puts down the next of them (or any one, at random).
+    int stampDrawingCount() const { return m_stampOwn ? int(std::max<qsizetype>(m_stampSet.size(), 1)) : 1; }
+    int stampTurn() const { return m_stampTurn; }
+    bool stampRandom() const { return m_stampRandom; }
+    void setStampRandom(bool on) { m_stampRandom = on; }
+    // Makes a stamp of these drawings (each kept about its own middle), and takes it in hand.
+    void createStampFrom(QVector<Drawing> const& drawings);
     void clearStamp();
     // The stamp of the user's own is kept between sessions: taken up again when the program starts.
     void loadStamp();
@@ -861,6 +868,10 @@ private:
     int m_minSize = 0;
     Drawing m_stamp;             // artwork of the user's own to stamp, about the origin
     bool m_stampOwn = false;
+    QVector<Drawing> m_stampSet;  // all the drawings of the stamp in hand (m_stamp is the one whose turn it is)
+    int m_stampTurn = 0;
+    bool m_stampRandom = false;
+    void keepStamp(QVector<Drawing> const& drawings);
     int m_stampScale = 100;
     QPointF m_hoverWidget;       // where the pointer is (in the view)
     Drawing stampNow() const;

@@ -244,6 +244,27 @@ void MainWindow::onActionTimelineShowKind(QString const& which)
     }
 }
 
+void MainWindow::onActionCreateStampFromDrawings()
+{
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size() || !scene.layers[layer()].holdsDrawings()) {
+        statusBar()->showMessage(tr("Choose a drawing layer, and select the frames whose drawings are to make the stamp."), 5000);
+        return;
+    }
+    Layer const& from = scene.layers[layer()];
+    // Each drawing once, in the order of the frames.
+    QVector<int> taken;
+    for (int f = m_timeline->selectionFirstFrame(); f <= m_timeline->selectionLastFrame(); ++f) {
+        int const index = from.drawingAt(f);
+        if (index != Layer::kNoDrawing && !taken.contains(index))
+            taken.push_back(index);
+    }
+    QVector<Drawing> drawings;
+    for (int index : std::as_const(taken))
+        drawings.push_back(from.drawings[index]);
+    m_canvas->createStampFrom(drawings);
+}
+
 void MainWindow::onActionLockAll()
 {
     m_document->setAllLocked(true);

@@ -88,6 +88,7 @@ private:
     QCheckBox* m_snapAlign = nullptr;
     QSpinBox* m_stampScale = nullptr;
     QWidget* m_stampRow = nullptr;      // which stamp, and taking it off the list
+    QCheckBox* m_stampRandom = nullptr;
     QComboBox* m_stampList = nullptr;
     QCheckBox* m_autoFlatten = nullptr;
     QHBoxLayout* m_shapeRow = nullptr;

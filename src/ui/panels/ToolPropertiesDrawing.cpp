@@ -170,6 +170,12 @@ void ToolProperties::addSelectRows()
         connect(m_stampList, &QComboBox::activated, this, [this](int index) { m_canvas->chooseStamp(index - 1); });
         connect(remove, &QPushButton::clicked, this, [this] { m_canvas->removeStamp(m_stampList->currentIndex() - 1); });
         m_form->addRow(tr("Stamp"), m_stampRow);
+        m_stampRandom = new QCheckBox(tr("Random drawing"), this);
+        m_stampRandom->setObjectName(QStringLiteral("StampRandom"));
+        m_stampRandom->setToolTip(tr("A stamp made of several drawings (Drawing > Create Stamp from Selected Drawings) puts them down one after another;\n"
+                                     "ticked, each click puts down any one of them."));
+        connect(m_stampRandom, &QCheckBox::toggled, m_canvas, &Canvas::setStampRandom);
+        m_form->addRow(m_stampRandom);
     }
     m_byColour = new QCheckBox(tr("Select by Colour"), this);
     m_byColour->setObjectName(QStringLiteral("SelectByColour"));

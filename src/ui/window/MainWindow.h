@@ -178,6 +178,9 @@ public slots:
     // Play > Enable Playback: whether the Top, Side or Perspective view plays along (they stand still otherwise,
     // and show the frame again when playing stops).
     void onActionEnablePlayback(QString const& which);
+    // Drawing > Create Stamp from Selected Drawings: the drawings on the frames selected in the Timeline, of the
+    // current layer, become one stamp that puts them down in turn.
+    void onActionCreateStampFromDrawings();
     bool playsIn(QString const& which) const { return m_playViews.contains(which); }
     void onActionToggleSound(bool on) { m_soundOn = on; }
     void onActionFirstFrame();

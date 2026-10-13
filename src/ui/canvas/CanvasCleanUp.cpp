@@ -3,6 +3,8 @@
 #include "ui/canvas/Canvas.h"
 
 #include <cmath>
+
+#include <QRandomGenerator>
 #include <functional>
 
 #include <QComboBox>
@@ -237,14 +239,22 @@ void Canvas::loadStamp()
     if (kept.isEmpty() || !Scene::fromJson(QJsonDocument::fromJson(kept).object(), scene, &error) || scene.layers.isEmpty()
         || scene.layers[0].drawings.isEmpty() || scene.layers[0].drawings[0].isEmpty())
         return;
-    m_stamp = Drawing();
-    m_stamp.strokes = scene.layers[0].drawings[0].strokes;
-    m_stamp.fills = scene.layers[0].drawings[0].fills;
-    // (The colours of another scene's palette are not this one's: each keeps the colour it had.)
-    for (Stroke& stroke : m_stamp.strokes)
-        stroke.swatch = Scene::kNoSwatch;
-    for (Fill& fill : m_stamp.fills)
-        fill.swatch = Scene::kNoSwatch;
+    m_stampSet.clear();
+    for (Drawing const& kept_ : std::as_const(scene.layers[0].drawings)) {
+        if (kept_.isEmpty())
+            continue;
+        Drawing one;
+        one.strokes = kept_.strokes;
+        one.fills = kept_.fills;
+        // (The colours of another scene's palette are not this one's: each keeps the colour it had.)
+        for (Stroke& stroke : one.strokes)
+            stroke.swatch = Scene::kNoSwatch;
+        for (Fill& fill : one.fills)
+            fill.swatch = Scene::kNoSwatch;
+        m_stampSet.push_back(one);
+    }
+    m_stampTurn = 0;
+    m_stamp = m_stampSet.first();
     m_stampOwn = true;
     {
         // One from before there was a list goes onto it.
@@ -268,6 +278,8 @@ void Canvas::loadStamp()
 void Canvas::clearStamp()
 {
     m_stamp = Drawing();
+    m_stampSet.clear();
+    m_stampTurn = 0;
     m_stampOwn = false;
     settings().remove(QStringLiteral("tools/stamp"));
     update();
@@ -346,20 +358,59 @@ void Canvas::onActionCreateStamp()
         stamp.fills.push_back(d->fills[i]);
         stamp.fills.last().transform(home);
     }
-    m_stamp = stamp;
+    keepStamp({stamp});
+    emit message(tr("The Stamp tool now stamps this artwork."));
+}
+
+void Canvas::createStampFrom(QVector<Drawing> const& drawings)
+{
+    QVector<Drawing> set;
+    for (Drawing const& drawing : drawings) {
+        Drawing one;
+        one.strokes = drawing.strokes;
+        one.fills = drawing.fills;
+        if (one.isEmpty())
+            continue;
+        // Each about its own middle: that is where the pointer will be when it is stamped.
+        QRectF box;
+        for (Stroke const& stroke : std::as_const(one.strokes))
+            box = box.isNull() ? stroke.bounds() : box.united(stroke.bounds());
+        for (Fill const& fill : std::as_const(one.fills))
+            box = box.isNull() ? fill.bounds() : box.united(fill.bounds());
+        QTransform const home = QTransform::fromTranslate(-box.center().x(), -box.center().y());
+        for (Stroke& stroke : one.strokes)
+            stroke.transform(home);
+        for (Fill& fill : one.fills)
+            fill.transform(home);
+        set.push_back(one);
+    }
+    if (set.isEmpty()) {
+        emit message(tr("There is no artwork in the drawings selected to make a stamp of."));
+        return;
+    }
+    keepStamp(set);
+    emit message(set.size() == 1 ? tr("The Stamp tool now stamps this artwork.") : tr("The Stamp tool now stamps these %1 drawings, one after another.").arg(set.size()));
+}
+
+void Canvas::keepStamp(QVector<Drawing> const& drawings)
+{
+    m_stampSet = drawings;
+    m_stampTurn = 0;
+    m_stamp = drawings.first();
     m_stampOwn = true;
     {
         // Kept for the next time the program runs, with the colours it shows now.
         Scene keep = m_document->scene();
-        Drawing plain = stamp;
-        for (Stroke& stroke : plain.strokes)
-            stroke.color = keep.resolve(stroke.swatch, stroke.color);
-        for (Fill& fill : plain.fills)
-            fill.color = keep.resolve(fill.swatch, fill.color);
         Layer only;
         only.kind = Layer::DrawingLayer;
         only.name = QStringLiteral("Stamp");
-        only.drawings = {plain};
+        for (Drawing plain : drawings) {
+            for (Stroke& stroke : plain.strokes)
+                stroke.color = keep.resolve(stroke.swatch, stroke.color);
+            for (Fill& fill : plain.fills)
+                fill.color = keep.resolve(fill.swatch, fill.color);
+            only.drawings.push_back(plain);
+        }
         only.cells = QVector<int>(keep.frameCount(), 0);
         keep.layers = {only};
         QByteArray const bytes = QJsonDocument(keep.toJson()).toJson(QJsonDocument::Compact);
@@ -382,7 +433,7 @@ void Canvas::onActionCreateStamp()
         }
     }
     emit stampsChanged();
-    emit message(tr("The Stamp tool now stamps this artwork."));
+    update();
 }
 
 void Canvas::stampAt(QPointF p)
@@ -411,6 +462,11 @@ void Canvas::stampAt(QPointF p)
         edited.strokes.push_back(stroke);
     }
     commitDrawing(edited, tr("Stamp"));
+    // A stamp of several drawings: the next click puts down another of them.
+    if (m_stampOwn && m_stampSet.size() > 1) {
+        m_stampTurn = m_stampRandom ? int(QRandomGenerator::global()->bounded(int(m_stampSet.size()))) : (m_stampTurn + 1) % int(m_stampSet.size());
+        m_stamp = m_stampSet[m_stampTurn];
+    }
     update();
 }
 
