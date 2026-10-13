@@ -12,19 +12,13 @@
 
 #include "model/document/Commands.h"
 #include <QMimeData>
-#include <QLineEdit>
+#include "ui/canvas/TextEntry.h"
 
 bool Canvas::eventFilter(QObject* object, QEvent* event)
 {
     if (object == m_textEntry && m_textEntry) {
         if (event->type() == QEvent::KeyPress && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
             endText(false);
-            return true;
-        }
-        // Shift+Enter: a new line of words.
-        if (event->type() == QEvent::KeyPress && (static_cast<QKeyEvent*>(event)->modifiers() & Qt::ShiftModifier)
-            && (static_cast<QKeyEvent*>(event)->key() == Qt::Key_Return || static_cast<QKeyEvent*>(event)->key() == Qt::Key_Enter)) {
-            m_textEntry->insert(QString(QChar(kLineBreak)));
             return true;
         }
         // Typing is not to set off the commands that have letters as their shortcuts.

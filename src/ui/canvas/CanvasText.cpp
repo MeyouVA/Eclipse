@@ -1,7 +1,6 @@
 // Eclipse - the Camera view: the Text tool.
 #include "ui/canvas/Canvas.h"
 
-#include <QLineEdit>
 #include <QPainterPath>
 
 #include <cmath>
@@ -9,6 +8,7 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
+#include "ui/canvas/TextEntry.h"
 
 // ---- text ---------------------------------------------------------------------------------
 
@@ -16,24 +16,22 @@ void Canvas::beginText(QPointF widgetPos, QPointF layerPos, QString const& words
 {
     m_textAt = layerPos;
     m_textEdit = -1;
-    m_textEntry = new QLineEdit(this);
+    m_textEntry = new TextEntry(this);
     m_textEntry->setObjectName(QStringLiteral("TextEntry"));
     // As big on the screen as the words will be.
     QFont font = m_textFont;
     font.setPixelSize(std::clamp(int(m_textFont.pixelSize() * m_zoom + 0.5), 8, 200));
     m_textEntry->setFont(font);
-    m_textEntry->setFrame(false);
-    m_textEntry->setStyleSheet(QStringLiteral("QLineEdit { background: rgba(255, 255, 255, 215); color: black; border: 1px solid #2a9bb0; }"));
-    int const height = m_textEntry->sizeHint().height();
+    m_textEntry->setStyleSheet(QStringLiteral("QPlainTextEdit { background: rgba(255, 255, 255, 215); color: black; border: 1px solid #2a9bb0; }"));
     QFontMetrics const metrics(font);
-    // The line of the letters is where the click was.
-    m_textEntry->setGeometry(int(widgetPos.x()) - 2, int(widgetPos.y()) - metrics.ascent() - (height - metrics.height()) / 2,
-                             std::max(160, width() - int(widgetPos.x()) - 12), height);
-    connect(m_textEntry, &QLineEdit::returnPressed, this, [this] { endText(true); });
-    // The entry is one line: where a new line of words begins there is a mark.
-    QString shown = words;
-    shown.replace(QLatin1Char('\n'), QChar(kLineBreak));
-    m_textEntry->setText(shown);
+    // The line of the first letters is where the click was; the lines after it go under it.
+    m_textEntry->move(int(widgetPos.x()) - 3, int(widgetPos.y()) - metrics.ascent() - 3);
+    connect(m_textEntry, &TextEntry::returnPressed, this, [this] { endText(true); });
+    m_textEntry->setText(words);
+    // It grows with what is typed: a line more for every line of words.
+    TextEntry* const entry = m_textEntry;
+    entry->fit(160);
+    connect(entry, &QPlainTextEdit::textChanged, entry, [entry] { entry->fit(160); });
     m_textEntry->installEventFilter(this);
     m_textEntry->show();
     m_textEntry->setFocus();
@@ -43,10 +41,10 @@ void Canvas::endText(bool keep)
 {
     if (!m_textEntry)
         return;
-    QLineEdit* const entry = m_textEntry;
+    TextEntry* const entry = m_textEntry;
     m_textEntry = nullptr;
     QString text = entry->text();
-    text.replace(QChar(kLineBreak), QLatin1Char('\n'));
+    text.replace(QChar(kLineBreak), QLatin1Char('\n'));     // (the mark an older entry showed for a new line)
     entry->hide();
     entry->setObjectName(QString());  // it is on its way out: not the entry to look for any more
     entry->deleteLater();

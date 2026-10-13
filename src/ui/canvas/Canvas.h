@@ -735,7 +735,7 @@ private:
     QVector<QPointF> m_dragQuad;    // and where its corners are meanwhile
     void paintBoneLayers(QPainter& painter);
     void paintQuadAids(QPainter& painter);
-    class QLineEdit* m_textEntry = nullptr;   // where the Text tool is being typed into
+    class TextEntry* m_textEntry = nullptr;   // where the Text tool is being typed into
     QPointF m_textAt;                         // and where the words will stand (layer coordinates)
     void beginText(QPointF widgetPos, QPointF layerPos, QString const& words = QString());
     int m_textEdit = -1;                      // the painted area whose words are being changed; -1: new words
