@@ -371,6 +371,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             key.tween = ko["tween"].toBool(true);
             key.easeIn = std::clamp(ko["ein"].toDouble(0.0), 0.0, 1.0);
             key.easeOut = std::clamp(ko["eout"].toDouble(0.0), 0.0, 1.0);
+            key.liftIn = std::clamp(ko["lin"].toDouble(0.0), -2.0, 2.0);
+            key.liftOut = std::clamp(ko["lout"].toDouble(0.0), -2.0, 2.0);
         }
         if (!layer.holdsDrawings()) {
             layer.drawings.clear();

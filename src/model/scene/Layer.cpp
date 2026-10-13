@@ -50,11 +50,11 @@ Pose Pose::lerp(Pose const& a, Pose const& b, double t)
     return p;
 }
 
-double easedProgress(double t, double easeOut, double easeIn)
+double easedProgress(double t, double easeOut, double easeIn, double liftOut, double liftIn)
 {
     easeOut = std::clamp(easeOut, 0.0, 1.0);
     easeIn = std::clamp(easeIn, 0.0, 1.0);
-    if (easeOut <= 0.0 && easeIn <= 0.0)
+    if (easeOut <= 0.0 && easeIn <= 0.0 && liftOut == 0.0 && liftIn == 0.0)
         return t;
     // A cubic curve from (0,0) to (1,1) in (time, progress).  Its handles lie flat along
     // the time axis: the longer a handle, the longer the motion stays slow at that end.
@@ -74,7 +74,8 @@ double easedProgress(double t, double easeOut, double easeIn)
     }
     double const s = (lo + hi) / 2.0;
     // Progress: flat handles at height 0 and 1 where there is ease, on the diagonal where not.
-    double const y1 = easeOut > 0.0 ? 0.0 : x1, y2 = easeIn > 0.0 ? 1.0 : x2;
+    // (A handle that was pulled up or down stands that much off its level.)
+    double const y1 = (easeOut > 0.0 || liftOut != 0.0 ? 0.0 : x1) + liftOut, y2 = (easeIn > 0.0 || liftIn != 0.0 ? 1.0 : x2) + liftIn;
     return bezier(s, y1, y2);
 }
 
@@ -103,7 +104,7 @@ Pose Layer::poseAt(int frame) const
     if (!a.tween || frame == a.frame)
         return a.pose;
     double const t = double(frame - a.frame) / double(b.frame - a.frame);
-    return Pose::lerp(a.pose, b.pose, easedProgress(t, a.easeOut, b.easeIn));
+    return Pose::lerp(a.pose, b.pose, easedProgress(t, a.easeOut, b.easeIn, a.liftOut, b.liftIn));
 }
 
 int Layer::keyIndex(int frame) const

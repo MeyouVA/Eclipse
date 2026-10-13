@@ -158,7 +158,8 @@ public:
     void setKeyTween(int layer, int frame, bool tween);
     void clearKeyframes(int layer);
     // The ease of the keyframe at exactly `frame` (0..1 each).
-    void setKeyEase(int layer, int frame, double easeIn, double easeOut);
+    // (And how far its handles are pulled up or down, -2..2 each: flat unless told.)
+    void setKeyEase(int layer, int frame, double easeIn, double easeOut, double liftIn = 0.0, double liftOut = 0.0);
     void setEffects(int layer, QVector<Effect> const& effects, QString const& text);
     // Takes effect `index` out, and its amounts out of the keyframes.
     void removeEffect(int layer, int index);

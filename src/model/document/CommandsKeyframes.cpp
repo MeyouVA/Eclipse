@@ -158,18 +158,25 @@ void Document::clearKeyframes(int layer)
     apply(tr("Reset Transformation"), [&](Scene& s) { s.layers[layer].keys.clear(); });
 }
 
-void Document::setKeyEase(int layer, int frame, double easeIn, double easeOut)
+void Document::setKeyEase(int layer, int frame, double easeIn, double easeOut, double liftIn, double liftOut)
 {
     if (!validCell(m_scene, layer, frame))
         return;
     int const index = m_scene.layers[layer].keyIndex(frame);
     easeIn = std::clamp(easeIn, 0.0, 1.0);
     easeOut = std::clamp(easeOut, 0.0, 1.0);
-    if (index < 0 || (m_scene.layers[layer].keys[index].easeIn == easeIn && m_scene.layers[layer].keys[index].easeOut == easeOut))
+    liftIn = std::clamp(liftIn, -2.0, 2.0);
+    liftOut = std::clamp(liftOut, -2.0, 2.0);
+    if (index < 0)
+        return;
+    Keyframe const& now = m_scene.layers[layer].keys[index];
+    if (now.easeIn == easeIn && now.easeOut == easeOut && now.liftIn == liftIn && now.liftOut == liftOut)
         return;
     apply(tr("Set Ease"), [&](Scene& s) {
         s.layers[layer].keys[index].easeIn = easeIn;
         s.layers[layer].keys[index].easeOut = easeOut;
+        s.layers[layer].keys[index].liftIn = liftIn;
+        s.layers[layer].keys[index].liftOut = liftOut;
     });
 }
 

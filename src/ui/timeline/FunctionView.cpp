@@ -72,8 +72,8 @@ int FunctionGraph::firstShown() const
     return -1;
 }
 
-// A handle stands level with its keyframe, a tenth of the way to the next keyframe (or the one
-// before) when there is no ease, and half way when the ease is all there can be.
+// A handle stands a tenth of the way to the next keyframe (or the one before) when there is no ease, and half
+// way when the ease is all there can be; level with its keyframe, unless it was pulled up or down.
 QPointF FunctionGraph::easeHandleOf(Layer const& layer, int key, bool out) const
 {
     int const which = firstShown();
@@ -82,8 +82,13 @@ QPointF FunctionGraph::easeHandleOf(Layer const& layer, int key, bool out) const
         return QPointF();
     double const ease = std::clamp(m_easeDrag == (out ? 1 : 2) && m_easeKey == key ? m_easeValue : out ? layer.keys[key].easeOut : layer.keys[key].easeIn, 0.0, 1.0);
     double const from = xOfFrame(layer.keys[key].frame), to = xOfFrame(layer.keys[other].frame);
-    double const value = Timeline::parameterOf(layer.keys[key].pose, Timeline::Parameter(which)) * (which == Timeline::Opacity ? 100.0 : 1.0);
-    return QPointF(from + (to - from) * (0.1 + 0.4 * ease), yOfValue(value));
+    double const scale = which == Timeline::Opacity ? 100.0 : 1.0;
+    double const value = Timeline::parameterOf(layer.keys[key].pose, Timeline::Parameter(which)) * scale;
+    double const beyond = Timeline::parameterOf(layer.keys[other].pose, Timeline::Parameter(which)) * scale;
+    double const lift = m_easeDrag == (out ? 1 : 2) && m_easeKey == key ? m_liftValue : out ? layer.keys[key].liftOut : layer.keys[key].liftIn;
+    // (Out: that share of the way on to the next value.  In: that share of the way come, carried on past this one.)
+    double const lifted = out ? value + (beyond - value) * lift : value + (value - beyond) * lift;
+    return QPointF(from + (to - from) * (0.1 + 0.4 * ease), yOfValue(lifted));
 }
 
 QPointF FunctionGraph::easeHandle(bool out) const
@@ -290,6 +295,7 @@ void FunctionGraph::paintEvent(QPaintEvent*)
                 // ... or while an ease handle is dragged, the ease it would give.
                 preview = layer;
                 (m_easeDrag == 1 ? preview.keys[m_easeKey].easeOut : preview.keys[m_easeKey].easeIn) = m_easeValue;
+                (m_easeDrag == 1 ? preview.keys[m_easeKey].liftOut : preview.keys[m_easeKey].liftIn) = m_liftValue;
                 source = &preview;
             }
             auto value = [&](int f) {
@@ -408,6 +414,7 @@ void FunctionGraph::mousePressEvent(QMouseEvent* event)
                 m_easeDrag = out ? 1 : 2;
                 m_easeKey = here;
                 m_easeValue = out ? scene.layers[m_layer].keys[here].easeOut : scene.layers[m_layer].keys[here].easeIn;
+                m_liftValue = out ? scene.layers[m_layer].keys[here].liftOut : scene.layers[m_layer].keys[here].liftIn;
                 return;
             }
         }
@@ -465,6 +472,20 @@ void FunctionGraph::mouseMoveEvent(QMouseEvent* event)
                 double const from = xOfFrame(keys[m_easeKey].frame), to = xOfFrame(keys[other].frame);
                 if (std::abs(to - from) > 1e-9)
                     m_easeValue = std::clamp(((event->position().x() - from) / (to - from) - 0.1) / 0.4, 0.0, 1.0);
+                // Up and down as well: how far off the level of its keyframe, against the way to the other one
+                // (on the first curve shown).  Near the level it is level; Shift keeps it there.
+                int const which = firstShown();
+                if (which >= 0) {
+                    double const scale = which == Timeline::Opacity ? 100.0 : 1.0;
+                    double const value = Timeline::parameterOf(keys[m_easeKey].pose, Timeline::Parameter(which)) * scale;
+                    double const beyond = Timeline::parameterOf(keys[other].pose, Timeline::Parameter(which)) * scale;
+                    double const way = m_easeDrag == 1 ? beyond - value : value - beyond;
+                    if (std::abs(way) > 1e-9) {
+                        m_liftValue = std::clamp((valueOfY(event->position().y()) - value) / way, -2.0, 2.0);
+                        if (std::abs(yOfValue(value) - event->position().y()) < 5.0 || (event->modifiers() & Qt::ShiftModifier))
+                            m_liftValue = 0.0;
+                    }
+                }
             }
         }
         update();
@@ -498,8 +519,8 @@ void FunctionGraph::mouseReleaseEvent(QMouseEvent*)
         m_easeKey = -1;
         if (m_layer >= 0 && m_layer < scene.layers.size() && key >= 0 && key < scene.layers[m_layer].keys.size()) {
             Keyframe const at = scene.layers[m_layer].keys[key];
-            if ((which == 1 ? at.easeOut : at.easeIn) != m_easeValue)
-                m_document->setKeyEase(m_layer, at.frame, which == 2 ? m_easeValue : at.easeIn, which == 1 ? m_easeValue : at.easeOut);
+            m_document->setKeyEase(m_layer, at.frame, which == 2 ? m_easeValue : at.easeIn, which == 1 ? m_easeValue : at.easeOut,
+                                   which == 2 ? m_liftValue : at.liftIn, which == 1 ? m_liftValue : at.liftOut);
         }
         update();
         return;

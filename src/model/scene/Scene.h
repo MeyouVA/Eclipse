@@ -292,11 +292,17 @@ struct Keyframe {
     // 1 the slowest start or stop.
     double easeIn = 0.0;
     double easeOut = 0.0;
+    // The ease handles pulled up or down (free handles): how far above or below the level of this keyframe the
+    // handle before it (in) and the one after it (out) stand, as a share of the way to the keyframe on that side.
+    // With either, the move may run past its end and come back, or start the wrong way.
+    double liftIn = 0.0;
+    double liftOut = 0.0;
 };
 
-// How far along a tween is (0..1) when `t` of its time (0..1) has passed, leaving with
-// `easeOut` and arriving with `easeIn`.
-double easedProgress(double t, double easeOut, double easeIn);
+// How far along a tween is (0..1, or beyond with lifted handles) when `t` of its time (0..1) has passed,
+// leaving with `easeOut` and arriving with `easeIn`; `liftOut` raises the handle it leaves by, `liftIn` the
+// handle it arrives by.
+double easedProgress(double t, double easeOut, double easeIn, double liftOut = 0.0, double liftIn = 0.0);
 
 // One colour of a gradient, and where along it that colour stands (0..1).
 struct GradientStop {

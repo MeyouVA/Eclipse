@@ -194,6 +194,10 @@ QJsonObject Scene::toJson(QString const& folder) const
             QJsonObject key{{"frame", k.frame}, {"x", k.pose.x}, {"y", k.pose.y}, {"sx", k.pose.scaleX},
                             {"sy", k.pose.scaleY}, {"rot", k.pose.rotation}, {"tween", k.tween},
                             {"ein", k.easeIn}, {"eout", k.easeOut}};
+            if (k.liftIn != 0.0)
+                key["lin"] = k.liftIn;
+            if (k.liftOut != 0.0)
+                key["lout"] = k.liftOut;
             if (k.pose.opacity != 1.0)
                 key["op"] = k.pose.opacity;
             if (k.pose.z != 0.0)

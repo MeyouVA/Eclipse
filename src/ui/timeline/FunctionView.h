@@ -91,6 +91,7 @@ private:
     int m_easeDrag = 0;
     int m_easeKey = -1;
     double m_easeValue = 0.0;
+    double m_liftValue = 0.0;    // ... and how far up or down it would stand (see Keyframe::liftOut)
     int firstShown() const;
     QPointF easeHandleOf(Layer const& layer, int key, bool out) const;
     // The keyframe (of the layer's) whose square is under the point; -1 for none.
