@@ -365,6 +365,25 @@ void MainWindow::onActionMarkDrawing(QString const& as)
     m_document->markDrawing(layer(), frame(), mark);
 }
 
+// Which layers show their neighbouring drawings while another is worked on: "add" / "remove" the
+// layers selected, "removeUnselected", "addAll", "removeAll".
+void MainWindow::onActionOnionLayers(QString const& which)
+{
+    Scene const& scene = m_document->scene();
+    QVector<int> const selected = m_timeline->selectedLayers();
+    bool const on = which == QLatin1String("add") || which == QLatin1String("addAll");
+    QVector<int> layers;
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        bool const mine = selected.contains(l);
+        bool const wanted = which == QLatin1String("addAll") || which == QLatin1String("removeAll") ? true
+                            : which == QLatin1String("removeUnselected") ? !mine : mine;
+        if (wanted && scene.layers[l].holdsDrawings() && scene.layers[l].onion != on)
+            layers.push_back(l);
+    }
+    if (!layers.isEmpty())
+        m_document->editLayers(layers, on ? tr("Onion Skin On") : tr("Onion Skin Off"), [on](Layer& l) { l.onion = on; });
+}
+
 void MainWindow::onActionRenameByFrame()
 {
     if (!m_document->renameDrawingsByFrame(layer()))

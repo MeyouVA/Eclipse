@@ -388,6 +388,11 @@ public slots:
     void onActionHideAllControls();
     // How many drawings before and after the current one the onion skin shows.
     void onActionOnionAddPrevious() { setOnionRange(m_onionPrev + 1, m_onionNext); }
+    // So many drawings before, or after (a number, as words in the menu have it: "0" to "3").
+    void onActionOnionPrevious(QString const& count) { setOnionRange(count.toInt(), m_onionNext); }
+    void onActionOnionNext(QString const& count) { setOnionRange(m_onionPrev, count.toInt()); }
+    // "frames" or "drawings": what counts as the one before.
+    void onActionOnionBy(QString const& what) { setOnionByFrame(what == QLatin1String("frames")); }
     void onActionOnionReducePrevious() { setOnionRange(m_onionPrev - 1, m_onionNext); }
     void onActionOnionReduceNext() { setOnionRange(m_onionPrev, m_onionNext - 1); }
     void onActionOnionAddNext() { setOnionRange(m_onionPrev, m_onionNext + 1); }

@@ -150,6 +150,21 @@
   <shortcut id="shortcut.nextDrawing" text="Go to Next Drawing" value="G"/>
   <shortcut id="shortcut.toolSelect" text="Select Tool" value="Alt+S"/>
   <shortcut id="shortcut.help" text="Eclipse Help" value="F1"/>
+  <shortcut id="shortcut.onionNoPrevious" text="Onion Skin: No Previous Drawing" value="~"/>
+  <shortcut id="shortcut.onionOnePrevious" text="Onion Skin: Previous Drawing" value="!"/>
+  <shortcut id="shortcut.onionTwoPrevious" text="Onion Skin: Previous Two Drawings" value="@"/>
+  <shortcut id="shortcut.onionThreePrevious" text="Onion Skin: Previous Three Drawings" value="#"/>
+  <shortcut id="shortcut.onionNoNext" text="Onion Skin: No Next Drawing" value="Ctrl+`"/>
+  <shortcut id="shortcut.onionOneNext" text="Onion Skin: Next Drawing" value="Ctrl+1"/>
+  <shortcut id="shortcut.onionTwoNext" text="Onion Skin: Next Two Drawings" value="Ctrl+2"/>
+  <shortcut id="shortcut.onionThreeNext" text="Onion Skin: Next Three Drawings" value="Ctrl+3"/>
+  <shortcut id="shortcut.onionByFrames" text="Onion Skin by Frames" value=""/>
+  <shortcut id="shortcut.onionByDrawings" text="Onion Skin by Drawings" value=""/>
+  <shortcut id="shortcut.onionAddLayers" text="Add to Onion Skin" value=""/>
+  <shortcut id="shortcut.onionRemoveLayers" text="Remove from Onion Skin" value=""/>
+  <shortcut id="shortcut.onionRemoveUnselected" text="Remove Unselected from Onion Skin" value=""/>
+  <shortcut id="shortcut.onionAddAllLayers" text="Add All to Onion Skin" value="Alt+Shift+O"/>
+  <shortcut id="shortcut.onionRemoveAllLayers" text="Remove All from Onion Skin" value="Ctrl+Shift+O"/>
   <shortcut id="shortcut.renameByFrame" text="Rename Drawings by Frame" value=""/>
   <shortcut id="shortcut.toolTranslate" text="Translate Tool" value="Alt+2"/>
   <shortcut id="shortcut.toolRotate" text="Rotate Tool" value="Alt+3"/>

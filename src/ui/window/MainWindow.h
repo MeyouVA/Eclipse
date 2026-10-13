@@ -315,6 +315,7 @@ public slots:
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
     void onActionHelp();
+    void onActionOnionLayers(QString const& which);
     void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();
     void onActionKeyframeAndDuplicate();

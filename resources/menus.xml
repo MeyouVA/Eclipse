@@ -444,6 +444,25 @@
   <item id="OnionReducePrevious" icon="view/onionreduceprev" text="Reduce One P&amp;revious Drawing" shortcut="shortcut.onionReducePrev" responder="camera" slot="onActionOnionReducePrevious()"/>
   <item id="OnionReduceNext" icon="view/onionreducenext" text="Reduce One Ne&amp;xt Drawing" shortcut="shortcut.onionReduceNext" responder="camera" slot="onActionOnionReduceNext()"/>
   <item id="OnionAddNext" icon="view/onionaddnext" text="Add One &amp;Next Drawing" shortcut="shortcut.onionAddNext" responder="camera" slot="onActionOnionAddNext()"/>
+  <separator/>
+  <item id="OnionNoPrevious" icon="view/onionprevcount" text="No Previous Drawing" shortcut="shortcut.onionNoPrevious" responder="camera" slot="onActionOnionPrevious(QString)" itemParameter="0"/>
+  <item id="OnionOnePrevious" icon="view/onionprevcount" text="Previous Drawing" shortcut="shortcut.onionOnePrevious" responder="camera" slot="onActionOnionPrevious(QString)" itemParameter="1"/>
+  <item id="OnionTwoPrevious" icon="view/onionprevcount" text="Previous Two Drawings" shortcut="shortcut.onionTwoPrevious" responder="camera" slot="onActionOnionPrevious(QString)" itemParameter="2"/>
+  <item id="OnionThreePrevious" icon="view/onionprevcount" text="Previous Three Drawings" shortcut="shortcut.onionThreePrevious" responder="camera" slot="onActionOnionPrevious(QString)" itemParameter="3"/>
+  <item id="OnionNoNext" icon="view/onionnextcount" text="No Next Drawing" shortcut="shortcut.onionNoNext" responder="camera" slot="onActionOnionNext(QString)" itemParameter="0"/>
+  <item id="OnionOneNext" icon="view/onionnextcount" text="Next Drawing" shortcut="shortcut.onionOneNext" responder="camera" slot="onActionOnionNext(QString)" itemParameter="1"/>
+  <item id="OnionTwoNext" icon="view/onionnextcount" text="Next Two Drawings" shortcut="shortcut.onionTwoNext" responder="camera" slot="onActionOnionNext(QString)" itemParameter="2"/>
+  <item id="OnionThreeNext" icon="view/onionnextcount" text="Next Three Drawings" shortcut="shortcut.onionThreeNext" responder="camera" slot="onActionOnionNext(QString)" itemParameter="3"/>
+  <separator/>
+  <item id="OnionByFrames" icon="view/onionbyframe" text="Onion Skin by &amp;Frames" shortcut="shortcut.onionByFrames" responder="camera" slot="onActionOnionBy(QString)" itemParameter="frames"/>
+  <item id="OnionByDrawings" icon="view/onionbydrawing" text="Onion Skin by &amp;Drawings" shortcut="shortcut.onionByDrawings" responder="camera" slot="onActionOnionBy(QString)" itemParameter="drawings"/>
+  <separator/>
+  <item id="OnionAddLayers" icon="timeline/onionlayer" text="Add to Onion Skin" shortcut="shortcut.onionAddLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="add"/>
+  <item id="OnionRemoveLayers" icon="timeline/onionlayer" text="Remove from Onion Skin" shortcut="shortcut.onionRemoveLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="remove"/>
+  <item id="OnionRemoveUnselected" icon="timeline/onionlayer" text="Remove Unselected from Onion Skin" shortcut="shortcut.onionRemoveUnselected" responder="window" slot="onActionOnionLayers(QString)" itemParameter="removeUnselected"/>
+  <item id="OnionAddAllLayers" icon="timeline/onionlayer" text="Add All to Onion Skin" shortcut="shortcut.onionAddAllLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="addAll"/>
+  <item id="OnionRemoveAllLayers" icon="timeline/onionlayer" text="Remove All from Onion Skin" shortcut="shortcut.onionRemoveAllLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="removeAll"/>
+  <separator/>
   <item id="TopLight" icon="view/toplight" text="&amp;Top Light..." shortcut="shortcut.topLight" responder="window" slot="onActionTopLight()"/>
  </menu>
 
