@@ -196,6 +196,8 @@ public:
     int insertEmptySymbol(QString const& name, int above);
     // The layer gets a symbol of its own: a copy of the one it shows.
     bool duplicateSymbol(int layer);
+    // Clone: a second layer that shows the same drawings (see Scene::cloneLayer).  Returns it, or -1.
+    int cloneLayer(int layer);
     // Working inside a symbol: its layers become the scene that is worked on (with a list of things to undo of
     // its own), until it is left again - and every layer that shows the symbol shows what was done.
     bool enterSymbol(int symbolId);

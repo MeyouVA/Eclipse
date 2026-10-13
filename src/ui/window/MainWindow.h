@@ -191,6 +191,7 @@ public slots:
     void onActionEditSymbol();
     void onActionLeaveSymbol();
     void onActionDuplicateSymbol();
+    void onActionCloneLayer();
     void onActionExpandSymbol();
     bool playsIn(QString const& which) const { return m_playViews.contains(which); }
     void onActionToggleSound(bool on) { m_soundOn = on; }

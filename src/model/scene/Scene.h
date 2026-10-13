@@ -744,6 +744,10 @@ public:
     int addEmptySymbol(QString const& name);
     // A symbol of its own for a layer that shows one: a copy, to change without changing the other.  Its id, or 0.
     int duplicateSymbol(int layer);
+    // A second layer showing the same drawings as this one, above it: the layer is made a symbol first if it is
+    // not one, and the new layer shows that symbol too - with the same timing and movement to begin with.
+    // Returns where the new layer is, or -1.
+    int cloneLayer(int layer);
     // The symbols these layers show - and those shown inside them, and so on.
     QVector<Symbol> symbolsUsed(QVector<Layer> const& by) const;
     static bool fromJson(QJsonObject const& json, Scene& out, QString* error, QString const& folder = QString());

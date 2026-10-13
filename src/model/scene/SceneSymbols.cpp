@@ -344,3 +344,21 @@ QVector<Scene::Symbol> Scene::symbolsUsed(QVector<Layer> const& by) const
     }
     return used;
 }
+
+int Scene::cloneLayer(int layer)
+{
+    if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings())
+        return -1;
+    if (!layers[layer].showsSymbol()) {
+        layer = makeSymbol({layer}, layers[layer].name);
+        if (layer < 0)
+            return -1;
+    }
+    Layer twin = layers[layer];
+    twin.id = m_nextLayerId++;
+    twin.name = uniqueLayerName(twin.name);
+    twin.nodePlaced = false;
+    twin.solo = false;
+    layers.insert(layer + 1, twin);
+    return layer + 1;
+}

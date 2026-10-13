@@ -395,6 +395,15 @@ bool Document::duplicateSymbol(int layer)
     return true;
 }
 
+int Document::cloneLayer(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings())
+        return -1;
+    int at = -1;
+    apply(tr("Clone Layer"), [&](Scene& s) { at = s.cloneLayer(layer); });
+    return at;
+}
+
 int Document::expandSymbol(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].showsSymbol() || !m_scene.findSymbol(m_scene.layers[layer].symbolId))

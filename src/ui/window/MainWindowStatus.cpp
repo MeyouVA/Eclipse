@@ -52,6 +52,7 @@ void MainWindow::updateActionStates()
     set("EditSymbol", current.showsSymbol());
     set("DuplicateSymbol", current.showsSymbol());
     set("LeaveSymbol", m_document->insideSymbol());
+    set("CloneLayer", current.holdsDrawings());
     set("InsertSymbol", !scene.symbols.isEmpty());
     // Keyframes.
     bool const keyHere = current.keyIndex(f) >= 0;
