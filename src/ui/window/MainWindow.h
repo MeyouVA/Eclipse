@@ -175,6 +175,10 @@ public slots:
     // ---- Play ----
     void onActionTogglePlayback();
     void onActionToggleLoop(bool on) { m_loop = on; }
+    // Play > Enable Playback: whether the Top, Side or Perspective view plays along (they stand still otherwise,
+    // and show the frame again when playing stops).
+    void onActionEnablePlayback(QString const& which);
+    bool playsIn(QString const& which) const { return m_playViews.contains(which); }
     void onActionToggleSound(bool on) { m_soundOn = on; }
     void onActionFirstFrame();
     void onActionPreviousFrame() { stepFrame(-1); }
@@ -432,6 +436,7 @@ private:
     void addRecent(QString const& path);
 
     void stop();
+    void showFrameInStillViews();
     void advanceFrame();
     void stepFrame(int delta);
     void stepDrawing(int direction);
@@ -461,6 +466,7 @@ private:
 
     QTimer m_playTimer;
     bool m_loop = true;
+    QStringList m_playViews;
     // Mini Playback: the few frames either side of one, over and over; what to go back to when it stops.
     bool m_mini = false;
     int m_miniFrame = 0, m_miniStart = 0, m_miniStop = -1;

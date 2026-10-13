@@ -261,6 +261,22 @@ void Canvas::setOnionColours(QColor const& before, QColor const& after)
     update();
 }
 
+void Canvas::setOnionStepColour(bool after, int step, QColor const& colour)
+{
+    if (step < 0 || step >= kOnionSteps || m_onionStepColour[after ? 1 : 0][step] == colour)
+        return;
+    m_onionStepColour[after ? 1 : 0][step] = colour;
+    emit onionChanged();
+    update();
+}
+
+QColor Canvas::onionStepColour(bool after, int step) const
+{
+    if (onionStepHasColour(after, step))
+        return m_onionStepColour[after ? 1 : 0][step];
+    return after ? m_onionAfter : m_onionBefore;
+}
+
 void Canvas::alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text)
 {
     Scene const& scene = m_document->scene();

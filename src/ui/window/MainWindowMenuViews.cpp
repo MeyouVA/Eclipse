@@ -109,7 +109,10 @@ void MainWindow::createWindowsMenuViews()
     {
         PerspectiveView* const view = new PerspectiveView(m_document, this);
         view->setObjectName(QStringLiteral("PerspectiveView"));
-        connect(m_timeline, &Timeline::currentCellChanged, view, &PerspectiveView::setCurrentCell);
+        connect(m_timeline, &Timeline::currentCellChanged, view, [this, view](int l, int f) {
+            if (!m_playTimer.isActive() || playsIn(QStringLiteral("perspective")))
+                view->setCurrentCell(l, f);
+        });
         connect(view, &PerspectiveView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
         addView(tr("Perspective"), QStringLiteral("PerspectiveViewDock"), view, Qt::RightDockWidgetArea)->hide();
     }
@@ -117,11 +120,18 @@ void MainWindow::createWindowsMenuViews()
     for (DepthView::Mode mode : {DepthView::Top, DepthView::Side}) {
         DepthView* const view = new DepthView(m_document, mode, this);
         view->setObjectName(mode == DepthView::Top ? QStringLiteral("TopView") : QStringLiteral("SideView"));
-        connect(m_timeline, &Timeline::currentCellChanged, view, &DepthView::setCurrentCell);
+        connect(m_timeline, &Timeline::currentCellChanged, view, [this, view, mode](int l, int f) {
+            if (!m_playTimer.isActive() || playsIn(mode == DepthView::Top ? QStringLiteral("top") : QStringLiteral("side")))
+                view->setCurrentCell(l, f);
+        });
         connect(view, &DepthView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
         addView(mode == DepthView::Top ? tr("Top") : tr("Side"), mode == DepthView::Top ? QStringLiteral("TopViewDock") : QStringLiteral("SideViewDock"), view,
              Qt::RightDockWidgetArea)->hide();
     }
+    m_playViews = settings().value(QStringLiteral("play/views")).toStringList();
+    m_actions->setChecked(QStringLiteral("PlayInTop"), playsIn(QStringLiteral("top")));
+    m_actions->setChecked(QStringLiteral("PlayInSide"), playsIn(QStringLiteral("side")));
+    m_actions->setChecked(QStringLiteral("PlayInPerspective"), playsIn(QStringLiteral("perspective")));
     // Function: the animated values of the current layer as curves.
     FunctionView* const function = new FunctionView(m_document, this);
     function->setObjectName(QStringLiteral("FunctionView"));

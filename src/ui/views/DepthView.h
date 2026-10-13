@@ -25,6 +25,7 @@ public:
     double zoom() const { return m_zoom; }
     QPointF pan() const { return m_pan; }
     void resetView();
+    int currentFrame() const { return m_frame; }
     QSize sizeHint() const override { return QSize(320, 260); }
 
 public slots:

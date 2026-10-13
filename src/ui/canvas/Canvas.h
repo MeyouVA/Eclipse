@@ -347,6 +347,11 @@ public:
     void setOnionColours(QColor const& before, QColor const& after);
     QColor onionBefore() const { return m_onionBefore; }
     QColor onionAfter() const { return m_onionAfter; }
+    // A colour of its own for one of the drawings shown (the first before, the second after, ...).  An invalid
+    // colour takes it away again: that drawing then shows in the colour of its side.
+    void setOnionStepColour(bool after, int step, QColor const& colour);
+    QColor onionStepColour(bool after, int step) const;
+    bool onionStepHasColour(bool after, int step) const { return step >= 0 && step < kOnionSteps && m_onionStepColour[after ? 1 : 0][step].isValid(); }
     // Writes `text` into the current drawing, its first line standing on `layerPos`.
     // The letters are painted shapes from then on: they are not typed text any more.
     void addText(QPointF layerPos, QString const& text);
@@ -745,6 +750,7 @@ private:
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     QColor m_onionBefore = QColor(220, 60, 60);
     QColor m_onionAfter = QColor(50, 160, 80);
+    QColor m_onionStepColour[2][kOnionSteps];
     // Does to the other drawings of the layer what was done to the selection: moves what
     // lies within `region` by `transform`, or takes it away when there is none.
     void alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text);

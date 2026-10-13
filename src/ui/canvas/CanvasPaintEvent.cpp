@@ -110,7 +110,6 @@ void Canvas::paintEvent(QPaintEvent*)
         painter.setTransform(worldOf(l, m_frame) * view);
         // Onion skin: the neighbouring drawings of the layer being edited, tinted, underneath it.
         if (m_onionSkin && !m_playing && (l == m_layer || layer.onion)) {
-            QColor const before = m_onionBefore, after = m_onionAfter;
             // Each is shown where the layer is on its own frame; the further off, the fainter.
             double const strength = m_onionOpacity / 100.0;
             for (int i = 0, prev = m_frame; i < m_onionPrev; ++i) {
@@ -126,7 +125,7 @@ void Canvas::paintEvent(QPaintEvent*)
                 painter.setTransform(worldOf(l, prev) * view);
                 if (m_onionStrength[0][i] > 0)
                     paintOnion(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
-                               strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, before);
+                               strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, onionStepColour(false, i));
             }
             for (int i = 0, next = m_frame; i < m_onionNext; ++i) {
                 next = m_onionByFrame ? next + 1 : layer.nextDrawingFrame(next);
@@ -141,7 +140,7 @@ void Canvas::paintEvent(QPaintEvent*)
                 painter.setTransform(worldOf(l, next) * view);
                 if (m_onionStrength[1][i] > 0)
                     paintOnion(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
-                               strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, after);
+                               strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, onionStepColour(true, i));
             }
             painter.setTransform(worldOf(l, m_frame) * view);
         }

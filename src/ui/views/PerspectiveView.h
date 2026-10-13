@@ -21,6 +21,7 @@ public:
     double zoom() const { return m_zoom; }
     void setOrbit(double yaw, double pitch);
     void resetView();
+    int currentFrame() const { return m_frame; }
     // Where a point of space is in the view; `seen` is told whether it is before the eye.
     QPointF project(double x, double y, double z, bool* seen = nullptr) const;
     // Where the pivot of a layer is in the view.

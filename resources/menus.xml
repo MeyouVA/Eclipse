@@ -129,6 +129,11 @@
    <item id="PlaySound" icon="play/sound" text="Enable &amp;Sound" checkable="true" checked="true" responder="window" slot="onActionToggleSound(bool)"/>
    <item id="PlayScrub" icon="play/scrub" text="Enable Sound Scru&amp;bbing" checkable="true" responder="window" slot="onActionToggleSoundScrubbing(bool)"/>
    <item id="PlayLoop" icon="play/loop" text="&amp;Loop" checkable="true" checked="true" responder="window" slot="onActionToggleLoop(bool)"/>
+   <menu id="EnablePlayback" text="Enable Play&amp;back">
+    <item id="PlayInTop" icon="play/views" text="&amp;Top View" checkable="true" responder="window" slot="onActionEnablePlayback(QString)" itemParameter="top"/>
+    <item id="PlayInSide" icon="play/views" text="&amp;Side View" checkable="true" responder="window" slot="onActionEnablePlayback(QString)" itemParameter="side"/>
+    <item id="PlayInPerspective" icon="play/views" text="&amp;Perspective View" checkable="true" responder="window" slot="onActionEnablePlayback(QString)" itemParameter="perspective"/>
+   </menu>
    <separator/>
    <item id="PlayFirstFrame" icon="play/first" text="&amp;First Frame" shortcut="shortcut.firstFrame" responder="window" slot="onActionFirstFrame()"/>
    <item id="PlayPrevFrame" icon="play/prev" text="P&amp;revious Frame" shortcut="shortcut.prevFrame" responder="window" slot="onActionPreviousFrame()"/>

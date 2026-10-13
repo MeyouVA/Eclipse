@@ -21,6 +21,8 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "ui/canvas/Canvas.h"
+#include "ui/views/DepthView.h"
+#include "ui/views/PerspectiveView.h"
 #include "ui/io/MovieExport.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/views/LipSyncView.h"
@@ -64,6 +66,27 @@ void MainWindow::onActionTogglePlayback()
     m_playTimer.start(std::max(1, int(250.0 / m_document->scene().fps)));
 }
 
+void MainWindow::onActionEnablePlayback(QString const& which)
+{
+    char const* const action = which == QLatin1String("top") ? "PlayInTop" : which == QLatin1String("side") ? "PlayInSide" : "PlayInPerspective";
+    if (m_playViews.contains(which))
+        m_playViews.removeAll(which);
+    else
+        m_playViews.push_back(which);
+    m_actions->setChecked(QLatin1String(action), m_playViews.contains(which));
+    settings().setValue(QStringLiteral("play/views"), m_playViews);
+    showFrameInStillViews();
+}
+
+// The views that stood still while playing show the frame the scene is on.
+void MainWindow::showFrameInStillViews()
+{
+    for (DepthView* const view : findChildren<DepthView*>())
+        view->setCurrentCell(layer(), frame());
+    for (PerspectiveView* const view : findChildren<PerspectiveView*>())
+        view->setCurrentCell(layer(), frame());
+}
+
 void MainWindow::stop()
 {
     m_playTimer.stop();
@@ -71,6 +94,7 @@ void MainWindow::stop()
     m_playMix.clear();
     m_canvas->setPlaying(false);
     m_actions->setChecked(QStringLiteral("PlayToggle"), false);
+    showFrameInStillViews();
     if (m_mini) {
         // Mini Playback is over: the frames playing runs between are as they were, and so is the frame.
         m_mini = false;

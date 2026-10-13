@@ -13,6 +13,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTime>
+#include <QToolButton>
 #include <QTreeWidget>
 #include <QSettings>
 #include <QSlider>
@@ -65,11 +66,14 @@ QWidget* MainWindow::createOnionSkinView()
     QWidget* const bank = new QWidget(onion);
     bank->setObjectName(QStringLiteral("OnionBank"));
     QSlider* strengths[2][Canvas::kOnionSteps] = {};
+    QVector<QToolButton*> stepColours[2];
+    stepColours[0].resize(Canvas::kOnionSteps);
+    stepColours[1].resize(Canvas::kOnionSteps);
     {
         QHBoxLayout* const across = new QHBoxLayout(bank);
         across->setContentsMargins(0, 0, 0, 0);
         across->setSpacing(3);
-        auto one = [this, bank, across, &strengths](bool after, int step) {
+        auto one = [this, bank, across, &strengths, &stepColours](bool after, int step) {
             QSlider* const slider = new QSlider(Qt::Vertical, bank);
             slider->setObjectName((after ? QStringLiteral("OnionAfter%1") : QStringLiteral("OnionBefore%1")).arg(step + 1));
             slider->setRange(0, 100);
@@ -81,6 +85,21 @@ QWidget* MainWindow::createOnionSkinView()
             column->setSpacing(1);
             column->addWidget(number);
             column->addWidget(slider, 0, Qt::AlignHCenter);
+            // Under it, the colour that drawing shows in: pressed, one of its own is chosen; pressed with the
+            // right button, it goes back to the colour of its side.
+            QToolButton* const colour = new QToolButton(bank);
+            colour->setObjectName((after ? QStringLiteral("OnionAfterColour%1") : QStringLiteral("OnionBeforeColour%1")).arg(step + 1));
+            colour->setFixedSize(16, 12);
+            colour->setContextMenuPolicy(Qt::CustomContextMenu);
+            colour->setToolTip(tr("The colour this drawing shows in. Click to choose one of its own; right-click to go back to the colour of its side."));
+            column->addWidget(colour, 0, Qt::AlignHCenter);
+            stepColours[after ? 1 : 0][step] = colour;
+            connect(colour, &QToolButton::clicked, this, [this, after, step] {
+                QColor const chosen = QColorDialog::getColor(m_canvas->onionStepColour(after, step), this, tr("Onion Skin: Drawing %1").arg(step + 1));
+                if (chosen.isValid())
+                    m_canvas->setOnionStepColour(after, step, chosen);
+            });
+            connect(colour, &QToolButton::customContextMenuRequested, this, [this, after, step] { m_canvas->setOnionStepColour(after, step, QColor()); });
             across->addLayout(column);
             strengths[after ? 1 : 0][step] = slider;
             connect(slider, &QSlider::valueChanged, this, [this, after, step](int percent) { m_canvas->setOnionStrength(after, step, percent); });
@@ -136,7 +155,17 @@ QWidget* MainWindow::createOnionSkinView()
         if (chosen.isValid())
             m_canvas->setOnionColours(m_canvas->onionBefore(), chosen);
     });
-    auto follow = [this, show, previous, next, opacity, mode, outlines, marks, beforeColour, afterColour, beforeSliders, afterSliders] {
+    QVector<QToolButton*> const beforeSteps = stepColours[0], afterSteps = stepColours[1];
+    auto follow = [this, show, previous, next, opacity, mode, outlines, marks, beforeColour, afterColour, beforeSliders, afterSliders, beforeSteps, afterSteps] {
+        for (int step = 0; step < Canvas::kOnionSteps; ++step) {
+            for (bool after : {false, true}) {
+                QToolButton* const button = (after ? afterSteps : beforeSteps)[step];
+                // One of its own has a light edge; the colour of the side, a dark one.
+                button->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid %2;")
+                                          .arg(m_canvas->onionStepColour(after, step).name(), m_canvas->onionStepHasColour(after, step) ? QStringLiteral("#e0e0e0") : QStringLiteral("#202020")));
+                button->setEnabled(step < (after ? m_canvas->onionNext() : m_canvas->onionPrevious()));
+            }
+        }
         {
             QSignalBlocker const m(marks);
             marks->setCurrentIndex(m_canvas->onionMark());
@@ -175,6 +204,10 @@ QWidget* MainWindow::createOnionSkinView()
         if (kept.size() == 2 * Canvas::kOnionSteps)
             for (int i = 0; i < kept.size(); ++i)
                 m_canvas->setOnionStrength(i >= Canvas::kOnionSteps, i % Canvas::kOnionSteps, kept[i].toInt());
+        QStringList const own = s.value(QStringLiteral("onion/stepColours")).toString().split(QLatin1Char(','));
+        if (own.size() == 2 * Canvas::kOnionSteps)
+            for (int i = 0; i < own.size(); ++i)
+                m_canvas->setOnionStepColour(i >= Canvas::kOnionSteps, i % Canvas::kOnionSteps, own[i].isEmpty() ? QColor() : QColor(own[i]));
     }
     follow();
     connect(m_canvas, &Canvas::onionChanged, this, follow);
@@ -188,6 +221,12 @@ QWidget* MainWindow::createOnionSkinView()
         for (int i = 0; i < 2 * Canvas::kOnionSteps; ++i)
             strengths << QString::number(m_canvas->onionStrength(i >= Canvas::kOnionSteps, i % Canvas::kOnionSteps));
         s.setValue(QStringLiteral("onion/strengths"), strengths.join(QLatin1Char(',')));
+        QStringList own;
+        for (int i = 0; i < 2 * Canvas::kOnionSteps; ++i) {
+            bool const after = i >= Canvas::kOnionSteps;
+            own << (m_canvas->onionStepHasColour(after, i % Canvas::kOnionSteps) ? m_canvas->onionStepColour(after, i % Canvas::kOnionSteps).name() : QString());
+        }
+        s.setValue(QStringLiteral("onion/stepColours"), own.join(QLatin1Char(',')));
     });
     connect(show, &QCheckBox::toggled, this, [this](bool on) {
         m_canvas->setOnionSkin(on);
