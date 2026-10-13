@@ -30,6 +30,10 @@ public:
     // The next layer after the current one whose name has `text` in it (whatever its capitals):
     // it becomes the current layer and its node is brought to the middle of the view.  -1: none.
     int find(QString const& text);
+    // The small map of the whole graph in the corner of the view: where it is, and where a place of
+    // the graph is on it.  A click on the map brings that part of the graph to the middle of the view.
+    QRectF navigatorRect() const;
+    QPointF navigatorPoint(QPointF graph) const;
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -65,6 +69,7 @@ private:
     QPointF toWidget(QPointF graph) const { return graph * m_zoom + m_pan; }
     QPointF toGraph(QPointF widget) const { return (widget - m_pan) / m_zoom; }
     int nodeAt(QPointF widgetPos) const;
+    QRectF graphBounds() const;
     int cableAt(QPointF widgetPos) const;
     static QVector<QPointF> cablePoints(QPointF from, QPointF to);
 

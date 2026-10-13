@@ -186,13 +186,32 @@ int NodeView::cableAt(QPointF widgetPos) const
     return -1;
 }
 
-void NodeView::onActionResetView()
+QRectF NodeView::graphBounds() const
 {
-    // The whole graph, centred, at its natural size (smaller when it does not fit).
     QVector<QPointF> const p = positions();
     QRectF all(compositePos(p), QSizeF(kNodeWidth, kNodeHeight + 70.0));
     for (QPointF const& q : p)
         all = all.united(QRectF(q, QSizeF(kNodeWidth, kNodeHeight)));
+    return all;
+}
+
+QRectF NodeView::navigatorRect() const
+{
+    return QRectF(width() - 136.0, 6.0, 130.0, 84.0);
+}
+
+QPointF NodeView::navigatorPoint(QPointF graph) const
+{
+    // The whole graph fitted into the map, with a little room round it.
+    QRectF const map = navigatorRect().adjusted(5, 5, -5, -5), all = graphBounds();
+    double const k = std::min(map.width() / std::max(all.width(), 1.0), map.height() / std::max(all.height(), 1.0));
+    return map.center() + (graph - all.center()) * k;
+}
+
+void NodeView::onActionResetView()
+{
+    // The whole graph, centred, at its natural size (smaller when it does not fit).
+    QRectF const all = graphBounds();
     m_zoom = std::clamp(std::min((width() - 40.0) / all.width(), (height() - 40.0) / all.height()), 0.25, 1.0);
     m_pan = QPointF(width() / 2.0, height() / 2.0) - all.center() * m_zoom;
     update();
@@ -306,12 +325,42 @@ void NodeView::paintEvent(QPaintEvent*)
     }
     node(composite, tr("Composite"), QColor(96, 76, 128), false, false);
     node(display, tr("Display"), QColor(70, 72, 78), false, false);
+    // The map in the corner: every node as a small block, and what the view shows as a frame.
+    if (width() > 320 && height() > 200) {
+        QRectF const map = navigatorRect();
+        p.setPen(QPen(QColor(24, 24, 24), 1));
+        p.setBrush(QColor(44, 44, 46, 230));
+        p.drawRect(map);
+        p.setClipRect(map.adjusted(1, 1, -1, -1));
+        QRectF const all = graphBounds(), inner = map.adjusted(5, 5, -5, -5);
+        double const k = std::min(inner.width() / std::max(all.width(), 1.0), inner.height() / std::max(all.height(), 1.0));
+        p.setPen(Qt::NoPen);
+        for (int l = 0; l < scene.layers.size(); ++l) {
+            p.setBrush(l == m_layer ? QColor(72, 190, 200) : QColor(150, 152, 158));
+            p.drawRect(QRectF(navigatorPoint(pos[l]), QSizeF(std::max(3.0, kNodeWidth * k), std::max(2.0, kNodeHeight * k))));
+        }
+        p.setBrush(QColor(150, 120, 190));
+        p.drawRect(QRectF(navigatorPoint(compositePos(pos)), QSizeF(std::max(3.0, kNodeWidth * k), std::max(2.0, kNodeHeight * k))));
+        p.setPen(QPen(QColor(235, 235, 235), 1));
+        p.setBrush(Qt::NoBrush);
+        p.drawRect(QRectF(navigatorPoint(toGraph(QPointF(0, 0))), navigatorPoint(toGraph(QPointF(width(), height())))));
+        p.setClipping(false);
+    }
 }
 
 // ---- input --------------------------------------------------------------------------------
 
 void NodeView::mousePressEvent(QMouseEvent* event)
 {
+    if (event->button() == Qt::LeftButton && width() > 320 && height() > 200 && navigatorRect().contains(event->position())) {
+        // On the map: that part of the graph comes to the middle of the view.
+        QRectF const map = navigatorRect().adjusted(5, 5, -5, -5), all = graphBounds();
+        double const k = std::min(map.width() / std::max(all.width(), 1.0), map.height() / std::max(all.height(), 1.0));
+        QPointF const graph = all.center() + (event->position() - map.center()) / k;
+        m_pan = QPointF(width() / 2.0, height() / 2.0) - graph * m_zoom;
+        update();
+        return;
+    }
     m_pressPos = m_dragNow = event->position();
     m_moved = false;
     if (event->button() == Qt::MiddleButton) {
