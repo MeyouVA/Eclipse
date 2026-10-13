@@ -96,6 +96,26 @@ void MainWindow::askExportImages(bool preview)
     QSpinBox* const to = new QSpinBox(&dialog);
     to->setRange(1, scene.frameCount());
     to->setValue(playStop() + 1);
+    from->setObjectName(QStringLiteral("ExportFrom"));
+    to->setObjectName(QStringLiteral("ExportTo"));
+    // The whole scene, or only the frame one is on, at a press.
+    QPushButton* const allFrames = new QPushButton(tr("All Frames"), &dialog);
+    allFrames->setObjectName(QStringLiteral("ExportAllFrames"));
+    QPushButton* const thisFrame = new QPushButton(tr("Current Frame"), &dialog);
+    thisFrame->setObjectName(QStringLiteral("ExportCurrentFrame"));
+    int const frames = scene.frameCount(), here = frame() + 1;
+    connect(allFrames, &QPushButton::clicked, &dialog, [from, to, frames] {
+        from->setValue(1);
+        to->setValue(frames);
+    });
+    connect(thisFrame, &QPushButton::clicked, &dialog, [from, to, here] {
+        from->setValue(here);
+        to->setValue(here);
+    });
+    QHBoxLayout* const rangeRow = new QHBoxLayout;
+    rangeRow->addWidget(allFrames);
+    rangeRow->addWidget(thisFrame);
+    rangeRow->addStretch(1);
     QComboBox* const resolution = new QComboBox(&dialog);
     for (int percent : {100, 75, 50, 25, 200})
         resolution->addItem(tr("%1%  (%2 x %3)").arg(percent).arg(qRound(scene.width * percent / 100.0)).arg(qRound(scene.height * percent / 100.0)), percent);
@@ -109,6 +129,7 @@ void MainWindow::askExportImages(bool preview)
     form->addRow(tr("Format"), format);
     form->addRow(tr("From frame"), from);
     form->addRow(tr("To frame"), to);
+    form->addRow(QString(), rangeRow);
     form->addRow(tr("Resolution"), resolution);
     if (preview)
         form->addRow(new QLabel(tr("Quick frames for checking the animation: edges are not smoothed."), &dialog));
