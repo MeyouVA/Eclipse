@@ -284,6 +284,9 @@ public slots:
     void onActionClearExposure();
     void onActionIncreaseExposure();
     void onActionDecreaseExposure();
+    void onActionAddKeyExposure();
+    void onActionRemoveKeyExposure();
+    void onActionRemoveDuplicateKeyExposure();
     void onActionSetExposure(int length);
     void onActionInsertBlankCell();
     void onActionClearExposureAndPull();

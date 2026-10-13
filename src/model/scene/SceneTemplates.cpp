@@ -38,6 +38,9 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
         Layer layer = layers[l];
         layer.cells = layer.cells.mid(first, frames);
         layer.cells.resize(frames, Layer::kNoDrawing);
+        for (int& mark : layer.keyExposures)
+            mark -= first;
+        layer.tidyKeyExposures();
         layer.compact();
         // Its keyframes in those frames; and, when it was posed before them, that pose to start from.
         Pose const starting = layers[l].poseAt(first);

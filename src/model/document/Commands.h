@@ -281,6 +281,13 @@ public:
     // One more cell of the drawing at `frame`; the cells after move along (the last one
     // of the layer falls off the end of the scene).
     void increaseExposure(int layer, int frame);
+    // Key exposures.  Add: an exposure of its own begins at `frame`, of the drawing held there.  Remove: the
+    // exposure `frame` is in is no more - the one before it is held over its cells (a key exposure of the same
+    // drawing just stops being one).  Remove duplicates: between two frames, every key exposure that only
+    // repeats the drawing before it.
+    void addKeyExposure(int layer, int frame);
+    void removeKeyExposure(int layer, int frame);
+    void removeDuplicateKeyExposures(int layer, int first, int last);
     // Takes the cell at `frame` out; the cells after move back.
     void decreaseExposure(int layer, int frame);
     // Makes the exposure `frame` is in exactly `length` cells long.

@@ -286,6 +286,9 @@
     <separator/>
     <item id="IncreaseExposure"/>
     <item id="DecreaseExposure"/>
+    <item id="AddKeyExposure" icon="timeline/addkeyexposure" text="&amp;Add Key Exposure" responder="window" slot="onActionAddKeyExposure()"/>
+    <item id="RemoveKeyExposure" icon="timeline/removekeyexposure" text="&amp;Remove Key Exposure" responder="window" slot="onActionRemoveKeyExposure()"/>
+    <item id="RemoveDuplicateKeyExposure" icon="timeline/removeduplicatekey" text="Remove &amp;Duplicate Key Exposure" responder="window" slot="onActionRemoveDuplicateKeyExposure()"/>
     <item id="FillEmptyCells"/>
     <item id="InsertBlankCell"/>
     <item id="ClearExposureAndPull"/>
@@ -626,6 +629,9 @@
   <menu id="TimelineExposure" text="Exposure">
    <item id="IncreaseExposure" icon="timeline/increaseexposure" text="Increase Exposure" shortcut="shortcut.increaseExposure" responder="window" slot="onActionIncreaseExposure()"/>
    <item id="DecreaseExposure" icon="timeline/decreaseexposure" text="Decrease Exposure" shortcut="shortcut.decreaseExposure" responder="window" slot="onActionDecreaseExposure()"/>
+   <item id="AddKeyExposure"/>
+   <item id="RemoveKeyExposure"/>
+   <item id="RemoveDuplicateKeyExposure"/>
    <separator/>
    <item id="SetExposure1" text="Set Exposure to 1" responder="window" slot="onActionSetExposure(int)" itemParameter="1"/>
    <item id="SetExposure2" text="Set Exposure to 2" responder="window" slot="onActionSetExposure(int)" itemParameter="2"/>

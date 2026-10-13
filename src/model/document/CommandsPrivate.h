@@ -26,6 +26,9 @@ template <class Edit> void Document::apply(QString const& text, Edit edit)
 {
     Scene after = m_scene;
     edit(after);
+    // (Key exposures that mark nothing any more - their drawing gone or changed - are not kept.)
+    for (Layer& layer : after.layers)
+        layer.tidyKeyExposures();
     m_undo.push(new SceneStateCommand(this, m_scene, std::move(after), text));
 }
 

@@ -43,6 +43,24 @@ void MainWindow::onActionIncreaseExposure()
     onExposure(tr("Increase Exposure"), [this](int l, int f) { m_document->increaseExposure(l, f); });
 }
 
+void MainWindow::onActionAddKeyExposure()
+{
+    onExposure(tr("Add Key Exposure"), [this](int l, int f) { m_document->addKeyExposure(l, f); });
+}
+
+void MainWindow::onActionRemoveKeyExposure()
+{
+    onExposure(tr("Remove Key Exposure"), [this](int l, int f) { m_document->removeKeyExposure(l, f); });
+}
+
+void MainWindow::onActionRemoveDuplicateKeyExposure()
+{
+    // Over the frames selected - or, with one cell only, over the whole of the layer.
+    bool const range = m_timeline->selectionLastFrame() > m_timeline->selectionFirstFrame();
+    int const first = range ? m_timeline->selectionFirstFrame() : 0, last = range ? m_timeline->selectionLastFrame() : m_document->scene().frameCount() - 1;
+    onExposure(tr("Remove Duplicate Key Exposure"), [this, first, last](int l, int) { m_document->removeDuplicateKeyExposures(l, first, last); });
+}
+
 void MainWindow::onActionDecreaseExposure()
 {
     onExposure(tr("Decrease Exposure"), [this](int l, int f) { m_document->decreaseExposure(l, f); });

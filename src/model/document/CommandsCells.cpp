@@ -496,6 +496,7 @@ void Document::insertFrames(int at, int count)
         for (Layer& layer : s.layers) {
             layer.cells.insert(at, count, Layer::kNoDrawing);
             layer.cells.resize(s.frameCount());
+            layer.shiftKeyExposures(at, count);
             for (Keyframe& key : layer.keys)
                 if (key.frame >= at)
                     key.frame += count;
@@ -530,6 +531,7 @@ void Document::removeFrames(int first, int last)
     apply(tr("Remove Frames"), [&](Scene& s) {
         for (Layer& layer : s.layers) {
             layer.cells.remove(first, count);
+            layer.shiftKeyExposures(first, -count);
             layer.keys.erase(std::remove_if(layer.keys.begin(), layer.keys.end(), [&](Keyframe const& k) { return k.frame >= first && k.frame <= last; }),
                              layer.keys.end());
             for (Keyframe& key : layer.keys)
@@ -603,10 +605,59 @@ static void exposureOf(Layer const& layer, int frame, int& start, int& length)
     int const drawing = layer.drawingAt(frame);
     if (drawing == Layer::kNoDrawing)
         return;
-    while (start > 0 && layer.cells[start - 1] == drawing)
+    while (start > 0 && layer.cells[start - 1] == drawing && !layer.keyExposures.contains(start))
         --start;
-    while (start + length < layer.cells.size() && layer.cells[start + length] == drawing)
+    length = 1;
+    while (start + length < layer.cells.size() && layer.cells[start + length] == drawing && !layer.keyExposures.contains(start + length))
         ++length;
+}
+
+void Document::addKeyExposure(int layer, int frame)
+{
+    if (!validCell(m_scene, layer, frame) || m_scene.layers[layer].cells[frame] == Layer::kNoDrawing || m_scene.layers[layer].isKey(frame))
+        return;
+    apply(tr("Add Key Exposure"), [&](Scene& s) {
+        s.layers[layer].keyExposures.push_back(frame);
+        std::sort(s.layers[layer].keyExposures.begin(), s.layers[layer].keyExposures.end());
+    });
+}
+
+void Document::removeKeyExposure(int layer, int frame)
+{
+    if (!validCell(m_scene, layer, frame))
+        return;
+    int start = 0, length = 0;
+    exposureOf(m_scene.layers[layer], frame, start, length);
+    if (length == 0)
+        return;
+    apply(tr("Remove Key Exposure"), [&](Scene& s) {
+        Layer& edited = s.layers[layer];
+        if (edited.keyExposures.contains(start)) {
+            edited.keyExposures.removeAll(start);       // the same drawing as before it: one exposure again
+            return;
+        }
+        // What was shown before it is held over its cells (nothing, at the start of the layer).
+        int const before = start > 0 ? edited.cells[start - 1] : Layer::kNoDrawing;
+        for (int f = start; f < start + length; ++f)
+            edited.cells[f] = before;
+        edited.keyExposures.removeAll(start + length);  // (were the one after it the same drawing again, it would run on)
+        edited.compact();
+    });
+}
+
+void Document::removeDuplicateKeyExposures(int layer, int first, int last)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return;
+    bool any = false;
+    for (int mark : m_scene.layers[layer].keyExposures)
+        any = any || (mark >= first && mark <= last);
+    if (!any)
+        return;
+    apply(tr("Remove Duplicate Key Exposure"), [&](Scene& s) {
+        QVector<int>& marks = s.layers[layer].keyExposures;
+        marks.erase(std::remove_if(marks.begin(), marks.end(), [&](int mark) { return mark >= first && mark <= last; }), marks.end());
+    });
 }
 
 void Document::increaseExposure(int layer, int frame)
@@ -615,6 +666,7 @@ void Document::increaseExposure(int layer, int frame)
         return;
     apply(tr("Increase Exposure"), [&](Scene& s) {
         s.layers[layer].cells.insert(frame + 1, s.layers[layer].cells[frame]);
+        s.layers[layer].shiftKeyExposures(frame + 1, 1);
         fitCells(s, layer);
     });
 }
@@ -625,6 +677,7 @@ void Document::decreaseExposure(int layer, int frame)
         return;
     apply(tr("Decrease Exposure"), [&](Scene& s) {
         s.layers[layer].cells.removeAt(frame);
+        s.layers[layer].shiftKeyExposures(frame, -1);
         fitCells(s, layer);
     });
 }
@@ -640,10 +693,13 @@ void Document::setExposure(int layer, int frame, int length)
     apply(tr("Set Exposure"), [&](Scene& s) {
         QVector<int>& cells = s.layers[layer].cells;
         int const drawing = cells[start];
-        if (length > now)
+        if (length > now) {
             cells.insert(start + now, length - now, drawing);
-        else
+            s.layers[layer].shiftKeyExposures(start + now, length - now);
+        } else {
             cells.remove(start + length, now - length);
+            s.layers[layer].shiftKeyExposures(start + length, length - now);
+        }
         fitCells(s, layer);
     });
 }
@@ -654,6 +710,7 @@ void Document::insertBlankCell(int layer, int frame)
         return;
     apply(tr("Insert Blank Cell"), [&](Scene& s) {
         s.layers[layer].cells.insert(frame, Layer::kNoDrawing);
+        s.layers[layer].shiftKeyExposures(frame, 1);
         fitCells(s, layer);
     });
 }
@@ -668,6 +725,7 @@ void Document::clearExposureAndPull(int layer, int frame)
         return;
     apply(tr("Clear Exposure and Pull"), [&](Scene& s) {
         s.layers[layer].cells.remove(start, length);
+        s.layers[layer].shiftKeyExposures(start, -length);
         fitCells(s, layer);
     });
 }

@@ -195,7 +195,36 @@ QTransform Layer::matrixFor(Pose const& pose) const
 bool Layer::isKey(int frame) const
 {
     int const d = drawingAt(frame);
-    return d != kNoDrawing && (frame == 0 || drawingAt(frame - 1) != d);
+    return d != kNoDrawing && (frame == 0 || drawingAt(frame - 1) != d || keyExposures.contains(frame));
+}
+
+void Layer::tidyKeyExposures()
+{
+    if (keyExposures.isEmpty())
+        return;
+    QVector<int> kept;
+    for (int frame : std::as_const(keyExposures))
+        if (frame > 0 && frame < cells.size() && cells[frame] != kNoDrawing && cells[frame - 1] == cells[frame] && !kept.contains(frame))
+            kept.push_back(frame);
+    std::sort(kept.begin(), kept.end());
+    keyExposures = kept;
+}
+
+void Layer::shiftKeyExposures(int at, int delta)
+{
+    if (keyExposures.isEmpty() || delta == 0)
+        return;
+    QVector<int> moved;
+    for (int frame : std::as_const(keyExposures)) {
+        if (frame < at || (delta < 0 && frame == at))
+            moved.push_back(frame);                 // before what changed (or the first cell taken out: what comes after it takes its place)
+        else if (delta > 0)
+            moved.push_back(frame + delta);
+        else if (frame >= at - delta)
+            moved.push_back(frame + delta);         // after the cells taken out
+        // (a mark on a cell that was taken out goes with it)
+    }
+    keyExposures = moved;
 }
 
 int Layer::morphEnd(int index) const
@@ -247,7 +276,7 @@ int Layer::exposureStart(int frame) const
     int const d = drawingAt(frame);
     if (d == kNoDrawing)
         return -1;
-    while (frame > 0 && cells[frame - 1] == d)
+    while (frame > 0 && cells[frame - 1] == d && !keyExposures.contains(frame))
         --frame;
     return frame;
 }
@@ -265,7 +294,7 @@ int Layer::nextDrawingFrame(int frame) const
 {
     int const d = drawingAt(frame);
     int f = frame + 1;
-    while (f < cells.size() && (cells[f] == kNoDrawing || cells[f] == d))
+    while (f < cells.size() && (cells[f] == kNoDrawing || (cells[f] == d && !keyExposures.contains(f))))
         ++f;
     return f < cells.size() ? f : -1;
 }

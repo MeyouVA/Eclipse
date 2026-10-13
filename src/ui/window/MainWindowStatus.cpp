@@ -66,6 +66,9 @@ void MainWindow::updateActionStates()
     set("ClearExposure", cell);
     for (char const* id : {"IncreaseExposure", "DecreaseExposure", "SetExposure1", "SetExposure2", "SetExposure3", "ClearExposureAndPull"})
         set(id, cell);
+    set("AddKeyExposure", cell && !current.isKey(f));
+    set("RemoveKeyExposure", cell);
+    set("RemoveDuplicateKeyExposure", draws && !current.keyExposures.isEmpty());
     set("InsertBlankCell", draws);
     set("FillEmptyCells", draws);
     set("PreviousDrawing", draws && current.previousDrawingFrame(f) >= 0);

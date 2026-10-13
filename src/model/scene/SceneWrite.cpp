@@ -301,6 +301,12 @@ QJsonObject Scene::toJson(QString const& folder) const
                 marks.append(QJsonArray{it.key(), it.value().name()});
             layerObject["frameMarks"] = marks;
         }
+        if (!layer.keyExposures.isEmpty()) {
+            QJsonArray marks;
+            for (int frame : layer.keyExposures)
+                marks.append(frame);
+            layerObject["keyExposures"] = marks;
+        }
         layerArray.append(layerObject);
     }
     QJsonArray paletteArray;

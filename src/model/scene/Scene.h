@@ -461,6 +461,13 @@ struct Layer {
     bool tagged = false;
     // Frames of the layer marked with a colour in the Timeline (a note to oneself: "redo", "hold" ...).
     QMap<int, QColor> frameMarks;
+    // Key exposures: frames where an exposure of its own begins although the drawing is the one the frame before
+    // shows (sorted).  Where the drawing changes an exposure begins anyway, and nothing is kept here.
+    QVector<int> keyExposures;
+    // Drops those that mark nothing any more (an empty cell, or a frame where the drawing changes anyway).
+    void tidyKeyExposures();
+    // The cells from `at` on have moved by `delta` (cells put in, or - negative - taken out there): the marks follow.
+    void shiftKeyExposures(int at, int delta);
     // The layers attached to this one are folded away in the Timeline.
     bool collapsed = false;
     // The colour of the layer's row in the Timeline; invalid for the usual grey.
@@ -485,7 +492,7 @@ struct Layer {
     // The drawing a frame shows: that of its cell, or - in a morphing - the one in between.
     // Empty for an empty cell.
     Drawing shownAt(int frame) const;
-    // True when `frame` starts an exposure (it shows a drawing the previous frame does not).
+    // True when `frame` starts an exposure (it shows a drawing the previous frame does not, or is a key exposure).
     bool isKey(int frame) const;
     // The first frame of the exposure `frame` belongs to, or -1 for an empty cell.
     int exposureStart(int frame) const;

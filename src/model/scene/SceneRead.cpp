@@ -203,6 +203,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             if (colour.isValid() && mv.toArray().at(0).toInt(-1) >= 0)
                 layer.frameMarks.insert(mv.toArray().at(0).toInt(), colour);
         }
+        for (QJsonValue const& kv : lo["keyExposures"].toArray())
+            layer.keyExposures.push_back(kv.toInt());
         layer.collapsed = lo["collapsed"].toBool(false);
         if (QString const track = lo["track"].toString(); !track.isEmpty())
             layer.trackColor = QColor(track);
@@ -254,6 +256,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             layer.cells.push_back(c >= 0 && c < layer.drawings.size() ? c : Layer::kNoDrawing);
         }
         layer.cells.resize(scene.m_frameCount, Layer::kNoDrawing);
+        layer.tidyKeyExposures();
 
         // Version 3: pegs, parents and keyframes.  Older files have none of it.
         layer.id = lo["id"].toInt(0);
