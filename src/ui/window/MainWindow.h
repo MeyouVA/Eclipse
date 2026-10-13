@@ -84,6 +84,7 @@ public:
         QColor paper = QColor(255, 255, 255);   // traced in colour: the colour left out as paper (invalid: none is)
         bool vectorize = false;     // the dark parts become painted shapes; else the picture is kept as a bitmap
         int threshold = 128;        // how dark is dark (0..255)
+        bool centreLines = false;   // (vectorising in black and white) lines down the middle of the strokes, not shapes round them
         int colours = 0;            // when vectorising: 0 for black and white, else flat shapes of at most this many colours
         bool linked = false;        // read from the file each time, not kept in the scene
         int hold = 1;               // frames each picture is shown for

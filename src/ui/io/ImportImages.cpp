@@ -74,6 +74,19 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
                     shape.outlines.push_back(placement.map(outline));
                 drawing.fills.push_back(shape);
             }
+        } else if (options.vectorize && options.centreLines) {
+            // Lines as lines: each stroke of the picture a pencil line down its middle, as thick as the stroke was.
+            for (Vectorize::CentreLine const& traced : Vectorize::centreLines(image, options.threshold)) {
+                Stroke line;
+                line.swatch = m_palette->currentSwatch();
+                line.color = scene.resolve(line.swatch, QColor(Qt::black));
+                line.width = float(std::max(1.0, traced.width * scale));
+                line.closed = traced.closed;
+                for (QPointF const& point : traced.points)
+                    line.points.push_back({placement.map(point), 1.0f});
+                if (line.points.size() >= 2)
+                    drawing.strokes.push_back(line);
+            }
         } else if (options.vectorize) {
             Fill shape;
             shape.swatch = m_palette->currentSwatch();
@@ -145,6 +158,10 @@ void MainWindow::askImportImages(bool linked)
     QGroupBox* const asBox = new QGroupBox(tr("Import As"), &dialog);
     QRadioButton* const bitmap = new QRadioButton(tr("Keep As Original Bitmap"), asBox);
     QRadioButton* const vector = new QRadioButton(tr("Vector Drawing (Black and White)"), asBox);
+    QRadioButton* const centre = new QRadioButton(tr("Vector Drawing (Centre Lines)"), asBox);
+    centre->setObjectName(QStringLiteral("ImportCentreLines"));
+    centre->setToolTip(tr("Each stroke of the picture becomes a pencil line down its middle, as thick as the stroke was - lines you can reshape,\n"
+                          "not shapes round them. For clean line drawings."));
     QRadioButton* const colourVector = new QRadioButton(tr("Vector Drawing (Colour)"), asBox);
     QSpinBox* const colourCount = new QSpinBox(asBox);
     colourCount->setRange(2, 64);
@@ -154,14 +171,18 @@ void MainWindow::askImportImages(bool linked)
     bitmap->setChecked(true);
     vector->setEnabled(!linked);    // a traced picture is artwork of the scene, not a file to read again
     colourVector->setEnabled(!linked);
+    centre->setEnabled(!linked);
     QSpinBox* const threshold = new QSpinBox(asBox);
     threshold->setRange(1, 255);
     threshold->setValue(128);
     threshold->setEnabled(false);
-    connect(vector, &QRadioButton::toggled, threshold, &QSpinBox::setEnabled);
+    auto thresholdUsed = [vector, centre, threshold] { threshold->setEnabled(vector->isChecked() || centre->isChecked()); };
+    connect(vector, &QRadioButton::toggled, threshold, thresholdUsed);
+    connect(centre, &QRadioButton::toggled, threshold, thresholdUsed);
     QFormLayout* const asLayout = new QFormLayout(asBox);
     asLayout->addRow(bitmap);
     asLayout->addRow(vector);
+    asLayout->addRow(centre);
     asLayout->addRow(tr("Threshold (darker than this is line)"), threshold);
     asLayout->addRow(colourVector);
     asLayout->addRow(tr("Colours at most"), colourCount);
@@ -221,7 +242,8 @@ void MainWindow::askImportImages(bool linked)
     options.fit = alignment->currentIndex() != 2;
     options.pan = alignment->currentIndex() == 1;
     options.paper = leavePaper->isChecked() ? paper->property("colour").value<QColor>() : QColor();
-    options.vectorize = vector->isChecked() || colourVector->isChecked();
+    options.vectorize = vector->isChecked() || colourVector->isChecked() || centre->isChecked();
+    options.centreLines = centre->isChecked();
     options.colours = colourVector->isChecked() ? colourCount->value() : 0;
     options.threshold = threshold->value();
     options.linked = linked;

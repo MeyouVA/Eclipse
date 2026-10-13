@@ -2,6 +2,7 @@
 
 #include <QHash>
 #include <QPair>
+#include <QSet>
 
 #include <algorithm>
 
@@ -266,6 +267,190 @@ QVector<ColourShape> traceColours(QImage const& source, int maxColours, QColor c
             shapes.push_back(shape);
     }
     return shapes;
+}
+
+// ---- centre lines ----------------------------------------------------------------------------
+
+// The points of a line that matter: those further than `tolerance` from the straight line between the points
+// kept either side of them (Douglas and Peucker).
+static QPolygonF fewerPoints(QPolygonF const& line, double tolerance)
+{
+    if (line.size() < 3)
+        return line;
+    QVector<bool> keep(line.size(), false);
+    keep[0] = keep[line.size() - 1] = true;
+    QVector<QPair<int, int>> spans = {{0, int(line.size()) - 1}};
+    while (!spans.isEmpty()) {
+        QPair<int, int> const span = spans.takeLast();
+        QPointF const a = line[span.first], b = line[span.second];
+        double const length = std::hypot(b.x() - a.x(), b.y() - a.y());
+        double most = 0.0;
+        int at = -1;
+        for (int i = span.first + 1; i < span.second; ++i) {
+            QPointF const d = line[i] - a;
+            double const off = length > 1e-9 ? std::abs(d.x() * (b.y() - a.y()) - d.y() * (b.x() - a.x())) / length : std::hypot(d.x(), d.y());
+            if (off > most) {
+                most = off;
+                at = i;
+            }
+        }
+        if (at >= 0 && most > tolerance) {
+            keep[at] = true;
+            spans.push_back({span.first, at});
+            spans.push_back({at, span.second});
+        }
+    }
+    QPolygonF kept;
+    for (int i = 0; i < line.size(); ++i)
+        if (keep[i])
+            kept << line[i];
+    return kept;
+}
+
+QVector<CentreLine> centreLines(QImage const& source, int threshold, int minimumLength)
+{
+    if (source.isNull())
+        return {};
+    QImage const image = source.convertToFormat(QImage::Format_ARGB32);
+    int const w = image.width(), h = image.height(), across = w + 2;
+    // The picture with a clear pixel all round it, so that every pixel has its eight neighbours.
+    QVector<uchar> thin(across * (h + 2), 0);
+    for (int y = 0; y < h; ++y) {
+        QRgb const* const row = reinterpret_cast<QRgb const*>(image.constScanLine(y));
+        for (int x = 0; x < w; ++x)
+            thin[(y + 1) * across + (x + 1)] = qAlpha(row[x]) >= 128 && qGray(row[x]) < threshold;
+    }
+    // How deep in the ink each pixel lies (steps to the nearest clear pixel, across and down): about half
+    // the thickness of the stroke, at its middle.
+    QVector<int> depth(thin.size(), 0);
+    for (int y = 1; y <= h; ++y)
+        for (int x = 1; x <= w; ++x)
+            if (thin[y * across + x])
+                depth[y * across + x] = std::min(depth[(y - 1) * across + x], depth[y * across + x - 1]) + 1;
+    for (int y = h; y >= 1; --y)
+        for (int x = w; x >= 1; --x)
+            if (thin[y * across + x])
+                depth[y * across + x] = std::min(depth[y * across + x], std::min(depth[(y + 1) * across + x], depth[y * across + x + 1]) + 1);
+
+    // Thinned (Zhang and Suen): pixels are taken off the edges of the ink, turn and turn about from two sides,
+    // for as long as taking one away neither breaks a stroke nor shortens it.
+    QVector<int> gone;
+    for (bool changed = true; changed;) {
+        changed = false;
+        for (int pass = 0; pass < 2; ++pass) {
+            gone.clear();
+            for (int y = 1; y <= h; ++y) {
+                for (int x = 1; x <= w; ++x) {
+                    int const i = y * across + x;
+                    if (!thin[i])
+                        continue;
+                    // Its neighbours, clockwise from the one above.
+                    int const n[8] = {thin[i - across], thin[i - across + 1], thin[i + 1], thin[i + across + 1],
+                                      thin[i + across], thin[i + across - 1], thin[i - 1], thin[i - across - 1]};
+                    int count = 0, turns = 0;
+                    for (int k = 0; k < 8; ++k) {
+                        count += n[k];
+                        turns += (!n[k] && n[(k + 1) % 8]) ? 1 : 0;
+                    }
+                    if (count < 2 || count > 6 || turns != 1)
+                        continue;
+                    if (pass == 0 ? (n[0] && n[2] && n[4]) || (n[2] && n[4] && n[6]) : (n[0] && n[2] && n[6]) || (n[0] && n[4] && n[6]))
+                        continue;
+                    gone.push_back(i);
+                }
+            }
+            for (int i : std::as_const(gone))
+                thin[i] = 0;
+            changed = changed || !gone.isEmpty();
+        }
+    }
+
+    // What is left is a net of pixels.  A pixel's neighbours along it: those beside it, and those cornerwise
+    // that cannot be come to by way of one beside it (so that a stair is one path, not a tangle).
+    auto neighbours = [&](int i) {
+        QVector<int> found;
+        static int const beside[4] = {1, 0, -1, 0}, below[4] = {0, 1, 0, -1};
+        for (int k = 0; k < 4; ++k)
+            if (thin[i + below[k] * across + beside[k]])
+                found.push_back(i + below[k] * across + beside[k]);
+        static int const cornerX[4] = {1, 1, -1, -1}, cornerY[4] = {1, -1, 1, -1};
+        for (int k = 0; k < 4; ++k)
+            if (thin[i + cornerY[k] * across + cornerX[k]] && !thin[i + cornerX[k]] && !thin[i + cornerY[k] * across])
+                found.push_back(i + cornerY[k] * across + cornerX[k]);
+        return found;
+    };
+    QVector<uchar> ways(thin.size(), 0);        // how many neighbours each has: two along a line, one at a loose end, more at a meeting
+    for (int i = 0; i < thin.size(); ++i)
+        if (thin[i])
+            ways[i] = uchar(neighbours(i).size());
+    QSet<quint64> walked;
+    auto step = [](int a, int b) { return (quint64(std::min(a, b)) << 32) | quint64(std::max(a, b)); };
+    auto follow = [&](int from, int first, bool* closed) {
+        QVector<int> path = {from};
+        int before = from, now = first;
+        walked.insert(step(from, first));
+        *closed = false;
+        for (;;) {
+            if (now == from) {
+                *closed = true;
+                break;
+            }
+            path.push_back(now);
+            if (ways[now] != 2)
+                break;          // an end, or a meeting
+            QVector<int> const next = neighbours(now);
+            int const on = next[0] == before ? next[1] : next[0];
+            if (walked.contains(step(now, on)))
+                break;
+            walked.insert(step(now, on));
+            before = now;
+            now = on;
+        }
+        return path;
+    };
+    QVector<QPair<QVector<int>, bool>> paths;
+    // From every end and every meeting, along each line that leaves it ...
+    for (int i = 0; i < thin.size(); ++i) {
+        if (!thin[i] || ways[i] == 2 || ways[i] == 0)
+            continue;
+        for (int first : neighbours(i)) {
+            if (walked.contains(step(i, first)))
+                continue;
+            bool closed = false;
+            QVector<int> const path = follow(i, first, &closed);
+            paths.push_back({path, closed});
+        }
+    }
+    // ... and the rings that have neither.
+    for (int i = 0; i < thin.size(); ++i) {
+        if (!thin[i] || ways[i] != 2)
+            continue;
+        QVector<int> const next = neighbours(i);
+        if (walked.contains(step(i, next[0])) || walked.contains(step(i, next[1])))
+            continue;
+        bool closed = false;
+        QVector<int> const path = follow(i, next[0], &closed);
+        paths.push_back({path, closed});
+    }
+
+    QVector<CentreLine> lines;
+    for (auto const& [path, closed] : std::as_const(paths)) {
+        // A whisker - short, with a loose end - is the thinning's doing, not the drawing's.
+        bool const loose = ways[path.first()] == 1 || ways[path.last()] == 1;
+        if (path.size() < 2 || (!closed && loose && path.size() < minimumLength))
+            continue;
+        CentreLine line;
+        line.closed = closed;
+        double thickness = 0.0;
+        for (int i : path) {
+            line.points << QPointF(i % across - 1 + 0.5, i / across - 1 + 0.5);
+            thickness += 2.0 * depth[i] - 0.5;
+        }
+        line.width = std::max(1.0, thickness / path.size());
+        line.points = fewerPoints(line.points, 0.75);
+        lines.push_back(line);
+    }
+    return lines;
 }
 
 }

@@ -26,4 +26,15 @@ struct ColourShape {
 };
 QVector<ColourShape> traceColours(QImage const& image, int maxColours = 8, QColor const& paper = QColor(255, 255, 255), double minimumArea = 4.0);
 
+// The dark parts of a picture as lines: each stroke of the picture is thinned to the line that runs down its
+// middle, with how thick the stroke was there (the average along it), in the coordinates of its pixels.  Where
+// strokes meet or cross, the lines end at the meeting.  Loose ends shorter than `minimumLength` pixels are
+// left out.
+struct CentreLine {
+    QPolygonF points;
+    bool closed = false;
+    double width = 1.0;
+};
+QVector<CentreLine> centreLines(QImage const& image, int threshold = 128, int minimumLength = 4);
+
 }
