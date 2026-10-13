@@ -1,5 +1,7 @@
 #include "model/geometry/Deform.h"
 
+#include <QPainterPath>
+#include <QPainterPathStroker>
 #include <QTransform>
 #include <QVarLengthArray>
 
@@ -415,7 +417,64 @@ int insertWarpPoint(QVector<QPointF>& points, bool closed, QPointF near, double 
     return place;
 }
 
-QVector<QPointF> envelopeAround(Drawing const& drawing, int count, double margin)
+QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet)
+{
+    // All that the artwork covers, as one area.
+    QPainterPath all;
+    all.setFillRule(Qt::WindingFill);
+    for (int s = 0; s < Drawing::SheetCount; ++s) {
+        if (sheet >= 0 && s != sheet)
+            continue;
+        for (Stroke const& stroke : drawing.strokesOf(s)) {
+            QVector<StrokePoint> const line = stroke.path();
+            if (line.size() < 2)
+                continue;
+            QPainterPath centre;
+            float widest = 0.0f;
+            centre.moveTo(line.first().pos);
+            for (StrokePoint const& point : line) {
+                centre.lineTo(point.pos);
+                widest = std::max(widest, point.pressure);
+            }
+            if (stroke.closed) {
+                centre.closeSubpath();
+                QPainterPath inside = centre;
+                inside.setFillRule(Qt::WindingFill);
+                all = all.united(inside);       // what a closed line goes round is inside the drawing
+            }
+            if (stroke.width > 0.0f) {
+                QPainterPathStroker stroker;
+                stroker.setWidth(std::max(0.1, double(stroke.width) * widest));
+                stroker.setJoinStyle(Qt::RoundJoin);
+                stroker.setCapStyle(Qt::RoundCap);
+                all = all.united(stroker.createStroke(centre));
+            }
+        }
+        for (Fill const& fill : drawing.fillsOf(s)) {
+            QPainterPath area;
+            for (QPolygonF const& outline : fill.outlines)
+                area.addPolygon(outline);
+            area.closeSubpath();
+            all = all.united(area);
+        }
+    }
+    // Its outer edges only.
+    QList<QPolygonF> const edges = all.simplified().toSubpathPolygons();
+    QVector<QPolygonF> outer;
+    for (int i = 0; i < edges.size(); ++i) {
+        if (edges[i].size() < 3)
+            continue;
+        bool inner = false;
+        for (int k = 0; k < edges.size() && !inner; ++k)
+            inner = k != i && edges[k].size() >= 3 && edges[k].boundingRect().contains(edges[i].boundingRect())
+                    && edges[k].containsPoint(edges[i].first(), Qt::OddEvenFill);
+        if (!inner)
+            outer.push_back(edges[i]);
+    }
+    return outer;
+}
+
+QVector<QPointF> envelopeAround(Drawing const& drawing, int count, double margin, bool followOutline)
 {
     // Every point of the artwork; then the hull round them all.
     QVector<QPointF> all;
@@ -450,6 +509,26 @@ QVector<QPointF> envelopeAround(Drawing const& drawing, int count, double margin
     }
     if (hull.size() < 3)
         return {};
+    bool outline = false;
+    if (followOutline) {
+        // Round the biggest piece of the artwork itself, instead of the hull.
+        QPolygonF biggest;
+        for (QPolygonF const& edge : outerEdges(drawing)) {
+            QRectF const box = edge.boundingRect(), had = biggest.boundingRect();
+            if (box.width() * box.height() > had.width() * had.height())
+                biggest = edge;
+        }
+        if (biggest.size() > 1 && biggest.first() == biggest.last())
+            biggest.removeLast();
+        if (biggest.size() >= 3) {
+            hull = biggest;
+            outline = true;
+        }
+    }
+    // Which way round it goes says which side of an edge is outside.
+    double turned = 0.0;
+    for (int i = 0; i < hull.size(); ++i)
+        turned += cross(hull[i], hull[(i + 1) % hull.size()]);
     double around = 0.0;
     QPointF middle;
     for (int i = 0; i < hull.size(); ++i) {
@@ -472,7 +551,12 @@ QVector<QPointF> envelopeAround(Drawing const& drawing, int count, double margin
         QPointF const from = hull[edge], to = hull[(edge + 1) % hull.size()];
         double const side = length(to - from);
         QPointF p = side > 1e-9 ? from + (to - from) * std::clamp((wanted - walked) / side, 0.0, 1.0) : from;
-        QPointF const out = p - middle;
+        // Pushed out a little: from the middle for a hull; for an outline, square off its edge.
+        QPointF out = p - middle;
+        if (outline && side > 1e-9) {
+            QPointF const along = (to - from) / side;
+            out = turned > 0.0 ? QPointF(along.y(), -along.x()) : QPointF(-along.y(), along.x());
+        }
         if (length(out) > 1e-9)
             p += out / length(out) * margin;
         points << p << QPointF() << QPointF();

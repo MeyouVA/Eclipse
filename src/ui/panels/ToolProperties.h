@@ -37,6 +37,7 @@ public:
 
 signals:
     void envelopePointsChanged(int count);
+    void envelopeOutlineChanged(bool on);
 
 private:
     // The parts of the form, from the top down.
@@ -77,6 +78,7 @@ private:
     QCheckBox* m_applyAll = nullptr;
     QCheckBox* m_dropperAll = nullptr;
     QCheckBox* m_byColour = nullptr;
+    QCheckBox* m_envelopeOutline = nullptr;
     QCheckBox* m_snapAlign = nullptr;
     QSpinBox* m_stampScale = nullptr;
     QCheckBox* m_autoFlatten = nullptr;

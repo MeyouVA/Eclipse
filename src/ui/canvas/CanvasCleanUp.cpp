@@ -6,11 +6,10 @@
 #include <functional>
 
 #include <QInputDialog>
-#include <QPainterPath>
-#include <QPainterPathStroker>
 #include <QSettings>
 
 #include "model/document/Commands.h"
+#include "model/geometry/Deform.h"
 #include "ui/window/MainWindowPrivate.h"
 
 namespace {
@@ -293,54 +292,8 @@ void Canvas::onActionAutoMatte()
         emit message(tr("There is no line art on this frame to make a matte of."));
         return;
     }
-    // All that the line art covers, as one area.
-    QPainterPath all;
-    all.setFillRule(Qt::WindingFill);
-    for (Stroke const& stroke : real->strokes) {
-        QVector<StrokePoint> const line = stroke.path();
-        if (line.size() < 2)
-            continue;
-        QPainterPath centre;
-        float widest = 0.0f;
-        centre.moveTo(line.first().pos);
-        for (StrokePoint const& point : line) {
-            centre.lineTo(point.pos);
-            widest = std::max(widest, point.pressure);
-        }
-        if (stroke.closed) {
-            centre.closeSubpath();
-            QPainterPath inside = centre;
-            inside.setFillRule(Qt::WindingFill);
-            all = all.united(inside);       // what a closed line goes round is inside the drawing
-        }
-        if (stroke.width > 0.0f) {
-            QPainterPathStroker stroker;
-            stroker.setWidth(std::max(0.1, double(stroke.width) * widest));
-            stroker.setJoinStyle(Qt::RoundJoin);
-            stroker.setCapStyle(Qt::RoundCap);
-            all = all.united(stroker.createStroke(centre));
-        }
-    }
-    for (Fill const& fill : real->fills) {
-        QPainterPath area;
-        for (QPolygonF const& outline : fill.outlines)
-            area.addPolygon(outline);
-        area.closeSubpath();
-        all = all.united(area);
-    }
-    // Its outer edges only: what they go round - a gap in the middle too - is covered.
-    QList<QPolygonF> const edges = all.simplified().toSubpathPolygons();
     Fill matte;
-    for (int i = 0; i < edges.size(); ++i) {
-        if (edges[i].size() < 3)
-            continue;
-        bool inner = false;
-        for (int k = 0; k < edges.size() && !inner; ++k)
-            inner = k != i && edges[k].size() >= 3 && edges[k].boundingRect().contains(edges[i].boundingRect())
-                    && edges[k].containsPoint(edges[i].first(), Qt::OddEvenFill);
-        if (!inner)
-            matte.outlines.push_back(edges[i]);
-    }
+    matte.outlines = Deform::outerEdges(*real, Drawing::LineSheet);
     if (matte.outlines.isEmpty()) {
         emit message(tr("There is no line art on this frame to make a matte of."));
         return;

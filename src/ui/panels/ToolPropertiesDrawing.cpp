@@ -91,6 +91,12 @@ void ToolProperties::addRiggingRows()
         emit envelopePointsChanged(count);
     });
     m_form->addRow(tr("Envelope points"), m_envelopePoints);
+    m_envelopeOutline = new QCheckBox(tr("Envelope follows the outline"), this);
+    m_envelopeOutline->setObjectName(QStringLiteral("EnvelopeOutline"));
+    m_envelopeOutline->setToolTip(tr("On: Create Envelope goes round the outline of the artwork itself, into its hollows.\nOff: round the hull about it."));
+    m_envelopeOutline->setChecked(true);
+    connect(m_envelopeOutline, &QCheckBox::toggled, this, &ToolProperties::envelopeOutlineChanged);
+    m_form->addRow(m_envelopeOutline);
 }
 
 // The Select tool: every drawing of the layer at once.

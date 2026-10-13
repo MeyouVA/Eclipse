@@ -58,7 +58,11 @@ void smoothWarpHandles(QVector<QPointF>& points, bool closed, int index);
 int insertWarpPoint(QVector<QPointF>& points, bool closed, QPointF near, double within, double* along = nullptr);
 // An envelope round a drawing: so many points on a loop a little outside all of it.
 // Empty when the drawing has nothing to go round.
-QVector<QPointF> envelopeAround(Drawing const& drawing, int points = 8, double margin = 12.0);
+// (`followOutline`: round the outline of the artwork itself, into its hollows, instead of the hull round it.)
+QVector<QPointF> envelopeAround(Drawing const& drawing, int points = 8, double margin = 12.0, bool followOutline = false);
+// The outer edges of what the artwork of a drawing covers - of one sheet, or (-1) of all of
+// them: each a closed outline; what an edge goes round, gaps in the middle too, is inside it.
+QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet = -1);
 // The drawing reshaped by the deformer.
 Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);
 QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);

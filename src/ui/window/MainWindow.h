@@ -382,6 +382,7 @@ private:
     // The sound of one frame, heard.
     void playFrameSound(int frame);
     int m_envelopePoints = 8;      // how many points Create Envelope puts round a drawing
+    bool m_envelopeOutline = true; // ... round the outline of the artwork itself, not the hull round it
     QStringList m_referenceFiles;
     // Brings a view up: back where it was, or as a tab behind Tool Properties.
     void showView(QDockWidget* dock);

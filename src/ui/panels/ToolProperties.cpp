@@ -185,6 +185,7 @@ void ToolProperties::showFor(int tool)
     bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
     m_form->setRowVisible(m_envelopePoints, tool == T::Rigging);
+    m_form->setRowVisible(m_envelopeOutline, tool == T::Rigging);
     // What the settings are headed with: the tools that have a tip to set up are headed
     // "Properties", the others "Options".
     QString const heading = brush ? tr("Vector Brush Properties") : eraser ? tr("Vector Eraser Properties") : pencil ? tr("Pencil Properties")

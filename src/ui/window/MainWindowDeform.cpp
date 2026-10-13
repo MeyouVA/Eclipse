@@ -50,7 +50,7 @@ void MainWindow::onActionCreateEnvelope()
         statusBar()->showMessage(tr("This layer has a deformer already. Remove it first (Animation > Deformation > Remove Deformer)."), 7000);
         return;
     }
-    QVector<QPointF> const points = Deform::envelopeAround(now.drawings[now.drawingAt(frame())], m_envelopePoints);
+    QVector<QPointF> const points = Deform::envelopeAround(now.drawings[now.drawingAt(frame())], m_envelopePoints, 12.0, m_envelopeOutline);
     if (points.isEmpty()) {
         statusBar()->showMessage(tr("There is too little in this drawing to put an envelope round."), 6000);
         return;
