@@ -36,6 +36,9 @@ void Timeline::rebuildRows()
     for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {
         if (scene.foldedAway(l))
             continue;
+        // A view of some of the layers only (the current one is always among them).
+        if (l != m_layer && ((m_viewMode == ShowTagged && !scene.layers[l].tagged) || (m_viewMode == ShowSelected && !m_shownIds.contains(scene.layers[l].id))))
+            continue;
         m_rows.push_back(l);
         m_params.push_back(-1);
         if (!parametersShown(l))
@@ -47,6 +50,21 @@ void Timeline::rebuildRows()
             m_params.push_back(which);
         }
     }
+}
+
+void Timeline::setViewMode(ViewMode mode)
+{
+    m_shownIds.clear();
+    if (mode == ShowSelected)
+        for (int l : selectedLayers())
+            m_shownIds.push_back(m_document->scene().layers[l].id);
+    m_viewMode = mode;
+    m_extentRow = m_extentFrame = -1;
+    m_extraLayers.clear();
+    rebuildRows();
+    updateScrollBars();
+    emit selectionChanged();
+    viewport()->update();
 }
 
 QVector<int> Timeline::rows() const
@@ -194,8 +212,13 @@ void Timeline::setCurrentCell(int layer, int frame)
     frame = std::clamp(frame, 0, scene.frameCount() - 1);
     if (layer == m_layer && frame == m_frame)
         return;
+    bool const other = layer != m_layer;
     m_layer = layer;
     m_frame = frame;
+    if (other && m_viewMode != ShowAll) {
+        rebuildRows();      // the current layer has a row whatever is shown
+        updateScrollBars();
+    }
     // A block is counted from the current cell: with another current cell it is gone.
     if (m_extentRow >= 0) {
         m_extentRow = m_extentFrame = -1;

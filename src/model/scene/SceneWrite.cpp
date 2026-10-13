@@ -263,6 +263,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                                       {"locked", layer.locked},
                                       {"solo", layer.solo},
                                       {"onion", layer.onion},
+                                      {"tagged", layer.tagged},
                                       {"collapsed", layer.collapsed},
                                       {"track", layer.trackColor.isValid() ? layer.trackColor.name() : QString()},
                                       {"opacity", layer.opacity},

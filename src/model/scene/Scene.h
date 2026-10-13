@@ -440,6 +440,8 @@ struct Layer {
     bool solo = false;
     // Shows its neighbouring drawings as onion skin even while another layer is worked on.
     bool onion = false;
+    // Tagged: marked out, so that the Timeline can be made to show the tagged layers only.
+    bool tagged = false;
     // The layers attached to this one are folded away in the Timeline.
     bool collapsed = false;
     // The colour of the layer's row in the Timeline; invalid for the usual grey.

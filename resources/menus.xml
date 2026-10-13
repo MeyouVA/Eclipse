@@ -495,6 +495,16 @@
    <item id="CollapseAll" icon="timeline/collapseall" text="Collapse All" responder="window" slot="onActionCollapseAll()"/>
    <item id="ExpandAll" icon="timeline/expandall" text="Expand All" responder="window" slot="onActionExpandAll()"/>
   </menu>
+  <menu id="TimelineTag" text="Tag">
+   <item id="TagLayers" icon="timeline/tag" text="Tag Selected Layers" shortcut="shortcut.tagLayers" responder="window" slot="onActionTagLayers(QString)" itemParameter="tag"/>
+   <item id="UntagLayers" icon="timeline/untag" text="Untag Selected Layers" shortcut="shortcut.untagLayers" responder="window" slot="onActionTagLayers(QString)" itemParameter="untag"/>
+   <item id="UntagAllLayers" icon="timeline/untag" text="Untag All Layers" responder="window" slot="onActionTagLayers(QString)" itemParameter="untagAll"/>
+  </menu>
+  <menu id="TimelineViewModes" text="View Modes">
+   <item id="TimelineViewAll" icon="timeline/viewall" text="Normal View Mode" checkable="true" checked="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="all"/>
+   <item id="TimelineViewSelected" icon="timeline/viewselected" text="View Selection Only" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="selected"/>
+   <item id="TimelineViewTagged" icon="timeline/viewtagged" text="View Tagged Layers" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="tagged"/>
+  </menu>
   <menu id="TimelineLock" text="Lock">
    <item id="LockLayer" icon="timeline/lock" text="Lock" responder="window" slot="onActionLockLayer()"/>
    <item id="UnlockLayer" icon="timeline/unlock" text="Unlock" responder="window" slot="onActionUnlockLayer()"/>

@@ -466,6 +466,13 @@ void Timeline::paintEvent(QPaintEvent*)
             if (!parametersShown(layerIndex))
                 p.drawLine(c + QPointF(0, -2.5), c + QPointF(0, 2.5));
         }
+        if (layer.tagged) {
+            // A tagged layer: a small flag in the corner of its name.
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(240, 200, 60));
+            p.drawPolygon(QPolygonF({QPointF(nameEnd - 30, y + 2), QPointF(nameEnd - 23, y + 2), QPointF(nameEnd - 23, y + 9)}));
+            p.setBrush(Qt::NoBrush);
+        }
         p.setPen(!layer.visible ? dim : layer.locked ? QColor(190, 170, 150) : text);
         p.drawText(QRect(textX, y, nameEnd - textX - 22, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft,
                    p.fontMetrics().elidedText(layer.name, Qt::ElideRight, nameEnd - textX - 22));

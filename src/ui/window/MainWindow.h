@@ -242,6 +242,8 @@ public slots:
     void onActionLockLayer() { setLocked(true); }
     void onActionUnlockLayer() { setLocked(false); }
     void onActionLockAll();
+    void onActionTagLayers(QString const& how);
+    void onActionTimelineViewMode(QString const& mode);
     void onActionUnlockAll();
     void onActionLockAllOthers();
     void onActionToggleLayerEnabled();

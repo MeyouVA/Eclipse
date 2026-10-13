@@ -189,6 +189,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.locked = lo["locked"].toBool(false);
         layer.solo = lo["solo"].toBool(false);
         layer.onion = lo["onion"].toBool(false);
+        layer.tagged = lo["tagged"].toBool(false);
         layer.collapsed = lo["collapsed"].toBool(false);
         if (QString const track = lo["track"].toString(); !track.isEmpty())
             layer.trackColor = QColor(track);

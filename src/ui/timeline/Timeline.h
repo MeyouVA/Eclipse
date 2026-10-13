@@ -98,6 +98,11 @@ public:
     void pasteCycle(int times);
     // The cells selected, again and again after themselves: `times` in all.
     void createCycle(int times);
+    // Which layers have a row: all of them; only those that were selected when this was asked
+    // for; or only the tagged ones.  (The current layer always has its row.)
+    enum ViewMode { ShowAll, ShowSelected, ShowTagged };
+    ViewMode viewMode() const { return m_viewMode; }
+    void setViewMode(ViewMode mode);
     // The layers that have a row, top to bottom.
     QVector<int> rows() const;
 
@@ -178,6 +183,8 @@ private:
     Document* m_document;
     // A row each: the layer, and for the row of a parameter which one (-1: the layer itself).
     QVector<int> m_rows;
+    ViewMode m_viewMode = ShowAll;
+    QVector<int> m_shownIds;     // ShowSelected: the ids of the layers that were selected
     QVector<int> m_params;
     QSet<int> m_open;          // the ids of the layers whose parameters are shown
     QLineEdit* m_entry = nullptr;   // a value being typed

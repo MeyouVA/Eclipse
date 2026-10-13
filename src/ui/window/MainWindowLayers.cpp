@@ -192,6 +192,30 @@ void MainWindow::setLocked(bool locked)
     m_document->editLayers(m_timeline->selectedLayers(), locked ? tr("Lock") : tr("Unlock"), [locked](Layer& l) { l.locked = locked; });
 }
 
+// `how` is "tag", "untag" (the layers selected) or "untagAll".
+void MainWindow::onActionTagLayers(QString const& how)
+{
+    bool const on = how == QLatin1String("tag");
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (how == QLatin1String("untagAll")) {
+        layers.clear();
+        for (int l = 0; l < m_document->scene().layers.size(); ++l)
+            if (m_document->scene().layers[l].tagged)
+                layers.push_back(l);
+    }
+    bool any = false;
+    for (int l : std::as_const(layers))
+        any = any || m_document->scene().layers[l].tagged != on;
+    if (any)
+        m_document->editLayers(layers, on ? tr("Tag Layers") : tr("Untag Layers"), [on](Layer& l) { l.tagged = on; });
+}
+
+// `mode` is "all", "selected" or "tagged": which layers the Timeline shows.
+void MainWindow::onActionTimelineViewMode(QString const& mode)
+{
+    m_timeline->setViewMode(mode == QLatin1String("selected") ? Timeline::ShowSelected : mode == QLatin1String("tagged") ? Timeline::ShowTagged : Timeline::ShowAll);
+}
+
 void MainWindow::onActionLockAll()
 {
     m_document->setAllLocked(true);
