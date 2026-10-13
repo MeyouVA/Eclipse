@@ -79,6 +79,9 @@ private:
     QCheckBox* m_brushShape = nullptr;
     QCheckBox* m_drawBehind = nullptr;
     QCheckBox* m_paperCrisp = nullptr;
+    QWidget* m_paperRamp = nullptr;     // the ramp of the texture: from which grain there is ink, from which it is solid
+    QWidget* m_lineRamp = nullptr;
+    QWidget* rampRow(QString const& name, bool brush);
     QCheckBox* m_lineCrisp = nullptr;
     QHBoxLayout* m_paperRow = nullptr;      // the paper texture of the brush, and how much of it shows
     QComboBox* m_rigMode = nullptr;

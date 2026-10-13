@@ -70,6 +70,56 @@ void ToolProperties::addSizeRows()
             0, 180, 50, QStringLiteral(" deg"), [this](int v) { m_canvas->setCornerAngle(v); });
 }
 
+// The ramp of a texture: two numbers - grain fainter than the first is no ink at all, grain denser than the
+// second is solid ink.  For lines, or for the brush.
+QWidget* ToolProperties::rampRow(QString const& name, bool brush)
+{
+    QWidget* const row = new QWidget(this);
+    QHBoxLayout* const layout = new QHBoxLayout(row);
+    layout->setContentsMargins(0, 0, 0, 0);
+    QSpinBox* const low = new QSpinBox(row);
+    QSpinBox* const high = new QSpinBox(row);
+    low->setObjectName(name + QStringLiteral("Low"));
+    high->setObjectName(name + QStringLiteral("High"));
+    for (QSpinBox* const box : {low, high}) {
+        box->setRange(0, 100);
+        box->setSingleStep(5);
+        box->setSuffix(QStringLiteral(" %"));
+    }
+    low->setToolTip(tr("Clear below: grain fainter than this is no ink at all - raise it to clear away the faint grey parts of a texture."));
+    high->setToolTip(tr("Solid above: grain denser than this is solid ink. With both numbers alike, the texture is ink or nothing."));
+    QString const key = QStringLiteral("tools/") + QLatin1String(brush ? "brushTextureRamp" : "lineTextureRamp");
+    int const keptLow = std::clamp(settings().value(key + QStringLiteral("Low"), 0).toInt(), 0, 100);
+    int const keptHigh = std::clamp(settings().value(key + QStringLiteral("High"), 100).toInt(), keptLow, 100);
+    low->setValue(keptLow);
+    high->setValue(keptHigh);
+    auto apply = [this, low, high, brush, key] {
+        // (The one never passes the other.)
+        if (low->value() > high->value()) {
+            QSignalBlocker const block(sender() == low ? high : low);
+            (sender() == low ? high : low)->setValue(sender() == low ? low->value() : high->value());
+        }
+        if (brush)
+            m_canvas->setBrushTextureRamp(low->value(), high->value());
+        else
+            m_canvas->setLineTextureRamp(low->value(), high->value());
+        settings().setValue(key + QStringLiteral("Low"), low->value());
+        settings().setValue(key + QStringLiteral("High"), high->value());
+    };
+    if (brush)
+        m_canvas->setBrushTextureRamp(keptLow, keptHigh);
+    else
+        m_canvas->setLineTextureRamp(keptLow, keptHigh);
+    connect(low, &QSpinBox::valueChanged, this, apply);
+    connect(high, &QSpinBox::valueChanged, this, apply);
+    layout->addWidget(new QLabel(tr("Ramp: clear below"), row));
+    layout->addWidget(low);
+    layout->addWidget(new QLabel(tr("solid above"), row));
+    layout->addWidget(high);
+    layout->addStretch();
+    return row;
+}
+
 // The textures there are, in a list; `current` is the one shown as chosen.
 void ToolProperties::fillTextureBox(QComboBox* box, int current)
 {
@@ -173,6 +223,8 @@ void ToolProperties::addBrushRows()
         settings().setValue(QStringLiteral("tools/brushTextureCrisp"), on);
     });
     m_form->addRow(m_paperCrisp);
+    m_paperRamp = rampRow(QStringLiteral("BrushTextureRamp"), true);
+    m_form->addRow(m_paperRamp);
 }
 
 // What the Rigging tool lays down.
@@ -430,6 +482,8 @@ void ToolProperties::addLineShapeRows()
         settings().setValue(QStringLiteral("tools/lineTextureCrisp"), on);
     });
     m_form->addRow(m_lineCrisp);
+    m_lineRamp = rampRow(QStringLiteral("LineTextureRamp"), false);
+    m_form->addRow(m_lineRamp);
 }
 
 // The thickness of the line at the point picked with the Contour Editor: how a line

@@ -207,6 +207,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_drawBehind, brush);
     m_form->setRowVisible(static_cast<QLayout*>(m_paperRow), brush);
     m_form->setRowVisible(m_paperCrisp, brush);
+    m_form->setRowVisible(m_paperRamp, brush);
     m_drawBehind->setChecked(m_canvas->drawBehind());
     m_autoFlatten->setChecked(m_canvas->autoFlatten());
     m_autoFlatten->setEnabled(m_canvas->brushShapes());
@@ -214,6 +215,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(static_cast<QLayout*>(m_shapeRow), lines);
     m_form->setRowVisible(static_cast<QLayout*>(m_textureRow), lines && !brush);
     m_form->setRowVisible(m_lineCrisp, lines && !brush);
+    m_form->setRowVisible(m_lineRamp, lines && !brush);
     m_form->setRowVisible(m_thicknessRow, contour);
     m_form->setRowVisible(m_selection, tool == T::Select || tool == T::Cutter || Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_fontRow, text);

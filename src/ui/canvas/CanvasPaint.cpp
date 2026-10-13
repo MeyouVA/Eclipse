@@ -37,7 +37,9 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
         p.setRenderHint(QPainter::SmoothPixmapTransform, !fill.textureCrisp);      // (crisp: the grain as it is, not blurred)
         p.translate(-seen.topLeft());
         p.setTransform(world, true);
-        if (image == &ink) {
+        if (image == &ink && fill.textureCrisp) {
+            p.fillRect(covers, color);      // (crisp: the colour all over; which bits of grain show is settled below)
+        } else if (image == &ink) {
             p.setPen(Qt::NoPen);
             p.setBrush(color);
             p.drawPath(path);
@@ -50,6 +52,7 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
     }
     // How deep inside the area each pixel is: how much of what is round it is inside (the area, blurred).
     QVector<int> inside(wide * high), sums(wide * high);
+    QVector<uchar> shapeAt(wide * high);        // the area itself, pixel by pixel
     {
         QPainterPath const shape = path;
         QImage solid(wide, high, QImage::Format_Alpha8);
@@ -65,8 +68,10 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
         p.end();
         for (int y = 0; y < high; ++y) {
             uchar const* const row = solid.constScanLine(y);
-            for (int x = 0; x < wide; ++x)
+            for (int x = 0; x < wide; ++x) {
                 inside[y * wide + x] = row[x];
+                shapeAt[y * wide + x] = row[x];
+            }
         }
     }
     // (A box blur, across and then down: sums of what lies within `soft` pixels.  Past the rim of what was worked
@@ -88,6 +93,37 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
         inside.swap(sums);
     }
     double const amount = std::clamp(double(fill.textureAmount), 0.0, 1.0);
+    if (fill.textureCrisp) {
+        // Crisp: the edge of the area does not cut through the bits of the grain.  Each bit of the paper is there
+        // whole or not at all, by whether its middle lies in the area (and by how the edge frays there).
+        QImage const& paper = PencilTexture::paper(fill.texture);
+        double const bit = 0.1875;      // a bit of the paper, in units of the scene
+        QTransform const back = world.inverted();
+        for (int y = 0; y < high; ++y) {
+            QRgb* const row = reinterpret_cast<QRgb*>(ink.scanLine(y));
+            for (int x = 0; x < wide; ++x) {
+                if (row[x] == 0)
+                    continue;
+                QPointF const place = back.map(QPointF((x + 0.5) / ratio + seen.left(), (y + 0.5) / ratio + seen.top()));
+                double const column = std::floor(place.x() / bit), line = std::floor(place.y() / bit);
+                QPointF const middle = (world.map(QPointF((column + 0.5) * bit, (line + 0.5) * bit)) - QPointF(seen.topLeft())) * ratio;
+                int const mx = std::clamp(int(std::floor(middle.x())), 0, wide - 1), my = std::clamp(int(std::floor(middle.y())), 0, high - 1);
+                int const px = ((int(column) % paper.width()) + paper.width()) % paper.width(), py = ((int(line) % paper.height()) + paper.height()) % paper.height();
+                double const texture = fill.textureRamp(qAlpha(reinterpret_cast<QRgb const*>(paper.constScanLine(py))[px]) / 255.0);
+                double const deep = std::clamp((inside[my * wide + mx] / 255.0 - 0.5) * 2.0, 0.0, 1.0);
+                bool const there = shapeAt[my * wide + mx] >= 128 && (deep - 0.55 * (1.0 - texture)) / 0.45 >= 0.2;
+                // (What shows of the solid paint under the grain keeps the area's own smooth edge.)
+                double const shows = (there ? amount * texture : 0.0) + (1.0 - amount) * shapeAt[y * wide + x] / 255.0;
+                QRgb const c = row[x];
+                row[x] = qRgba(int(qRed(c) * shows), int(qGreen(c) * shows), int(qBlue(c) * shows), int(qAlpha(c) * shows));
+            }
+        }
+        painter.save();
+        painter.resetTransform();
+        painter.drawImage(seen.topLeft(), ink);
+        painter.restore();
+        return;
+    }
     for (int y = 0; y < high; ++y) {
         QRgb* const row = reinterpret_cast<QRgb*>(ink.scanLine(y));
         QRgb const* const grainRow = reinterpret_cast<QRgb const*>(grain.constScanLine(y));
@@ -96,11 +132,9 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
                 continue;
             // At the very edge half of what is round a pixel is inside; `soft` pixels in, all of it.
             double const deep = std::clamp((inside[y * wide + x] / 255.0 - 0.5) * 2.0, 0.0, 1.0);
-            double const texture = qAlpha(grainRow[x]) / 255.0;
+            double const texture = fill.textureRamp(qAlpha(grainRow[x]) / 255.0);
             // (The grain itself decides where the edge frays: the thin places give way first.)
-            double edge = std::clamp((deep - 0.55 * (1.0 - texture)) / 0.45, 0.0, 1.0);
-            if (fill.textureCrisp)
-                edge = edge >= 0.2 ? 1.0 : 0.0;     // frayed, but not faded
+            double const edge = std::clamp((deep - 0.55 * (1.0 - texture)) / 0.45, 0.0, 1.0);
             double const shows = amount * texture * edge + (1.0 - amount);
             QRgb const c = row[x];
             row[x] = qRgba(int(qRed(c) * shows), int(qGreen(c) * shows), int(qBlue(c) * shows), int(qAlpha(c) * shows));
@@ -197,21 +231,46 @@ static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush 
                 double const dx = px - ab.x() * on, dy = py - ab.y() * on;
                 double const distance = std::sqrt(dx * dx + dy * dy);
                 double const half = halfA + (halfB - halfA) * on;
-                if (distance > half + 0.5 || distance >= nearest[y * wide + x])
-                    continue;
                 // Past an end of the line: its tip.  A flat one stops there.
                 bool const tip = (first && t < 0.0) || (last && t > 1.0);
+                double const side = (ab.x() * py - ab.y() * px) / onScreen;
+                if (crisp) {
+                    // Crisp: the shape of the line does not cut through the bits of the grain.  Each bit of the strip
+                    // is there whole or not at all - so here the question is only which bit this pixel lies in, and
+                    // whether that bit, taken at its middle, belongs to the line.
+                    double const beyond = t < 0.0 ? -t * onScreen : t > 1.0 ? (t - 1.0) * onScreen : 0.0;      // how far past the end
+                    if (std::abs(side) > half || distance >= nearest[y * wide + x] || (tip ? beyond > half : distance > half))
+                        continue;
+                    if (tip && (t < 0.0 ? stroke.capStart : stroke.capEnd) == Stroke::FlatCap)
+                        continue;
+                    double const along = run + (tip ? t : on) * length;
+                    double grain = stroke.textureRamp(grainAt(along, 0.5 + side / (2.0 * half)));
+                    if (tip) {
+                        // The middle of the bit of grain, and how far that is from the end point of the line.
+                        double const bitAlong = (std::floor(along * perUnit) + 0.5) / perUnit;
+                        double const bitBeyond = std::max(0.0, t < 0.0 ? run - bitAlong : bitAlong - (run + length)) * zoom;
+                        double const bitSide = ((std::clamp(std::floor((0.5 + side / (2.0 * half)) * tileHigh), 0.0, tileHigh - 1.0) + 0.5) / tileHigh - 0.5) * 2.0 * half;
+                        double const away = std::hypot(bitBeyond, bitSide);
+                        if (1.0 - away / half - 0.3 * (1.0 - grain) < 0.08)
+                            grain = 0.0;        // a round tip frays as the sides do - by whole bits
+                    }
+                    nearest[y * wide + x] = float(distance);
+                    // (What shows of the solid line under the grain keeps the line's own smooth shape.)
+                    double const solid = std::clamp(half - distance + 0.5, 0.0, 1.0);
+                    int const alpha = int(std::lround((amount * grain + (1.0 - amount) * solid) * 255.0));
+                    row[x] = qRgba(alpha, alpha, alpha, alpha);
+                    continue;
+                }
+                if (distance > half + 0.5 || distance >= nearest[y * wide + x])
+                    continue;
                 if (tip && (t < 0.0 ? stroke.capStart : stroke.capEnd) == Stroke::FlatCap)
                     continue;
                 nearest[y * wide + x] = float(distance);
                 double const cover = std::clamp(half - distance + 0.5, 0.0, 1.0);
                 // Where in the strip: along (on past the end, at a tip), and across.
                 double const along = run + (tip ? t : on) * length;
-                double const side = (ab.x() * py - ab.y() * px) / onScreen;
-                double grain = grainAt(along, 0.5 + side / (2.0 * half));
-                if (tip && crisp)
-                    grain = 1.0 - distance / half - 0.3 * (1.0 - grain) >= 0.08 ? grain : 0.0;      // a round tip frays as the sides do
-                else if (tip)
+                double grain = stroke.textureRamp(grainAt(along, 0.5 + side / (2.0 * half)));
+                if (tip)
                     grain *= smooth(0.0, 0.35, 1.0 - distance / half);      // a round tip thins out as the sides do
                 int const alpha = int(std::lround(cover * (amount * grain + (1.0 - amount)) * 255.0));
                 row[x] = qRgba(alpha, alpha, alpha, alpha);

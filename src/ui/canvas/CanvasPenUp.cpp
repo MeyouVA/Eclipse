@@ -16,6 +16,8 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
         shape.texture = m_brushTexture;
         shape.textureAmount = float(m_brushTextureAmount) / 100.0f;
         shape.textureCrisp = m_brushTextureCrisp;
+        shape.textureLow = float(m_brushRampLow) / 100.0f;
+        shape.textureHigh = float(m_brushRampHigh) / 100.0f;
         if (!shape.outlines.isEmpty()) {
             Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
             // Drawn behind, the stroke is the one that gives way: what lies over it is cut out of it.
@@ -28,7 +30,8 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
                     if (!under.overlaps(shape)) {
                         kept.push_back(under);
                     } else if (under.swatch == shape.swatch && under.color == shape.color && under.texture == shape.texture
-                               && (shape.texture == 0 || (under.textureAmount == shape.textureAmount && under.textureCrisp == shape.textureCrisp))) {
+                               && (shape.texture == 0 || (under.textureAmount == shape.textureAmount && under.textureCrisp == shape.textureCrisp
+                                                           && under.textureLow == shape.textureLow && under.textureHigh == shape.textureHigh))) {
                         for (Fill& piece : mine)
                             if (piece.mergeWith(under, fine))
                                 break;

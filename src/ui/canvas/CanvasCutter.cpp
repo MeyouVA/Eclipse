@@ -41,7 +41,8 @@ template <class Change> void Canvas::restyleSelection(QString const& text, Chang
         changed = changed || before.join != edited.strokes[i].join || before.capStart != edited.strokes[i].capStart
                   || before.capEnd != edited.strokes[i].capEnd || before.width != edited.strokes[i].width
                   || before.texture != edited.strokes[i].texture || before.textureAmount != edited.strokes[i].textureAmount
-                  || before.textureCrisp != edited.strokes[i].textureCrisp;
+                  || before.textureCrisp != edited.strokes[i].textureCrisp || before.textureLow != edited.strokes[i].textureLow
+                  || before.textureHigh != edited.strokes[i].textureHigh;
     }
     if (changed)
         commitDrawing(edited, text);
@@ -75,11 +76,34 @@ void Canvas::textureNewLine(Stroke& stroke) const
         stroke.texture = m_brushTexture;
         stroke.textureAmount = float(m_brushTextureAmount) / 100.0f;
         stroke.textureCrisp = m_brushTextureCrisp;
+        stroke.textureLow = float(m_brushRampLow) / 100.0f;
+        stroke.textureHigh = float(m_brushRampHigh) / 100.0f;
         return;
     }
     stroke.texture = m_lineTexture;
     stroke.textureAmount = float(m_lineTextureAmount) / 100.0f;
     stroke.textureCrisp = m_lineTextureCrisp;
+    stroke.textureLow = float(m_lineRampLow) / 100.0f;
+    stroke.textureHigh = float(m_lineRampHigh) / 100.0f;
+}
+
+void Canvas::setLineTextureRamp(int low, int high)
+{
+    m_lineRampLow = std::clamp(low, 0, 100);
+    m_lineRampHigh = std::clamp(high, m_lineRampLow, 100);
+    restyleSelection(tr("Change Texture Ramp"), [this](Stroke& s) {
+        if (s.texture != 0) {
+            s.textureLow = float(m_lineRampLow) / 100.0f;
+            s.textureHigh = float(m_lineRampHigh) / 100.0f;
+        }
+    });
+}
+
+void Canvas::setBrushTextureRamp(int low, int high)
+{
+    m_brushRampLow = std::clamp(low, 0, 100);
+    m_brushRampHigh = std::clamp(high, m_brushRampLow, 100);
+    retextureSelectedFills(tr("Change Texture Ramp"), false);
 }
 
 void Canvas::setLineTextureCrisp(bool crisp)
@@ -104,6 +128,8 @@ void Canvas::setLineTexture(int texture)
         s.texture = m_lineTexture;
         s.textureAmount = float(m_lineTextureAmount) / 100.0f;
         s.textureCrisp = m_lineTextureCrisp;
+        s.textureLow = float(m_lineRampLow) / 100.0f;
+        s.textureHigh = float(m_lineRampHigh) / 100.0f;
     });
 }
 
@@ -130,7 +156,10 @@ void Canvas::retextureSelectedFills(QString const& text, bool kindToo)
         int const kind = kindToo ? m_brushTexture : fill.texture;
         float const shows = kind != 0 ? float(m_brushTextureAmount) / 100.0f : fill.textureAmount;
         bool const crisp = kind != 0 ? m_brushTextureCrisp : fill.textureCrisp;
-        changed = changed || fill.texture != kind || fill.textureAmount != shows || fill.textureCrisp != crisp;
+        float const low = kind != 0 ? float(m_brushRampLow) / 100.0f : fill.textureLow, high = kind != 0 ? float(m_brushRampHigh) / 100.0f : fill.textureHigh;
+        changed = changed || fill.texture != kind || fill.textureAmount != shows || fill.textureCrisp != crisp || fill.textureLow != low || fill.textureHigh != high;
+        fill.textureLow = low;
+        fill.textureHigh = high;
         fill.texture = kind;
         fill.textureAmount = shows;
         fill.textureCrisp = crisp;

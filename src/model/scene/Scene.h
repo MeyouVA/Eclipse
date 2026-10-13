@@ -80,6 +80,18 @@ struct Stroke {
     float textureAmount = 1.0f;
     // A crisp edge: the grain frays at the edge of the line but does not fade there, and is not blurred.
     bool textureCrisp = false;
+    // The ramp of the texture: grain fainter than `textureLow` is no ink at all, grain denser than
+    // `textureHigh` is solid ink, and what lies between runs from the one to the other (0 and 1: the
+    // grain as it is; the two alike: ink or nothing).
+    float textureLow = 0.0f;
+    float textureHigh = 1.0f;
+    double textureRamp(double grain) const
+    {
+        if (textureLow <= 0.0f && textureHigh >= 1.0f)
+            return grain;
+        double const low = textureLow, high = textureHigh;
+        return high - low < 1e-4 ? (grain >= low && grain > 0.0 ? 1.0 : 0.0) : (grain <= low ? 0.0 : grain >= high ? 1.0 : (grain - low) / (high - low));
+    }
 
     void transform(QTransform const& t);
 
@@ -162,6 +174,18 @@ struct Fill {
     int texture = 0;
     float textureAmount = 1.0f;
     bool textureCrisp = false;
+    // The ramp of the texture: grain fainter than `textureLow` is no ink at all, grain denser than
+    // `textureHigh` is solid ink, and what lies between runs from the one to the other (0 and 1: the
+    // grain as it is; the two alike: ink or nothing).
+    float textureLow = 0.0f;
+    float textureHigh = 1.0f;
+    double textureRamp(double grain) const
+    {
+        if (textureLow <= 0.0f && textureHigh >= 1.0f)
+            return grain;
+        double const low = textureLow, high = textureHigh;
+        return high - low < 1e-4 ? (grain >= low && grain > 0.0 ? 1.0 : 0.0) : (grain <= low ? 0.0 : grain >= high ? 1.0 : (grain - low) / (high - low));
+    }
 
     bool contains(QPointF p) const;
     // Inside it, or within `radius` of its edge.

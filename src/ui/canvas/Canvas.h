@@ -122,6 +122,13 @@ public:
     void setBrushTextureAmount(int percent);
     int brushTextureAmount() const { return m_brushTextureAmount; }
     void setBrushTextureCrisp(bool crisp);
+    // The ramp of the texture, per cent: grain fainter than `low` is no ink, denser than `high` solid ink.
+    void setLineTextureRamp(int low, int high);
+    int lineTextureLow() const { return m_lineRampLow; }
+    int lineTextureHigh() const { return m_lineRampHigh; }
+    void setBrushTextureRamp(int low, int high);
+    int brushTextureLow() const { return m_brushRampLow; }
+    int brushTextureHigh() const { return m_brushRampHigh; }
     bool brushTextureCrisp() const { return m_brushTextureCrisp; }
     void setOnionSkin(bool on);
     bool onionSkin() const { return m_onionSkin; }
@@ -747,6 +754,7 @@ private:
     int m_lineTextureAmount = 100;
     bool m_lineTextureCrisp = false;
     bool m_brushTextureCrisp = false;
+    int m_lineRampLow = 0, m_lineRampHigh = 100, m_brushRampLow = 0, m_brushRampHigh = 100;
     int m_brushTexture = 0;
     int m_brushTextureAmount = 100;
     void retextureSelectedFills(QString const& text, bool kindToo);
