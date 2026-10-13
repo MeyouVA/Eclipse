@@ -305,8 +305,12 @@ QJsonObject Scene::toJson(QString const& folder) const
         paletteArray.append(swatch);
     }
     QJsonArray markerArray;
-    for (Marker const& m : markers)
-        markerArray.append(QJsonObject{{"frame", m.frame}, {"length", m.length}, {"name", m.name}, {"color", m.color.name()}});
+    for (Marker const& m : markers) {
+        QJsonObject marker{{"frame", m.frame}, {"length", m.length}, {"name", m.name}, {"color", m.color.name()}};
+        if (!m.note.isEmpty())
+            marker["note"] = m.note;
+        markerArray.append(marker);
+    }
     QJsonArray guideArray;
     for (Guide const& guide : guides) {
         if (guide.kind == Guide::Line) {

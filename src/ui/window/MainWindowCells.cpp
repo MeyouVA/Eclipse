@@ -159,6 +159,21 @@ void MainWindow::onActionEditSceneMarker()
     m_document->editMarker(index, name, colour);
 }
 
+// What there is to remember about the marker on the current frame.
+void MainWindow::onActionSceneMarkerNote()
+{
+    Scene const& scene = m_document->scene();
+    int const index = scene.markerAt(frame());
+    if (index < 0) {
+        statusBar()->showMessage(tr("There is no scene marker on this frame."), 4000);
+        return;
+    }
+    bool ok = false;
+    QString const note = QInputDialog::getMultiLineText(this, tr("Scene Marker Note"), tr("Note for \"%1\":").arg(scene.markers[index].name), scene.markers[index].note, &ok);
+    if (ok)
+        m_document->setMarkerNote(index, note);
+}
+
 void MainWindow::onActionDeleteSceneMarker()
 {
     m_document->removeMarker(m_document->scene().markerAt(frame()));

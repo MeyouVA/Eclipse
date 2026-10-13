@@ -1,5 +1,6 @@
 // Eclipse - the main window: three views made of plain controls - Onion Skin, Message Log, Scene Markers.
 #include "ui/window/MainWindow.h"
+#include <QLineEdit>
 #include <QFrame>
 #include <QLabel>
 #include <QVector>
@@ -226,11 +227,20 @@ QWidget* MainWindow::createSceneMarkersView()
     QTreeWidget* const markers = new QTreeWidget(markersView);
     markers->setObjectName(QStringLiteral("SceneMarkers"));
     markers->setRootIsDecorated(false);
-    markers->setHeaderLabels({tr("Name"), tr("Start"), tr("Length")});
-    auto list = [this, markers] {
+    markers->setHeaderLabels({tr("Name"), tr("Start"), tr("Length"), tr("Note")});
+    // Over the list: only the markers whose name or note has the words typed.
+    QLineEdit* const search = new QLineEdit(markersView);
+    search->setObjectName(QStringLiteral("MarkerSearch"));
+    search->setPlaceholderText(tr("Search in names and notes"));
+    search->setClearButtonEnabled(true);
+    auto list = [this, markers, search] {
         markers->clear();
+        QString const wanted = search->text().trimmed();
         for (Scene::Marker const& m : m_document->scene().markers) {
-            QTreeWidgetItem* const item = new QTreeWidgetItem(markers, {m.name, QString::number(m.frame + 1), QString::number(m.length)});
+            if (!wanted.isEmpty() && !m.name.contains(wanted, Qt::CaseInsensitive) && !m.note.contains(wanted, Qt::CaseInsensitive))
+                continue;
+            QTreeWidgetItem* const item = new QTreeWidgetItem(markers, {m.name, QString::number(m.frame + 1), QString::number(m.length), QString(m.note).replace(QChar(0x0a), QChar(0x20))});
+            item->setToolTip(3, m.note);
             QPixmap swatch(12, 12);
             swatch.fill(m.color);
             item->setIcon(0, QIcon(swatch));
@@ -239,12 +249,14 @@ QWidget* MainWindow::createSceneMarkersView()
     };
     list();
     connect(m_document, &Document::changed, markers, list);
+    connect(search, &QLineEdit::textChanged, markers, list);
     connect(markers, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem* item) { m_timeline->setCurrentFrame(item->data(0, Qt::UserRole).toInt()); });
     connect(markers, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem* item) { m_timeline->setCurrentFrame(item->data(0, Qt::UserRole).toInt()); });
     {
         // Under the list: a marker made on the frames selected in the Timeline; the one picked changed or taken away.
         QVBoxLayout* const column = new QVBoxLayout(markersView);
         column->setContentsMargins(4, 4, 4, 4);
+        column->addWidget(search);
         column->addWidget(markers, 1);
         QHBoxLayout* const row = new QHBoxLayout;
         auto button = [&](QString const& text, char const* name, void (MainWindow::*slot)()) {
@@ -255,6 +267,7 @@ QWidget* MainWindow::createSceneMarkersView()
         };
         button(tr("Add..."), "MarkerAdd", &MainWindow::onActionCreateSceneMarker);
         button(tr("Edit..."), "MarkerEdit", &MainWindow::onActionEditSceneMarker);
+        button(tr("Note..."), "MarkerNote", &MainWindow::onActionSceneMarkerNote);
         button(tr("Delete"), "MarkerDelete", &MainWindow::onActionDeleteSceneMarker);
         row->addStretch();
         column->addLayout(row);

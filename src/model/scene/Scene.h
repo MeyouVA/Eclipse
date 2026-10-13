@@ -516,6 +516,7 @@ public:
         int length = 1;
         QString name;
         QColor color = QColor(60, 190, 205);
+        QString note;       // what there is to remember about it
         bool operator==(Marker const&) const = default;
     };
     QVector<Marker> markers;    // sorted by frame

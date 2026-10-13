@@ -292,6 +292,7 @@ public:
     // Returns its place among the markers.
     int addMarker(int frame, int length, QString const& name, QColor const& color);
     void editMarker(int index, QString const& name, QColor const& color);
+    bool setMarkerNote(int index, QString const& note);
     void removeMarker(int index);
     // Moves a marker so that it starts on `frame` (kept inside the scene).  False, and nothing
     // done, when it would lie over another marker or would not move.

@@ -409,6 +409,14 @@ int Document::addMarker(int frame, int length, QString const& name, QColor const
     return at;
 }
 
+bool Document::setMarkerNote(int index, QString const& note)
+{
+    if (index < 0 || index >= m_scene.markers.size() || m_scene.markers[index].note == note)
+        return false;
+    apply(tr("Scene Marker Note"), [&](Scene& s) { s.markers[index].note = note; });
+    return true;
+}
+
 void Document::editMarker(int index, QString const& name, QColor const& color)
 {
     if (index < 0 || index >= m_scene.markers.size())

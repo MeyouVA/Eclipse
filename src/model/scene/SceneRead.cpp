@@ -148,6 +148,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         m.frame = std::max(0, mo["frame"].toInt());
         m.length = std::max(1, mo["length"].toInt(1));
         m.name = mo["name"].toString();
+        m.note = mo["note"].toString();
         if (QColor const c(mo["color"].toString()); c.isValid())
             m.color = c;
         scene.markers.push_back(m);
