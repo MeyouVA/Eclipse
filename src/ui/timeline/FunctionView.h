@@ -11,6 +11,7 @@
 #include "ui/timeline/Timeline.h"
 
 class Document;
+struct Layer;
 class QListWidget;
 
 // The graph itself.
@@ -26,6 +27,10 @@ public:
     // to compare with (the squares to drag are the current layer's).
     void setOtherLayers(QVector<int> const& layers);
     QVector<int> otherLayers() const { return m_others; }
+    // The keyframe on the current frame has two handles, on the first curve shown: the one after it
+    // is pulled along to leave more gently (ease out), the one before it to arrive more gently
+    // (ease in).  Where a handle is; a null point when there is none.
+    QPointF easeHandle(bool out) const;
     bool isShown(Timeline::Parameter which) const { return m_shown[which]; }
     static QColor colourOf(Timeline::Parameter which);
 
@@ -82,6 +87,12 @@ private:
     int m_dragKey = -1;
     double m_dragValue = 0.0;
     int m_dragFrame = 0;       // and the frame it would be on (between its neighbours)
+    // The ease handle being dragged (0: none, 1: out, 2: in), of which keyframe, and the ease it would give (0 to 1).
+    int m_easeDrag = 0;
+    int m_easeKey = -1;
+    double m_easeValue = 0.0;
+    int firstShown() const;
+    QPointF easeHandleOf(Layer const& layer, int key, bool out) const;
     // The keyframe (of the layer's) whose square is under the point; -1 for none.
     int keyAt(QPointF pos, int* param = nullptr) const;
 };

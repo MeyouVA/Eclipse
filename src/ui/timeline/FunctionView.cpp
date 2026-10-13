@@ -64,6 +64,36 @@ double FunctionGraph::valueAt(Timeline::Parameter which, int frame) const
     return which == Timeline::Opacity ? value * 100.0 : value;
 }
 
+int FunctionGraph::firstShown() const
+{
+    for (int which = 0; which < Timeline::ParameterCount; ++which)
+        if (m_shown[which])
+            return which;
+    return -1;
+}
+
+// A handle stands level with its keyframe, a tenth of the way to the next keyframe (or the one
+// before) when there is no ease, and half way when the ease is all there can be.
+QPointF FunctionGraph::easeHandleOf(Layer const& layer, int key, bool out) const
+{
+    int const which = firstShown();
+    int const other = out ? key + 1 : key - 1;
+    if (which < 0 || key < 0 || key >= layer.keys.size() || other < 0 || other >= layer.keys.size())
+        return QPointF();
+    double const ease = std::clamp(m_easeDrag == (out ? 1 : 2) && m_easeKey == key ? m_easeValue : out ? layer.keys[key].easeOut : layer.keys[key].easeIn, 0.0, 1.0);
+    double const from = xOfFrame(layer.keys[key].frame), to = xOfFrame(layer.keys[other].frame);
+    double const value = Timeline::parameterOf(layer.keys[key].pose, Timeline::Parameter(which)) * (which == Timeline::Opacity ? 100.0 : 1.0);
+    return QPointF(from + (to - from) * (0.1 + 0.4 * ease), yOfValue(value));
+}
+
+QPointF FunctionGraph::easeHandle(bool out) const
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return QPointF();
+    return easeHandleOf(scene.layers[m_layer], scene.layers[m_layer].keyIndex(m_frame), out);
+}
+
 void FunctionGraph::setOtherLayers(QVector<int> const& layers)
 {
     QVector<int> others;
@@ -256,6 +286,11 @@ void FunctionGraph::paintEvent(QPaintEvent*)
                 preview.keys[m_dragKey].frame = m_dragFrame;
                 Timeline::setParameterOf(preview.keys[m_dragKey].pose, param, param == Timeline::Opacity ? m_dragValue / 100.0 : m_dragValue);
                 source = &preview;
+            } else if (m_easeDrag != 0 && m_easeKey >= 0 && m_easeKey < layer.keys.size()) {
+                // ... or while an ease handle is dragged, the ease it would give.
+                preview = layer;
+                (m_easeDrag == 1 ? preview.keys[m_easeKey].easeOut : preview.keys[m_easeKey].easeIn) = m_easeValue;
+                source = &preview;
             }
             auto value = [&](int f) {
                 double const v = Timeline::parameterOf(source->poseAt(f), param);
@@ -272,6 +307,20 @@ void FunctionGraph::paintEvent(QPaintEvent*)
             p.setBrush(colour);
             for (Keyframe const& key : source->keys)
                 p.drawRect(QRectF(xOfFrame(key.frame) - 3.5, yOfValue(value(key.frame)) - 3.5, 7, 7));
+        }
+        // The ease handles of the keyframe on the current frame.
+        int const here = m_easeDrag != 0 ? m_easeKey : layer.keyIndex(m_frame);
+        if (here >= 0 && here < layer.keys.size() && firstShown() >= 0) {
+            QPointF const at = pointAt(Timeline::Parameter(firstShown()), layer.keys[here].frame);
+            for (bool out : {true, false}) {
+                QPointF const handle = easeHandleOf(layer, here, out);
+                if (handle.isNull())
+                    continue;
+                p.setPen(QPen(QColor(235, 235, 235), 1.0));
+                p.drawLine(at, handle);
+                p.setBrush(QColor(46, 46, 46));
+                p.drawEllipse(handle, 3.5, 3.5);
+            }
         }
         p.setClipping(false);
         p.setRenderHint(QPainter::Antialiasing, false);
@@ -350,6 +399,19 @@ void FunctionGraph::mousePressEvent(QMouseEvent* event)
     if (event->button() != Qt::LeftButton)
         return;
     Scene const& scene = m_document->scene();
+    // On an ease handle of the keyframe on this frame: it is pulled along.
+    if (m_layer >= 0 && m_layer < scene.layers.size()) {
+        int const here = scene.layers[m_layer].keyIndex(m_frame);
+        for (bool out : {true, false}) {
+            QPointF const handle = easeHandleOf(scene.layers[m_layer], here, out);
+            if (!handle.isNull() && QLineF(handle, event->position()).length() <= 6.0) {
+                m_easeDrag = out ? 1 : 2;
+                m_easeKey = here;
+                m_easeValue = out ? scene.layers[m_layer].keys[here].easeOut : scene.layers[m_layer].keys[here].easeIn;
+                return;
+            }
+        }
+    }
     // On the square of a keyframe: it is taken hold of.  The curve drawn last is on top.
     if (m_layer >= 0 && m_layer < scene.layers.size()) {
         Layer const& layer = scene.layers[m_layer];
@@ -393,6 +455,21 @@ void FunctionGraph::mouseMoveEvent(QMouseEvent* event)
     }
     if (!(event->buttons() & Qt::LeftButton))
         return;
+    if (m_easeDrag != 0) {
+        // How far along the way to the next keyframe (or back to the one before) the handle is.
+        Scene const& scene = m_document->scene();
+        if (m_layer >= 0 && m_layer < scene.layers.size() && m_easeKey >= 0 && m_easeKey < scene.layers[m_layer].keys.size()) {
+            QVector<Keyframe> const& keys = scene.layers[m_layer].keys;
+            int const other = m_easeDrag == 1 ? m_easeKey + 1 : m_easeKey - 1;
+            if (other >= 0 && other < keys.size()) {
+                double const from = xOfFrame(keys[m_easeKey].frame), to = xOfFrame(keys[other].frame);
+                if (std::abs(to - from) > 1e-9)
+                    m_easeValue = std::clamp(((event->position().x() - from) / (to - from) - 0.1) / 0.4, 0.0, 1.0);
+            }
+        }
+        update();
+        return;
+    }
     if (m_dragKey >= 0) {
         m_dragValue = valueOfY(event->position().y());
         if (m_dragParam == Timeline::Opacity)
@@ -414,6 +491,19 @@ void FunctionGraph::mouseMoveEvent(QMouseEvent* event)
 void FunctionGraph::mouseReleaseEvent(QMouseEvent*)
 {
     m_sliding = false;
+    if (m_easeDrag != 0) {
+        Scene const& scene = m_document->scene();
+        int const which = m_easeDrag, key = m_easeKey;
+        m_easeDrag = 0;
+        m_easeKey = -1;
+        if (m_layer >= 0 && m_layer < scene.layers.size() && key >= 0 && key < scene.layers[m_layer].keys.size()) {
+            Keyframe const at = scene.layers[m_layer].keys[key];
+            if ((which == 1 ? at.easeOut : at.easeIn) != m_easeValue)
+                m_document->setKeyEase(m_layer, at.frame, which == 2 ? m_easeValue : at.easeIn, which == 1 ? m_easeValue : at.easeOut);
+        }
+        update();
+        return;
+    }
     if (m_dragKey < 0)
         return;
     Scene const& scene = m_document->scene();
