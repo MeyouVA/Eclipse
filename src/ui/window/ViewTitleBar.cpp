@@ -151,9 +151,32 @@ void ViewTitleBar::showAddMenu()
     menu.exec(m_add->mapToGlobal(QPoint(0, m_add->height())));
 }
 
+QStringList ViewTitleBar::viewMenuEntries()
+{
+    QMenu menu(this);
+    fillViewMenu(menu);
+    QStringList entries;
+    for (QAction* const action : menu.actions())
+        if (!action->isSeparator())
+            entries << action->text().remove(QLatin1Char('&'));
+    return entries;
+}
+
 void ViewTitleBar::showViewMenu()
 {
     QMenu menu(this);
+    fillViewMenu(menu);
+    menu.exec(m_menu->mapToGlobal(QPoint(0, m_menu->height())));
+}
+
+void ViewTitleBar::fillViewMenu(QMenu& menu)
+{
+    // The view's own commands first.
+    if (QMenu* const own = m_makeMenu ? m_makeMenu() : nullptr) {
+        own->setParent(&menu);      // it goes when this menu goes; its commands stay alive until then
+        menu.addActions(own->actions());
+        menu.addSeparator();
+    }
     if (m_dock) {
         QAction* const floating = menu.addAction(tr("Float"));
         floating->setCheckable(true);
@@ -163,5 +186,4 @@ void ViewTitleBar::showViewMenu()
     } else {
         menu.addAction(tr("This view stays in the middle of the window"))->setEnabled(false);
     }
-    menu.exec(m_menu->mapToGlobal(QPoint(0, m_menu->height())));
 }

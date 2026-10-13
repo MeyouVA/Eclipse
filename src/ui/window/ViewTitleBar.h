@@ -5,12 +5,15 @@
 
 #include "EclipseExport.h"
 
+#include <functional>
+
 #include <QList>
 #include <QWidget>
 
 class QDockWidget;
 class QHBoxLayout;
 class QMainWindow;
+class QMenu;
 class QToolButton;
 
 class ECLIPSE_UI_API ViewTitleBar : public QWidget {
@@ -33,6 +36,12 @@ public:
     // The names on the tabs, left to right.
     QStringList tabs() const;
 
+    // The menu of the view itself (the Timeline's, the Xsheet's ...): what the menu button at the
+    // left shows, before Float and Close.  `make` builds it afresh each time; the bar owns what it gets.
+    void setViewMenu(std::function<QMenu*()> make) { m_makeMenu = std::move(make); }
+    // What the menu button offers, top to bottom (separators left out).
+    QStringList viewMenuEntries();
+
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
 
@@ -44,6 +53,8 @@ private:
     QToolButton* tabButton(QString const& text, bool current);
     void showAddMenu();
     void showViewMenu();
+    void fillViewMenu(QMenu& menu);
+    std::function<QMenu*()> m_makeMenu;
 
     QMainWindow* m_window = nullptr;
     QDockWidget* m_dock = nullptr;

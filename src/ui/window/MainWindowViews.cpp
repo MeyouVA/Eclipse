@@ -159,6 +159,12 @@ void MainWindow::createViews()
         ViewTitleBar* const bar = new ViewTitleBar(this, d, &m_docks);
         d->setTitleBarWidget(bar);
         m_titleBars << bar;
+        // The views that have a menu of their own show it from the menu button of their strip.
+        QString const own = d->windowTitle() == tr("Timeline") ? QStringLiteral("menu.timeline")
+                            : d->windowTitle() == tr("Xsheet") ? QStringLiteral("menu.xsheet")
+                            : d->windowTitle() == tr("Node View") ? QStringLiteral("menu.nodeView") : QString();
+        if (!own.isEmpty())
+            bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
     }
     qApp->installEventFilter(this);
 }
@@ -174,6 +180,7 @@ void MainWindow::createCameraView()
     layout->setSpacing(0);
     ViewTitleBar* const bar = new ViewTitleBar(tr("Camera"), camera);
     bar->setObjectName(QStringLiteral("CameraTitleBar"));
+    bar->setViewMenu([this] { return m_actions->createMenu(QStringLiteral("menu.cameraView"), this); });
     bar->setFixedHeight(26);
     // The view is the Camera view or the Drawing view: a tab for each.
     bar->setTitles({tr("Camera"), tr("Drawing")}, 0);
