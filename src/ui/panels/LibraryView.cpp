@@ -10,11 +10,11 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPainter>
 #include <QInputDialog>
-#include <QLineEdit>
 #include <QPushButton>
 #include <QSettings>
 #include <QSlider>
@@ -201,6 +201,22 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
         // Only a folder of the library itself is taken out of it; one inside it is part of that folder.
         if (m_folderList->currentItem())
             removeFolder(m_folderList->currentItem()->data(Qt::UserRole + 1).toInt());
+    });
+    // The right button on a folder: the same, and Refresh for what was changed outside the program.
+    m_folderList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_folderList, &QListWidget::customContextMenuRequested, this, [this, newFolderButton, removeFolderButton](QPoint const& pos) {
+        if (QListWidgetItem* const item = m_folderList->itemAt(pos))
+            m_folderList->setCurrentItem(item);
+        QMenu menu(this);
+        connect(menu.addAction(tr("New Folder...")), &QAction::triggered, newFolderButton, &QToolButton::click);
+        QAction* const refreshAll = menu.addAction(tr("Refresh"));
+        refreshAll->setShortcut(QKeySequence(Qt::Key_F5));
+        connect(refreshAll, &QAction::triggered, this, [this] { showFolders(); });
+        menu.addSeparator();
+        QAction* const take = menu.addAction(tr("Remove from the Library"));
+        take->setEnabled(m_folderList->currentItem() && m_folderList->currentItem()->data(Qt::UserRole + 1).toInt() >= 1);
+        connect(take, &QAction::triggered, removeFolderButton, &QToolButton::click);
+        menu.exec(m_folderList->viewport()->mapToGlobal(pos));
     });
     connect(newFolderButton, &QToolButton::clicked, this, [this] {
         bool ok = false;
