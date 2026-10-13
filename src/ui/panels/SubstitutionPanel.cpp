@@ -1,7 +1,11 @@
 #include "ui/panels/SubstitutionPanel.h"
 #include <algorithm>
 
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
+#include <QSlider>
 #include <QPainter>
 #include <QVBoxLayout>
 
@@ -42,9 +46,30 @@ SubstitutionPanel::SubstitutionPanel(Document* document, QWidget* parent) : QWid
     m_list->setMovement(QListView::Static);
     m_list->setSpacing(4);
     m_list->setToolTip(tr("Click a drawing to show it on the current frame."));
+    m_search = new QLineEdit(this);
+    m_search->setObjectName(QStringLiteral("SubstitutionSearch"));
+    m_search->setPlaceholderText(tr("Search"));
+    m_search->setClearButtonEnabled(true);
+    m_name = new QLabel(this);
+    m_name->setObjectName(QStringLiteral("SubstitutionLayer"));
+    m_size = new QSlider(Qt::Horizontal, this);
+    m_size->setObjectName(QStringLiteral("SubstitutionSize"));
+    m_size->setRange(50, 250);
+    m_size->setValue(100);
+    m_size->setFixedWidth(110);
+    m_size->setToolTip(tr("How big the pictures of the drawings are."));
+    QHBoxLayout* const foot = new QHBoxLayout;
+    foot->addWidget(m_name, 1);
+    foot->addWidget(m_size);
     QVBoxLayout* const layout = new QVBoxLayout(this);
     layout->setContentsMargins(4, 4, 4, 4);
-    layout->addWidget(m_list);
+    layout->addWidget(m_search);
+    layout->addWidget(m_list, 1);
+    layout->addLayout(foot);
+    connect(m_search, &QLineEdit::textChanged, this, [this] { filter(); });
+    connect(m_size, &QSlider::valueChanged, this, [this](int percent) {
+        m_list->setIconSize(QSize(kThumbWidth * percent / 100, kThumbHeight * percent / 100));
+    });
 
     connect(m_list, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
         if (m_rebuilding)
@@ -112,6 +137,18 @@ void SubstitutionPanel::rebuild()
             item->setData(Qt::UserRole, i);
         }
         m_list->setCurrentRow(layer.drawingAt(m_frame) + 1);
+        m_name->setText(layer.name);
+    } else {
+        m_name->clear();
     }
     m_rebuilding = false;
+    filter();
+}
+
+// The tiles of the drawings whose name has what is typed in the search box; No Exposure stays.
+void SubstitutionPanel::filter()
+{
+    QString const wanted = m_search->text().trimmed();
+    for (int row = 1; row < m_list->count(); ++row)
+        m_list->item(row)->setHidden(!wanted.isEmpty() && !m_list->item(row)->text().contains(wanted, Qt::CaseInsensitive));
 }
