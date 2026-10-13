@@ -41,6 +41,7 @@
   </multibutton>
   <multibutton id="brushTools">
    <item id="ToolBrush"/>
+   <item id="ToolStamp"/>
   </multibutton>
   <item id="ToolPencil"/>
   <item id="ToolEraser"/>

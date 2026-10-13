@@ -199,6 +199,87 @@ void Canvas::repositionOthers(QTransform const& done, QString const& text)
     m_committing = false;
 }
 
+// ---- the Stamp tool --------------------------------------------------------------------------------
+
+Drawing Canvas::stampNow() const
+{
+    if (m_stampOwn)
+        return m_stamp;
+    // To begin with: a star, in the colour in hand.
+    Drawing star;
+    Fill shape;
+    QPolygonF outline;
+    for (int i = 0; i < 10; ++i) {
+        double const angle = -3.14159265358979323846 / 2.0 + i * 3.14159265358979323846 / 5.0;
+        double const reach = i % 2 == 0 ? 40.0 : 16.0;
+        outline << QPointF(std::cos(angle) * reach, std::sin(angle) * reach);
+    }
+    shape.outlines = {outline};
+    shape.swatch = m_swatch;
+    shape.color = m_document->scene().resolve(m_swatch, Qt::black);
+    star.fills = {shape};
+    return star;
+}
+
+void Canvas::clearStamp()
+{
+    m_stamp = Drawing();
+    m_stampOwn = false;
+    update();
+}
+
+void Canvas::onActionCreateStamp()
+{
+    Drawing const* const d = currentDrawing();
+    if (!selecting() || !d || !hasSelection()) {
+        emit message(tr("Select the artwork to make a stamp of with the Select tool."));
+        return;
+    }
+    // What is selected, kept about its own middle: that is where the pointer will be when it is stamped.
+    QTransform const home = QTransform::fromTranslate(-selectionBounds().center().x(), -selectionBounds().center().y());
+    Drawing stamp;
+    for (int i : std::as_const(m_selStrokes)) {
+        stamp.strokes.push_back(d->strokes[i]);
+        stamp.strokes.last().transform(home);
+    }
+    for (int i : std::as_const(m_selFills)) {
+        stamp.fills.push_back(d->fills[i]);
+        stamp.fills.last().transform(home);
+    }
+    m_stamp = stamp;
+    m_stampOwn = true;
+    emit message(tr("The Stamp tool now stamps this artwork."));
+}
+
+void Canvas::stampAt(QPointF p)
+{
+    Drawing const stamp = stampNow();
+    double const k = m_stampScale / 100.0;
+    QTransform const place = QTransform::fromScale(k, k) * QTransform::fromTranslate(p.x(), p.y());
+    Drawing edited = currentDrawing() ? *currentDrawing() : Drawing();
+    // Stamped, its parts are one thing: picked together.
+    int group = 0;
+    if (stamp.strokes.size() + stamp.fills.size() > 1) {
+        group = 1;
+        for (Stroke const& stroke : std::as_const(edited.strokes))
+            group = std::max(group, stroke.group + 1);
+        for (Fill const& fill : std::as_const(edited.fills))
+            group = std::max(group, fill.group + 1);
+    }
+    for (Fill fill : stamp.fills) {
+        fill.transform(place);
+        fill.group = group;
+        edited.fills.push_back(fill);
+    }
+    for (Stroke stroke : stamp.strokes) {
+        stroke.transform(place);
+        stroke.group = group;
+        edited.strokes.push_back(stroke);
+    }
+    commitDrawing(edited, tr("Stamp"));
+    update();
+}
+
 // ---- Close Gaps ---------------------------------------------------------------------------------
 
 int Canvas::closeGaps(double gap)

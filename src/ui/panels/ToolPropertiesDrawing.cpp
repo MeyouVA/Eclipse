@@ -102,6 +102,16 @@ void ToolProperties::addSelectRows()
                               "in the other drawings, whatever lies within the place the selection had."));
     connect(m_applyAll, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToAllDrawings);
     m_form->addRow(m_applyAll);
+    // The Stamp tool: how big the stamp comes out.
+    m_stampScale = new QSpinBox(this);
+    m_stampScale->setObjectName(QStringLiteral("StampScale"));
+    m_stampScale->setRange(10, 1000);
+    m_stampScale->setSingleStep(10);
+    m_stampScale->setSuffix(QStringLiteral(" %"));
+    m_stampScale->setValue(m_canvas->stampScale());
+    m_stampScale->setToolTip(tr("How big the stamp comes out. To stamp artwork of your own: select it, then Drawing > Create Stamp from Selection."));
+    connect(m_stampScale, &QSpinBox::valueChanged, m_canvas, &Canvas::setStampScale);
+    m_form->addRow(tr("Scale"), m_stampScale);
     m_byColour = new QCheckBox(tr("Select by Colour"), this);
     m_byColour->setObjectName(QStringLiteral("SelectByColour"));
     m_byColour->setToolTip(tr("A click on a line or on paint selects everything of that colour in the drawing."));

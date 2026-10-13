@@ -69,6 +69,9 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
 {
     emit pointerMoved(toScene(event->position()));
     m_hoverFrame = toFrame(event->position());
+    m_hoverWidget = event->position();
+    if (m_tool == Stamp)
+        update();       // the stamp is shown under the pointer
     m_hoverKnown = true;
     if (drawingGuide())
         update();       // its lines follow the pointer

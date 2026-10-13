@@ -175,6 +175,7 @@
    <item id="Flatten" icon="anim/flatten" text="&amp;Flatten" shortcut="shortcut.flatten" responder="camera" slot="onActionFlatten()"/>
    <item id="GroupArtwork" icon="anim/groupart" text="&amp;Group" responder="camera" slot="onActionGroupArtwork()"/>
    <item id="UngroupArtwork" icon="anim/ungroupart" text="&amp;Ungroup" responder="camera" slot="onActionUngroupArtwork()"/>
+   <item id="CreateStamp" icon="anim/stampcreate" text="Create Stamp from Se&amp;lection" shortcut="shortcut.createStamp" responder="camera" slot="onActionCreateStamp()"/>
    <item id="NewToolPreset" icon="tool/newpreset" text="New Tool Pre&amp;set..." shortcut="shortcut.newToolPreset" responder="window" slot="onActionNewToolPreset()"/>
    <item id="ManagePresets" icon="tool/managepresets" text="&amp;Manage Presets..." shortcut="shortcut.managePresets" responder="window" slot="onActionManagePresets()"/>
    <item id="ImportPresets" icon="tool/importpresets" text="&amp;Import Presets..." responder="window" slot="onActionImportPresets()"/>
@@ -396,6 +397,7 @@
   <item id="ToolReposition" icon="tool/reposition" text="Reposition All Dra&amp;wings" shortcut="shortcut.toolReposition" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="reposition"/>
 <item id="ToolContourEditor" icon="tool/contour" text="&amp;Contour Editor" shortcut="shortcut.toolContour" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="contour"/>
   <item id="ToolBrush" icon="tool/brush" text="&amp;Brush" shortcut="shortcut.toolBrush" checkable="true" checked="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="brush"/>
+  <item id="ToolStamp" icon="tool/stamp" text="Sta&amp;mp" shortcut="shortcut.toolStamp" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="stamp"/>
 <item id="ToolPencil" icon="tool/pencil" text="Pe&amp;ncil" shortcut="shortcut.toolPencil" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencil"/>
   <item id="ToolEraser" icon="tool/eraser" text="&amp;Eraser" shortcut="shortcut.toolEraser" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="eraser"/>
 <item id="ToolRectangle" icon="tool/rectangle" text="&amp;Rectangle" shortcut="shortcut.toolRectangle" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="rectangle"/>

@@ -41,6 +41,9 @@ public:
         // Everything in the drawing is in hand at once; moved, scaled or turned, it is so in
         // every drawing of the layer - all of each drawing, on every one of its sheets.
         Reposition,
+        // A click puts a copy of the stamp there: a star to begin with, or artwork of your own
+        // (Drawing > Create Stamp from Selection).
+        Stamp,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -128,6 +131,15 @@ public:
     // Open lines whose end lies within `gap` of another line (or of their own other end) are
     // joined to it by a line with no thickness; says how many were made.
     int closeGaps(double gap);
+    // The Stamp tool: how big the stamp comes out (per cent), and whether it is one of the user's own.
+    int stampScale() const { return m_stampScale; }
+    void setStampScale(int percent)
+    {
+        m_stampScale = percent;
+        update();
+    }
+    bool hasOwnStamp() const { return m_stampOwn; }
+    void clearStamp();
     // Whether the paint tools are to leave what has this colour alone: it is protected, and
     // protection is being respected.
     bool keepsColour(int swatch) const;
@@ -418,6 +430,7 @@ public slots:
     void onActionRespectProtected(bool on);
     void onActionCloseGaps();
     void onActionStrokesToPencil();
+    void onActionCreateStamp();
     void onActionProportionGrid(bool on);
     void onActionHighlightColour(bool on);
 
@@ -689,6 +702,12 @@ private:
     bool m_highlightColour = false;
     bool m_respectProtected = true;
     bool m_proportionGrid = false;
+    Drawing m_stamp;             // artwork of the user's own to stamp, about the origin
+    bool m_stampOwn = false;
+    int m_stampScale = 100;
+    QPointF m_hoverWidget;       // where the pointer is (in the view)
+    Drawing stampNow() const;
+    void stampAt(QPointF p);
     double m_nudgeStep = 1.0;
     int m_propAcross = 3;
     int m_propDown = 3;

@@ -94,6 +94,10 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         gradientDown(widgetPos, p);
         return;
     }
+    if (m_tool == Stamp) {
+        stampAt(p);
+        return;
+    }
     if (m_tool == Pencil || m_tool == StrokeTool)
         pressure = 1.0f;  // a pencil line has one thickness
     if (m_tool == Rigging) {

@@ -225,6 +225,15 @@ void Canvas::paintEvent(QPaintEvent*)
                 centre << p.pos;
             painter.drawPolyline(centre);
         }
+        if (l == m_layer && m_tool == Stamp && m_hoverKnown && !m_playing && m_drag == DragNone && layer.holdsDrawings()) {
+            // The stamp, faint, where a click would put it.
+            double const k = m_stampScale / 100.0;
+            QPointF const at = toLayer(m_hoverWidget);
+            painter.save();
+            painter.setTransform(QTransform::fromScale(k, k) * QTransform::fromTranslate(at.x(), at.y()) * layerViewTransform());
+            paintDrawing(painter, scene, stampNow(), 0.45);
+            painter.restore();
+        }
         if (l == m_layer && m_polyActive) {
             // The polyline so far, and on to where the next point would go.
             Stroke preview = m_stroke;

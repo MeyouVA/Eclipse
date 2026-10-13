@@ -77,6 +77,7 @@ private:
     QCheckBox* m_applyAll = nullptr;
     QCheckBox* m_dropperAll = nullptr;
     QCheckBox* m_byColour = nullptr;
+    QSpinBox* m_stampScale = nullptr;
     QCheckBox* m_autoFlatten = nullptr;
     QHBoxLayout* m_shapeRow = nullptr;
     QLayout* m_thicknessRow = nullptr;

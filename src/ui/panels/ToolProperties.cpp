@@ -179,10 +179,10 @@ void ToolProperties::showFor(int tool)
                                       "ToolPencil", "ToolLine",      "ToolRectangle", "ToolEllipse", "ToolContourEditor",
                                       "ToolRigging", "ToolIK", "ToolDropper", "ToolZoom", "ToolPolyline",
                                       "ToolPaintUnpainted", "ToolRepaint", "ToolUnpaint", "ToolText", "ToolRotateView", "ToolCutter", "ToolStroke", "ToolCloseGap",
-                                      "ToolEditGradient", "ToolReposition"};
+                                      "ToolEditGradient", "ToolReposition", "ToolStamp"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
-    bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || Canvas::isPaintTool(Canvas::Tool(tool));
+    bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
     m_form->setRowVisible(m_envelopePoints, tool == T::Rigging);
     // What the settings are headed with: the tools that have a tip to set up are headed
@@ -214,6 +214,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_applyAll, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
     m_form->setRowVisible(m_byColour, tool == T::Select);
+    m_form->setRowVisible(m_stampScale, tool == T::Stamp);
     m_form->setRowVisible(m_presetsTitle, draws);
     m_form->setRowVisible(m_presets, draws);
     m_preview->set(m_size->value(), brush);
