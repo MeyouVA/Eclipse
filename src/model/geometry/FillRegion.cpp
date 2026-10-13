@@ -53,6 +53,38 @@ static void dilate(std::vector<uchar>& mask, int w, int h, int times)
     }
 }
 
+QRectF paintArea(Drawing const& drawing, double margin)
+{
+    QRectF all;
+    for (Stroke const& stroke : drawing.strokes)
+        all = all.isNull() ? stroke.bounds() : all.united(stroke.bounds());
+    for (Fill const& fill : drawing.fills)
+        all = all.isNull() ? fill.bounds() : all.united(fill.bounds());
+    return all.isNull() ? all : all.adjusted(-margin, -margin, margin, margin);
+}
+
+Result compute(Drawing const& drawing, QRectF const& area, QPointF point, double gap, QVector<QPolygonF>& outlines)
+{
+    outlines.clear();
+    if (area.width() < 1.0 || area.height() < 1.0 || !area.contains(point))
+        return Outside;
+    // Brought to where the frame would be, worked out there, and put back.
+    QTransform const home = QTransform::fromTranslate(-area.left(), -area.top());
+    Drawing moved;
+    for (Stroke stroke : drawing.strokes) {
+        stroke.transform(home);
+        moved.strokes.push_back(stroke);
+    }
+    for (Fill fill : drawing.fills) {
+        fill.transform(home);
+        moved.fills.push_back(fill);
+    }
+    Result const result = compute(moved, int(std::ceil(area.width())), int(std::ceil(area.height())), home.map(point), gap, outlines);
+    for (QPolygonF& outline : outlines)
+        outline.translate(area.topLeft());
+    return result;
+}
+
 Result compute(Drawing const& drawing, int width, int height, QPointF point, double gap, QVector<QPolygonF>& outlines)
 {
     outlines.clear();

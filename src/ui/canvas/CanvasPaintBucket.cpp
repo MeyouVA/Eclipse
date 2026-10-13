@@ -92,7 +92,8 @@ void Canvas::paintAt(QPointF p)
             if (!shape.contours.isEmpty())
                 bounded.fills.push_back(shape);
     }
-    switch (FillRegion::compute(bounded, scene.width, scene.height, p, 2.0, outlines)) {
+    // (Wherever the artwork is - beside the frame too, or on a layer the camera sees moved.)
+    switch (FillRegion::compute(bounded, FillRegion::paintArea(bounded), p, 2.0, outlines)) {
     case FillRegion::Ok: {
         Fill fill;
         fill.outlines = outlines;

@@ -166,7 +166,6 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
     if (m_tool == Paint || m_tool == PaintUnpainted) {
         // The closed areas with no paint that lie wholly inside what was drawn round: found
         // from a few places across it, each filled as a click there would fill it.
-        Scene const& scene = m_document->scene();
         int const across = 6;
         for (int row = 0; row < across; ++row) {
             for (int column = 0; column < across; ++column) {
@@ -186,7 +185,7 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
                             bounded.fills.push_back(shape);
                 }
                 QVector<QPolygonF> outlines;
-                if (FillRegion::compute(bounded, scene.width, scene.height, at, 2.0, outlines) != FillRegion::Ok || outlines.isEmpty())
+                if (FillRegion::compute(bounded, FillRegion::paintArea(bounded), at, 2.0, outlines) != FillRegion::Ok || outlines.isEmpty())
                     continue;
                 QRectF area;
                 for (QPolygonF const& outline : std::as_const(outlines))
