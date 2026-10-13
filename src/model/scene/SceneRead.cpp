@@ -195,6 +195,11 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.solo = lo["solo"].toBool(false);
         layer.onion = lo["onion"].toBool(false);
         layer.tagged = lo["tagged"].toBool(false);
+        for (QJsonValue const& mv : lo["frameMarks"].toArray()) {
+            QColor const colour(mv.toArray().at(1).toString());
+            if (colour.isValid() && mv.toArray().at(0).toInt(-1) >= 0)
+                layer.frameMarks.insert(mv.toArray().at(0).toInt(), colour);
+        }
         layer.collapsed = lo["collapsed"].toBool(false);
         if (QString const track = lo["track"].toString(); !track.isEmpty())
             layer.trackColor = QColor(track);

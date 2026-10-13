@@ -285,6 +285,12 @@ QJsonObject Scene::toJson(QString const& folder) const
         }
         if (layer.nodePlaced)
             layerObject["node"] = QJsonArray{layer.nodePos.x(), layer.nodePos.y()};
+        if (!layer.frameMarks.isEmpty()) {
+            QJsonArray marks;
+            for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)
+                marks.append(QJsonArray{it.key(), it.value().name()});
+            layerObject["frameMarks"] = marks;
+        }
         layerArray.append(layerObject);
     }
     QJsonArray paletteArray;

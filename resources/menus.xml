@@ -536,6 +536,25 @@
    <item id="CollapseAll" icon="timeline/collapseall" text="Collapse All" responder="window" slot="onActionCollapseAll()"/>
    <item id="ExpandAll" icon="timeline/expandall" text="Expand All" responder="window" slot="onActionExpandAll()"/>
   </menu>
+  <menu id="TimelineMarkFrame" text="Mark Frame">
+   <item id="MarkFrameRed" icon="timeline/markframered" text="Red" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#e0453a"/>
+   <item id="MarkFrameOrange" icon="timeline/markframeorange" text="Orange" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f08c2e"/>
+   <item id="MarkFrameYellow" icon="timeline/markframeyellow" text="Yellow" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f0d43a"/>
+   <item id="MarkFrameGreen" icon="timeline/markframegreen" text="Green" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#4fbf5a"/>
+   <item id="MarkFrameCyan" icon="timeline/markframecyan" text="Cyan" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#3cc8d2"/>
+   <item id="MarkFrameBlue" icon="timeline/markframeblue" text="Blue" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#3a78e0"/>
+   <item id="MarkFramePurple" icon="timeline/markframepurple" text="Purple" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#9a58d8"/>
+   <item id="MarkFramePink" icon="timeline/markframepink" text="Pink" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f07ab4"/>
+   <item id="MarkFrameWhite" icon="timeline/markframewhite" text="White" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f4f4f4"/>
+   <item id="MarkFrameBlack" icon="timeline/markframeblack" text="Black" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#141414"/>
+   <separator/>
+   <item id="MarkFrameNone" icon="timeline/markframenone" text="Remove Frame Marker" responder="window" slot="onActionMarkFrame(QString)" itemParameter="none"/>
+  </menu>
+  <menu id="TimelineKeyframes" text="Keyframes of the Layer">
+   <item id="LayerStopMotionKeys" icon="timeline/stopmotionkey" text="Set Stop-Motion Keyframes" responder="window" slot="onActionLayerKeys(QString)" itemParameter="stop"/>
+   <item id="LayerMotionKeys" icon="timeline/motionkey" text="Set Motion Keyframes" responder="window" slot="onActionLayerKeys(QString)" itemParameter="motion"/>
+   <item id="LayerClearValues" icon="timeline/deletekey" text="Clear All Values" responder="window" slot="onActionLayerKeys(QString)" itemParameter="clear"/>
+  </menu>
   <menu id="TimelineTag" text="Tag">
    <item id="TagLayers" icon="timeline/tag" text="Tag Selected Layers" shortcut="shortcut.tagLayers" responder="window" slot="onActionTagLayers(QString)" itemParameter="tag"/>
    <item id="UntagLayers" icon="timeline/untag" text="Untag Selected Layers" shortcut="shortcut.untagLayers" responder="window" slot="onActionTagLayers(QString)" itemParameter="untag"/>

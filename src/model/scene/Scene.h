@@ -9,6 +9,7 @@
 #include <QColor>
 #include <QPair>
 #include <QJsonArray>
+#include <QMap>
 #include <QImage>
 #include <QJsonObject>
 #include <QPointF>
@@ -452,6 +453,8 @@ struct Layer {
     bool onion = false;
     // Tagged: marked out, so that the Timeline can be made to show the tagged layers only.
     bool tagged = false;
+    // Frames of the layer marked with a colour in the Timeline (a note to oneself: "redo", "hold" ...).
+    QMap<int, QColor> frameMarks;
     // The layers attached to this one are folded away in the Timeline.
     bool collapsed = false;
     // The colour of the layer's row in the Timeline; invalid for the usual grey.

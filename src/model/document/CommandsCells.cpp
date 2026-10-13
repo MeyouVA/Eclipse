@@ -113,6 +113,34 @@ bool Document::renameDrawingsByFrame(int layer)
     return true;
 }
 
+bool Document::markFrames(QVector<int> const& layers, int first, int last, QColor const& colour)
+{
+    first = std::max(first, 0);
+    last = std::min(last, m_scene.frameCount() - 1);
+    bool any = false;
+    for (int l : layers) {
+        if (l < 0 || l >= m_scene.layers.size())
+            continue;
+        for (int f = first; f <= last; ++f)
+            any = any || (colour.isValid() ? m_scene.layers[l].frameMarks.value(f) != colour : m_scene.layers[l].frameMarks.contains(f));
+    }
+    if (!any)
+        return false;
+    apply(colour.isValid() ? tr("Mark Frame") : tr("Remove Frame Marker"), [&](Scene& s) {
+        for (int l : layers) {
+            if (l < 0 || l >= s.layers.size())
+                continue;
+            for (int f = first; f <= last; ++f) {
+                if (colour.isValid())
+                    s.layers[l].frameMarks.insert(f, colour);
+                else
+                    s.layers[l].frameMarks.remove(f);
+            }
+        }
+    });
+    return true;
+}
+
 bool Document::markDrawing(int layer, int frame, int mark)
 {
     if (!validCell(m_scene, layer, frame) || mark < Drawing::NoMark || mark > Drawing::InBetweenMark)
@@ -463,6 +491,10 @@ void Document::insertFrames(int at, int count)
                     morph.from += count;
             if (layer.kind == Layer::Sound && layer.soundStart >= at)
                 layer.soundStart += count;
+            QMap<int, QColor> shifted;
+            for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)
+                shifted.insert(it.key() >= at ? it.key() + count : it.key(), it.value());
+            layer.frameMarks = shifted;
         }
         for (Scene::Marker& m : s.markers) {
             if (m.frame >= at)
@@ -499,6 +531,11 @@ void Document::removeFrames(int first, int last)
                 layer.soundStart -= count;
             else if (layer.kind == Layer::Sound && layer.soundStart >= first)
                 layer.soundStart = first;
+            QMap<int, QColor> left;
+            for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)
+                if (it.key() < first || it.key() > last)
+                    left.insert(it.key() > last ? it.key() - count : it.key(), it.value());
+            layer.frameMarks = left;
         }
         for (Scene::Marker& m : s.markers) {
             // What is left of the marker once the frames are gone.

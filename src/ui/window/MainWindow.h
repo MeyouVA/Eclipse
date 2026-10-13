@@ -315,6 +315,8 @@ public slots:
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
     void onActionHelp();
+    void onActionMarkFrame(QString const& colour);
+    void onActionLayerKeys(QString const& how);
     void onActionPasteSpecialAgain();
     void onActionRenameWithPrefix();
     void onActionOnionLayers(QString const& which);

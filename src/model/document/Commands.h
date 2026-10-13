@@ -99,6 +99,8 @@ public:
     bool renameDrawing(int layer, int frame, QString const& name);
     // The drawing shown on that frame is marked (Drawing::Mark) as a key, a breakdown or an in-between - or as nothing.
     bool markDrawing(int layer, int frame, int mark);
+    // Frames of layers marked with a colour in the Timeline (an invalid colour: the marks go).
+    bool markFrames(QVector<int> const& layers, int first, int last, QColor const& colour);
     // Every drawing of the layer is named after the frame it is first shown on.  False when that changes nothing.
     bool renameDrawingsByFrame(int layer);
     // ... or `prefix` and then its number in the layer ("arm-1", "arm-2" ...).

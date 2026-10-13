@@ -63,6 +63,9 @@ void Timeline::paintEvent(QPaintEvent*)
                     p.setRenderHint(QPainter::Antialiasing, false);
                 }
             }
+            // A frame marked with a colour: a band of it along the top of the cell.
+            if (!param && layer.frameMarks.contains(f))
+                p.fillRect(x, y + 1, cw, 3, layer.frameMarks.value(f));
             // A line between frames where there is room for one; else every fifth.
             if (cw >= 7 || (f + 1) % 5 == 0) {
                 p.setPen(line);

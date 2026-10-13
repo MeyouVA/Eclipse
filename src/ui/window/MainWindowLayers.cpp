@@ -384,6 +384,37 @@ void MainWindow::onActionOnionLayers(QString const& which)
         m_document->editLayers(layers, on ? tr("Onion Skin On") : tr("Onion Skin Off"), [on](Layer& l) { l.onion = on; });
 }
 
+// The frames selected in the Timeline, of the layers selected, marked with a colour by name ("none": unmarked).
+void MainWindow::onActionMarkFrame(QString const& colour)
+{
+    m_document->markFrames(m_timeline->selectedLayers(), m_timeline->selectionFirstFrame(), m_timeline->selectionLastFrame(),
+                           colour == QLatin1String("none") ? QColor() : QColor(colour));
+}
+
+// All the keyframes of the layers selected: "clear" takes them away, "stop" makes them stop-motion
+// (each holds until the next), "motion" makes them motion keyframes (each glides to the next).
+void MainWindow::onActionLayerKeys(QString const& how)
+{
+    Scene const& scene = m_document->scene();
+    bool const clear = how == QLatin1String("clear"), tween = how == QLatin1String("motion");
+    QVector<int> layers;
+    for (int l : m_timeline->selectedLayers()) {
+        bool differs = false;
+        for (Keyframe const& key : scene.layers[l].keys)
+            differs = differs || clear || key.tween != tween;
+        if (differs)
+            layers.push_back(l);
+    }
+    if (layers.isEmpty())
+        return;
+    m_document->editLayers(layers, clear ? tr("Clear All Values") : tween ? tr("Set Motion Keyframes") : tr("Set Stop-Motion Keyframes"), [clear, tween](Layer& l) {
+        if (clear)
+            l.keys.clear();
+        for (Keyframe& key : l.keys)
+            key.tween = tween;
+    });
+}
+
 void MainWindow::onActionRenameWithPrefix()
 {
     Scene const& scene = m_document->scene();
