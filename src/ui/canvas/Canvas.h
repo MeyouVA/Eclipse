@@ -160,6 +160,9 @@ public:
     // The Select tool: what is selected stays selected on another frame - whatever lies in the same place there.
     // The paint tools: what is painted, repainted or unpainted here is so in the same place in every drawing of the layer.
     void setPaintAllDrawings(bool on) { m_paintAll = on; }
+    // The eraser rubs out of the line art and the colour art at once.
+    void setEraserBothArts(bool on) { m_bothArts = on; }
+    bool eraserBothArts() const { return m_bothArts; }
     // The Envelope tool: how many points the outline round the selection has.
     int envelopeToolPoints() const { return m_envCount; }
     void setEnvelopeToolPoints(int count)
@@ -775,6 +778,7 @@ private:
     int m_envCount = 8;
     double m_gapSize = 2.0;
     bool m_paintAll = false;
+    bool m_bothArts = false;
     bool m_permanentSelection = false;
     bool m_snapAlign = false;
     QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)

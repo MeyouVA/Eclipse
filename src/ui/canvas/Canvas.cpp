@@ -326,7 +326,11 @@ void Canvas::cutWithEraser()
 {
     Scene const& scene = m_document->scene();
     bool const everywhere = m_paintAll && m_layer >= 0 && m_layer < scene.layers.size();
-    if (m_stroke.points.isEmpty() || (!m_eraseAny && !everywhere))
+    // In the line art and the colour art at once, when that is asked and one of the two is being worked on.
+    QVector<Art> arts = {m_art};
+    if (m_bothArts && (m_art == LineArt || m_art == ColourArt))
+        arts = {LineArt, ColourArt};
+    if (m_stroke.points.isEmpty() || (!m_eraseAny && !everywhere && arts.size() == 1))
         return;
     m_eraseAny = false;
     QVector<QPolygonF> const rubbed = m_stroke.outlinePolygons();
@@ -366,25 +370,31 @@ void Canvas::cutWithEraser()
         }
     }
     int const here = m_frame;
+    Art const artWas = m_art;
+    bool const several = frames.size() * arts.size() > 1;
     bool begun = false;
     for (int f : std::as_const(frames)) {
-        m_frame = f;
-        Drawing const* const under = currentDrawing();
-        if (!under)
-            continue;
-        Drawing const from = *under;
-        Drawing art;
-        if (!cut(from, art))
-            continue;
-        if (!begun && frames.size() > 1)
-            m_document->beginMacro(tr("Erase"));
-        begun = true;
-        commitDrawing(art, tr("Erase"));
+        for (Art const art : std::as_const(arts)) {
+            m_frame = f;
+            m_art = art;
+            Drawing const* const under = currentDrawing();
+            if (!under)
+                continue;
+            Drawing const from = *under;
+            Drawing left;
+            if (!cut(from, left))
+                continue;
+            if (!begun && several)
+                m_document->beginMacro(tr("Erase"));
+            begun = true;
+            commitDrawing(left, tr("Erase"));
+        }
     }
     m_frame = here;
+    m_art = artWas;
     if (!begun)
         return;
-    if (frames.size() > 1)
+    if (several)
         m_document->endMacro();
     // What was picked may be gone or in pieces.
     m_selStrokes.clear();
