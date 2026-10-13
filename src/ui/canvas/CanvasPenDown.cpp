@@ -221,6 +221,8 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         m_dragLasso = m_lasso != bool(modifiers & Qt::AltModifier);
         m_dragStart = m_dragNow = p;
         m_lassoPath = QPolygonF({p});
+    } else if (m_tool == Envelope && envelopeDown(widgetPos)) {
+        // A point of the outline round the selection is in hand.
     } else if (selecting()) {
         if (m_tool == Reposition)
             selectAll();        // whatever drawing this is: all of it

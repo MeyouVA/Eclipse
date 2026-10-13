@@ -54,6 +54,9 @@ public:
         // Rubbed over a line or the edge of a brush shape, it smooths it there: the points
         // under the pen settle between their neighbours.
         SmoothEditor,
+        // What is selected has an outline of points round it: a point pulled, the artwork inside is
+        // pulled about with it.
+        Envelope,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -120,7 +123,7 @@ public:
     // How many lines and painted areas are selected.
     int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size()); }
     // The Select tool or the Cutter: what is selected can be handled with either.
-    bool selecting() const { return m_tool == Select || m_tool == Cutter || m_tool == Reposition || m_tool == Perspective; }
+    bool selecting() const { return m_tool == Select || m_tool == Cutter || m_tool == Reposition || m_tool == Perspective || m_tool == Envelope; }
     // The points picked with the Contour Editor besides contourPoint(), on the same curve.
     QVector<int> contourPointsPicked() const;
     void clearSelection();
@@ -673,7 +676,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -794,6 +797,17 @@ private:
     bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
     void inkAt(QPointF p);
     void smoothAt(QPointF p);
+    // The Envelope tool: the outline round what is selected as it was when a point of it was taken
+    // hold of, as it is pulled to, and the point in hand.
+    QVector<QPointF> m_envRest, m_envNow;
+    int m_envPoint = -1;
+    QVector<QPointF> selectionEnvelope() const;
+    bool envelopeDown(QPointF widgetPos);
+    void envelopeMove(QPointF p);
+public:
+    // Where a point of that outline is in the view (a null point when there is none): to take hold of it.
+    QPointF envelopePointInView(int point) const;
+private:
     double m_nudgeStep = 1.0;
     int m_propAcross = 3;
     int m_propDown = 3;

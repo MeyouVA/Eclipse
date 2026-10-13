@@ -69,7 +69,7 @@ void Canvas::paintEvent(QPaintEvent*)
     bool const transforming = m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate || m_drag == DragPoint || m_drag == DragHandle;
     // The eraser cuts as it goes: the drawing is shown as it is so far, before it is in the scene.
     // (So is the gradient being placed: the area is shown with it where the pointer has it.)
-    bool const erasing = (m_drag == DragErase && m_eraserCuts && m_eraseAny) || m_drag == DragGradient || m_drag == DragThickness || ((m_drag == DragInk || m_drag == DragSmooth) && m_inked);
+    bool const erasing = (m_drag == DragErase && m_eraserCuts && m_eraseAny) || m_drag == DragGradient || m_drag == DragThickness || ((m_drag == DragInk || m_drag == DragSmooth) && m_inked) || m_drag == DragEnvelope;
     QTransform const view = viewTransform();
     // The grid, when it is to lie behind the drawings.
     if (m_grid && m_gridUnder && !m_playing)
@@ -258,6 +258,26 @@ void Canvas::paintEvent(QPaintEvent*)
                         painter.setBrush(i == m_thickStroke && k == m_thickPoint ? QColor(255, 255, 255) : QColor(60, 200, 230));
                         painter.drawRect(QRectF(at.x() - 3, at.y() - 3, 6, 6));
                     }
+                }
+                painter.restore();
+            }
+        }
+        if (l == m_layer && m_tool == Envelope && !m_playing && hasSelection()) {
+            // The outline round what is selected, and its points to take hold of.
+            QVector<QPointF> const points = m_drag == DragEnvelope ? m_envNow : selectionEnvelope();
+            if (points.size() >= 9) {
+                QTransform const where = layerViewTransform();
+                painter.save();
+                painter.resetTransform();
+                QPen outline(QColor(240, 160, 60), 1.2);
+                painter.setPen(outline);
+                painter.setBrush(Qt::NoBrush);
+                painter.drawPolygon(where.map(Deform::warpLine(points, true, 12)));
+                painter.setPen(QPen(QColor(20, 20, 20), 1.0));
+                for (int i = 0; i < points.size(); i += 3) {
+                    QPointF const at = where.map(points[i]);
+                    painter.setBrush(i == m_envPoint ? QColor(255, 255, 255) : QColor(240, 160, 60));
+                    painter.drawRect(QRectF(at.x() - 3.5, at.y() - 3.5, 7, 7));
                 }
                 painter.restore();
             }

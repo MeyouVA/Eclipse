@@ -239,6 +239,9 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         m_dragNow = p;
         update();
         break;
+    case DragEnvelope:
+        envelopeMove(p);
+        break;
     case DragInk:
         inkAt(p);
         break;

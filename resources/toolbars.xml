@@ -35,6 +35,7 @@
    <item id="ToolSelect"/>
    <item id="ToolCutter"/>
    <item id="ToolPerspective"/>
+   <item id="ToolEnvelope"/>
    <item id="ToolReposition"/>
   </multibutton>
   <multibutton id="selectTools2">

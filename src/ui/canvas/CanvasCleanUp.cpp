@@ -456,6 +456,75 @@ void Canvas::smoothAt(QPointF p)
     update();
 }
 
+// ---- the Envelope tool ------------------------------------------------------------------------------
+
+// Eight points on a loop close round what is selected.
+QVector<QPointF> Canvas::selectionEnvelope() const
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || !hasSelection())
+        return {};
+    Drawing chosen;
+    for (int i : m_selStrokes)
+        chosen.strokes.push_back(d->strokes[i]);
+    for (int i : m_selFills)
+        chosen.fills.push_back(d->fills[i]);
+    return Deform::envelopeAround(chosen, 8, 6.0 / std::max(m_zoom, 1e-6));
+}
+
+QPointF Canvas::envelopePointInView(int point) const
+{
+    QVector<QPointF> const points = m_drag == DragEnvelope ? m_envNow : selectionEnvelope();
+    return m_tool == Envelope && point >= 0 && point * 3 < points.size() ? layerViewTransform().map(points[point * 3]) : QPointF();
+}
+
+bool Canvas::envelopeDown(QPointF widgetPos)
+{
+    QVector<QPointF> const points = selectionEnvelope();
+    QTransform const view = layerViewTransform();
+    for (int i = 0; i < points.size(); i += 3) {
+        if (QLineF(view.map(points[i]), widgetPos).length() > 8.0)
+            continue;
+        m_envRest = m_envNow = points;
+        m_envPoint = i;
+        m_eraseArt = *currentDrawing();
+        m_drag = DragEnvelope;
+        return true;
+    }
+    return false;
+}
+
+void Canvas::envelopeMove(QPointF p)
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || m_envPoint < 0 || m_envPoint >= m_envNow.size())
+        return;
+    // The point goes with the pen; the curve is led smoothly through it and its two neighbours again.
+    m_envNow = m_envRest;
+    m_envNow[m_envPoint] = p;
+    int const count = int(m_envNow.size()) / 3, at = m_envPoint / 3;
+    for (int k : {(at + count - 1) % count, at, (at + 1) % count})
+        Deform::smoothWarpHandles(m_envNow, true, k);
+    QVector<QPointF> moved(m_envRest.size());
+    for (int i = 0; i < moved.size(); ++i)
+        moved[i] = m_envNow[i] - m_envRest[i];
+    // What is selected, reshaped by that; the rest of the drawing as it is.
+    Drawing chosen;
+    for (int i : std::as_const(m_selStrokes))
+        chosen.strokes.push_back(d->strokes[i]);
+    for (int i : std::as_const(m_selFills))
+        chosen.fills.push_back(d->fills[i]);
+    Drawing const pulled = Deform::warp(chosen, m_envRest, true, moved);
+    m_eraseArt = *d;
+    if (pulled.strokes.size() == m_selStrokes.size() && pulled.fills.size() == m_selFills.size()) {
+        for (int k = 0; k < m_selStrokes.size(); ++k)
+            m_eraseArt.strokes[m_selStrokes[k]] = pulled.strokes[k];
+        for (int k = 0; k < m_selFills.size(); ++k)
+            m_eraseArt.fills[m_selFills[k]] = pulled.fills[k];
+    }
+    update();
+}
+
 // ---- Close Gaps ---------------------------------------------------------------------------------
 
 int Canvas::closeGaps(double gap)

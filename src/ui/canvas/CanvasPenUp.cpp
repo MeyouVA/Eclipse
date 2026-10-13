@@ -91,6 +91,19 @@ void Canvas::penUp()
         update();
         return;
     }
+    if (drag == DragEnvelope) {
+        m_drag = DragNone;
+        bool const pulled = m_envNow != m_envRest;
+        Drawing const art = m_eraseArt;
+        m_eraseArt = Drawing();
+        m_envRest.clear();
+        m_envNow.clear();
+        m_envPoint = -1;
+        if (pulled)
+            commitDrawing(art, tr("Envelope"));
+        update();
+        return;
+    }
     if (drag == DragInk || drag == DragSmooth) {
         m_drag = DragNone;
         if (m_inked) {
