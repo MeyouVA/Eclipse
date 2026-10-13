@@ -99,7 +99,7 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         return;
     }
     if (m_tool == PencilEditor) {
-        thicknessDown(p);
+        thicknessDown(p, modifiers);
         return;
     }
     if (m_tool == SmoothEditor) {

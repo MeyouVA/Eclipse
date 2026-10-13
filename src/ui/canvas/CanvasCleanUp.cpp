@@ -488,11 +488,26 @@ bool Canvas::autoMatte(double radius, int source, int destination)
 
 // ---- the Pencil Editor ------------------------------------------------------------------------------
 
-void Canvas::thicknessDown(QPointF p)
+void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)
 {
     Drawing const* const d = currentDrawing();
     m_thickStroke = m_thickPoint = -1;
     double nearest = 0.0;
+    if (d && (modifiers & Qt::ControlModifier)) {
+        // With Ctrl: a new point where the line was pressed, to make it thicker or thinner there.
+        // The line keeps its shape and its thickness; the point is as thick as the line was at that place.
+        for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
+            if (d->strokes[i].width <= 0.0f || !d->strokes[i].hit(p, 4.0 / std::max(m_zoom, 1e-6)))
+                continue;
+            Drawing edited = *d;
+            if (edited.strokes[i].insertPoint(p) >= 0)
+                commitDrawing(edited, tr("Add Point"));
+            update();
+            return;
+        }
+        emit message(tr("Hold Ctrl and press on a pencil line to put a point there."));
+        return;
+    }
     if (d) {
         // The point of a line under the pointer: within the line there, or a few pixels off it.
         for (int i = 0; i < d->strokes.size(); ++i) {

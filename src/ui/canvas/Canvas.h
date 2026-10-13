@@ -844,7 +844,7 @@ private:
     void stampAt(QPointF p);
     int m_thickStroke = -1;      // the Pencil Editor: the line and the point of it in hand
     int m_thickPoint = -1;
-    void thicknessDown(QPointF p);
+    void thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
     bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
     void inkAt(QPointF p);
     void smoothAt(QPointF p);
