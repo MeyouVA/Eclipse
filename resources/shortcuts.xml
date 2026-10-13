@@ -173,6 +173,8 @@
   <shortcut id="shortcut.toolRotate" text="Rotate Tool" value="Alt+3"/>
   <shortcut id="shortcut.toolScale" text="Scale Tool" value="Alt+4"/>
   <shortcut id="shortcut.toolSkew" text="Skew Tool" value="Alt+5"/>
+  <shortcut id="shortcut.toolMaintainSize" text="Maintain Size Tool" value="Alt+6"/>
+  <shortcut id="shortcut.noZDragging" text="No Z Dragging" value=""/>
   <shortcut id="shortcut.toolSmoothEditor" text="Smooth Editor Tool" value=""/>
   <shortcut id="shortcut.toolInk" text="Ink Tool" value=""/>
   <shortcut id="shortcut.markKey" text="Mark Drawing As Key Drawing" value=""/>

@@ -35,7 +35,23 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     switch (m_drag) {
     case DragPoseMove: {
         // The offset is in the coordinates of the parent.
-        if (modifiers & Qt::AltModifier) {
+        if (m_maintaining) {
+            // Away from the camera or towards it, and scaled to look as big as it did.
+            Scene const& scene = m_document->scene();
+            double const dy = viewTransform().map(m_dragStartScene).y() - widgetPos.y();
+            double const by = -dy / std::max(m_zoom, 1e-6) * 2.0;
+            double const depth = scene.depthOf(m_layer, m_frame);
+            double const was = scene.depthScale(depth, m_frame), is = scene.depthScale(depth + by, m_frame);
+            m_dragPose = m_poseStart;
+            m_dragPose.z = m_poseStart.z + by;
+            if (is > 1e-9) {
+                m_dragPose.scaleX = m_poseStart.scaleX * was / is;
+                m_dragPose.scaleY = m_poseStart.scaleY * was / is;
+            }
+            update();
+            break;
+        }
+        if ((modifiers & Qt::AltModifier) && !m_noZDrag) {
             // With Alt: nearer or further instead - up the view is away from the camera.
             double const dy = viewTransform().map(m_dragStartScene).y() - widgetPos.y();
             m_dragPose = m_poseStart;

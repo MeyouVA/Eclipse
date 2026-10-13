@@ -247,6 +247,7 @@
   </menu>
 
   <menu id="Animation" text="&amp;Animation">
+   <item id="NoZDragging" icon="anim/nozdrag" text="No &amp;Z Dragging" shortcut="shortcut.noZDragging" checkable="true" responder="camera" slot="onActionNoZDragging(bool)"/>
    <menu id="AnimationAnimate" text="A&amp;nimate">
     <item id="AnimateCurrentFrame" icon="anim/animateon" text="Animate &amp;Current Frame" checkable="true" checked="true" group="animate" responder="camera" slot="onActionAnimateCurrentFrame()"/>
     <item id="AnimateOff" icon="anim/animateoff" text="Animate &amp;Off" checkable="true" group="animate" responder="camera" slot="onActionAnimateOff()"/>
@@ -261,6 +262,7 @@
     <item id="ToolRotate" icon="tool/rotate" text="&amp;Rotate" shortcut="shortcut.toolRotate" responder="window" slot="onActionTransformMode(QString)" itemParameter="rotate"/>
     <item id="ToolScale" icon="tool/scale" text="&amp;Scale" shortcut="shortcut.toolScale" responder="window" slot="onActionTransformMode(QString)" itemParameter="scale"/>
     <item id="ToolSkew" icon="tool/skew" text="S&amp;kew" shortcut="shortcut.toolSkew" responder="window" slot="onActionTransformMode(QString)" itemParameter="skew"/>
+    <item id="ToolMaintainSize" icon="tool/maintainsize" text="&amp;Maintain Size" shortcut="shortcut.toolMaintainSize" responder="window" slot="onActionTransformMode(QString)" itemParameter="maintain"/>
     <item id="ToolIK" icon="tool/ik" text="&amp;Inverse Kinematics" shortcut="shortcut.toolIk" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="ik"/>
    </menu>
    <menu id="AnimationCell" text="&amp;Cell">

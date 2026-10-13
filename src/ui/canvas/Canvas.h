@@ -242,7 +242,12 @@ public:
     // layer goes from there to where it was put, instead of being there all along.
     // The Transform tool doing one thing only, wherever the layer is taken hold of: moving it,
     // turning it, or scaling it (the Translate, Rotate and Scale tools).  TransformAll: by its handles, as usual.
-    enum TransformMode { TransformAll, TranslateOnly, RotateOnly, ScaleOnly, SkewOnly };
+    // (MaintainSize: dragged up or down the layer goes away from the camera or towards it, and is
+    // scaled so that it looks as big as before.)
+    enum TransformMode { TransformAll, TranslateOnly, RotateOnly, ScaleOnly, SkewOnly, MaintainSize };
+    // No Z Dragging: Alt with the Transform tool does not move a layer nearer or further.
+    bool noZDragging() const { return m_noZDrag; }
+    Q_INVOKABLE void onActionNoZDragging(bool on) { m_noZDrag = on; }
     int transformMode() const { return m_transformMode; }
     void setTransformMode(int mode)
     {
@@ -758,6 +763,8 @@ private:
     bool m_animate = true;
     bool m_keyFrameOne = false;
     int m_transformMode = TransformAll;
+    bool m_noZDrag = false;
+    bool m_maintaining = false;         // the move being dragged is Maintain Size
     bool m_scaleFromPress = false;       // the scale being dragged is counted from where the pen went down
     void paintMotionPath(QPainter& painter);
     QPointF snapped(QPointF p) const;

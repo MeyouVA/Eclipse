@@ -199,6 +199,11 @@ void Canvas::transformDown(QPointF widgetPos)
         return;
     }
     m_scaleFromPress = false;
+    m_maintaining = m_transformMode == MaintainSize;
+    if (m_maintaining) {
+        m_drag = DragPoseMove;
+        return;
+    }
     // One of the tools that do one thing only: that, wherever the pen went down.
     if (m_transformMode == TranslateOnly) {
         m_drag = DragPoseMove;
