@@ -1,5 +1,6 @@
 // Eclipse - the main window: playback and going from frame to frame.
 #include "ui/window/MainWindow.h"
+#include "ui/views/PreviewManagerView.h"
 
 #include <QInputDialog>
 
@@ -20,6 +21,16 @@ void MainWindow::startPlayingFrom(int from)
     m_playClock.restart();
     if (m_soundOn && !m_playMix.isEmpty())
         m_player.play(m_playMix, qint64(from / m_document->scene().fps * SoundData::kRate));
+}
+
+// Play > Render and Play: every frame is rendered once and kept, then the scene plays from those.
+void MainWindow::onActionRenderAndPlay()
+{
+    if (m_playTimer.isActive())
+        stop();
+    PreviewManagerView* const preview = findChild<PreviewManagerView*>();
+    if (preview && preview->render() > 0)
+        onActionTogglePlayback();
 }
 
 void MainWindow::onActionTogglePlayback()

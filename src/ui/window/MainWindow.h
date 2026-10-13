@@ -313,6 +313,7 @@ public slots:
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
     void onActionHelp();
+    void onActionRenderAndPlay();
     void onActionKeyframeAndDuplicate();
     void onActionToggleSoundScrubbing(bool on) { m_scrub = on; }
     void onActionToggleWaveforms(bool on);

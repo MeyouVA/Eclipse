@@ -117,6 +117,7 @@
 
   <menu id="Play" text="&amp;Play">
    <item id="PlayToggle" icon="play/play" text="&amp;Play" shortcut="shortcut.togglePlayback" checkable="true" responder="window" slot="onActionTogglePlayback()"/>
+   <item id="RenderAndPlay" icon="play/renderplay" text="&amp;Render and Play" shortcut="shortcut.renderAndPlay" responder="window" slot="onActionRenderAndPlay()"/>
    <item id="PlayStop" icon="play/stop" text="S&amp;top" responder="window" slot="onActionStopPlayback()"/>
    <item id="PlaybackSpeed" icon="play/speed" text="Playback Spee&amp;d..." responder="window" slot="onActionPlaybackSpeed()"/>
    <separator/>
