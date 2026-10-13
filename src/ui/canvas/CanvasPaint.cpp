@@ -202,6 +202,30 @@ void Canvas::paintDrawing(QPainter& painter, Scene const& scene, Drawing const& 
     painter.restore();
 }
 
+void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, int frame)
+{
+    static int depth = 0;       // symbols inside symbols: so deep and no deeper (and never round in a ring)
+    Scene::Symbol const* const symbol = scene.findSymbol(symbolId);
+    if (!symbol || depth >= Scene::kSymbolDepth)
+        return;
+    ++depth;
+    Scene const inner = scene.symbolScene(*symbol);
+    int const f = std::clamp(frame, 0, inner.frameCount() - 1);
+    QTransform const base = painter.transform();
+    for (int l : inner.drawOrder(f)) {
+        Layer const& layer = inner.layers[l];
+        int const index = layer.drawingAt(f);
+        if (!inner.enabled(l) || index == Layer::kNoDrawing || !layer.holdsDrawings())
+            continue;
+        painter.setTransform(inner.worldTransform(l, f) * base);
+        Pose const pose = layer.poseAt(f);
+        paintLayerDrawing(painter, inner, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose),
+                          layer.opacity * pose.opacity, base);
+    }
+    painter.setTransform(base);
+    --depth;
+}
+
 void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int frame, Drawing const& drawing, double opacity,
                                QTransform const& sceneToDevice)
 {
@@ -209,11 +233,40 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     bool effects = false;
     for (Effect const& e : layer.effects)
         effects = effects || e.enabled;
+    // A layer that shows a symbol: the symbol is painted, on the frame of it the cell says.
+    bool const symbol = layer.showsSymbol();
+    int const symbolFrame = symbol ? layer.drawingAt(frame) : Layer::kNoDrawing;
+    if (symbol && (symbolFrame == Layer::kNoDrawing || opacity <= 0.0))
+        return;
+    if (symbol && !effects) {
+        if (opacity >= 1.0) {
+            paintSymbol(painter, scene, layer.symbolId, symbolFrame);
+            return;
+        }
+        // Faint: painted whole in a picture of its own and blended once, as a drawing is.
+        QPaintDevice* const device = painter.device();
+        double const dpr = device->devicePixelRatioF();
+        QImage image(QSize(int(device->width() * dpr), int(device->height() * dpr)), QImage::Format_ARGB32_Premultiplied);
+        image.setDevicePixelRatio(dpr);
+        image.fill(Qt::transparent);
+        {
+            QPainter off(&image);
+            off.setRenderHints(painter.renderHints());
+            off.setTransform(painter.transform());
+            paintSymbol(off, scene, layer.symbolId, symbolFrame);
+        }
+        painter.save();
+        painter.resetTransform();
+        painter.setOpacity(painter.opacity() * opacity);
+        painter.drawImage(0, 0, image);
+        painter.restore();
+        return;
+    }
     if (!effects) {
         paintDrawing(painter, scene, drawing, opacity);
         return;
     }
-    if (drawing.isEmpty() || opacity <= 0.0)
+    if (!symbol && (drawing.isEmpty() || opacity <= 0.0))
         return;
     // The layer alone, in a picture of its own, for the effects to work on.
     QPaintDevice* const device = painter.device();
@@ -226,7 +279,10 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         QPainter off(&image);
         off.setRenderHints(painter.renderHints());
         off.setTransform(painter.transform());
-        paintDrawingOpaque(off, scene, drawing, nullptr);
+        if (symbol)
+            paintSymbol(off, scene, layer.symbolId, symbolFrame);
+        else
+            paintDrawingOpaque(off, scene, drawing, nullptr);
     }
     // A blur is so many scene units wide: on screen that depends on the zoom.
     double const pixelsPerUnit = std::sqrt(std::abs(sceneToDevice.determinant())) * dpr;

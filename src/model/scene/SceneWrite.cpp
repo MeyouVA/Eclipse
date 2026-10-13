@@ -118,7 +118,12 @@ QJsonObject Scene::toJson(QString const& folder) const
     QJsonArray layerArray;
     for (Layer const& layer : layers) {
         QJsonArray drawings;
-        for (Drawing const& d : layer.drawings) {
+        for (Drawing const& real : layer.drawings) {
+            // (The drawings of a layer that shows a symbol are made from the symbol: only their names are kept.)
+            Drawing blank;
+            blank.name = real.name;
+            blank.pinned = true;
+            Drawing const& d = layer.showsSymbol() ? blank : real;
             QJsonArray strokes, fills;
             for (Stroke const& s : d.strokes)
                 strokes.append(strokeToJson(s));
@@ -313,6 +318,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                 marks.append(frame);
             layerObject["keyExposures"] = marks;
         }
+        if (layer.showsSymbol())
+            layerObject["symbol"] = layer.symbolId;
         layerArray.append(layerObject);
     }
     QJsonArray paletteArray;
@@ -349,7 +356,15 @@ QJsonObject Scene::toJson(QString const& folder) const
     QJsonArray referenceArray;
     for (QString const& file : references)
         referenceArray.append(QJsonObject{{"file", file}, {"relative", pathFrom(folder, file)}});
+    // A symbol is written as a scene of its own (without symbols inside it: they are all here, side by side).
+    QJsonArray symbolArray;
+    for (Symbol const& symbol : symbols) {
+        Scene inner = symbolScene(symbol);
+        inner.symbols.clear();
+        symbolArray.append(QJsonObject{{"id", symbol.id}, {"name", symbol.name}, {"scene", inner.toJson(folder)}});
+    }
     return QJsonObject{{"format", "eclipse-scene"},
+                       {"symbols", symbolArray},
                        {"version", 3},
                        {"markers", markerArray},
                        {"palette", paletteArray},

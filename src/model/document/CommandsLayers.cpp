@@ -356,6 +356,36 @@ void Document::editLayers(QVector<int> const& layers, QString const& text, std::
     });
 }
 
+int Document::createSymbol(QVector<int> const& layers, QString const& name)
+{
+    {
+        Scene trial = m_scene;
+        if (trial.makeSymbol(layers, name) < 0)
+            return -1;
+    }
+    int at = -1;
+    apply(tr("Create Symbol"), [&](Scene& s) { at = s.makeSymbol(layers, name); });
+    return at;
+}
+
+int Document::insertSymbol(int symbolId, int above)
+{
+    if (!m_scene.findSymbol(symbolId))
+        return -1;
+    int at = -1;
+    apply(tr("Insert Symbol"), [&](Scene& s) { at = s.addSymbolInstance(symbolId, above >= 0 && above < s.layers.size() ? above + 1 : -1); });
+    return at;
+}
+
+int Document::expandSymbol(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].showsSymbol() || !m_scene.findSymbol(m_scene.layers[layer].symbolId))
+        return -1;
+    int at = -1;
+    apply(tr("Expand Symbol"), [&](Scene& s) { at = s.expandSymbol(layer); });
+    return at;
+}
+
 void Document::removeLayers(QVector<int> const& layers)
 {
     QVector<int> gone;

@@ -186,6 +186,12 @@ public:
 
     // ---- structure ----------------------------------------------------------------------
     int addLayer(int above);
+    // Symbols.  Create: these layers, and what is attached to them, become a symbol that one layer shows in their
+    // place (returns that layer, or -1).  Insert: another layer that shows a symbol.  Expand: the layer becomes
+    // a peg with copies of the symbol's layers attached.
+    int createSymbol(QVector<int> const& layers, QString const& name);
+    int insertSymbol(int symbolId, int above);
+    int expandSymbol(int layer);
     int addPeg(int above);
     // The camera of the scene, in front of everything; made if there is none yet.
     int addCamera();

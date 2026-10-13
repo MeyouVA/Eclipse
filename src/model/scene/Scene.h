@@ -479,6 +479,11 @@ struct Layer {
     bool onion = false;
     // Tagged: marked out, so that the Timeline can be made to show the tagged layers only.
     bool tagged = false;
+    // A layer that shows a symbol (Scene::symbols, by its id; 0: none): its cells say which frame of the symbol
+    // each frame shows.  Its drawings are made for it - one for each frame of the symbol, all that the symbol
+    // shows there in one - and are not to be drawn on: the symbol itself is what is painted.
+    int symbolId = 0;
+    bool showsSymbol() const { return symbolId != 0; }
     // Frames of the layer marked with a colour in the Timeline (a note to oneself: "redo", "hold" ...).
     QMap<int, QColor> frameMarks;
     // Key exposures: frames where an exposure of its own begins although the drawing is the one the frame before
@@ -705,6 +710,33 @@ public:
     // sounds) are then also written by their path from there, and looked for there when
     // they are no longer where they were - so a scene moved with its files still finds them.
     QJsonObject toJson(QString const& folder = QString()) const;
+
+    // ---- symbols ------------------------------------------------------------------------------
+    // Layers kept together under a name: a character, a prop, a cycle.  A layer of the scene shows a symbol
+    // (Layer::symbolId), and any number of layers may show the same one - change the symbol and they all change.
+    struct Symbol {
+        int id = 0;
+        QString name;
+        QVector<Layer> layers;      // index 0 is the back, as in a scene
+        int frameCount = 1;
+    };
+    QVector<Symbol> symbols;
+    static constexpr int kSymbolDepth = 6;      // symbols inside symbols, so deep and no deeper
+    Symbol const* findSymbol(int id) const;
+    // The layers of a symbol as a scene of their own: to paint, and to work on.
+    Scene symbolScene(Symbol const& symbol) const;
+    // All that a symbol shows on one of its frames, as one drawing.
+    Drawing symbolPicture(int symbolId, int frame, int depth = 0) const;
+    // Gives the layers that show a symbol (this one, or - 0 - any) their drawings anew.
+    void refreshSymbolInstances(int symbolId = 0);
+    // Makes a symbol of these layers and everything attached to them; one layer shows it in their place.
+    // Returns where that layer is, or -1.
+    int makeSymbol(QVector<int> const& layers, QString const& name);
+    // Another layer that shows a symbol.  Returns where it is, or -1.
+    int addSymbolInstance(int symbolId, int at = -1);
+    // The layer that shows a symbol becomes a peg, with copies of the symbol's layers attached to it.  Returns
+    // where the peg is, or -1.
+    int expandSymbol(int layer);
     static bool fromJson(QJsonObject const& json, Scene& out, QString* error, QString const& folder = QString());
     bool save(QString const& path, QString* error) const;
     static bool load(QString const& path, Scene& out, QString* error);

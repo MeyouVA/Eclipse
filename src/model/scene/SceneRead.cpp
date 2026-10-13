@@ -211,6 +211,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         }
         for (QJsonValue const& kv : lo["keyExposures"].toArray())
             layer.keyExposures.push_back(kv.toInt());
+        layer.symbolId = lo["symbol"].toInt(0);
         layer.collapsed = lo["collapsed"].toBool(false);
         if (QString const track = lo["track"].toString(); !track.isEmpty())
             layer.trackColor = QColor(track);
@@ -411,6 +412,25 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     }
     if (scene.layers.isEmpty())
         scene.addLayer(QStringLiteral("Drawing"));
+    // The symbols, each a scene of its own; then the layers that show them get their drawings.
+    for (QJsonValue const& sv : json["symbols"].toArray()) {
+        QJsonObject const so = sv.toObject();
+        Scene inner;
+        QString why;
+        if (so["id"].toInt(0) <= 0 || scene.findSymbol(so["id"].toInt()) || !fromJson(so["scene"].toObject(), inner, &why, folder))
+            continue;
+        Symbol symbol;
+        symbol.id = so["id"].toInt();
+        symbol.name = so["name"].toString();
+        symbol.layers = inner.layers;
+        symbol.frameCount = inner.frameCount();
+        scene.symbols.push_back(symbol);
+        scene.m_nextLayerId = std::max(scene.m_nextLayerId, inner.m_nextLayerId);
+    }
+    for (Layer& layer : scene.layers)
+        if (layer.showsSymbol() && !scene.findSymbol(layer.symbolId))
+            layer.symbolId = 0;         // a symbol that is not there: a plain layer again
+    scene.refreshSymbolInstances();
     out = scene;
     return true;
 }

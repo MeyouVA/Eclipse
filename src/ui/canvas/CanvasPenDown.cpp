@@ -31,6 +31,12 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         pickColourAt(widgetPos);
         return;
     }
+    // A layer that shows a symbol is moved about like any other, but there is nothing on it to draw on: its
+    // picture is the symbol's.
+    if (scene.layers[m_layer].showsSymbol() && m_tool != Transform && m_tool != IK && m_tool != Rigging) {
+        emit message(tr("This layer shows a symbol: its artwork is changed in the symbol itself (Edit > Edit Symbol), or after Expand Symbol."));
+        return;
+    }
     // A point of the guide in use, taken hold of with a drawing tool: it is dragged.
     if (int const point = guideHandleAt(widgetPos); point >= 0) {
         m_guideEdit = scene.guides;

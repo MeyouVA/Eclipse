@@ -775,6 +775,8 @@ private:
     bool m_onionOutlines = false;
     int m_onionMark = 0;
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
+    // What a symbol shows on one of its frames, painted where the painter stands (the sheet of the layer that shows it).
+    static void paintSymbol(QPainter& painter, Scene const& scene, int symbolId, int frame);
     QColor m_onionBefore = QColor(220, 60, 60);
     QColor m_onionAfter = QColor(50, 160, 80);
     QColor m_backdrop = QColor(127, 127, 127);
