@@ -587,6 +587,18 @@
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>
    <item id="DeleteDrawing"/>
+   <separator/>
+   <item id="RenameDrawing"/>
+   <item id="RenameWithPrefix"/>
+   <item id="RenameByFrame"/>
+   <separator/>
+   <item id="MarkKey"/>
+   <item id="MarkBreakdown"/>
+   <item id="MarkInBetween"/>
+   <item id="MarkNone"/>
+   <separator/>
+   <item id="SubstitutePrevious"/>
+   <item id="SubstituteNext"/>
   </menu>
   <menu id="TimelineExposure" text="Exposure">
    <item id="IncreaseExposure" icon="timeline/increaseexposure" text="Increase Exposure" shortcut="shortcut.increaseExposure" responder="window" slot="onActionIncreaseExposure()"/>
@@ -609,6 +621,7 @@
   </menu>
   <separator/>
   <item id="InsertKeyframe"/>
+  <item id="InsertKeyframeAndDuplicate"/>
   <item id="DeleteKeyframe"/>
   <item id="SetMotionKeyframe"/>
   <item id="SetStopMotionKeyframe"/>
@@ -616,6 +629,8 @@
   <item id="FlipHorizontalAnimation"/>
   <item id="FlipVerticalAnimation"/>
   <menu id="TimelineEase" text="Set Ease">
+   <item id="SetEaseDialog"/>
+   <separator/>
    <item id="EaseIn"/>
    <item id="EaseOut"/>
    <item id="EaseBoth"/>
