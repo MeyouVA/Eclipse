@@ -150,6 +150,9 @@ public:
     // round, `radius` further out all round, at the back of the colour art.  False when there is nothing to cover.
     bool autoMatte(double radius);
     // The Select tool: what is selected stays selected on another frame - whatever lies in the same place there.
+    // The paint tools: what is painted, repainted or unpainted here is so in the same place in every drawing of the layer.
+    void setPaintAllDrawings(bool on) { m_paintAll = on; }
+    bool paintsAllDrawings() const { return m_paintAll; }
     void setPermanentSelection(bool on) { m_permanentSelection = on; }
     bool permanentSelection() const { return m_permanentSelection; }
     // The Stamp tool: how big the stamp comes out (per cent), and whether it is one of the user's own.
@@ -708,6 +711,7 @@ private:
     int m_guideLine = -1;        // the plain guide being dragged with the Select tool
     bool m_guidesLocked = false;
     bool m_selectByColour = false;
+    bool m_paintAll = false;
     bool m_permanentSelection = false;
     bool m_snapAlign = false;
     QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)

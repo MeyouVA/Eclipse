@@ -135,6 +135,11 @@ void ToolProperties::addSelectRows()
     m_byColour->setToolTip(tr("A click on a line or on paint selects everything of that colour in the drawing."));
     connect(m_byColour, &QCheckBox::toggled, m_canvas, &Canvas::setSelectByColour);
     m_form->addRow(m_byColour);
+    m_paintAll = new QCheckBox(tr("Apply to All Drawings"), this);
+    m_paintAll->setObjectName(QStringLiteral("PaintAllDrawings"));
+    m_paintAll->setToolTip(tr("What you paint, repaint or unpaint is painted, repainted or unpainted in the same place in every drawing of the layer."));
+    connect(m_paintAll, &QCheckBox::toggled, m_canvas, &Canvas::setPaintAllDrawings);
+    m_form->addRow(m_paintAll);
     m_permanent = new QCheckBox(tr("Permanent Selection"), this);
     m_permanent->setObjectName(QStringLiteral("SelectPermanent"));
     m_permanent->setToolTip(tr("What is selected stays selected when you go to another frame: whatever lies in the same place in the drawing there."));

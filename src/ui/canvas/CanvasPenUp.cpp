@@ -164,12 +164,38 @@ void Canvas::penUp()
         QPolygonF const shape = m_lassoPath;
         m_lassoPath.clear();
         QRectF const reach = m_dragLasso ? shape.boundingRect() : rect;
-        if (reach.width() * m_zoom <= 3 && reach.height() * m_zoom <= 3)
-            paintAt(m_dragStart);
-        else if (m_dragLasso)
-            paintInside([&shape](QPointF q) { return shape.containsPoint(q, Qt::OddEvenFill); }, shape.boundingRect());
-        else
-            paintInside([&rect](QPointF q) { return rect.contains(q); }, rect);
+        bool const lasso = m_dragLasso;
+        QPointF const at = m_dragStart;
+        auto paint = [&] {
+            if (reach.width() * m_zoom <= 3 && reach.height() * m_zoom <= 3)
+                paintAt(at);
+            else if (lasso)
+                paintInside([&shape](QPointF q) { return shape.containsPoint(q, Qt::OddEvenFill); }, shape.boundingRect());
+            else
+                paintInside([&rect](QPointF q) { return rect.contains(q); }, rect);
+        };
+        Scene const& scene = m_document->scene();
+        if (!m_paintAll || m_layer < 0 || m_layer >= scene.layers.size()) {
+            paint();
+        } else {
+            // The same in every drawing of the layer, as one step: each drawing is come to in turn, by a frame that shows it.
+            QVector<int> const cells = scene.layers[m_layer].cells;
+            QVector<int> frames, seen;
+            for (int f = 0; f < cells.size(); ++f) {
+                if (cells[f] == Layer::kNoDrawing || seen.contains(cells[f]))
+                    continue;
+                seen.push_back(cells[f]);
+                frames.push_back(f);
+            }
+            int const here = m_frame;
+            m_document->beginMacro(m_tool == Unpaint ? tr("Unpaint") : tr("Paint"));
+            for (int f : std::as_const(frames)) {
+                m_frame = f;
+                paint();
+            }
+            m_frame = here;
+            m_document->endMacro();
+        }
     } else if (drag == DragPointMarquee) {
         m_drag = DragNone;
         QRectF const rect = QRectF(m_dragStart, m_dragNow).normalized();

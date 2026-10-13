@@ -79,6 +79,7 @@ private:
     QCheckBox* m_applyAll = nullptr;
     QCheckBox* m_dropperAll = nullptr;
     QCheckBox* m_byColour = nullptr;
+    QCheckBox* m_paintAll = nullptr;
     QCheckBox* m_permanent = nullptr;
     QCheckBox* m_envelopeOutline = nullptr;
     QCheckBox* m_snapAlign = nullptr;
