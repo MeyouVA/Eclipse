@@ -207,6 +207,7 @@ Drawing Canvas::withArt(Drawing const& art) const
             }
             whole.pinned = real->pinned;
             whole.name = real->name;
+            whole.mark = real->mark;
             if (whole.pictures.isEmpty())
                 whole.pictures = real->pictures;        // (the tools do not touch pictures: one made afresh has none)
         }

@@ -55,7 +55,8 @@ void Timeline::paintEvent(QPaintEvent*)
                 if (layer.isKey(f)) {
                     p.fillRect(x, y + 3, 1, kRowHeight - 6, line);
                     p.setPen(Qt::NoPen);
-                    p.setBrush(QColor(24, 24, 24));
+                    // (In the colour of its mark, when it is marked as a key, a breakdown or an in-between.)
+                    p.setBrush(Drawing::markColour(layer.drawings[layer.drawingAt(f)].mark));
                     p.setRenderHint(QPainter::Antialiasing, true);
                     double const r = std::min(3.0, cw / 2.0 - 0.5);
                     p.drawEllipse(QPointF(x + cw / 2.0, y + kRowHeight / 2.0), r, r);

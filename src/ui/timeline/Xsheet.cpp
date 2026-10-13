@@ -130,6 +130,14 @@ void Xsheet::paintEvent(QPaintEvent*)
                 if (layer.isKey(f)) {
                     // The number of the drawing among those of its layer.
                     p.drawText(cell.adjusted(6, 0, -14, 0), Qt::AlignVCenter | Qt::AlignLeft, layer.drawingLabel(drawing));
+                    // Its mark: K for a key drawing, B for a breakdown, I for an in-between.
+                    int const mark = layer.drawings[drawing].mark;
+                    if (mark != Drawing::NoMark) {
+                        p.setPen(Drawing::markColour(mark));
+                        p.drawText(cell.adjusted(6, 0, -22, 0), Qt::AlignVCenter | Qt::AlignRight,
+                                   mark == Drawing::KeyMark ? QStringLiteral("K") : mark == Drawing::BreakdownMark ? QStringLiteral("B") : QStringLiteral("I"));
+                        p.setPen(text);
+                    }
                 } else if (layer.morphing(f)) {
                     // In a morphing: the drawing here is made from the two either side of it.
                     p.setPen(QPen(QColor(170, 215, 120), 2));

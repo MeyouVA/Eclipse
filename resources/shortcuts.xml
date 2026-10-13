@@ -150,6 +150,10 @@
   <shortcut id="shortcut.nextDrawing" text="Go to Next Drawing" value="G"/>
   <shortcut id="shortcut.toolSelect" text="Select Tool" value="Alt+S"/>
   <shortcut id="shortcut.help" text="Eclipse Help" value="F1"/>
+  <shortcut id="shortcut.markKey" text="Mark Drawing As Key Drawing" value=""/>
+  <shortcut id="shortcut.markBreakdown" text="Mark Drawing As Breakdown Drawing" value=""/>
+  <shortcut id="shortcut.markInBetween" text="Mark Drawing As In-between Drawing" value=""/>
+  <shortcut id="shortcut.markNone" text="Remove Drawing Mark" value=""/>
   <shortcut id="shortcut.toolPerspective" text="Perspective Tool" value="Alt+0"/>
   <shortcut id="shortcut.toolPencilEditor" text="Pencil Editor Tool" value=""/>
   <shortcut id="shortcut.renderAndPlay" text="Render and Play" value="Ctrl+Return"/>

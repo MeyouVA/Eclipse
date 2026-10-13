@@ -194,6 +194,14 @@ struct Drawing {
     bool pinned = false;
     // A name of its own ("A", "blink"); without one it goes by its number in the layer.
     QString name;
+    // What the drawing is in the animation, when the animator has said: a key drawing, a
+    // breakdown between keys, or an in-between.  Shown in the Timeline and the Xsheet.
+    enum Mark { NoMark, KeyMark, BreakdownMark, InBetweenMark };
+    int mark = NoMark;
+    static QColor markColour(int mark)
+    {
+        return mark == KeyMark ? QColor(232, 76, 61) : mark == BreakdownMark ? QColor(80, 150, 240) : mark == InBetweenMark ? QColor(90, 200, 110) : QColor(24, 24, 24);
+    }
     // A drawing has two sheets.  The lines above are its line art; under them is its
     // colour art, where areas are painted without touching the lines over them.
     QVector<Fill> colourFills;

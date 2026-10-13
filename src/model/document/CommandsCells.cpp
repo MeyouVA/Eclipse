@@ -73,6 +73,17 @@ bool Document::exposeDrawing(int layer, int frame, QString const& label)
     return true;
 }
 
+bool Document::markDrawing(int layer, int frame, int mark)
+{
+    if (!validCell(m_scene, layer, frame) || mark < Drawing::NoMark || mark > Drawing::InBetweenMark)
+        return false;
+    int const index = m_scene.layers[layer].cells[frame];
+    if (index == Layer::kNoDrawing || m_scene.layers[layer].drawings[index].mark == mark)
+        return false;
+    apply(tr("Mark Drawing"), [&](Scene& s) { s.layers[layer].drawings[index].mark = mark; });
+    return true;
+}
+
 bool Document::renameDrawing(int layer, int frame, QString const& name)
 {
     if (!validCell(m_scene, layer, frame))

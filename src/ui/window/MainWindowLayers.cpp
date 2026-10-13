@@ -352,6 +352,19 @@ void MainWindow::stepLayer(int direction)
         m_timeline->setCurrentCell(rows[row], frame());
 }
 
+// `as` is "key", "breakdown", "inbetween" or "none".
+void MainWindow::onActionMarkDrawing(QString const& as)
+{
+    int const mark = as == QLatin1String("key") ? Drawing::KeyMark : as == QLatin1String("breakdown") ? Drawing::BreakdownMark
+                     : as == QLatin1String("inbetween") ? Drawing::InBetweenMark : Drawing::NoMark;
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size() || scene.layers[layer()].drawingAt(frame()) == Layer::kNoDrawing) {
+        statusBar()->showMessage(tr("There is no drawing on this frame to mark."), 4000);
+        return;
+    }
+    m_document->markDrawing(layer(), frame(), mark);
+}
+
 void MainWindow::onActionRenameDrawing()
 {
     Scene const& scene = m_document->scene();

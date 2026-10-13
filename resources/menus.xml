@@ -169,6 +169,13 @@
    <item id="CreateEmptyDrawing" icon="timeline/newdrawing" text="Create &amp;Empty Drawing" shortcut="shortcut.createEmptyDrawing" responder="window" slot="onActionCreateEmptyDrawing()"/>
    <item id="DuplicateDrawing" icon="timeline/duplicatedrawing" text="&amp;Duplicate Drawings" shortcut="shortcut.duplicateDrawing" responder="window" slot="onActionDuplicateDrawing()"/>
    <item id="DeleteDrawing" icon="timeline/deletedrawing" text="Delete Selected Dra&amp;wings" responder="window" slot="onActionDeleteDrawing()"/>
+   <menu id="DrawingMark" text="Mar&amp;k Drawing As">
+    <item id="MarkKey" icon="timeline/markkey" text="&amp;Key Drawing" shortcut="shortcut.markKey" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="key"/>
+    <item id="MarkBreakdown" icon="timeline/markbreakdown" text="&amp;Breakdown Drawing" shortcut="shortcut.markBreakdown" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="breakdown"/>
+    <item id="MarkInBetween" icon="timeline/markinbetween" text="&amp;In-between Drawing" shortcut="shortcut.markInBetween" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="inbetween"/>
+    <separator/>
+    <item id="MarkNone" icon="timeline/marknone" text="&amp;No Mark" shortcut="shortcut.markNone" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="none"/>
+   </menu>
    <item id="RenameDrawing" icon="timeline/renamedrawing" text="Re&amp;name Drawing..." shortcut="shortcut.renameDrawing" responder="window" slot="onActionRenameDrawing()"/>
    <separator/>
    <submenu id="menu.art" text="Art &amp;Layer"/>
