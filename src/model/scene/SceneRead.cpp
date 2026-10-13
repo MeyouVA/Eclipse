@@ -331,6 +331,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             pose.scaleX = scale(ko["sx"].toDouble(1.0));
             pose.scaleY = scale(ko["sy"].toDouble(1.0));
             pose.rotation = ko["rot"].toDouble();
+            pose.skew = ko["skew"].toDouble(0.0);
             pose.z = ko["z"].toDouble(0.0);
             pose.rotX = ko["rx"].toDouble(0.0);
             pose.rotY = ko["ry"].toDouble(0.0);

@@ -257,6 +257,7 @@
     <item id="ToolTranslate" icon="tool/translate" text="Trans&amp;late" shortcut="shortcut.toolTranslate" responder="window" slot="onActionTransformMode(QString)" itemParameter="translate"/>
     <item id="ToolRotate" icon="tool/rotate" text="&amp;Rotate" shortcut="shortcut.toolRotate" responder="window" slot="onActionTransformMode(QString)" itemParameter="rotate"/>
     <item id="ToolScale" icon="tool/scale" text="&amp;Scale" shortcut="shortcut.toolScale" responder="window" slot="onActionTransformMode(QString)" itemParameter="scale"/>
+    <item id="ToolSkew" icon="tool/skew" text="S&amp;kew" shortcut="shortcut.toolSkew" responder="window" slot="onActionTransformMode(QString)" itemParameter="skew"/>
     <item id="ToolIK" icon="tool/ik" text="&amp;Inverse Kinematics" shortcut="shortcut.toolIk" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="ik"/>
    </menu>
    <menu id="AnimationCell" text="&amp;Cell">

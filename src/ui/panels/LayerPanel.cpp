@@ -52,6 +52,9 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     m_scaleX = number(-100, 100, 0.05, 3);
     m_scaleY = number(-100, 100, 0.05, 3);
     m_angle = number(-36000, 36000, 1.0, 2);
+    m_skew = number(-89, 89, 1.0, 2);
+    m_skew->setObjectName(QStringLiteral("LayerSkew"));
+    m_skew->setToolTip(tr("Leans the layer over: its uprights tipped by so many degrees (positive: the top goes to the right)."));
     m_pivotX = number(-100000, 100000, 1.0, 2);
     m_pivotY = number(-100000, 100000, 1.0, 2);
     m_easeIn = number(0, 100, 10.0, 0);
@@ -94,6 +97,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("Field of View"), m_fov);
     form->addRow(tr("Scale"), pair(m_scaleX, m_scaleY));
     form->addRow(tr("Angle"), m_angle);
+    form->addRow(tr("Skew"), m_skew);
     form->addRow(tr("Pivot"), pair(m_pivotX, m_pivotY));
     QHBoxLayout* const ease = new QHBoxLayout;
     ease->addWidget(new QLabel(tr("In"), this));
@@ -109,7 +113,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         if (!m_refreshing)
             m_document->setFov(m_layer, degrees, m_frame);
     });
-    for (QDoubleSpinBox* box : {m_x, m_y, m_z, m_rotX, m_rotY, m_scaleX, m_scaleY, m_angle, m_opacity})
+    for (QDoubleSpinBox* box : {m_x, m_y, m_z, m_rotX, m_rotY, m_scaleX, m_scaleY, m_angle, m_skew, m_opacity})
         connect(box, &QDoubleSpinBox::valueChanged, this, &LayerPanel::applyPose);
     for (QDoubleSpinBox* box : {m_pivotX, m_pivotY})
         connect(box, &QDoubleSpinBox::valueChanged, this, &LayerPanel::applyPivot);
@@ -193,6 +197,7 @@ void LayerPanel::refresh()
     m_scaleX->setValue(pose.scaleX);
     m_scaleY->setValue(pose.scaleY);
     m_angle->setValue(pose.rotation);
+    m_skew->setValue(pose.skew);
     m_opacity->setValue(pose.opacity * 100.0);
     m_pivotX->setValue(layer.pivot.x());
     m_pivotY->setValue(layer.pivot.y());
@@ -224,6 +229,7 @@ void LayerPanel::applyPose()
     take(pose.scaleX, keep(m_scaleX->value()), 0.0006);
     take(pose.scaleY, keep(m_scaleY->value()), 0.0006);
     take(pose.rotation, m_angle->value(), 0.006);
+    take(pose.skew, m_skew->value(), 0.006);
     take(pose.opacity, m_opacity->value() / 100.0, 0.006);
     if (pose == now)
         return;

@@ -208,6 +208,10 @@ void Canvas::transformDown(QPointF widgetPos)
         m_drag = DragPoseRotate;
         return;
     }
+    if (m_transformMode == SkewOnly) {
+        m_drag = DragPoseSkew;
+        return;
+    }
     if (m_transformMode == ScaleOnly) {
         m_scaleFromPress = true;
         m_dragHandle = BottomRight;

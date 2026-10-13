@@ -244,6 +244,8 @@ struct Pose {
     double scaleX = 1.0;
     double scaleY = 1.0;
     double rotation = 0.0;
+    // Leaning: its uprights tipped over by so many degrees (positive: the top goes to the right).
+    double skew = 0.0;
     // How far the layer stands towards the camera (forward, positive) or away from it
     // (back, negative), in scene units.  What is nearer looks bigger and passes by faster
     // when the camera moves, and is drawn in front of what is further off.  For a camera:

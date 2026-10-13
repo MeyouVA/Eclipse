@@ -221,8 +221,10 @@ void MainWindow::onActionChooseTool(QString const& name)
 void MainWindow::onActionTransformMode(QString const& mode)
 {
     m_canvas->setTool(Canvas::Transform);
-    m_canvas->setTransformMode(mode == QLatin1String("translate") ? Canvas::TranslateOnly : mode == QLatin1String("rotate") ? Canvas::RotateOnly : Canvas::ScaleOnly);
+    m_canvas->setTransformMode(mode == QLatin1String("translate") ? Canvas::TranslateOnly : mode == QLatin1String("rotate") ? Canvas::RotateOnly
+                               : mode == QLatin1String("skew") ? Canvas::SkewOnly : Canvas::ScaleOnly);
     statusBar()->showMessage(mode == QLatin1String("translate") ? tr("Translate: drag the layer anywhere to move it.")
                              : mode == QLatin1String("rotate") ? tr("Rotate: drag anywhere to turn the layer about its pivot.")
+                             : mode == QLatin1String("skew") ? tr("Skew: drag to the right or the left to lean the layer over.")
                                                               : tr("Scale: drag away from the pivot to make the layer bigger, towards it smaller."), 6000);
 }

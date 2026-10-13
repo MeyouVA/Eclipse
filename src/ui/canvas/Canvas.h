@@ -239,7 +239,7 @@ public:
     // layer goes from there to where it was put, instead of being there all along.
     // The Transform tool doing one thing only, wherever the layer is taken hold of: moving it,
     // turning it, or scaling it (the Translate, Rotate and Scale tools).  TransformAll: by its handles, as usual.
-    enum TransformMode { TransformAll, TranslateOnly, RotateOnly, ScaleOnly };
+    enum TransformMode { TransformAll, TranslateOnly, RotateOnly, ScaleOnly, SkewOnly };
     int transformMode() const { return m_transformMode; }
     void setTransformMode(int mode)
     {
@@ -553,7 +553,7 @@ private:
     QTransform layerViewTransform() const;
     // Where the pointer is in the coordinates of the current layer: what the drawing tools use.
     QPointF toLayer(QPointF widgetPos) const;
-    bool posing() const { return m_drag == DragPoseMove || m_drag == DragPoseScale || m_drag == DragPoseRotate || m_drag == DragBone || m_drag == DragIK || m_drag == DragWarp; }
+    bool posing() const { return m_drag == DragPoseSkew || m_drag == DragPoseMove || m_drag == DragPoseScale || m_drag == DragPoseRotate || m_drag == DragBone || m_drag == DragIK || m_drag == DragWarp; }
     // The pose of a layer on a frame, with the one being dragged in place of the stored one.
     Pose poseOf(int layer, int frame) const;
     // A drawing as it is shown: bent along the bones of its layer, except on the layer
@@ -668,7 +668,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke

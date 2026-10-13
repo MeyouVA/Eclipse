@@ -188,6 +188,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                 key["op"] = k.pose.opacity;
             if (k.pose.z != 0.0)
                 key["z"] = k.pose.z;
+            if (k.pose.skew != 0.0)
+                key["skew"] = k.pose.skew;
             if (k.pose.rotX != 0.0)
                 key["rx"] = k.pose.rotX;
             if (k.pose.rotY != 0.0)

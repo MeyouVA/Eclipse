@@ -28,7 +28,7 @@ QColor FunctionGraph::colourOf(Timeline::Parameter which)
 {
     static QColor const colours[Timeline::ParameterCount] = {QColor(232, 96, 84),  QColor(110, 200, 120), QColor(240, 170, 70),
                                                              QColor(100, 170, 240), QColor(200, 130, 230), QColor(210, 210, 210),
-                                                             QColor(90, 210, 200), QColor(230, 120, 170)};
+                                                             QColor(90, 210, 200), QColor(180, 190, 90), QColor(230, 120, 170)};
     return colours[which];
 }
 

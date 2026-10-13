@@ -18,6 +18,7 @@ QString Timeline::parameterName(Parameter which)
     case Angle: return tr("Rotation: Angle_z");
     case Opacity: return tr("Opacity");
     case PosZ: return tr("Position: Pos z");
+    case Skew: return tr("Skew");
     case Fov: return tr("Field of view");
     default: return QString();
     }
@@ -32,6 +33,7 @@ static double& poseField(Pose& pose, Timeline::Parameter which)
     case Timeline::ScaleY: return pose.scaleY;
     case Timeline::Angle: return pose.rotation;
     case Timeline::PosZ: return pose.z;
+    case Timeline::Skew: return pose.skew;
     case Timeline::Fov: return pose.fov;
     default: return pose.opacity;
     }

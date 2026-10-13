@@ -51,6 +51,14 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     }
+    case DragPoseSkew: {
+        // Pulled to the right the layer leans to the right: a degree for every few pixels.
+        double const across = widgetPos.x() - viewTransform().map(m_dragStartScene).x();
+        m_dragPose = m_poseStart;
+        m_dragPose.skew = std::clamp(m_poseStart.skew + across * 0.25, -89.0, 89.0);
+        update();
+        break;
+    }
     case DragPoseRotate: {
         QPointF const c = m_world0.map(m_document->scene().layers[m_layer].pivot);
         QPointF const now = toScene(widgetPos);

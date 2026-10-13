@@ -52,6 +52,7 @@ private:
     QDoubleSpinBox* m_fov;          // a camera: the angle it sees
     QDoubleSpinBox* m_scaleX;
     QDoubleSpinBox* m_scaleY;
+    QDoubleSpinBox* m_skew = nullptr;
     QDoubleSpinBox* m_angle;
     QDoubleSpinBox* m_pivotX;
     QDoubleSpinBox* m_pivotY;

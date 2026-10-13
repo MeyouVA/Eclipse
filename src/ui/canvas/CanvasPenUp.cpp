@@ -259,15 +259,15 @@ void Canvas::penUp()
         m_drag = DragNone;
         m_document->setWarp(m_layer, points, m_document->scene().layers[m_layer].warpClosed,
                             m_warpIndex % 3 == 0 ? tr("Move Deformer Point") : tr("Move Deformer Handle"));
-    } else if (drag == DragPoseMove || drag == DragPoseScale || drag == DragPoseRotate || drag == DragBone || drag == DragIK || drag == DragWarp) {
+    } else if (drag == DragPoseSkew || drag == DragPoseMove || drag == DragPoseScale || drag == DragPoseRotate || drag == DragBone || drag == DragIK || drag == DragWarp) {
         m_drag = DragNone;
         if (!(m_dragPose == m_poseStart) && !m_animate)
             m_document->shiftPoses(m_layer, m_frame, m_poseStart, m_dragPose,
                                    drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
-                                   : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : tr("Rotate Layer"));
+                                   : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : tr("Rotate Layer"));
         else if (!(m_dragPose == m_poseStart) && m_keyFrameOne && m_frame > 0 && m_document->scene().layers[m_layer].keys.isEmpty()) {
             // Its first keyframe, and not on the first frame: the first frame gets one too, of the layer as it was.
-            QString const text = drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : drag == DragPoseRotate ? tr("Rotate Layer")
+            QString const text = drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : drag == DragPoseRotate ? tr("Rotate Layer")
                                  : drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : tr("Turn Bone");
             m_document->beginMacro(text);
             m_document->setKeyframe(m_layer, 0, m_poseStart, text);
@@ -275,7 +275,7 @@ void Canvas::penUp()
             m_document->endMacro();
         } else if (!(m_dragPose == m_poseStart))
             m_document->setKeyframe(m_layer, m_frame, m_dragPose,
-                                    drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone") : drag == DragPoseMove ? tr("Move Layer")
+                                    drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone") : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer")
                                     : drag == DragPoseScale ? tr("Scale Layer") : tr("Rotate Layer"));
     } else if (drag == DragPivot) {
         m_drag = DragNone;

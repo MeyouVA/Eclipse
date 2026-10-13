@@ -36,7 +36,7 @@ public:
     QRect nameRect(int layer) const;
 
     // ---- the parameters of a layer: a row each under it, opened with the + after its name ----
-    enum Parameter { PosX, PosY, ScaleX, ScaleY, Angle, Opacity, PosZ, Fov, ParameterCount };
+    enum Parameter { PosX, PosY, ScaleX, ScaleY, Angle, Opacity, PosZ, Skew, Fov, ParameterCount };       // (Fov last: only cameras have it)
     // Whether a kind of layer has that parameter (the angle of view is a camera's alone).
     static bool parameterFor(int layerKind, Parameter which);
     static QString parameterName(Parameter which);

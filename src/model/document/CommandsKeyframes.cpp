@@ -258,6 +258,7 @@ void Document::shiftPoses(int layer, int frame, Pose const& from, Pose const& to
             p.y += to.y - from.y;
             p.z += to.z - from.z;
             p.rotation += to.rotation - from.rotation;
+            p.skew += to.skew - from.skew;
             p.rotX += to.rotX - from.rotX;
             p.rotY += to.rotY - from.rotY;
             p.scaleX *= ratio(from.scaleX, to.scaleX);

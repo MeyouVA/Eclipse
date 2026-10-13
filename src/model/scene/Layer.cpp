@@ -19,6 +19,7 @@ Pose Pose::lerp(Pose const& a, Pose const& b, double t)
     p.scaleY = a.scaleY + (b.scaleY - a.scaleY) * t;
     // Angles are not wrapped: a keyframe at 720 degrees means two full turns.
     p.rotation = a.rotation + (b.rotation - a.rotation) * t;
+    p.skew = a.skew + (b.skew - a.skew) * t;
     p.z = a.z + (b.z - a.z) * t;
     p.rotX = a.rotX + (b.rotX - a.rotX) * t;
     p.rotY = a.rotY + (b.rotY - a.rotY) * t;
@@ -154,6 +155,8 @@ QTransform Layer::matrix(Pose const& pose, QPointF pivot)
     QTransform m;
     m.translate(pivot.x() + pose.x, pivot.y() + pose.y);
     m.rotate(pose.rotation);
+    if (pose.skew != 0.0)
+        m.shear(-std::tan(std::clamp(pose.skew, -89.0, 89.0) * 3.14159265358979323846 / 180.0), 0.0);     // (down the picture is up the numbers)
     m.scale(pose.scaleX, pose.scaleY);
     m.translate(-pivot.x(), -pivot.y());
     return m;

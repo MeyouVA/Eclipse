@@ -69,7 +69,7 @@ private:
     int m_frame = 0;
     QVector<int> m_others;
     // The position - across, down and in depth - to begin with.
-    bool m_shown[Timeline::ParameterCount] = {true, true, false, false, false, false, true, false};
+    bool m_shown[Timeline::ParameterCount] = {true, true, false, false, false, false, true, false, false};
     double m_first = 0.0;       // the frame at the left edge
     double m_span = 0.0;        // how many frames across; 0: all of the scene
     bool m_zoomed = false;      // the values shown were chosen by hand: they are not fitted again
