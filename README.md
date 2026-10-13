@@ -18,12 +18,14 @@ Eclipse is under active development. Expect rough edges.
 **Drawing**
 
 - Brush, pencil, eraser, line, rectangle, ellipse and polyline tools; a paint bucket with
-  several modes; a text tool; a cutter; a dropper; a stamp; a tool that repositions every
-  drawing of a layer at once.
+  several modes and an ink tool; a text tool; a cutter; a dropper; a stamp; perspective and
+  envelope tools to reshape a selection; pencil and smooth editors; a tool that repositions
+  every drawing of a layer at once.
 - Vector artwork: lines keep their points and can be reshaped with the Contour Editor.
 - Four art layers in every drawing: overlay, line art, colour art and underlay.
 - Colour palettes whose colours are linked to the artwork (change a colour and everything
-  painted with it changes), including gradients.
+  painted with it changes), including gradients; palettes can be linked to a file shared
+  between scenes.
 - Guides to draw along: rulers, grids, 1-, 2- and 3-point perspective, and a symmetry axis
   that mirrors what you draw.
 - Clean-up commands: remove dirt and stray lines, close gaps, unpaint or repaint a
@@ -34,7 +36,10 @@ Eclipse is under active development. Expect rough edges.
 
 - A Timeline and an Xsheet, with exposure commands (extend, hold, fill, cycle, sequence);
   drawings can be named and typed into the Xsheet.
-- Keyframes with ease, motion and stop-motion keyframes, and a Function view of the curves.
+- Keyframes with ease, motion and stop-motion keyframes, and a Function view of the curves;
+  position, scale, rotation, skew, depth and opacity are all animated.
+- Drawings marked as keys, breakdowns and in-betweens; frames marked with colours; tagged
+  layers.
 - Pegs, layer hierarchies, bones, curve and envelope deformers, and inverse kinematics.
 - Morphing between two drawings.
 - Depth: layers nearer to and further from the camera, several cameras, and Top, Side and
