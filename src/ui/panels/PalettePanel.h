@@ -46,6 +46,8 @@ public:
     // there already gives the palette its colours); or linked no longer.
     bool linkPalette(QString const& path, QString* error = nullptr);
     void unlinkPalette();
+    // A palette of its own with the same colours as the one shown (to change without touching that one).  Its place among the palettes.
+    int duplicatePalette();
     void showPaletteMenu(QPoint const& pos);
     // Opens the gradient editor for a colour: one colour, a gradient in a line, or a round one.
     void editGradient(int id);

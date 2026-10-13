@@ -120,6 +120,37 @@ void PalettePanel::unlinkPalette()
     m_document->setPaletteLink(m_palette, QString());
 }
 
+int PalettePanel::duplicatePalette()
+{
+    Scene const& scene = m_document->scene();
+    if (m_palette < 0 || m_palette >= scene.paletteNames.size())
+        return -1;
+    QVector<Swatch> colours;
+    for (Swatch const& swatch : scene.palette)
+        if (swatch.palette == m_palette)
+            colours.push_back(swatch);
+    // One step to undo: the palette and its colours.
+    m_document->beginMacro(tr("Duplicate Palette"));
+    int const made = m_document->addPalette(tr("%1 copy").arg(scene.paletteNames[m_palette]));
+    int given = Scene::kNoSwatch;       // a new palette comes with a black of its own: the copies take its place
+    for (Swatch const& swatch : m_document->scene().palette)
+        if (swatch.palette == made)
+            given = swatch.id;
+    for (Swatch const& from : std::as_const(colours)) {
+        int const id = m_document->addSwatch(from.name, from.color, made);
+        if (from.isGradient())
+            m_document->setSwatchGradient(id, from.kind, from.stops);
+        if (from.isProtected)
+            m_document->setSwatchProtected(id, true);
+    }
+    if (given != Scene::kNoSwatch && !colours.isEmpty())
+        m_document->removeSwatch(given);
+    m_document->endMacro();
+    m_palette = made;
+    rebuild();
+    return made;
+}
+
 // The right button on a palette: the file it shares its colours with.
 void PalettePanel::showPaletteMenu(QPoint const& pos)
 {
@@ -130,6 +161,8 @@ void PalettePanel::showPaletteMenu(QPoint const& pos)
     setCurrentPalette(palette);
     QString const linked = m_document->scene().paletteLink(palette);
     QMenu menu(this);
+    connect(menu.addAction(tr("Duplicate Palette")), &QAction::triggered, this, [this] { duplicatePalette(); });
+    menu.addSeparator();
     connect(menu.addAction(tr("Link to File...")), &QAction::triggered, this, [this] {
         QString path = QFileDialog::getSaveFileName(this, tr("Link Palette to File"), m_document->scene().paletteNames.value(m_palette) + QStringLiteral(".eclpal"),
                                                     tr("Eclipse palettes (*.eclpal)"), nullptr, QFileDialog::DontConfirmOverwrite);
