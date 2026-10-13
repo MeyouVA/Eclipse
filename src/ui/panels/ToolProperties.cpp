@@ -199,6 +199,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_sizeRow, draws);
     m_form->setRowVisible(m_smoothingRow, brush || pencil);
     m_form->setRowVisible(m_minSizeRow, brush);
+    m_form->setRowVisible(m_gapRow, tool == T::Paint || tool == T::PaintUnpainted);
     m_form->setRowVisible(m_cornersRow, brush || pencil);
     m_form->setRowVisible(m_brushShape, brush);
     m_form->setRowVisible(m_autoFlatten, brush);

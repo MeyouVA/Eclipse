@@ -160,6 +160,9 @@ public:
     // The Select tool: what is selected stays selected on another frame - whatever lies in the same place there.
     // The paint tools: what is painted, repainted or unpainted here is so in the same place in every drawing of the layer.
     void setPaintAllDrawings(bool on) { m_paintAll = on; }
+    // ... and how wide a gap in the lines round an area they close of themselves (pixels of the drawing).
+    double closeGapSize() const { return m_gapSize; }
+    void setCloseGapSize(double pixels) { m_gapSize = pixels; }
     bool paintsAllDrawings() const { return m_paintAll; }
     void setPermanentSelection(bool on) { m_permanentSelection = on; }
     bool permanentSelection() const { return m_permanentSelection; }
@@ -742,6 +745,7 @@ private:
     int m_guideLine = -1;        // the plain guide being dragged with the Select tool
     bool m_guidesLocked = false;
     bool m_selectByColour = false;
+    double m_gapSize = 2.0;
     bool m_paintAll = false;
     bool m_permanentSelection = false;
     bool m_snapAlign = false;

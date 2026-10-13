@@ -46,6 +46,16 @@ void ToolProperties::addSizeRows()
                     settings().setValue(QStringLiteral("tools/brushMinSize"), v);
                 });
     }
+    // The paint tools: gaps in the lines round an area, up to this wide, are closed of themselves.
+    {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/closeGap"), 2).toInt(), 0, 40);
+        m_canvas->setCloseGapSize(kept);
+        m_gapRow = addSetting(tr("Close Gap"), tr("A gap this wide or less in the lines round an area does not let the paint out. 0: only areas that are closed are painted."),
+                0, 40, kept, QStringLiteral(" px"), [this](int v) {
+                    m_canvas->setCloseGapSize(v);
+                    settings().setValue(QStringLiteral("tools/closeGap"), v);
+                });
+    }
     // How drawn lines are tidied when the pen lifts.
     m_smoothingRow = addSetting(tr("Smoothing"), tr("How much a line drawn with the brush or pencil is smoothed when the pen lifts."), 0, 100, 25,
             QStringLiteral(" %"), [this](int v) { m_canvas->setSmoothing(v); });

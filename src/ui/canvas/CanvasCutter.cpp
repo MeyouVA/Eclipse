@@ -185,7 +185,7 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
                             bounded.fills.push_back(shape);
                 }
                 QVector<QPolygonF> outlines;
-                if (FillRegion::compute(bounded, FillRegion::paintArea(bounded), at, 2.0, outlines) != FillRegion::Ok || outlines.isEmpty())
+                if (FillRegion::compute(bounded, FillRegion::paintArea(bounded), at, m_gapSize, outlines) != FillRegion::Ok || outlines.isEmpty())
                     continue;
                 QRectF area;
                 for (QPolygonF const& outline : std::as_const(outlines))
