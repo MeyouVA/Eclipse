@@ -18,6 +18,7 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QSettings>
 #include <QSpinBox>
@@ -95,6 +96,111 @@ void MainWindow::onActionCheckFiles()
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addWidget(summary);
     layout->addWidget(list);
+    layout->addWidget(buttons);
+    dialog.exec();
+}
+
+// Scene > Element Manager: the layers that hold drawings - the elements of the scene - with how many drawings
+// each has; one can be added, given another name, or deleted with all its drawings.
+void MainWindow::onActionElementManager()
+{
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("ElementManagerDialog"));
+    dialog.setWindowTitle(tr("Element Manager"));
+    QListWidget* const list = new QListWidget(&dialog);
+    list->setObjectName(QStringLiteral("ElementList"));
+    list->setMinimumSize(420, 260);
+    QLineEdit* const name = new QLineEdit(&dialog);
+    name->setObjectName(QStringLiteral("ElementName"));
+    name->setPlaceholderText(tr("Name of the element"));
+    QPushButton* const add = new QPushButton(tr("Add"), &dialog);
+    add->setObjectName(QStringLiteral("ElementAdd"));
+    add->setToolTip(tr("Adds a drawing layer with that name."));
+    QPushButton* const rename = new QPushButton(tr("Rename"), &dialog);
+    rename->setObjectName(QStringLiteral("ElementRename"));
+    rename->setToolTip(tr("Gives the element chosen in the list that name."));
+    QPushButton* const remove = new QPushButton(tr("Delete"), &dialog);
+    remove->setObjectName(QStringLiteral("ElementDelete"));
+    remove->setToolTip(tr("Deletes the element chosen in the list, with all its drawings."));
+    auto layerOf = [this](QListWidgetItem const* item) {
+        Scene const& scene = m_document->scene();
+        for (int l = 0; item && l < scene.layers.size(); ++l)
+            if (scene.layers[l].id == item->data(Qt::UserRole).toInt())
+                return l;
+        return -1;
+    };
+    auto fill = [this, list](int chosenId) {
+        Scene const& scene = m_document->scene();
+        list->clear();
+        // From the front of the picture to the back, as the Timeline has them.
+        for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {
+            Layer const& layer = scene.layers[l];
+            if (!layer.holdsDrawings())
+                continue;
+            int shown = 0;
+            for (int cell : layer.cells)
+                shown += cell != Layer::kNoDrawing ? 1 : 0;
+            QListWidgetItem* const item = new QListWidgetItem(tr("%1   -   %n drawing(s)", nullptr, int(layer.drawings.size())).arg(layer.name)
+                                                              + tr(", shown on %n frame(s)", nullptr, shown), list);
+            item->setData(Qt::UserRole, layer.id);
+            if (layer.id == chosenId)
+                list->setCurrentItem(item);
+        }
+    };
+    fill(-1);
+    auto enable = [=] {
+        bool const one = list->currentItem() != nullptr, named = !name->text().trimmed().isEmpty();
+        add->setEnabled(named);
+        rename->setEnabled(one && named);
+        remove->setEnabled(one);
+    };
+    enable();
+    connect(name, &QLineEdit::textChanged, &dialog, enable);
+    connect(list, &QListWidget::currentItemChanged, &dialog, [=](QListWidgetItem* item) {
+        if (item) {
+            int const layer = layerOf(item);
+            if (layer >= 0)
+                name->setText(m_document->scene().layers[layer].name);
+        }
+        enable();
+    });
+    connect(add, &QPushButton::clicked, &dialog, [=] {
+        m_document->beginMacro(tr("Add Element"));
+        int const made = m_document->addLayer(int(m_document->scene().layers.size()) - 1);
+        if (made >= 0)
+            m_document->renameLayer(made, name->text().trimmed());
+        m_document->endMacro();
+        fill(made >= 0 ? m_document->scene().layers[made].id : -1);
+        enable();
+    });
+    connect(rename, &QPushButton::clicked, &dialog, [=] {
+        int const layer = layerOf(list->currentItem());
+        if (layer < 0)
+            return;
+        int const id = m_document->scene().layers[layer].id;
+        m_document->renameLayer(layer, name->text().trimmed());
+        fill(id);
+        enable();
+    });
+    connect(remove, &QPushButton::clicked, &dialog, [=] {
+        int const layer = layerOf(list->currentItem());
+        if (layer < 0)
+            return;
+        m_document->removeLayers({layer});
+        fill(-1);
+        enable();
+    });
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QHBoxLayout* const row = new QHBoxLayout;
+    row->addWidget(name, 1);
+    row->addWidget(add);
+    row->addWidget(rename);
+    row->addWidget(remove);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("The elements of the scene: the layers that hold drawings."), &dialog));
+    layout->addWidget(list);
+    layout->addLayout(row);
     layout->addWidget(buttons);
     dialog.exec();
 }

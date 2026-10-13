@@ -165,6 +165,7 @@
    <item id="SceneSettings" icon="misc/scenesettings" text="Scene &amp;Settings..." responder="window" slot="onActionSceneSettings()"/>
    <separator/>
    <item id="CheckFiles" icon="misc/checkfiles" text="&amp;Check Files..." responder="window" slot="onActionCheckFiles()"/>
+   <item id="ElementManager" icon="misc/elements" text="&amp;Element Manager..." responder="window" slot="onActionElementManager()"/>
   </menu>
 
   <menu id="Drawing" text="&amp;Drawing">

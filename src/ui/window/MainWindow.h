@@ -186,6 +186,7 @@ public slots:
     void onActionMoveToParentGroup();
     void onActionPreferences();
     void onActionCheckFiles();
+    void onActionElementManager();
     void onActionStopPlayback() { stop(); }
     void onActionPlaybackSpeed();
     void onActionImportImages() { askImportImages(false); }
