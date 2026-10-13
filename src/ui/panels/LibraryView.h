@@ -43,6 +43,11 @@ public:
     void removeFolder(int index);
     QString currentFolder() const;
     void setCurrentFolder(int index);
+    // The folders inside the folders of the library are shown under them, set in; any of them
+    // can be the current one.  A new one is made inside the current folder.
+    bool setCurrentPath(QString const& folder);
+    bool addSubFolder(QString const& name);
+    QStringList shownFolders() const;
 
     // The templates of the current folder, as shown (after the search), and the one chosen.
     QStringList templates() const;

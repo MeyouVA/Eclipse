@@ -1,5 +1,7 @@
 #include "ui/panels/LibraryView.h"
 
+#include <functional>
+
 #include <QDir>
 #include <QDrag>
 #include <QFileDialog>
@@ -123,6 +125,7 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
         return b;
     };
     QToolButton* const addFolderButton = small(QStringLiteral("+"), tr("Add a folder to the library"), "LibraryAddFolder");
+    QToolButton* const newFolderButton = small(QString(QChar(0x2295)), tr("Make a new folder inside the selected one"), "LibraryNewFolder");
     QToolButton* const removeFolderButton = small(QString(QChar(0x2212)), tr("Take the selected folder out of the library (its files stay)"), "LibraryRemoveFolder");
     QPushButton* const create = new QPushButton(tr("New Template from Selection..."), this);
     create->setObjectName(QStringLiteral("LibraryCreate"));
@@ -141,6 +144,7 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     folderBar->addWidget(new QLabel(tr("Folders"), left));
     folderBar->addStretch(1);
     folderBar->addWidget(addFolderButton);
+    folderBar->addWidget(newFolderButton);
     folderBar->addWidget(removeFolderButton);
     leftLayout->addLayout(folderBar);
     leftLayout->addWidget(m_folderList, 1);
@@ -193,7 +197,18 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
         if (!folder.isEmpty() && addFolder(folder))
             setCurrentFolder(int(m_folders.size()) - 1);
     });
-    connect(removeFolderButton, &QToolButton::clicked, this, [this] { removeFolder(m_folderList->currentRow()); });
+    connect(removeFolderButton, &QToolButton::clicked, this, [this] {
+        // Only a folder of the library itself is taken out of it; one inside it is part of that folder.
+        if (m_folderList->currentItem())
+            removeFolder(m_folderList->currentItem()->data(Qt::UserRole + 1).toInt());
+    });
+    connect(newFolderButton, &QToolButton::clicked, this, [this] {
+        bool ok = false;
+        QString const name = QInputDialog::getText(this, tr("New Folder"), tr("Name of the folder to make in \"%1\":").arg(QDir(currentFolder()).dirName()),
+                                                   QLineEdit::Normal, tr("New Folder"), &ok);
+        if (ok && !addSubFolder(name))
+            QMessageBox::warning(this, tr("Eclipse"), tr("The folder could not be made: the name is taken, or it is not a name a folder can have."));
+    });
 
     // The folders kept from last time, after the one that is always there.
     QStringList kept = QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("library/folders")).toStringList();
@@ -210,14 +225,27 @@ void LibraryView::remember()
 
 void LibraryView::showFolders()
 {
-    int const row = std::clamp(m_folderList->currentRow(), 0, std::max(0, int(m_folders.size()) - 1));
+    QString const was = m_folderList->currentItem() ? m_folderList->currentItem()->data(Qt::UserRole).toString() : QString();
     {
         QSignalBlocker const block(m_folderList);
         m_folderList->clear();
-        for (QString const& folder : std::as_const(m_folders)) {
-            QListWidgetItem* const item = new QListWidgetItem(QDir(folder).dirName(), m_folderList);
+        // Each folder of the library, and under it - set in - the folders inside it.
+        std::function<void(QString const&, int, int)> list = [&](QString const& folder, int root, int depth) {
+            QListWidgetItem* const item = new QListWidgetItem(QString(depth * 4, QChar(0x20)) + QDir(folder).dirName(), m_folderList);
             item->setToolTip(QDir::toNativeSeparators(folder));
-        }
+            item->setData(Qt::UserRole, folder);
+            item->setData(Qt::UserRole + 1, depth == 0 ? root : -1);
+            if (depth >= 6)
+                return;     // deep enough for a library
+            for (QString const& inner : QDir(folder).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase))
+                list(QDir(folder).filePath(inner), root, depth + 1);
+        };
+        for (int i = 0; i < m_folders.size(); ++i)
+            list(m_folders[i], i, 0);
+        int row = 0;
+        for (int i = 0; i < m_folderList->count(); ++i)
+            if (m_folderList->item(i)->data(Qt::UserRole).toString() == was)
+                row = i;
         m_folderList->setCurrentRow(row);
     }
     refresh();
@@ -253,13 +281,47 @@ void LibraryView::removeFolder(int index)
 
 QString LibraryView::currentFolder() const
 {
-    return m_folders.value(std::max(0, m_folderList->currentRow()));
+    return m_folderList->currentItem() ? m_folderList->currentItem()->data(Qt::UserRole).toString() : m_folders.value(0);
 }
 
 void LibraryView::setCurrentFolder(int index)
 {
-    if (index >= 0 && index < m_folders.size())
-        m_folderList->setCurrentRow(index);
+    for (int row = 0; row < m_folderList->count(); ++row)
+        if (m_folderList->item(row)->data(Qt::UserRole + 1).toInt() == index)
+            m_folderList->setCurrentRow(row);
+}
+
+bool LibraryView::setCurrentPath(QString const& folder)
+{
+    for (int row = 0; row < m_folderList->count(); ++row) {
+        if (QDir(m_folderList->item(row)->data(Qt::UserRole).toString()) == QDir(folder)) {
+            m_folderList->setCurrentRow(row);
+            return true;
+        }
+    }
+    return false;
+}
+
+QStringList LibraryView::shownFolders() const
+{
+    QStringList shown;
+    for (int row = 0; row < m_folderList->count(); ++row)
+        shown << m_folderList->item(row)->data(Qt::UserRole).toString();
+    return shown;
+}
+
+bool LibraryView::addSubFolder(QString const& name)
+{
+    QString const clean = name.trimmed();
+    bool sound = !clean.isEmpty() && !clean.endsWith(QChar(0x2e));
+    for (QChar const c : clean)
+        sound = sound && !QStringLiteral("\\/:*?\"<>|").contains(c);
+    QDir const here(currentFolder());
+    if (!sound || here.exists(clean) || !here.mkdir(clean))
+        return false;
+    showFolders();
+    setCurrentPath(here.filePath(clean));
+    return true;
 }
 
 void LibraryView::setSearch(QString const& text)
