@@ -34,6 +34,8 @@ public:
     // the graph is on it.  A click on the map brings that part of the graph to the middle of the view.
     QRectF navigatorRect() const;
     QPointF navigatorPoint(QPointF graph) const;
+    // Where a place of the view is in the graph.
+    QPointF graphPoint(QPointF widgetPos) const { return toGraph(widgetPos); }
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -46,6 +48,9 @@ signals:
     void layerPicked(int layer);
     void renameRequested(int layer);
     void contextMenuRequested(QPoint const& globalPos);
+    // Something of the Node Library was dropped here: what (as NodeLibraryView::add takes it), and where its
+    // node is to stand in the graph.
+    void nodeDropped(QString const& what, QPointF graphPos);
 
 protected:
     void paintEvent(QPaintEvent*) override;
@@ -56,6 +61,9 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent*) override;
     void wheelEvent(QWheelEvent*) override;
     void contextMenuEvent(QContextMenuEvent*) override;
+    void dragEnterEvent(QDragEnterEvent*) override;
+    void dragMoveEvent(QDragMoveEvent*) override;
+    void dropEvent(QDropEvent*) override;
     QSize sizeHint() const override { return QSize(360, 300); }
 
 private:

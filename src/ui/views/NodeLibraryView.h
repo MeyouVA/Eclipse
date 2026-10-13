@@ -15,6 +15,8 @@ public:
     explicit NodeLibraryView(QWidget* parent = nullptr);
     // Adds what is named: a kind of layer ("InsertPeg" ...) or an effect ("effect:0" ...).
     void add(QString const& what);
+    // What a drag out of the list carries: the name of the thing dragged (as `add` takes it).
+    static char const* mimeType() { return "application/x-eclipse-node"; }
 
 signals:
     // A command of the program is asked for (the layers are added by their Insert commands).

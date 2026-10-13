@@ -1,6 +1,8 @@
 #include "ui/views/NodeView.h"
 
 #include <QContextMenuEvent>
+#include <QDragEnterEvent>
+#include <QMimeData>
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
@@ -16,6 +18,7 @@ NodeView::NodeView(Document* document, QWidget* parent) : QWidget(parent), m_doc
 {
     setFocusPolicy(Qt::ClickFocus);
     setMouseTracking(false);
+    setAcceptDrops(true);       // from the Node Library
     connect(m_document, &Document::changed, this, [this] {
         m_cable = -1;
         update();
@@ -55,6 +58,32 @@ int NodeView::find(QString const& text)
         return i;
     }
     return -1;
+}
+
+// ---- from the Node Library --------------------------------------------------------------------
+
+static char const* const kNodeMime = "application/x-eclipse-node";
+
+void NodeView::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->mimeData()->hasFormat(QLatin1String(kNodeMime)))
+        event->acceptProposedAction();
+}
+
+void NodeView::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (event->mimeData()->hasFormat(QLatin1String(kNodeMime)))
+        event->acceptProposedAction();
+}
+
+void NodeView::dropEvent(QDropEvent* event)
+{
+    if (!event->mimeData()->hasFormat(QLatin1String(kNodeMime)))
+        return;
+    event->acceptProposedAction();
+    // (Its node with its middle under the pointer.)
+    emit nodeDropped(QString::fromUtf8(event->mimeData()->data(QLatin1String(kNodeMime))),
+                     toGraph(event->position()) - QPointF(kNodeWidth / 2.0, kNodeHeight / 2.0));
 }
 
 void NodeView::setCurrentCell(int layer, int)

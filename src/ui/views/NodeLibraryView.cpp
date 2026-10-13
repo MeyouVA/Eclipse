@@ -4,6 +4,7 @@
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMimeData>
 #include <QPushButton>
 #include <QVBoxLayout>
 
@@ -19,7 +20,25 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
     m_search->setObjectName(QStringLiteral("NodeLibrarySearch"));
     m_search->setPlaceholderText(tr("Search"));
     m_search->setClearButtonEnabled(true);
-    m_list = new QListWidget(this);
+    // (A list whose items, dragged out, say what they are - to drop in the Node View.)
+    class Dragged : public QListWidget {
+    public:
+        using QListWidget::QListWidget;
+
+    protected:
+        QMimeData* mimeData(QList<QListWidgetItem*> const& items) const override
+        {
+            QString const what = items.isEmpty() ? QString() : items.first()->data(Qt::UserRole).toString();
+            if (what.isEmpty())
+                return nullptr;
+            QMimeData* const data = new QMimeData;
+            data->setData(QLatin1String(NodeLibraryView::mimeType()), what.toUtf8());
+            return data;
+        }
+    };
+    m_list = new Dragged(this);
+    m_list->setDragEnabled(true);
+    m_list->setDragDropMode(QAbstractItemView::DragOnly);
     m_list->setObjectName(QStringLiteral("NodeLibraryList"));
     struct Entry {
         char const* name;

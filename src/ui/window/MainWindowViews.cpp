@@ -26,6 +26,7 @@
 #include "ui/panels/LayerPanel.h"
 #include "ui/io/MovieExport.h"
 #include "ui/views/NodeView.h"
+#include "ui/views/NodeLibraryView.h"
 #include "ui/panels/PalettePanel.h"
 #include "ui/panels/SubstitutionPanel.h"
 #include "ui/timeline/Timeline.h"
@@ -148,6 +149,22 @@ void MainWindow::createViews()
     addView(tr("Breakdown Assistant"), QStringLiteral("BreakdownDock"), createBreakdownView(), Qt::RightDockWidgetArea)->hide();
 
     m_nodeView = new NodeView(m_document, this);
+    // Dragged into the Node View: added as by a double click, and - a layer - its node put where it was dropped, as one step.
+    connect(m_nodeView, &NodeView::nodeDropped, this, [this](QString const& what, QPointF graphPos) {
+        NodeLibraryView* const view = findChild<NodeLibraryView*>();
+        if (!view)
+            return;
+        if (what.startsWith(QLatin1String("effect:"))) {
+            view->add(what);        // an effect has no node of its own: it goes on the current layer
+            return;
+        }
+        int const before = int(m_document->scene().layers.size());
+        m_document->beginMacro(tr("Add Node"));
+        view->add(what);
+        if (m_document->scene().layers.size() == before + 1 && layer() >= 0 && layer() < m_document->scene().layers.size())
+            m_document->setNodePos(layer(), graphPos);
+        m_document->endMacro();
+    });
     addView(tr("Node View"), QStringLiteral("NodeViewDock"), m_nodeView, Qt::RightDockWidgetArea);
 
     // Views dropped on one another share a frame, with a tab each.
