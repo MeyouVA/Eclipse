@@ -31,9 +31,17 @@ private:
 
 Document::Document(QObject* parent) : QObject(parent) {}
 
+void Document::setUndoLevels(int levels)
+{
+    m_undoLevels = std::max(0, levels);
+    if (m_undo.count() == 0)
+        m_undo.setUndoLimit(m_undoLevels);
+}
+
 void Document::reset(Scene const& scene)
 {
     m_undo.clear();
+    m_undo.setUndoLimit(m_undoLevels);
     m_scene = scene;
     emit changed();
 }

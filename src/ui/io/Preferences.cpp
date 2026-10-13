@@ -119,6 +119,7 @@ void MainWindow::applyPreferences()
     }
     if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
         m_canvas->setArt(Canvas::LineArt);
+    m_document->setUndoLevels(std::clamp(s.value(QStringLiteral("prefs/undoLevels"), 100).toInt(), 0, 10000));
     m_document->setExtendPreviousExposure(s.value(QStringLiteral("prefs/extendExposure"), true).toBool());
     m_canvas->setKeysFrameOne(s.value(QStringLiteral("prefs/keyFrameOne"), true).toBool());
     m_canvas->setNudgeStep(std::clamp(s.value(QStringLiteral("prefs/nudge"), 1).toInt(), 1, 100));
@@ -149,6 +150,13 @@ void MainWindow::onActionPreferences()
     generalLayout->addRow(welcome);
     generalLayout->addRow(tr("Save the scene by itself every"), autoSave);
     generalLayout->addRow(new QLabel(tr("(Only a scene that has been saved once, and only when it has changed.)"), general));
+    QSpinBox* const undoLevels = new QSpinBox(general);
+    undoLevels->setObjectName(QStringLiteral("PrefUndoLevels"));
+    undoLevels->setRange(0, 10000);
+    undoLevels->setSpecialValueText(tr("No limit"));
+    undoLevels->setToolTip(tr("How many steps can be undone. It takes hold with the next scene made or opened."));
+    undoLevels->setValue(m_document->undoLevels());
+    generalLayout->addRow(tr("Levels of undo"), undoLevels);
 
     QGroupBox* const camera = new QGroupBox(tr("Camera"), &dialog);
     QComboBox* const selectMode = new QComboBox(camera);
@@ -224,6 +232,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/lasso"), selectMode->currentIndex() == 0);
     s.setValue(QStringLiteral("prefs/overlayUnderlay"), moreArt->isChecked());
     s.setValue(QStringLiteral("prefs/nudge"), nudge->value());
+    s.setValue(QStringLiteral("prefs/undoLevels"), undoLevels->value());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), extend->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());

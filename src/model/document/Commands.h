@@ -45,6 +45,10 @@ public:
     // empty frames up to it (off: they stay empty).
     bool extendsPreviousExposure() const { return m_extendPrevious; }
     void setExtendPreviousExposure(bool on) { m_extendPrevious = on; }
+    // How many steps can be undone (0: as many as there are).  It takes hold at once when there is
+    // nothing to undo yet, and otherwise with the next scene made or opened.
+    int undoLevels() const { return m_undoLevels; }
+    void setUndoLevels(int levels);
     QUndoStack* undoStack() { return &m_undo; }
 
     // Replaces everything (new / open); clears the undo history.
@@ -321,5 +325,6 @@ private:
 
     Scene m_scene;
     bool m_extendPrevious = false;
+    int m_undoLevels = 0;
     QUndoStack m_undo;
 };
