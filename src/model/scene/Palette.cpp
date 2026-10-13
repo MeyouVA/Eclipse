@@ -187,11 +187,28 @@ QBrush Scene::brushFor(Stroke const& stroke) const
         return QBrush(stroke.color);
     if (!s->isGradient())
         return QBrush(s->color);
+    QPointF from, to;
+    gradientLine(stroke, from, to);
+    return s->brush(from, to);
+}
+
+void Scene::gradientLine(Stroke const& stroke, QPointF& from, QPointF& to) const
+{
+    if (stroke.gradPlaced) {
+        from = stroke.gradFrom;
+        to = stroke.gradTo;
+        return;
+    }
     // Along a line the gradient goes from the one end of what it covers to the other.
+    Swatch const* const s = findSwatch(stroke.swatch);
     QRectF const box = stroke.bounds();
-    if (s->kind == Swatch::Radial)
-        return s->brush(box.center(), box.center() + QPointF(std::max(box.width(), box.height()) / 2.0, 0));
-    return s->brush(QPointF(box.left(), box.center().y()), QPointF(box.right(), box.center().y()));
+    if (s && s->kind == Swatch::Radial) {
+        from = box.center();
+        to = from + QPointF(std::max(box.width(), box.height()) / 2.0, 0);
+    } else {
+        from = QPointF(box.left(), box.center().y());
+        to = QPointF(box.right(), box.center().y());
+    }
 }
 
 QColor Scene::resolve(int swatch, QColor const& fallback) const

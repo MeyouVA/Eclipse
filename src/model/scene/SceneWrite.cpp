@@ -28,6 +28,8 @@ static QJsonObject strokeToJson(Stroke const& s)
     QJsonObject o{{"color", s.color.name(QColor::HexArgb)}, {"swatch", s.swatch}, {"width", double(s.width)}, {"points", pts}};
     if (s.group != 0)
         o["group"] = s.group;
+    if (s.gradPlaced)
+        o["grad"] = QJsonArray{s.gradFrom.x(), s.gradFrom.y(), s.gradTo.x(), s.gradTo.y()};
     QJsonArray corners;
     for (int i = 0; i < s.points.size(); ++i)
         if (s.points[i].corner)

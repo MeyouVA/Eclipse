@@ -346,6 +346,10 @@ void Canvas::alsoInOtherDrawings(QRectF const& region, QTransform const* transfo
 bool Canvas::gradientValid() const
 {
     Drawing const* const d = currentDrawing();
+    if (d && m_gradStroke >= 0 && m_gradStroke < d->strokes.size()) {
+        Swatch const* const s = m_document->scene().findSwatch(d->strokes[m_gradStroke].swatch);
+        return s && s->isGradient();
+    }
     if (!d || m_gradFill < 0 || m_gradFill >= d->fills.size())
         return false;
     Swatch const* const s = m_document->scene().findSwatch(d->fills[m_gradFill].swatch);
@@ -366,7 +370,10 @@ void Canvas::gradientDown(QPointF widgetPos, QPointF p)
     // A handle of the gradient in hand.
     if (gradientValid()) {
         QPointF from, to;
-        scene.gradientLine(d->fills[m_gradFill], from, to);
+        if (m_gradStroke >= 0)
+            scene.gradientLine(d->strokes[m_gradStroke], from, to);
+        else
+            scene.gradientLine(d->fills[m_gradFill], from, to);
         QTransform const toWidget = layerViewTransform();
         auto isAt = [&](QPointF layerPos) { return QLineF(toWidget.map(layerPos), widgetPos).length() <= 8.0; };
         int const handle = isAt(to) ? 2 : isAt(from) ? 1 : 0;
@@ -379,7 +386,22 @@ void Canvas::gradientDown(QPointF widgetPos, QPointF p)
             return;
         }
     }
-    // The topmost area under the pointer that is painted with a gradient.
+    // A line drawn in a gradient colour, under the pointer (lines lie over the paint) ...
+    for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
+        Swatch const* const s = scene.findSwatch(d->strokes[i].swatch);
+        if (!s || !s->isGradient() || !d->strokes[i].hit(p, std::max(double(d->strokes[i].width) / 2.0, 4.0 / std::max(m_zoom, 1e-6))))
+            continue;
+        m_gradStroke = i;
+        m_gradFill = -1;
+        m_gradHandle = 0;
+        scene.gradientLine(d->strokes[i], m_gradFrom, m_gradTo);
+        m_eraseArt = *d;
+        m_drag = DragGradient;
+        update();
+        return;
+    }
+    m_gradStroke = -1;
+    // ... or the topmost area under it that is painted with one.
     for (int i = int(d->fills.size()) - 1; i >= 0; --i) {
         Swatch const* const s = scene.findSwatch(d->fills[i].swatch);
         if (!s || !s->isGradient() || !d->fills[i].contains(p))
@@ -402,8 +424,12 @@ void Canvas::paintGradientAids(QPainter& painter)
     if (!gradientValid())
         return;
     QPointF from = m_gradFrom, to = m_gradTo;
-    if (m_drag != DragGradient || !m_gradMoved)
-        m_document->scene().gradientLine(currentDrawing()->fills[m_gradFill], from, to);
+    if (m_drag != DragGradient || !m_gradMoved) {
+        if (m_gradStroke >= 0)
+            m_document->scene().gradientLine(currentDrawing()->strokes[m_gradStroke], from, to);
+        else
+            m_document->scene().gradientLine(currentDrawing()->fills[m_gradFill], from, to);
+    }
     QTransform const toWidget = layerViewTransform();
     QPointF const a = toWidget.map(from), b = toWidget.map(to);
     painter.resetTransform();

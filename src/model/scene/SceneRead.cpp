@@ -70,6 +70,11 @@ static Stroke strokeFromJson(QJsonObject const& o)
     s.curve = o["curve"].toBool(false);
     s.group = o["group"].toInt(0);
     s.closed = o["closed"].toBool(false);
+    if (QJsonArray const grad = o["grad"].toArray(); grad.size() == 4) {
+        s.gradPlaced = true;
+        s.gradFrom = QPointF(grad[0].toDouble(), grad[1].toDouble());
+        s.gradTo = QPointF(grad[2].toDouble(), grad[3].toDouble());
+    }
     QJsonArray const pts = o["points"].toArray();
     for (int i = 0; i + 2 < pts.size(); i += 3)
         s.points.push_back({QPointF(pts[i].toDouble(), pts[i + 1].toDouble()), float(pts[i + 2].toDouble(1.0))});

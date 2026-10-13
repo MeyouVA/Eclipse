@@ -67,6 +67,11 @@ struct Stroke {
     int group = 0;
     QColor color = Qt::black;
     float width = 4.0f;  // at full pressure
+    // Drawn in a gradient colour: where the gradient lies, once it has been placed by hand (the Edit Gradient
+    // tool) - as for a painted area.  Not placed, it goes across what the line covers.
+    bool gradPlaced = false;
+    QPointF gradFrom;
+    QPointF gradTo;
 
     void transform(QTransform const& t);
 
@@ -607,6 +612,7 @@ public:
     QBrush brushFor(Stroke const& stroke) const;
     // Where the gradient of an area lies: where it was placed, or across the area.
     void gradientLine(Fill const& fill, QPointF& from, QPointF& to) const;
+    void gradientLine(Stroke const& stroke, QPointF& from, QPointF& to) const;
     Swatch const* findSwatch(int id) const;
     // Whether the paint tools are to leave what has this colour alone.
     bool protects(int swatch) const;

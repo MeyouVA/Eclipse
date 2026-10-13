@@ -309,7 +309,12 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
             m_gradTo = p;
             m_gradMoved = true;
         }
-        if (m_gradMoved && m_gradFill < m_eraseArt.fills.size()) {
+        if (m_gradMoved && m_gradStroke >= 0 && m_gradStroke < m_eraseArt.strokes.size()) {
+            Stroke& line = m_eraseArt.strokes[m_gradStroke];
+            line.gradPlaced = true;
+            line.gradFrom = m_gradFrom;
+            line.gradTo = m_gradTo;
+        } else if (m_gradMoved && m_gradFill >= 0 && m_gradFill < m_eraseArt.fills.size()) {
             Fill& fill = m_eraseArt.fills[m_gradFill];
             fill.gradPlaced = true;
             fill.gradFrom = m_gradFrom;

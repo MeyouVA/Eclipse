@@ -292,6 +292,10 @@ void Stroke::transform(QTransform const& t)
         }
         p.pos = t.map(p.pos);
     }
+    if (gradPlaced) {
+        gradFrom = t.map(gradFrom);
+        gradTo = t.map(gradTo);
+    }
     // Keep the line weight in proportion to the shape.
     width = float(width * std::sqrt(std::abs(t.determinant())));
 }

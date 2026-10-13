@@ -133,7 +133,16 @@ void Canvas::penUp()
     if (drag == DragGradient) {
         m_drag = DragNone;
         Drawing const* const d = currentDrawing();
-        if (m_gradMoved && d && m_gradFill >= 0 && m_gradFill < d->fills.size() && m_gradFill < m_eraseArt.fills.size()) {
+        if (m_gradMoved && d && m_gradStroke >= 0 && m_gradStroke < d->strokes.size() && m_gradStroke < m_eraseArt.strokes.size()) {
+            Stroke const& was = d->strokes[m_gradStroke];
+            Stroke const& now = m_eraseArt.strokes[m_gradStroke];
+            if (!was.gradPlaced || was.gradFrom != now.gradFrom || was.gradTo != now.gradTo) {
+                Drawing const art = m_eraseArt;
+                int const line = m_gradStroke;
+                commitDrawing(art, tr("Edit Gradient"));
+                m_gradStroke = line;        // it stays in hand
+            }
+        } else if (m_gradMoved && d && m_gradFill >= 0 && m_gradFill < d->fills.size() && m_gradFill < m_eraseArt.fills.size()) {
             Fill const& was = d->fills[m_gradFill];
             Fill const& now = m_eraseArt.fills[m_gradFill];
             if (!was.gradPlaced || was.gradFrom != now.gradFrom || was.gradTo != now.gradTo) {

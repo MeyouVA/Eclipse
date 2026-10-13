@@ -377,6 +377,8 @@ public:
     // The Edit Gradient tool: the area whose gradient is in hand (its place among the
     // painted areas of the art being worked on), or -1.
     int gradientPicked() const { return gradientValid() ? m_gradFill : -1; }
+    // ... or the line whose gradient it has in hand (-1: none, or an area).
+    int gradientLinePicked() const { return gradientValid() ? m_gradStroke : -1; }
 
     // The thickness of the point picked with the Contour Editor, as a percentage of the
     // width of its line; -1 when no point is picked.
@@ -937,6 +939,7 @@ private:
     Drawing m_eraseArt;             // the art being erased, as it is so far in the drag
     // the Edit Gradient tool
     int m_gradFill = -1;
+    int m_gradStroke = -1;      // a line instead of an area
     int m_gradHandle = 0;           // 0: drawn out afresh, 1: its start, 2: its end
     bool m_gradMoved = false;
     QPointF m_gradFrom, m_gradTo, m_gradStart;
