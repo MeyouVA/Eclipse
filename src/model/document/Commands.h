@@ -87,6 +87,10 @@ public:
     // The drawing shown on that frame gets a name of its own (an empty one: it goes by its number
     // again).  False when there is none there, or another drawing of the layer is called that.
     bool renameDrawing(int layer, int frame, QString const& name);
+    // What is typed into a cell of the Xsheet: that frame shows the drawing of the layer called
+    // `label` (its name or its number) - a new, empty one of that name when there is none; nothing
+    // typed empties the cell.  False when nothing changed.
+    bool exposeDrawing(int layer, int frame, QString const& label);
     // Holds the drawing of the previous frame over `frame`.
     void extendExposure(int layer, int frame);
     // Copies the drawing at `frame` into a new drawing starting there.

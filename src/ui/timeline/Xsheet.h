@@ -10,6 +10,7 @@
 #include <algorithm>
 
 class Document;
+class QLineEdit;
 
 class ECLIPSE_UI_API Xsheet : public QAbstractScrollArea {
     Q_OBJECT
@@ -41,6 +42,10 @@ public:
     bool hasSelection() const { return m_extent >= 0 || m_extentLayer >= 0; }
     // Where a cell is, in the coordinates of viewport().
     QRect cellRect(int layer, int frame) const;
+    // Typing in the current cell: the name or number of the drawing it is to show.  Enter takes
+    // it and goes on to the frame below; Escape, or a click elsewhere, leaves things as they were.
+    void beginTyping();
+    void endTyping(bool keep);
 
 signals:
     void cellPicked(int layer, int frame);
@@ -52,6 +57,8 @@ protected:
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
+    void mouseDoubleClickEvent(QMouseEvent*) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void contextMenuEvent(QContextMenuEvent*) override;
     QSize sizeHint() const override { return QSize(320, 400); }
 
@@ -67,6 +74,7 @@ private:
     static constexpr int kRowHeight = 18;
 
     Document* m_document;
+    QLineEdit* m_entry = nullptr;
     int m_layer = 0;
     int m_frame = 0;
     int m_extent = -1;         // the far end of the frames selected; -1: only the current cell

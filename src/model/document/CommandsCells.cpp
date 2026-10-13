@@ -35,6 +35,44 @@ void Document::duplicateDrawing(int layer, int frame)
     });
 }
 
+bool Document::exposeDrawing(int layer, int frame, QString const& label)
+{
+    if (!validCell(m_scene, layer, frame) || !m_scene.layers[layer].holdsDrawings())
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    QString const clean = label.trimmed();
+    if (clean.isEmpty()) {
+        if (l.cells[frame] == Layer::kNoDrawing)
+            return false;
+        clearCell(layer, frame);
+        return true;
+    }
+    for (int i = 0; i < l.drawings.size(); ++i) {
+        if (l.drawingLabel(i) != clean)
+            continue;
+        if (l.cells[frame] == i)
+            return false;
+        apply(tr("Type Exposure"), [&](Scene& s) {
+            s.layers[layer].cells[frame] = i;
+            s.layers[layer].compact();
+        });
+        return true;
+    }
+    apply(tr("Type Exposure"), [&](Scene& s) {
+        Layer& made = s.layers[layer];
+        Drawing drawing;
+        // The number the new drawing would have anyway is no name.
+        bool number = false;
+        int const n = clean.toInt(&number);
+        if (!(number && n == made.drawings.size() + 1))
+            drawing.name = clean;
+        made.drawings.push_back(drawing);
+        made.cells[frame] = int(made.drawings.size()) - 1;
+        made.compact();
+    });
+    return true;
+}
+
 bool Document::renameDrawing(int layer, int frame, QString const& name)
 {
     if (!validCell(m_scene, layer, frame))

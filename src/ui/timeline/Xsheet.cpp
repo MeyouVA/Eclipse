@@ -1,6 +1,8 @@
 #include "ui/timeline/Xsheet.h"
 
 #include <QContextMenuEvent>
+#include <QKeyEvent>
+#include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
@@ -297,6 +299,74 @@ void Xsheet::mouseMoveEvent(QMouseEvent* event)
 void Xsheet::mouseReleaseEvent(QMouseEvent*)
 {
     m_selecting = false;
+}
+
+void Xsheet::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton && event->pos().x() >= kRowHeaderWidth && event->pos().y() >= kHeaderHeight) {
+        pick(event->pos());
+        beginTyping();
+    }
+}
+
+void Xsheet::beginTyping()
+{
+    endTyping(false);
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size() || m_frame < 0 || m_frame >= scene.frameCount() || !scene.layers[m_layer].holdsDrawings())
+        return;
+    m_entry = new QLineEdit(viewport());
+    m_entry->setObjectName(QStringLiteral("XsheetEntry"));
+    m_entry->setFrame(false);
+    m_entry->setText(scene.layers[m_layer].drawingLabel(scene.layers[m_layer].drawingAt(m_frame)));
+    m_entry->setGeometry(cellRect(m_layer, m_frame).adjusted(0, 0, -1, -1));
+    m_entry->selectAll();
+    m_entry->installEventFilter(this);
+    connect(m_entry, &QLineEdit::returnPressed, this, [this] { endTyping(true); });
+    m_entry->show();
+    m_entry->setFocus();
+}
+
+void Xsheet::endTyping(bool keep)
+{
+    if (!m_entry)
+        return;
+    QLineEdit* const entry = m_entry;
+    m_entry = nullptr;
+    QString const typed = entry->text();
+    entry->removeEventFilter(this);
+    entry->hide();
+    entry->setObjectName(QString());     // on its way out: not the entry to look for any more
+    entry->deleteLater();
+    if (!keep) {
+        setFocus();
+        return;
+    }
+    int const layer = m_layer, frame = m_frame;
+    m_document->exposeDrawing(layer, frame, typed);
+    // On to the frame below, to type the next.
+    if (frame + 1 < m_document->scene().frameCount()) {
+        setCurrentCell(layer, frame + 1);
+        emit cellPicked(layer, frame + 1);
+        beginTyping();
+    } else {
+        setFocus();
+    }
+}
+
+bool Xsheet::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_entry && m_entry) {
+        if (event->type() == QEvent::KeyPress && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
+            endTyping(false);
+            return true;
+        }
+        if (event->type() == QEvent::FocusOut) {
+            endTyping(false);
+            return false;
+        }
+    }
+    return QAbstractScrollArea::eventFilter(watched, event);
 }
 
 void Xsheet::copy()
