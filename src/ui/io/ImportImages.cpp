@@ -7,6 +7,8 @@
 #include <cmath>
 
 #include <QApplication>
+#include <QCheckBox>
+#include <QColorDialog>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -57,13 +59,15 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         if (image.isNull())
             return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), reader.errorString()));
         // In the middle of the frame: made to fit it, or at its own size.
-        double const scale = options.fit ? std::min(double(scene.width) / image.width(), double(scene.height) / image.height()) : 1.0;
+        // (Pan: made to fill it, the longer way hanging over the edges for the camera to pan across.)
+        double const across = double(scene.width) / image.width(), down = double(scene.height) / image.height();
+        double const scale = !options.fit ? 1.0 : options.pan ? std::max(across, down) : std::min(across, down);
         QTransform placement = QTransform::fromScale(scale, scale);
         placement *= QTransform::fromTranslate((scene.width - image.width() * scale) / 2.0, (scene.height - image.height() * scale) / 2.0);
         Drawing drawing;
         if (options.vectorize && options.colours > 0) {
             // In colour: a painted shape for the area of each colour, the largest underneath.
-            for (Vectorize::ColourShape const& area : Vectorize::traceColours(image, options.colours)) {
+            for (Vectorize::ColourShape const& area : Vectorize::traceColours(image, options.colours, options.paper)) {
                 Fill shape;
                 shape.color = area.colour;
                 for (QPolygonF const& outline : area.outlines)
@@ -131,7 +135,10 @@ void MainWindow::askImportImages(bool linked)
 
     QGroupBox* const alignBox = new QGroupBox(tr("Alignment"), &dialog);
     QComboBox* const alignment = new QComboBox(alignBox);
-    alignment->addItems({tr("Fit"), tr("Actual Size")});
+    alignment->setObjectName(QStringLiteral("ImportAlignment"));
+    alignment->addItems({tr("Fit"), tr("Pan"), tr("Project Resolution (Actual Size)")});
+    alignment->setToolTip(tr("Fit: the whole picture inside the frame.\nPan: the picture fills the frame; what does not fit hangs over the edges, for the camera to pan across.\n"
+                             "Project Resolution: a pixel of the picture is a pixel of the scene."));
     QFormLayout* const alignLayout = new QFormLayout(alignBox);
     alignLayout->addRow(tr("Rule"), alignment);
 
@@ -157,7 +164,28 @@ void MainWindow::askImportImages(bool linked)
     asLayout->addRow(vector);
     asLayout->addRow(tr("Threshold (darker than this is line)"), threshold);
     asLayout->addRow(colourVector);
-    asLayout->addRow(tr("Colours at most (white is left out as paper)"), colourCount);
+    asLayout->addRow(tr("Colours at most"), colourCount);
+    // The colour of the paper: left out, so that what is traced is the drawing and not the sheet it is on.
+    QCheckBox* const leavePaper = new QCheckBox(tr("Leave out the paper, of this colour:"), asBox);
+    leavePaper->setObjectName(QStringLiteral("ImportLeavePaper"));
+    leavePaper->setChecked(true);
+    leavePaper->setEnabled(false);
+    QPushButton* const paper = new QPushButton(asBox);
+    paper->setObjectName(QStringLiteral("ImportPaper"));
+    paper->setEnabled(false);
+    auto showPaper = [paper](QColor const& colour) {
+        paper->setProperty("colour", colour);
+        paper->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px; min-width: 60px;").arg(colour.name()));
+    };
+    showPaper(QColor(255, 255, 255));
+    connect(paper, &QPushButton::clicked, &dialog, [paper, showPaper, &dialog] {
+        QColor const chosen = QColorDialog::getColor(paper->property("colour").value<QColor>(), &dialog, tr("Paper"));
+        if (chosen.isValid())
+            showPaper(chosen);
+    });
+    connect(colourVector, &QRadioButton::toggled, leavePaper, &QCheckBox::setEnabled);
+    connect(colourVector, &QRadioButton::toggled, paper, &QPushButton::setEnabled);
+    asLayout->addRow(leavePaper, paper);
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     buttons->button(QDialogButtonBox::Ok)->setEnabled(false);
@@ -190,7 +218,9 @@ void MainWindow::askImportImages(bool linked)
         options.files << files->item(i)->text();
     options.newLayer = newLayer->isChecked();
     options.layerName = layerName->text();
-    options.fit = alignment->currentIndex() == 0;
+    options.fit = alignment->currentIndex() != 2;
+    options.pan = alignment->currentIndex() == 1;
+    options.paper = leavePaper->isChecked() ? paper->property("colour").value<QColor>() : QColor();
     options.vectorize = vector->isChecked() || colourVector->isChecked();
     options.colours = colourVector->isChecked() ? colourCount->value() : 0;
     options.threshold = threshold->value();

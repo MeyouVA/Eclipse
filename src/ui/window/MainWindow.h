@@ -80,6 +80,8 @@ public:
         bool newLayer = true;       // else onto the current layer, from the current frame
         QString layerName;          // of the new layer; empty: the name of the first file
         bool fit = true;            // made to fit the frame; else at its own size, in the middle
+        bool pan = false;           // (with fit) made to fill the frame instead: what does not fit hangs over, to pan across
+        QColor paper = QColor(255, 255, 255);   // traced in colour: the colour left out as paper (invalid: none is)
         bool vectorize = false;     // the dark parts become painted shapes; else the picture is kept as a bitmap
         int threshold = 128;        // how dark is dark (0..255)
         int colours = 0;            // when vectorising: 0 for black and white, else flat shapes of at most this many colours
