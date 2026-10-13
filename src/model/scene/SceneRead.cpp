@@ -122,6 +122,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.width = std::max(1, json["width"].toInt(1920));
     scene.height = std::max(1, json["height"].toInt(1080));
     scene.fps = std::clamp(json["fps"].toDouble(24.0), 1.0, 240.0);
+    scene.orthographic = json["orthographic"].toBool(false);
     scene.activeCamera = json["camera"].toInt(0);
     for (QJsonValue const& gv : json["guides"].toArray()) {
         if (gv.isArray() && gv.toArray().size() == 2) {

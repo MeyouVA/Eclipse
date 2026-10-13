@@ -1,6 +1,7 @@
 // Eclipse - the main window: the Scene menu - frames, length, settings; bringing in a sound.
 #include "ui/window/MainWindow.h"
 
+#include <QComboBox>
 #include <QApplication>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -124,12 +125,21 @@ void MainWindow::onActionSceneSettings()
     form->addRow(tr("Width"), width);
     form->addRow(tr("Height"), height);
     form->addRow(tr("Frames per second"), fps);
+    QComboBox* const projection = new QComboBox(&dialog);
+    projection->setObjectName(QStringLiteral("SceneProjection"));
+    projection->addItems({tr("Perspective"), tr("Orthographic")});
+    projection->setToolTip(tr("Perspective: nearer layers look bigger, as a camera sees.  Orthographic: depth only puts layers in front of and behind one another."));
+    projection->setCurrentIndex(scene.orthographic ? 1 : 0);
+    form->addRow(tr("Projection"), projection);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     if (dialog.exec() == QDialog::Accepted) {
+        m_document->beginMacro(tr("Scene Settings"));
         m_document->setSceneSettings(width->value(), height->value(), fps->value());
+        m_document->setOrthographic(projection->currentIndex() == 1);
+        m_document->endMacro();
         m_canvas->fitToWindow();
     }
 }

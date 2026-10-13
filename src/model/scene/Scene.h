@@ -551,6 +551,9 @@ public:
     QVector<Swatch> palette;
     // The palettes of the scene, by name; there is always one.  `palette` above holds the
     // colours of all of them, each knowing which it is in.
+    // Orthographic: depth puts layers in front of and behind one another, but nothing looks bigger
+    // or smaller for being nearer or further (off: in perspective, as a camera sees).
+    bool orthographic = false;
     QStringList paletteNames = {QStringLiteral("Scene")};
     // A palette can be linked to a file that other scenes are linked to as well: its colours are
     // taken from the file when the scene is opened and written to it when the scene is saved.

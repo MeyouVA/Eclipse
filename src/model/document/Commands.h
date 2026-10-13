@@ -81,6 +81,8 @@ public:
     bool setSwatchPalette(int id, int palette);
     // Protected: the paint tools leave what has this colour as it is.
     bool setSwatchProtected(int id, bool on);
+    // How depth is seen: in perspective, or (orthographic) with nothing bigger or smaller for it.
+    bool setOrthographic(bool on);
     // A palette linked to a file (an empty path: linked no longer); and its colours brought up to
     // those the file has now.
     bool setPaletteLink(int palette, QString const& path);

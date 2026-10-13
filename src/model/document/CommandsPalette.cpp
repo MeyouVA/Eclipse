@@ -186,6 +186,14 @@ bool Document::updatePaletteFromFile(int palette)
     return true;
 }
 
+bool Document::setOrthographic(bool on)
+{
+    if (m_scene.orthographic == on)
+        return false;
+    apply(tr("Projection"), [&](Scene& s) { s.orthographic = on; });
+    return true;
+}
+
 bool Document::setSwatchProtected(int id, bool on)
 {
     Swatch const* const found = m_scene.findSwatch(id);

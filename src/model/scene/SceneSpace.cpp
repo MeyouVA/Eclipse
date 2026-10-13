@@ -175,6 +175,8 @@ double Scene::focalDistance(int frame) const
 
 double Scene::depthScale(double z, int frame) const
 {
+    if (orthographic)
+        return 1.0;
     int const camera = cameraIndex();
     double const away = z - (camera >= 0 ? depthOf(camera, frame) : 0.0);   // from the plane the camera sees as it is
     if (std::abs(away) < 1e-9)
