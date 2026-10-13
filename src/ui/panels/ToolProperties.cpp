@@ -205,6 +205,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_brushShape, brush);
     m_form->setRowVisible(m_autoFlatten, brush);
     m_form->setRowVisible(m_drawBehind, brush);
+    m_form->setRowVisible(static_cast<QLayout*>(m_paperRow), brush);
     m_drawBehind->setChecked(m_canvas->drawBehind());
     m_autoFlatten->setChecked(m_canvas->autoFlatten());
     m_autoFlatten->setEnabled(m_canvas->brushShapes());

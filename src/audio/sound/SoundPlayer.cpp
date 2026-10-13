@@ -32,9 +32,27 @@ void SoundPlayer::stop()
     m->buffer.clear();
 }
 
+static bool& silentSwitch()
+{
+    static bool on = false;
+    return on;
+}
+
+void SoundPlayer::setSilent(bool silent)
+{
+    silentSwitch() = silent;
+}
+
+bool SoundPlayer::silent()
+{
+    return silentSwitch();
+}
+
 bool SoundPlayer::play(QVector<qint16> const& stereo, qint64 first, qint64 count)
 {
     stop();
+    if (silent())
+        return true;
     qint64 const frames = stereo.size() / 2;
     if (first < 0 || first >= frames)
         return true;  // nothing to play is not a failure

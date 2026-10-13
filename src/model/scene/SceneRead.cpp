@@ -29,6 +29,8 @@ static Fill fillFromJson(QJsonObject const& o)
         f.gradFrom = QPointF(grad[0].toDouble(), grad[1].toDouble());
         f.gradTo = QPointF(grad[2].toDouble(), grad[3].toDouble());
     }
+    f.texture = std::clamp(o["texture"].toInt(0), 0, Stroke::kTextureCount);
+    f.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
     f.text = o["text"].toString();
     f.textAlign = std::clamp(o["textAlign"].toInt(0), 0, 3);
     f.textSpacing = std::clamp(o["textSpacing"].toDouble(1.0), 0.2, 10.0);

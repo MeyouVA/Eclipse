@@ -112,6 +112,12 @@ public:
     int lineTexture() const { return m_lineTexture; }
     void setLineTextureAmount(int percent);
     int lineTextureAmount() const { return m_lineTextureAmount; }
+    // The paper texture of the brush: the grain its strokes show (0: solid paint), and how much of it.
+    // Brush strokes that are selected are changed too.
+    void setBrushTexture(int texture);
+    int brushTexture() const { return m_brushTexture; }
+    void setBrushTextureAmount(int percent);
+    int brushTextureAmount() const { return m_brushTextureAmount; }
     void setOnionSkin(bool on);
     bool onionSkin() const { return m_onionSkin; }
     // The Drawing view: the drawing of the current cell alone and flat - not moved by its
@@ -727,6 +733,9 @@ private:
     Stroke::Cap m_capEnd = Stroke::RoundCap;
     int m_lineTexture = 0;
     int m_lineTextureAmount = 100;
+    int m_brushTexture = 0;
+    int m_brushTextureAmount = 100;
+    void retextureSelectedFills(QString const& text, bool kindToo);
     // Whether the tool in hand draws lines that take the pencil texture (the brush and the Stroke tool do not).
     void textureNewLine(Stroke& stroke) const;
     template <class Change> void restyleSelection(QString const& text, Change change);

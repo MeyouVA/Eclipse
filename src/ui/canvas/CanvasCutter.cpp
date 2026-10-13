@@ -62,8 +62,14 @@ void Canvas::setEndCap(int cap)
 
 void Canvas::textureNewLine(Stroke& stroke) const
 {
-    if (m_tool == Brush || m_tool == StrokeTool || m_tool == CloseGap)
+    if (m_tool == StrokeTool || m_tool == CloseGap)
         return;
+    if (m_tool == Brush) {
+        // (The brush drawing centre lines: its own texture, laid along the line.)
+        stroke.texture = m_brushTexture;
+        stroke.textureAmount = float(m_brushTextureAmount) / 100.0f;
+        return;
+    }
     stroke.texture = m_lineTexture;
     stroke.textureAmount = float(m_lineTextureAmount) / 100.0f;
 }
@@ -84,6 +90,40 @@ void Canvas::setLineTextureAmount(int percent)
         if (s.texture != 0)
             s.textureAmount = float(m_lineTextureAmount) / 100.0f;
     });
+}
+
+void Canvas::retextureSelectedFills(QString const& text, bool kindToo)
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || !selecting() || m_selFills.isEmpty())
+        return;
+    Drawing edited = *d;
+    bool changed = false;
+    for (int i : std::as_const(m_selFills)) {
+        if (i < 0 || i >= edited.fills.size() || !edited.fills[i].text.isEmpty())
+            continue;
+        Fill& fill = edited.fills[i];
+        int const kind = kindToo ? m_brushTexture : fill.texture;
+        float const shows = kind != 0 ? float(m_brushTextureAmount) / 100.0f : fill.textureAmount;
+        changed = changed || fill.texture != kind || fill.textureAmount != shows;
+        fill.texture = kind;
+        fill.textureAmount = shows;
+    }
+    if (changed)
+        commitDrawing(edited, text);
+    update();
+}
+
+void Canvas::setBrushTexture(int texture)
+{
+    m_brushTexture = std::clamp(texture, 0, int(Stroke::kTextureCount));
+    retextureSelectedFills(tr("Change Paper Texture"), true);
+}
+
+void Canvas::setBrushTextureAmount(int percent)
+{
+    m_brushTextureAmount = std::clamp(percent, 0, 100);
+    retextureSelectedFills(tr("Adjust Paper Texture Opacity"), false);
 }
 
 void Canvas::onActionAdjustLineTextureOpacity()

@@ -174,6 +174,8 @@ QVector<Fill> areasOf(QPainterPath const& result, Fill const& like, QVector<Fill
         Fill piece;
         piece.swatch = like.swatch;
         piece.color = like.color;
+        piece.texture = like.texture;
+        piece.textureAmount = like.textureAmount;
         for (int m = 0; m < members.size(); ++m) {
             if (plain) {
                 piece.outlines.push_back(olds[m].outline);

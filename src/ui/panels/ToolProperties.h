@@ -76,6 +76,7 @@ private:
     QLayout* m_envToolRow = nullptr;
     QCheckBox* m_brushShape = nullptr;
     QCheckBox* m_drawBehind = nullptr;
+    QHBoxLayout* m_paperRow = nullptr;      // the paper texture of the brush, and how much of it shows
     QComboBox* m_rigMode = nullptr;
     QSpinBox* m_envelopePoints = nullptr;
     QCheckBox* m_applyAll = nullptr;

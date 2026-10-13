@@ -12,12 +12,11 @@
 #include "ui/canvas/PencilTexture.h"
 #include "ui/panels/Effects.h"
 
-// A line with a pencil texture: the line as it would be in solid ink, seen through the grain laid along it.
-static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
+// What is drawn in solid ink, seen through grain: `ink` draws the thing itself, `lay` the grain over all that
+// `covers` (both in the coordinates of `painter`); `amount` is how much of the grain shows.
+template <class Ink, class Lay> static void paintThroughGrain(QPainter& painter, QRectF const& covers, double amount, Ink ink, Lay lay)
 {
     QTransform const world = painter.combinedTransform();
-    double const reach = double(stroke.width) * 2.0 + 2.0;
-    QRectF const covers = stroke.bounds().adjusted(-reach, -reach, reach, reach);
     // Only what is in sight is worked out.
     QRect const seen = world.mapRect(covers).toAlignedRect().adjusted(-2, -2, 2, 2) & painter.viewport();
     if (seen.isEmpty())
@@ -36,20 +35,48 @@ static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush 
         p.translate(-seen.topLeft());
         p.setTransform(world, true);
     };
-    // The line in solid ink.
-    QImage ink = sheet();
+    QImage solid = sheet();
     {
-        QPainter p(&ink);
+        QPainter p(&solid);
         begin(p);
-        Stroke solid = stroke;
-        solid.texture = 0;
-        Canvas::paintStroke(p, solid, color);
+        ink(p);
     }
-    // The grain: the strip laid along the line piece by piece, each piece taking it up where the last left it.
     QImage grain = sheet();
     {
         QPainter p(&grain);
         begin(p);
+        lay(p);
+        // How much of it shows: the less, the more solid.
+        if (amount < 1.0) {
+            p.resetTransform();
+            p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+            p.setOpacity(1.0 - std::clamp(amount, 0.0, 1.0));
+            p.fillRect(QRect(QPoint(0, 0), seen.size()), Qt::white);
+        }
+    }
+    {
+        QPainter p(&solid);
+        p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+        p.drawImage(QPoint(0, 0), grain);
+    }
+    painter.save();
+    painter.resetTransform();
+    painter.drawImage(seen.topLeft(), solid);
+    painter.restore();
+}
+
+// A line with a pencil texture: the line as it would be in solid ink, seen through the grain laid along it.
+static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
+{
+    double const reach = double(stroke.width) * 2.0 + 2.0;
+    QRectF const covers = stroke.bounds().adjusted(-reach, -reach, reach, reach);
+    auto ink = [&](QPainter& p) {
+        Stroke solid = stroke;
+        solid.texture = 0;
+        Canvas::paintStroke(p, solid, color);
+    };
+    // The grain: the strip laid along the line piece by piece, each piece taking it up where the last left it.
+    auto lay = [&](QPainter& p) {
         QImage const& tile = PencilTexture::tile(stroke.texture);
         double const width = std::max(0.3, double(stroke.width)), scale = width / tile.height();
         // (Under it all, the grain lying flat: what shows at the outside of a sharp corner, where no piece reaches.)
@@ -83,23 +110,8 @@ static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush 
             p.restore();
             run += length;
         }
-        // How much of it shows: the less, the more solid the line.
-        if (stroke.textureAmount < 1.0f) {
-            p.resetTransform();
-            p.setCompositionMode(QPainter::CompositionMode_SourceOver);
-            p.setOpacity(1.0 - std::clamp(double(stroke.textureAmount), 0.0, 1.0));
-            p.fillRect(QRect(QPoint(0, 0), seen.size()), Qt::white);
-        }
-    }
-    {
-        QPainter p(&ink);
-        p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-        p.drawImage(QPoint(0, 0), grain);
-    }
-    painter.save();
-    painter.resetTransform();
-    painter.drawImage(seen.topLeft(), ink);
-    painter.restore();
+    };
+    paintThroughGrain(painter, covers, double(stroke.textureAmount), ink, lay);
 }
 
 // A stroke is drawn as round-capped segments whose width follows the pressure.
@@ -233,6 +245,24 @@ void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
     for (QPolygonF const& outline : fill.outlines) {
         path.addPolygon(outline);
         path.closeSubpath();
+    }
+    if (fill.texture != 0 && fill.textureAmount > 0.0f) {
+        // A paper texture: the area in solid paint, seen through the grain lying flat.
+        QRectF const covers = path.boundingRect().adjusted(-2, -2, 2, 2);
+        paintThroughGrain(
+            painter, covers, double(fill.textureAmount),
+            [&](QPainter& p) {
+                p.setPen(Qt::NoPen);
+                p.setBrush(color);
+                p.drawPath(path);
+            },
+            [&](QPainter& p) {
+                // (As fine as on a line a dozen units thick.)
+                QBrush flat(PencilTexture::paper(fill.texture));
+                flat.setTransform(QTransform::fromScale(0.1875, 0.1875));
+                p.fillRect(covers, flat);
+            });
+        return;
     }
     painter.setPen(Qt::NoPen);
     painter.setBrush(color);

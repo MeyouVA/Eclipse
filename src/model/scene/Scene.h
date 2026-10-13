@@ -155,6 +155,11 @@ struct Fill {
     QPointF gradTo;
 
     QRectF bounds() const;
+    // A paper texture: the grain the area shows in place of solid paint (as a line's pencil
+    // texture, but lying flat), and how much of it shows.  What a textured brush leaves.
+    int texture = 0;
+    float textureAmount = 1.0f;
+
     bool contains(QPointF p) const;
     // Inside it, or within `radius` of its edge.
     bool hit(QPointF p, double radius) const;

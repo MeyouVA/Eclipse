@@ -13,6 +13,8 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
         // contour of its own that the Contour Editor can pull about.
         double const fine = std::max(tolerance * 0.5, 0.05);
         Fill shape = Fill::fromStroke(stroke, fine);
+        shape.texture = m_brushTexture;
+        shape.textureAmount = float(m_brushTextureAmount) / 100.0f;
         if (!shape.outlines.isEmpty()) {
             Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
             // Drawn behind, the stroke is the one that gives way: what lies over it is cut out of it.
@@ -24,7 +26,8 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
                 for (Fill const& under : std::as_const(art.fills)) {
                     if (!under.overlaps(shape)) {
                         kept.push_back(under);
-                    } else if (under.swatch == shape.swatch && under.color == shape.color) {
+                    } else if (under.swatch == shape.swatch && under.color == shape.color && under.texture == shape.texture
+                               && (shape.texture == 0 || under.textureAmount == shape.textureAmount)) {
                         for (Fill& piece : mine)
                             if (piece.mergeWith(under, fine))
                                 break;

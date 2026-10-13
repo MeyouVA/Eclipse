@@ -79,6 +79,10 @@ static QJsonObject fillToJson(Fill const& f)
     QJsonObject o{{"color", f.color.name(QColor::HexArgb)}, {"swatch", f.swatch}, {"outlines", outlines}};
     if (f.gradPlaced)
         o["grad"] = QJsonArray{f.gradFrom.x(), f.gradFrom.y(), f.gradTo.x(), f.gradTo.y()};
+    if (f.texture != 0) {
+        o["texture"] = f.texture;
+        o["textureAmount"] = std::round(double(f.textureAmount) * 1000.0) / 1000.0;
+    }
     if (f.group != 0)
         o["group"] = f.group;
     if (!f.text.isEmpty()) {

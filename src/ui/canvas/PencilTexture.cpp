@@ -24,6 +24,8 @@ double hashAt(int x, int y, unsigned seed)
 }
 
 // Smooth noise over the strip, `cellsX` by `cellsY` lumps; along the strip it comes round again.
+bool g_paper = false;       // the grain being made lies flat, as paper: it comes round again across as well
+
 double noiseAt(double u, double v, int cellsX, int cellsY, unsigned seed)
 {
     double const x = u * cellsX, y = v * cellsY;
@@ -31,7 +33,7 @@ double noiseAt(double u, double v, int cellsX, int cellsY, unsigned seed)
     double fx = x - x0, fy = y - y0;
     fx = fx * fx * (3.0 - 2.0 * fx);
     fy = fy * fy * (3.0 - 2.0 * fy);
-    auto at = [&](int ix, int iy) { return hashAt(((ix % cellsX) + cellsX) % cellsX, iy, seed); };
+    auto at = [&](int ix, int iy) { return hashAt(((ix % cellsX) + cellsX) % cellsX, g_paper ? ((iy % cellsY) + cellsY) % cellsY : iy, seed); };
     double const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * fx;
     double const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * fx;
     return top + (bottom - top) * fy;
@@ -47,7 +49,8 @@ double smooth(double from, double to, double x)
 double grainAt(int kind, double u, double v, int px, int py)
 {
     double const speck = hashAt(px, py, 17u + unsigned(kind));
-    double const middle = 1.0 - std::abs(v - 0.5) * 2.0;       // 0 at the edges of the line, 1 along its centre
+    // 0 at the edges of the line, 1 along its centre (paper has no edges)
+    double const middle = g_paper ? 1.0 : 1.0 - std::abs(v - 0.5) * 2.0;
     switch (kind) {
     case 1: {
         // Chalk: fine dry grain, a ragged edge.
@@ -81,10 +84,11 @@ double grainAt(int kind, double u, double v, int px, int py)
         double best = 0.0;
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
-                int const gx = (((ix + dx) % cells) + cells) % cells, gy = iy + dy;
+                int const gx = (((ix + dx) % cells) + cells) % cells;
+                int const gy = g_paper ? (((iy + dy) % rows) + rows) % rows : iy + dy;
                 if (gy < 0 || gy >= rows)
                     continue;
-                double const ox = ix + dx + 0.2 + 0.6 * hashAt(gx, gy, 12u), oy = gy + 0.2 + 0.6 * hashAt(gx, gy, 13u);
+                double const ox = ix + dx + 0.2 + 0.6 * hashAt(gx, gy, 12u), oy = iy + dy + 0.2 + 0.6 * hashAt(gx, gy, 13u);
                 double const radius = 0.22 + 0.2 * hashAt(gx, gy, 14u);
                 // (The strip is four times as long as it is high, and has 22 by 6 cells: nearly square ones.)
                 double const distance = std::hypot((cx - ox) * (4.0 * rows / cells), cy - oy);
@@ -96,9 +100,10 @@ double grainAt(int kind, double u, double v, int px, int py)
     }
 }
 
-QImage makeTile(int kind)
+QImage makeTile(int kind, bool paper)
 {
     QImage image(kLong, kHigh, QImage::Format_ARGB32_Premultiplied);
+    g_paper = paper;
     for (int y = 0; y < kHigh; ++y) {
         QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
         for (int x = 0; x < kLong; ++x) {
@@ -106,6 +111,7 @@ QImage makeTile(int kind)
             row[x] = qRgba(a, a, a, a);     // white, as opaque as the grain is there
         }
     }
+    g_paper = false;
     return image;
 }
 
@@ -129,7 +135,16 @@ QImage const& PencilTexture::tile(int kind)
     static QImage tiles[Stroke::kTextureCount];
     int const index = std::clamp(kind, 1, count()) - 1;
     if (tiles[index].isNull())
-        tiles[index] = makeTile(index + 1);
+        tiles[index] = makeTile(index + 1, false);
+    return tiles[index];
+}
+
+QImage const& PencilTexture::paper(int kind)
+{
+    static QImage tiles[Stroke::kTextureCount];
+    int const index = std::clamp(kind, 1, count()) - 1;
+    if (tiles[index].isNull())
+        tiles[index] = makeTile(index + 1, true);
     return tiles[index];
 }
 

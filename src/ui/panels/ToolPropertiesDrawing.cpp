@@ -93,6 +93,43 @@ void ToolProperties::addBrushRows()
     connect(m_drawBehind, &QCheckBox::toggled, m_canvas, &Canvas::setDrawBehind);
     connect(m_drawBehind, &QCheckBox::clicked, this, [](bool on) { settings().setValue(QStringLiteral("tools/brushDrawBehind"), on); });
     m_form->addRow(m_drawBehind);
+
+    // The paper texture: the grain a brush stroke shows in place of solid paint, and how much of it.
+    m_paperRow = new QHBoxLayout;
+    QComboBox* const paper = new QComboBox(this);
+    paper->setObjectName(QStringLiteral("BrushTexture"));
+    paper->setIconSize(QSize(72, 20));
+    for (int kind = 0; kind <= PencilTexture::count(); ++kind)
+        paper->addItem(PencilTexture::icon(kind), PencilTexture::name(kind));
+    paper->setToolTip(tr("The paper texture: the grain a brush stroke shows in place of solid paint. Applies to new strokes and to selected ones."));
+    QSpinBox* const shows = new QSpinBox(this);
+    shows->setObjectName(QStringLiteral("BrushTextureAmount"));
+    shows->setRange(0, 100);
+    shows->setSingleStep(5);
+    shows->setSuffix(QStringLiteral(" %"));
+    shows->setToolTip(tr("How much of the texture shows: 100 the grain as it is, 0 solid paint after all."));
+    {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/brushTexture"), 0).toInt(), 0, PencilTexture::count());
+        int const keptAmount = std::clamp(settings().value(QStringLiteral("tools/brushTextureAmount"), 100).toInt(), 0, 100);
+        paper->setCurrentIndex(kept);
+        shows->setValue(keptAmount);
+        shows->setEnabled(kept != 0);
+        m_canvas->setBrushTextureAmount(keptAmount);
+        m_canvas->setBrushTexture(kept);
+    }
+    connect(paper, &QComboBox::currentIndexChanged, this, [this, shows](int index) {
+        m_canvas->setBrushTexture(index);
+        shows->setEnabled(index != 0);
+        settings().setValue(QStringLiteral("tools/brushTexture"), index);
+    });
+    connect(shows, &QSpinBox::valueChanged, this, [this](int v) {
+        m_canvas->setBrushTextureAmount(v);
+        settings().setValue(QStringLiteral("tools/brushTextureAmount"), v);
+    });
+    m_paperRow->addWidget(new QLabel(tr("Paper Texture"), this));
+    m_paperRow->addWidget(paper, 1);
+    m_paperRow->addWidget(shows);
+    m_form->addRow(m_paperRow);
 }
 
 // What the Rigging tool lays down.
