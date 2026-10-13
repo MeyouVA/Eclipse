@@ -91,6 +91,17 @@ void Canvas::setCurrentCell(int layer, int frame)
     // Permanent Selection: what lies in the place of the selection on the frame gone to is selected there.
     QRectF const held = m_permanentSelection && m_tool == Select && hasSelection() && layer == m_layer && frame != m_frame
                         ? selectionBounds().adjusted(-1.5, -1.5, 1.5, 1.5) : QRectF();
+    // The same drawing still, held over the frame gone to: what was selected in it stays selected.
+    bool sameDrawing = false;
+    if (layer == m_layer && frame != m_frame && layer >= 0 && layer < m_document->scene().layers.size()) {
+        Layer const& on = m_document->scene().layers[layer];
+        sameDrawing = on.drawingAt(frame) != Layer::kNoDrawing && on.drawingAt(frame) == on.drawingAt(m_frame);
+    }
+    if (sameDrawing) {
+        m_frame = frame;
+        update();
+        return;
+    }
     if (layer != m_layer || frame != m_frame) {
         finishPolyline(true);  // it belongs to the drawing it was begun on
         endText(true);
