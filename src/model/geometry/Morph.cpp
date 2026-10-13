@@ -345,6 +345,18 @@ Fill fillBetween(Fill const& a, Fill const& b, double t, QVector<QLineF> const& 
 {
     Fill out;
     colourBetween(a.swatch, a.color, b.swatch, b.color, t, out.swatch, out.color);
+    // A gradient placed by hand goes from where it lay in the one to where it lies in the other
+    // (one not placed lies across its area: from side to side of it).
+    if (a.gradPlaced || b.gradPlaced) {
+        QRectF const boxA = a.bounds(), boxB = b.bounds();
+        QPointF const fromA = a.gradPlaced ? a.gradFrom : QPointF(boxA.left(), boxA.center().y());
+        QPointF const toA = a.gradPlaced ? a.gradTo : QPointF(boxA.right(), boxA.center().y());
+        QPointF const fromB = b.gradPlaced ? b.gradFrom : QPointF(boxB.left(), boxB.center().y());
+        QPointF const toB = b.gradPlaced ? b.gradTo : QPointF(boxB.right(), boxB.center().y());
+        out.gradPlaced = true;
+        out.gradFrom = fromA + (fromB - fromA) * t;
+        out.gradTo = toA + (toB - toA) * t;
+    }
     QVector<QPointF> first, second;
     for (QPolygonF const& outline : a.outlines)
         first.push_back(outline.boundingRect().center());
