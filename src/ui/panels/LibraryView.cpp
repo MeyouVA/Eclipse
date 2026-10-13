@@ -2,7 +2,13 @@
 
 #include <functional>
 
+#include <cmath>
+
 #include <QDir>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QDrag>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -62,6 +68,43 @@ int LibraryView::firstDrawnFrame(Scene const& scene)
             if (layer.holdsDrawings() && layer.drawingAt(f) != Layer::kNoDrawing)
                 return f;
     return 0;
+}
+
+bool LibraryView::isTemplate(QString const& path)
+{
+    return QFileInfo(path).suffix().compare(kSuffix, Qt::CaseInsensitive) == 0;
+}
+
+// The picture of a thing that is not a template: a sound as a run of bars, a palette as its colours.
+static QImage otherPicture(QString const& path, QSize size)
+{
+    QImage image(size, QImage::Format_ARGB32_Premultiplied);
+    image.fill(QColor(46, 46, 46));
+    if (size.isEmpty())
+        return image;
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    if (QFileInfo(path).suffix().compare(QLatin1String("eclpal"), Qt::CaseInsensitive) == 0) {
+        QFile file(path);
+        QJsonArray const colours = file.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(file.readAll()).object()[QStringLiteral("colours")].toArray() : QJsonArray();
+        int const across = 4, down = 3;
+        double const w = size.width() / double(across), h = size.height() / double(down);
+        for (int i = 0; i < std::min<int>(int(colours.size()), across * down); ++i) {
+            QColor const colour(colours[i].toObject()[QStringLiteral("color")].toString());
+            painter.fillRect(QRectF((i % across) * w + 1.0, (i / across) * h + 1.0, w - 2.0, h - 2.0), colour.isValid() ? colour : QColor(Qt::gray));
+        }
+    } else {
+        // (Bars as of a sound - the same for every sound: it is not read to make them.)
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(110, 190, 230));
+        int const bars = 14;
+        double const step = size.width() / double(bars + 1);
+        for (int i = 0; i < bars; ++i) {
+            double const tall = size.height() * (0.2 + 0.6 * std::abs(std::sin(i * 1.7 + 0.6)));
+            painter.drawRoundedRect(QRectF(step * (i + 0.6), (size.height() - tall) / 2.0, step * 0.6, tall), 1.5, 1.5);
+        }
+    }
+    return image;
 }
 
 QImage LibraryView::picture(Scene const& scene, int frame, QSize size)
@@ -353,9 +396,20 @@ void LibraryView::refresh()
         QSignalBlocker const block(m_items);
         m_items->clear();
         QDir const dir(currentFolder());
-        for (QFileInfo const& file : dir.entryInfoList({QStringLiteral("*.") + kSuffix}, QDir::Files, QDir::Name | QDir::IgnoreCase)) {
+        for (QFileInfo const& file : dir.entryInfoList({QStringLiteral("*.") + kSuffix, QStringLiteral("*.wav"), QStringLiteral("*.eclpal")}, QDir::Files,
+                                                       QDir::Name | QDir::IgnoreCase)) {
             if (!wanted.isEmpty() && !file.completeBaseName().contains(wanted, Qt::CaseInsensitive))
                 continue;
+            if (!isTemplate(file.absoluteFilePath())) {
+                // A sound or a palette: told apart by its picture, and named with what it is.
+                QListWidgetItem* const item = new QListWidgetItem(QIcon(QPixmap::fromImage(otherPicture(file.absoluteFilePath(), m_items->iconSize()))),
+                                                                  file.fileName(), m_items);
+                item->setData(Qt::UserRole, file.absoluteFilePath());
+                item->setToolTip(QDir::toNativeSeparators(file.absoluteFilePath()));
+                if (file.absoluteFilePath() == chosen)
+                    m_items->setCurrentItem(item);
+                continue;
+            }
             // Its picture is made once for each version of the file.
             QString const key = file.absoluteFilePath() + QLatin1Char('|') + QString::number(file.lastModified().toMSecsSinceEpoch());
             auto thumbnail = m_thumbnails.find(key);
@@ -382,7 +436,17 @@ QStringList LibraryView::templates() const
 {
     QStringList paths;
     for (int i = 0; i < m_items->count(); ++i)
-        paths << m_items->item(i)->data(Qt::UserRole).toString();
+        if (isTemplate(m_items->item(i)->data(Qt::UserRole).toString()))
+            paths << m_items->item(i)->data(Qt::UserRole).toString();
+    return paths;
+}
+
+QStringList LibraryView::otherItems() const
+{
+    QStringList paths;
+    for (int i = 0; i < m_items->count(); ++i)
+        if (!isTemplate(m_items->item(i)->data(Qt::UserRole).toString()))
+            paths << m_items->item(i)->data(Qt::UserRole).toString();
     return paths;
 }
 
@@ -404,6 +468,16 @@ void LibraryView::showTemplate()
     QString const path = currentTemplate();
     QString error;
     m_shownPath.clear();
+    if (!path.isEmpty() && !isTemplate(path)) {
+        // A sound or a palette: its picture, and what it is.
+        m_shown = Scene();
+        m_preview->setPixmap(QPixmap::fromImage(otherPicture(path, QSize(std::max(160, m_preview->width()), std::max(120, m_preview->height())))));
+        bool const palette = QFileInfo(path).suffix().compare(QLatin1String("eclpal"), Qt::CaseInsensitive) == 0;
+        m_about->setText(palette ? tr("%1   -   a palette: Insert adds it to the scene's palettes").arg(QFileInfo(path).completeBaseName())
+                                 : tr("%1   -   a sound: Insert puts it on a sound layer from the current frame").arg(QFileInfo(path).completeBaseName()));
+        m_scrub->setEnabled(false);
+        return;
+    }
     if (path.isEmpty() || !Scene::load(path, m_shown, &error)) {
         m_shown = Scene();
         m_preview->setPixmap(QPixmap());

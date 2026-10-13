@@ -84,6 +84,9 @@ bool PalettePanel::importPalette(QString const& path, QString* error)
             m_document->setSwatchGradient(made, Swatch::Kind(std::clamp(colour[QStringLiteral("kind")].toInt(1), 1, 2)), read.stops);
         if (colour[QStringLiteral("protected")].toBool(false))
             m_document->setSwatchProtected(made, true);
+        read.setTextureText(colour[QStringLiteral("texture")].toString());
+        if (read.isTexture())
+            m_document->setSwatchTexture(made, read.texture);
     }
     if (given != Scene::kNoSwatch)
         m_document->removeSwatch(given);

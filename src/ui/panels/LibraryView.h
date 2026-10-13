@@ -53,6 +53,11 @@ public:
     QStringList templates() const;
     QString currentTemplate() const;
     void setCurrentTemplate(QString const& path);
+    // The other things a folder of the library may hold, listed with the templates: sounds (.wav) and
+    // palettes (.eclpal).  Inserted, a sound becomes a sound layer from the current frame and a palette one
+    // of the palettes of the scene.
+    QStringList otherItems() const;
+    static bool isTemplate(QString const& path);
     // Reads the folder again (a template was saved or deleted).
     void refresh();
     // Deletes the file of the chosen template; with `ask`, after asking.
