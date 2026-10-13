@@ -12,106 +12,220 @@
 #include "ui/canvas/PencilTexture.h"
 #include "ui/panels/Effects.h"
 
-// What is drawn in solid ink, seen through grain: `ink` draws the thing itself, `lay` the grain over all that
-// `covers` (both in the coordinates of `painter`); `amount` is how much of the grain shows.
-template <class Ink, class Lay> static void paintThroughGrain(QPainter& painter, QRectF const& covers, double amount, Ink ink, Lay lay)
+// An area with a paper texture: the area in solid paint, seen through the grain lying flat.  Towards its edge
+// the grain thins out, so that the edge is the grain's own and not a cut through it.
+static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill const& fill, QBrush const& color)
 {
     QTransform const world = painter.combinedTransform();
+    double const ratio = painter.device() ? painter.device()->devicePixelRatioF() : 1.0;
+    double const zoom = std::sqrt(std::abs(world.determinant())) * ratio;
+    // How far in from the edge the grain thins out: a few units of the scene, in pixels.
+    int const soft = std::clamp(int(std::lround(3.0 * zoom)), 1, 24);
+    QRectF const covers = path.boundingRect().adjusted(-2, -2, 2, 2);
+    // Only what is in sight is worked out - and a little round it, so that the rim of the view is not taken for an edge.
+    QRect const seen = world.mapRect(covers).toAlignedRect().adjusted(-2, -2, 2, 2) & painter.viewport().adjusted(-2 * soft, -2 * soft, 2 * soft, 2 * soft);
+    if (seen.isEmpty())
+        return;
+    int const wide = int(std::ceil(seen.width() * ratio)), high = int(std::ceil(seen.height() * ratio));
+    QImage ink(wide, high, QImage::Format_ARGB32_Premultiplied);
+    ink.setDevicePixelRatio(ratio);
+    ink.fill(Qt::transparent);
+    QImage grain = ink;
+    for (QImage* const image : {&ink, &grain}) {
+        QPainter p(image);
+        p.setRenderHints(painter.renderHints());
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        p.translate(-seen.topLeft());
+        p.setTransform(world, true);
+        if (image == &ink) {
+            p.setPen(Qt::NoPen);
+            p.setBrush(color);
+            p.drawPath(path);
+        } else {
+            // (As fine as on a line a dozen units thick.)
+            QBrush flat(PencilTexture::paper(fill.texture));
+            flat.setTransform(QTransform::fromScale(0.1875, 0.1875));
+            p.fillRect(covers, flat);
+        }
+    }
+    // How deep inside the area each pixel is: how much of what is round it is inside (the area, blurred).
+    QVector<int> inside(wide * high), sums(wide * high);
+    {
+        QPainterPath const shape = path;
+        QImage solid(wide, high, QImage::Format_Alpha8);
+        solid.setDevicePixelRatio(ratio);
+        solid.fill(0);
+        QPainter p(&solid);
+        p.setRenderHints(painter.renderHints());
+        p.translate(-seen.topLeft());
+        p.setTransform(world, true);
+        p.setPen(Qt::NoPen);
+        p.setBrush(Qt::black);
+        p.drawPath(shape);
+        p.end();
+        for (int y = 0; y < high; ++y) {
+            uchar const* const row = solid.constScanLine(y);
+            for (int x = 0; x < wide; ++x)
+                inside[y * wide + x] = row[x];
+        }
+    }
+    // (A box blur, across and then down: sums of what lies within `soft` pixels.  Past the rim of what was worked
+    // out, things are taken to go on as at the rim.)
+    for (int pass = 0; pass < 2; ++pass) {
+        int const count = pass == 0 ? wide : high, lines = pass == 0 ? high : wide, step = pass == 0 ? 1 : wide, lineStep = pass == 0 ? wide : 1;
+        for (int l = 0; l < lines; ++l) {
+            int const* const from = inside.constData() + l * lineStep;
+            int* const to = sums.data() + l * lineStep;
+            auto at = [&](int i) { return from[std::clamp(i, 0, count - 1) * step]; };
+            int sum = 0;
+            for (int i = -soft; i <= soft; ++i)
+                sum += at(i);
+            for (int i = 0; i < count; ++i) {
+                to[i * step] = sum / (2 * soft + 1);
+                sum += at(i + soft + 1) - at(i - soft);
+            }
+        }
+        inside.swap(sums);
+    }
+    double const amount = std::clamp(double(fill.textureAmount), 0.0, 1.0);
+    for (int y = 0; y < high; ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(ink.scanLine(y));
+        QRgb const* const grainRow = reinterpret_cast<QRgb const*>(grain.constScanLine(y));
+        for (int x = 0; x < wide; ++x) {
+            if (row[x] == 0)
+                continue;
+            // At the very edge half of what is round a pixel is inside; `soft` pixels in, all of it.
+            double const deep = std::clamp((inside[y * wide + x] / 255.0 - 0.5) * 2.0, 0.0, 1.0);
+            double const texture = qAlpha(grainRow[x]) / 255.0;
+            // (The grain itself decides where the edge frays: the thin places give way first.)
+            double const edge = std::clamp((deep - 0.55 * (1.0 - texture)) / 0.45, 0.0, 1.0);
+            double const shows = amount * texture * edge + (1.0 - amount);
+            QRgb const c = row[x];
+            row[x] = qRgba(int(qRed(c) * shows), int(qGreen(c) * shows), int(qBlue(c) * shows), int(qAlpha(c) * shows));
+        }
+    }
+    painter.save();
+    painter.resetTransform();
+    painter.drawImage(seen.topLeft(), ink);
+    painter.restore();
+}
+
+// A line with a pencil texture.  Every place the line covers is asked which place of the line is nearest to
+// it: how far along the line that is, and how far to the side, say where in the strip of grain it lies.  So the
+// grain bends with the line without a seam, and the edge of the line is the edge of the grain itself.
+static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
+{
+    QVector<StrokePoint> const line = stroke.path();
+    if (line.size() < 2) {
+        Stroke solid = stroke;
+        solid.texture = 0;
+        Canvas::paintStroke(painter, solid, color);
+        return;
+    }
+    QTransform const world = painter.combinedTransform();
+    double const reach = double(stroke.width) + 2.0;
+    QRectF const covers = stroke.bounds().adjusted(-reach, -reach, reach, reach);
     // Only what is in sight is worked out.
     QRect const seen = world.mapRect(covers).toAlignedRect().adjusted(-2, -2, 2, 2) & painter.viewport();
     if (seen.isEmpty())
         return;
     double const ratio = painter.device() ? painter.device()->devicePixelRatioF() : 1.0;
-    QSize const pixels(int(std::ceil(seen.width() * ratio)), int(std::ceil(seen.height() * ratio)));
-    auto sheet = [&] {
-        QImage image(pixels, QImage::Format_ARGB32_Premultiplied);
-        image.setDevicePixelRatio(ratio);
-        image.fill(Qt::transparent);
-        return image;
+    int const wide = int(std::ceil(seen.width() * ratio)), high = int(std::ceil(seen.height() * ratio));
+    // How much bigger the line is on the screen than in the scene.
+    double const zoom = std::sqrt(std::abs(world.determinant())) * ratio;
+    double const width = std::max(0.3, double(stroke.width));
+
+    QImage const& tile = PencilTexture::tile(stroke.texture);
+    int const tileWide = tile.width(), tileHigh = tile.height();
+    double const perUnit = tileHigh / width;        // pixels of the strip to a unit of the scene
+    auto grainAt = [&](double along, double across) {
+        double x = along * perUnit - 0.5, y = std::clamp(across * tileHigh - 0.5, 0.0, tileHigh - 1.0);
+        double const fx = x - std::floor(x), fy = y - std::floor(y);
+        int const x0 = ((int(std::floor(x)) % tileWide) + tileWide) % tileWide, x1 = (x0 + 1) % tileWide;
+        int const y0 = int(y), y1 = std::min(y0 + 1, tileHigh - 1);
+        QRgb const* const top = reinterpret_cast<QRgb const*>(tile.constScanLine(y0));
+        QRgb const* const bottom = reinterpret_cast<QRgb const*>(tile.constScanLine(y1));
+        double const a = qAlpha(top[x0]) + (qAlpha(top[x1]) - qAlpha(top[x0])) * fx;
+        double const c = qAlpha(bottom[x0]) + (qAlpha(bottom[x1]) - qAlpha(bottom[x0])) * fx;
+        return (a + (c - a) * fy) / 255.0;
     };
-    auto begin = [&](QPainter& p) {
-        p.setRenderHints(painter.renderHints());
-        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    auto smooth = [](double from, double to, double x) {
+        double const t = std::clamp((x - from) / (to - from), 0.0, 1.0);
+        return t * t * (3.0 - 2.0 * t);
+    };
+
+    // For every pixel: how near the line comes, and how opaque the line is there.
+    QVector<float> nearest(wide * high, 1e30f);
+    QImage mask(wide, high, QImage::Format_ARGB32_Premultiplied);
+    mask.fill(Qt::transparent);
+    double const amount = std::clamp(double(stroke.textureAmount), 0.0, 1.0);
+    int const pieces = int(line.size()) - 1 + (stroke.closed ? 1 : 0);
+    double run = 0.0;
+    for (int i = 0; i < pieces; ++i) {
+        StrokePoint const& from = line[i];
+        StrokePoint const& to = line[(i + 1) % line.size()];
+        double const length = QLineF(from.pos, to.pos).length();
+        if (length < 1e-9)
+            continue;
+        QPointF const a = (world.map(from.pos) - QPointF(seen.topLeft())) * ratio, b = (world.map(to.pos) - QPointF(seen.topLeft())) * ratio;
+        QPointF const ab = b - a;
+        double const squared = ab.x() * ab.x() + ab.y() * ab.y();
+        if (squared < 1e-12) {
+            run += length;
+            continue;
+        }
+        double const onScreen = std::sqrt(squared);
+        double const halfA = std::max(0.15, width * from.pressure / 2.0) * zoom, halfB = std::max(0.15, width * to.pressure / 2.0) * zoom;
+        double const most = std::max(halfA, halfB) + 1.5;
+        int const left = std::max(0, int(std::floor(std::min(a.x(), b.x()) - most))), right = std::min(wide - 1, int(std::ceil(std::max(a.x(), b.x()) + most)));
+        int const top = std::max(0, int(std::floor(std::min(a.y(), b.y()) - most))), bottom = std::min(high - 1, int(std::ceil(std::max(a.y(), b.y()) + most)));
+        bool const first = !stroke.closed && i == 0, last = !stroke.closed && i == pieces - 1;
+        for (int y = top; y <= bottom; ++y) {
+            QRgb* const row = reinterpret_cast<QRgb*>(mask.scanLine(y));
+            for (int x = left; x <= right; ++x) {
+                double const px = x + 0.5 - a.x(), py = y + 0.5 - a.y();
+                double const t = (px * ab.x() + py * ab.y()) / squared, on = std::clamp(t, 0.0, 1.0);
+                double const dx = px - ab.x() * on, dy = py - ab.y() * on;
+                double const distance = std::sqrt(dx * dx + dy * dy);
+                double const half = halfA + (halfB - halfA) * on;
+                if (distance > half + 0.5 || distance >= nearest[y * wide + x])
+                    continue;
+                // Past an end of the line: its tip.  A flat one stops there.
+                bool const tip = (first && t < 0.0) || (last && t > 1.0);
+                if (tip && (t < 0.0 ? stroke.capStart : stroke.capEnd) == Stroke::FlatCap)
+                    continue;
+                nearest[y * wide + x] = float(distance);
+                double const cover = std::clamp(half - distance + 0.5, 0.0, 1.0);
+                // Where in the strip: along (on past the end, at a tip), and across.
+                double const along = run + (tip ? t : on) * length;
+                double const side = (ab.x() * py - ab.y() * px) / onScreen;
+                double grain = grainAt(along, 0.5 + side / (2.0 * half));
+                if (tip)
+                    grain *= smooth(0.0, 0.35, 1.0 - distance / half);      // a round tip thins out as the sides do
+                int const alpha = int(std::lround(cover * (amount * grain + (1.0 - amount)) * 255.0));
+                row[x] = qRgba(alpha, alpha, alpha, alpha);
+            }
+        }
+        run += length;
+    }
+    // The colour of the line, where the mask lets it show.
+    QImage ink(wide, high, QImage::Format_ARGB32_Premultiplied);
+    ink.setDevicePixelRatio(ratio);
+    ink.fill(Qt::transparent);
+    {
+        QPainter p(&ink);
         p.translate(-seen.topLeft());
         p.setTransform(world, true);
-    };
-    QImage solid = sheet();
-    {
-        QPainter p(&solid);
-        begin(p);
-        ink(p);
-    }
-    QImage grain = sheet();
-    {
-        QPainter p(&grain);
-        begin(p);
-        lay(p);
-        // How much of it shows: the less, the more solid.
-        if (amount < 1.0) {
-            p.resetTransform();
-            p.setCompositionMode(QPainter::CompositionMode_SourceOver);
-            p.setOpacity(1.0 - std::clamp(amount, 0.0, 1.0));
-            p.fillRect(QRect(QPoint(0, 0), seen.size()), Qt::white);
-        }
-    }
-    {
-        QPainter p(&solid);
+        p.fillRect(covers, color);
+        p.resetTransform();
         p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-        p.drawImage(QPoint(0, 0), grain);
+        mask.setDevicePixelRatio(ratio);
+        p.drawImage(QPoint(0, 0), mask);
     }
     painter.save();
     painter.resetTransform();
-    painter.drawImage(seen.topLeft(), solid);
+    painter.drawImage(seen.topLeft(), ink);
     painter.restore();
-}
-
-// A line with a pencil texture: the line as it would be in solid ink, seen through the grain laid along it.
-static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
-{
-    double const reach = double(stroke.width) * 2.0 + 2.0;
-    QRectF const covers = stroke.bounds().adjusted(-reach, -reach, reach, reach);
-    auto ink = [&](QPainter& p) {
-        Stroke solid = stroke;
-        solid.texture = 0;
-        Canvas::paintStroke(p, solid, color);
-    };
-    // The grain: the strip laid along the line piece by piece, each piece taking it up where the last left it.
-    auto lay = [&](QPainter& p) {
-        QImage const& tile = PencilTexture::tile(stroke.texture);
-        double const width = std::max(0.3, double(stroke.width)), scale = width / tile.height();
-        // (Under it all, the grain lying flat: what shows at the outside of a sharp corner, where no piece reaches.)
-        {
-            QBrush flat(tile);
-            flat.setTransform(QTransform::fromScale(scale, scale));
-            p.fillRect(covers, flat);
-        }
-        p.setCompositionMode(QPainter::CompositionMode_Source);
-        p.setRenderHint(QPainter::Antialiasing, false);
-        QVector<StrokePoint> const line = stroke.path();
-        double run = 0.0;
-        int const pieces = int(line.size()) - 1 + (stroke.closed ? 1 : 0);
-        for (int i = 0; i < pieces; ++i) {
-            QPointF const a = line[i].pos, b = line[(i + 1) % line.size()].pos;
-            double const length = QLineF(a, b).length();
-            if (length < 1e-6)
-                continue;
-            QBrush along(tile);
-            QTransform place;
-            place.translate(-run, -width / 2.0);
-            place.scale(scale, scale);
-            along.setTransform(place);
-            p.save();
-            p.translate(a);
-            p.rotate(std::atan2(b.y() - a.y(), b.x() - a.x()) * 180.0 / 3.14159265358979323846);
-            // (A little over at each end - right over the tip, at the two ends of the line - and well over at the
-            // sides: the ink decides where the line stops.)
-            double const before = !stroke.closed && i == 0 ? width : 0.25, after = !stroke.closed && i == pieces - 1 ? width : 0.25;
-            p.fillRect(QRectF(-before, -width, length + before + after, 2.0 * width), along);
-            p.restore();
-            run += length;
-        }
-    };
-    paintThroughGrain(painter, covers, double(stroke.textureAmount), ink, lay);
 }
 
 // A stroke is drawn as round-capped segments whose width follows the pressure.
@@ -196,8 +310,11 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
         return length > 0.0 ? v / length : QPointF(1, 0);
     };
     auto normalOf = [](QPointF d) { return QPointF(-d.y(), d.x()); };
-    QPainterPath outline;
+    // (The body of the line and the discs that round it off are kept apart: laid into one outline, a disc
+    // would be cancelled out wherever the body happens to wind the other way under it.)
+    QPainterPath outline, discs;
     outline.setFillRule(Qt::WindingFill);
+    discs.setFillRule(Qt::WindingFill);
     QPolygonF left, right;
     for (int i = 0; i < n; ++i) {
         QPointF const in = unit(pos[i] - pos[i > 0 ? i - 1 : i + 1]) * (i > 0 ? 1.0 : -1.0);
@@ -219,7 +336,7 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
             right.push_back(pos[i] - n0 * half[i]);
             right.push_back(pos[i] - n1 * half[i]);
             if (stroke.join == Stroke::RoundJoin)
-                outline.addEllipse(pos[i], half[i], half[i]);  // and rounded over
+                discs.addEllipse(pos[i], half[i], half[i]);  // and rounded over
         }
     }
     QPolygonF shape = left;
@@ -230,12 +347,17 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
     // Tips: a disc where the end is round.  Where the line has thinned to nothing the disc
     // is nothing too, and the line simply comes to a point.
     if (!stroke.closed && stroke.capStart == Stroke::RoundCap)
-        outline.addEllipse(pos[0], half[0], half[0]);
+        discs.addEllipse(pos[0], half[0], half[0]);
     if (!stroke.closed && stroke.capEnd == Stroke::RoundCap)
-        outline.addEllipse(pos[n - 1], half[n - 1], half[n - 1]);
+        discs.addEllipse(pos[n - 1], half[n - 1], half[n - 1]);
     if (stroke.closed && stroke.join == Stroke::RoundJoin)
-        outline.addEllipse(pos[0], half[0], half[0]);  // where it closes
-    painter.drawPath(outline);
+        discs.addEllipse(pos[0], half[0], half[0]);  // where it closes
+    if (color.isOpaque()) {
+        painter.drawPath(outline);
+        painter.drawPath(discs);
+    } else {
+        painter.drawPath(outline.united(discs));      // one shape, so that a translucent colour is not doubled
+    }
 }
 
 void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
@@ -247,21 +369,7 @@ void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
         path.closeSubpath();
     }
     if (fill.texture != 0 && fill.textureAmount > 0.0f) {
-        // A paper texture: the area in solid paint, seen through the grain lying flat.
-        QRectF const covers = path.boundingRect().adjusted(-2, -2, 2, 2);
-        paintThroughGrain(
-            painter, covers, double(fill.textureAmount),
-            [&](QPainter& p) {
-                p.setPen(Qt::NoPen);
-                p.setBrush(color);
-                p.drawPath(path);
-            },
-            [&](QPainter& p) {
-                // (As fine as on a line a dozen units thick.)
-                QBrush flat(PencilTexture::paper(fill.texture));
-                flat.setTransform(QTransform::fromScale(0.1875, 0.1875));
-                p.fillRect(covers, flat);
-            });
+        paintTexturedFill(painter, path, fill, color);
         return;
     }
     painter.setPen(Qt::NoPen);

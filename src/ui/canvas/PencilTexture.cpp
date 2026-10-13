@@ -33,7 +33,9 @@ double noiseAt(double u, double v, int cellsX, int cellsY, unsigned seed)
     double fx = x - x0, fy = y - y0;
     fx = fx * fx * (3.0 - 2.0 * fx);
     fy = fy * fy * (3.0 - 2.0 * fy);
-    auto at = [&](int ix, int iy) { return hashAt(((ix % cellsX) + cellsX) % cellsX, g_paper ? ((iy % cellsY) + cellsY) % cellsY : iy, seed); };
+    // (Paper is two strips long and eight high before it comes round again.)
+    int const roundX = g_paper ? cellsX * 2 : cellsX, roundY = cellsY * 8;
+    auto at = [&](int ix, int iy) { return hashAt(((ix % roundX) + roundX) % roundX, g_paper ? ((iy % roundY) + roundY) % roundY : iy, seed); };
     double const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * fx;
     double const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * fx;
     return top + (bottom - top) * fy;
@@ -56,19 +58,19 @@ double grainAt(int kind, double u, double v, int px, int py)
         // Chalk: fine dry grain, a ragged edge.
         double const grain = noiseAt(u, v, 96, 24, 3u), lumps = noiseAt(u, v, 20, 5, 4u);
         double const body = 0.25 + 0.75 * smooth(0.25, 0.6, grain * 0.6 + speck * 0.4 + (lumps - 0.5) * 0.4);
-        return body * smooth(0.0, 0.45, middle + (noiseAt(u, v, 48, 6, 5u) - 0.5) * 0.7);
+        return body * smooth(0.0, 0.4, middle - noiseAt(u, v, 48, 6, 5u) * 0.45);
     }
     case 2: {
         // Charcoal: soft and dark in the middle, smudged out to the edges, coarse.
         double const lumps = noiseAt(u, v, 28, 7, 6u), grain = noiseAt(u, v, 80, 20, 7u);
         double const body = 0.45 + 0.55 * smooth(0.3, 0.7, lumps * 0.55 + grain * 0.3 + speck * 0.15);
-        return body * smooth(-0.1, 0.8, middle + (lumps - 0.5) * 0.6);
+        return body * smooth(0.0, 0.8, middle - lumps * 0.3);
     }
     case 3: {
         // Crayon: waxy - solid where it took, bare paper showing in flecks where it skipped.
         double const paper = noiseAt(u, v, 64, 16, 8u) * 0.7 + speck * 0.3;
         double const body = paper > 0.36 ? 1.0 : 0.12 + 0.5 * paper;
-        return body * smooth(0.0, 0.2, middle + (noiseAt(u, v, 40, 4, 9u) - 0.5) * 0.3);
+        return body * smooth(0.0, 0.2, middle - noiseAt(u, v, 40, 4, 9u) * 0.25);
     }
     case 4: {
         // Dry brush: bristles, each a streak running with the line, some of them out of paint.
@@ -84,9 +86,10 @@ double grainAt(int kind, double u, double v, int px, int py)
         double best = 0.0;
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
-                int const gx = (((ix + dx) % cells) + cells) % cells;
-                int const gy = g_paper ? (((iy + dy) % rows) + rows) % rows : iy + dy;
-                if (gy < 0 || gy >= rows)
+                int const roundX = g_paper ? cells * 2 : cells, roundY = rows * 8;
+                int const gx = (((ix + dx) % roundX) + roundX) % roundX;
+                int const gy = g_paper ? (((iy + dy) % roundY) + roundY) % roundY : iy + dy;
+                if (!g_paper && (gy < 0 || gy >= rows))
                     continue;
                 double const ox = ix + dx + 0.2 + 0.6 * hashAt(gx, gy, 12u), oy = iy + dy + 0.2 + 0.6 * hashAt(gx, gy, 13u);
                 double const radius = 0.22 + 0.2 * hashAt(gx, gy, 14u);
@@ -95,18 +98,19 @@ double grainAt(int kind, double u, double v, int px, int py)
                 best = std::max(best, 1.0 - smooth(radius * 0.7, radius, distance));
             }
         }
-        return best;
+        return best * smooth(0.0, 0.12, middle);
     }
     }
 }
 
 QImage makeTile(int kind, bool paper)
 {
-    QImage image(kLong, kHigh, QImage::Format_ARGB32_Premultiplied);
+    int const wide = paper ? kLong * 2 : kLong, high = paper ? kHigh * 8 : kHigh;
+    QImage image(wide, high, QImage::Format_ARGB32_Premultiplied);
     g_paper = paper;
-    for (int y = 0; y < kHigh; ++y) {
+    for (int y = 0; y < high; ++y) {
         QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
-        for (int x = 0; x < kLong; ++x) {
+        for (int x = 0; x < wide; ++x) {
             int const a = int(std::lround(std::clamp(grainAt(kind, (x + 0.5) / kLong, (y + 0.5) / kHigh, x, y), 0.0, 1.0) * 255.0));
             row[x] = qRgba(a, a, a, a);     // white, as opaque as the grain is there
         }
