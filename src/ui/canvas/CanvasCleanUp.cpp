@@ -458,7 +458,7 @@ void Canvas::smoothAt(QPointF p)
 
 // ---- the Envelope tool ------------------------------------------------------------------------------
 
-// Eight points on a loop close round what is selected.
+// So many points (eight to begin with) on a loop close round what is selected.
 QVector<QPointF> Canvas::selectionEnvelope() const
 {
     Drawing const* const d = currentDrawing();
@@ -469,7 +469,7 @@ QVector<QPointF> Canvas::selectionEnvelope() const
         chosen.strokes.push_back(d->strokes[i]);
     for (int i : m_selFills)
         chosen.fills.push_back(d->fills[i]);
-    return Deform::envelopeAround(chosen, 8, 6.0 / std::max(m_zoom, 1e-6));
+    return Deform::envelopeAround(chosen, std::clamp(m_envCount, 4, 32), 6.0 / std::max(m_zoom, 1e-6));
 }
 
 QPointF Canvas::envelopePointInView(int point) const

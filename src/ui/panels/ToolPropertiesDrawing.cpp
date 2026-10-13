@@ -56,6 +56,9 @@ void ToolProperties::addSizeRows()
                     settings().setValue(QStringLiteral("tools/closeGap"), v);
                 });
     }
+    // The Envelope tool: how many points there are to pull.
+    m_envToolRow = addSetting(tr("Points"), tr("How many points the outline round the selection has."), 4, 32, m_canvas->envelopeToolPoints(), QString(),
+                              [this](int v) { m_canvas->setEnvelopeToolPoints(v); });
     // How drawn lines are tidied when the pen lifts.
     m_smoothingRow = addSetting(tr("Smoothing"), tr("How much a line drawn with the brush or pencil is smoothed when the pen lifts."), 0, 100, 25,
             QStringLiteral(" %"), [this](int v) { m_canvas->setSmoothing(v); });
