@@ -782,6 +782,8 @@ private:
     QPointF alignedCorner(QPointF corner);     // the same for the corner a selection is scaled by
     int lineGuideAt(QPointF widgetPos) const;
     Scene::Guide const* drawingGuide() const;
+    // The rectangle or ellipse from a to p (on the layer) set out along the guide; false when there is no guide for it.
+    bool guidedShape(QPointF a, QPointF p);
     bool guideTool() const;
     QPointF toFrame(QPointF widgetPos) const;
     int guideHandleAt(QPointF widgetPos) const;

@@ -119,6 +119,53 @@ bool Canvas::symmetry(QTransform* mirror) const
     return true;
 }
 
+bool Canvas::guidedShape(QPointF a, QPointF p)
+{
+    Scene::Guide const* const guide = drawingGuide();
+    if (!guide || guide->kind == Scene::Guide::SquareGrid || guide->kind == Scene::Guide::Symmetry)
+        return false;       // (a square grid runs as the shapes do anyway)
+    QTransform const toView = layerViewTransform(), view = cameraViewTransform();
+    if (!toView.isInvertible() || !view.isInvertible())
+        return false;
+    // On the picture, where the guide is laid out.
+    QPointF const from = toFrame(toView.map(a)), to = toFrame(toView.map(p));
+    auto ways = [&](QPointF at) {
+        QVector<QPointF> found = Scene::guideDirections(*guide, at);
+        if (found.size() == 1)
+            found.push_back(QPointF(-found[0].y(), found[0].x()));      // a ruler: along it, and square to it
+        return found;
+    };
+    QVector<QPointF> const here = ways(from), there = ways(to);
+    if (here.size() < 2 || there.size() < 2)
+        return false;
+    // Two sides leave the first corner along the guide's first two ways; the other two come back from the
+    // far corner along the ways the guide has there (towards the same vanishing points).
+    QPointF second, fourth;
+    if (QLineF(from, from + here[0]).intersects(QLineF(to, to + there[1]), &second) == QLineF::NoIntersection
+        || QLineF(from, from + here[1]).intersects(QLineF(to, to + there[0]), &fourth) == QLineF::NoIntersection)
+        return false;
+    QPolygonF const corners({from, second, to, fourth});
+    auto onLayer = [&](QPointF framePoint) { return toLayer(view.map(framePoint)); };
+    m_stroke.points.clear();
+    m_stroke.closed = true;
+    m_stroke.curve = false;
+    if (m_tool == Rectangle) {
+        for (QPointF const& corner : corners)
+            m_stroke.points.push_back({onLayer(corner), 1.0f});
+        return true;
+    }
+    // The ellipse that fills a square, seen as the square is: twelve points round it.
+    QTransform fit;
+    if (!QTransform::squareToQuad(corners, fit))
+        return false;
+    m_stroke.curve = true;
+    for (int i = 0; i < 12; ++i) {
+        double const angle = i * 3.14159265358979323846 / 6.0;
+        m_stroke.points.push_back({onLayer(fit.map(QPointF(0.5 + std::cos(angle) / 2.0, 0.5 + std::sin(angle) / 2.0))), 1.0f});
+    }
+    return true;
+}
+
 void Canvas::beginGuidedStroke(QPointF widgetPos)
 {
     m_guideStart = toFrame(widgetPos);

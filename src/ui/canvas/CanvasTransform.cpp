@@ -319,6 +319,9 @@ void Canvas::updateShape(QPointF p, Qt::KeyboardModifiers modifiers)
         m_stroke.points = {{a, 1.0f}, {p, 1.0f}};
         return;
     }
+    // With a guide to draw along, its sides run as the guide does.
+    if (guidedShape(a, p))
+        return;
     if (shift) {  // a square, a circle
         double const side = std::max(std::abs(p.x() - a.x()), std::abs(p.y() - a.y()));
         p = a + QPointF(p.x() < a.x() ? -side : side, p.y() < a.y() ? -side : side);
