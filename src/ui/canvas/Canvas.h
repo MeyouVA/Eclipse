@@ -655,6 +655,9 @@ private:
     void commitPenStroke(Stroke const& stroke, double tolerance);
     // With a Symmetry guide in use: the turn-over about its axis, for what is on the layer.
     bool symmetry(QTransform* mirror) const;
+    // Every way what is drawn is to be repeated: with a Symmetry guide chosen, all the Symmetry guides of the
+    // scene count - over each axis, and over each after another.  Empty when none is chosen.
+    QVector<QTransform> symmetries() const;
     // Keeps a line drawn - and, with a Symmetry guide in use, its twin on the other side, as one step.
     void keepStroke(Stroke const& stroke, bool fromPen, double tolerance = 0.0);
     void eraseArtAt(QPointF p, double radius);

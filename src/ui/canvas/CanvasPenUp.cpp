@@ -58,23 +58,24 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
 
 void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
 {
-    QTransform mirror;
-    bool const twin = symmetry(&mirror);
-    if (twin)
+    // With a Symmetry guide: once more over its axis - and over every other axis of symmetry the scene has.
+    QVector<QTransform> const mirrors = symmetries();
+    if (!mirrors.isEmpty())
         m_document->beginMacro(tr("Draw Stroke"));
     if (fromPen)
         commitPenStroke(stroke, tolerance);
     else
         addStrokeToArt(stroke);
-    if (twin) {
+    for (QTransform const& mirror : mirrors) {
         Stroke other = stroke;
         other.transform(mirror);
         if (fromPen)
             commitPenStroke(other, tolerance);
         else
             addStrokeToArt(other);
-        m_document->endMacro();
     }
+    if (!mirrors.isEmpty())
+        m_document->endMacro();
 }
 
 void Canvas::penUp()

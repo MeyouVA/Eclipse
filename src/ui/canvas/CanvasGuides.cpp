@@ -166,6 +166,47 @@ bool Canvas::guidedShape(QPointF a, QPointF p)
     return true;
 }
 
+QVector<QTransform> Canvas::symmetries() const
+{
+    QVector<QTransform> found;
+    Scene::Guide const* const chosen = drawingGuide();
+    Scene const& scene = m_document->scene();
+    if (!chosen || chosen->kind != Scene::Guide::Symmetry || m_layer < 0 || m_layer >= scene.layers.size())
+        return found;
+    QTransform const toPicture = m_drawingView ? QTransform() : worldOf(m_layer, m_frame) * scene.cameraTransform(m_frame);
+    if (!toPicture.isInvertible())
+        return found;
+    QTransform const back = toPicture.inverted();
+    auto same = [](QTransform const& a, QTransform const& b) {
+        return std::abs(a.m11() - b.m11()) < 1e-6 && std::abs(a.m12() - b.m12()) < 1e-6 && std::abs(a.m21() - b.m21()) < 1e-6
+               && std::abs(a.m22() - b.m22()) < 1e-6 && std::abs(a.dx() - b.dx()) < 1e-4 && std::abs(a.dy() - b.dy()) < 1e-4;
+    };
+    // On the picture: nothing done, then over each axis whatever there is so far.
+    QVector<QTransform> all = {QTransform()};
+    for (Scene::Guide const& guide : scene.guides) {
+        if (guide.kind != Scene::Guide::Symmetry || guide.points.size() < 2)
+            continue;
+        QPointF const a = guide.points[0], along = guide.points[1] - guide.points[0];
+        if (std::hypot(along.x(), along.y()) < 1e-9)
+            continue;
+        double const degrees = std::atan2(along.y(), along.x()) * 180.0 / 3.14159265358979323846;
+        QTransform const over = QTransform::fromTranslate(-a.x(), -a.y()) * QTransform().rotate(-degrees) * QTransform::fromScale(1.0, -1.0)
+                                * QTransform().rotate(degrees) * QTransform::fromTranslate(a.x(), a.y());
+        QVector<QTransform> const sofar = all;
+        for (QTransform const& one : sofar) {
+            QTransform const more = one * over;
+            bool known = false;
+            for (QTransform const& have : std::as_const(all))
+                known = known || same(have, more);
+            if (!known && all.size() < 16)
+                all.push_back(more);
+        }
+    }
+    for (int i = 1; i < all.size(); ++i)
+        found.push_back(toPicture * all[i] * back);
+    return found;
+}
+
 void Canvas::beginGuidedStroke(QPointF widgetPos)
 {
     m_guideStart = toFrame(widgetPos);
@@ -225,6 +266,15 @@ void Canvas::paintGuide(QPainter& painter)
         painter.setPen(axis);
         QPointF const way = guide->points[1] - guide->points[0];
         painter.drawLine(guide->points[0] - way * 1000.0, guide->points[1] + way * 1000.0);
+        // The other axes of symmetry of the scene work with it: they show too, fainter.
+        axis.setColor(QColor(230, 120, 200, 110));
+        painter.setPen(axis);
+        for (Scene::Guide const& other : m_document->scene().guides) {
+            if (&other == guide || other.kind != Scene::Guide::Symmetry || other.points.size() < 2)
+                continue;
+            QPointF const otherWay = other.points[1] - other.points[0];
+            painter.drawLine(other.points[0] - otherWay * 1000.0, other.points[1] + otherWay * 1000.0);
+        }
         painter.setPen(line);
     } else if (guide->kind == Scene::Guide::Ruler && guide->points.size() >= 2) {
         QPointF const way = guide->points[1] - guide->points[0];
