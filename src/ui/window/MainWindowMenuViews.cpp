@@ -126,6 +126,7 @@ void MainWindow::createWindowsMenuViews()
     FunctionView* const function = new FunctionView(m_document, this);
     function->setObjectName(QStringLiteral("FunctionView"));
     connect(m_timeline, &Timeline::currentCellChanged, function, &FunctionView::setCurrentCell);
+    connect(m_timeline, &Timeline::selectionChanged, function, [this, function] { function->setOtherLayers(m_timeline->selectedLayers()); });
     connect(function, &FunctionView::framePicked, m_timeline, &Timeline::setCurrentFrame);
     addView(tr("Function"), QStringLiteral("FunctionDock"), function, Qt::BottomDockWidgetArea)->hide();
 }

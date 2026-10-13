@@ -64,6 +64,19 @@ double FunctionGraph::valueAt(Timeline::Parameter which, int frame) const
     return which == Timeline::Opacity ? value * 100.0 : value;
 }
 
+void FunctionGraph::setOtherLayers(QVector<int> const& layers)
+{
+    QVector<int> others;
+    for (int l : layers)
+        if (l != m_layer && l >= 0 && l < m_document->scene().layers.size() && !others.contains(l))
+            others.push_back(l);
+    if (others == m_others)
+        return;
+    m_others = others;
+    fit();
+    update();
+}
+
 void FunctionGraph::fit()
 {
     if (m_zoomed)
@@ -80,6 +93,16 @@ void FunctionGraph::fit()
             low = any ? std::min(low, v) : v;
             high = any ? std::max(high, v) : v;
             any = true;
+            // ... and any curve of the other layers shown with it.
+            if (which == Timeline::Fov)
+                continue;
+            for (int other : m_others) {
+                if (other == m_layer || other >= scene.layers.size())
+                    continue;
+                double const o = Timeline::parameterOf(scene.layers[other].poseAt(f), Timeline::Parameter(which)) * (which == Timeline::Opacity ? 100.0 : 1.0);
+                low = std::min(low, o);
+                high = std::max(high, o);
+            }
         }
     }
     double const room = std::max((high - low) * 0.15, std::max(std::abs(high), std::abs(low)) * 0.05 + 1.0);
@@ -200,6 +223,26 @@ void FunctionGraph::paintEvent(QPaintEvent*)
         Layer const& layer = scene.layers[m_layer];
         p.setRenderHint(QPainter::Antialiasing, true);
         p.setClipRect(r.adjusted(-4, -4, 4, 4));
+        // The other layers selected: the same values of theirs, faint and dashed, under the current layer's.
+        for (int other : m_others) {
+            if (other == m_layer || other >= scene.layers.size())
+                continue;
+            for (int which = 0; which < Timeline::ParameterCount; ++which) {
+                if (!m_shown[which] || which == Timeline::Fov)
+                    continue;
+                QPolygonF curve;
+                for (int f = 0; f < frames; ++f)
+                    curve << QPointF(xOfFrame(f), yOfValue(Timeline::parameterOf(scene.layers[other].poseAt(f), Timeline::Parameter(which))
+                                                           * (which == Timeline::Opacity ? 100.0 : 1.0)));
+                QColor faint = colourOf(Timeline::Parameter(which));
+                faint.setAlpha(120);
+                QPen pen(faint, 1.2);
+                pen.setStyle(Qt::DashLine);
+                p.setPen(pen);
+                p.setBrush(Qt::NoBrush);
+                p.drawPolyline(curve);
+            }
+        }
         for (int which = 0; which < Timeline::ParameterCount; ++which) {
             if (!m_shown[which])
                 continue;

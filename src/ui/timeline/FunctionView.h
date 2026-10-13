@@ -22,6 +22,10 @@ public:
 
     void setCurrentCell(int layer, int frame);
     void setShown(Timeline::Parameter which, bool shown);
+    // The other layers selected in the Timeline: their curves are shown too, faint and dashed,
+    // to compare with (the squares to drag are the current layer's).
+    void setOtherLayers(QVector<int> const& layers);
+    QVector<int> otherLayers() const { return m_others; }
     bool isShown(Timeline::Parameter which) const { return m_shown[which]; }
     static QColor colourOf(Timeline::Parameter which);
 
@@ -63,6 +67,7 @@ private:
     Document* m_document;
     int m_layer = 0;
     int m_frame = 0;
+    QVector<int> m_others;
     // The position - across, down and in depth - to begin with.
     bool m_shown[Timeline::ParameterCount] = {true, true, false, false, false, false, true, false};
     double m_first = 0.0;       // the frame at the left edge
@@ -91,6 +96,7 @@ public:
 
 public slots:
     void setCurrentCell(int layer, int frame) { m_graph->setCurrentCell(layer, frame); }
+    void setOtherLayers(QVector<int> const& layers) { m_graph->setOtherLayers(layers); }
 
 signals:
     void framePicked(int frame);
