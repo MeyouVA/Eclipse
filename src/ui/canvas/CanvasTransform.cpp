@@ -28,7 +28,10 @@ QRectF Canvas::subjectBounds() const
         if (index == Layer::kNoDrawing || scene.layers[l].drawings[index].isEmpty())
             continue;
         QTransform const toSubject = scene.worldTransform(l, m_frame) * inv;
-        QRectF const b = toSubject.map(QPolygonF(scene.layers[l].drawings[index].bounds())).boundingRect();
+        // (As a deformer shows it: bent along its bones, pulled by its curve or envelope.)
+        Layer const& sub = scene.layers[l];
+        QRectF const own = sub.bones.size() >= 2 || sub.hasWarp() ? Deform::shown(sub.drawings[index], sub, sub.poseAt(m_frame)).bounds() : sub.drawings[index].bounds();
+        QRectF const b = toSubject.map(QPolygonF(own)).boundingRect();
         r = r.isNull() ? b : r.united(b);
     }
     if (r.isNull()) {
