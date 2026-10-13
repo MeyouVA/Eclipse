@@ -123,6 +123,9 @@ struct Fill {
     double textSpacing = 1.0;
     // How far apart its letters stand, as a percentage of what the font gives.
     int textKerning = 100;
+    // How the words were scaled, turned or leaned after they were written, about that place:
+    // typed again, they are set the same way.
+    QTransform textShape;
     int swatch = -1;
     // Things of one drawing sheet grouped together share a number here (0: on its own):
     // picking one of them with the Select tool picks them all.

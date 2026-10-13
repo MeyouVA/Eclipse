@@ -35,6 +35,8 @@ static Fill fillFromJson(QJsonObject const& o)
     f.textKerning = std::clamp(o["textKerning"].toInt(100), 50, 400);
     f.textFont = o["textFont"].toString();
     f.textAt = QPointF(o["textAt"].toArray().at(0).toDouble(), o["textAt"].toArray().at(1).toDouble());
+    if (QJsonArray const shape = o["textShape"].toArray(); shape.size() == 4)
+        f.textShape = QTransform(shape[0].toDouble(1.0), shape[1].toDouble(), shape[2].toDouble(), shape[3].toDouble(1.0), 0.0, 0.0);
     for (QJsonValue const& ov : o["outlines"].toArray()) {
         QJsonArray const pts = ov.toArray();
         QPolygonF poly;

@@ -321,7 +321,8 @@ void Canvas::onActionBreakApartText()
                 QRectF const stands = QPolygonF(letter.outlines.first()).boundingRect();
                 letter.text = QString(letters[k]);
                 letter.textFont = fill.textFont;
-                letter.textAt = stands.topLeft() - boxes[k].topLeft();
+                letter.textAt = stands.topLeft() - fill.textShape.mapRect(boxes[k]).topLeft();
+                letter.textShape = fill.textShape;
                 letter.textAlign = 0;
                 letter.textSpacing = fill.textSpacing;
                 letter.textKerning = fill.textKerning;

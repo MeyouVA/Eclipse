@@ -107,6 +107,13 @@ void Canvas::addText(QPointF layerPos, QString const& text)
         letters.swatch = old.swatch;
         letters.color = old.color;
         letters.group = old.group;
+        if (!old.textShape.isIdentity()) {
+            // Words that were scaled, turned or leaned are set again the same way, about the place they stand.
+            QTransform const shaped = QTransform::fromTranslate(-layerPos.x(), -layerPos.y()) * old.textShape * QTransform::fromTranslate(layerPos.x(), layerPos.y());
+            for (QPolygonF& outline : letters.outlines)
+                outline = shaped.map(outline);
+            letters.textShape = old.textShape;
+        }
         edited.fills[m_textEdit] = letters;
         commitDrawing(edited, tr("Edit Text"));
         return;

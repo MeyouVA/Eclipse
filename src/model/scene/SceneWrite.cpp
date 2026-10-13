@@ -83,6 +83,8 @@ static QJsonObject fillToJson(Fill const& f)
             o["textKerning"] = f.textKerning;
         o["textFont"] = f.textFont;
         o["textAt"] = QJsonArray{f.textAt.x(), f.textAt.y()};
+        if (!f.textShape.isIdentity())
+            o["textShape"] = QJsonArray{f.textShape.m11(), f.textShape.m12(), f.textShape.m21(), f.textShape.m22()};
     }
     if (!f.contours.isEmpty()) {
         // (The outlines are written too, so that the file still shows in a reader that does

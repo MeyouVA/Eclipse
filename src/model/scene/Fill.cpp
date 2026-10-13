@@ -200,6 +200,7 @@ QVector<Fill> Fill::pieces(QVector<int> const& counts) const
     blank.text.clear();
     blank.textFont.clear();
     blank.textAt = QPointF();
+    blank.textShape = QTransform();
     bool const curves = contours.size() == outlines.size();
     QVector<Fill> made;
     auto put = [&](Fill& piece, int outline) {
@@ -501,6 +502,8 @@ bool Fill::contains(QPointF p) const
 void Fill::transform(QTransform const& t)
 {
     textAt = t.map(textAt);
+    if (!text.isEmpty() && t.isAffine())
+        textShape = textShape * QTransform(t.m11(), t.m12(), t.m21(), t.m22(), 0.0, 0.0);
     gradFrom = t.map(gradFrom);
     gradTo = t.map(gradTo);
     if (!contours.isEmpty()) {
