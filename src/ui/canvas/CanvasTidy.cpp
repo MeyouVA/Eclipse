@@ -373,8 +373,8 @@ void Canvas::onActionUngroupArtwork()
 void Canvas::onActionFlatten()
 {
     Drawing const* const d = currentDrawing();
-    if (!selecting() || !d || m_selFills.size() < 2) {
-        emit message(tr("Select two or more painted areas of one colour with the Select tool to flatten them."));
+    if (!selecting() || !d || (m_selFills.size() < 2 && m_selStrokes.size() < 2)) {
+        emit message(tr("Select two or more painted areas of one colour, or lines that meet end to end, with the Select tool to flatten them."));
         return;
     }
     // Each colour among the selected areas: its areas become one, where the last of them was.
@@ -419,13 +419,79 @@ void Canvas::onActionFlatten()
         same.removeLast();
         gone += same;
     }
-    if (gone.isEmpty()) {
-        emit message(tr("The selected areas are of different colours: there is nothing to flatten."));
+    // Lines: two of the same colour and thickness whose ends meet become one line, and so on along
+    // the run; a run that comes back to where it began is closed.
+    QVector<int> goneLines;
+    {
+        double const near = std::max(1.0 / std::max(m_zoom, 1e-6), 0.5);
+        auto alike = [](Stroke const& a, Stroke const& b) {
+            return a.swatch == b.swatch && a.color == b.color && std::abs(a.width - b.width) < 1e-3f && a.curve == b.curve && a.join == b.join;
+        };
+        auto turned = [](QVector<StrokePoint> points) {
+            std::reverse(points.begin(), points.end());
+            for (StrokePoint& point : points)
+                std::swap(point.in, point.out);
+            return points;
+        };
+        auto meet = [&](StrokePoint const& a, StrokePoint const& b) { return QLineF(a.pos, b.pos).length() <= near; };
+        bool joinedAny = true;
+        while (joinedAny) {
+            joinedAny = false;
+            for (int x = 0; x < m_selStrokes.size() && !joinedAny; ++x) {
+                Stroke& a = edited.strokes[m_selStrokes[x]];
+                if (a.closed || a.points.size() < 2 || goneLines.contains(m_selStrokes[x]))
+                    continue;
+                for (int y = 0; y < m_selStrokes.size() && !joinedAny; ++y) {
+                    if (y == x || goneLines.contains(m_selStrokes[y]))
+                        continue;
+                    Stroke const& b = edited.strokes[m_selStrokes[y]];
+                    if (b.closed || b.points.size() < 2 || !alike(a, b))
+                        continue;
+                    QVector<StrokePoint> mine = a.points, theirs = b.points;
+                    if (meet(mine.last(), theirs.first())) {
+                        // as they are
+                    } else if (meet(mine.last(), theirs.last())) {
+                        theirs = turned(theirs);
+                    } else if (meet(mine.first(), theirs.first())) {
+                        mine = turned(mine);
+                    } else if (meet(mine.first(), theirs.last())) {
+                        mine = turned(mine);
+                        theirs = turned(theirs);
+                    } else {
+                        continue;
+                    }
+                    // Where they meet is one point: it arrives as the first line did and leaves as the second does.
+                    mine.last().out = theirs.first().out;
+                    mine.last().handles = mine.last().handles || theirs.first().handles;
+                    mine.last().corner = true;
+                    theirs.removeFirst();
+                    a.points = mine + theirs;
+                    goneLines.push_back(m_selStrokes[y]);
+                    joinedAny = true;
+                }
+            }
+        }
+        for (int index : std::as_const(m_selStrokes)) {
+            Stroke& line = edited.strokes[index];
+            if (goneLines.contains(index) || line.closed || line.points.size() < 4 || !meet(line.points.first(), line.points.last()))
+                continue;
+            if (goneLines.isEmpty())
+                continue;       // only lines that were joined here are closed: one drawn that way is left as it is
+            line.points.first().in = line.points.last().in;
+            line.points.removeLast();
+            line.closed = true;
+        }
+    }
+    if (gone.isEmpty() && goneLines.isEmpty()) {
+        emit message(tr("There is nothing to flatten: the areas selected are of different colours, and no lines of one colour and thickness meet end to end."));
         return;
     }
     std::sort(gone.begin(), gone.end());
     for (int i = int(gone.size()) - 1; i >= 0; --i)
         edited.fills.removeAt(gone[i]);
+    std::sort(goneLines.begin(), goneLines.end());
+    for (int i = int(goneLines.size()) - 1; i >= 0; --i)
+        edited.strokes.removeAt(goneLines[i]);
     clearSelection();
     commitDrawing(edited, tr("Flatten"));
 }
