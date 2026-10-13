@@ -186,6 +186,7 @@ public:
     bool showsGuides() const { return m_showGuides; }
     bool guidesLocked() const { return m_guidesLocked; }
     bool selectsByColour() const { return m_selectByColour; }
+    bool snapsAndAligns() const { return m_snapAlign; }
     // Where a plain guide (a place in Scene::guides) crosses the view, level with `widgetPos`: to take hold of it.
     QPointF guideLineInView(int guide, QPointF widgetPos) const;
     // The guide in use (a place in Scene::guides, or -1): one to draw along is shown, its
@@ -368,6 +369,9 @@ public slots:
     void onActionRemoveContourStrokes();
     // The Select tool: a click on something picks everything of its colour.
     void setSelectByColour(bool on) { m_selectByColour = on; }
+    // The Select tool: what is dragged goes edge to edge, or middle to middle, with the other
+    // artwork of the drawing when it comes near; a line shows what it is in line with.
+    void setSnapAlign(bool on) { m_snapAlign = on; }
     void setUsePreview(bool on)
     {
         m_usePreview = on;
@@ -669,6 +673,9 @@ private:
     int m_guideLine = -1;        // the plain guide being dragged with the Select tool
     bool m_guidesLocked = false;
     bool m_selectByColour = false;
+    bool m_snapAlign = false;
+    QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)
+    QPointF aligned(QPointF by);
     int lineGuideAt(QPointF widgetPos) const;
     Scene::Guide const* drawingGuide() const;
     bool guideTool() const;

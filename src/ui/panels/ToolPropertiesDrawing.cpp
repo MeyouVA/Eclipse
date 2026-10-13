@@ -117,6 +117,11 @@ void ToolProperties::addSelectRows()
     m_byColour->setToolTip(tr("A click on a line or on paint selects everything of that colour in the drawing."));
     connect(m_byColour, &QCheckBox::toggled, m_canvas, &Canvas::setSelectByColour);
     m_form->addRow(m_byColour);
+    m_snapAlign = new QCheckBox(tr("Snap and Align"), this);
+    m_snapAlign->setObjectName(QStringLiteral("SelectSnapAlign"));
+    m_snapAlign->setToolTip(tr("What you drag goes edge to edge, or middle to middle, with the other artwork of the drawing when it comes near."));
+    connect(m_snapAlign, &QCheckBox::toggled, m_canvas, &Canvas::setSnapAlign);
+    m_form->addRow(m_snapAlign);
     // The Dropper: the colour of whatever is seen there, or only of what is on the layer worked on.
     m_dropperAll = new QCheckBox(tr("Sample All Layers"), this);
     m_dropperAll->setObjectName(QStringLiteral("DropperAllLayers"));

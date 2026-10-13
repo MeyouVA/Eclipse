@@ -104,6 +104,56 @@ Canvas::Handle Canvas::handleAt(QPointF widgetPos) const
     return NoHandle;
 }
 
+// Snap and Align: how far the selection is to be moved, when `by` would bring an edge or the middle
+// of it within a few pixels of an edge or the middle of something else in the drawing.
+QPointF Canvas::aligned(QPointF by)
+{
+    m_alignLines.clear();
+    Drawing const* const d = currentDrawing();
+    if (!m_snapAlign || m_tool != Select || !d)
+        return by;
+    QRectF const box = m_dragBounds.translated(by);
+    double const near = 6.0 / std::max(m_zoom, 1e-6);
+    double bestX = near, bestY = near, moveX = 0.0, moveY = 0.0;
+    QRectF withX, withY;
+    bool foundX = false, foundY = false;
+    double atX = 0.0, atY = 0.0;
+    auto look = [&](QRectF const& other) {
+        double const mineX[3] = {box.left(), box.center().x(), box.right()}, theirsX[3] = {other.left(), other.center().x(), other.right()};
+        double const mineY[3] = {box.top(), box.center().y(), box.bottom()}, theirsY[3] = {other.top(), other.center().y(), other.bottom()};
+        for (int i = 0; i < 3; ++i) {
+            for (int k = 0; k < 3; ++k) {
+                if (std::abs(theirsX[k] - mineX[i]) < bestX) {
+                    bestX = std::abs(theirsX[k] - mineX[i]);
+                    moveX = theirsX[k] - mineX[i];
+                    atX = theirsX[k];
+                    withX = other;
+                    foundX = true;
+                }
+                if (std::abs(theirsY[k] - mineY[i]) < bestY) {
+                    bestY = std::abs(theirsY[k] - mineY[i]);
+                    moveY = theirsY[k] - mineY[i];
+                    atY = theirsY[k];
+                    withY = other;
+                    foundY = true;
+                }
+            }
+        }
+    };
+    for (int i = 0; i < d->strokes.size(); ++i)
+        if (!m_selStrokes.contains(i))
+            look(d->strokes[i].bounds());
+    for (int i = 0; i < d->fills.size(); ++i)
+        if (!m_selFills.contains(i))
+            look(d->fills[i].bounds());
+    QRectF const moved = box.translated(moveX, moveY);
+    if (foundX)
+        m_alignLines.push_back(QLineF(atX, std::min(moved.top(), withX.top()), atX, std::max(moved.bottom(), withX.bottom())));
+    if (foundY)
+        m_alignLines.push_back(QLineF(std::min(moved.left(), withY.left()), atY, std::max(moved.right(), withY.right()), atY));
+    return by + QPointF(moveX, moveY);
+}
+
 // Adds every line and painted area of that colour to the lists.
 static void sameColour(Drawing const& d, int swatch, QColor const& colour, QVector<int>& strokes, QVector<int>& fills)
 {

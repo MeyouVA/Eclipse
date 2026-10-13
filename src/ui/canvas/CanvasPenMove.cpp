@@ -262,10 +262,12 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
             m_lassoPath.push_back(p);
         update();
         break;
-    case DragMove:
-        m_dragTransform = QTransform::fromTranslate(p.x() - m_dragStart.x(), p.y() - m_dragStart.y());
+    case DragMove: {
+        QPointF const by = aligned(p - m_dragStart);
+        m_dragTransform = QTransform::fromTranslate(by.x(), by.y());
         update();
         break;
+    }
     case DragScale: {
         // Scale about the corner opposite the one being dragged.
         Handle const opposite = Handle((int(m_dragHandle) - TopLeft + 2) % 4 + TopLeft);

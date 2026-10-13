@@ -248,6 +248,7 @@ void Canvas::penUp()
     }
     m_drag = DragNone;
     m_dragTransform = QTransform();
+    m_alignLines.clear();
     if (!m_polyActive)
         m_stroke = Stroke();
     updateCursor();

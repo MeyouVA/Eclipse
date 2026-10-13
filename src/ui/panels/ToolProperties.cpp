@@ -214,6 +214,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_applyAll, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
     m_form->setRowVisible(m_byColour, tool == T::Select);
+    m_form->setRowVisible(m_snapAlign, tool == T::Select);
     m_form->setRowVisible(m_stampScale, tool == T::Stamp);
     m_form->setRowVisible(m_presetsTitle, draws);
     m_form->setRowVisible(m_presets, draws);
