@@ -35,6 +35,17 @@ void ToolProperties::addSizeRows()
     sizeRow->addWidget(sizeBox);
     m_form->addRow(tr("Size"), sizeRow);
     m_sizeRow = sizeRow;
+    // The Brush with a pen: how thin its line gets where the pen barely touches.
+    {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/brushMinSize"), 0).toInt(), 0, 100);
+        m_canvas->setMinimumBrushSize(kept);
+        m_minSizeRow = addSetting(tr("Minimum Size"), tr("With a pen tablet: how thick the brush line is where the pen barely touches, as a percentage of its size.\n"
+                                                       "100: the same thickness however hard you press."),
+                0, 100, kept, QStringLiteral(" %"), [this](int v) {
+                    m_canvas->setMinimumBrushSize(v);
+                    settings().setValue(QStringLiteral("tools/brushMinSize"), v);
+                });
+    }
     // How drawn lines are tidied when the pen lifts.
     m_smoothingRow = addSetting(tr("Smoothing"), tr("How much a line drawn with the brush or pencil is smoothed when the pen lifts."), 0, 100, 25,
             QStringLiteral(" %"), [this](int v) { m_canvas->setSmoothing(v); });

@@ -106,7 +106,7 @@ void Canvas::mouseReleaseEvent(QMouseEvent*)
 
 void Canvas::tabletEvent(QTabletEvent* event)
 {
-    float const pressure = float(std::clamp(event->pressure(), 0.05, 1.0));
+    float const pressure = pressureFor(float(std::clamp(event->pressure(), 0.05, 1.0)));
     switch (event->type()) {
     case QEvent::TabletPress:
         m_tabletActive = true;

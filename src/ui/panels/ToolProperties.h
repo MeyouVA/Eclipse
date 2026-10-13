@@ -71,6 +71,7 @@ private:
     QLayout* m_sizeRow = nullptr;
     QLayout* m_smoothingRow = nullptr;
     QLayout* m_cornersRow = nullptr;
+    QLayout* m_minSizeRow = nullptr;
     QCheckBox* m_brushShape = nullptr;
     QCheckBox* m_drawBehind = nullptr;
     QComboBox* m_rigMode = nullptr;

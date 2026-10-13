@@ -74,6 +74,16 @@ public:
     // How much a drawn line is smoothed when the pen lifts: 0 keeps every wobble, 100
     // irons out a lot.
     void setSmoothing(int percent) { m_smoothing = percent; }
+    // The Brush: how thick its line is where the pen barely touches, as a percentage of its size
+    // (pressing harder goes from there up to the full size).
+    int minimumBrushSize() const { return m_minSize; }
+    void setMinimumBrushSize(int percent) { m_minSize = percent; }
+    // What the tool in hand makes of how hard the pen is pressed (0 to 1).
+    float pressureFor(float raw) const
+    {
+        float const least = m_tool == Brush ? float(m_minSize) / 100.0f : 0.0f;
+        return least + (1.0f - least) * raw;
+    }
     // Turns sharper than this stay corners; gentler ones are rounded.
     void setCornerAngle(int degrees) { m_cornerAngle = degrees; }
     // How new lines are finished at corners and ends.  Lines that are selected (or shown
@@ -721,6 +731,7 @@ private:
     bool m_highlightColour = false;
     bool m_respectProtected = true;
     bool m_proportionGrid = false;
+    int m_minSize = 0;
     Drawing m_stamp;             // artwork of the user's own to stamp, about the origin
     bool m_stampOwn = false;
     int m_stampScale = 100;
