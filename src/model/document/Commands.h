@@ -81,6 +81,10 @@ public:
     bool setSwatchPalette(int id, int palette);
     // Protected: the paint tools leave what has this colour as it is.
     bool setSwatchProtected(int id, bool on);
+    // A palette linked to a file (an empty path: linked no longer); and its colours brought up to
+    // those the file has now.
+    bool setPaletteLink(int palette, QString const& path);
+    bool updatePaletteFromFile(int palette);
     // A file the scene reads from outside itself (a sound, a linked picture) is somewhere else
     // now: everything that read `from` reads `to` instead.  False when nothing read it.
     bool relinkFile(QString const& from, QString const& to);

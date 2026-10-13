@@ -42,6 +42,11 @@ public:
     // scene as a new palette (which is then shown).  False with a message when it cannot be.
     bool exportPalette(QString const& path, QString* error = nullptr) const;
     bool importPalette(QString const& path, QString* error = nullptr);
+    // The palette shown is linked to a file other scenes can be linked to as well (a file that is
+    // there already gives the palette its colours); or linked no longer.
+    bool linkPalette(QString const& path, QString* error = nullptr);
+    void unlinkPalette();
+    void showPaletteMenu(QPoint const& pos);
     // Opens the gradient editor for a colour: one colour, a gradient in a line, or a round one.
     void editGradient(int id);
     // A new colour that is a gradient from black to white, to change from there.  Its id.

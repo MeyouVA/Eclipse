@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <QDir>
 #include <QMenu>
 #include <QSettings>
 #include <QFileDialog>
@@ -59,6 +60,8 @@ PalettePanel::PalettePanel(Document* document, QWidget* parent) : QWidget(parent
             setCurrentPalette(row - 1);     // the first row is the heading
     });
     connect(m_palettes, &QListWidget::itemDoubleClicked, this, &PalettePanel::renamePalette);
+    m_palettes->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_palettes, &QListWidget::customContextMenuRequested, this, &PalettePanel::showPaletteMenu);
 
     QWidget* const bar = createColourBar();
 
@@ -271,8 +274,16 @@ void PalettePanel::rebuild()
     bold.setBold(true);
     heading->setFont(bold);
     heading->setForeground(QColor(200, 200, 200));
-    for (QString const& name : scene.paletteNames)
-        new QListWidgetItem(QStringLiteral("    ") + name, m_palettes);
+    for (int i = 0; i < scene.paletteNames.size(); ++i) {
+        QListWidgetItem* const item = new QListWidgetItem(QStringLiteral("    ") + scene.paletteNames[i], m_palettes);
+        if (!scene.paletteLink(i).isEmpty()) {
+            // A palette shared through a file is told apart by its slanted name.
+            QFont slanted = item->font();
+            slanted.setItalic(true);
+            item->setFont(slanted);
+            item->setToolTip(tr("Linked to %1").arg(QDir::toNativeSeparators(scene.paletteLink(i))));
+        }
+    }
     m_palettes->setCurrentRow(m_palette + 1);
     // The colours of the one chosen.
     m_list->clear();

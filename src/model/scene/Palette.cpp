@@ -1,4 +1,8 @@
 // Eclipse - the scene: the palette - colours and gradients, and what an area or a line is painted with.
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "model/scene/Scene.h"
 
 #include <QLinearGradient>
@@ -17,6 +21,71 @@ Swatch const* Scene::findSwatch(int id) const
         if (s.id == id)
             return &s;
     return nullptr;
+}
+
+QJsonObject Scene::paletteJson(int inPalette) const
+{
+    QJsonArray colours;
+    for (Swatch const& swatch : palette) {
+        if (swatch.palette != inPalette)
+            continue;
+        QJsonObject colour;
+        colour[QStringLiteral("name")] = swatch.name;
+        colour[QStringLiteral("color")] = swatch.color.name(QColor::HexArgb);
+        if (swatch.isGradient()) {
+            colour[QStringLiteral("kind")] = int(swatch.kind);
+            colour[QStringLiteral("stops")] = swatch.stopsJson();
+        }
+        if (swatch.isProtected)
+            colour[QStringLiteral("protected")] = true;
+        colours.push_back(colour);
+    }
+    QJsonObject root;
+    root[QStringLiteral("eclipsePalette")] = 1;
+    root[QStringLiteral("name")] = paletteNames.value(inPalette);
+    root[QStringLiteral("colours")] = colours;
+    return root;
+}
+
+bool Scene::takePaletteJson(int inPalette, QJsonObject const& root)
+{
+    QJsonArray const colours = root[QStringLiteral("colours")].toArray();
+    if (!root.contains(QStringLiteral("eclipsePalette")) || colours.isEmpty() || inPalette < 0 || inPalette >= paletteNames.size())
+        return false;
+    for (QJsonValue const& value : colours) {
+        QJsonObject const colour = value.toObject();
+        QString const name = colour[QStringLiteral("name")].toString();
+        QColor const c(colour[QStringLiteral("color")].toString());
+        int id = kNoSwatch;
+        for (Swatch const& swatch : std::as_const(palette))
+            if (swatch.palette == inPalette && swatch.name == name)
+                id = swatch.id;
+        if (id == kNoSwatch)
+            id = addSwatch(name, c.isValid() ? c : QColor(Qt::gray), inPalette);
+        for (Swatch& swatch : palette) {
+            if (swatch.id != id)
+                continue;
+            if (c.isValid())
+                swatch.color = c;
+            swatch.setStopsJson(colour[QStringLiteral("stops")].toArray());
+            swatch.kind = swatch.stops.size() >= 2 ? Swatch::Kind(std::clamp(colour[QStringLiteral("kind")].toInt(1), 1, 2)) : Swatch::Solid;
+            swatch.isProtected = colour[QStringLiteral("protected")].toBool(false);
+        }
+    }
+    return true;
+}
+
+bool Scene::writePaletteFile(int inPalette, QString const& path) const
+{
+    QFile file(path);
+    return inPalette >= 0 && inPalette < paletteNames.size() && file.open(QIODevice::WriteOnly | QIODevice::Truncate)
+           && file.write(QJsonDocument(paletteJson(inPalette)).toJson()) > 0;
+}
+
+bool Scene::readPaletteFile(int inPalette, QString const& path)
+{
+    QFile file(path);
+    return file.open(QIODevice::ReadOnly) && takePaletteJson(inPalette, QJsonDocument::fromJson(file.readAll()).object());
 }
 
 bool Scene::protects(int swatch) const

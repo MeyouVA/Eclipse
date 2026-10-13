@@ -72,6 +72,8 @@ void Document::removePalette(int palette)
             }
         }
         s.paletteNames.removeAt(palette);
+        if (palette < s.paletteLinks.size())
+            s.paletteLinks.removeAt(palette);
     });
 }
 
@@ -159,6 +161,28 @@ bool Document::setSwatchPalette(int id, int palette)
             }
         }
     });
+    return true;
+}
+
+bool Document::setPaletteLink(int palette, QString const& path)
+{
+    if (palette < 0 || palette >= m_scene.paletteNames.size() || m_scene.paletteLink(palette) == path)
+        return false;
+    apply(path.isEmpty() ? tr("Unlink Palette") : tr("Link Palette"), [&](Scene& s) {
+        while (s.paletteLinks.size() <= palette)
+            s.paletteLinks.push_back(QString());
+        s.paletteLinks[palette] = path;
+    });
+    return true;
+}
+
+bool Document::updatePaletteFromFile(int palette)
+{
+    QString const path = m_scene.paletteLink(palette);
+    Scene tried = m_scene;
+    if (path.isEmpty() || !tried.readPaletteFile(palette, path))
+        return false;
+    apply(tr("Update Palette from File"), [&](Scene& s) { s.readPaletteFile(palette, path); });
     return true;
 }
 

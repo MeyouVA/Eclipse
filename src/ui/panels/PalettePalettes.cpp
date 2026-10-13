@@ -10,6 +10,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QInputDialog>
+#include <QFileDialog>
+#include <QMenu>
+#include <QMessageBox>
 
 #include "model/document/Commands.h"
 #include <QListWidget>
@@ -40,26 +43,7 @@ void PalettePanel::setCurrentPalette(int palette)
 
 bool PalettePanel::exportPalette(QString const& path, QString* error) const
 {
-    Scene const& scene = m_document->scene();
-    QJsonArray colours;
-    for (Swatch const& swatch : scene.palette) {
-        if (swatch.palette != m_palette)
-            continue;
-        QJsonObject colour;
-        colour[QStringLiteral("name")] = swatch.name;
-        colour[QStringLiteral("color")] = swatch.color.name(QColor::HexArgb);
-        if (swatch.isGradient()) {
-            colour[QStringLiteral("kind")] = int(swatch.kind);
-            colour[QStringLiteral("stops")] = swatch.stopsJson();
-        }
-        if (swatch.isProtected)
-            colour[QStringLiteral("protected")] = true;
-        colours.push_back(colour);
-    }
-    QJsonObject root;
-    root[QStringLiteral("eclipsePalette")] = 1;
-    root[QStringLiteral("name")] = scene.paletteNames.value(m_palette);
-    root[QStringLiteral("colours")] = colours;
+    QJsonObject const root = m_document->scene().paletteJson(m_palette);
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly) || file.write(QJsonDocument(root).toJson()) < 0) {
         if (error)
@@ -107,6 +91,63 @@ bool PalettePanel::importPalette(QString const& path, QString* error)
     m_palette = palette;
     rebuild();
     return true;
+}
+
+bool PalettePanel::linkPalette(QString const& path, QString* error)
+{
+    // The file gets the palette as it is now, unless it is there already: then the palette takes what the file has.
+    if (QFileInfo::exists(path)) {
+        Scene tried = m_document->scene();
+        if (!tried.readPaletteFile(m_palette, path)) {
+            if (error)
+                *error = tr("%1 is not an Eclipse palette file.").arg(path);
+            return false;
+        }
+    } else if (!m_document->scene().writePaletteFile(m_palette, path)) {
+        if (error)
+            *error = tr("The palette could not be written to %1.").arg(path);
+        return false;
+    }
+    m_document->beginMacro(tr("Link Palette"));
+    m_document->setPaletteLink(m_palette, path);
+    m_document->updatePaletteFromFile(m_palette);
+    m_document->endMacro();
+    return true;
+}
+
+void PalettePanel::unlinkPalette()
+{
+    m_document->setPaletteLink(m_palette, QString());
+}
+
+// The right button on a palette: the file it shares its colours with.
+void PalettePanel::showPaletteMenu(QPoint const& pos)
+{
+    QListWidgetItem* const item = m_palettes->itemAt(pos);
+    int const palette = item ? m_palettes->row(item) - 1 : -1;
+    if (palette < 0 || palette >= m_document->scene().paletteNames.size())
+        return;
+    setCurrentPalette(palette);
+    QString const linked = m_document->scene().paletteLink(palette);
+    QMenu menu(this);
+    connect(menu.addAction(tr("Link to File...")), &QAction::triggered, this, [this] {
+        QString path = QFileDialog::getSaveFileName(this, tr("Link Palette to File"), m_document->scene().paletteNames.value(m_palette) + QStringLiteral(".eclpal"),
+                                                    tr("Eclipse palettes (*.eclpal)"), nullptr, QFileDialog::DontConfirmOverwrite);
+        if (path.isEmpty())
+            return;
+        if (QFileInfo(path).suffix().isEmpty())
+            path += QStringLiteral(".eclpal");
+        QString error;
+        if (!linkPalette(path, &error))
+            QMessageBox::warning(this, tr("Eclipse"), error);
+    });
+    QAction* const update = menu.addAction(tr("Update from File"));
+    update->setEnabled(!linked.isEmpty());
+    connect(update, &QAction::triggered, this, [this] { m_document->updatePaletteFromFile(m_palette); });
+    QAction* const unlink = menu.addAction(tr("Unlink from File"));
+    unlink->setEnabled(!linked.isEmpty());
+    connect(unlink, &QAction::triggered, this, [this] { unlinkPalette(); });
+    menu.exec(m_palettes->viewport()->mapToGlobal(pos));
 }
 
 void PalettePanel::addPalette()

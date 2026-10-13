@@ -542,6 +542,18 @@ public:
     // The palettes of the scene, by name; there is always one.  `palette` above holds the
     // colours of all of them, each knowing which it is in.
     QStringList paletteNames = {QStringLiteral("Scene")};
+    // A palette can be linked to a file that other scenes are linked to as well: its colours are
+    // taken from the file when the scene is opened and written to it when the scene is saved.
+    // One entry per palette (it may be shorter than paletteNames); empty: not linked.
+    QStringList paletteLinks;
+    QString paletteLink(int which) const { return paletteLinks.value(which); }
+    // A palette as it is written to a palette file; and its colours brought up to those of such
+    // a file: a colour of the same name takes what the file has, one the palette has not is added,
+    // and those the file has not are kept.  False when it is no palette file.
+    QJsonObject paletteJson(int which) const;
+    bool takePaletteJson(int which, QJsonObject const& root);
+    bool writePaletteFile(int which, QString const& path) const;
+    bool readPaletteFile(int which, QString const& path);
 
     static constexpr int kNoSwatch = -1;
     // The colour to paint with: that of the swatch when `swatch` names one that exists,

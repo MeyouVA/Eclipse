@@ -158,6 +158,10 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             names << nv.toString();
         if (!names.isEmpty())
             scene.paletteNames = names;
+        for (QJsonValue const& lv : json["paletteLinks"].toArray())
+            scene.paletteLinks.push_back(lv.toString());
+        while (scene.paletteLinks.size() > scene.paletteNames.size())
+            scene.paletteLinks.removeLast();
     }
     if (json.contains("palette")) {
         scene.palette.clear();
@@ -399,5 +403,11 @@ bool Scene::load(QString const& path, Scene& out, QString* error)
             *error = parse.errorString();
         return false;
     }
-    return fromJson(doc.object(), out, error, QFileInfo(path).absolutePath());
+    if (!fromJson(doc.object(), out, error, QFileInfo(path).absolutePath()))
+        return false;
+    // The palettes linked to a file take the colours the file has now (another scene may have changed them).
+    for (int i = 0; i < out.paletteLinks.size() && i < out.paletteNames.size(); ++i)
+        if (!out.paletteLinks[i].isEmpty() && QFileInfo::exists(out.paletteLinks[i]))
+            out.readPaletteFile(i, out.paletteLinks[i]);
+    return true;
 }

@@ -316,6 +316,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"markers", markerArray},
                        {"palette", paletteArray},
                        {"paletteNames", QJsonArray::fromStringList(paletteNames)},
+                       {"paletteLinks", QJsonArray::fromStringList(paletteLinks)},
                        {"width", width},
                        {"height", height},
                        {"fps", fps},
@@ -342,5 +343,9 @@ bool Scene::save(QString const& path, QString* error) const
             *error = file.errorString();
         return false;
     }
+    // The palettes linked to a file of their own are written there too, for the other scenes linked to it.
+    for (int i = 0; i < paletteLinks.size() && i < paletteNames.size(); ++i)
+        if (!paletteLinks[i].isEmpty())
+            writePaletteFile(i, paletteLinks[i]);
     return true;
 }
