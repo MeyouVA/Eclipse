@@ -150,7 +150,7 @@ void ToolProperties::addSelectRows()
     m_form->addRow(m_byColour);
     m_paintAll = new QCheckBox(tr("Apply to All Drawings"), this);
     m_paintAll->setObjectName(QStringLiteral("PaintAllDrawings"));
-    m_paintAll->setToolTip(tr("What you paint, repaint or unpaint is painted, repainted or unpainted in the same place in every drawing of the layer."));
+    m_paintAll->setToolTip(tr("What you paint, repaint, unpaint or erase is painted, repainted, unpainted or erased in the same place in every drawing of the layer."));
     connect(m_paintAll, &QCheckBox::toggled, m_canvas, &Canvas::setPaintAllDrawings);
     m_form->addRow(m_paintAll);
     m_permanent = new QCheckBox(tr("Permanent Selection"), this);

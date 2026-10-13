@@ -324,35 +324,72 @@ void Canvas::eraseStretch(int from)
 
 void Canvas::cutWithEraser()
 {
-    Drawing const* const d = currentDrawing();
-    if (!d || m_stroke.points.isEmpty() || !m_eraseAny)
+    Scene const& scene = m_document->scene();
+    bool const everywhere = m_paintAll && m_layer >= 0 && m_layer < scene.layers.size();
+    if (m_stroke.points.isEmpty() || (!m_eraseAny && !everywhere))
         return;
     m_eraseAny = false;
     QVector<QPolygonF> const rubbed = m_stroke.outlinePolygons();
     if (rubbed.isEmpty())
         return;
     double const fine = std::max(0.25 / m_zoom, 0.05);
-    Drawing art = *d;
-    bool any = false;
-    art.fills.clear();
-    for (Fill const& fill : d->fills) {
-        bool changed = false;
-        art.fills += fill.minus(rubbed, fine, &changed);
-        any = any || changed;
+    auto cut = [&](Drawing const& from, Drawing& art) {
+        art = from;
+        bool any = false;
+        art.fills.clear();
+        for (Fill const& fill : from.fills) {
+            bool changed = false;
+            art.fills += fill.minus(rubbed, fine, &changed);
+            any = any || changed;
+        }
+        art.strokes.clear();
+        for (Stroke const& stroke : from.strokes) {
+            bool changed = false;
+            art.strokes += stroke.minus(rubbed, fine, &changed);
+            any = any || changed;
+        }
+        return any;
+    };
+    // Each drawing to erase in is come to by a frame that shows it: this one, or with
+    // Apply to All Drawings every drawing of the layer.
+    QVector<int> frames = {m_frame};
+    if (everywhere) {
+        QVector<int> const cells = scene.layers[m_layer].cells;
+        QVector<int> seen;
+        if (m_frame >= 0 && m_frame < cells.size())
+            seen.push_back(cells[m_frame]);
+        for (int f = 0; f < cells.size(); ++f) {
+            if (cells[f] == Layer::kNoDrawing || seen.contains(cells[f]))
+                continue;
+            seen.push_back(cells[f]);
+            frames.push_back(f);
+        }
     }
-    art.strokes.clear();
-    for (Stroke const& stroke : d->strokes) {
-        bool changed = false;
-        art.strokes += stroke.minus(rubbed, fine, &changed);
-        any = any || changed;
+    int const here = m_frame;
+    bool begun = false;
+    for (int f : std::as_const(frames)) {
+        m_frame = f;
+        Drawing const* const under = currentDrawing();
+        if (!under)
+            continue;
+        Drawing const from = *under;
+        Drawing art;
+        if (!cut(from, art))
+            continue;
+        if (!begun && frames.size() > 1)
+            m_document->beginMacro(tr("Erase"));
+        begun = true;
+        commitDrawing(art, tr("Erase"));
     }
-    if (!any)
+    m_frame = here;
+    if (!begun)
         return;
+    if (frames.size() > 1)
+        m_document->endMacro();
     // What was picked may be gone or in pieces.
     m_selStrokes.clear();
     m_selFills.clear();
     m_ceStroke = m_cePoint = m_ceFill = -1;
-    commitDrawing(art, tr("Erase"));
     emit selectionChanged();
 }
 

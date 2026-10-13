@@ -280,7 +280,8 @@ void Canvas::onActionBreakApartText()
         emit message(tr("Select words written with the Text tool to break them apart."));
         return;
     }
-    // Each letter becomes a painted shape of its own, where it stands; they are words no longer.
+    // Words become letters, each still text that can be typed over; a letter alone becomes
+    // a painted shape, text no longer.
     Drawing edited = *d;
     edited.fills.clear();
     QVector<int> picked;
@@ -294,6 +295,8 @@ void Canvas::onActionBreakApartText()
         }
         // How many outlines each letter has, in the order they were made: an i has two.
         QVector<int> counts;
+        QVector<QChar> letters;
+        QVector<QRectF> boxes;      // each letter's outline as set at the origin
         QFont font;
         if (font.fromString(fill.textFont)) {
             font.setLetterSpacing(QFont::PercentageSpacing, fill.textKerning);
@@ -303,11 +306,26 @@ void Canvas::onActionBreakApartText()
                 int count = 0;
                 for (QPolygonF const& outline : path.toSubpathPolygons())
                     count += outline.size() >= 3 ? 1 : 0;
-                if (count > 0)
+                if (count > 0) {
                     counts.push_back(count);
+                    letters.push_back(letter);
+                    boxes.push_back(path.boundingRect());
+                }
             }
         }
-        for (Fill const& letter : fill.pieces(counts)) {
+        QVector<Fill> const pieces = fill.pieces(counts);
+        bool const stillText = letters.size() > 1 && pieces.size() == letters.size();
+        for (int k = 0; k < pieces.size(); ++k) {
+            Fill letter = pieces[k];
+            if (stillText) {
+                QRectF const stands = QPolygonF(letter.outlines.first()).boundingRect();
+                letter.text = QString(letters[k]);
+                letter.textFont = fill.textFont;
+                letter.textAt = stands.topLeft() - boxes[k].topLeft();
+                letter.textAlign = 0;
+                letter.textSpacing = fill.textSpacing;
+                letter.textKerning = fill.textKerning;
+            }
             picked.push_back(int(edited.fills.size()));
             edited.fills.push_back(letter);
         }

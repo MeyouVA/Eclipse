@@ -182,7 +182,7 @@ void ToolProperties::showFor(int tool)
                                       "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
-    bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || Canvas::isPaintTool(Canvas::Tool(tool));
+    bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
     m_form->setRowVisible(m_envelopePoints, tool == T::Rigging);
     m_form->setRowVisible(m_envelopeOutline, tool == T::Rigging);
@@ -218,7 +218,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_applyAll, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
     m_form->setRowVisible(m_byColour, tool == T::Select);
-    m_form->setRowVisible(m_paintAll, Canvas::isPaintTool(Canvas::Tool(tool)));
+    m_form->setRowVisible(m_paintAll, tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_permanent, tool == T::Select);
     m_form->setRowVisible(m_snapAlign, tool == T::Select);
     m_form->setRowVisible(m_stampScale, tool == T::Stamp);
