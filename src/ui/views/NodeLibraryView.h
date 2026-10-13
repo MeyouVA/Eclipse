@@ -26,4 +26,5 @@ private:
     void filter(QString const& text);
     QLineEdit* m_search;
     QListWidget* m_list;
+    QListWidget* m_categories = nullptr;
 };
