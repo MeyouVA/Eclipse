@@ -87,6 +87,10 @@ public:
     // Changes a key, applies it to the commands that use it and remembers it for next time.
     void setShortcut(QString const& id, QKeySequence const& key);
 
+signals:
+    // A command was run (picked from a menu, a toolbar or by its key): which, and how long it took.
+    void commandRun(QString const& id, qint64 milliseconds);
+
 private:
     struct Node {
         enum Type { Menu, Item, Separator, Placeholder, Submenu, MultiButton, Toolbar };

@@ -256,6 +256,18 @@ QWidget* MainWindow::createMessageLogView()
         if (!message.isEmpty())
             text->appendPlainText(QStringLiteral("%1  %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), message));
     });
+    // In Debug Mode: the commands as they are run, and the steps of undo as they come and go.
+    auto note = [this, text](QString const& line) {
+        if (m_debugMode)
+            text->appendPlainText(QStringLiteral("%1  [debug] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss.zzz")), line));
+    };
+    connect(m_actions, &ActionManager::commandRun, text, [note](QString const& id, qint64 milliseconds) {
+        note(QStringLiteral("command %1 (%2 ms)").arg(id).arg(milliseconds));
+    });
+    connect(m_document->undoStack(), &QUndoStack::indexChanged, text, [this, note](int index) {
+        QUndoStack const* const stack = m_document->undoStack();
+        note(QStringLiteral("undo: step %1 of %2%3").arg(index).arg(stack->count()).arg(index > 0 ? QStringLiteral(" - ") + stack->text(index - 1) : QString()));
+    });
     return log;
 }
 

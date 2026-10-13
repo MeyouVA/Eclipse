@@ -7,6 +7,9 @@
 #include "ui/window/MainWindow.h"
 
 #include <QDockWidget>
+#include <QPlainTextEdit>
+
+#include "actions/manager/ActionManager.h"
 #include <QInputDialog>
 
 #include "audio/sound/Sound.h"
@@ -243,6 +246,16 @@ void MainWindow::onActionShowMessageLog()
         showView(dock);
         dock->raise();
     }
+}
+
+void MainWindow::onActionDebugMode(bool on)
+{
+    m_debugMode = on;
+    m_actions->setChecked(QStringLiteral("DebugMode"), on);
+    if (on)
+        onActionShowMessageLog();
+    if (QPlainTextEdit* const log = findChild<QPlainTextEdit*>(QStringLiteral("MessageLog")))
+        log->appendPlainText(on ? tr("Debug Mode is on: every command and every step of undo is told here.") : tr("Debug Mode is off."));
 }
 
 void MainWindow::onActionToggleWaveforms(bool on)

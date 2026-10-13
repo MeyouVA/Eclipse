@@ -329,6 +329,10 @@ public slots:
     void onActionSetEase(QString const& which);
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
+    // Help > Debug Mode: the Message Log also tells every command that is run, how long it took, and every step
+    // that goes onto the list of things to undo.
+    void onActionDebugMode(bool on);
+    bool debugMode() const { return m_debugMode; }
     void onActionHelp();
     void onActionSceneMarkerNote();
     void onActionSetEaseDialog();
@@ -472,6 +476,7 @@ private:
 
     QTimer m_playTimer;
     bool m_loop = true;
+    bool m_debugMode = false;
     QStringList m_playViews;
     // Mini Playback: the few frames either side of one, over and over; what to go back to when it stops.
     bool m_mini = false;

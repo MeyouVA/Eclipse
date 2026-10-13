@@ -376,6 +376,7 @@
    <separator/>
    <item id="ShowWelcome" icon="misc/welcome" text="Show &amp;Welcome Screen" responder="window" slot="onActionShowWelcome()"/>
    <item id="ShowMessageLog" icon="misc/messagelog" text="&amp;Message Log" responder="window" slot="onActionShowMessageLog()"/>
+   <item id="DebugMode" icon="misc/debug" text="&amp;Debug Mode" checkable="true" responder="window" slot="onActionDebugMode(bool)"/>
    <separator/>
    <item id="About" icon="misc/about" text="&amp;About..." responder="window" slot="onActionAbout()"/>
   </menu>

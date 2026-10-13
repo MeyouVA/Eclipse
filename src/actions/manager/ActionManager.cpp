@@ -4,6 +4,7 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QCoreApplication>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QMenu>
 #include <QMenuBar>
@@ -196,7 +197,12 @@ QAction* ActionManager::actionFor(Node const& reference)
     applyShortcut(action, shortcut);
     if (item.attr.contains(QStringLiteral("tooltip")))
         action->setToolTip(item.value("tooltip"));
-    connect(action, &QAction::triggered, this, [this, item](bool checked) { invoke(item, checked, nullptr); });
+    connect(action, &QAction::triggered, this, [this, item, id](bool checked) {
+        QElapsedTimer clock;
+        clock.start();
+        invoke(item, checked, nullptr);
+        emit commandRun(id, clock.elapsed());
+    });
     m_actions.insert(id, action);
     return action;
 }
