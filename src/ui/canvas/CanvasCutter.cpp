@@ -4,6 +4,7 @@
 #include <cmath>
 #include <numeric>
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -39,7 +40,8 @@ template <class Change> void Canvas::restyleSelection(QString const& text, Chang
         change(edited.strokes[i]);
         changed = changed || before.join != edited.strokes[i].join || before.capStart != edited.strokes[i].capStart
                   || before.capEnd != edited.strokes[i].capEnd || before.width != edited.strokes[i].width
-                  || before.texture != edited.strokes[i].texture || before.textureAmount != edited.strokes[i].textureAmount;
+                  || before.texture != edited.strokes[i].texture || before.textureAmount != edited.strokes[i].textureAmount
+                  || before.textureCrisp != edited.strokes[i].textureCrisp;
     }
     if (changed)
         commitDrawing(edited, text);
@@ -72,10 +74,27 @@ void Canvas::textureNewLine(Stroke& stroke) const
         // (The brush drawing centre lines: its own texture, laid along the line.)
         stroke.texture = m_brushTexture;
         stroke.textureAmount = float(m_brushTextureAmount) / 100.0f;
+        stroke.textureCrisp = m_brushTextureCrisp;
         return;
     }
     stroke.texture = m_lineTexture;
     stroke.textureAmount = float(m_lineTextureAmount) / 100.0f;
+    stroke.textureCrisp = m_lineTextureCrisp;
+}
+
+void Canvas::setLineTextureCrisp(bool crisp)
+{
+    m_lineTextureCrisp = crisp;
+    restyleSelection(tr("Change Texture Edge"), [this](Stroke& s) {
+        if (s.texture != 0)
+            s.textureCrisp = m_lineTextureCrisp;
+    });
+}
+
+void Canvas::setBrushTextureCrisp(bool crisp)
+{
+    m_brushTextureCrisp = crisp;
+    retextureSelectedFills(tr("Change Texture Edge"), false);
 }
 
 void Canvas::setLineTexture(int texture)
@@ -84,6 +103,7 @@ void Canvas::setLineTexture(int texture)
     restyleSelection(tr("Change Pencil Texture"), [this](Stroke& s) {
         s.texture = m_lineTexture;
         s.textureAmount = float(m_lineTextureAmount) / 100.0f;
+        s.textureCrisp = m_lineTextureCrisp;
     });
 }
 
@@ -109,9 +129,11 @@ void Canvas::retextureSelectedFills(QString const& text, bool kindToo)
         Fill& fill = edited.fills[i];
         int const kind = kindToo ? m_brushTexture : fill.texture;
         float const shows = kind != 0 ? float(m_brushTextureAmount) / 100.0f : fill.textureAmount;
-        changed = changed || fill.texture != kind || fill.textureAmount != shows;
+        bool const crisp = kind != 0 ? m_brushTextureCrisp : fill.textureCrisp;
+        changed = changed || fill.texture != kind || fill.textureAmount != shows || fill.textureCrisp != crisp;
         fill.texture = kind;
         fill.textureAmount = shows;
+        fill.textureCrisp = crisp;
     }
     if (changed)
         commitDrawing(edited, text);
@@ -231,6 +253,9 @@ void Canvas::onActionPencilLineProperties()
     form->addRow(tr("Thickness"), thickness);
     form->addRow(tr("Texture"), texture);
     form->addRow(tr("Texture opacity"), amount);
+    QCheckBox* const crispBox = new QCheckBox(tr("Crisp texture edge"), &dialog);
+    crispBox->setChecked(shown.textureCrisp);
+    form->addRow(crispBox);
     form->addRow(tr("Corners"), join);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -239,6 +264,7 @@ void Canvas::onActionPencilLineProperties()
     if (dialog.exec() != QDialog::Accepted)
         return;
     float const width = float(thickness->value()), shows = float(amount->value()) / 100.0f;
+    bool const crispEdge = crispBox->isChecked();
     int const kind = texture->currentData().toInt(), corners = join->currentIndex();
     restyleSelection(tr("Pencil Line Properties"), [=](Stroke& s) {
         if (s.width <= 0.0f)
@@ -246,6 +272,7 @@ void Canvas::onActionPencilLineProperties()
         s.width = width;
         s.texture = kind;
         s.textureAmount = shows;
+        s.textureCrisp = crispEdge;
         s.join = Stroke::Join(corners);
     });
 }

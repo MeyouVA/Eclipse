@@ -163,6 +163,16 @@ void ToolProperties::addBrushRows()
     m_paperRow->addWidget(shows);
     m_paperRow->addWidget(textureButton(QStringLiteral("BrushTextureMenu")));
     m_form->addRow(m_paperRow);
+    m_paperCrisp = new QCheckBox(tr("Crisp texture edge"), this);
+    m_paperCrisp->setObjectName(QStringLiteral("BrushTextureCrisp"));
+    m_paperCrisp->setToolTip(tr("A crisp edge: the grain frays at the edge but does not fade there, and is not blurred - every bit of it is ink or nothing. Applies to new strokes and to selected ones."));
+    m_paperCrisp->setChecked(settings().value(QStringLiteral("tools/brushTextureCrisp"), false).toBool());
+    m_canvas->setBrushTextureCrisp(m_paperCrisp->isChecked());
+    connect(m_paperCrisp, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setBrushTextureCrisp(on);
+        settings().setValue(QStringLiteral("tools/brushTextureCrisp"), on);
+    });
+    m_form->addRow(m_paperCrisp);
 }
 
 // What the Rigging tool lays down.
@@ -410,6 +420,16 @@ void ToolProperties::addLineShapeRows()
     m_textureRow->addWidget(amount);
     m_textureRow->addWidget(textureButton(QStringLiteral("LineTextureMenu")));
     m_form->addRow(m_textureRow);
+    m_lineCrisp = new QCheckBox(tr("Crisp texture edge"), this);
+    m_lineCrisp->setObjectName(QStringLiteral("LineTextureCrisp"));
+    m_lineCrisp->setToolTip(tr("A crisp edge: the grain frays at the edge but does not fade there, and is not blurred - every bit of it is ink or nothing.") + applies);
+    m_lineCrisp->setChecked(settings().value(QStringLiteral("tools/lineTextureCrisp"), false).toBool());
+    m_canvas->setLineTextureCrisp(m_lineCrisp->isChecked());
+    connect(m_lineCrisp, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setLineTextureCrisp(on);
+        settings().setValue(QStringLiteral("tools/lineTextureCrisp"), on);
+    });
+    m_form->addRow(m_lineCrisp);
 }
 
 // The thickness of the line at the point picked with the Contour Editor: how a line

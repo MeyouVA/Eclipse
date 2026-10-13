@@ -34,6 +34,8 @@ static QJsonObject strokeToJson(Stroke const& s)
     if (s.texture != 0) {
         o["texture"] = s.texture;
         o["textureAmount"] = std::round(double(s.textureAmount) * 1000.0) / 1000.0;
+        if (s.textureCrisp)
+            o["textureCrisp"] = true;
     }
     QJsonArray corners;
     for (int i = 0; i < s.points.size(); ++i)
@@ -83,6 +85,8 @@ static QJsonObject fillToJson(Fill const& f)
     if (f.texture != 0) {
         o["texture"] = f.texture;
         o["textureAmount"] = std::round(double(f.textureAmount) * 1000.0) / 1000.0;
+        if (f.textureCrisp)
+            o["textureCrisp"] = true;
     }
     if (f.group != 0)
         o["group"] = f.group;

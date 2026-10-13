@@ -34,7 +34,7 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
     for (QImage* const image : {&ink, &grain}) {
         QPainter p(image);
         p.setRenderHints(painter.renderHints());
-        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        p.setRenderHint(QPainter::SmoothPixmapTransform, !fill.textureCrisp);      // (crisp: the grain as it is, not blurred)
         p.translate(-seen.topLeft());
         p.setTransform(world, true);
         if (image == &ink) {
@@ -98,7 +98,9 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
             double const deep = std::clamp((inside[y * wide + x] / 255.0 - 0.5) * 2.0, 0.0, 1.0);
             double const texture = qAlpha(grainRow[x]) / 255.0;
             // (The grain itself decides where the edge frays: the thin places give way first.)
-            double const edge = std::clamp((deep - 0.55 * (1.0 - texture)) / 0.45, 0.0, 1.0);
+            double edge = std::clamp((deep - 0.55 * (1.0 - texture)) / 0.45, 0.0, 1.0);
+            if (fill.textureCrisp)
+                edge = edge >= 0.2 ? 1.0 : 0.0;     // frayed, but not faded
             double const shows = amount * texture * edge + (1.0 - amount);
             QRgb const c = row[x];
             row[x] = qRgba(int(qRed(c) * shows), int(qGreen(c) * shows), int(qBlue(c) * shows), int(qAlpha(c) * shows));
@@ -135,10 +137,17 @@ static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush 
     double const zoom = std::sqrt(std::abs(world.determinant())) * ratio;
     double const width = std::max(0.3, double(stroke.width));
 
-    QImage const& tile = PencilTexture::tile(stroke.texture);
+    bool const crisp = stroke.textureCrisp;
+    QImage const& tile = PencilTexture::tile(stroke.texture, crisp);
     int const tileWide = tile.width(), tileHigh = tile.height();
     double const perUnit = tileHigh / width;        // pixels of the strip to a unit of the scene
     auto grainAt = [&](double along, double across) {
+        if (crisp) {
+            // The grain as it is, bit by bit: nothing blended between one bit and the next.
+            int const column = ((int(std::floor(along * perUnit)) % tileWide) + tileWide) % tileWide;
+            int const line = std::clamp(int(std::floor(across * tileHigh)), 0, tileHigh - 1);
+            return qAlpha(reinterpret_cast<QRgb const*>(tile.constScanLine(line))[column]) / 255.0;
+        }
         double x = along * perUnit - 0.5, y = std::clamp(across * tileHigh - 0.5, 0.0, tileHigh - 1.0);
         double const fx = x - std::floor(x), fy = y - std::floor(y);
         int const x0 = ((int(std::floor(x)) % tileWide) + tileWide) % tileWide, x1 = (x0 + 1) % tileWide;
@@ -200,7 +209,9 @@ static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush 
                 double const along = run + (tip ? t : on) * length;
                 double const side = (ab.x() * py - ab.y() * px) / onScreen;
                 double grain = grainAt(along, 0.5 + side / (2.0 * half));
-                if (tip)
+                if (tip && crisp)
+                    grain = 1.0 - distance / half - 0.3 * (1.0 - grain) >= 0.08 ? grain : 0.0;      // a round tip frays as the sides do
+                else if (tip)
                     grain *= smooth(0.0, 0.35, 1.0 - distance / half);      // a round tip thins out as the sides do
                 int const alpha = int(std::lround(cover * (amount * grain + (1.0 - amount)) * 255.0));
                 row[x] = qRgba(alpha, alpha, alpha, alpha);

@@ -38,6 +38,7 @@ static Fill fillFromJson(QJsonObject const& o)
     }
     f.texture = textureRead(o["texture"].toInt(0));
     f.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
+    f.textureCrisp = o["textureCrisp"].toBool(false);
     f.text = o["text"].toString();
     f.textAlign = std::clamp(o["textAlign"].toInt(0), 0, 3);
     f.textSpacing = std::clamp(o["textSpacing"].toDouble(1.0), 0.2, 10.0);
@@ -86,6 +87,7 @@ static Stroke strokeFromJson(QJsonObject const& o)
     }
     s.texture = textureRead(o["texture"].toInt(0));
     s.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
+    s.textureCrisp = o["textureCrisp"].toBool(false);
     QJsonArray const pts = o["points"].toArray();
     for (int i = 0; i + 2 < pts.size(); i += 3)
         s.points.push_back({QPointF(pts[i].toDouble(), pts[i + 1].toDouble()), float(pts[i + 2].toDouble(1.0))});

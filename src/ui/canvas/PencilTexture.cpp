@@ -29,6 +29,14 @@ double hashAt(int x, int y, unsigned seed)
 }
 
 // Smooth noise over the strip, `cellsX` by `cellsY` lumps; along the strip it comes round again.
+bool g_crisp = false;       // the grain being made has a crisp edge: it frays, but does not fade
+
+// How the grain thins out at the edge of a line: little by little, or - crisp - all there or not at all.
+double edgeOf(double fade)
+{
+    return g_crisp ? (fade >= 0.2 ? 1.0 : 0.0) : fade;
+}
+
 bool g_paper = false;       // the grain being made lies flat, as paper: it comes round again across as well
 
 double noiseAt(double u, double v, int cellsX, int cellsY, unsigned seed)
@@ -63,25 +71,25 @@ double grainAt(int kind, double u, double v, int px, int py)
         // Chalk: fine dry grain, a ragged edge.
         double const grain = noiseAt(u, v, 96, 24, 3u), lumps = noiseAt(u, v, 20, 5, 4u);
         double const body = 0.25 + 0.75 * smooth(0.25, 0.6, grain * 0.6 + speck * 0.4 + (lumps - 0.5) * 0.4);
-        return body * smooth(0.0, 0.4, middle - noiseAt(u, v, 48, 6, 5u) * 0.45);
+        return body * edgeOf(smooth(0.0, 0.4, middle - noiseAt(u, v, 48, 6, 5u) * 0.45));
     }
     case 2: {
         // Charcoal: soft and dark in the middle, smudged out to the edges, coarse.
         double const lumps = noiseAt(u, v, 28, 7, 6u), grain = noiseAt(u, v, 80, 20, 7u);
         double const body = 0.45 + 0.55 * smooth(0.3, 0.7, lumps * 0.55 + grain * 0.3 + speck * 0.15);
-        return body * smooth(0.0, 0.8, middle - lumps * 0.3);
+        return body * edgeOf(smooth(0.0, 0.8, middle - lumps * 0.3 - (g_crisp ? speck * 0.25 : 0.0)));
     }
     case 3: {
         // Crayon: waxy - solid where it took, bare paper showing in flecks where it skipped.
         double const paper = noiseAt(u, v, 64, 16, 8u) * 0.7 + speck * 0.3;
         double const body = paper > 0.36 ? 1.0 : 0.12 + 0.5 * paper;
-        return body * smooth(0.0, 0.2, middle - noiseAt(u, v, 40, 4, 9u) * 0.25);
+        return body * edgeOf(smooth(0.0, 0.2, middle - noiseAt(u, v, 40, 4, 9u) * 0.25));
     }
     case 4: {
         // Dry brush: bristles, each a streak running with the line, some of them out of paint.
         double const bristle = noiseAt(u, v, 5, 28, 10u), wear = noiseAt(u, v, 14, 28, 11u);
         double const body = smooth(0.3, 0.55, bristle * 0.75 + wear * 0.25);
-        return std::max(0.06, body) * smooth(0.0, 0.15, middle);
+        return std::max(0.06, body) * edgeOf(smooth(0.0, 0.15, middle - (g_crisp ? wear * 0.12 : 0.0)));
     }
     default: {
         // Stipple: dots, closer together along the centre.
@@ -103,13 +111,14 @@ double grainAt(int kind, double u, double v, int px, int py)
                 best = std::max(best, 1.0 - smooth(radius * 0.7, radius, distance));
             }
         }
-        return best * smooth(0.0, 0.12, middle);
+        return edgeOf(best) * edgeOf(smooth(0.0, 0.12, middle));
     }
     }
 }
 
-QImage makeTile(int kind, bool paper)
+QImage makeTile(int kind, bool paper, bool crisp = false)
 {
+    g_crisp = crisp;
     int const wide = paper ? kLong * 2 : kLong, high = paper ? kHigh * 8 : kHigh;
     QImage image(wide, high, QImage::Format_ARGB32_Premultiplied);
     g_paper = paper;
@@ -121,11 +130,12 @@ QImage makeTile(int kind, bool paper)
         }
     }
     g_paper = false;
+    g_crisp = false;
     return image;
 }
 
 // The strip of a texture of your own, as it is laid along a line: its grain, thinned out towards the two edges.
-QImage stripOf(QImage const& grain, double edge)
+QImage stripOf(QImage const& grain, double edge, bool crisp = false)
 {
     QImage strip(grain.width(), grain.height(), QImage::Format_ARGB32_Premultiplied);
     for (int y = 0; y < grain.height(); ++y) {
@@ -135,7 +145,9 @@ QImage stripOf(QImage const& grain, double edge)
         for (int x = 0; x < grain.width(); ++x) {
             double const ink = from[x] / 255.0;
             // (The thin places give way first, so the edge frays as the grain does.)
-            double const fade = edge <= 0.0 ? 1.0 : smooth(0.0, 0.1 + 0.3 * edge, middle - edge * 0.45 * (1.0 - ink));
+            double fade = edge <= 0.0 ? 1.0 : smooth(0.0, 0.1 + 0.3 * edge, middle - edge * 0.45 * (1.0 - ink));
+            if (crisp)
+                fade = fade >= 0.2 ? 1.0 : 0.0;
             int const alpha = int(std::lround(ink * fade * 255.0));
             to[x] = qRgba(alpha, alpha, alpha, alpha);
         }
@@ -156,6 +168,12 @@ QImage flatOf(QImage const& grain)
 }
 
 QHash<int, QImage>& ownStrips()
+{
+    static QHash<int, QImage> strips;
+    return strips;
+}
+
+QHash<int, QImage>& ownCrispStrips()
 {
     static QHash<int, QImage> strips;
     return strips;
@@ -222,6 +240,7 @@ void PencilTexture::discard(int id)
     loadLibrary();
     TextureBank::remove(id);
     ownStrips().remove(id);
+    ownCrispStrips().remove(id);
     ownPapers().remove(id);
     QFile::remove(libraryDirectory() + QStringLiteral("/%1.png").arg(id));
 }
@@ -257,22 +276,24 @@ QString PencilTexture::name(int kind)
     return QCoreApplication::translate("PencilTexture", kNames[std::clamp(kind, 0, count())]);
 }
 
-QImage const& PencilTexture::tile(int kind)
+QImage const& PencilTexture::tile(int kind, bool crisp)
 {
     if (kind >= TextureBank::kFirst) {
-        auto found = ownStrips().constFind(kind);
-        if (found != ownStrips().constEnd())
+        QHash<int, QImage>& strips = crisp ? ownCrispStrips() : ownStrips();
+        auto found = strips.constFind(kind);
+        if (found != strips.constEnd())
             return *found;
         TextureBank::Entry const entry = TextureBank::entry(kind);
         if (entry.id == 0)
             return none();
-        return *ownStrips().insert(kind, stripOf(entry.grain, entry.edge));
+        return *strips.insert(kind, stripOf(entry.grain, entry.edge, crisp));
     }
-    static QImage tiles[Stroke::kTextureCount];
+    static QImage tiles[2][Stroke::kTextureCount];
     int const index = std::clamp(kind, 1, count()) - 1;
-    if (tiles[index].isNull())
-        tiles[index] = makeTile(index + 1, false);
-    return tiles[index];
+    QImage& tile = tiles[crisp ? 1 : 0][index];
+    if (tile.isNull())
+        tile = makeTile(index + 1, false, crisp);
+    return tile;
 }
 
 QImage const& PencilTexture::paper(int kind)

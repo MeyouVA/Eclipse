@@ -112,12 +112,17 @@ public:
     int lineTexture() const { return m_lineTexture; }
     void setLineTextureAmount(int percent);
     int lineTextureAmount() const { return m_lineTextureAmount; }
+    // A crisp edge: the grain frays at the edge of the line but does not fade there, and is not blurred.
+    void setLineTextureCrisp(bool crisp);
+    bool lineTextureCrisp() const { return m_lineTextureCrisp; }
     // The paper texture of the brush: the grain its strokes show (0: solid paint), and how much of it.
     // Brush strokes that are selected are changed too.
     void setBrushTexture(int texture);
     int brushTexture() const { return m_brushTexture; }
     void setBrushTextureAmount(int percent);
     int brushTextureAmount() const { return m_brushTextureAmount; }
+    void setBrushTextureCrisp(bool crisp);
+    bool brushTextureCrisp() const { return m_brushTextureCrisp; }
     void setOnionSkin(bool on);
     bool onionSkin() const { return m_onionSkin; }
     // The Drawing view: the drawing of the current cell alone and flat - not moved by its
@@ -740,6 +745,8 @@ private:
     Stroke::Cap m_capEnd = Stroke::RoundCap;
     int m_lineTexture = 0;
     int m_lineTextureAmount = 100;
+    bool m_lineTextureCrisp = false;
+    bool m_brushTextureCrisp = false;
     int m_brushTexture = 0;
     int m_brushTextureAmount = 100;
     void retextureSelectedFills(QString const& text, bool kindToo);

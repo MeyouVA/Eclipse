@@ -35,7 +35,8 @@ QImage preview(QImage const& grain, double edge, QSize size);
 // What kind `kind` (1 to count) is called.
 QString name(int kind);
 // The strip of grain: only how opaque each pixel is counts.  It repeats along its length.
-QImage const& tile(int kind);
+// Crisp: its edge frays as the grain does but does not fade - every bit of it is grain or nothing.
+QImage const& tile(int kind, bool crisp = false);
 // The same grain lying flat, as on paper - what a brush stroke shows of it.  It repeats both ways.
 QImage const& paper(int kind);
 // A small picture of a line drawn with it (kind 0: a solid line), for a list.
