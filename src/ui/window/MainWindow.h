@@ -314,6 +314,7 @@ public slots:
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
     void onActionHelp();
+    void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();
     void onActionKeyframeAndDuplicate();
     void onActionToggleSoundScrubbing(bool on) { m_scrub = on; }

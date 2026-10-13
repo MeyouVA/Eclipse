@@ -254,6 +254,9 @@
    <separator/>
    <menu id="AnimationTools" text="&amp;Tools">
     <item id="ToolTransform" icon="tool/transform" text="&amp;Transform" shortcut="shortcut.toolTransform" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="transform"/>
+    <item id="ToolTranslate" icon="tool/translate" text="Trans&amp;late" shortcut="shortcut.toolTranslate" responder="window" slot="onActionTransformMode(QString)" itemParameter="translate"/>
+    <item id="ToolRotate" icon="tool/rotate" text="&amp;Rotate" shortcut="shortcut.toolRotate" responder="window" slot="onActionTransformMode(QString)" itemParameter="rotate"/>
+    <item id="ToolScale" icon="tool/scale" text="&amp;Scale" shortcut="shortcut.toolScale" responder="window" slot="onActionTransformMode(QString)" itemParameter="scale"/>
     <item id="ToolIK" icon="tool/ik" text="&amp;Inverse Kinematics" shortcut="shortcut.toolIk" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="ik"/>
    </menu>
    <menu id="AnimationCell" text="&amp;Cell">

@@ -70,7 +70,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         // Measured in the layer as it was when the drag began, from the pivot.
         QPointF const pivot = m_document->scene().layers[m_layer].pivot;
         QTransform const inv = m_world0.inverted();
-        QPointF const from = handlePos(m_dragHandle, m_dragBounds) - pivot;
+        QPointF const from = (m_scaleFromPress ? inv.map(m_dragStartScene) : handlePos(m_dragHandle, m_dragBounds)) - pivot;
         QPointF const to = inv.map(toScene(widgetPos)) - pivot;
         double sx = std::abs(from.x()) > 1e-6 ? to.x() / from.x() : 1.0;
         double sy = std::abs(from.y()) > 1e-6 ? to.y() / from.y() : 1.0;

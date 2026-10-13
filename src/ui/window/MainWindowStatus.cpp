@@ -8,6 +8,7 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QStatusBar>
 #include <QTextBrowser>
 #include <QVBoxLayout>
 
@@ -210,6 +211,18 @@ void MainWindow::onActionChooseTool(QString const& name)
         {QStringLiteral("rotateview"), Canvas::RotateView}, {QStringLiteral("cutter"), Canvas::Cutter},
         {QStringLiteral("stroke"), Canvas::StrokeTool}, {QStringLiteral("closegap"), Canvas::CloseGap},
         {QStringLiteral("gradient"), Canvas::EditGradient}, {QStringLiteral("reposition"), Canvas::Reposition}, {QStringLiteral("stamp"), Canvas::Stamp}, {QStringLiteral("pencileditor"), Canvas::PencilEditor}, {QStringLiteral("perspective"), Canvas::Perspective}, {QStringLiteral("ink"), Canvas::Ink}, {QStringLiteral("smootheditor"), Canvas::SmoothEditor}};
-    if (tools.contains(name))
+    if (tools.contains(name)) {
+        m_canvas->setTransformMode(Canvas::TransformAll);       // the Transform tool itself does everything
         m_canvas->setTool(tools.value(name));
+    }
+}
+
+// Animation > Tools > Translate, Rotate, Scale: the Transform tool, doing that only.
+void MainWindow::onActionTransformMode(QString const& mode)
+{
+    m_canvas->setTool(Canvas::Transform);
+    m_canvas->setTransformMode(mode == QLatin1String("translate") ? Canvas::TranslateOnly : mode == QLatin1String("rotate") ? Canvas::RotateOnly : Canvas::ScaleOnly);
+    statusBar()->showMessage(mode == QLatin1String("translate") ? tr("Translate: drag the layer anywhere to move it.")
+                             : mode == QLatin1String("rotate") ? tr("Rotate: drag anywhere to turn the layer about its pivot.")
+                                                              : tr("Scale: drag away from the pivot to make the layer bigger, towards it smaller."), 6000);
 }

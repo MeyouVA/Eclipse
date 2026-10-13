@@ -237,6 +237,15 @@ public:
     // The first time the Transform tool moves a layer that has no keyframes, on a frame after the
     // first: with this on, the first frame gets a keyframe too, of the layer as it was - so the
     // layer goes from there to where it was put, instead of being there all along.
+    // The Transform tool doing one thing only, wherever the layer is taken hold of: moving it,
+    // turning it, or scaling it (the Translate, Rotate and Scale tools).  TransformAll: by its handles, as usual.
+    enum TransformMode { TransformAll, TranslateOnly, RotateOnly, ScaleOnly };
+    int transformMode() const { return m_transformMode; }
+    void setTransformMode(int mode)
+    {
+        m_transformMode = mode;
+        update();
+    }
     bool keysFrameOne() const { return m_keyFrameOne; }
     void setKeysFrameOne(bool on) { m_keyFrameOne = on; }
     void setLasso(bool on);
@@ -740,6 +749,8 @@ private:
     bool m_snapGrid = false;
     bool m_animate = true;
     bool m_keyFrameOne = false;
+    int m_transformMode = TransformAll;
+    bool m_scaleFromPress = false;       // the scale being dragged is counted from where the pen went down
     void paintMotionPath(QPainter& painter);
     QPointF snapped(QPointF p) const;
     bool m_dragLasso = true;      // for the drag going on: Alt gives the other of the two

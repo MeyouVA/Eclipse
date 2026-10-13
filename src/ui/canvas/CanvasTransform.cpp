@@ -198,6 +198,22 @@ void Canvas::transformDown(QPointF widgetPos)
         m_drag = DragPivot;
         return;
     }
+    m_scaleFromPress = false;
+    // One of the tools that do one thing only: that, wherever the pen went down.
+    if (m_transformMode == TranslateOnly) {
+        m_drag = DragPoseMove;
+        return;
+    }
+    if (m_transformMode == RotateOnly) {
+        m_drag = DragPoseRotate;
+        return;
+    }
+    if (m_transformMode == ScaleOnly) {
+        m_scaleFromPress = true;
+        m_dragHandle = BottomRight;
+        m_drag = DragPoseScale;
+        return;
+    }
     if (std::abs(knob.x() - widgetPos.x()) <= 7 && std::abs(knob.y() - widgetPos.y()) <= 7) {
         m_drag = DragPoseRotate;
         return;
