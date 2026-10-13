@@ -111,6 +111,12 @@ QWidget* MainWindow::createOnionSkinView()
     QPushButton* const afterColour = new QPushButton(onion);
     afterColour->setObjectName(QStringLiteral("OnionAfter"));
     onionForm->addRow(tr("Show"), mode);
+    QComboBox* const marks = new QComboBox(onion);
+    marks->setObjectName(QStringLiteral("OnionMarks"));
+    marks->addItems({tr("All Drawings"), tr("Key Drawings"), tr("Breakdown Drawings"), tr("In-between Drawings")});
+    marks->setToolTip(tr("Which drawings are shown before and after: all of them, or only those marked so (Drawing > Mark Drawing As)."));
+    onionForm->addRow(tr("Of"), marks);
+    connect(marks, &QComboBox::currentIndexChanged, m_canvas, &Canvas::setOnionMark);
     QCheckBox* const outlines = new QCheckBox(tr("Outlines only"), onion);
     outlines->setObjectName(QStringLiteral("OnionOutlines"));
     outlines->setToolTip(tr("The drawings before and after are shown as outlines, so that they do not hide what is being drawn."));
@@ -129,7 +135,11 @@ QWidget* MainWindow::createOnionSkinView()
         if (chosen.isValid())
             m_canvas->setOnionColours(m_canvas->onionBefore(), chosen);
     });
-    auto follow = [this, show, previous, next, opacity, mode, outlines, beforeColour, afterColour, beforeSliders, afterSliders] {
+    auto follow = [this, show, previous, next, opacity, mode, outlines, marks, beforeColour, afterColour, beforeSliders, afterSliders] {
+        {
+            QSignalBlocker const m(marks);
+            marks->setCurrentIndex(m_canvas->onionMark());
+        }
         {
             QSignalBlocker const o(outlines);
             outlines->setChecked(m_canvas->onionOutlines());

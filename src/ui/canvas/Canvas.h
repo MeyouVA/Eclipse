@@ -291,6 +291,9 @@ public:
     void setOnionByFrame(bool on);
     // The drawings before and after as outlines only: the edges of their paint and the paths of their lines.
     void setOnionOutlines(bool on);
+    // Only the drawings marked so (Drawing::Mark) are shown before and after; NoMark: all of them.
+    void setOnionMark(int mark);
+    int onionMark() const { return m_onionMark; }
     bool onionOutlines() const { return m_onionOutlines; }
     bool onionByFrame() const { return m_onionByFrame; }
     void setOnionColours(QColor const& before, QColor const& after);
@@ -664,6 +667,7 @@ private:
     bool m_applyAll = false;
     bool m_onionByFrame = false;
     bool m_onionOutlines = false;
+    int m_onionMark = 0;
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     QColor m_onionBefore = QColor(220, 60, 60);
     QColor m_onionAfter = QColor(50, 160, 80);

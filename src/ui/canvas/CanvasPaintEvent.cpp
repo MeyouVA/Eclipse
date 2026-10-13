@@ -119,6 +119,10 @@ void Canvas::paintEvent(QPaintEvent*)
                     break;
                 if (layer.drawingAt(prev) == Layer::kNoDrawing)
                     continue;       // an empty frame: nothing of it to show
+                if (m_onionMark != Drawing::NoMark && layer.drawings[layer.cells[prev]].mark != m_onionMark) {
+                    --i;            // not one of the drawings asked for: the next one back is looked at instead
+                    continue;
+                }
                 painter.setTransform(worldOf(l, prev) * view);
                 if (m_onionStrength[0][i] > 0)
                     paintOnion(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
@@ -130,6 +134,10 @@ void Canvas::paintEvent(QPaintEvent*)
                     break;
                 if (layer.drawingAt(next) == Layer::kNoDrawing)
                     continue;
+                if (m_onionMark != Drawing::NoMark && layer.drawings[layer.cells[next]].mark != m_onionMark) {
+                    --i;
+                    continue;
+                }
                 painter.setTransform(worldOf(l, next) * view);
                 if (m_onionStrength[1][i] > 0)
                     paintOnion(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
