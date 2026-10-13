@@ -5,7 +5,16 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QApplication>
+#include <QDesktopServices>
+#include <QDir>
+#include <QFile>
 #include <QInputDialog>
+#include <QMessageBox>
+#include <QProgressDialog>
+#include <QStandardPaths>
+#include <QStatusBar>
+#include <QUrl>
 #include <QSlider>
 
 #include "actions/manager/ActionManager.h"
@@ -69,6 +78,51 @@ void MainWindow::stop()
         setPlayRange(m_miniStart, m_miniStop);
         m_timeline->setCurrentFrame(std::min(m_miniFrame, m_document->scene().frameCount() - 1));
     }
+}
+
+QString MainWindow::recordForPlay(QString* error)
+{
+    stop();
+    Scene const scene = m_document->scene();
+    QString const folder = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QStringLiteral("Eclipse"));
+    QDir().mkpath(folder);
+    QString const path = QDir(folder).filePath(QStringLiteral("record_and_play.mp4"));
+    QFile::remove(path);
+    MovieExport::Options options;
+    options.first = m_playStart;
+    options.last = playStop();
+    options.scale = 0.5;        // quick to make and to play: it is for looking at the movement
+    options.quality = 23;
+    QProgressDialog progress(tr("Recording..."), tr("Stop"), 0, scene.frameCount(), this);
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(300);
+    QString why;
+    bool const ok = MovieExport::write(scene, path, [&progress](int f) {
+        progress.setValue(f);
+        QApplication::processEvents();
+        return !progress.wasCanceled();
+    }, &why, options);
+    progress.setValue(scene.frameCount());
+    if (!ok && error && !progress.wasCanceled())
+        *error = why;
+    return ok ? path : QString();
+}
+
+// Play > Record and Play: the scene is written as a movie, sound and all, and handed to the program this
+// computer plays movies with.
+void MainWindow::onActionRecordAndPlay()
+{
+    QString error;
+    QString const movie = recordForPlay(&error);
+    if (movie.isEmpty()) {
+        if (!error.isEmpty())
+            QMessageBox::critical(this, tr("Eclipse"), tr("The scene could not be recorded.\n%1").arg(error));
+        return;
+    }
+    if (QDesktopServices::openUrl(QUrl::fromLocalFile(movie)))
+        statusBar()->showMessage(tr("Recorded %1").arg(QDir::toNativeSeparators(movie)), 6000);
+    else
+        QMessageBox::information(this, tr("Eclipse"), tr("The recording is in\n%1\nbut no program could be found to play it.").arg(QDir::toNativeSeparators(movie)));
 }
 
 // Play > Mini Playback: the few frames before this one and the few after it, over and over, to see how a

@@ -93,6 +93,9 @@ public:
     // The layers of a template file brought into the scene from `frame` on.  Returns the
     // first of them, or -1 with a message.
     int insertTemplate(QString const& path, int frame, QString* error);
+    // Record and Play: the frames playing runs between, written as a small movie in the temporary folder.
+    // The file, or nothing (with a message, unless it was stopped).
+    QString recordForPlay(QString* error);
     class LibraryView* library() const { return m_library; }
     // The files the scene reads from outside itself (linked pictures, sounds), each once;
     // with `missingOnly`, those that are not where the scene expects them.
@@ -332,6 +335,7 @@ public slots:
     void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();
     void onActionMiniPlayback();
+    void onActionRecordAndPlay();
     void onActionMiniPlaybackRange();
     void onActionKeyframeAndDuplicate();
     void onActionToggleSoundScrubbing(bool on) { m_scrub = on; }

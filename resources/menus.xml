@@ -120,6 +120,7 @@
   <menu id="Play" text="&amp;Play">
    <item id="PlayToggle" icon="play/play" text="&amp;Play" shortcut="shortcut.togglePlayback" checkable="true" responder="window" slot="onActionTogglePlayback()"/>
    <item id="RenderAndPlay" icon="play/renderplay" text="&amp;Render and Play" shortcut="shortcut.renderAndPlay" responder="window" slot="onActionRenderAndPlay()"/>
+   <item id="RecordAndPlay" icon="play/recordplay" text="Re&amp;cord and Play" responder="window" slot="onActionRecordAndPlay()"/>
    <item id="MiniPlayback" icon="play/miniplay" text="&amp;Mini Playback" shortcut="shortcut.miniPlayback" responder="window" slot="onActionMiniPlayback()"/>
    <item id="MiniPlaybackRange" icon="play/minirange" text="Mini Playback Ran&amp;ge..." responder="window" slot="onActionMiniPlaybackRange()"/>
    <item id="PlayStop" icon="play/stop" text="S&amp;top" responder="window" slot="onActionStopPlayback()"/>
