@@ -321,3 +321,26 @@ int Scene::duplicateSymbol(int layer)
     refreshSymbolInstances(copy.id);
     return copy.id;
 }
+
+QVector<Scene::Symbol> Scene::symbolsUsed(QVector<Layer> const& by) const
+{
+    QVector<Symbol> used;
+    QVector<int> wanted;
+    for (Layer const& layer : by)
+        if (layer.showsSymbol())
+            wanted.push_back(layer.symbolId);
+    while (!wanted.isEmpty()) {
+        int const id = wanted.takeLast();
+        bool have = false;
+        for (Symbol const& one : std::as_const(used))
+            have = have || one.id == id;
+        Symbol const* const symbol = have ? nullptr : findSymbol(id);
+        if (!symbol)
+            continue;
+        used.push_back(*symbol);
+        for (Layer const& inner : symbol->layers)
+            if (inner.showsSymbol())
+                wanted.push_back(inner.symbolId);
+    }
+    return used;
+}

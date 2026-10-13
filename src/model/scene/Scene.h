@@ -744,6 +744,8 @@ public:
     int addEmptySymbol(QString const& name);
     // A symbol of its own for a layer that shows one: a copy, to change without changing the other.  Its id, or 0.
     int duplicateSymbol(int layer);
+    // The symbols these layers show - and those shown inside them, and so on.
+    QVector<Symbol> symbolsUsed(QVector<Layer> const& by) const;
     static bool fromJson(QJsonObject const& json, Scene& out, QString* error, QString const& folder = QString());
     bool save(QString const& path, QString* error) const;
     static bool load(QString const& path, Scene& out, QString* error);

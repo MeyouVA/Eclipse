@@ -113,7 +113,7 @@ void Document::setScene(Scene const& scene)
 
 void Document::addStroke(int layer, int frame, Stroke const& stroke)
 {
-    if (!validCell(m_scene, layer, frame) || stroke.points.isEmpty() || !m_scene.layers[layer].holdsDrawings())
+    if (!validCell(m_scene, layer, frame) || stroke.points.isEmpty() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())
         return;
     if (m_scene.layers[layer].cells[frame] == Layer::kNoDrawing) {
         // Drawing on an empty cell creates the drawing: one undo step for both.
@@ -160,8 +160,8 @@ int Document::eraseAt(int layer, int frame, QPointF p, double radius)
 
 void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString const& text)
 {
-    if (!validCell(m_scene, layer, frame) || !m_scene.layers[layer].holdsDrawings())
-        return;
+    if (!validCell(m_scene, layer, frame) || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())
+        return;         // (what a layer that shows a symbol has on it is the symbol's: changed there)
     apply(text, [&](Scene& s) {
         int const index = s.layers[layer].cells[frame];
         if (index == Layer::kNoDrawing) {

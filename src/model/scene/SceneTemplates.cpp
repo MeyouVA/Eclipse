@@ -78,6 +78,9 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
         layer.solo = false;
         piece.layers.push_back(layer);
     }
+    // The symbols those layers show come along.
+    piece.symbols = symbolsUsed(piece.layers);
+    piece.refreshSymbolInstances();
     return piece;
 }
 
@@ -88,6 +91,8 @@ int Scene::pasteOnto(Scene const& piece, int frame)
     // Which layer each of them goes to.
     QVector<int> target;
     for (Layer const& theirs : piece.layers) {
+        if (theirs.showsSymbol())
+            return -1;          // (a layer that shows a symbol comes in as a layer of its own)
         int found = -1;
         for (int l = 0; l < layers.size() && found < 0; ++l)
             if (layers[l].name == theirs.name && layers[l].kind == theirs.kind && !target.contains(l))
@@ -192,6 +197,45 @@ int Scene::insert(Scene const& piece, int frame)
         swatch = found.value();
     };
 
+    // The symbols of the piece become symbols of the scene, under numbers (and, where need be, names) of their own.
+    QHash<int, int> symbolOf;
+    {
+        int next = 1;
+        for (Symbol const& have : std::as_const(symbols))
+            next = std::max(next, have.id + 1);
+        QVector<Symbol> brought;
+        for (Symbol theirs : piece.symbols) {
+            symbolOf.insert(theirs.id, next);
+            theirs.id = next++;
+            QString const base = theirs.name;
+            for (int n = 2;; ++n) {
+                bool taken = false;
+                for (Symbol const& have : std::as_const(symbols))
+                    taken = taken || have.name == theirs.name;
+                for (Symbol const& have : std::as_const(brought))
+                    taken = taken || have.name == theirs.name;
+                if (!taken)
+                    break;
+                theirs.name = QStringLiteral("%1 %2").arg(base).arg(n);
+            }
+            for (Layer& inner : theirs.layers) {
+                for (Drawing& d : inner.drawings) {
+                    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                        for (Stroke& stroke : d.strokesOf(sheet))
+                            relink(stroke.swatch, stroke.color);
+                        for (Fill& fill : d.fillsOf(sheet))
+                            relink(fill.swatch, fill.color);
+                    }
+                }
+            }
+            brought.push_back(theirs);
+        }
+        for (Symbol& one : brought)
+            for (Layer& inner : one.layers)
+                if (inner.showsSymbol())
+                    inner.symbolId = symbolOf.value(inner.symbolId, 0);
+        symbols += brought;
+    }
     bool const haveCamera = std::any_of(layers.begin(), layers.end(), [](Layer const& l) { return l.kind == Layer::Camera; });
     QHash<int, int> idOf;       // of the layers brought in: the id they had -> the id they get
     int firstIndex = -1;
@@ -204,6 +248,8 @@ int Scene::insert(Scene const& piece, int frame)
         idOf.insert(theirs.id, layer.id);
         layer.name = uniqueLayerName(theirs.name);
         layer.nodePlaced = false;
+        if (layer.showsSymbol())
+            layer.symbolId = symbolOf.value(layer.symbolId, 0);
         // Its frames, from `frame` on.
         layer.cells = QVector<int>(m_frameCount, Layer::kNoDrawing);
         for (int f = 0; f < theirs.cells.size() && frame + f < m_frameCount; ++f)
@@ -233,5 +279,7 @@ int Scene::insert(Scene const& piece, int frame)
         if (layer.parent == 0)
             layer.parentBone = -1;
     }
+    if (!symbolOf.isEmpty())
+        refreshSymbolInstances();
     return firstIndex;
 }
