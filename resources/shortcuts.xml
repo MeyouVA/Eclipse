@@ -94,6 +94,7 @@
   <shortcut id="shortcut.newVerticalGuide" text="New Vertical Alignment Guide" value=""/>
   <shortcut id="shortcut.createContourStrokes" text="Create Contour Strokes" value=""/>
   <shortcut id="shortcut.removeContourStrokes" text="Remove Contour Strokes" value=""/>
+  <shortcut id="shortcut.removeExtraStrokes" text="Remove Extra Strokes" value=""/>
   <shortcut id="shortcut.highlightColour" text="Highlight Selected Colour" value=""/>
   <shortcut id="shortcut.selectCurrentColour" text="Select Strokes with Current Colour" value="Ctrl+Shift+A"/>
   <shortcut id="shortcut.invertSelection" text="Invert Selection" value="Ctrl+Shift+I"/>

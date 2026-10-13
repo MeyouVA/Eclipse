@@ -112,6 +112,13 @@ Timeline::Drop Timeline::dropAt(QPoint pos, int& targetLayer) const
 
 void Timeline::mouseReleaseEvent(QMouseEvent*)
 {
+    if (m_dragParamLayer >= 0) {
+        m_dragParamLayer = -1;
+        if (m_dragParamBegun)
+            m_document->endMacro();     // however far it was dragged: one step
+        m_dragParamBegun = false;
+        return;
+    }
     if (m_dragEnd) {
         m_dragEnd = false;
         viewport()->update();
@@ -187,9 +194,22 @@ void Timeline::mousePressEvent(QMouseEvent* event)
                 return;
             }
         }
+        int const row = rowAt(pos.y());
+        if (pos.y() >= kRulerHeight && isParamRow(row) && pos.x() >= kHeaderWidth - kParamWidth && pos.x() < kHeaderWidth) {
+            // On a value: dragged left or right it goes down or up (a double-click types one).
+            closeEntry(true);
+            clearRange();
+            if (m_rows[row] != m_layer)
+                setCurrentCell(m_rows[row], m_frame);
+            m_dragParamLayer = m_rows[row];
+            m_dragParam = Parameter(m_params[row]);
+            m_dragParamX = pos.x();
+            m_dragParamFrom = parameter(m_dragParamLayer, m_dragParam);
+            m_dragParamBegun = false;
+            return;
+        }
         if (pressSwitch(pos))
             return;
-        int const row = rowAt(pos.y());
         bool const shift = event->modifiers() & Qt::ShiftModifier;
         if (pos.x() >= kSwitches && pos.x() < kHeaderWidth && row >= 0) {
             if (event->modifiers() & Qt::ControlModifier) {
@@ -287,6 +307,22 @@ void Timeline::deleteSelection()
 
 void Timeline::mouseMoveEvent(QMouseEvent* event)
 {
+    if (m_dragParamLayer >= 0) {
+        int const moved = event->pos().x() - m_dragParamX;
+        if (!m_dragParamBegun && std::abs(moved) < 3)
+            return;     // not far enough to mean it
+        if (m_dragParamLayer >= m_document->scene().layers.size())
+            return;
+        if (!m_dragParamBegun) {
+            m_dragParamBegun = true;
+            m_document->beginMacro(tr("Set %1").arg(parameterName(m_dragParam)));
+        }
+        // A pixel is one of what places and angles are counted in, a hundredth of a scale or of the opacity.
+        double const step = m_dragParam == ScaleX || m_dragParam == ScaleY || m_dragParam == Opacity ? 0.01 : m_dragParam == Fov ? 0.5 : 1.0;
+        setParameter(m_dragParamLayer, m_dragParam, m_dragParamFrom + moved * step);
+        viewport()->update();
+        return;
+    }
     if (m_dragEnd) {
         int const x = event->pos().x() - kHeaderWidth + horizontalScrollBar()->value();
         m_endFrames = std::max(1, (x + m_cellWidth / 2) / m_cellWidth);

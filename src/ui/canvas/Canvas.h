@@ -444,6 +444,7 @@ public slots:
     void onActionNewGuide(QString const& which);
     void onActionCreateContourStrokes();
     void onActionRemoveContourStrokes();
+    void onActionRemoveExtraStrokes();
     // The Select tool: a click on something picks everything of its colour.
     void setSelectByColour(bool on) { m_selectByColour = on; }
     // The Select tool: what is dragged goes edge to edge, or middle to middle, with the other

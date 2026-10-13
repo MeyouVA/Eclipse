@@ -225,6 +225,7 @@
     <item id="ReducePoints" icon="anim/reducepoints" text="&amp;Reduce Points" responder="camera" slot="onActionReducePoints()"/>
     <item id="CreateContourStrokes" icon="anim/contourcreate" text="&amp;Create Contour Strokes" shortcut="shortcut.createContourStrokes" responder="camera" slot="onActionCreateContourStrokes()"/>
     <item id="RemoveContourStrokes" icon="anim/contourremove" text="Re&amp;move Contour Strokes" shortcut="shortcut.removeContourStrokes" responder="camera" slot="onActionRemoveContourStrokes()"/>
+    <item id="RemoveExtraStrokes" icon="anim/extrastrokes" text="Remove &amp;Extra Strokes" shortcut="shortcut.removeExtraStrokes" responder="camera" slot="onActionRemoveExtraStrokes()"/>
    </menu>
    <separator/>
    <item id="PreviousLayer" icon="timeline/prevlayer" text="Previous La&amp;yer" shortcut="shortcut.prevLayer" responder="window" slot="onActionPreviousLayer()"/>

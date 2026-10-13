@@ -2,7 +2,11 @@
 #include "ui/window/MainWindow.h"
 #include "ui/views/PreviewManagerView.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include <QInputDialog>
+#include <QSlider>
 
 #include "actions/manager/ActionManager.h"
 #include "audio/sound/Sound.h"
@@ -164,4 +168,20 @@ void MainWindow::stepDrawing(int direction)
     int const target = direction < 0 ? l.previousDrawingFrame(frame()) : l.nextDrawingFrame(frame());
     if (target >= 0)
         m_timeline->setCurrentFrame(target);
+}
+
+void MainWindow::shuttleStep()
+{
+    Scene const& scene = m_document->scene();
+    if (!m_shuttle || scene.frameCount() < 1)
+        return;
+    if (int(std::lround(m_shuttleAt)) != frame())
+        m_shuttleAt = frame();      // the frame was changed some other way meanwhile
+    // Up to four times the scene's speed at the end of its travel, gently near the middle.
+    double const pull = m_shuttle->value() / 100.0;
+    double const framesPerSecond = pull * std::abs(pull) * 4.0 * scene.fps;
+    m_shuttleAt = std::clamp(m_shuttleAt + framesPerSecond * 0.04, 0.0, double(scene.frameCount() - 1));
+    int const to = int(std::lround(m_shuttleAt));
+    if (to != frame())
+        m_timeline->setCurrentFrame(to);
 }

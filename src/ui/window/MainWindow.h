@@ -415,6 +415,7 @@ private:
     void onExposure(QString const& text, std::function<void(int layer, int frame)> const& command);
     int layer() const;
     int frame() const;
+    Q_INVOKABLE void shuttleStep();     // one tick of the shuttle
 
     bool saveTo(QString const& path);
     // True when it is fine to throw the current scene away (saved, or the user said so).
@@ -466,6 +467,10 @@ private:
     QSpinBox* m_stopBox = nullptr;
     QComboBox* m_fpsBox = nullptr;
     QSlider* m_jog = nullptr;
+    // The shuttle: held to one side it runs through the frames, the faster the further; let go, it springs back.
+    QSlider* m_shuttle = nullptr;
+    QTimer m_shuttleTimer;
+    double m_shuttleAt = 0.0;
     int m_playStart = 0;
     int m_autoSaveMinutes = 0;
     QTimer m_autoSave;

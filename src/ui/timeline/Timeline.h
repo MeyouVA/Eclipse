@@ -204,6 +204,12 @@ private:
     Drop m_drop = DropNone;
     int m_dropLayer = -1;
     int m_dragMarker = -1;     // the scene marker being dragged along the ruler
+    // A parameter's value dragged left or right in its box: whose, which, from where, and what it was.
+    int m_dragParamLayer = -1;
+    Parameter m_dragParam = PosX;
+    int m_dragParamX = 0;
+    double m_dragParamFrom = 0.0;
+    bool m_dragParamBegun = false;
     int m_markerGrab = 0;      // how many frames into it it was taken hold of
     int m_markerFrame = 0;     // where it starts as it is dragged
     bool m_dragEnd = false;    // the end of the scene is being dragged

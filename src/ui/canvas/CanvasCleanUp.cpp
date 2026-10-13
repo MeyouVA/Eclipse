@@ -770,6 +770,78 @@ void Canvas::onActionRemoveContourStrokes()
     update();
 }
 
+// Remove Extra Strokes: the strokes with no thickness that lie wholly inside paint of one colour
+// divide nothing, and go.  Of what is selected, or of the whole drawing when nothing is.
+void Canvas::onActionRemoveExtraStrokes()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d)
+        return;
+    bool const chosen = selecting() && hasSelection();
+    // The paint on top at a place: its number, or -1 where there is none.
+    auto paintAt = [&](QPointF q) {
+        for (int i = int(d->fills.size()) - 1; i >= 0; --i)
+            if (d->fills[i].contains(q))
+                return i;
+        return -1;
+    };
+    auto extra = [&](Stroke const& stroke) {
+        if (stroke.width > 0.0f || stroke.points.size() < 2)
+            return false;
+        int swatch = Scene::kNoSwatch;
+        QColor colour;
+        bool first = true;
+        auto same = [&](QPointF q) {
+            // Not only at the place itself: a little to every side of it too, so that a stroke along an edge stays.
+            for (QPointF const off : {QPointF(0, 0), QPointF(1, 0), QPointF(-1, 0), QPointF(0, 1), QPointF(0, -1)}) {
+                int const paint = paintAt(q + off);
+                if (paint < 0)
+                    return false;
+                Fill const& fill = d->fills[paint];
+                if (first) {
+                    swatch = fill.swatch;
+                    colour = fill.color;
+                    first = false;
+                } else if (fill.swatch != swatch || (swatch == Scene::kNoSwatch && fill.color != colour)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        for (int i = 0; i < stroke.points.size(); ++i) {
+            if (!same(stroke.points[i].pos))
+                return false;
+            if (i + 1 < stroke.points.size() && !same((stroke.points[i].pos + stroke.points[i + 1].pos) / 2.0))
+                return false;
+        }
+        return true;
+    };
+    Drawing edited = *d;
+    edited.strokes.clear();
+    QVector<int> lines;
+    for (int i = 0; i < d->strokes.size(); ++i) {
+        bool const mine = !chosen || m_selStrokes.contains(i);
+        if (mine && extra(d->strokes[i]))
+            continue;
+        if (chosen && m_selStrokes.contains(i))
+            lines.push_back(int(edited.strokes.size()));
+        edited.strokes.push_back(d->strokes[i]);
+    }
+    if (edited.strokes.size() == d->strokes.size()) {
+        emit message(tr("There are no extra strokes: none with no thickness lies wholly inside paint of one colour."));
+        return;
+    }
+    int const gone = int(d->strokes.size() - edited.strokes.size());
+    QVector<int> const paints = chosen ? m_selFills : QVector<int>();
+    clearSelection();
+    commitDrawing(edited, tr("Remove Extra Strokes"));
+    m_selStrokes = lines;
+    m_selFills = paints;
+    emit selectionChanged();
+    emit message(tr("%n extra stroke(s) removed.", nullptr, gone));
+    update();
+}
+
 // ---- Strokes to Pencil Lines ---------------------------------------------------------------------
 
 void Canvas::onActionStrokesToPencil()

@@ -313,6 +313,21 @@ void MainWindow::createTimelineView()
     m_jog->setFixedWidth(70);
     m_jog->setToolTip(tr("Drag to move through the frames"));
     connect(m_jog, &QSlider::valueChanged, this, [this](int v) { m_timeline->setCurrentFrame(v); });
+    m_shuttle = new QSlider(Qt::Horizontal, this);
+    m_shuttle->setObjectName(QStringLiteral("Shuttle"));
+    m_shuttle->setRange(-100, 100);
+    m_shuttle->setFixedWidth(60);
+    m_shuttle->setToolTip(tr("Shuttle: hold it to the right to run forwards through the frames, to the left to run backwards - the further, the faster. Let go and it springs back."));
+    m_shuttleTimer.setInterval(40);
+    connect(m_shuttle, &QSlider::sliderPressed, this, [this] {
+        m_shuttleAt = frame();
+        m_shuttleTimer.start();
+    });
+    connect(m_shuttle, &QSlider::sliderReleased, this, [this] {
+        m_shuttleTimer.stop();
+        m_shuttle->setValue(0);
+    });
+    connect(&m_shuttleTimer, &QTimer::timeout, this, &MainWindow::shuttleStep);
     auto box = [this](char const* name) {
         QSpinBox* const b = new QSpinBox(this);
         b->setObjectName(QLatin1String(name));
@@ -348,6 +363,7 @@ void MainWindow::createTimelineView()
     if (playback) {
         playback->setIconSize(QSize(22, 22));
         playback->addWidget(m_jog);
+        playback->addWidget(m_shuttle);
         playback->addWidget(new QLabel(tr("  Frame "), this));
         playback->addWidget(m_frameBox);
         playback->addWidget(new QLabel(tr("  Start "), this));
