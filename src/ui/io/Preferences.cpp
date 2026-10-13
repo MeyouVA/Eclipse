@@ -119,6 +119,7 @@ void MainWindow::applyPreferences()
     }
     if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
         m_canvas->setArt(Canvas::LineArt);
+    m_document->setExtendPreviousExposure(s.value(QStringLiteral("prefs/extendExposure"), true).toBool());
     m_canvas->setNudgeStep(std::clamp(s.value(QStringLiteral("prefs/nudge"), 1).toInt(), 1, 100));
     m_canvas->setProportionParts(std::clamp(s.value(QStringLiteral("prefs/proportionAcross"), 3).toInt(), 2, 12),
                                  std::clamp(s.value(QStringLiteral("prefs/proportionDown"), 3).toInt(), 2, 12));
@@ -184,6 +185,15 @@ void MainWindow::onActionPreferences()
     safe->setValue(int(std::lround(m_canvas->safeMargin() * 100.0)));
     cameraLayout->addRow(tr("TV safety"), safe);
 
+    QGroupBox* const sheet = new QGroupBox(tr("Exposure Sheet"), &dialog);
+    QCheckBox* const extend = new QCheckBox(tr("Extend Exposure of Previous Drawing"), sheet);
+    extend->setObjectName(QStringLiteral("PrefExtendExposure"));
+    extend->setToolTip(tr("When you draw on an empty frame, the drawing before it is held over the empty frames up to it.\n"
+                          "Off: those frames stay empty."));
+    extend->setChecked(m_document->extendsPreviousExposure());
+    QFormLayout* const sheetLayout = new QFormLayout(sheet);
+    sheetLayout->addRow(extend);
+
     QGroupBox* const advanced = new QGroupBox(tr("Advanced"), &dialog);
     QCheckBox* const moreArt = new QCheckBox(tr("Support Overlay and Underlay Arts"), advanced);
     moreArt->setObjectName(QStringLiteral("PrefOverlayUnderlay"));
@@ -198,6 +208,7 @@ void MainWindow::onActionPreferences()
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addWidget(general);
     layout->addWidget(camera);
+    layout->addWidget(sheet);
     layout->addWidget(advanced);
     layout->addWidget(buttons);
     if (dialog.exec() != QDialog::Accepted)
@@ -207,6 +218,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/lasso"), selectMode->currentIndex() == 0);
     s.setValue(QStringLiteral("prefs/overlayUnderlay"), moreArt->isChecked());
     s.setValue(QStringLiteral("prefs/nudge"), nudge->value());
+    s.setValue(QStringLiteral("prefs/extendExposure"), extend->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
     s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());
     s.setValue(QStringLiteral("prefs/safeMargin"), safe->value());

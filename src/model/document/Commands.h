@@ -41,6 +41,10 @@ public:
     explicit Document(QObject* parent = nullptr);
 
     Scene const& scene() const { return m_scene; }
+    // A drawing begun on an empty frame: with this on, the drawing before it is held over the
+    // empty frames up to it (off: they stay empty).
+    bool extendsPreviousExposure() const { return m_extendPrevious; }
+    void setExtendPreviousExposure(bool on) { m_extendPrevious = on; }
     QUndoStack* undoStack() { return &m_undo; }
 
     // Replaces everything (new / open); clears the undo history.
@@ -301,5 +305,6 @@ private:
     void setScene(Scene const& scene);
 
     Scene m_scene;
+    bool m_extendPrevious = false;
     QUndoStack m_undo;
 };

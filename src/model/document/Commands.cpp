@@ -53,6 +53,8 @@ void Document::addStroke(int layer, int frame, Stroke const& stroke)
         apply(tr("Draw Stroke"), [&](Scene& s) {
             Drawing d;
             d.strokes.push_back(stroke);
+            if (m_extendPrevious)
+                holdPreviousUpTo(s.layers[layer], frame);
             startDrawingAt(s.layers[layer], frame, d);
         });
         return;
@@ -93,9 +95,11 @@ void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString 
         return;
     apply(text, [&](Scene& s) {
         int const index = s.layers[layer].cells[frame];
-        if (index == Layer::kNoDrawing)
+        if (index == Layer::kNoDrawing) {
+            if (m_extendPrevious)
+                holdPreviousUpTo(s.layers[layer], frame);
             startDrawingAt(s.layers[layer], frame, drawing);
-        else
+        } else
             s.layers[layer].drawings[index] = drawing;
     });
 }

@@ -34,6 +34,18 @@ inline bool validCell(Scene const& scene, int layer, int frame)
     return layer >= 0 && layer < scene.layers.size() && frame >= 0 && frame < scene.frameCount();
 }
 
+// The drawing shown before the empty frames that lead up to `frame` is held over them.
+inline void holdPreviousUpTo(Layer& layer, int frame)
+{
+    int before = frame - 1;
+    while (before >= 0 && layer.cells[before] == Layer::kNoDrawing)
+        --before;
+    if (before < 0)
+        return;
+    for (int f = before + 1; f < frame; ++f)
+        layer.cells[f] = layer.cells[before];
+}
+
 // Gives `frame` a drawing of its own: from there to the end of the exposure it was part of.
 inline void startDrawingAt(Layer& layer, int frame, Drawing const& drawing)
 {
