@@ -224,9 +224,18 @@ void MainWindow::onActionExportMovie()
     connect(first, &QSpinBox::valueChanged, last, [last](int v) { last->setMinimum(v); });
     QComboBox* const size = new QComboBox(&dialog);
     size->setObjectName(QStringLiteral("MovieSize"));
-    for (int percent : {200, 100, 75, 50, 25})
+    for (int percent : {200, 100, 75, 50, 33, 25})
         size->addItem(tr("%1 %  (%2 x %3)").arg(percent).arg(m_document->scene().width * percent / 100).arg(m_document->scene().height * percent / 100), percent);
     size->setCurrentIndex(1);
+    // ... or a size of one's own: so many pixels wide, the height following the shape of the scene.
+    size->addItem(tr("Custom"), 0);
+    QSpinBox* const custom = new QSpinBox(&dialog);
+    custom->setObjectName(QStringLiteral("MovieCustomWidth"));
+    custom->setRange(16, 16384);
+    custom->setSuffix(tr(" pixels wide"));
+    custom->setValue(m_document->scene().width);
+    custom->setEnabled(false);
+    connect(size, &QComboBox::currentIndexChanged, custom, [size, custom] { custom->setEnabled(size->currentData().toInt() == 0); });
     QComboBox* const quality = new QComboBox(&dialog);
     quality->setObjectName(QStringLiteral("MovieQuality"));
     quality->addItem(tr("Fine (largest file)"), 18);
@@ -236,6 +245,7 @@ void MainWindow::onActionExportMovie()
     form->addRow(tr("From frame"), first);
     form->addRow(tr("To frame"), last);
     form->addRow(tr("Size"), size);
+    form->addRow(tr("Custom size"), custom);
     form->addRow(tr("Quality"), quality);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -247,6 +257,8 @@ void MainWindow::onActionExportMovie()
     choices.first = first->value() - 1;
     choices.last = last->value() - 1;
     choices.percent = size->currentData().toInt();
+    if (choices.percent == 0)
+        choices.percent = std::clamp(int(std::lround(custom->value() * 100.0 / std::max(1, m_document->scene().width))), 1, 1000);
     choices.quality = quality->currentData().toInt();
     exportMovieTo(path, &choices);
 }
