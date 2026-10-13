@@ -12,7 +12,19 @@ void Canvas::setDrawingView(bool on)
     if (on == m_drawingView)
         return;
     m_drawingView = on;
+    // Each of the two views keeps how it was looked at: the first time, the other begins as this one is.
+    if (m_otherViewSet) {
+        std::swap(m_zoom, m_otherZoom);
+        std::swap(m_pan, m_otherPan);
+        std::swap(m_viewRotation, m_otherRotation);
+    } else {
+        m_otherZoom = m_zoom;
+        m_otherPan = m_pan;
+        m_otherRotation = m_viewRotation;
+        m_otherViewSet = true;
+    }
     update();
+    emit zoomChanged();
     emit drawingViewChanged(on);
 }
 

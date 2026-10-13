@@ -601,6 +601,12 @@ private:
     QPointF m_pan;          // widget-space offset of the centre of the scene from that of the widget
     bool m_fitted = true;   // keep fitting on resize until the user zooms or pans
     double m_viewRotation = 0.0;   // degrees, clockwise on the screen
+    // The Camera view and the Drawing view are each looked at in their own way: how close, where,
+    // and turned how far.  This is how the one not shown was left (not set until it has been shown).
+    bool m_otherViewSet = false;
+    double m_otherZoom = 1.0;
+    QPointF m_otherPan;
+    double m_otherRotation = 0.0;
     bool m_mirror = false;
     bool m_drawingView = false;
     bool m_grid = false;
