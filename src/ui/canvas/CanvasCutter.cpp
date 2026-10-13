@@ -12,7 +12,11 @@
 #include <QInputDialog>
 #include <QSpinBox>
 
+#include <QMessageBox>
+
+#include "model/scene/TextureBank.h"
 #include "ui/canvas/PencilTexture.h"
+#include "ui/canvas/TextureDialogs.h"
 
 #include "model/document/Commands.h"
 #include "model/geometry/FillRegion.h"
@@ -76,7 +80,7 @@ void Canvas::textureNewLine(Stroke& stroke) const
 
 void Canvas::setLineTexture(int texture)
 {
-    m_lineTexture = std::clamp(texture, 0, int(Stroke::kTextureCount));
+    m_lineTexture = PencilTexture::known(texture) ? texture : 0;
     restyleSelection(tr("Change Pencil Texture"), [this](Stroke& s) {
         s.texture = m_lineTexture;
         s.textureAmount = float(m_lineTextureAmount) / 100.0f;
@@ -116,7 +120,7 @@ void Canvas::retextureSelectedFills(QString const& text, bool kindToo)
 
 void Canvas::setBrushTexture(int texture)
 {
-    m_brushTexture = std::clamp(texture, 0, int(Stroke::kTextureCount));
+    m_brushTexture = PencilTexture::known(texture) ? texture : 0;
     retextureSelectedFills(tr("Change Paper Texture"), true);
 }
 
@@ -124,6 +128,49 @@ void Canvas::setBrushTextureAmount(int percent)
 {
     m_brushTextureAmount = std::clamp(percent, 0, 100);
     retextureSelectedFills(tr("Adjust Paper Texture Opacity"), false);
+}
+
+// A texture just made or brought in is the one in hand: for the brush when that is the tool, else for lines.
+void Canvas::takeUpTexture(int id)
+{
+    if (id == 0)
+        return;
+    if (m_tool == Brush)
+        setBrushTexture(id);
+    else
+        setLineTexture(id);
+    emit texturesChanged();
+    emit message(tr("Texture \"%1\" is ready to draw with.").arg(PencilTexture::name(id)));
+}
+
+void Canvas::onActionImportTexture()
+{
+    takeUpTexture(TextureDialogs::importTexture(this));
+}
+
+void Canvas::onActionNewTexture()
+{
+    takeUpTexture(TextureDialogs::newTexture(this));
+}
+
+void Canvas::onActionDeleteTexture()
+{
+    int const id = m_tool == Brush ? m_brushTexture : m_lineTexture;
+    if (id < TextureBank::kFirst) {
+        emit message(tr("Choose a texture of your own in Tool Properties to delete it (the ones that come with the program stay)."));
+        return;
+    }
+    if (QMessageBox::question(this, tr("Delete Texture"),
+                              tr("Delete the texture \"%1\"?\n\nWhat is drawn with it will be solid from then on.").arg(PencilTexture::name(id)))
+        != QMessageBox::Yes)
+        return;
+    PencilTexture::discard(id);
+    if (m_lineTexture == id)
+        m_lineTexture = 0;
+    if (m_brushTexture == id)
+        m_brushTexture = 0;
+    emit texturesChanged();
+    update();
 }
 
 void Canvas::onActionAdjustLineTextureOpacity()
@@ -171,9 +218,9 @@ void Canvas::onActionPencilLineProperties()
     thickness->setValue(double(shown.width));
     QComboBox* const texture = new QComboBox(&dialog);
     texture->setIconSize(QSize(72, 20));
-    for (int kind = 0; kind <= PencilTexture::count(); ++kind)
-        texture->addItem(PencilTexture::icon(kind), PencilTexture::name(kind));
-    texture->setCurrentIndex(shown.texture);
+    for (int kind : PencilTexture::kinds())
+        texture->addItem(PencilTexture::icon(kind), PencilTexture::name(kind), kind);
+    texture->setCurrentIndex(std::max(0, texture->findData(shown.texture)));
     QSpinBox* const amount = new QSpinBox(&dialog);
     amount->setRange(0, 100);
     amount->setSuffix(QStringLiteral(" %"));
@@ -192,7 +239,7 @@ void Canvas::onActionPencilLineProperties()
     if (dialog.exec() != QDialog::Accepted)
         return;
     float const width = float(thickness->value()), shows = float(amount->value()) / 100.0f;
-    int const kind = texture->currentIndex(), corners = join->currentIndex();
+    int const kind = texture->currentData().toInt(), corners = join->currentIndex();
     restyleSelection(tr("Pencil Line Properties"), [=](Stroke& s) {
         if (s.width <= 0.0f)
             return;     // an invisible line stays one

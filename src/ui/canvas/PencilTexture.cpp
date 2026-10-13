@@ -2,6 +2,10 @@
 #include "ui/canvas/PencilTexture.h"
 
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QHash>
+#include <QStandardPaths>
 #include <QPainter>
 #include <QPixmap>
 
@@ -9,6 +13,7 @@
 #include <cmath>
 
 #include "model/scene/Scene.h"
+#include "model/scene/TextureBank.h"
 
 namespace {
 
@@ -119,6 +124,55 @@ QImage makeTile(int kind, bool paper)
     return image;
 }
 
+// The strip of a texture of your own, as it is laid along a line: its grain, thinned out towards the two edges.
+QImage stripOf(QImage const& grain, double edge)
+{
+    QImage strip(grain.width(), grain.height(), QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < grain.height(); ++y) {
+        uchar const* const from = grain.constScanLine(y);
+        QRgb* const to = reinterpret_cast<QRgb*>(strip.scanLine(y));
+        double const middle = 1.0 - std::abs((y + 0.5) / grain.height() - 0.5) * 2.0;
+        for (int x = 0; x < grain.width(); ++x) {
+            double const ink = from[x] / 255.0;
+            // (The thin places give way first, so the edge frays as the grain does.)
+            double const fade = edge <= 0.0 ? 1.0 : smooth(0.0, 0.1 + 0.3 * edge, middle - edge * 0.45 * (1.0 - ink));
+            int const alpha = int(std::lround(ink * fade * 255.0));
+            to[x] = qRgba(alpha, alpha, alpha, alpha);
+        }
+    }
+    return strip;
+}
+
+QImage flatOf(QImage const& grain)
+{
+    QImage flat(grain.width(), grain.height(), QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < grain.height(); ++y) {
+        uchar const* const from = grain.constScanLine(y);
+        QRgb* const to = reinterpret_cast<QRgb*>(flat.scanLine(y));
+        for (int x = 0; x < grain.width(); ++x)
+            to[x] = qRgba(from[x], from[x], from[x], from[x]);
+    }
+    return flat;
+}
+
+QHash<int, QImage>& ownStrips()
+{
+    static QHash<int, QImage> strips;
+    return strips;
+}
+
+QHash<int, QImage>& ownPapers()
+{
+    static QHash<int, QImage> papers;
+    return papers;
+}
+
+QImage const& none()
+{
+    static QImage const empty;
+    return empty;
+}
+
 }
 
 int PencilTexture::count()
@@ -126,8 +180,77 @@ int PencilTexture::count()
     return Stroke::kTextureCount;
 }
 
+QString PencilTexture::libraryDirectory()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/textures");
+}
+
+void PencilTexture::loadLibrary()
+{
+    static bool loaded = false;
+    if (loaded)
+        return;
+    loaded = true;
+    QDir const folder(libraryDirectory());
+    for (QString const& file : folder.entryList({QStringLiteral("*.png")}, QDir::Files)) {
+        QImage const picture(folder.filePath(file));
+        if (picture.isNull())
+            continue;
+        bool ok = false;
+        double const edge = picture.text(QStringLiteral("edge")).toDouble(&ok);
+        TextureBank::add(picture.text(QStringLiteral("name")), picture, ok ? edge : 0.5);
+    }
+}
+
+int PencilTexture::keep(QString const& name, QImage const& grain, double edge)
+{
+    loadLibrary();
+    int const id = TextureBank::add(name, grain, edge);
+    if (id == 0)
+        return 0;
+    TextureBank::Entry const entry = TextureBank::entry(id);
+    QDir().mkpath(libraryDirectory());
+    QImage file = entry.grain;
+    file.setText(QStringLiteral("name"), entry.name);
+    file.setText(QStringLiteral("edge"), QString::number(entry.edge));
+    file.save(libraryDirectory() + QStringLiteral("/%1.png").arg(id), "PNG");
+    return id;
+}
+
+void PencilTexture::discard(int id)
+{
+    loadLibrary();
+    TextureBank::remove(id);
+    ownStrips().remove(id);
+    ownPapers().remove(id);
+    QFile::remove(libraryDirectory() + QStringLiteral("/%1.png").arg(id));
+}
+
+bool PencilTexture::known(int kind)
+{
+    if (kind >= 0 && kind <= count())
+        return true;
+    if (TextureBank::contains(kind))
+        return true;
+    loadLibrary();
+    return TextureBank::contains(kind);
+}
+
+QVector<int> PencilTexture::kinds()
+{
+    loadLibrary();
+    QVector<int> all;
+    for (int kind = 0; kind <= count(); ++kind)
+        all.push_back(kind);
+    for (TextureBank::Entry const& entry : TextureBank::all())
+        all.push_back(entry.id);
+    return all;
+}
+
 QString PencilTexture::name(int kind)
 {
+    if (kind >= TextureBank::kFirst)
+        return TextureBank::entry(kind).name;
     static char const* const kNames[] = {QT_TRANSLATE_NOOP("PencilTexture", "Solid"), QT_TRANSLATE_NOOP("PencilTexture", "Chalk"),
                                          QT_TRANSLATE_NOOP("PencilTexture", "Charcoal"), QT_TRANSLATE_NOOP("PencilTexture", "Crayon"),
                                          QT_TRANSLATE_NOOP("PencilTexture", "Dry Brush"), QT_TRANSLATE_NOOP("PencilTexture", "Stipple")};
@@ -136,6 +259,15 @@ QString PencilTexture::name(int kind)
 
 QImage const& PencilTexture::tile(int kind)
 {
+    if (kind >= TextureBank::kFirst) {
+        auto found = ownStrips().constFind(kind);
+        if (found != ownStrips().constEnd())
+            return *found;
+        TextureBank::Entry const entry = TextureBank::entry(kind);
+        if (entry.id == 0)
+            return none();
+        return *ownStrips().insert(kind, stripOf(entry.grain, entry.edge));
+    }
     static QImage tiles[Stroke::kTextureCount];
     int const index = std::clamp(kind, 1, count()) - 1;
     if (tiles[index].isNull())
@@ -145,6 +277,15 @@ QImage const& PencilTexture::tile(int kind)
 
 QImage const& PencilTexture::paper(int kind)
 {
+    if (kind >= TextureBank::kFirst) {
+        auto found = ownPapers().constFind(kind);
+        if (found != ownPapers().constEnd())
+            return *found;
+        TextureBank::Entry const entry = TextureBank::entry(kind);
+        if (entry.id == 0)
+            return none();
+        return *ownPapers().insert(kind, flatOf(entry.grain));
+    }
     static QImage tiles[Stroke::kTextureCount];
     int const index = std::clamp(kind, 1, count()) - 1;
     if (tiles[index].isNull())
@@ -152,22 +293,113 @@ QImage const& PencilTexture::paper(int kind)
     return tiles[index];
 }
 
+QImage PencilTexture::preview(QImage const& grain, double edge, QSize size)
+{
+    QImage picture(size, QImage::Format_ARGB32_Premultiplied);
+    picture.fill(QColor(232, 233, 235));
+    QImage const normal = TextureBank::normalised(grain);
+    if (normal.isNull())
+        return picture;
+    // A line of it, in ink, as thick as the picture allows; and under it a patch lying flat.
+    auto inked = [](QImage image) {
+        QPainter tint(&image);
+        tint.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        tint.fillRect(image.rect(), QColor(20, 20, 22));
+        tint.end();
+        return image;
+    };
+    QPainter p(&picture);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    int const lineHigh = std::max(8, size.height() * 2 / 5), margin = 6;
+    double const scale = double(lineHigh) / normal.height();
+    QBrush line(inked(stripOf(normal, edge)));
+    line.setTransform(QTransform::fromTranslate(margin, margin).scale(scale, scale));
+    p.fillRect(QRect(margin, margin, size.width() - 2 * margin, lineHigh), line);
+    QBrush flat(inked(flatOf(normal)));
+    flat.setTransform(QTransform::fromTranslate(margin, 2 * margin + lineHigh).scale(scale, scale));
+    p.fillRect(QRect(margin, 2 * margin + lineHigh, size.width() - 2 * margin, size.height() - 3 * margin - lineHigh), flat);
+    return picture;
+}
+
+QImage PencilTexture::grainFromPicture(QImage const& picture, bool lightIsInk)
+{
+    if (picture.isNull())
+        return QImage();
+    QImage const colours = picture.convertToFormat(QImage::Format_ARGB32);
+    QImage grain(colours.size(), QImage::Format_Grayscale8);
+    int most = 0;
+    for (int y = 0; y < colours.height(); ++y) {
+        QRgb const* const from = reinterpret_cast<QRgb const*>(colours.constScanLine(y));
+        uchar* const to = grain.scanLine(y);
+        for (int x = 0; x < colours.width(); ++x) {
+            // Ink where the picture is dark (or light, when told so) - and none where it is clear.
+            int const light = qGray(from[x]);
+            int const ink = (lightIsInk ? light : 255 - light) * qAlpha(from[x]) / 255;
+            to[x] = uchar(ink);
+            most = std::max(most, ink);
+        }
+    }
+    // The darkest of it is solid ink.
+    if (most > 0 && most < 255)
+        for (int y = 0; y < grain.height(); ++y) {
+            uchar* const row = grain.scanLine(y);
+            for (int x = 0; x < grain.width(); ++x)
+                row[x] = uchar(row[x] * 255 / most);
+        }
+    return TextureBank::normalised(grain);
+}
+
+QImage PencilTexture::makeGrain(int size, int density, int streaks, unsigned seed)
+{
+    size = std::clamp(size, 1, 100);
+    density = std::clamp(density, 0, 100);
+    streaks = std::clamp(streaks, 0, 100);
+    // How many lumps across the strip, and along it (fewer along, the more it is drawn out into streaks).
+    int const across = std::max(2, int(std::lround(34.0 - 31.0 * std::sqrt((size - 1) / 99.0))));
+    int const along = std::max(1, int(std::lround(across * 4.0 / (1.0 + streaks * 0.12))));
+    // (Noise that comes round again both ways.)
+    auto lumps = [seed](double u, double v, int cellsX, int cellsY, unsigned which) {
+        double const x = u * cellsX, y = v * cellsY;
+        int const x0 = int(std::floor(x)), y0 = int(std::floor(y));
+        double fx = x - x0, fy = y - y0;
+        fx = fx * fx * (3.0 - 2.0 * fx);
+        fy = fy * fy * (3.0 - 2.0 * fy);
+        auto at = [&](int ix, int iy) { return hashAt(((ix % cellsX) + cellsX) % cellsX, ((iy % cellsY) + cellsY) % cellsY, seed * 31u + which); };
+        double const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * fx;
+        double const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * fx;
+        return top + (bottom - top) * fy;
+    };
+    QImage grain(kLong, kHigh, QImage::Format_Grayscale8);
+    double const level = 0.82 - 0.64 * density / 100.0;       // noise above this is ink
+    for (int y = 0; y < kHigh; ++y) {
+        uchar* const row = grain.scanLine(y);
+        for (int x = 0; x < kLong; ++x) {
+            double const u = (x + 0.5) / kLong, v = (y + 0.5) / kHigh;
+            double const value = 0.6 * lumps(u, v, along, across, 1u) + 0.3 * lumps(u, v, along * 2, across * 2, 2u) + 0.1 * hashAt(x, y, seed + 3u);
+            row[x] = uchar(std::lround(smooth(level - 0.12, level + 0.12, value) * 255.0));
+        }
+    }
+    return grain;
+}
+
 QIcon PencilTexture::icon(int kind)
 {
     QPixmap pixmap(72, 20);
     pixmap.fill(QColor(232, 233, 235));
     QPainter p(&pixmap);
-    if (kind <= 0) {
+    if (kind <= 0 || tile(kind).isNull()) {
         p.fillRect(QRect(4, 4, 64, 12), QColor(20, 20, 22));
     } else {
         // A length of the strip, in ink.
-        QImage ink = tile(kind).copy(0, 0, 4 * 48, kHigh);
+        QImage ink = tile(kind);
         QPainter tint(&ink);
         tint.setCompositionMode(QPainter::CompositionMode_SourceIn);
         tint.fillRect(ink.rect(), QColor(20, 20, 22));
         tint.end();
         p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-        p.drawImage(QRect(4, 2, 64, 16), ink);
+        QBrush along(ink);
+        along.setTransform(QTransform::fromTranslate(4, 2).scale(16.0 / ink.height(), 16.0 / ink.height()));
+        p.fillRect(QRect(4, 2, 64, 16), along);
     }
     return QIcon(pixmap);
 }

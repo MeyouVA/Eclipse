@@ -47,6 +47,8 @@ private:
     void addSelectRows();
     void addAutoFlattenRow();
     void addLineShapeRows();
+    void fillTextureBox(class QComboBox* box, int current);
+    class QToolButton* textureButton(QString const& name);
     void addThicknessRow();
     void addTextRows();
     void addSelectionRows();

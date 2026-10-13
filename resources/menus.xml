@@ -220,6 +220,9 @@
    <submenu id="menu.arrange" text="&amp;Arrange"/>
    <submenu id="menu.convert" text="&amp;Convert"/>
    <item id="PencilLineProperties" icon="anim/pencilprops" text="Edit Pencil &amp;Lines Properties..." shortcut="shortcut.pencilLineProperties" responder="camera" slot="onActionPencilLineProperties()"/>
+   <item id="ImportTexture" icon="anim/textureimport" text="&amp;Import Texture from Picture..." responder="camera" slot="onActionImportTexture()"/>
+   <item id="NewTexture" icon="anim/texturenew" text="&amp;New Texture..." responder="camera" slot="onActionNewTexture()"/>
+   <item id="DeleteTexture" icon="anim/texturedelete" text="&amp;Delete Texture" responder="camera" slot="onActionDeleteTexture()"/>
    <item id="AdjustLineTextureOpacity" icon="anim/textureopacity" text="Adjust Line Texture &amp;Opacity..." shortcut="shortcut.lineTextureOpacity" responder="camera" slot="onActionAdjustLineTextureOpacity()"/>
    <menu id="DrawingPaint" text="&amp;Paint">
     <item id="UnpaintSelection" icon="anim/unpaintsel" text="&amp;Unpaint Selection" shortcut="shortcut.unpaintSelection" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaint"/>

@@ -1,4 +1,5 @@
 // Eclipse - the scene: read from a file.
+#include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
 
 #include <QFileInfo>
@@ -18,6 +19,12 @@
 
 static Stroke strokeFromJson(QJsonObject const& o);
 
+// A texture as a file names it: none, one of the program's, or one of your own.
+static int textureRead(int texture)
+{
+    return texture >= TextureBank::kFirst || (texture >= 0 && texture <= Stroke::kTextureCount) ? texture : 0;
+}
+
 static Fill fillFromJson(QJsonObject const& o)
 {
     Fill f;
@@ -29,7 +36,7 @@ static Fill fillFromJson(QJsonObject const& o)
         f.gradFrom = QPointF(grad[0].toDouble(), grad[1].toDouble());
         f.gradTo = QPointF(grad[2].toDouble(), grad[3].toDouble());
     }
-    f.texture = std::clamp(o["texture"].toInt(0), 0, Stroke::kTextureCount);
+    f.texture = textureRead(o["texture"].toInt(0));
     f.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
     f.text = o["text"].toString();
     f.textAlign = std::clamp(o["textAlign"].toInt(0), 0, 3);
@@ -77,7 +84,7 @@ static Stroke strokeFromJson(QJsonObject const& o)
         s.gradFrom = QPointF(grad[0].toDouble(), grad[1].toDouble());
         s.gradTo = QPointF(grad[2].toDouble(), grad[3].toDouble());
     }
-    s.texture = std::clamp(o["texture"].toInt(0), 0, Stroke::kTextureCount);
+    s.texture = textureRead(o["texture"].toInt(0));
     s.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
     QJsonArray const pts = o["points"].toArray();
     for (int i = 0; i + 2 < pts.size(); i += 3)
@@ -197,6 +204,11 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 scene.m_nextSwatchId = std::max(scene.m_nextSwatchId, s.id + 1);
             }
         }
+    }
+    // The textures of your own that the scene was drawn with come with it.
+    for (QJsonValue const& tv : json["textures"].toArray()) {
+        QJsonObject const to = tv.toObject();
+        TextureBank::add(to["name"].toString(), TextureBank::grainFromText(to["png"].toString()), to["edge"].toDouble(0.5));
     }
     for (QJsonValue const& lv : json["layers"].toArray()) {
         QJsonObject const lo = lv.toObject();

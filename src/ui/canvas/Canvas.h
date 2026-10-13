@@ -563,6 +563,11 @@ public slots:
     // The selected lines: how much of their texture shows; and their thickness, texture and all in one window.
     void onActionAdjustLineTextureOpacity();
     void onActionPencilLineProperties();
+    // Textures of your own: one from a picture, one put together here, and the one in hand thrown away.
+    void onActionImportTexture();
+    void onActionNewTexture();
+    void onActionDeleteTexture();
+    void takeUpTexture(int id);
     void onActionInvertSelection();
     // The lines themselves (where the pen went) drawn thin over the artwork; with the
     // wash, the artwork is faint under them.
@@ -589,6 +594,8 @@ public slots:
 
 signals:
     void selectionChanged();
+    // The textures there are to choose from have changed, or the one in hand has.
+    void texturesChanged();
     void toolChanged(int tool);
     // Where the pointer is over the view, in the scene (pixels from its top left corner).
     void pointerMoved(QPointF scenePos);

@@ -8,6 +8,8 @@
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMenu>
+#include <QToolButton>
 #include <QPainter>
 #include <QPushButton>
 #include <QSettings>
@@ -68,6 +70,32 @@ void ToolProperties::addSizeRows()
             0, 180, 50, QStringLiteral(" deg"), [this](int v) { m_canvas->setCornerAngle(v); });
 }
 
+// The textures there are, in a list; `current` is the one shown as chosen.
+void ToolProperties::fillTextureBox(QComboBox* box, int current)
+{
+    box->clear();
+    for (int kind : PencilTexture::kinds())
+        box->addItem(PencilTexture::icon(kind), PencilTexture::name(kind), kind);
+    box->setCurrentIndex(std::max(0, box->findData(current)));
+}
+
+// The button beside a list of textures: one of your own from a picture, one put together, the one in hand deleted.
+QToolButton* ToolProperties::textureButton(QString const& name)
+{
+    QToolButton* const button = new QToolButton(this);
+    button->setObjectName(name);
+    button->setText(QStringLiteral("..."));
+    button->setToolTip(tr("Textures of your own: bring one in from a picture, make one, or delete the one chosen."));
+    button->setPopupMode(QToolButton::InstantPopup);
+    QMenu* const menu = new QMenu(button);
+    menu->addAction(tr("Import Texture from Picture..."), m_canvas, &Canvas::onActionImportTexture);
+    menu->addAction(tr("New Texture..."), m_canvas, &Canvas::onActionNewTexture);
+    menu->addSeparator();
+    menu->addAction(tr("Delete Texture"), m_canvas, &Canvas::onActionDeleteTexture);
+    button->setMenu(menu);
+    return button;
+}
+
 void ToolProperties::addBrushRows()
 {
     // What the Brush makes: a contour shape, or a centre line with a thickness.
@@ -99,8 +127,6 @@ void ToolProperties::addBrushRows()
     QComboBox* const paper = new QComboBox(this);
     paper->setObjectName(QStringLiteral("BrushTexture"));
     paper->setIconSize(QSize(72, 20));
-    for (int kind = 0; kind <= PencilTexture::count(); ++kind)
-        paper->addItem(PencilTexture::icon(kind), PencilTexture::name(kind));
     paper->setToolTip(tr("The paper texture: the grain a brush stroke shows in place of solid paint. Applies to new strokes and to selected ones."));
     QSpinBox* const shows = new QSpinBox(this);
     shows->setObjectName(QStringLiteral("BrushTextureAmount"));
@@ -109,18 +135,24 @@ void ToolProperties::addBrushRows()
     shows->setSuffix(QStringLiteral(" %"));
     shows->setToolTip(tr("How much of the texture shows: 100 the grain as it is, 0 solid paint after all."));
     {
-        int const kept = std::clamp(settings().value(QStringLiteral("tools/brushTexture"), 0).toInt(), 0, PencilTexture::count());
+        int const kept = settings().value(QStringLiteral("tools/brushTexture"), 0).toInt();
         int const keptAmount = std::clamp(settings().value(QStringLiteral("tools/brushTextureAmount"), 100).toInt(), 0, 100);
-        paper->setCurrentIndex(kept);
         shows->setValue(keptAmount);
-        shows->setEnabled(kept != 0);
         m_canvas->setBrushTextureAmount(keptAmount);
         m_canvas->setBrushTexture(kept);
     }
-    connect(paper, &QComboBox::currentIndexChanged, this, [this, shows](int index) {
-        m_canvas->setBrushTexture(index);
-        shows->setEnabled(index != 0);
-        settings().setValue(QStringLiteral("tools/brushTexture"), index);
+    auto list = [this, paper, shows] {
+        QSignalBlocker const block(paper);
+        fillTextureBox(paper, m_canvas->brushTexture());
+        shows->setEnabled(m_canvas->brushTexture() != 0);
+    };
+    list();
+    connect(m_canvas, &Canvas::texturesChanged, this, list);
+    connect(paper, &QComboBox::currentIndexChanged, this, [this, paper, shows](int) {
+        int const kind = paper->currentData().toInt();
+        m_canvas->setBrushTexture(kind);
+        shows->setEnabled(kind != 0);
+        settings().setValue(QStringLiteral("tools/brushTexture"), kind);
     });
     connect(shows, &QSpinBox::valueChanged, this, [this](int v) {
         m_canvas->setBrushTextureAmount(v);
@@ -129,6 +161,7 @@ void ToolProperties::addBrushRows()
     m_paperRow->addWidget(new QLabel(tr("Paper Texture"), this));
     m_paperRow->addWidget(paper, 1);
     m_paperRow->addWidget(shows);
+    m_paperRow->addWidget(textureButton(QStringLiteral("BrushTextureMenu")));
     m_form->addRow(m_paperRow);
 }
 
@@ -341,8 +374,6 @@ void ToolProperties::addLineShapeRows()
     QComboBox* const texture = new QComboBox(this);
     texture->setObjectName(QStringLiteral("LineTexture"));
     texture->setIconSize(QSize(72, 20));
-    for (int kind = 0; kind <= PencilTexture::count(); ++kind)
-        texture->addItem(PencilTexture::icon(kind), PencilTexture::name(kind));
     texture->setToolTip(tr("The pencil texture: the grain the line is drawn with in place of solid ink.") + applies);
     QSpinBox* const amount = new QSpinBox(this);
     amount->setObjectName(QStringLiteral("LineTextureAmount"));
@@ -351,18 +382,24 @@ void ToolProperties::addLineShapeRows()
     amount->setSuffix(QStringLiteral(" %"));
     amount->setToolTip(tr("How much of the texture shows: 100 the grain as it is, 0 a solid line after all.") + applies);
     {
-        int const kept = std::clamp(settings().value(QStringLiteral("tools/lineTexture"), 0).toInt(), 0, PencilTexture::count());
+        int const kept = settings().value(QStringLiteral("tools/lineTexture"), 0).toInt();
         int const keptAmount = std::clamp(settings().value(QStringLiteral("tools/lineTextureAmount"), 100).toInt(), 0, 100);
-        texture->setCurrentIndex(kept);
         amount->setValue(keptAmount);
-        amount->setEnabled(kept != 0);
         m_canvas->setLineTextureAmount(keptAmount);
         m_canvas->setLineTexture(kept);
     }
-    connect(texture, &QComboBox::currentIndexChanged, this, [this, amount](int index) {
-        m_canvas->setLineTexture(index);
-        amount->setEnabled(index != 0);
-        settings().setValue(QStringLiteral("tools/lineTexture"), index);
+    auto list = [this, texture, amount] {
+        QSignalBlocker const block(texture);
+        fillTextureBox(texture, m_canvas->lineTexture());
+        amount->setEnabled(m_canvas->lineTexture() != 0);
+    };
+    list();
+    connect(m_canvas, &Canvas::texturesChanged, this, list);
+    connect(texture, &QComboBox::currentIndexChanged, this, [this, texture, amount](int) {
+        int const kind = texture->currentData().toInt();
+        m_canvas->setLineTexture(kind);
+        amount->setEnabled(kind != 0);
+        settings().setValue(QStringLiteral("tools/lineTexture"), kind);
     });
     connect(amount, &QSpinBox::valueChanged, this, [this](int v) {
         m_canvas->setLineTextureAmount(v);
@@ -371,6 +408,7 @@ void ToolProperties::addLineShapeRows()
     m_textureRow->addWidget(new QLabel(tr("Texture"), this));
     m_textureRow->addWidget(texture, 1);
     m_textureRow->addWidget(amount);
+    m_textureRow->addWidget(textureButton(QStringLiteral("LineTextureMenu")));
     m_form->addRow(m_textureRow);
 }
 

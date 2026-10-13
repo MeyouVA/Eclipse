@@ -1,4 +1,5 @@
 // Eclipse - the scene: written to a file.
+#include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
 
 #include <QBuffer>
@@ -375,7 +376,32 @@ QJsonObject Scene::toJson(QString const& folder) const
         inner.symbols.clear();
         symbolArray.append(QJsonObject{{"id", symbol.id}, {"name", symbol.name}, {"scene", inner.toJson(folder)}});
     }
-    return QJsonObject{{"format", "eclipse-scene"},
+    // The textures of your own that anything in the scene is drawn with go with it.
+    QJsonArray textureArray;
+    {
+        QVector<int> used;
+        auto note = [&](int texture) {
+            if (texture >= TextureBank::kFirst && !used.contains(texture))
+                used.push_back(texture);
+        };
+        for (Layer const& layer : layers) {
+            for (Drawing const& drawing : layer.drawings) {
+                for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                    for (Stroke const& stroke : drawing.strokesOf(sheet))
+                        note(stroke.texture);
+                    for (Fill const& fill : drawing.fillsOf(sheet))
+                        note(fill.texture);
+                }
+            }
+        }
+        std::sort(used.begin(), used.end());
+        for (int id : std::as_const(used)) {
+            TextureBank::Entry const entry = TextureBank::entry(id);
+            if (entry.id != 0)
+                textureArray.append(QJsonObject{{"name", entry.name}, {"edge", entry.edge}, {"png", TextureBank::grainToText(entry.grain)}});
+        }
+    }
+    QJsonObject whole{{"format", "eclipse-scene"},
                        {"symbols", symbolArray},
                        {"version", 3},
                        {"markers", markerArray},
@@ -393,6 +419,9 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"frames", m_frameCount},
                        {"background", background.name()},
                        {"layers", layerArray}};
+    if (!textureArray.isEmpty())
+        whole["textures"] = textureArray;
+    return whole;
 }
 
 bool Scene::save(QString const& path, QString* error) const

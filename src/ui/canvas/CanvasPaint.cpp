@@ -233,7 +233,7 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
 {
     if (stroke.points.isEmpty() || stroke.width <= 0.0f)
         return;     // nothing drawn; or a line with no thickness, which is not seen
-    if (stroke.texture != 0 && stroke.textureAmount > 0.0f) {
+    if (stroke.texture != 0 && stroke.textureAmount > 0.0f && !PencilTexture::tile(stroke.texture).isNull()) {
         paintTexturedStroke(painter, stroke, color);
         return;
     }
@@ -368,7 +368,7 @@ void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
         path.addPolygon(outline);
         path.closeSubpath();
     }
-    if (fill.texture != 0 && fill.textureAmount > 0.0f) {
+    if (fill.texture != 0 && fill.textureAmount > 0.0f && !PencilTexture::paper(fill.texture).isNull()) {
         paintTexturedFill(painter, path, fill, color);
         return;
     }
