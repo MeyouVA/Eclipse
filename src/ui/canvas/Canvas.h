@@ -270,7 +270,7 @@ public:
     // How the lines of words stand to the place clicked (0 left, 1 centred, 2 right) and how
     // far apart they are, as a percentage of what the font gives.  In the entry, Shift+Enter
     // starts a new line (shown as a bent arrow).
-    void setTextAlign(int align) { m_textAlign = std::clamp(align, 0, 2); }
+    void setTextAlign(int align) { m_textAlign = std::clamp(align, 0, 3); }     // 3: justified
     int textAlign() const { return m_textAlign; }
     void setTextLineSpacing(int percent) { m_textSpacing = std::clamp(percent, 20, 1000); }
     int textLineSpacing() const { return m_textSpacing; }

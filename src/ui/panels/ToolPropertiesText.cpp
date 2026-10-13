@@ -53,7 +53,7 @@ void ToolProperties::addTextRows()
     // How the lines stand, and how far apart.
     QComboBox* const align = new QComboBox(this);
     align->setObjectName(QStringLiteral("TextAlign"));
-    align->addItems({tr("Left"), tr("Centre"), tr("Right")});
+    align->addItems({tr("Left"), tr("Centre"), tr("Right"), tr("Justify")});
     align->setToolTip(tr("Whether each line of words starts where you clicked, is centred on it, or ends there.\nIn the entry, Shift+Enter starts a new line."));
     QSpinBox* const spacing = new QSpinBox(this);
     spacing->setObjectName(QStringLiteral("TextLineSpacing"));

@@ -233,8 +233,8 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
                                     {QT_TR_NOOP("Solid Brush 4"), 20}, {QT_TR_NOOP("Solid Brush 5"), 30}, {QT_TR_NOOP("Solid Brush 6"), 45}};
     static Preset const kPencil[] = {{QT_TR_NOOP("Pencil 1"), 3}, {QT_TR_NOOP("Pencil 2"), 6}, {QT_TR_NOOP("Pencil 3"), 10},
                                      {QT_TR_NOOP("Pencil 4"), 16}, {QT_TR_NOOP("Pencil 5"), 24}};
-    static Preset const kEraser[] = {{QT_TR_NOOP("Small Eraser"), 10}, {QT_TR_NOOP("Medium Eraser"), 25}, {QT_TR_NOOP("Large Eraser"), 50},
-                                     {QT_TR_NOOP("Very Large Eraser"), 80}};
+    static Preset const kEraser[] = {{QT_TR_NOOP("Small Eraser"), 20}, {QT_TR_NOOP("Medium Eraser"), 50}, {QT_TR_NOOP("Large Eraser"), 100},
+                                     {QT_TR_NOOP("Very Large Eraser"), 160}};
     QSignalBlocker const block(m_presets);
     m_presets->clear();
     auto fill = [&](Preset const* list, int count) {

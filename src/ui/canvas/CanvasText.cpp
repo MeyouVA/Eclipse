@@ -71,11 +71,19 @@ void Canvas::addText(QPointF layerPos, QString const& text)
     QFontMetricsF const metrics(spaced);
     QStringList const lines = text.split(QLatin1Char('\n'));
     double const spacing = m_textSpacing / 100.0;
+    double widest = 0.0;
+    for (QString const& line : lines)
+        widest = std::max(widest, metrics.horizontalAdvance(line));
     for (int i = 0; i < lines.size(); ++i) {
         // Each line starts at the place, is centred on it, or ends at it.
         double const wide = metrics.horizontalAdvance(lines[i]);
         double const shift = m_textAlign == 1 ? -wide / 2.0 : m_textAlign == 2 ? -wide : 0.0;
-        path.addText(layerPos + QPointF(shift, i * metrics.lineSpacing() * spacing), spaced, lines[i]);
+        QFont set = spaced;
+        // Justified: every line but the last is spread, between its words, to the width of the widest.
+        int const gaps = int(lines[i].trimmed().count(QChar(0x20)));
+        if (m_textAlign == 3 && i + 1 < lines.size() && gaps > 0 && widest > wide)
+            set.setWordSpacing((widest - wide) / gaps);
+        path.addText(layerPos + QPointF(shift, i * metrics.lineSpacing() * spacing), set, lines[i]);
     }
     Fill letters;
     for (QPolygonF const& outline : path.toSubpathPolygons())

@@ -21,10 +21,10 @@
 void ToolProperties::addSizeRows()
 {
     m_size = new QSlider(Qt::Horizontal, this);
-    m_size->setRange(1, 80);
+    m_size->setRange(1, 200);
     m_size->setValue(6);
     QSpinBox* const sizeBox = new QSpinBox(this);
-    sizeBox->setRange(1, 80);
+    sizeBox->setRange(1, 200);
     sizeBox->setValue(6);
     connect(m_size, &QSlider::valueChanged, sizeBox, &QSpinBox::setValue);
     connect(sizeBox, &QSpinBox::valueChanged, m_size, &QSlider::setValue);
