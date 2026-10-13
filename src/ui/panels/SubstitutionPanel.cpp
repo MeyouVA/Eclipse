@@ -108,7 +108,7 @@ void SubstitutionPanel::rebuild()
         QListWidgetItem* const none = new QListWidgetItem(noExposureIcon(), tr("No Exposure"), m_list);
         none->setData(Qt::UserRole, -1);
         for (int i = 0; i < layer.drawings.size(); ++i) {
-            QListWidgetItem* const item = new QListWidgetItem(thumbnail(scene, layer.drawings[i]), QString::number(i + 1), m_list);
+            QListWidgetItem* const item = new QListWidgetItem(thumbnail(scene, layer.drawings[i]), layer.drawingLabel(i), m_list);
             item->setData(Qt::UserRole, i);
         }
         m_list->setCurrentRow(layer.drawingAt(m_frame) + 1);

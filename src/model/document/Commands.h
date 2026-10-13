@@ -84,6 +84,9 @@ public:
     // ---- exposure -----------------------------------------------------------------------
     // A new empty drawing starting at `frame` (the rest of the old exposure keeps its drawing).
     void newDrawing(int layer, int frame);
+    // The drawing shown on that frame gets a name of its own (an empty one: it goes by its number
+    // again).  False when there is none there, or another drawing of the layer is called that.
+    bool renameDrawing(int layer, int frame, QString const& name);
     // Holds the drawing of the previous frame over `frame`.
     void extendExposure(int layer, int frame);
     // Copies the drawing at `frame` into a new drawing starting there.

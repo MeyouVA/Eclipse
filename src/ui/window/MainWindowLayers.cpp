@@ -11,6 +11,7 @@
 
 #include <QColorDialog>
 #include <QInputDialog>
+#include <QMessageBox>
 
 #include "actions/dialogs/ShortcutsDialog.h"
 #include "audio/sound/Sound.h"
@@ -325,6 +326,22 @@ void MainWindow::stepLayer(int direction)
     int const row = int(rows.indexOf(layer())) + direction;
     if (row >= 0 && row < rows.size())
         m_timeline->setCurrentCell(rows[row], frame());
+}
+
+void MainWindow::onActionRenameDrawing()
+{
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size() || scene.layers[layer()].drawingAt(frame()) == Layer::kNoDrawing) {
+        statusBar()->showMessage(tr("There is no drawing on this frame to rename."), 4000);
+        return;
+    }
+    Layer const& current = scene.layers[layer()];
+    int const index = current.drawingAt(frame());
+    bool ok = false;
+    QString const name = QInputDialog::getText(this, tr("Rename Drawing"), tr("Name (empty: its number, %1):").arg(index + 1), QLineEdit::Normal,
+                                               current.drawings[index].name, &ok);
+    if (ok && name.trimmed() != current.drawings[index].name && !m_document->renameDrawing(layer(), frame(), name))
+        QMessageBox::warning(this, tr("Eclipse"), tr("Another drawing of this layer is called \"%1\".").arg(name.trimmed()));
 }
 
 void MainWindow::onActionRenameLayer()

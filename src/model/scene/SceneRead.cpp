@@ -202,6 +202,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             for (QJsonValue const& fv : dv.toObject()["fills"].toArray())
                 d.fills.push_back(fillFromJson(fv.toObject()));
             d.pinned = dv.toObject()["pinned"].toBool(false);
+            d.name = dv.toObject()["name"].toString();
             for (QJsonValue const& pv : dv.toObject()["pictures"].toArray()) {
                 QJsonObject const po = pv.toObject();
                 Picture p;

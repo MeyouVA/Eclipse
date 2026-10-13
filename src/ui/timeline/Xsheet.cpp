@@ -127,7 +127,7 @@ void Xsheet::paintEvent(QPaintEvent*)
                 p.setPen(text);
                 if (layer.isKey(f)) {
                     // The number of the drawing among those of its layer.
-                    p.drawText(cell.adjusted(6, 0, -14, 0), Qt::AlignVCenter | Qt::AlignLeft, QString::number(drawing + 1));
+                    p.drawText(cell.adjusted(6, 0, -14, 0), Qt::AlignVCenter | Qt::AlignLeft, layer.drawingLabel(drawing));
                 } else if (layer.morphing(f)) {
                     // In a morphing: the drawing here is made from the two either side of it.
                     p.setPen(QPen(QColor(170, 215, 120), 2));

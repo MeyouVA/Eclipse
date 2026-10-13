@@ -167,6 +167,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             }
             if (d.pinned)
                 drawing["pinned"] = true;
+            if (!d.name.isEmpty())
+                drawing["name"] = d.name;
             drawings.append(drawing);
         }
         QJsonArray cells;

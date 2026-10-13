@@ -196,6 +196,7 @@ public slots:
     void onActionExportOpenGLFrames() { askExportImages(true); }
     void onActionExportAudio();
     void onActionDeleteDrawing();
+    void onActionRenameDrawing();
     bool onActionSaveNewVersion();
     void onActionBackupScene();
     void onActionSelectPreviousSibling() { stepSibling(+1); }

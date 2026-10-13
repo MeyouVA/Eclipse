@@ -168,6 +168,7 @@
    <item id="CreateEmptyDrawing" icon="timeline/newdrawing" text="Create &amp;Empty Drawing" shortcut="shortcut.createEmptyDrawing" responder="window" slot="onActionCreateEmptyDrawing()"/>
    <item id="DuplicateDrawing" icon="timeline/duplicatedrawing" text="&amp;Duplicate Drawings" shortcut="shortcut.duplicateDrawing" responder="window" slot="onActionDuplicateDrawing()"/>
    <item id="DeleteDrawing" icon="timeline/deletedrawing" text="Delete Selected Dra&amp;wings" responder="window" slot="onActionDeleteDrawing()"/>
+   <item id="RenameDrawing" icon="timeline/renamedrawing" text="Re&amp;name Drawing..." shortcut="shortcut.renameDrawing" responder="window" slot="onActionRenameDrawing()"/>
    <separator/>
    <submenu id="menu.art" text="Art &amp;Layer"/>
    <submenu id="menu.transform" text="T&amp;ransform"/>

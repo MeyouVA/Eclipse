@@ -191,6 +191,7 @@ Drawing Canvas::withArt(Drawing const& art) const
                 whole.strokesOf(sheet) = real->strokesOf(sheet);
             }
             whole.pinned = real->pinned;
+            whole.name = real->name;
         }
         return whole;
     }

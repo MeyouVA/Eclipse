@@ -473,7 +473,7 @@ void Timeline::paintEvent(QPaintEvent*)
         QString value;
         if (layer.holdsDrawings()) {
             int const drawing = layer.drawingAt(m_frame);
-            value = drawing == Layer::kNoDrawing ? QString() : QString::number(drawing + 1);
+            value = drawing == Layer::kNoDrawing ? QString() : layer.drawingLabel(drawing);
         } else if (layer.kind == Layer::Sound) {
             value = QString::number(layer.soundStart + 1);
         } else if (!layer.keys.isEmpty()) {

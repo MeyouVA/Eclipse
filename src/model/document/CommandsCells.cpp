@@ -17,7 +17,38 @@ void Document::duplicateDrawing(int layer, int frame)
     int const index = m_scene.layers[layer].cells[frame];
     if (index == Layer::kNoDrawing)
         return;
-    apply(tr("Duplicate Drawing"), [&](Scene& s) { startDrawingAt(s.layers[layer], frame, Drawing(s.layers[layer].drawings[index])); });
+    apply(tr("Duplicate Drawing"), [&](Scene& s) {
+        Drawing copy = s.layers[layer].drawings[index];
+        // A name belongs to one drawing: the copy takes it only when the drawing it was made from
+        // is shown nowhere else, and so goes.
+        bool elsewhere = s.layers[layer].drawings[index].pinned;
+        // (The copy takes over from this frame to the end of the exposure.)
+        QVector<int> const& cells = s.layers[layer].cells;
+        int end = frame + 1;
+        while (end < cells.size() && cells[end] == index)
+            ++end;
+        for (int f = 0; f < cells.size(); ++f)
+            elsewhere = elsewhere || ((f < frame || f >= end) && cells[f] == index);
+        if (elsewhere)
+            copy.name.clear();
+        startDrawingAt(s.layers[layer], frame, copy);
+    });
+}
+
+bool Document::renameDrawing(int layer, int frame, QString const& name)
+{
+    if (!validCell(m_scene, layer, frame))
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    int const index = l.cells[frame];
+    QString const clean = name.trimmed();
+    if (index == Layer::kNoDrawing || clean == l.drawings[index].name)
+        return false;
+    for (int i = 0; i < l.drawings.size(); ++i)
+        if (i != index && !clean.isEmpty() && l.drawingLabel(i) == clean)
+            return false;       // two drawings of a layer cannot go by one name
+    apply(tr("Rename Drawing"), [&](Scene& s) { s.layers[layer].drawings[index].name = clean; });
+    return true;
 }
 
 void Document::extendExposure(int layer, int frame)

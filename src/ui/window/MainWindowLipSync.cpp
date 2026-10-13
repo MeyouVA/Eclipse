@@ -128,16 +128,22 @@ void MainWindow::onActionMapLipSync()
         form->addRow(row);
         choices.push_back(choice);
     }
-    // The drawings of the layer chosen: the first for A, the second for B, and so on, to begin with.
+    // The drawings of the layer chosen: one named after the shape; failing that the first for A, the second for B, and so on.
     auto fill = [&] {
         int const l = m_document->scene().layerIndex(target->currentData().toInt());
         int const count = l >= 0 ? int(m_document->scene().layers[l].drawings.size()) : 0;
         for (int i = 0; i < choices.size(); ++i) {
             choices[i]->clear();
             choices[i]->addItem(tr("(leave as it is)"), -1);
-            for (int d = 0; d < count; ++d)
-                choices[i]->addItem(tr("Drawing %1").arg(d + 1), d);
-            choices[i]->setCurrentIndex(i < count ? i + 1 : 0);
+            // A drawing named after the mouth shape ("A", "B" ...) is the one for it.
+            int named = -1;
+            for (int d = 0; d < count; ++d) {
+                QString const label = m_document->scene().layers[l].drawingLabel(d);
+                choices[i]->addItem(tr("Drawing %1").arg(label), d);
+                if (named < 0 && label.compare(QString(QLatin1Char(LipSync::kShapes[i])), Qt::CaseInsensitive) == 0)
+                    named = d;
+            }
+            choices[i]->setCurrentIndex(named >= 0 ? named + 1 : i < count ? i + 1 : 0);
         }
     };
     fill();

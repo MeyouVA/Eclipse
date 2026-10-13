@@ -192,6 +192,8 @@ struct Drawing {
     // Kept in the layer even when no frame shows it: a drawing that has been substituted
     // in or out belongs to the bank of drawings a cut-out layer chooses from.
     bool pinned = false;
+    // A name of its own ("A", "blink"); without one it goes by its number in the layer.
+    QString name;
     // A drawing has two sheets.  The lines above are its line art; under them is its
     // colour art, where areas are painted without touching the lines over them.
     QVector<Fill> colourFills;
@@ -447,6 +449,11 @@ struct Layer {
     QVector<int> cells;  // one per frame: index into drawings, or kNoDrawing
 
     int drawingAt(int frame) const { return frame >= 0 && frame < cells.size() ? cells[frame] : kNoDrawing; }
+    // What a drawing is called: its name, or its number (from one).
+    QString drawingLabel(int index) const
+    {
+        return index < 0 || index >= drawings.size() ? QString() : drawings[index].name.isEmpty() ? QString::number(index + 1) : drawings[index].name;
+    }
     QVector<Morph> morphs;
     // The morphing `frame` lies in (from its first key drawing up to, not counting, its second), or -1.
     int morphIndexAt(int frame) const;
