@@ -142,6 +142,7 @@
    <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" responder="window" slot="onActionAddQuadmap()"/>
    <separator/>
    <item id="InsertKeyframe" icon="timeline/addkey" text="&amp;Keyframe" shortcut="shortcut.insertKeyframe" responder="window" slot="onActionInsertKeyframe()"/>
+   <item id="InsertKeyframeAndDuplicate" icon="timeline/keyandduplicate" text="Keyframe and D&amp;uplicate Drawing" shortcut="shortcut.keyframeAndDuplicate" responder="window" slot="onActionKeyframeAndDuplicate()"/>
   </menu>
 
   <menu id="Scene" text="&amp;Scene">

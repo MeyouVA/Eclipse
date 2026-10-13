@@ -27,6 +27,15 @@ void MainWindow::onActionInsertKeyframe()
     m_document->insertKeyframe(layer(), frame());
 }
 
+// A keyframe on this frame, and a drawing of its own for it: a new pose to draw, in one step.
+void MainWindow::onActionKeyframeAndDuplicate()
+{
+    m_document->beginMacro(tr("Keyframe and Duplicate Drawing"));
+    m_document->insertKeyframe(layer(), frame());
+    m_document->duplicateDrawing(layer(), frame());
+    m_document->endMacro();
+}
+
 void MainWindow::onActionDeleteKeyframe()
 {
     m_document->removeKeyframe(layer(), frame());

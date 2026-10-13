@@ -52,6 +52,8 @@ public:
     void refresh();
     // Deletes the file of the chosen template; with `ask`, after asking.
     bool deleteCurrent(bool ask);
+    // The template chosen gets another name (its file is renamed); false when the name will not do or is taken.
+    bool renameCurrent(QString const& name);
     void setSearch(QString const& text);
 
 signals:

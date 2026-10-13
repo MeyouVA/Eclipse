@@ -11,6 +11,8 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPainter>
+#include <QInputDialog>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QSettings>
 #include <QSlider>
@@ -126,6 +128,8 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     create->setObjectName(QStringLiteral("LibraryCreate"));
     QPushButton* const insert = new QPushButton(tr("Insert"), this);
     insert->setObjectName(QStringLiteral("LibraryInsert"));
+    QPushButton* const rename = new QPushButton(tr("Rename..."), this);
+    rename->setObjectName(QStringLiteral("LibraryRename"));
     QPushButton* const remove = new QPushButton(tr("Delete"), this);
     remove->setObjectName(QStringLiteral("LibraryDelete"));
 
@@ -151,6 +155,7 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     buttons->addWidget(create);
     buttons->addStretch(1);
     buttons->addWidget(insert);
+    buttons->addWidget(rename);
     buttons->addWidget(remove);
     QVBoxLayout* const layout = new QVBoxLayout(this);
     layout->setContentsMargins(4, 4, 4, 4);
@@ -173,6 +178,16 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
             emit insertRequested(currentTemplate());
     });
     connect(remove, &QPushButton::clicked, this, [this] { deleteCurrent(true); });
+    connect(rename, &QPushButton::clicked, this, [this] {
+        QString const path = currentTemplate();
+        if (path.isEmpty())
+            return;
+        bool ok = false;
+        QString const name = QInputDialog::getText(this, tr("Rename Template"), tr("Name of the template:"), QLineEdit::Normal,
+                                                   QFileInfo(path).completeBaseName(), &ok);
+        if (ok && name.trimmed() != QFileInfo(path).completeBaseName() && !renameCurrent(name))
+            QMessageBox::warning(this, tr("Eclipse"), tr("The template could not be given that name: it is taken, or it is not a name a file can have."));
+    });
     connect(addFolderButton, &QToolButton::clicked, this, [this] {
         QString const folder = QFileDialog::getExistingDirectory(this, tr("Add a Folder to the Library"), currentFolder());
         if (!folder.isEmpty() && addFolder(folder))
@@ -337,6 +352,24 @@ void LibraryView::showFrame(int frame)
         return;
     QSize const size(std::max(160, m_preview->width()), std::max(120, m_preview->height()));
     m_preview->setPixmap(QPixmap::fromImage(picture(m_shown, frame, size)));
+}
+
+bool LibraryView::renameCurrent(QString const& name)
+{
+    QString const path = currentTemplate();
+    QString const clean = name.trimmed();
+    bool sound = !path.isEmpty() && !clean.isEmpty() && !clean.endsWith(QLatin1Char('.'));
+    for (QChar const c : clean)
+        sound = sound && !QStringLiteral("\\/:*?\"<>|").contains(c);
+    if (!sound)
+        return false;
+    QFileInfo const info(path);
+    QString const to = info.absolutePath() + QLatin1Char('/') + clean + QLatin1Char('.') + info.suffix();
+    if (QFileInfo::exists(to) || !QFile::rename(path, to))
+        return false;
+    refresh();
+    setCurrentTemplate(to);
+    return true;
 }
 
 bool LibraryView::deleteCurrent(bool ask)

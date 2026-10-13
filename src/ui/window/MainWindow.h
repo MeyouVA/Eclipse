@@ -310,6 +310,7 @@ public slots:
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
     void onActionHelp();
+    void onActionKeyframeAndDuplicate();
     void onActionToggleSoundScrubbing(bool on) { m_scrub = on; }
     void onActionToggleWaveforms(bool on);
     // Turns the current layer over on the current frame (a keyframe with the scale reversed).

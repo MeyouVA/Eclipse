@@ -245,6 +245,9 @@ public:
     bool appliesToAllDrawings() const { return m_applyAll; }
     // Onion skin by frame: the frames just before and after, instead of the neighbouring drawings.
     void setOnionByFrame(bool on);
+    // The drawings before and after as outlines only: the edges of their paint and the paths of their lines.
+    void setOnionOutlines(bool on);
+    bool onionOutlines() const { return m_onionOutlines; }
     bool onionByFrame() const { return m_onionByFrame; }
     void setOnionColours(QColor const& before, QColor const& after);
     QColor onionBefore() const { return m_onionBefore; }
@@ -599,6 +602,8 @@ private:
     int m_textKerning = 100;
     bool m_applyAll = false;
     bool m_onionByFrame = false;
+    bool m_onionOutlines = false;
+    void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     QColor m_onionBefore = QColor(220, 60, 60);
     QColor m_onionAfter = QColor(50, 160, 80);
     // Does to the other drawings of the layer what was done to the selection: moves what

@@ -10,6 +10,38 @@
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
 
+// A drawing of the onion skin: whole, in its colour - or only its outlines.
+void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const
+{
+    if (!m_onionOutlines) {
+        paintDrawing(painter, scene, drawing, opacity, &tint);
+        return;
+    }
+    painter.save();
+    painter.setOpacity(painter.opacity() * opacity);
+    QPen edge(tint, 1.4);
+    edge.setCosmetic(true);
+    painter.setPen(edge);
+    painter.setBrush(Qt::NoBrush);
+    for (int sheet : {int(Drawing::UnderlaySheet), int(Drawing::ColourSheet), int(Drawing::LineSheet), int(Drawing::OverlaySheet)}) {
+        for (Fill const& fill : drawing.fillsOf(sheet))
+            for (QPolygonF const& outline : fill.outlines)
+                painter.drawPolygon(outline);
+        for (Stroke const& stroke : drawing.strokesOf(sheet)) {
+            if (stroke.width <= 0.0f)
+                continue;       // a line that is not seen has no outline to show
+            QPolygonF centre;
+            for (StrokePoint const& p : stroke.path())
+                centre << p.pos;
+            if (stroke.closed)
+                painter.drawPolygon(centre);
+            else
+                painter.drawPolyline(centre);
+        }
+    }
+    painter.restore();
+}
+
 void Canvas::paintEvent(QPaintEvent*)
 {
     Scene const& scene = m_document->scene();
@@ -89,8 +121,8 @@ void Canvas::paintEvent(QPaintEvent*)
                     continue;       // an empty frame: nothing of it to show
                 painter.setTransform(worldOf(l, prev) * view);
                 if (m_onionStrength[0][i] > 0)
-                    paintDrawing(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
-                                 strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, &before);
+                    paintOnion(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
+                               strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, before);
             }
             for (int i = 0, next = m_frame; i < m_onionNext; ++i) {
                 next = m_onionByFrame ? next + 1 : layer.nextDrawingFrame(next);
@@ -100,8 +132,8 @@ void Canvas::paintEvent(QPaintEvent*)
                     continue;
                 painter.setTransform(worldOf(l, next) * view);
                 if (m_onionStrength[1][i] > 0)
-                    paintDrawing(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
-                                 strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, &after);
+                    paintOnion(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
+                               strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, after);
             }
             painter.setTransform(worldOf(l, m_frame) * view);
         }

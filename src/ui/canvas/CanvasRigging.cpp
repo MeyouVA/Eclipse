@@ -190,6 +190,15 @@ void Canvas::setPreview(QVector<QImage> const& frames)
     update();
 }
 
+void Canvas::setOnionOutlines(bool on)
+{
+    if (m_onionOutlines == on)
+        return;
+    m_onionOutlines = on;
+    emit onionChanged();
+    update();
+}
+
 void Canvas::setOnionByFrame(bool on)
 {
     if (m_onionByFrame == on)

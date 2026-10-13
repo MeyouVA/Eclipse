@@ -111,6 +111,11 @@ QWidget* MainWindow::createOnionSkinView()
     QPushButton* const afterColour = new QPushButton(onion);
     afterColour->setObjectName(QStringLiteral("OnionAfter"));
     onionForm->addRow(tr("Show"), mode);
+    QCheckBox* const outlines = new QCheckBox(tr("Outlines only"), onion);
+    outlines->setObjectName(QStringLiteral("OnionOutlines"));
+    outlines->setToolTip(tr("The drawings before and after are shown as outlines, so that they do not hide what is being drawn."));
+    onionForm->addRow(outlines);
+    connect(outlines, &QCheckBox::toggled, m_canvas, &Canvas::setOnionOutlines);
     onionForm->addRow(tr("Colour before"), beforeColour);
     onionForm->addRow(tr("Colour after"), afterColour);
     connect(mode, &QComboBox::currentIndexChanged, this, [this](int index) { m_canvas->setOnionByFrame(index == 1); });
@@ -124,7 +129,11 @@ QWidget* MainWindow::createOnionSkinView()
         if (chosen.isValid())
             m_canvas->setOnionColours(m_canvas->onionBefore(), chosen);
     });
-    auto follow = [this, show, previous, next, opacity, mode, beforeColour, afterColour, beforeSliders, afterSliders] {
+    auto follow = [this, show, previous, next, opacity, mode, outlines, beforeColour, afterColour, beforeSliders, afterSliders] {
+        {
+            QSignalBlocker const o(outlines);
+            outlines->setChecked(m_canvas->onionOutlines());
+        }
         // A slider is live for a drawing that is shown: as many before and after as are asked for.
         for (int step = 0; step < Canvas::kOnionSteps; ++step) {
             QSignalBlocker const x(beforeSliders[step]), y(afterSliders[step]);
@@ -148,6 +157,7 @@ QWidget* MainWindow::createOnionSkinView()
     {
         QSettings const s = settings();
         m_canvas->setOnionByFrame(s.value(QStringLiteral("onion/byFrame"), false).toBool());
+        m_canvas->setOnionOutlines(s.value(QStringLiteral("onion/outlines"), false).toBool());
         m_canvas->setOnionColours(QColor(s.value(QStringLiteral("onion/before"), m_canvas->onionBefore().name()).toString()),
                                   QColor(s.value(QStringLiteral("onion/after"), m_canvas->onionAfter().name()).toString()));
         QStringList const kept = s.value(QStringLiteral("onion/strengths")).toString().split(QLatin1Char(','), Qt::SkipEmptyParts);
@@ -160,6 +170,7 @@ QWidget* MainWindow::createOnionSkinView()
     connect(m_canvas, &Canvas::onionChanged, this, [this] {
         QSettings s = settings();
         s.setValue(QStringLiteral("onion/byFrame"), m_canvas->onionByFrame());
+        s.setValue(QStringLiteral("onion/outlines"), m_canvas->onionOutlines());
         s.setValue(QStringLiteral("onion/before"), m_canvas->onionBefore().name());
         s.setValue(QStringLiteral("onion/after"), m_canvas->onionAfter().name());
         QStringList strengths;
