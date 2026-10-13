@@ -48,7 +48,7 @@ void Canvas::paintEvent(QPaintEvent*)
     QPainter painter(this);
     // The view is one even grey; the camera frame is only an outline on it, and what is
     // drawn outside the frame shows too.  (The paper colour is for what is exported.)
-    painter.fillRect(rect(), QColor(127, 127, 127));
+    painter.fillRect(rect(), m_backdrop);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setTransform(cameraViewTransform());
 
@@ -146,7 +146,7 @@ void Canvas::paintEvent(QPaintEvent*)
         }
         int const index = layer.drawingAt(m_frame);
         // The light table: while drawing, the layers that are not being drawn on are faint.
-        double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? 0.3 : 1.0;
+        double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? m_lightWash / 100.0 : 1.0;
         if (index != Layer::kNoDrawing && layer.morphing(m_frame)) {
             // In between the two key drawings of a morphing: the drawing made for this frame.
             // (It is not one that can be drawn on, so none of the editing aids apply.)

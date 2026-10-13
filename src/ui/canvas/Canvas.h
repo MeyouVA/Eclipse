@@ -358,6 +358,12 @@ public:
     void setOnionColours(QColor const& before, QColor const& after);
     QColor onionBefore() const { return m_onionBefore; }
     QColor onionAfter() const { return m_onionAfter; }
+    // The colour of the view around the frame of the camera (Preferences > Colours).
+    void setBackdrop(QColor const& colour);
+    QColor backdrop() const { return m_backdrop; }
+    // The light table: how strongly the layers that are not being drawn on show, 10 to 90 per cent.
+    void setLightTableWash(int percent);
+    int lightTableWash() const { return m_lightWash; }
     // A colour of its own for one of the drawings shown (the first before, the second after, ...).  An invalid
     // colour takes it away again: that drawing then shows in the colour of its side.
     void setOnionStepColour(bool after, int step, QColor const& colour);
@@ -761,6 +767,8 @@ private:
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     QColor m_onionBefore = QColor(220, 60, 60);
     QColor m_onionAfter = QColor(50, 160, 80);
+    QColor m_backdrop = QColor(127, 127, 127);
+    int m_lightWash = 30;
     QColor m_onionStepColour[2][kOnionSteps];
     // Does to the other drawings of the layer what was done to the selection: moves what
     // lies within `region` by `transform`, or takes it away when there is none.

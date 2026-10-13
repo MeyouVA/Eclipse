@@ -261,6 +261,20 @@ void Canvas::setOnionColours(QColor const& before, QColor const& after)
     update();
 }
 
+void Canvas::setBackdrop(QColor const& colour)
+{
+    if (!colour.isValid() || colour == m_backdrop)
+        return;
+    m_backdrop = colour;
+    update();
+}
+
+void Canvas::setLightTableWash(int percent)
+{
+    m_lightWash = std::clamp(percent, 10, 90);
+    update();
+}
+
 void Canvas::setOnionStepColour(bool after, int step, QColor const& colour)
 {
     if (step < 0 || step >= kOnionSteps || m_onionStepColour[after ? 1 : 0][step] == colour)

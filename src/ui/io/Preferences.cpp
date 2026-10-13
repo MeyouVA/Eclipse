@@ -7,6 +7,8 @@
 #include <cmath>
 
 #include <QCheckBox>
+#include <QColorDialog>
+#include <QTabWidget>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -233,6 +235,8 @@ void MainWindow::applyPreferences()
     m_canvas->setProportionParts(std::clamp(s.value(QStringLiteral("prefs/proportionAcross"), 3).toInt(), 2, 12),
                                  std::clamp(s.value(QStringLiteral("prefs/proportionDown"), 3).toInt(), 2, 12));
     m_canvas->setSafeMargin(std::clamp(s.value(QStringLiteral("prefs/safeMargin"), 10).toInt(), 1, 30) / 100.0);
+    m_canvas->setBackdrop(QColor(s.value(QStringLiteral("prefs/backdrop"), QStringLiteral("#7f7f7f")).toString()));
+    m_canvas->setLightTableWash(s.value(QStringLiteral("prefs/lightTableWash"), 30).toInt());
     m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
     m_autoSave.stop();
     if (m_autoSaveMinutes > 0)
@@ -243,6 +247,7 @@ void MainWindow::onActionPreferences()
 {
     QSettings s = preferences();
     QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("PreferencesDialog"));
     dialog.setWindowTitle(tr("Preferences"));
 
     QGroupBox* const general = new QGroupBox(tr("General"), &dialog);
@@ -328,17 +333,78 @@ void MainWindow::onActionPreferences()
     QFormLayout* const advancedLayout = new QFormLayout(advanced);
     advancedLayout->addRow(moreArt);
 
+    // Drawing: the light table.
+    QGroupBox* const drawing = new QGroupBox(tr("Drawing"), &dialog);
+    QSpinBox* const wash = new QSpinBox(drawing);
+    wash->setObjectName(QStringLiteral("PrefLightTableWash"));
+    wash->setRange(10, 90);
+    wash->setSuffix(tr(" %"));
+    wash->setToolTip(tr("With the light table on: how strongly the layers that are not being drawn on show."));
+    wash->setValue(m_canvas->lightTableWash());
+    QFormLayout* const drawingLayout = new QFormLayout(drawing);
+    drawingLayout->addRow(tr("Light table: other layers show at"), wash);
+
+    // Colours: of the view round the frame, and of the onion skin.
+    QGroupBox* const colours = new QGroupBox(tr("Colours"), &dialog);
+    QFormLayout* const coloursLayout = new QFormLayout(colours);
+    auto colourButton = [&](char const* name, QColor const& now, QString const& title) {
+        QPushButton* const button = new QPushButton(colours);
+        button->setObjectName(QLatin1String(name));
+        auto show = [button](QColor const& colour) {
+            button->setProperty("colour", colour);
+            button->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px; min-width: 60px;").arg(colour.name()));
+        };
+        show(now);
+        connect(button, &QPushButton::clicked, &dialog, [button, show, title, &dialog] {
+            QColor const chosen = QColorDialog::getColor(button->property("colour").value<QColor>(), &dialog, title);
+            if (chosen.isValid())
+                show(chosen);
+        });
+        return button;
+    };
+    QPushButton* const backdrop = colourButton("PrefBackdrop", m_canvas->backdrop(), tr("Around the Frame"));
+    QPushButton* const onionBefore = colourButton("PrefOnionBefore", m_canvas->onionBefore(), tr("Onion Skin: Before"));
+    QPushButton* const onionAfter = colourButton("PrefOnionAfter", m_canvas->onionAfter(), tr("Onion Skin: After"));
+    coloursLayout->addRow(tr("Camera view, around the frame"), backdrop);
+    coloursLayout->addRow(tr("Onion skin, drawings before"), onionBefore);
+    coloursLayout->addRow(tr("Onion skin, drawings after"), onionAfter);
+    QPushButton* const usual = new QPushButton(tr("Restore the Usual Colours"), colours);
+    usual->setObjectName(QStringLiteral("PrefColoursReset"));
+    coloursLayout->addRow(usual);
+    connect(usual, &QPushButton::clicked, &dialog, [backdrop, onionBefore, onionAfter] {
+        struct Usual {
+            QPushButton* button;
+            QColor colour;
+        };
+        for (Usual const& one : {Usual{backdrop, QColor(127, 127, 127)}, Usual{onionBefore, QColor(220, 60, 60)}, Usual{onionAfter, QColor(50, 160, 80)}}) {
+            one.button->setProperty("colour", one.colour);
+            one.button->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px; min-width: 60px;").arg(one.colour.name()));
+        }
+    });
+
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    // A tab for each kind of setting, as Harmony has them.
+    QTabWidget* const tabs = new QTabWidget(&dialog);
+    tabs->setObjectName(QStringLiteral("PreferencesTabs"));
+    for (QGroupBox* const page : {general, camera, sheet, drawing, colours, advanced}) {
+        QString const title = page->title();
+        page->setTitle(QString());
+        page->setFlat(true);
+        tabs->addTab(page, title);
+    }
+    tabs->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/lastTab"), 0).toInt(), 0, tabs->count() - 1));
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
-    layout->addWidget(general);
-    layout->addWidget(camera);
-    layout->addWidget(sheet);
-    layout->addWidget(advanced);
+    layout->addWidget(tabs);
     layout->addWidget(buttons);
-    if (dialog.exec() != QDialog::Accepted)
+    int const result = dialog.exec();
+    s.setValue(QStringLiteral("prefs/lastTab"), tabs->currentIndex());
+    if (result != QDialog::Accepted)
         return;
+    s.setValue(QStringLiteral("prefs/lightTableWash"), wash->value());
+    s.setValue(QStringLiteral("prefs/backdrop"), backdrop->property("colour").value<QColor>().name());
+    m_canvas->setOnionColours(onionBefore->property("colour").value<QColor>(), onionAfter->property("colour").value<QColor>());
     s.setValue(QStringLiteral("welcome/hide"), !welcome->isChecked());
     s.setValue(QStringLiteral("prefs/autosaveMinutes"), autoSave->value());
     s.setValue(QStringLiteral("prefs/lasso"), selectMode->currentIndex() == 0);
