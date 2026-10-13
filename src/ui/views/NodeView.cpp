@@ -1,6 +1,7 @@
 #include "ui/views/NodeView.h"
 
 #include <QContextMenuEvent>
+#include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -19,6 +20,41 @@ NodeView::NodeView(Document* document, QWidget* parent) : QWidget(parent), m_doc
         m_cable = -1;
         update();
     });
+    m_search = new QLineEdit(this);
+    m_search->setObjectName(QStringLiteral("NodeSearch"));
+    m_search->setPlaceholderText(tr("Search"));
+    m_search->setClearButtonEnabled(true);
+    m_search->setToolTip(tr("Type part of a layer's name and press Enter: its node is brought into view. Enter again goes to the next."));
+    connect(m_search, &QLineEdit::returnPressed, this, [this] { find(m_search->text()); });
+}
+
+void NodeView::resizeEvent(QResizeEvent*)
+{
+    int const tall = m_search->sizeHint().height();
+    m_search->setGeometry(6, height() - tall - 6, std::min(200, width() - 12), tall);
+}
+
+int NodeView::find(QString const& text)
+{
+    Scene const& scene = m_document->scene();
+    int const n = int(scene.layers.size());
+    QString const wanted = text.trimmed();
+    if (wanted.isEmpty() || n == 0)
+        return -1;
+    for (int k = 1; k <= n; ++k) {
+        int const i = ((m_layer < 0 ? -1 : m_layer) + k) % n;
+        if (!scene.layers[i].name.contains(wanted, Qt::CaseInsensitive))
+            continue;
+        m_layer = i;
+        // Its node in the middle of the view.
+        QPointF const middle = positions()[i] + QPointF(kNodeWidth / 2.0, kNodeHeight / 2.0);
+        m_pan = QPointF(width() / 2.0, height() / 2.0) - middle * m_zoom;
+        m_centred = true;
+        emit layerPicked(i);
+        update();
+        return i;
+    }
+    return -1;
 }
 
 void NodeView::setCurrentCell(int layer, int)

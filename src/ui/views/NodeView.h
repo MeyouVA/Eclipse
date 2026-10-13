@@ -14,6 +14,7 @@
 #include <QWidget>
 
 class Document;
+class QLineEdit;
 
 class ECLIPSE_UI_API NodeView : public QWidget {
     Q_OBJECT
@@ -26,6 +27,9 @@ public:
     QPointF outPort(int layer) const;
     // The middle of the cable into `child` from its parent (for picking it).
     QPointF cableMiddle(int child) const;
+    // The next layer after the current one whose name has `text` in it (whatever its capitals):
+    // it becomes the current layer and its node is brought to the middle of the view.  -1: none.
+    int find(QString const& text);
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -41,6 +45,7 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
@@ -64,6 +69,7 @@ private:
     static QVector<QPointF> cablePoints(QPointF from, QPointF to);
 
     Document* m_document;
+    QLineEdit* m_search = nullptr;     // along the bottom: type a name, Enter goes to the next node of it
     int m_layer = 0;
     double m_zoom = 1.0;
     QPointF m_pan = QPointF(40, 150);
