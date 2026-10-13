@@ -533,7 +533,8 @@ public:
     struct Guide {
         bool vertical = false;      // a Line: runs down the picture, at an x; else across it, at a y
         double at = 0.0;
-        enum Kind { Line, Ruler, SquareGrid, Isometric, OnePoint, TwoPoint, ThreePoint, Symmetry };
+        enum Kind { Line, Ruler, SquareGrid, Isometric, OnePoint, TwoPoint, ThreePoint, Symmetry, FourPoint, FivePoint };
+        static constexpr Kind kLastKind = FivePoint;
         Kind kind = Line;
         // Ruler: two points on it.  The perspectives: their vanishing points (the first two
         // of a two- or three-point one lie on the horizon).
@@ -546,6 +547,12 @@ public:
     Guide makeGuide(Guide::Kind kind) const;
     // The ways a line may run from a place (each of length one; a line runs either way along it).
     static QVector<QPointF> guideDirections(Guide const& guide, QPointF at);
+    // The 4- and 5-point perspectives have ways that bend: way number `way` of those above is then part of a
+    // circle, told here (false: that way runs straight).
+    static bool guideArc(Guide const& guide, QPointF at, int way, QPointF* centre, double* radius);
+    // The four vanishing points of a 4-point perspective (evenly along its horizon), or of a 5-point one
+    // (left, right, above and below its middle, on its circle).
+    static QVector<QPointF> guideVanishingPoints(Guide const& guide);
     // Which of those is nearest to the way the pen has gone (-1: there are none) ...
     static int nearestGuideDirection(QVector<QPointF> const& ways, QPointF drag);
     // ... and the place on the line from `from` running `way` that is nearest to `to`.

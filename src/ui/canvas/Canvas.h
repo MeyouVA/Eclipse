@@ -792,6 +792,9 @@ private:
     int m_activeGuide = -1;
     QPointF m_guideStart;        // where the line being drawn along the guide began (in the frame)
     QPointF m_guideWay;          // the way it was settled to run (null until the pen has moved)
+    bool m_guideBends = false;   // ... and, when that way bends (4- and 5-point perspectives), the circle it is part of
+    QPointF m_guideCentre;
+    double m_guideRadius = 0.0;
     QPointF m_hoverFrame;        // where the pointer is (in the frame)
     bool m_hoverKnown = false;
     QVector<Scene::Guide> m_guideEdit;   // the guides while a point of one is dragged

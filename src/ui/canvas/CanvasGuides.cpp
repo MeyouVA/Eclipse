@@ -122,8 +122,9 @@ bool Canvas::symmetry(QTransform* mirror) const
 bool Canvas::guidedShape(QPointF a, QPointF p)
 {
     Scene::Guide const* const guide = drawingGuide();
-    if (!guide || guide->kind == Scene::Guide::SquareGrid || guide->kind == Scene::Guide::Symmetry)
-        return false;       // (a square grid runs as the shapes do anyway)
+    if (!guide || guide->kind == Scene::Guide::SquareGrid || guide->kind == Scene::Guide::Symmetry || guide->kind == Scene::Guide::FourPoint
+        || guide->kind == Scene::Guide::FivePoint)
+        return false;       // (a square grid runs as the shapes do anyway; a perspective that bends has no straight-sided shapes)
     QTransform const toView = layerViewTransform(), view = cameraViewTransform();
     if (!toView.isInvertible() || !view.isInvertible())
         return false;
@@ -211,6 +212,7 @@ void Canvas::beginGuidedStroke(QPointF widgetPos)
 {
     m_guideStart = toFrame(widgetPos);
     m_guideWay = QPointF();
+    m_guideBends = false;
 }
 
 QPointF Canvas::guided(QPointF widgetPos)
@@ -229,6 +231,14 @@ QPointF Canvas::guided(QPointF widgetPos)
         if (which < 0)
             return widgetPos;
         m_guideWay = ways[which];
+        m_guideBends = Scene::guideArc(*guide, m_guideStart, which, &m_guideCentre, &m_guideRadius);
+    }
+    if (m_guideBends) {
+        // Kept to the circle: the place on it nearest the pen.
+        QPointF const out = at - m_guideCentre;
+        double const length = std::hypot(out.x(), out.y());
+        if (length > 1e-9)
+            return cameraViewTransform().map(m_guideCentre + out * (m_guideRadius / length));
     }
     return cameraViewTransform().map(Scene::alongGuide(m_guideStart, at, m_guideWay));
 }
@@ -284,6 +294,18 @@ void Canvas::paintGuide(QPainter& painter)
     } else if ((guide->kind == Scene::Guide::TwoPoint || guide->kind == Scene::Guide::ThreePoint) && guide->points.size() >= 2) {
         QPointF const way = guide->points[1] - guide->points[0];
         painter.drawLine(guide->points[0] - way * 1000.0, guide->points[1] + way * 1000.0);
+    } else if (guide->kind == Scene::Guide::FourPoint && guide->points.size() >= 2) {
+        // The horizon, and its four vanishing points.
+        QPointF const way = guide->points[1] - guide->points[0];
+        painter.drawLine(guide->points[0] - way * 1000.0, guide->points[1] + way * 1000.0);
+    } else if (guide->kind == Scene::Guide::FivePoint && guide->points.size() >= 2) {
+        // The circle the picture is seen in, and the cross through its middle.
+        QPointF const out = guide->points[1] - guide->points[0], turned(-out.y(), out.x());
+        double const radius = std::hypot(out.x(), out.y());
+        painter.setBrush(Qt::NoBrush);
+        painter.drawEllipse(guide->points[0], radius, radius);
+        painter.drawLine(guide->points[0] - out, guide->points[0] + out);
+        painter.drawLine(guide->points[0] - turned, guide->points[0] + turned);
     }
     // Through the pointer, the ways a line may run from there.
     if (m_hoverKnown && guideTool() && m_drag != DragGuide) {
@@ -294,8 +316,16 @@ void Canvas::paintGuide(QPainter& painter)
         dotted.setCosmetic(true);
         dotted.setStyle(Qt::DotLine);
         painter.setPen(dotted);
-        for (QPointF const& way : Scene::guideDirections(*guide, from))
-            painter.drawLine(from - way * reach, from + way * reach);
+        QVector<QPointF> const ways = Scene::guideDirections(*guide, from);
+        painter.setBrush(Qt::NoBrush);
+        for (int i = 0; i < ways.size(); ++i) {
+            QPointF centre;
+            double radius = 0.0;
+            if (Scene::guideArc(*guide, from, i, &centre, &radius))
+                painter.drawEllipse(centre, radius, radius);        // a way that bends: the circle it is part of
+            else
+                painter.drawLine(from - ways[i] * reach, from + ways[i] * reach);
+        }
     }
     // Its points, to take hold of.
     painter.resetTransform();
@@ -304,6 +334,11 @@ void Canvas::paintGuide(QPainter& painter)
     painter.setBrush(QColor(60, 200, 230));
     for (QPointF const& point : guide->points)
         painter.drawEllipse(view.map(point), 4.5, 4.5);
+    // The vanishing points that are worked out from those: smaller, and not to be taken hold of.
+    painter.setBrush(QColor(230, 230, 235));
+    for (QPointF const& point : Scene::guideVanishingPoints(*guide))
+        if (!guide->points.contains(point))
+            painter.drawEllipse(view.map(point), 3.0, 3.0);
     painter.restore();
 }
 

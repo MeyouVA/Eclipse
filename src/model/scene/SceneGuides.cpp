@@ -15,6 +15,8 @@ QString Scene::guideName(Guide::Kind kind)
     case Guide::TwoPoint: return QCoreApplication::translate("Scene", "2-Point Perspective");
     case Guide::ThreePoint: return QCoreApplication::translate("Scene", "3-Point Perspective");
     case Guide::Symmetry: return QCoreApplication::translate("Scene", "Symmetry");
+    case Guide::FourPoint: return QCoreApplication::translate("Scene", "4-Point Continuous Perspective");
+    case Guide::FivePoint: return QCoreApplication::translate("Scene", "5-Point Perspective (Fish-Eye)");
     default: return QCoreApplication::translate("Scene", "Line");
     }
 }
@@ -44,10 +46,58 @@ Scene::Guide Scene::makeGuide(Guide::Kind kind) const
         // An upright axis down the middle of the picture: what is drawn on one side appears on the other.
         guide.points = {QPointF(w * 0.5, h * 0.2), QPointF(w * 0.5, h * 0.8)};
         break;
+    case Guide::FourPoint:
+        // The two ends of the horizon: the four vanishing points are spread evenly along it.
+        guide.points = {QPointF(-w * 0.25, h * 0.5), QPointF(w * 1.25, h * 0.5)};
+        break;
+    case Guide::FivePoint:
+        // The middle of the picture, and a point on the circle round it (the vanishing point at the right).
+        guide.points = {QPointF(w * 0.5, h * 0.5), QPointF(w * 0.5 + h * 0.45, h * 0.5)};
+        break;
     default:
         break;      // a grid has no points: it is the same everywhere
     }
     return guide;
+}
+
+QVector<QPointF> Scene::guideVanishingPoints(Guide const& guide)
+{
+    if (guide.points.size() < 2)
+        return {};
+    QPointF const a = guide.points[0], b = guide.points[1];
+    if (guide.kind == Guide::FourPoint)
+        return {a, a + (b - a) / 3.0, a + (b - a) * 2.0 / 3.0, b};
+    if (guide.kind == Guide::FivePoint) {
+        QPointF const out = b - a, turned(-out.y(), out.x());
+        return {a - out, b, a - turned, a + turned};
+    }
+    return {};
+}
+
+// The circle through three places; false when they lie in a line (or as good as).
+static bool circleThrough(QPointF a, QPointF p, QPointF b, QPointF* centre, double* radius)
+{
+    QPointF const u = p - a, v = b - a;
+    double const cross = u.x() * v.y() - u.y() * v.x();
+    double const lu = u.x() * u.x() + u.y() * u.y(), lv = v.x() * v.x() + v.y() * v.y();
+    if (std::abs(cross) < 1e-6 * std::sqrt(lu * lv) || lu < 1e-12 || lv < 1e-12)
+        return false;
+    QPointF const c = a + QPointF(v.y() * lu - u.y() * lv, u.x() * lv - v.x() * lu) / (2.0 * cross);
+    *centre = c;
+    *radius = std::hypot(c.x() - a.x(), c.y() - a.y());
+    return *radius < 1e7;
+}
+
+bool Scene::guideArc(Guide const& guide, QPointF at, int way, QPointF* centre, double* radius)
+{
+    QVector<QPointF> const v = guideVanishingPoints(guide);
+    if (v.size() != 4 || way < 0 || way > 1)
+        return false;
+    // Four points: one family of curves joins the first and third vanishing points, the other the second and
+    // fourth.  Five: one joins left and right, the other above and below.
+    if (guide.kind == Guide::FourPoint)
+        return way == 0 ? circleThrough(v[0], at, v[2], centre, radius) : circleThrough(v[1], at, v[3], centre, radius);
+    return way == 0 ? circleThrough(v[0], at, v[1], centre, radius) : circleThrough(v[2], at, v[3], centre, radius);
 }
 
 static QPointF unit(QPointF v)
@@ -100,6 +150,33 @@ QVector<QPointF> Scene::guideDirections(Guide const& guide, QPointF at)
         towards(1);
         towards(2);
         break;
+    case Guide::FourPoint:
+    case Guide::FivePoint: {
+        QVector<QPointF> const v = guideVanishingPoints(guide);
+        if (v.size() != 4)
+            break;
+        // Always three: along each of the two curves through the place (or straight along its chord, where
+        // the place lies on it), and the straight one - upright from the horizon, or out from the middle.
+        for (int way = 0; way < 2; ++way) {
+            QPointF centre;
+            double radius = 0.0;
+            QPointF const chord = guide.kind == Guide::FourPoint ? v[way + 2] - v[way] : (way == 0 ? v[1] - v[0] : v[3] - v[2]);
+            if (guideArc(guide, at, way, &centre, &radius)) {
+                QPointF const out = unit(at - centre);
+                ways.push_back(QPointF(-out.y(), out.x()));
+            } else {
+                ways.push_back(unit(chord));
+            }
+        }
+        if (guide.kind == Guide::FourPoint) {
+            QPointF const along = unit(guide.points[1] - guide.points[0]);
+            ways.push_back(QPointF(-along.y(), along.x()));
+        } else {
+            QPointF const out = unit(at - guide.points[0]);
+            ways.push_back(out.isNull() ? up : out);
+        }
+        break;
+    }
     default:
         break;      // a plain line is snapped to, not drawn along
     }
