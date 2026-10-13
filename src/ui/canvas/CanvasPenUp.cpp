@@ -91,6 +91,20 @@ void Canvas::penUp()
         update();
         return;
     }
+    if (drag == DragThickness) {
+        m_drag = DragNone;
+        Drawing const* const d = currentDrawing();
+        if (d && m_thickStroke >= 0 && m_thickStroke < d->strokes.size() && m_thickStroke < m_eraseArt.strokes.size()
+            && m_thickPoint < d->strokes[m_thickStroke].points.size() && m_thickPoint < m_eraseArt.strokes[m_thickStroke].points.size()
+            && d->strokes[m_thickStroke].points[m_thickPoint].pressure != m_eraseArt.strokes[m_thickStroke].points[m_thickPoint].pressure) {
+            Drawing const art = m_eraseArt;
+            commitDrawing(art, tr("Pencil Line Thickness"));
+        }
+        m_eraseArt = Drawing();
+        m_thickStroke = m_thickPoint = -1;
+        update();
+        return;
+    }
     if (drag == DragGradient) {
         m_drag = DragNone;
         Drawing const* const d = currentDrawing();

@@ -398,6 +398,7 @@
   <item id="ToolCutter" icon="tool/cutter" text="C&amp;utter" shortcut="shortcut.toolCutter" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="cutter"/>
   <item id="ToolReposition" icon="tool/reposition" text="Reposition All Dra&amp;wings" shortcut="shortcut.toolReposition" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="reposition"/>
 <item id="ToolContourEditor" icon="tool/contour" text="&amp;Contour Editor" shortcut="shortcut.toolContour" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="contour"/>
+  <item id="ToolPencilEditor" icon="tool/pencileditor" text="Pencil &amp;Editor" shortcut="shortcut.toolPencilEditor" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencileditor"/>
   <item id="ToolBrush" icon="tool/brush" text="&amp;Brush" shortcut="shortcut.toolBrush" checkable="true" checked="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="brush"/>
   <item id="ToolStamp" icon="tool/stamp" text="Sta&amp;mp" shortcut="shortcut.toolStamp" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="stamp"/>
 <item id="ToolPencil" icon="tool/pencil" text="Pe&amp;ncil" shortcut="shortcut.toolPencil" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencil"/>

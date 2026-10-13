@@ -69,7 +69,7 @@ void Canvas::paintEvent(QPaintEvent*)
     bool const transforming = m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate || m_drag == DragPoint || m_drag == DragHandle;
     // The eraser cuts as it goes: the drawing is shown as it is so far, before it is in the scene.
     // (So is the gradient being placed: the area is shown with it where the pointer has it.)
-    bool const erasing = (m_drag == DragErase && m_eraserCuts && m_eraseAny) || m_drag == DragGradient;
+    bool const erasing = (m_drag == DragErase && m_eraserCuts && m_eraseAny) || m_drag == DragGradient || m_drag == DragThickness;
     QTransform const view = viewTransform();
     // The grid, when it is to lie behind the drawings.
     if (m_grid && m_gridUnder && !m_playing)
@@ -233,6 +233,26 @@ void Canvas::paintEvent(QPaintEvent*)
             painter.setTransform(QTransform::fromScale(k, k) * QTransform::fromTranslate(at.x(), at.y()) * layerViewTransform());
             paintDrawing(painter, scene, stampNow(), 0.45);
             painter.restore();
+        }
+        if (l == m_layer && m_tool == PencilEditor && !m_playing && layer.holdsDrawings()) {
+            // The points of the pencil lines, to take hold of.
+            Drawing const* const lines = m_drag == DragThickness ? &m_eraseArt : currentDrawing();
+            if (lines) {
+                QTransform const where = layerViewTransform();
+                painter.save();
+                painter.resetTransform();
+                painter.setPen(QPen(QColor(20, 20, 20), 1.0));
+                for (int i = 0; i < lines->strokes.size(); ++i) {
+                    if (lines->strokes[i].width <= 0.0f)
+                        continue;
+                    for (int k = 0; k < lines->strokes[i].points.size(); ++k) {
+                        QPointF const at = where.map(lines->strokes[i].points[k].pos);
+                        painter.setBrush(i == m_thickStroke && k == m_thickPoint ? QColor(255, 255, 255) : QColor(60, 200, 230));
+                        painter.drawRect(QRectF(at.x() - 3, at.y() - 3, 6, 6));
+                    }
+                }
+                painter.restore();
+            }
         }
         if (l == m_layer && m_polyActive) {
             // The polyline so far, and on to where the next point would go.

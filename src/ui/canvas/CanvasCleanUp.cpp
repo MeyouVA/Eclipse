@@ -349,6 +349,39 @@ void Canvas::onActionAutoMatte()
     update();
 }
 
+// ---- the Pencil Editor ------------------------------------------------------------------------------
+
+void Canvas::thicknessDown(QPointF p)
+{
+    Drawing const* const d = currentDrawing();
+    m_thickStroke = m_thickPoint = -1;
+    double nearest = 0.0;
+    if (d) {
+        // The point of a line under the pointer: within the line there, or a few pixels off it.
+        for (int i = 0; i < d->strokes.size(); ++i) {
+            Stroke const& stroke = d->strokes[i];
+            if (stroke.width <= 0.0f)
+                continue;
+            for (int k = 0; k < stroke.points.size(); ++k) {
+                double const away = QLineF(stroke.points[k].pos, p).length();
+                double const reach = stroke.width * stroke.points[k].pressure / 2.0 + 8.0 / std::max(m_zoom, 1e-6);
+                if (away <= reach && (m_thickStroke < 0 || away < nearest)) {
+                    m_thickStroke = i;
+                    m_thickPoint = k;
+                    nearest = away;
+                }
+            }
+        }
+    }
+    if (m_thickStroke < 0) {
+        emit message(tr("Press on a point of a pencil line and pull: away from the line makes it thicker there, towards it thinner."));
+        return;
+    }
+    m_eraseArt = *d;
+    m_drag = DragThickness;
+    update();
+}
+
 // ---- Close Gaps ---------------------------------------------------------------------------------
 
 int Canvas::closeGaps(double gap)

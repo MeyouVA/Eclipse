@@ -44,6 +44,9 @@ public:
         // A click puts a copy of the stamp there: a star to begin with, or artwork of your own
         // (Drawing > Create Stamp from Selection).
         Stamp,
+        // Press on a point of a pencil line and pull away from it or towards it: the line is
+        // that much thicker or thinner there.
+        PencilEditor,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -616,7 +619,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -724,6 +727,9 @@ private:
     QPointF m_hoverWidget;       // where the pointer is (in the view)
     Drawing stampNow() const;
     void stampAt(QPointF p);
+    int m_thickStroke = -1;      // the Pencil Editor: the line and the point of it in hand
+    int m_thickPoint = -1;
+    void thicknessDown(QPointF p);
     double m_nudgeStep = 1.0;
     int m_propAcross = 3;
     int m_propDown = 3;

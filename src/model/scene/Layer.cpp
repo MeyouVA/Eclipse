@@ -283,6 +283,21 @@ void Layer::substitute(int frame, int drawing)
         cells[f] = drawing;
 }
 
+// Two drawings of a layer cannot go by one name (pasted cells bring theirs along): the later one loses it.
+static void oneNameEach(QVector<Drawing>& drawings)
+{
+    for (int i = 1; i < drawings.size(); ++i) {
+        if (drawings[i].name.isEmpty())
+            continue;
+        for (int k = 0; k < i; ++k) {
+            if (drawings[k].name == drawings[i].name) {
+                drawings[i].name.clear();
+                break;
+            }
+        }
+    }
+}
+
 void Layer::compact()
 {
     QVector<int> remap(drawings.size(), kNoDrawing);
@@ -307,6 +322,7 @@ void Layer::compact()
             if (cell != kNoDrawing)
                 cell = remap[cell];
         drawings = kept;
+        oneNameEach(drawings);
         return;
     }
     for (int& cell : cells) {
@@ -319,4 +335,5 @@ void Layer::compact()
         cell = remap[cell];
     }
     drawings = kept;
+    oneNameEach(drawings);
 }
