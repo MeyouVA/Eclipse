@@ -51,6 +51,9 @@ public:
         Perspective,
         // The lines the pen passes over take the colour in hand; paint is left alone.
         Ink,
+        // Rubbed over a line or the edge of a brush shape, it smooths it there: the points
+        // under the pen settle between their neighbours.
+        SmoothEditor,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -656,7 +659,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -774,6 +777,7 @@ private:
     void thicknessDown(QPointF p);
     bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
     void inkAt(QPointF p);
+    void smoothAt(QPointF p);
     double m_nudgeStep = 1.0;
     int m_propAcross = 3;
     int m_propDown = 3;

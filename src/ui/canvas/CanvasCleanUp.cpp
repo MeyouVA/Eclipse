@@ -413,6 +413,49 @@ void Canvas::inkAt(QPointF p)
     update();
 }
 
+// ---- the Smooth Editor -----------------------------------------------------------------------------
+
+void Canvas::smoothAt(QPointF p)
+{
+    // As far round the pen as the size in Tool Properties.
+    double const reach = std::max(m_brushWidth / 2.0, 4.0 / std::max(m_zoom, 1e-6));
+    auto settle = [&](Stroke& line) {
+        int const n = int(line.points.size());
+        if (n < 3)
+            return false;
+        bool any = false;
+        QVector<StrokePoint> const was = line.points;
+        for (int k = 0; k < n; ++k) {
+            if (!line.closed && (k == 0 || k == n - 1))
+                continue;       // the ends of an open line stay where they are
+            if (QLineF(was[k].pos, p).length() > reach)
+                continue;
+            StrokePoint const& before = was[(k + n - 1) % n];
+            StrokePoint const& after = was[(k + 1) % n];
+            // A step towards the middle of its neighbours; a corner is a corner no longer.
+            line.points[k].pos = was[k].pos * 0.6 + (before.pos + after.pos) * 0.2;
+            line.points[k].pressure = was[k].pressure * 0.6f + (before.pressure + after.pressure) * 0.2f;
+            line.points[k].in *= 0.8;
+            line.points[k].out *= 0.8;
+            line.points[k].corner = false;
+            any = true;
+        }
+        return any;
+    };
+    for (Stroke& stroke : m_eraseArt.strokes)
+        m_inked = settle(stroke) || m_inked;
+    for (Fill& fill : m_eraseArt.fills) {
+        bool changed = false;
+        for (Stroke& contour : fill.contours)
+            changed = settle(contour) || changed;
+        if (changed) {
+            fill.rebuild();
+            m_inked = true;
+        }
+    }
+    update();
+}
+
 // ---- Close Gaps ---------------------------------------------------------------------------------
 
 int Canvas::closeGaps(double gap)

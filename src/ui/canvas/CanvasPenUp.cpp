@@ -91,11 +91,11 @@ void Canvas::penUp()
         update();
         return;
     }
-    if (drag == DragInk) {
+    if (drag == DragInk || drag == DragSmooth) {
         m_drag = DragNone;
         if (m_inked) {
             Drawing const art = m_eraseArt;
-            commitDrawing(art, tr("Ink"));
+            commitDrawing(art, drag == DragInk ? tr("Ink") : tr("Smooth"));
         }
         m_eraseArt = Drawing();
         m_inked = false;

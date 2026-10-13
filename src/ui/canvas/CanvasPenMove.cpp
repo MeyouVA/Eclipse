@@ -234,6 +234,13 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     case DragInk:
         inkAt(p);
         break;
+    case DragSmooth:
+        // Once for every few pixels the pen goes: the longer it is rubbed, the smoother.
+        if (QLineF(m_dragNow, p).length() * m_zoom >= 3.0) {
+            m_dragNow = p;
+            smoothAt(p);
+        }
+        break;
     case DragThickness:
         if (m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size() && m_thickPoint >= 0 && m_thickPoint < m_eraseArt.strokes[m_thickStroke].points.size()) {
             // How far the pointer is from the point is half of how thick the line is there.

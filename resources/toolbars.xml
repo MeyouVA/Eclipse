@@ -40,6 +40,7 @@
   <multibutton id="selectTools2">
    <item id="ToolContourEditor"/>
    <item id="ToolPencilEditor"/>
+   <item id="ToolSmoothEditor"/>
   </multibutton>
   <multibutton id="brushTools">
    <item id="ToolBrush"/>

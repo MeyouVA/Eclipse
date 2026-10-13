@@ -209,7 +209,7 @@ void MainWindow::onActionChooseTool(QString const& name)
         {QStringLiteral("unpaint"), Canvas::Unpaint}, {QStringLiteral("text"), Canvas::Text},
         {QStringLiteral("rotateview"), Canvas::RotateView}, {QStringLiteral("cutter"), Canvas::Cutter},
         {QStringLiteral("stroke"), Canvas::StrokeTool}, {QStringLiteral("closegap"), Canvas::CloseGap},
-        {QStringLiteral("gradient"), Canvas::EditGradient}, {QStringLiteral("reposition"), Canvas::Reposition}, {QStringLiteral("stamp"), Canvas::Stamp}, {QStringLiteral("pencileditor"), Canvas::PencilEditor}, {QStringLiteral("perspective"), Canvas::Perspective}, {QStringLiteral("ink"), Canvas::Ink}};
+        {QStringLiteral("gradient"), Canvas::EditGradient}, {QStringLiteral("reposition"), Canvas::Reposition}, {QStringLiteral("stamp"), Canvas::Stamp}, {QStringLiteral("pencileditor"), Canvas::PencilEditor}, {QStringLiteral("perspective"), Canvas::Perspective}, {QStringLiteral("ink"), Canvas::Ink}, {QStringLiteral("smootheditor"), Canvas::SmoothEditor}};
     if (tools.contains(name))
         m_canvas->setTool(tools.value(name));
 }
