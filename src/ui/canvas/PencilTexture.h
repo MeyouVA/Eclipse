@@ -25,6 +25,12 @@ void loadLibrary();
 int keep(QString const& name, QImage const& grain, double edge);
 // Throws one away: lines drawn with it are solid from then on.
 void discard(int id);
+// Gives one another name (the lines drawn with it are not touched: they know it by its number).
+void rename(int id, QString const& name);
+// Writes one as a file of its own - a picture, with its name and edge inside - to hand to somebody; and
+// takes one in from such a file (0 when the picture is not a texture of Eclipse's).
+bool exportTo(int id, QString const& path);
+int importFile(QString const& path);
 // The grain a picture makes: ink where it is dark (or where it is light), none where it is clear.
 QImage grainFromPicture(QImage const& picture, bool lightIsInk);
 // A grain put together by the program: how coarse (1 to 100), how much ink (0 to 100), how far drawn out

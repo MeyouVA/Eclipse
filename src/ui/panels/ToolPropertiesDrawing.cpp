@@ -141,6 +141,8 @@ QToolButton* ToolProperties::textureButton(QString const& name)
     menu->addAction(tr("Import Texture from Picture..."), m_canvas, &Canvas::onActionImportTexture);
     menu->addAction(tr("New Texture..."), m_canvas, &Canvas::onActionNewTexture);
     menu->addSeparator();
+    menu->addAction(tr("Rename Texture..."), m_canvas, &Canvas::onActionRenameTexture);
+    menu->addAction(tr("Export Texture..."), m_canvas, &Canvas::onActionExportTexture);
     menu->addAction(tr("Delete Texture"), m_canvas, &Canvas::onActionDeleteTexture);
     button->setMenu(menu);
     return button;

@@ -226,13 +226,43 @@ int PencilTexture::keep(QString const& name, QImage const& grain, double edge)
     int const id = TextureBank::add(name, grain, edge);
     if (id == 0)
         return 0;
-    TextureBank::Entry const entry = TextureBank::entry(id);
     QDir().mkpath(libraryDirectory());
+    exportTo(id, libraryDirectory() + QStringLiteral("/%1.png").arg(id));
+    return id;
+}
+
+bool PencilTexture::exportTo(int id, QString const& path)
+{
+    TextureBank::Entry const entry = TextureBank::entry(id);
+    if (entry.id == 0)
+        return false;
     QImage file = entry.grain;
+    file.setText(QStringLiteral("eclipse"), QStringLiteral("texture"));
     file.setText(QStringLiteral("name"), entry.name);
     file.setText(QStringLiteral("edge"), QString::number(entry.edge));
-    file.save(libraryDirectory() + QStringLiteral("/%1.png").arg(id), "PNG");
-    return id;
+    return file.save(path, "PNG");
+}
+
+int PencilTexture::importFile(QString const& path)
+{
+    QImage const picture(path);
+    if (picture.isNull() || picture.text(QStringLiteral("eclipse")) != QStringLiteral("texture"))
+        return 0;
+    bool ok = false;
+    double const edge = picture.text(QStringLiteral("edge")).toDouble(&ok);
+    return keep(picture.text(QStringLiteral("name")), picture, ok ? edge : 0.5);
+}
+
+void PencilTexture::rename(int id, QString const& name)
+{
+    loadLibrary();
+    if (!TextureBank::contains(id) || name.trimmed().isEmpty())
+        return;
+    TextureBank::rename(id, name);
+    // (In the folder too, when it is kept there.)
+    QString const file = libraryDirectory() + QStringLiteral("/%1.png").arg(id);
+    if (QFile::exists(file))
+        exportTo(id, file);
 }
 
 void PencilTexture::discard(int id)

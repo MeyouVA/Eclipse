@@ -62,6 +62,13 @@ void TextureBank::remove(int id)
     bank().remove(id);
 }
 
+void TextureBank::rename(int id, QString const& name)
+{
+    auto found = bank().find(id);
+    if (found != bank().end() && !name.trimmed().isEmpty())
+        found->name = name.trimmed();
+}
+
 bool TextureBank::contains(int id)
 {
     return bank().contains(id);

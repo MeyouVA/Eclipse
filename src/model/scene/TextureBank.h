@@ -31,6 +31,7 @@ QImage normalised(QImage const& grain);
 // Puts a texture in the bank (it is there already when the same grain was put in before) and returns its number.
 int add(QString const& name, QImage const& grain, double edge);
 void remove(int id);
+void rename(int id, QString const& name);
 bool contains(int id);
 // The texture of that number (its id is 0 when there is none).
 Entry entry(int id);

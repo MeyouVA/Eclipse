@@ -82,6 +82,9 @@ int TextureDialogs::importTexture(QWidget* parent)
         QMessageBox::warning(parent, QObject::tr("Import Texture"), QObject::tr("That file could not be read as a picture."));
         return 0;
     }
+    // A texture written out by Eclipse comes in as it is: nothing to ask.
+    if (int const id = PencilTexture::importFile(file))
+        return id;
     QCheckBox* light = nullptr;
     return ask(
         parent, QObject::tr("Import Texture from Picture"), QFileInfo(file).completeBaseName(),

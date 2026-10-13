@@ -579,6 +579,8 @@ public slots:
     void onActionImportTexture();
     void onActionNewTexture();
     void onActionDeleteTexture();
+    void onActionRenameTexture();
+    void onActionExportTexture();
     void takeUpTexture(int id);
     void onActionInvertSelection();
     // The lines themselves (where the pen went) drawn thin over the artwork; with the

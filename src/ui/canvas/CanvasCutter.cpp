@@ -13,6 +13,8 @@
 #include <QInputDialog>
 #include <QSpinBox>
 
+#include <QFileDialog>
+#include <QLineEdit>
 #include <QMessageBox>
 
 #include "model/scene/TextureBank.h"
@@ -202,6 +204,39 @@ void Canvas::onActionImportTexture()
 void Canvas::onActionNewTexture()
 {
     takeUpTexture(TextureDialogs::newTexture(this));
+}
+
+void Canvas::onActionRenameTexture()
+{
+    int const id = m_tool == Brush ? m_brushTexture : m_lineTexture;
+    if (id < TextureBank::kFirst) {
+        emit message(tr("Choose a texture of your own in Tool Properties to rename it."));
+        return;
+    }
+    bool ok = false;
+    QString const name = QInputDialog::getText(this, tr("Rename Texture"), tr("Name:"), QLineEdit::Normal, PencilTexture::name(id), &ok);
+    if (!ok || name.trimmed().isEmpty())
+        return;
+    PencilTexture::rename(id, name);
+    emit texturesChanged();
+}
+
+void Canvas::onActionExportTexture()
+{
+    int const id = m_tool == Brush ? m_brushTexture : m_lineTexture;
+    if (id < TextureBank::kFirst) {
+        emit message(tr("Choose a texture of your own in Tool Properties to export it."));
+        return;
+    }
+    QString path = QFileDialog::getSaveFileName(this, tr("Export Texture"), PencilTexture::name(id) + QStringLiteral(".png"), tr("Eclipse texture (*.png)"));
+    if (path.isEmpty())
+        return;
+    if (!path.endsWith(QStringLiteral(".png"), Qt::CaseInsensitive))
+        path += QStringLiteral(".png");
+    if (PencilTexture::exportTo(id, path))
+        emit message(tr("Texture written. Bring it in elsewhere with Import Texture from Picture."));
+    else
+        QMessageBox::warning(this, tr("Export Texture"), tr("The file could not be written."));
 }
 
 void Canvas::onActionDeleteTexture()
