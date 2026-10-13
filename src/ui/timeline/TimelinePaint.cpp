@@ -449,6 +449,14 @@ void Timeline::paintEvent(QPaintEvent*)
             p.setPen(QPen(QColor(120, 220, 235), 1.3));
             p.setBrush(Qt::NoBrush);
             p.drawPolygon(QPolygonF({QPointF(textX + 1, iy + 8), QPointF(textX + 10, iy + 9.5), QPointF(textX + 8.5, iy + 16), QPointF(textX, iy + 14)}));
+        } else if (layer.showsSymbol()) {
+            // A layer that shows a symbol: a box with something in it.
+            p.setPen(QPen(QColor(190, 150, 240), 1.3));
+            p.setBrush(Qt::NoBrush);
+            p.drawRect(QRectF(textX + 0.5, iy + 7.5, 9, 9));
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(190, 150, 240));
+            p.drawEllipse(QPointF(textX + 5.0, iy + 12.0), 2.2, 2.2);
         } else {
             // A drawing layer: a sheet with a stroke on it.
             p.setPen(QPen(QColor(200, 200, 200), 1));
