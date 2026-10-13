@@ -405,17 +405,44 @@ private:
     QDockWidget* dockOf(char const* objectName) const;
     // Brings the tabs across the top of every panel up to date with where the views are.
     void refreshViewTabs();
-    // The collapse arrows: one at each edge of the middle view that has panels beyond it.  A
-    // press hides all the panels on that side; another brings back the same ones.
+    // The collapse arrows: a pair at each edge of the middle view that has panels beyond it, and a
+    // pair on the line between two panels of the same side.  Each arrow pushes the line its own
+    // way: it folds away what lies on the side it points to (the panels of that side, the middle
+    // view, one of the two panels), or brings back what was folded away on the other side.
     enum Side { LeftSide, RightSide, TopSide, BottomSide, SideCount };
     void createCollapseArrows();
     void placeCollapseArrows();
+    void placeBetweenArrows();
+    void pressSide(int side, bool second);
+    void pressBetween(int spot, bool second);
     void toggleSide(int side);
+    void setMiddleCollapsed(bool collapsed);
     void expandAllSides();
-    class QToolButton* m_collapse[SideCount] = {nullptr, nullptr, nullptr, nullptr};
+    class CollapseHandle* m_collapse[SideCount] = {nullptr, nullptr, nullptr, nullptr};
     QList<QDockWidget*> m_collapsed[SideCount];        // the panels a press hid, to bring back
     QList<QDockWidget*> m_collapsedFront[SideCount];   // and which of them were in front of their tabs
+    bool m_middleCollapsed = false;
+    QHash<QDockWidget*, QSize> m_sizesBeforeMiddle;     // how big the panels were with the middle view there
+    // A panel (with those on its tabs) folded away from between two: which, which of them was in
+    // front, the neighbour its arrows stay by, and whether it lay before that neighbour.
+    struct Fold {
+        QList<QDockWidget*> docks, front;
+        QDockWidget* anchor = nullptr;
+        bool before = false;
+        bool stacked = true;
+        int size = 0, anchorSize = 0;       // how much room the two had along the way they lie
+    };
+    QList<Fold> m_folds;
+    // What each pair of arrows between panels stands for: two panels there to be seen, or a fold.
+    struct BetweenSpot {
+        QDockWidget* a = nullptr;
+        QDockWidget* b = nullptr;
+        int fold = -1;
+    };
+    QList<BetweenSpot> m_betweenSpots;
+    QList<class CollapseHandle*> m_betweenHandles;
     bool m_collapsing = false;
+    bool m_placePending = false;
     // Marks the view that was clicked in last: it is outlined.
     void setActiveView(QWidget* frame);
     void updateTitle();

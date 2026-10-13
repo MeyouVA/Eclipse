@@ -45,6 +45,10 @@ target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseActions 
 
 # The program: it starts the window.
 add_executable(Eclipse WIN32 src/app/main.cpp)
+if(WIN32)
+    # The icon of the program file.
+    target_sources(Eclipse PRIVATE src/app/Eclipse.rc)
+endif()
 target_link_libraries(Eclipse PRIVATE EclipseUi)
 if(MSVC)
     target_compile_options(Eclipse PRIVATE /W4 /utf-8 /permissive- /wd4251 /wd4275)

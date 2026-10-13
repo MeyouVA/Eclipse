@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QIcon>
 #include <QMessageBox>
 
 #include "actions/manager/ActionManager.h"
@@ -17,6 +18,9 @@ int main(int argc, char** argv)
     QString error;
     if (!Theme::apply(app, ActionManager::defaultDirectory(), QStringLiteral("dark"), &error))
         QMessageBox::warning(nullptr, QStringLiteral("Eclipse"), error);
+
+    // The icon of its windows (the program file has the same one built in).
+    QApplication::setWindowIcon(QIcon(ActionManager::defaultDirectory() + QStringLiteral("/eclipse.png")));
 
     MainWindow window;
     window.restoreWorkspace();
