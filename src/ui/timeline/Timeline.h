@@ -103,6 +103,9 @@ public:
     enum ViewMode { ShowAll, ShowSelected, ShowTagged };
     ViewMode viewMode() const { return m_viewMode; }
     void setViewMode(ViewMode mode);
+    // Show: the kinds of layer (Layer::Kind) that have rows.  The current layer always has its row.
+    bool kindShown(int kind) const { return !m_hiddenKinds.contains(kind); }
+    void setKindShown(int kind, bool shown);
     // The layers that have a row, top to bottom.
     QVector<int> rows() const;
 
@@ -184,6 +187,7 @@ private:
     // A row each: the layer, and for the row of a parameter which one (-1: the layer itself).
     QVector<int> m_rows;
     ViewMode m_viewMode = ShowAll;
+    QVector<int> m_hiddenKinds;
     QVector<int> m_shownIds;     // ShowSelected: the ids of the layers that were selected
     QVector<int> m_params;
     QSet<int> m_open;          // the ids of the layers whose parameters are shown

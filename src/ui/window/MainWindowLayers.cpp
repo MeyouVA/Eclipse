@@ -1,5 +1,7 @@
 // Eclipse - the main window: the layer commands - add, delete, lock, colour, rename, move, attach.
 #include "ui/window/MainWindow.h"
+
+#include "actions/manager/ActionManager.h"
 #include <QCheckBox>
 #include <QDialog>
 #include <QFormLayout>
@@ -214,6 +216,32 @@ void MainWindow::onActionTagLayers(QString const& how)
 void MainWindow::onActionTimelineViewMode(QString const& mode)
 {
     m_timeline->setViewMode(mode == QLatin1String("selected") ? Timeline::ShowSelected : mode == QLatin1String("tagged") ? Timeline::ShowTagged : Timeline::ShowAll);
+}
+
+// Timeline > Show: a kind of layer gets its rows, or loses them (the layers are in the scene all the same).
+void MainWindow::onActionTimelineShowKind(QString const& which)
+{
+    struct Entry {
+        char const* name;
+        char const* action;
+        QVector<int> kinds;
+    };
+    Entry const entries[] = {
+        {"drawings", "TimelineShowDrawings", {int(Layer::DrawingLayer)}},
+        {"pegs", "TimelineShowPegs", {int(Layer::Peg)}},
+        {"sound", "TimelineShowSound", {int(Layer::Sound)}},
+        {"groups", "TimelineShowGroups", {int(Layer::Group)}},
+        {"cameras", "TimelineShowCameras", {int(Layer::Camera)}},
+        {"others", "TimelineShowOthers", {int(Layer::ColourCard), int(Layer::Bone), int(Layer::Quadmap)}},
+    };
+    for (Entry const& entry : entries) {
+        if (which != QLatin1String(entry.name))
+            continue;
+        bool const shown = !m_timeline->kindShown(entry.kinds.first());
+        for (int kind : entry.kinds)
+            m_timeline->setKindShown(kind, shown);
+        m_actions->setChecked(QLatin1String(entry.action), shown);
+    }
 }
 
 void MainWindow::onActionLockAll()

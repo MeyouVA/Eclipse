@@ -39,6 +39,8 @@ void Timeline::rebuildRows()
         // A view of some of the layers only (the current one is always among them).
         if (l != m_layer && ((m_viewMode == ShowTagged && !scene.layers[l].tagged) || (m_viewMode == ShowSelected && !m_shownIds.contains(scene.layers[l].id))))
             continue;
+        if (l != m_layer && m_hiddenKinds.contains(int(scene.layers[l].kind)))
+            continue;       // a kind of layer that is not shown
         m_rows.push_back(l);
         m_params.push_back(-1);
         if (!parametersShown(l))
@@ -59,6 +61,23 @@ void Timeline::setViewMode(ViewMode mode)
         for (int l : selectedLayers())
             m_shownIds.push_back(m_document->scene().layers[l].id);
     m_viewMode = mode;
+    m_extentRow = m_extentFrame = -1;
+    m_extraLayers.clear();
+    rebuildRows();
+    updateScrollBars();
+    emit selectionChanged();
+    viewport()->update();
+}
+
+void Timeline::setKindShown(int kind, bool shown)
+{
+    if (shown == kindShown(kind))
+        return;
+    if (shown)
+        m_hiddenKinds.removeAll(kind);
+    else
+        m_hiddenKinds.push_back(kind);
+    // A block is counted in rows: it does not outlast them.
     m_extentRow = m_extentFrame = -1;
     m_extraLayers.clear();
     rebuildRows();

@@ -250,6 +250,7 @@ public slots:
     void onActionLockAll();
     void onActionTagLayers(QString const& how);
     void onActionTimelineViewMode(QString const& mode);
+    void onActionTimelineShowKind(QString const& which);
     void onActionUnlockAll();
     void onActionLockAllOthers();
     void onActionToggleLayerEnabled();

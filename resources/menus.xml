@@ -576,6 +576,14 @@
    <item id="TimelineViewSelected" icon="timeline/viewselected" text="View Selection Only" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="selected"/>
    <item id="TimelineViewTagged" icon="timeline/viewtagged" text="View Tagged Layers" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="tagged"/>
   </menu>
+  <menu id="TimelineShow" text="Show">
+   <item id="TimelineShowDrawings" icon="timeline/viewall" text="Show &amp;Drawings" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="drawings"/>
+   <item id="TimelineShowPegs" icon="timeline/viewall" text="Show &amp;Pegs" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="pegs"/>
+   <item id="TimelineShowSound" icon="timeline/viewall" text="Show &amp;Sound" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="sound"/>
+   <item id="TimelineShowGroups" icon="timeline/viewall" text="Show &amp;Groups" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="groups"/>
+   <item id="TimelineShowCameras" icon="timeline/viewall" text="Show &amp;Cameras" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="cameras"/>
+   <item id="TimelineShowOthers" icon="timeline/viewall" text="Show &amp;Other Layers" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="others"/>
+  </menu>
   <menu id="TimelineLock" text="Lock">
    <item id="LockLayer" icon="timeline/lock" text="Lock" responder="window" slot="onActionLockLayer()"/>
    <item id="UnlockLayer" icon="timeline/unlock" text="Unlock" responder="window" slot="onActionUnlockLayer()"/>
