@@ -616,15 +616,36 @@ QPointF Canvas::envelopePointInView(int point) const
     return m_tool == Envelope && point >= 0 && point * 3 < points.size() ? layerViewTransform().map(points[point * 3]) : QPointF();
 }
 
+QPointF Canvas::envelopeHandleInView(bool after) const
+{
+    QVector<QPointF> const points = m_drag == DragEnvelope ? m_envNow : selectionEnvelope();
+    if (m_tool != Envelope || m_envPicked < 0 || m_envPicked + 2 >= points.size())
+        return QPointF();
+    return layerViewTransform().map(points[m_envPicked] + points[m_envPicked + (after ? 2 : 1)]);
+}
+
 bool Canvas::envelopeDown(QPointF widgetPos)
 {
     QVector<QPointF> const points = selectionEnvelope();
     QTransform const view = layerViewTransform();
+    // A handle of the point pressed last: the outline is led another way through its point.
+    if (m_envPicked >= 0 && m_envPicked + 2 < points.size()) {
+        for (int which : {1, 2}) {
+            if (QLineF(view.map(points[m_envPicked] + points[m_envPicked + which]), widgetPos).length() > 7.0)
+                continue;
+            m_envRest = m_envNow = points;
+            m_envPoint = m_envPicked + which;
+            m_eraseArt = *currentDrawing();
+            m_drag = DragEnvelope;
+            return true;
+        }
+    }
     for (int i = 0; i < points.size(); i += 3) {
         if (QLineF(view.map(points[i]), widgetPos).length() > 8.0)
             continue;
         m_envRest = m_envNow = points;
         m_envPoint = i;
+        m_envPicked = i;
         m_eraseArt = *currentDrawing();
         m_drag = DragEnvelope;
         return true;
@@ -639,10 +660,15 @@ void Canvas::envelopeMove(QPointF p)
         return;
     // The point goes with the pen; the curve is led smoothly through it and its two neighbours again.
     m_envNow = m_envRest;
-    m_envNow[m_envPoint] = p;
-    int const count = int(m_envNow.size()) / 3, at = m_envPoint / 3;
-    for (int k : {(at + count - 1) % count, at, (at + 1) % count})
-        Deform::smoothWarpHandles(m_envNow, true, k);
+    if (m_envPoint % 3 != 0) {
+        // A handle: it goes with the pen (it is kept as how far it stands from its point); nothing else is led anew.
+        m_envNow[m_envPoint] = p - m_envRest[m_envPoint - m_envPoint % 3];
+    } else {
+        m_envNow[m_envPoint] = p;
+        int const count = int(m_envNow.size()) / 3, at = m_envPoint / 3;
+        for (int k : {(at + count - 1) % count, at, (at + 1) % count})
+            Deform::smoothWarpHandles(m_envNow, true, k);
+    }
     QVector<QPointF> moved(m_envRest.size());
     for (int i = 0; i < moved.size(); ++i)
         moved[i] = m_envNow[i] - m_envRest[i];

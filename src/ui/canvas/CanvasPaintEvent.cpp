@@ -273,10 +273,23 @@ void Canvas::paintEvent(QPaintEvent*)
                 painter.setPen(outline);
                 painter.setBrush(Qt::NoBrush);
                 painter.drawPolygon(where.map(Deform::warpLine(points, true, 12)));
+                if (m_envPicked >= 0 && m_envPicked + 2 < points.size()) {
+                    // The handles of the point pressed last.
+                    QPointF const at = where.map(points[m_envPicked]);
+                    for (int which : {1, 2}) {
+                        QPointF const handle = where.map(points[m_envPicked] + points[m_envPicked + which]);
+                        painter.setPen(QPen(QColor(240, 160, 60), 1.0, Qt::DotLine));
+                        painter.drawLine(at, handle);
+                        painter.setPen(QPen(QColor(20, 20, 20), 1.0));
+                        painter.setBrush(m_envPoint == m_envPicked + which ? QColor(255, 255, 255) : QColor(240, 160, 60));
+                        painter.drawEllipse(handle, 3.5, 3.5);
+                    }
+                    painter.setBrush(Qt::NoBrush);
+                }
                 painter.setPen(QPen(QColor(20, 20, 20), 1.0));
                 for (int i = 0; i < points.size(); i += 3) {
                     QPointF const at = where.map(points[i]);
-                    painter.setBrush(i == m_envPoint ? QColor(255, 255, 255) : QColor(240, 160, 60));
+                    painter.setBrush(i == m_envPoint || (m_envPoint < 0 && i == m_envPicked) ? QColor(255, 255, 255) : QColor(240, 160, 60));
                     painter.drawRect(QRectF(at.x() - 3.5, at.y() - 3.5, 7, 7));
                 }
                 painter.restore();

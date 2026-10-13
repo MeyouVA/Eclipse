@@ -857,6 +857,7 @@ private:
     // hold of, as it is pulled to, and the point in hand.
     QVector<QPointF> m_envRest, m_envNow;
     int m_envPoint = -1;
+    int m_envPicked = -1;       // the point pressed last (its place among the points, times three): its handles show
     QVector<QPointF> selectionEnvelope() const;
     bool envelopeDown(QPointF widgetPos);
     void envelopeMove(QPointF p);
@@ -872,6 +873,8 @@ private:
 public:
     // Where a point of that outline is in the view (a null point when there is none): to take hold of it.
     QPointF envelopePointInView(int point) const;
+    // A handle of the point of the outline pressed last (the one before it, or the one after); null when none shows.
+    QPointF envelopeHandleInView(bool after) const;
 private:
     double m_nudgeStep = 1.0;
     int m_propAcross = 3;
