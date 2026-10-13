@@ -332,6 +332,8 @@
   </menu>
 
   <menu id="Help" text="&amp;Help">
+   <item id="EclipseHelp" icon="misc/help" text="Eclipse &amp;Help" shortcut="shortcut.help" responder="window" slot="onActionHelp()"/>
+   <separator/>
    <item id="ShowWelcome" icon="misc/welcome" text="Show &amp;Welcome Screen" responder="window" slot="onActionShowWelcome()"/>
    <item id="ShowMessageLog" icon="misc/messagelog" text="&amp;Message Log" responder="window" slot="onActionShowMessageLog()"/>
    <separator/>

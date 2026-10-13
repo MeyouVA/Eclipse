@@ -3,7 +3,13 @@
 
 #include <QApplication>
 #include <QFileInfo>
+#include <QDialog>
+#include <QDir>
+#include <QHBoxLayout>
 #include <QMessageBox>
+#include <QPushButton>
+#include <QTextBrowser>
+#include <QVBoxLayout>
 
 #include "actions/manager/ActionManager.h"
 #include "actions/dialogs/ShortcutsDialog.h"
@@ -123,6 +129,51 @@ void MainWindow::onActionEditShortcuts()
 {
     ShortcutsDialog dialog(m_actions, this);
     dialog.exec();
+}
+
+// Help > Eclipse Help: the pages kept in `resources/help` beside the program, in a window of their own.
+void MainWindow::onActionHelp()
+{
+    QDialog* window = findChild<QDialog*>(QStringLiteral("HelpWindow"));
+    if (!window) {
+        QString const folder = QCoreApplication::applicationDirPath() + QStringLiteral("/resources/help");
+        if (!QFileInfo::exists(folder + QStringLiteral("/index.html"))) {
+            QMessageBox::information(this, tr("Eclipse Help"), tr("The help pages were not found in %1.").arg(QDir::toNativeSeparators(folder)));
+            return;
+        }
+        window = new QDialog(this);
+        window->setObjectName(QStringLiteral("HelpWindow"));
+        window->setWindowTitle(tr("Eclipse Help"));
+        window->resize(760, 680);
+        QTextBrowser* const pages = new QTextBrowser(window);
+        pages->setObjectName(QStringLiteral("HelpPages"));
+        pages->setSearchPaths({folder});
+        pages->setOpenExternalLinks(false);
+        QPushButton* const back = new QPushButton(tr("Back"), window);
+        back->setObjectName(QStringLiteral("HelpBack"));
+        QPushButton* const forward = new QPushButton(tr("Forward"), window);
+        QPushButton* const contents = new QPushButton(tr("Contents"), window);
+        contents->setObjectName(QStringLiteral("HelpContents"));
+        back->setEnabled(false);
+        forward->setEnabled(false);
+        connect(back, &QPushButton::clicked, pages, &QTextBrowser::backward);
+        connect(forward, &QPushButton::clicked, pages, &QTextBrowser::forward);
+        connect(contents, &QPushButton::clicked, pages, [pages] { pages->setSource(QUrl(QStringLiteral("index.html"))); });
+        connect(pages, &QTextBrowser::backwardAvailable, back, &QPushButton::setEnabled);
+        connect(pages, &QTextBrowser::forwardAvailable, forward, &QPushButton::setEnabled);
+        QHBoxLayout* const bar = new QHBoxLayout;
+        bar->addWidget(back);
+        bar->addWidget(forward);
+        bar->addWidget(contents);
+        bar->addStretch(1);
+        QVBoxLayout* const layout = new QVBoxLayout(window);
+        layout->addLayout(bar);
+        layout->addWidget(pages, 1);
+        pages->setSource(QUrl(QStringLiteral("index.html")));
+    }
+    window->show();
+    window->raise();
+    window->activateWindow();
 }
 
 void MainWindow::onActionAbout()

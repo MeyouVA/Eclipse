@@ -309,6 +309,7 @@ public slots:
     void onActionSetEase(QString const& which);
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
+    void onActionHelp();
     void onActionToggleSoundScrubbing(bool on) { m_scrub = on; }
     void onActionToggleWaveforms(bool on);
     // Turns the current layer over on the current frame (a keyframe with the scale reversed).
