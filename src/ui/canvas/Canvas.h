@@ -499,6 +499,7 @@ public slots:
     void onActionCloseGaps();
     void onActionStrokesToPencil();
     void onActionCreateStamp();
+    void onActionCreateDrawingFromSelection();
     void onActionAutoMatte();
     void onActionProportionGrid(bool on);
     void onActionHighlightColour(bool on);

@@ -150,6 +150,7 @@
   <shortcut id="shortcut.nextDrawing" text="Go to Next Drawing" value="G"/>
   <shortcut id="shortcut.toolSelect" text="Select Tool" value="Alt+S"/>
   <shortcut id="shortcut.help" text="Eclipse Help" value="F1"/>
+  <shortcut id="shortcut.createDrawingFromSelection" text="Create Drawing from Drawing Selection" value="F9"/>
   <shortcut id="shortcut.setEase" text="Set Ease on Selected Keyframes" value=""/>
   <shortcut id="shortcut.toolEnvelope" text="Envelope Tool" value=""/>
   <shortcut id="shortcut.pasteSpecialAgain" text="Paste Special Again" value=""/>

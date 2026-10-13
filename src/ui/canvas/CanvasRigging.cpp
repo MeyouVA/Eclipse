@@ -184,6 +184,40 @@ void Canvas::onActionDistributeToLayers()
     emit message(tr("%n thing(s) put on layers of their own, attached to %1.", nullptr, int(parts.size())).arg(name));
 }
 
+// Edit > Create Drawing from Drawing Selection: what is selected leaves this drawing for a drawing of its
+// own, on a new layer attached to this one - so that it stays where it was and goes where this layer goes.
+void Canvas::onActionCreateDrawingFromSelection()
+{
+    Scene const& scene = m_document->scene();
+    Drawing const* const d = currentDrawing();
+    if (!d || !hasSelection() || m_layer < 0 || m_layer >= scene.layers.size()) {
+        emit message(tr("Select the artwork to make a drawing of with the Select tool first."));
+        return;
+    }
+    Drawing kept, part;
+    for (int i = 0; i < d->strokes.size(); ++i)
+        (m_selStrokes.contains(i) ? part.strokesOf(sheetOf(m_art)) : kept.strokes).push_back(d->strokes[i]);
+    for (int i = 0; i < d->fills.size(); ++i)
+        (m_selFills.contains(i) ? part.fillsOf(sheetOf(m_art)) : kept.fills).push_back(d->fills[i]);
+    // For as long as the drawing it comes from is shown.
+    int const source = m_layer, frame = m_frame;
+    int const start = std::max(0, scene.layers[source].exposureStart(frame));
+    int length = 1;
+    while (start + length < scene.frameCount() && scene.layers[source].drawingAt(start + length) == scene.layers[source].drawingAt(start))
+        ++length;
+    QString const name = scene.layers[source].name;
+    m_document->beginMacro(tr("Create Drawing from Selection"));
+    clearSelection();
+    commitDrawing(kept, tr("Create Drawing from Selection"));
+    int const at = m_document->addLayer(source);
+    m_document->renameLayer(at, m_document->scene().uniqueLayerName(QStringLiteral("%1_1").arg(name)));
+    m_document->setDrawing(at, start, part, tr("Create Drawing from Selection"));
+    m_document->setExposure(at, start, length);
+    m_document->setParent(at, source);
+    m_document->endMacro();
+    emit message(tr("The selection is a drawing of its own now, on the layer %1.").arg(m_document->scene().layers[at].name));
+}
+
 void Canvas::setPreview(QVector<QImage> const& frames)
 {
     m_preview = frames;

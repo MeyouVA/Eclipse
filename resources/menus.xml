@@ -53,6 +53,7 @@
    <item id="EditPaste" icon="edit/paste" text="&amp;Paste" shortcut="shortcut.paste" responder="focus,camera" slot="paste()"/>
    <item id="PasteInPlace" icon="edit/pasteinplace" text="Paste Drawing Object in P&amp;lace" responder="camera" slot="paste()"/>
    <item id="PasteCycle" icon="edit/pastecycle" text="Paste C&amp;ycle..." shortcut="shortcut.pasteCycle" responder="window" slot="onActionPasteCycle()"/>
+   <item id="CreateDrawingFromSelection" icon="edit/drawingfromselection" text="Create Drawing from Drawing Se&amp;lection" shortcut="shortcut.createDrawingFromSelection" responder="camera" slot="onActionCreateDrawingFromSelection()"/>
    <item id="PasteSpecial" icon="edit/pastespecial" text="Paste &amp;Special..." responder="window" slot="onActionPasteSpecial()"/>
    <item id="PasteSpecialAgain" icon="edit/pastespecialagain" text="Paste Special A&amp;gain" shortcut="shortcut.pasteSpecialAgain" responder="window" slot="onActionPasteSpecialAgain()"/>
    <item id="PasteReverse" icon="edit/pastereverse" text="Paste &amp;Reverse" shortcut="shortcut.pasteReverse" responder="window" slot="onActionPasteReverse()"/>
