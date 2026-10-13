@@ -124,6 +124,10 @@ void Canvas::copySelection()
         s_clipboard.strokes.push_back(d->strokes[i]);
     for (int i : m_selFills)
         s_clipboard.fills.push_back(d->fills[i]);
+    if (m_art == LineArt)
+        for (int i : m_selPictures)
+            if (i >= 0 && i < d->pictures.size())
+                s_clipboard.pictures.push_back(d->pictures[i]);
 }
 
 void Canvas::cutSelection()
@@ -139,7 +143,14 @@ void Canvas::cutSelection()
     for (int i = 0; i < d->fills.size(); ++i)
         if (!m_selFills.contains(i))
             kept.fills.push_back(d->fills[i]);
+    bool const picturesGo = m_art == LineArt && !m_selPictures.isEmpty();
+    if (picturesGo)
+        for (int i = 0; i < d->pictures.size(); ++i)
+            if (!m_selPictures.contains(i))
+                kept.pictures.push_back(d->pictures[i]);
+    m_keepNoPictures = picturesGo;
     commitDrawing(kept, tr("Cut"));
+    m_keepNoPictures = false;
     setSelection({}, {});
 }
 
@@ -166,7 +177,15 @@ void Canvas::paste()
         strokes.push_back(int(merged.strokes.size()));
         merged.strokes.push_back(s);
     }
+    // Pictures go where pictures are: with the line art.
+    QVector<int> pictures;
+    if (m_art == LineArt) {
+        for (Picture const& picture : s_clipboard.pictures) {
+            pictures.push_back(int(merged.pictures.size()));
+            merged.pictures.push_back(picture);
+        }
+    }
     commitDrawing(merged, tr("Paste"));
     if (selecting())
-        setSelection(strokes, fills);
+        setSelection(strokes, fills, pictures);
 }
