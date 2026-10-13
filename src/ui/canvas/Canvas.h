@@ -432,6 +432,13 @@ public slots:
     void onActionBacklight(bool on);
     // Layers that are locked shown as outlines, so that they do not hide what is worked on.
     void onActionOutlineLocked(bool on);
+    // Show > BBox Selection Style: what is selected is told by its box alone - no line drawn over each thing.
+    void onActionBBoxSelectionStyle(bool on)
+    {
+        m_bboxSelection = on;
+        update();
+    }
+    bool bboxSelectionStyle() const { return m_bboxSelection; }
     void onActionShowSafeArea(bool on);
     void onActionLightTable(bool on);
     // The layer being drawn on painted over the others, whatever its place among them.
@@ -730,6 +737,7 @@ private:
     bool m_gridUnder = false;
     bool m_backlight = false;
     bool m_outlineLocked = false;
+    bool m_bboxSelection = false;
     void paintGrid(QPainter& painter, QRectF const& frameRect) const;
     bool m_safeArea = false;
     bool m_lightTable = false;

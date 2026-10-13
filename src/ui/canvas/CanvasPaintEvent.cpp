@@ -447,14 +447,19 @@ void Canvas::paintEvent(QPaintEvent*)
         painter.setPen(mark);
         painter.setBrush(Qt::NoBrush);
         for (int i : m_selStrokes) {
+            if (m_bboxSelection)
+                break;      // BBox Selection Style: the box says it all
             QPolygonF line;
             for (StrokePoint const& p : shown.strokes[i].path())
                 line.push_back(p.pos);
             painter.drawPolyline(line);
         }
-        for (int i : m_selFills)
+        for (int i : m_selFills) {
+            if (m_bboxSelection)
+                break;
             for (QPolygonF const& outline : shown.fills[i].outlines)
                 painter.drawPolygon(outline);
+        }
 
         // Bounding box and handles, drawn in widget space so they keep their size when zooming.
         QRectF const bounds = m_drag != DragNone ? m_dragTransform.mapRect(m_dragBounds) : selectionBounds();

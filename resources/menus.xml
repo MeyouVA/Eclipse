@@ -102,6 +102,7 @@
     <item id="ShowControl" icon="view/showcontrol" text="Show &amp;Control" shortcut="shortcut.showControl" checkable="true" responder="camera" slot="onActionShowControl(bool)"/>
     <item id="CurrentDrawingOnTop" icon="view/drawingontop" text="Current &amp;Drawing on Top" shortcut="shortcut.drawingOnTop" checkable="true" responder="camera" slot="onActionCurrentDrawingOnTop(bool)"/>
     <item id="OutlineLocked" icon="view/outlinelocked" text="&amp;Outline Locked Drawings" checkable="true" responder="camera" slot="onActionOutlineLocked(bool)"/>
+    <item id="BBoxSelectionStyle" icon="view/bboxselection" text="&amp;BBox Selection Style" checkable="true" responder="camera" slot="onActionBBoxSelectionStyle(bool)"/>
     <item id="ShowStrokes"/>
     <item id="ShowStrokesWash"/>
     <item id="HighlightColour" icon="view/highlightcolour" text="&amp;Highlight Selected Colour" shortcut="shortcut.highlightColour" checkable="true" responder="camera" slot="onActionHighlightColour(bool)"/>
