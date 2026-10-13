@@ -220,6 +220,90 @@ QWidget* MainWindow::createMessageLogView()
     return log;
 }
 
+bool MainWindow::applyBreakdown(double percent)
+{
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size())
+        return false;
+    // The keyframes either side of this frame (one on the frame itself is the one being set).
+    Keyframe const* before = nullptr;
+    Keyframe const* after = nullptr;
+    for (Keyframe const& key : scene.layers[layer()].keys) {
+        if (key.frame < frame())
+            before = &key;
+        else if (key.frame > frame() && !after)
+            after = &key;
+    }
+    if (!before || !after) {
+        statusBar()->showMessage(tr("A breakdown goes between two keyframes: this frame has none before it, or none after it."), 5000);
+        return false;
+    }
+    Pose pose = Pose::lerp(before->pose, after->pose, percent / 100.0);
+    pose.opacity = std::clamp(pose.opacity, 0.0, 1.0);
+    m_document->setKeyframe(layer(), frame(), pose, tr("Breakdown"));
+    return true;
+}
+
+// Breakdown Assistant: a keyframe on this frame, a chosen part of the way between its neighbours.
+QWidget* MainWindow::createBreakdownView()
+{
+    QWidget* const view = new QWidget(this);
+    view->setObjectName(QStringLiteral("BreakdownView"));
+    QVBoxLayout* const column = new QVBoxLayout(view);
+    column->setContentsMargins(6, 6, 6, 6);
+    QLabel* const about = new QLabel(tr("A keyframe on this frame, so far from the keyframe before it to the keyframe after it:"), view);
+    about->setWordWrap(true);
+    QCheckBox* const overshoot = new QCheckBox(tr("Allow Overshoot"), view);
+    overshoot->setObjectName(QStringLiteral("BreakdownOvershoot"));
+    overshoot->setToolTip(tr("Lets the amount go below 0 and over 100: beyond the two keyframes."));
+    overshoot->setChecked(true);
+    QSlider* const amount = new QSlider(Qt::Horizontal, view);
+    amount->setObjectName(QStringLiteral("BreakdownAmount"));
+    amount->setRange(-125, 225);
+    amount->setValue(50);
+    QSpinBox* const number = new QSpinBox(view);
+    number->setObjectName(QStringLiteral("BreakdownPercent"));
+    number->setRange(-125, 225);
+    number->setSuffix(QStringLiteral(" %"));
+    number->setValue(50);
+    connect(amount, &QSlider::valueChanged, number, &QSpinBox::setValue);
+    connect(number, &QSpinBox::valueChanged, amount, &QSlider::setValue);
+    auto bound = [overshoot, amount, number] {
+        int const low = overshoot->isChecked() ? -125 : 0, high = overshoot->isChecked() ? 225 : 100;
+        amount->setRange(low, high);
+        number->setRange(low, high);
+    };
+    connect(overshoot, &QCheckBox::toggled, view, bound);
+    QHBoxLayout* const row = new QHBoxLayout;
+    row->addWidget(amount, 1);
+    row->addWidget(number);
+    // The amounts wanted most often, a press each.
+    QHBoxLayout* const quick = new QHBoxLayout;
+    quick->setSpacing(2);
+    for (int percent : {-25, 0, 25, 33, 50, 67, 75, 100, 125}) {
+        QPushButton* const b = new QPushButton(QString::number(percent), view);
+        b->setObjectName(QStringLiteral("Breakdown%1").arg(percent < 0 ? QStringLiteral("Minus%1").arg(-percent) : QString::number(percent)));
+        b->setMinimumWidth(30);
+        connect(b, &QPushButton::clicked, this, [this, percent, number, overshoot] {
+            if ((percent < 0 || percent > 100) && !overshoot->isChecked())
+                return;
+            number->setValue(percent);
+            applyBreakdown(percent);
+        });
+        quick->addWidget(b);
+    }
+    QPushButton* const apply = new QPushButton(tr("Apply"), view);
+    apply->setObjectName(QStringLiteral("BreakdownApply"));
+    connect(apply, &QPushButton::clicked, this, [this, number] { applyBreakdown(number->value()); });
+    column->addWidget(about);
+    column->addWidget(overshoot);
+    column->addLayout(row);
+    column->addLayout(quick);
+    column->addWidget(apply, 0, Qt::AlignRight);
+    column->addStretch(1);
+    return view;
+}
+
 // Scene Markers: the marks on the ruler as a list; a double click goes to one.
 QWidget* MainWindow::createSceneMarkersView()
 {

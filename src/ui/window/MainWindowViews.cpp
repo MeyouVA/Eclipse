@@ -145,6 +145,7 @@ void MainWindow::createViews()
 
     addView(tr("Message Log"), QStringLiteral("MessageLogDock"), createMessageLogView(), Qt::RightDockWidgetArea)->hide();
     addView(tr("Scene Markers"), QStringLiteral("SceneMarkersDock"), createSceneMarkersView(), Qt::RightDockWidgetArea)->hide();
+    addView(tr("Breakdown Assistant"), QStringLiteral("BreakdownDock"), createBreakdownView(), Qt::RightDockWidgetArea)->hide();
 
     m_nodeView = new NodeView(m_document, this);
     addView(tr("Node View"), QStringLiteral("NodeViewDock"), m_nodeView, Qt::RightDockWidgetArea);

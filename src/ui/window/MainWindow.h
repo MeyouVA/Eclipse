@@ -319,6 +319,10 @@ public slots:
     void onActionSetEaseDialog();
     // The ease of the keyframes on the frames and layers selected (0 to 1 each; below 0: left as it is).  How many were changed.
     int setEaseOnSelection(double easeIn, double easeOut);
+    // Breakdown Assistant: a keyframe on the current frame of the current layer, so many per cent of the way
+    // from the keyframe before it to the keyframe after it (below 0 or over 100: beyond them).  False when
+    // the frame does not lie between two keyframes.
+    bool applyBreakdown(double percent);
     void onActionMarkFrame(QString const& colour);
     void onActionLayerKeys(QString const& how);
     void onActionPasteSpecialAgain();
@@ -356,6 +360,7 @@ private:
     QWidget* createOnionSkinView();
     QWidget* createMessageLogView();
     QWidget* createSceneMarkersView();
+    QWidget* createBreakdownView();
     void createToolbars();
     static QStringList builtinWorkspaces();
     // Arranges the views the way a workspace that comes with the program has them.
