@@ -42,7 +42,7 @@ private:
     QTableWidget* m_table;
     QLabel* m_title;
     QLineEdit* m_name = nullptr;
-    QLineEdit* m_fields[7] = {};       // x, y, z, scale x, scale y, angle - and the depth it comes to (not typed)
+    QLineEdit* m_fields[8] = {};       // x, y, z, scale x, scale y, angle, skew - and the depth it comes to (not typed)
     QCheckBox* m_separateScale = nullptr;
     bool m_rebuilding = false;
 };

@@ -1,4 +1,9 @@
 // Eclipse - the main window: the commands of the Animation menu - keyframes, ease, substitution, selecting parent and child.
+#include <QCheckBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDoubleSpinBox>
+#include <QFormLayout>
 #include "ui/window/MainWindow.h"
 
 #include <QDockWidget>
@@ -161,6 +166,67 @@ void MainWindow::onActionSetEase(QString const& which)
     for (Change const& c : std::as_const(changes))
         m_document->setKeyEase(c.layer, c.frame, c.in, c.out);
     m_document->endMacro();
+}
+
+int MainWindow::setEaseOnSelection(double easeIn, double easeOut)
+{
+    Scene const& scene = m_document->scene();
+    int const first = m_timeline->selectionFirstFrame(), last = m_timeline->selectionLastFrame();
+    struct Change { int layer, frame; double in, out; };
+    QVector<Change> changes;
+    for (int l : m_timeline->selectedLayers()) {
+        for (Keyframe const& key : scene.layers[l].keys) {
+            if (key.frame < first || key.frame > last)
+                continue;
+            double const in = easeIn < 0.0 ? key.easeIn : std::clamp(easeIn, 0.0, 1.0), out = easeOut < 0.0 ? key.easeOut : std::clamp(easeOut, 0.0, 1.0);
+            if (in != key.easeIn || out != key.easeOut)
+                changes.push_back({l, key.frame, in, out});
+        }
+    }
+    if (changes.isEmpty())
+        return 0;
+    m_document->beginMacro(tr("Set Ease"));
+    for (Change const& c : std::as_const(changes))
+        m_document->setKeyEase(c.layer, c.frame, c.in, c.out);
+    m_document->endMacro();
+    return int(changes.size());
+}
+
+// Set Ease on Selected Keyframes: how gently the move arrives at them and leaves them, each as a percentage.
+void MainWindow::onActionSetEaseDialog()
+{
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("SetEaseDialog"));
+    dialog.setWindowTitle(tr("Set Ease on Keyframes"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QCheckBox* const useIn = new QCheckBox(tr("Ease In (left)"), &dialog);
+    useIn->setObjectName(QStringLiteral("EaseUseIn"));
+    useIn->setChecked(true);
+    QDoubleSpinBox* const in = new QDoubleSpinBox(&dialog);
+    in->setObjectName(QStringLiteral("EaseInPercent"));
+    QCheckBox* const useOut = new QCheckBox(tr("Ease Out (right)"), &dialog);
+    useOut->setObjectName(QStringLiteral("EaseUseOut"));
+    useOut->setChecked(true);
+    QDoubleSpinBox* const out = new QDoubleSpinBox(&dialog);
+    out->setObjectName(QStringLiteral("EaseOutPercent"));
+    for (QDoubleSpinBox* box : {in, out}) {
+        box->setRange(0.0, 100.0);
+        box->setDecimals(2);
+        box->setSuffix(QStringLiteral(" %"));
+        box->setValue(33.0);
+    }
+    connect(useIn, &QCheckBox::toggled, in, &QDoubleSpinBox::setEnabled);
+    connect(useOut, &QCheckBox::toggled, out, &QDoubleSpinBox::setEnabled);
+    form->addRow(useIn, in);
+    form->addRow(useOut, out);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    if (setEaseOnSelection(useIn->isChecked() ? in->value() / 100.0 : -1.0, useOut->isChecked() ? out->value() / 100.0 : -1.0) == 0)
+        statusBar()->showMessage(tr("There is no keyframe to ease on the frames selected (or they are eased so already)."), 5000);
 }
 
 void MainWindow::onActionShowLayerProperties()

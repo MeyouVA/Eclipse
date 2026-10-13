@@ -315,6 +315,9 @@ public slots:
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
     void onActionHelp();
+    void onActionSetEaseDialog();
+    // The ease of the keyframes on the frames and layers selected (0 to 1 each; below 0: left as it is).  How many were changed.
+    int setEaseOnSelection(double easeIn, double easeOut);
     void onActionMarkFrame(QString const& colour);
     void onActionLayerKeys(QString const& how);
     void onActionPasteSpecialAgain();

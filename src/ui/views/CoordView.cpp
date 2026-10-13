@@ -24,7 +24,7 @@ namespace {
 // The columns of the table.
 enum CoordColumn { ColFrame, ColX, ColY, ColZ, ColAngle, ColScaleX, ColScaleY, ColCount };
 // The boxes of the form.
-enum CoordField { FieldX, FieldY, FieldZ, FieldScaleX, FieldScaleY, FieldAngle, FieldDepth, FieldCount };
+enum CoordField { FieldX, FieldY, FieldZ, FieldScaleX, FieldScaleY, FieldAngle, FieldSkew, FieldDepth, FieldCount };
 }
 
 // A number as short as it can be written, to four places.
@@ -181,6 +181,8 @@ CoordView::CoordView(Document* document, QWidget* parent) : QWidget(parent), m_d
         form->addRow(tr("Scale Y"), box(FieldScaleY, "CoordScaleY"));
         column->addWidget(section(tr("Rotation"), "CoordRotationHeading", &form));
         form->addRow(tr("Angle"), box(FieldAngle, "CoordAngle"));
+        column->addWidget(section(tr("Skew"), "CoordSkewHeading", &form));
+        form->addRow(tr("Skew"), box(FieldSkew, "CoordSkew"));
         column->addStretch(1);
     }
     // At the right, its keyframes.
@@ -265,6 +267,7 @@ void CoordView::showCoordinates()
     show(m_fields[FieldScaleX], shortNumber(pose.scaleX));
     show(m_fields[FieldScaleY], shortNumber(pose.scaleY));
     show(m_fields[FieldAngle], shortNumber(pose.rotation));
+    show(m_fields[FieldSkew], shortNumber(pose.skew));
     double const field = scene.height / 24.0;
     m_fields[FieldDepth]->setText(QString::number(field > 0.0 ? scene.depthOf(m_layer, m_frame) / field : 0.0, 'f', 4));
 }
@@ -290,6 +293,7 @@ void CoordView::applyCoordinate(int which)
         case FieldY: pose.y = value; break;
         case FieldZ: pose.z = value; break;
         case FieldAngle: pose.rotation = value; break;
+        case FieldSkew: pose.skew = std::clamp(value, -89.0, 89.0); break;
         default:
             // A scale of nothing could not be dragged back with the Transform tool.
             value = std::abs(value) < 0.001 ? 0.001 : value;

@@ -281,6 +281,8 @@
     <item id="HoldExposure" icon="timeline/holdexposure" text="&amp;Hold Exposure..." responder="window" slot="onActionHoldExposure()"/>
    </menu>
    <menu id="AnimationEase" text="Set &amp;Ease">
+    <item id="SetEaseDialog" icon="anim/easeset" text="&amp;Set Ease on Selected Keyframes..." shortcut="shortcut.setEase" responder="window" slot="onActionSetEaseDialog()"/>
+    <separator/>
     <item id="EaseIn" icon="anim/easein" text="Ease &amp;In" responder="window" slot="onActionSetEase(QString)" itemParameter="in"/>
     <item id="EaseOut" icon="anim/easeout" text="Ease &amp;Out" responder="window" slot="onActionSetEase(QString)" itemParameter="out"/>
     <item id="EaseBoth" icon="anim/easeboth" text="Ease In &amp;and Out" responder="window" slot="onActionSetEase(QString)" itemParameter="both"/>
