@@ -246,6 +246,21 @@ void NodeView::onActionResetView()
     update();
 }
 
+void NodeView::zoomBy(double factor)
+{
+    QPointF const middle(width() / 2.0, height() / 2.0);
+    QPointF const graph = toGraph(middle);
+    m_zoom = std::clamp(m_zoom * factor, 0.2, 3.0);
+    m_pan = middle - graph * m_zoom;
+    update();
+}
+
+void NodeView::onActionResetPan()
+{
+    m_pan = QPointF(width() / 2.0, height() / 2.0) - graphBounds().center() * m_zoom;
+    update();
+}
+
 // ---- painting -----------------------------------------------------------------------------
 
 void NodeView::paintEvent(QPaintEvent*)

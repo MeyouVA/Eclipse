@@ -215,6 +215,14 @@ QObject* ActionManager::resolve(QString const& responders, QByteArray const& slo
     for (QString const& raw : std::as_const(names)) {
         QString const name = raw.trimmed();
         if (name == QLatin1String("focus")) {
+            // The view in use comes first: the responder that sits in it.
+            if (m_activeView) {
+                for (QPointer<QObject> const& r : m_responders) {
+                    QWidget* const w = qobject_cast<QWidget*>(r.data());
+                    if (w && (w == m_activeView || m_activeView->isAncestorOf(w)) && w->metaObject()->indexOfMethod(slot.constData()) >= 0)
+                        return w;
+                }
+            }
             // From the widget with the focus outwards: the first registered responder that
             // knows the slot.
             for (QWidget* w = QApplication::focusWidget(); w; w = w->parentWidget()) {

@@ -126,6 +126,10 @@ public slots:
     void paste();
     void selectAll();
     void deselectAll() { clearRange(); }
+    // View > Zoom In and the rest, with this view in use: how wide the frames are.
+    void onActionZoomIn() { setCellWidth(m_cellWidth + 2); }
+    void onActionZoomOut() { setCellWidth(m_cellWidth - 2); }
+    void onActionResetZoom() { setCellWidth(8); }
 
 signals:
     // A handle of the onion skin was dragged on the ruler.

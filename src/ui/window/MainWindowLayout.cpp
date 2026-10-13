@@ -443,6 +443,7 @@ void MainWindow::setActiveView(QWidget* frame)
         w->update();
     }
     m_activeView = frame;
+    m_actions->setActiveView(frame);
 }
 
 bool MainWindow::eventFilter(QObject* object, QEvent* event)

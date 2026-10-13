@@ -36,6 +36,9 @@ public:
     QPointF navigatorPoint(QPointF graph) const;
     // Where a place of the view is in the graph.
     QPointF graphPoint(QPointF widgetPos) const { return toGraph(widgetPos); }
+    double zoom() const { return m_zoom; }
+    // Larger or smaller about the middle of the view.
+    void zoomBy(double factor);
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -43,6 +46,11 @@ public slots:
     // current layer.
     void deleteSelection();
     void onActionResetView();
+    // View > Zoom In and the rest, with this view in use.
+    void onActionZoomIn() { zoomBy(1.25); }
+    void onActionZoomOut() { zoomBy(0.8); }
+    void onActionResetZoom() { zoomBy(1.0 / m_zoom); }
+    void onActionResetPan();
 
 signals:
     void layerPicked(int layer);

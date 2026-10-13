@@ -91,16 +91,16 @@
   <menu id="View" text="&amp;View">
    <item id="ToggleFullScreen" icon="view/fullscreen" text="Toggle &amp;Full Screen" shortcut="shortcut.toggleFullscreen" checkable="true" responder="window" slot="onActionToggleFullScreen(bool)"/>
    <separator/>
-   <item id="ZoomIn" icon="view/zoomin" text="Zoom &amp;In" shortcut="shortcut.zoomIn" responder="camera" slot="onActionZoomIn()"/>
-   <item id="ZoomOut" icon="view/zoomout" text="Zoom &amp;Out" shortcut="shortcut.zoomOut" responder="camera" slot="onActionZoomOut()"/>
+   <item id="ZoomIn" icon="view/zoomin" text="Zoom &amp;In" shortcut="shortcut.zoomIn" responder="focus,camera" slot="onActionZoomIn()"/>
+   <item id="ZoomOut" icon="view/zoomout" text="Zoom &amp;Out" shortcut="shortcut.zoomOut" responder="focus,camera" slot="onActionZoomOut()"/>
    <item id="RotateViewCW" icon="view/rotatecw" text="Rotate View C&amp;W" shortcut="shortcut.rotateViewCw" responder="camera" slot="onActionRotateViewCW()"/>
    <item id="RotateViewCCW" icon="view/rotateccw" text="Rotate View &amp;CCW" shortcut="shortcut.rotateViewCcw" responder="camera" slot="onActionRotateViewCCW()"/>
    <item id="MirrorView" icon="view/mirror" text="&amp;Mirror View" shortcut="shortcut.mirrorView" checkable="true" responder="camera" slot="onActionMirrorView(bool)"/>
    <separator/>
-   <item id="ResetZoom" icon="view/resetzoom" text="Reset &amp;Zoom" shortcut="shortcut.resetZoom" responder="camera" slot="onActionResetZoom()"/>
+   <item id="ResetZoom" icon="view/resetzoom" text="Reset &amp;Zoom" shortcut="shortcut.resetZoom" responder="focus,camera" slot="onActionResetZoom()"/>
    <item id="ResetRotation" icon="view/resetrotation" text="Reset Ro&amp;tation" shortcut="shortcut.resetRotation" responder="camera" slot="onActionResetRotation()"/>
-   <item id="ResetPan" icon="view/resetpan" text="Reset &amp;Pan" shortcut="shortcut.resetPan" responder="camera" slot="onActionResetPan()"/>
-   <item id="ResetView" icon="view/resetview" text="&amp;Reset View" shortcut="shortcut.resetView" responder="camera" slot="onActionResetView()"/>
+   <item id="ResetPan" icon="view/resetpan" text="Reset &amp;Pan" shortcut="shortcut.resetPan" responder="focus,camera" slot="onActionResetPan()"/>
+   <item id="ResetView" icon="view/resetview" text="&amp;Reset View" shortcut="shortcut.resetView" responder="focus,camera" slot="onActionResetView()"/>
    <separator/>
    <item id="NextColour" icon="misc/nextcolour" text="Next C&amp;olour" shortcut="shortcut.nextColour" responder="window" slot="onActionNextColour()"/>
    <item id="PreviousColour" icon="misc/prevcolour" text="Previous Colo&amp;ur" shortcut="shortcut.prevColour" responder="window" slot="onActionPreviousColour()"/>

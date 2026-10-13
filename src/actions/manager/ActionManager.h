@@ -16,6 +16,7 @@
 #include <QPointer>
 #include <QStringList>
 #include <QVector>
+#include <QWidget>
 
 class QAction;
 class QActionGroup;
@@ -46,6 +47,9 @@ public:
     static QString defaultDirectory();
 
     void registerResponder(QString const& name, QObject* responder);
+    // The view in use (the outlined one).  Commands for "focus" go to the responder inside
+    // it first, wherever the keyboard focus happens to be.
+    void setActiveView(QWidget* view) { m_activeView = view; }
 
     // ---- building ------------------------------------------------------------------------
     void populateMenuBar(QString const& menuId, QMenuBar* bar);
@@ -115,6 +119,7 @@ private:
     void invoke(Node const& item, bool checked, QMenu* menu);
 
     QHash<QString, QPointer<QObject>> m_responders;
+    QPointer<QWidget> m_activeView;
     QHash<QString, Node> m_menus;      // top-level menus by id
     QHash<QString, Node> m_toolbars;
     QStringList m_toolbarOrder;

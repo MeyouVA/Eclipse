@@ -186,6 +186,15 @@ void MainWindow::createViews()
             bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
     }
     qApp->installEventFilter(this);
+    // The keyboard focus going into a view makes it the view in use as well (a click does both).
+    connect(qApp, &QApplication::focusChanged, this, [this](QWidget*, QWidget* now) {
+        for (QWidget* w = now; w && w != this; w = w->parentWidget()) {
+            if (w->objectName() == QLatin1String("ViewFrame") && w->window() == this) {
+                setActiveView(w);
+                break;
+            }
+        }
+    });
 }
 
 // Camera: the middle of the window.
