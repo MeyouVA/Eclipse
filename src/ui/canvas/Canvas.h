@@ -140,6 +140,8 @@ public:
     }
     bool hasOwnStamp() const { return m_stampOwn; }
     void clearStamp();
+    // The stamp of the user's own is kept between sessions: taken up again when the program starts.
+    void loadStamp();
     // Whether the paint tools are to leave what has this colour alone: it is protected, and
     // protection is being respected.
     bool keepsColour(int swatch) const;

@@ -6,6 +6,7 @@
 #include <functional>
 
 #include <QInputDialog>
+#include <QJsonDocument>
 #include <QSettings>
 
 #include "model/document/Commands.h"
@@ -222,10 +223,32 @@ Drawing Canvas::stampNow() const
     return star;
 }
 
+void Canvas::loadStamp()
+{
+    // Kept as a scene of one layer with one drawing: the stamp.
+    QByteArray const kept = settings().value(QStringLiteral("tools/stamp")).toByteArray();
+    Scene scene;
+    QString error;
+    if (kept.isEmpty() || !Scene::fromJson(QJsonDocument::fromJson(kept).object(), scene, &error) || scene.layers.isEmpty()
+        || scene.layers[0].drawings.isEmpty() || scene.layers[0].drawings[0].isEmpty())
+        return;
+    m_stamp = Drawing();
+    m_stamp.strokes = scene.layers[0].drawings[0].strokes;
+    m_stamp.fills = scene.layers[0].drawings[0].fills;
+    // (The colours of another scene's palette are not this one's: each keeps the colour it had.)
+    for (Stroke& stroke : m_stamp.strokes)
+        stroke.swatch = Scene::kNoSwatch;
+    for (Fill& fill : m_stamp.fills)
+        fill.swatch = Scene::kNoSwatch;
+    m_stampOwn = true;
+    update();
+}
+
 void Canvas::clearStamp()
 {
     m_stamp = Drawing();
     m_stampOwn = false;
+    settings().remove(QStringLiteral("tools/stamp"));
     update();
 }
 
@@ -249,6 +272,22 @@ void Canvas::onActionCreateStamp()
     }
     m_stamp = stamp;
     m_stampOwn = true;
+    {
+        // Kept for the next time the program runs, with the colours it shows now.
+        Scene keep = m_document->scene();
+        Drawing plain = stamp;
+        for (Stroke& stroke : plain.strokes)
+            stroke.color = keep.resolve(stroke.swatch, stroke.color);
+        for (Fill& fill : plain.fills)
+            fill.color = keep.resolve(fill.swatch, fill.color);
+        Layer only;
+        only.kind = Layer::DrawingLayer;
+        only.name = QStringLiteral("Stamp");
+        only.drawings = {plain};
+        only.cells = QVector<int>(keep.frameCount(), 0);
+        keep.layers = {only};
+        settings().setValue(QStringLiteral("tools/stamp"), QJsonDocument(keep.toJson()).toJson(QJsonDocument::Compact));
+    }
     emit message(tr("The Stamp tool now stamps this artwork."));
 }
 

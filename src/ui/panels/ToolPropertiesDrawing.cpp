@@ -109,6 +109,7 @@ void ToolProperties::addSelectRows()
     connect(m_applyAll, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToAllDrawings);
     m_form->addRow(m_applyAll);
     // The Stamp tool: how big the stamp comes out.
+    m_canvas->loadStamp();
     m_stampScale = new QSpinBox(this);
     m_stampScale->setObjectName(QStringLiteral("StampScale"));
     m_stampScale->setRange(10, 1000);
