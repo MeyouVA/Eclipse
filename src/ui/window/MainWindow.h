@@ -330,6 +330,8 @@ public slots:
     void onActionOnionLayers(QString const& which);
     void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();
+    void onActionMiniPlayback();
+    void onActionMiniPlaybackRange();
     void onActionKeyframeAndDuplicate();
     void onActionToggleSoundScrubbing(bool on) { m_scrub = on; }
     void onActionToggleWaveforms(bool on);
@@ -452,6 +454,10 @@ private:
 
     QTimer m_playTimer;
     bool m_loop = true;
+    // Mini Playback: the few frames either side of one, over and over; what to go back to when it stops.
+    bool m_mini = false;
+    int m_miniFrame = 0, m_miniStart = 0, m_miniStop = -1;
+    bool m_miniLoop = true;
     bool m_soundOn = true;
     bool m_scrub = false;           // a frame of sound is heard when the frame is changed by hand
     QVector<qint16> m_scrubMix;     // the sound of the scene for that; emptied when the scene changes

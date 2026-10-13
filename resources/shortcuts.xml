@@ -187,6 +187,7 @@
   <shortcut id="shortcut.toolPerspective" text="Perspective Tool" value="Alt+0"/>
   <shortcut id="shortcut.toolPencilEditor" text="Pencil Editor Tool" value=""/>
   <shortcut id="shortcut.renderAndPlay" text="Render and Play" value="Ctrl+Return"/>
+  <shortcut id="shortcut.miniPlayback" text="Mini Playback" value="Shift+Return"/>
   <shortcut id="shortcut.tagLayers" text="Tag Selected Layers" value=""/>
   <shortcut id="shortcut.untagLayers" text="Untag Selected Layers" value=""/>
   <shortcut id="shortcut.autoMatte" text="Generate Auto-Matte" value=""/>

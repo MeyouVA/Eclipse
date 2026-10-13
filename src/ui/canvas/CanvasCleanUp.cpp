@@ -5,6 +5,11 @@
 #include <cmath>
 #include <functional>
 
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDoubleSpinBox>
+#include <QFormLayout>
 #include <QInputDialog>
 #include <QJsonDocument>
 #include <QSettings>
@@ -420,34 +425,63 @@ void Canvas::onActionAutoMatte()
         emit message(tr("There is no line art on this frame to make a matte of."));
         return;
     }
-    bool ok = false;
-    double const radius = QInputDialog::getDouble(this, tr("Generate Auto-Matte"), tr("How far out from the line art the matte reaches (pixels):"),
-                                                  settings().value(QStringLiteral("tools/matteRadius"), 0.0).toDouble(), 0.0, 500.0, 1, &ok);
-    if (!ok)
+    // How far out it reaches, which art it is made from, and which art it is put in.
+    QDialog ask(this);
+    ask.setObjectName(QStringLiteral("AutoMatteDialog"));
+    ask.setWindowTitle(tr("Generate Auto-Matte"));
+    auto* const form = new QFormLayout(&ask);
+    auto* const radius = new QDoubleSpinBox(&ask);
+    radius->setObjectName(QStringLiteral("MatteRadius"));
+    radius->setRange(0.0, 500.0);
+    radius->setDecimals(1);
+    radius->setValue(settings().value(QStringLiteral("tools/matteRadius"), 0.0).toDouble());
+    radius->setToolTip(tr("How far out from the artwork the matte reaches (pixels)."));
+    form->addRow(tr("Radius"), radius);
+    auto arts = [&](char const* name, int chosen) {
+        auto* const box = new QComboBox(&ask);
+        box->setObjectName(QLatin1String(name));
+        box->addItem(tr("Line Art"), int(Drawing::LineSheet));
+        box->addItem(tr("Colour Art"), int(Drawing::ColourSheet));
+        box->addItem(tr("Overlay"), int(Drawing::OverlaySheet));
+        box->addItem(tr("Underlay"), int(Drawing::UnderlaySheet));
+        box->setCurrentIndex(std::max(0, box->findData(chosen)));
+        return box;
+    };
+    QComboBox* const source = arts("MatteSource", settings().value(QStringLiteral("tools/matteSource"), int(Drawing::LineSheet)).toInt());
+    QComboBox* const destination = arts("MatteDestination", settings().value(QStringLiteral("tools/matteDestination"), int(Drawing::ColourSheet)).toInt());
+    form->addRow(tr("Source"), source);
+    form->addRow(tr("Destination"), destination);
+    auto* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &ask);
+    connect(buttons, &QDialogButtonBox::accepted, &ask, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &ask, &QDialog::reject);
+    form->addRow(buttons);
+    if (ask.exec() != QDialog::Accepted)
         return;
-    settings().setValue(QStringLiteral("tools/matteRadius"), radius);
-    if (!autoMatte(radius))
-        emit message(tr("There is no line art on this frame to make a matte of."));
+    settings().setValue(QStringLiteral("tools/matteRadius"), radius->value());
+    settings().setValue(QStringLiteral("tools/matteSource"), source->currentData().toInt());
+    settings().setValue(QStringLiteral("tools/matteDestination"), destination->currentData().toInt());
+    if (!autoMatte(radius->value(), source->currentData().toInt(), destination->currentData().toInt()))
+        emit message(tr("There is nothing in the %1 of this frame to make a matte of.").arg(source->currentText()));
 }
 
-bool Canvas::autoMatte(double radius)
+bool Canvas::autoMatte(double radius, int source, int destination)
 {
     Drawing const* const real = realDrawing();
-    if (!real)
+    if (!real || source < 0 || source >= Drawing::SheetCount || destination < 0 || destination >= Drawing::SheetCount)
         return false;
     Fill matte;
-    matte.outlines = Deform::outerEdges(*real, Drawing::LineSheet, radius);
+    matte.outlines = Deform::outerEdges(*real, source, radius);
     if (matte.outlines.isEmpty())
         return false;
     matte.swatch = m_swatch;
     matte.color = m_document->scene().resolve(m_swatch, Qt::black);
     Drawing whole = *real;
-    whole.colourFills.push_front(matte);
+    whole.fillsOf(destination).push_front(matte);
     clearSelection();
     m_committing = true;
     m_document->setDrawing(m_layer, m_frame, whole, tr("Generate Auto-Matte"));
     m_committing = false;
-    emit message(tr("The matte is in the colour art, behind the lines."));
+    emit message(destination == Drawing::ColourSheet ? tr("The matte is in the colour art, behind the lines.") : tr("The matte is at the back of the art it was asked for."));
     update();
     return true;
 }

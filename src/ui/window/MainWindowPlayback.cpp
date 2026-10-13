@@ -62,6 +62,43 @@ void MainWindow::stop()
     m_playMix.clear();
     m_canvas->setPlaying(false);
     m_actions->setChecked(QStringLiteral("PlayToggle"), false);
+    if (m_mini) {
+        // Mini Playback is over: the frames playing runs between are as they were, and so is the frame.
+        m_mini = false;
+        m_loop = m_miniLoop;
+        setPlayRange(m_miniStart, m_miniStop);
+        m_timeline->setCurrentFrame(std::min(m_miniFrame, m_document->scene().frameCount() - 1));
+    }
+}
+
+// Play > Mini Playback: the few frames before this one and the few after it, over and over, to see how a
+// movement goes just here.  Stopped, it is back on the frame it began on.
+void MainWindow::onActionMiniPlayback()
+{
+    if (m_playTimer.isActive()) {
+        stop();
+        return;
+    }
+    int const reach = std::clamp(settings().value(QStringLiteral("play/miniReach"), 5).toInt(), 1, 100);
+    int const last = m_document->scene().frameCount() - 1;
+    m_miniFrame = frame();
+    m_miniStart = m_playStart;
+    m_miniStop = m_playStop;
+    m_miniLoop = m_loop;
+    setPlayRange(std::max(0, m_miniFrame - reach), std::min(last, m_miniFrame + reach));
+    m_loop = true;
+    m_timeline->setCurrentFrame(m_playStart);
+    m_mini = true;
+    onActionTogglePlayback();
+}
+
+void MainWindow::onActionMiniPlaybackRange()
+{
+    bool ok = false;
+    int const reach = QInputDialog::getInt(this, tr("Mini Playback Range"), tr("How many frames before and after the current one Mini Playback plays:"),
+                                           std::clamp(settings().value(QStringLiteral("play/miniReach"), 5).toInt(), 1, 100), 1, 100, 1, &ok);
+    if (ok)
+        settings().setValue(QStringLiteral("play/miniReach"), reach);
 }
 
 void MainWindow::advanceFrame()

@@ -156,7 +156,7 @@ public:
     int closeGaps(double gap);
     // Generate Auto-Matte: a painted shape in the colour in hand covering all that the line art goes
     // round, `radius` further out all round, at the back of the colour art.  False when there is nothing to cover.
-    bool autoMatte(double radius);
+    bool autoMatte(double radius, int source = Drawing::LineSheet, int destination = Drawing::ColourSheet);
     // The Select tool: what is selected stays selected on another frame - whatever lies in the same place there.
     // The paint tools: what is painted, repainted or unpainted here is so in the same place in every drawing of the layer.
     void setPaintAllDrawings(bool on) { m_paintAll = on; }
