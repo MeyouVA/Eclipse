@@ -15,12 +15,49 @@
 void Canvas::onActionSmooth()
 {
     Drawing const* const d = currentDrawing();
-    if (!selecting() || !d || m_selStrokes.isEmpty()) {
-        emit message(tr("Select lines with the Select tool to smooth them."));
+    if (!selecting() || !d || (m_selStrokes.isEmpty() && m_selFills.isEmpty())) {
+        emit message(tr("Select lines or painted areas with the Select tool to smooth them."));
         return;
     }
     Drawing edited = *d;
     bool changed = false;
+    // Painted areas: the points of their edges go half way towards the middle of their neighbours too.
+    for (int i : std::as_const(m_selFills)) {
+        Fill& fill = edited.fills[i];
+        if (!fill.text.isEmpty())
+            continue;       // words keep the shapes of their letters
+        if (!fill.contours.isEmpty() && fill.contours.size() == fill.outlines.size()) {
+            bool moved = false;
+            for (Stroke& contour : fill.contours) {
+                QVector<StrokePoint> const before = contour.points;
+                int const n = int(before.size());
+                for (int k = 0; n >= 4 && k < n; ++k) {
+                    if (before[k].corner)
+                        continue;
+                    contour.points[k].pos = before[k].pos * 0.5 + (before[(k + n - 1) % n].pos + before[(k + 1) % n].pos) * 0.25;
+                    moved = moved || contour.points[k].pos != before[k].pos;
+                }
+            }
+            if (moved) {
+                fill.rebuild();
+                changed = true;
+            }
+            continue;
+        }
+        for (QPolygonF& outline : fill.outlines) {
+            QPolygonF const before = outline;
+            // (An outline that ends where it began has that point twice: it is one point.)
+            int const n = int(before.size()) - (before.size() > 1 && before.first() == before.last() ? 1 : 0);
+            if (n < 4)
+                continue;
+            for (int k = 0; k < n; ++k) {
+                outline[k] = before[k] * 0.5 + (before[(k + n - 1) % n] + before[(k + 1) % n]) * 0.25;
+                changed = changed || outline[k] != before[k];
+            }
+            if (n < before.size())
+                outline[n] = outline[0];
+        }
+    }
     for (int i : std::as_const(m_selStrokes)) {
         QVector<StrokePoint>& points = edited.strokes[i].points;
         QVector<StrokePoint> const before = points;
