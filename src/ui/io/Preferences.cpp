@@ -120,6 +120,7 @@ void MainWindow::applyPreferences()
     if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
         m_canvas->setArt(Canvas::LineArt);
     m_document->setUndoLevels(std::clamp(s.value(QStringLiteral("prefs/undoLevels"), 100).toInt(), 0, 10000));
+    m_document->setNameDrawingsByFrame(s.value(QStringLiteral("prefs/nameByFrame"), false).toBool());
     m_document->setExtendPreviousExposure(s.value(QStringLiteral("prefs/extendExposure"), true).toBool());
     m_canvas->setKeysFrameOne(s.value(QStringLiteral("prefs/keyFrameOne"), true).toBool());
     m_canvas->setNudgeStep(std::clamp(s.value(QStringLiteral("prefs/nudge"), 1).toInt(), 1, 100));
@@ -207,6 +208,11 @@ void MainWindow::onActionPreferences()
     extend->setChecked(m_document->extendsPreviousExposure());
     QFormLayout* const sheetLayout = new QFormLayout(sheet);
     sheetLayout->addRow(extend);
+    QCheckBox* const byFrame = new QCheckBox(tr("Use Current Frame as Drawing Name"), sheet);
+    byFrame->setObjectName(QStringLiteral("PrefNameByFrame"));
+    byFrame->setToolTip(tr("A drawing made on a frame is named after that frame; off, it goes by its number in the layer."));
+    byFrame->setChecked(m_document->namesDrawingsByFrame());
+    sheetLayout->addRow(byFrame);
 
     QGroupBox* const advanced = new QGroupBox(tr("Advanced"), &dialog);
     QCheckBox* const moreArt = new QCheckBox(tr("Support Overlay and Underlay Arts"), advanced);
@@ -235,6 +241,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/undoLevels"), undoLevels->value());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), extend->isChecked());
+    s.setValue(QStringLiteral("prefs/nameByFrame"), byFrame->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
     s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());
     s.setValue(QStringLiteral("prefs/safeMargin"), safe->value());

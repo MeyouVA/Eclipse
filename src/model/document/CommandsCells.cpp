@@ -7,7 +7,12 @@
 void Document::newDrawing(int layer, int frame)
 {
     if (validCell(m_scene, layer, frame) && m_scene.layers[layer].holdsDrawings())
-        apply(tr("New Drawing"), [&](Scene& s) { startDrawingAt(s.layers[layer], frame, Drawing()); });
+        apply(tr("New Drawing"), [&](Scene& s) {
+            Drawing made;
+            if (m_nameByFrame)
+                made.name = QString::number(frame + 1);
+            startDrawingAt(s.layers[layer], frame, made);
+        });
 }
 
 void Document::duplicateDrawing(int layer, int frame)

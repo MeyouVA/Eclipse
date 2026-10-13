@@ -47,6 +47,9 @@ public:
     void setExtendPreviousExposure(bool on) { m_extendPrevious = on; }
     // How many steps can be undone (0: as many as there are).  It takes hold at once when there is
     // nothing to undo yet, and otherwise with the next scene made or opened.
+    // A drawing made on a frame is named after that frame (off: it goes by its number in the layer).
+    bool namesDrawingsByFrame() const { return m_nameByFrame; }
+    void setNameDrawingsByFrame(bool on) { m_nameByFrame = on; }
     int undoLevels() const { return m_undoLevels; }
     void setUndoLevels(int levels);
     QUndoStack* undoStack() { return &m_undo; }
@@ -325,6 +328,7 @@ private:
 
     Scene m_scene;
     bool m_extendPrevious = false;
+    bool m_nameByFrame = false;
     int m_undoLevels = 0;
     QUndoStack m_undo;
 };

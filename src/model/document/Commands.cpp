@@ -61,6 +61,8 @@ void Document::addStroke(int layer, int frame, Stroke const& stroke)
         apply(tr("Draw Stroke"), [&](Scene& s) {
             Drawing d;
             d.strokes.push_back(stroke);
+            if (m_nameByFrame)
+                d.name = QString::number(frame + 1);
             if (m_extendPrevious)
                 holdPreviousUpTo(s.layers[layer], frame);
             startDrawingAt(s.layers[layer], frame, d);
@@ -106,7 +108,10 @@ void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString 
         if (index == Layer::kNoDrawing) {
             if (m_extendPrevious)
                 holdPreviousUpTo(s.layers[layer], frame);
-            startDrawingAt(s.layers[layer], frame, drawing);
+            Drawing made = drawing;
+            if (m_nameByFrame && made.name.isEmpty())
+                made.name = QString::number(frame + 1);
+            startDrawingAt(s.layers[layer], frame, made);
         } else
             s.layers[layer].drawings[index] = drawing;
     });

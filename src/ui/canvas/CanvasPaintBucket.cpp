@@ -46,8 +46,12 @@ void Canvas::paintAt(QPointF p)
         }
         return;
     }
-    // On a line: recolour the line.
-    for (int i = int(edited.strokes.size()) - 1; i >= 0; --i) {
+    // On a line: recolour the line - unless there is paint under it there: then it is the paint that
+    // is meant (the Ink tool is the one for lines).
+    bool paintUnder = false;
+    for (Fill const& fill : std::as_const(edited.fills))
+        paintUnder = paintUnder || fill.contains(p);
+    for (int i = int(edited.strokes.size()) - 1; i >= 0 && !paintUnder; --i) {
         if (edited.strokes[i].hit(p, 0.5 / m_zoom)) {
             if (m_tool == PaintUnpainted)
                 return;  // it has its colour already
