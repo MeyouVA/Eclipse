@@ -424,6 +424,7 @@
   <item id="ToolCutter" icon="tool/cutter" text="C&amp;utter" shortcut="shortcut.toolCutter" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="cutter"/>
   <item id="ToolPerspective" icon="tool/perspective" text="Perspecti&amp;ve" shortcut="shortcut.toolPerspective" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="perspective"/>
   <item id="ToolEnvelope" icon="tool/envelope" text="E&amp;nvelope" shortcut="shortcut.toolEnvelope" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="envelope"/>
+  <item id="ToolMorphing" icon="tool/morphing" text="&amp;Morphing" shortcut="shortcut.toolMorphing" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="morphing"/>
   <item id="ToolReposition" icon="tool/reposition" text="Reposition All Dra&amp;wings" shortcut="shortcut.toolReposition" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="reposition"/>
 <item id="ToolContourEditor" icon="tool/contour" text="&amp;Contour Editor" shortcut="shortcut.toolContour" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="contour"/>
   <item id="ToolSmoothEditor" icon="tool/smootheditor" text="Smoot&amp;h Editor" shortcut="shortcut.toolSmoothEditor" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="smootheditor"/>

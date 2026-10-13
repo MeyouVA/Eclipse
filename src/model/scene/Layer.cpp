@@ -239,7 +239,7 @@ Drawing Layer::shownAt(int frame) const
     if (other < 0 || other >= drawings.size())
         return drawings[drawing];
     double const t = easedProgress(double(frame - from) / double(to - from), morphs[index].easeOut, morphs[index].easeIn);
-    return Morphing::between(drawings[drawing], drawings[other], t);
+    return Morphing::between(drawings[drawing], drawings[other], t, morphs[index].hints);
 }
 
 int Layer::exposureStart(int frame) const

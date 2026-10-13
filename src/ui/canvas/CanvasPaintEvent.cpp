@@ -365,6 +365,7 @@ void Canvas::paintEvent(QPaintEvent*)
 
     if (!m_playing)
         paintBoneLayers(painter);
+        paintMorphHints(painter);
     if (m_tool == Transform && !m_playing) {
         if (m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].kind == Layer::Quadmap)
             paintQuadAids(painter);

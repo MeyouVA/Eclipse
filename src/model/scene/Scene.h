@@ -355,6 +355,9 @@ struct Morph {
     // How gently the change leaves the first drawing and arrives at the second (0..1 each).
     double easeIn = 0.0;
     double easeOut = 0.0;
+    // Hints: a place on the first drawing (p1) and the place on the second it is to go to (p2).  The shape
+    // nearest the one goes to the shape nearest the other, that point of it to that point.
+    QVector<QLineF> hints;
 };
 
 struct Layer {

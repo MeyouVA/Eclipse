@@ -144,6 +144,11 @@ void Canvas::penUp()
         update();
         return;
     }
+    if (drag == DragHint) {
+        m_drag = DragNone;
+        hintUp();
+        return;
+    }
     if (drag == DragBoneIK) {
         m_drag = DragNone;
         if (m_ikBegun)

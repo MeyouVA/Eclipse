@@ -326,6 +326,11 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             morph.from = values.at(0).toInt(-1);
             morph.easeIn = std::clamp(values.at(1).toDouble(0.0), 0.0, 1.0);
             morph.easeOut = std::clamp(values.at(2).toDouble(0.0), 0.0, 1.0);
+            for (QJsonValue const& hv : values.at(3).toArray()) {
+                QJsonArray const hint = hv.toArray();
+                if (hint.size() == 4)
+                    morph.hints.push_back(QLineF(hint[0].toDouble(), hint[1].toDouble(), hint[2].toDouble(), hint[3].toDouble()));
+            }
             if (morph.from >= 0)
                 layer.morphs.push_back(morph);
         }

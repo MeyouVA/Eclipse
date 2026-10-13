@@ -85,6 +85,15 @@ bool Document::setMorphEase(int layer, int frame, double easeIn, double easeOut)
     return true;
 }
 
+bool Document::setMorphHints(int layer, int index, QVector<QLineF> const& hints, QString const& text)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || index < 0 || index >= m_scene.layers[layer].morphs.size()
+        || m_scene.layers[layer].morphs[index].hints == hints)
+        return false;
+    apply(text, [&](Scene& s) { s.layers[layer].morphs[index].hints = hints; });
+    return true;
+}
+
 bool Document::convertMorph(int layer, int frame)
 {
     if (!validCell(m_scene, layer, frame))

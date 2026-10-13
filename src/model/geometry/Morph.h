@@ -12,6 +12,7 @@
 namespace Morphing {
 
 // The drawing `t` of the way (0..1) from `a` to `b`.  At 0 it is `a` itself and at 1 `b`.
-Drawing between(Drawing const& a, Drawing const& b, double t);
+// `hints` (Morph::hints) say what is to go to what, where the order of drawing does not.
+Drawing between(Drawing const& a, Drawing const& b, double t, QVector<QLineF> const& hints = {});
 
 }  // namespace Morphing

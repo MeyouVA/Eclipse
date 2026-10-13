@@ -179,8 +179,16 @@ QJsonObject Scene::toJson(QString const& folder) const
         for (int c : layer.cells)
             cells.append(c);
         QJsonArray morphs;
-        for (Morph const& morph : layer.morphs)
-            morphs.append(QJsonArray{morph.from, morph.easeIn, morph.easeOut});
+        for (Morph const& morph : layer.morphs) {
+            QJsonArray entry{morph.from, morph.easeIn, morph.easeOut};
+            if (!morph.hints.isEmpty()) {
+                QJsonArray hints;
+                for (QLineF const& hint : morph.hints)
+                    hints.append(QJsonArray{hint.x1(), hint.y1(), hint.x2(), hint.y2()});
+                entry.append(hints);
+            }
+            morphs.append(entry);
+        }
         QJsonArray keys;
         for (Keyframe const& k : layer.keys) {
             QJsonObject key{{"frame", k.frame}, {"x", k.pose.x}, {"y", k.pose.y}, {"sx", k.pose.scaleX},

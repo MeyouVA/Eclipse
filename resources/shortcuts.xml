@@ -154,6 +154,7 @@
   <shortcut id="shortcut.createDrawingFromSelection" text="Create Drawing from Drawing Selection" value="F9"/>
   <shortcut id="shortcut.setEase" text="Set Ease on Selected Keyframes" value=""/>
   <shortcut id="shortcut.toolEnvelope" text="Envelope Tool" value=""/>
+  <shortcut id="shortcut.toolMorphing" text="Morphing Tool" value=""/>
   <shortcut id="shortcut.pasteSpecialAgain" text="Paste Special Again" value=""/>
   <shortcut id="shortcut.renameWithPrefix" text="Rename Drawing with Prefix" value=""/>
   <shortcut id="shortcut.onionNoPrevious" text="Onion Skin: No Previous Drawing" value="~"/>

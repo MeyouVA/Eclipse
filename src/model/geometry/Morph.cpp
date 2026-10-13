@@ -67,18 +67,32 @@ double apart(QVector<Sample> const& a, QVector<Sample> const& b, int shift, bool
 
 // `b` put in the order that lies nearest `a`: begun at the best place (a closed run) and
 // run the best way round.
-QVector<Sample> aligned(QVector<Sample> const& a, QVector<Sample> const& b, bool closed)
+// (`pins`: a point of `a`, by its number, and the point of `b` it is to be matched with - what hints ask for.
+// They count before nearness does.)
+QVector<Sample> aligned(QVector<Sample> const& a, QVector<Sample> const& b, bool closed, QVector<QPair<int, int>> const& pins = {})
 {
     int const n = int(a.size());
     if (n == 0 || b.size() != n)
         return b;
+    auto missed = [&](int shift, bool reversed) {
+        double sum = 0.0;
+        for (QPair<int, int> const& pin : pins) {
+            int const k = reversed ? (shift - pin.first % n + 2 * n) % n : (pin.first + shift) % n;
+            QPointF const d = b[k].pos - b[pin.second].pos;
+            sum += d.x() * d.x() + d.y() * d.y();
+        }
+        return sum;
+    };
     int bestShift = 0;
     bool bestReversed = false;
     double best = apart(a, b, 0, false);
+    double bestMissed = missed(0, false);
     auto consider = [&](int shift, bool reversed) {
         double const d = apart(a, b, shift, reversed);
-        if (d < best - 1e-9) {
+        double const m = missed(shift, reversed);
+        if (m < bestMissed - 1e-9 || (m <= bestMissed + 1e-9 && d < best - 1e-9)) {
             best = d;
+            bestMissed = m;
             bestShift = shift;
             bestReversed = reversed;
         }
@@ -174,11 +188,116 @@ QVector<Sample> samplesOf(QPolygonF const& outline)
     return path;
 }
 
-Stroke strokeBetween(Stroke const& a, Stroke const& b, double t)
+// The point of a run that lies nearest a place.
+int nearestSample(QVector<Sample> const& run, QPointF p)
+{
+    int best = 0;
+    double nearest = -1.0;
+    for (int i = 0; i < run.size(); ++i) {
+        double const away = QLineF(run[i].pos, p).length();
+        if (nearest < 0.0 || away < nearest) {
+            nearest = away;
+            best = i;
+        }
+    }
+    return best;
+}
+
+QVector<QPair<int, int>> pinsFor(QVector<Sample> const& from, QVector<Sample> const& to, QVector<QLineF> const& hints)
+{
+    QVector<QPair<int, int>> pins;
+    if (from.isEmpty() || to.isEmpty())
+        return pins;
+    for (QLineF const& hint : hints)
+        pins.push_back({nearestSample(from, hint.p1()), nearestSample(to, hint.p2())});
+    return pins;
+}
+
+// How far a place is from a run of points joined up.
+double awayFromRun(QVector<QPointF> const& run, bool closed, QPointF p)
+{
+    if (run.isEmpty())
+        return 1e18;
+    double nearest = QLineF(run.first(), p).length();
+    int const n = int(run.size());
+    for (int i = 0; i + 1 < n || (closed && i < n); ++i) {
+        QPointF const a = run[i], b = run[(i + 1) % n];
+        QPointF const ab = b - a;
+        double const length2 = ab.x() * ab.x() + ab.y() * ab.y();
+        double const u = length2 > 0.0 ? std::clamp(((p.x() - a.x()) * ab.x() + (p.y() - a.y()) * ab.y()) / length2, 0.0, 1.0) : 0.0;
+        nearest = std::min(nearest, QLineF(a + ab * u, p).length());
+    }
+    return nearest;
+}
+
+double awayFrom(Stroke const& stroke, QPointF p)
+{
+    QVector<QPointF> run;
+    for (StrokePoint const& point : stroke.path())
+        run.push_back(point.pos);
+    return awayFromRun(run, stroke.closed, p);
+}
+
+double awayFrom(Fill const& fill, QPointF p)
+{
+    if (fill.contains(p))
+        return 0.0;
+    double nearest = 1e18;
+    for (QPolygonF const& outline : fill.outlines)
+        nearest = std::min(nearest, awayFromRun(outline, true, p));
+    return nearest;
+}
+
+// A hint is for the shape it lies on, or within this of.
+constexpr double kHintReach = 25.0;
+
+// What the hints ask of the pairing: the shape of the first lot nearest the one end of a hint goes with the
+// shape of the second lot nearest the other end; whatever had that partner takes the one given up.
+template <typename Shape>
+void pairByHints(QVector<Shape> const& from, QVector<Shape> const& to, QVector<QLineF> const& hints, QVector<int>& partner, QVector<int>& left,
+                 QVector<QVector<QLineF>>& hintsOf)
+{
+    hintsOf = QVector<QVector<QLineF>>(from.size());
+    for (QLineF const& hint : hints) {
+        int mine = -1, theirs = -1;
+        double nearMine = kHintReach, nearTheirs = kHintReach;
+        for (int i = 0; i < from.size(); ++i) {
+            double const away = awayFrom(from[i], hint.p1());
+            if (away <= nearMine) {
+                nearMine = away;
+                mine = i;
+            }
+        }
+        for (int k = 0; k < to.size(); ++k) {
+            double const away = awayFrom(to[k], hint.p2());
+            if (away <= nearTheirs) {
+                nearTheirs = away;
+                theirs = k;
+            }
+        }
+        if (mine < 0 || theirs < 0)
+            continue;
+        if (partner[mine] != theirs) {
+            int const had = partner[mine];
+            int const holder = int(partner.indexOf(theirs));
+            partner[mine] = theirs;
+            if (holder >= 0)
+                partner[holder] = had;
+        }
+        hintsOf[mine].push_back(hint);
+    }
+    left.clear();
+    for (int k = 0; k < to.size(); ++k)
+        if (!partner.contains(k))
+            left.push_back(k);
+}
+
+Stroke strokeBetween(Stroke const& a, Stroke const& b, double t, QVector<QLineF> const& hints = {})
 {
     bool const closed = a.closed && b.closed;
     QVector<Sample> const from = spaced(samplesOf(a), kLinePoints, closed);
-    QVector<Sample> const to = aligned(from, spaced(samplesOf(b), kLinePoints, closed), closed);
+    QVector<Sample> const other = spaced(samplesOf(b), kLinePoints, closed);
+    QVector<Sample> const to = aligned(from, other, closed, pinsFor(from, other, hints));
     Stroke out = t < 0.5 ? a : b;
     out.points.clear();
     out.curve = false;
@@ -202,10 +321,11 @@ Stroke strokeShrunk(Stroke const& stroke, double size)
     return out;
 }
 
-QPolygonF outlineBetween(QPolygonF const& a, QPolygonF const& b, double t)
+QPolygonF outlineBetween(QPolygonF const& a, QPolygonF const& b, double t, QVector<QLineF> const& hints = {})
 {
     QVector<Sample> const from = spaced(samplesOf(a), kEdgePoints, true);
-    QVector<Sample> const to = aligned(from, spaced(samplesOf(b), kEdgePoints, true), true);
+    QVector<Sample> const other = spaced(samplesOf(b), kEdgePoints, true);
+    QVector<Sample> const to = aligned(from, other, true, pinsFor(from, other, hints));
     QPolygonF out;
     for (int i = 0; i < from.size() && i < to.size(); ++i)
         out << from[i].pos + (to[i].pos - from[i].pos) * t;
@@ -221,7 +341,7 @@ QPolygonF outlineShrunk(QPolygonF const& outline, double size)
     return out;
 }
 
-Fill fillBetween(Fill const& a, Fill const& b, double t)
+Fill fillBetween(Fill const& a, Fill const& b, double t, QVector<QLineF> const& hints = {})
 {
     Fill out;
     colourBetween(a.swatch, a.color, b.swatch, b.color, t, out.swatch, out.color);
@@ -233,7 +353,22 @@ Fill fillBetween(Fill const& a, Fill const& b, double t)
     QVector<int> partner, left;
     pairUp(first, second, partner, left);
     for (int i = 0; i < a.outlines.size(); ++i) {
-        QPolygonF const outline = partner[i] >= 0 ? outlineBetween(a.outlines[i], b.outlines[partner[i]], t) : outlineShrunk(a.outlines[i], 1.0 - t);
+        // A hint is for the outline of the area it lies nearest.
+        QVector<QLineF> mine;
+        for (QLineF const& hint : hints) {
+            int nearest = -1;
+            double least = 1e18;
+            for (int o = 0; o < a.outlines.size(); ++o) {
+                double const away = awayFromRun(a.outlines[o], true, hint.p1());
+                if (away < least) {
+                    least = away;
+                    nearest = o;
+                }
+            }
+            if (nearest == i)
+                mine.push_back(hint);
+        }
+        QPolygonF const outline = partner[i] >= 0 ? outlineBetween(a.outlines[i], b.outlines[partner[i]], t, mine) : outlineShrunk(a.outlines[i], 1.0 - t);
         if (outline.size() >= 3)
             out.outlines.push_back(outline);
     }
@@ -262,7 +397,7 @@ Fill fillShrunk(Fill const& fill, double size)
 
 }  // namespace
 
-Drawing Morphing::between(Drawing const& a, Drawing const& b, double t)
+Drawing Morphing::between(Drawing const& a, Drawing const& b, double t, QVector<QLineF> const& hints)
 {
     t = std::clamp(t, 0.0, 1.0);
     if (t <= 0.0)
@@ -283,9 +418,12 @@ Drawing Morphing::between(Drawing const& a, Drawing const& b, double t)
                 second.push_back(fill.bounds().center());
             QVector<int> partner, left;
             pairUp(first, second, partner, left);
+            QVector<QVector<QLineF>> hintsOf(from.size());
+            if (!hints.isEmpty())
+                pairByHints(from, to, hints, partner, left, hintsOf);
             QVector<Fill>& made = out.fillsOf(sheet);
             for (int i = 0; i < from.size(); ++i) {
-                Fill const fill = partner[i] >= 0 ? fillBetween(from[i], to[partner[i]], t) : fillShrunk(from[i], 1.0 - t);
+                Fill const fill = partner[i] >= 0 ? fillBetween(from[i], to[partner[i]], t, hintsOf[i]) : fillShrunk(from[i], 1.0 - t);
                 if (!fill.outlines.isEmpty())
                     made.push_back(fill);
             }
@@ -303,11 +441,14 @@ Drawing Morphing::between(Drawing const& a, Drawing const& b, double t)
                 second.push_back(stroke.bounds().center());
             QVector<int> partner, left;
             pairUp(first, second, partner, left);
+            QVector<QVector<QLineF>> hintsOf(from.size());
+            if (!hints.isEmpty())
+                pairByHints(from, to, hints, partner, left, hintsOf);
             QVector<Stroke>& made = out.strokesOf(sheet);
             for (int i = 0; i < from.size(); ++i) {
                 if (from[i].points.isEmpty())
                     continue;
-                made.push_back(partner[i] >= 0 && !to[partner[i]].points.isEmpty() ? strokeBetween(from[i], to[partner[i]], t) : strokeShrunk(from[i], 1.0 - t));
+                made.push_back(partner[i] >= 0 && !to[partner[i]].points.isEmpty() ? strokeBetween(from[i], to[partner[i]], t, hintsOf[i]) : strokeShrunk(from[i], 1.0 - t));
             }
             for (int k : std::as_const(left))
                 if (!to[k].points.isEmpty())

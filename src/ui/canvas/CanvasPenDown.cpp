@@ -98,6 +98,10 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         stampAt(p);
         return;
     }
+    if (m_tool == Morphing) {
+        hintDown(widgetPos, p, modifiers);
+        return;
+    }
     if (m_tool == PencilEditor) {
         thicknessDown(p, modifiers);
         return;

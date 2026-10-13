@@ -138,7 +138,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
                                           "ToolPencil", "ToolLine",      "ToolRectangle", "ToolEllipse", "ToolContourEditor",
                                           "ToolRigging", "ToolIK", "ToolDropper", "ToolZoom", "ToolPolyline",
                                           "ToolPaintUnpainted", "ToolRepaint", "ToolUnpaint", "ToolText", "ToolRotateView", "ToolCutter", "ToolStroke", "ToolCloseGap",
-                                          "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope"};
+                                          "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing"};
         m_actions->setChecked(QLatin1String(ids[tool]), true);
         if (QAction* const a = m_actions->action(QLatin1String(ids[tool]))) {
             m_toolName = a->text().remove(QLatin1Char('&'));

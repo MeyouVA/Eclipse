@@ -57,6 +57,9 @@ public:
         // What is selected has an outline of points round it: a point pulled, the artwork inside is
         // pulled about with it.
         Envelope,
+        // Morphing hints: on the first drawing of a morphing a click puts a hint down; on the second it is
+        // dragged to where that place is to go.  Alt and a click takes one away.
+        Morphing,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -66,6 +69,8 @@ public:
     // Which sheet of the drawing the tools work on.
     enum Art { LineArt, ColourArt, OverlayArt, UnderlayArt };
     Art art() const { return m_art; }
+    // The hints of the morphing shown on this frame with the Morphing tool, where they are in the view.
+    QVector<QPointF> morphHintsInView() const;
     void setArt(Art art);
     bool previewsAllArt() const { return m_previewAllArt; }
 
@@ -718,7 +723,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -855,6 +860,15 @@ private:
     QVector<QPointF> selectionEnvelope() const;
     bool envelopeDown(QPointF widgetPos);
     void envelopeMove(QPointF p);
+    // The Morphing tool.  The morphings that have a key drawing on this frame: which, and whether it is their second.
+    QVector<QPair<int, bool>> morphsHere() const;
+    void hintDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers);
+    void hintUp();
+    void paintMorphHints(QPainter& painter);
+    int m_hintMorph = -1;       // the morphing whose hint is being dragged, and which of its hints
+    int m_hintIndex = -1;
+    bool m_hintFar = false;     // on the second drawing: where it goes to
+    QPointF m_hintNow;
 public:
     // Where a point of that outline is in the view (a null point when there is none): to take hold of it.
     QPointF envelopePointInView(int point) const;

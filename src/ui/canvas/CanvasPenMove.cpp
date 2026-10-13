@@ -149,6 +149,10 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     }
+    case DragHint:
+        m_hintNow = p;
+        update();
+        break;
     case DragBoneIK:
         boneIkMove(widgetPos);
         break;
