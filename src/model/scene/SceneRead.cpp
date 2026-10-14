@@ -405,7 +405,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.spin = std::clamp(eo["spin"].toDouble(0.0), 0.0, 360.0);
                 e.regionWidth = std::max(0.0, eo["regionW"].toDouble(0.0));
                 e.regionHeight = std::max(0.0, eo["regionH"].toDouble(0.0));
-                e.regionShape = std::clamp(eo["regionShape"].toInt(0), 0, 2);
+                e.regionShape = std::clamp(eo["regionShape"].toInt(0), 0, 3);
                 e.floor = std::max(0.0, eo["floor"].toDouble(0.0));
                 e.bounce = std::clamp(eo["bounce"].toDouble(0.5), 0.0, 1.0);
             }

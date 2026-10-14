@@ -649,7 +649,31 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                 return mixed[step];
             };
             QTransform const backToScene = base.isInvertible() ? base.inverted() : QTransform();
-            for (Effect::Particle const& particle : emitter.particles(rate, frame)) {
+            // Let go from the drawing's own shape: places on its artwork, found once (the same every time it is painted).
+            QVector<QPointF> places;
+            if (emitter.regionShape == 3 && !symbol) {
+                QPainterPath art;
+                art.setFillRule(Qt::WindingFill);
+                for (Fill const& f : drawing.fills)
+                    for (QPolygonF const& outline : f.outlines)
+                        art.addPolygon(outline);
+                for (Stroke const& s : drawing.strokes)
+                    for (QPolygonF const& outline : s.outlinePolygons())
+                        art.addPolygon(outline);
+                QRectF const box = art.boundingRect();
+                QPointF const middle = drawing.bounds().center();
+                quint32 seed = quint32(emitter.seed) * 2654435761u + 12345u;
+                auto next = [&seed] {
+                    seed = seed * 1664525u + 1013904223u;
+                    return double(seed >> 8) / double(1u << 24);
+                };
+                for (int tries = 0; tries < 4000 && places.size() < 96 && !box.isEmpty(); ++tries) {
+                    QPointF const p(box.left() + next() * box.width(), box.top() + next() * box.height());
+                    if (art.contains(p))
+                        places.push_back(p - middle);
+                }
+            }
+            for (Effect::Particle const& particle : emitter.particles(rate, frame, places)) {
                 off.save();
                 // Each stays where the layer was when it was let go (unless it is to move with the layer).
                 if (!emitter.followLayer && particle.born != frame && now.isInvertible())

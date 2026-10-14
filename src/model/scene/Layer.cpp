@@ -10,7 +10,7 @@
 
 // ---- Pose ---------------------------------------------------------------------------------
 
-QVector<Effect::Particle> Effect::particles(double rate, int frame) const
+QVector<Effect::Particle> Effect::particles(double rate, int frame, QVector<QPointF> const& places) const
 {
     QVector<Particle> out;
     int const lasts = std::max(1, life);
@@ -34,7 +34,9 @@ QVector<Effect::Particle> Effect::particles(double rate, int frame) const
             double const pace = speed * (0.6 + 0.8 * chance(born, i, 1));
             Particle p;
             QPointF from((chance(born, i, 3) - 0.5) * regionWidth, (chance(born, i, 4) - 0.5) * regionHeight);
-            if (regionShape != 0) {
+            if (regionShape == 3) {
+                from = places.isEmpty() ? QPointF() : places[std::min(int(places.size()) - 1, int(chance(born, i, 3) * places.size()))];
+            } else if (regionShape != 0) {
                 // Round: evenly over the inside of the ellipse, or along its edge.
                 double const turn = chance(born, i, 3) * 2.0 * 3.14159265358979323846;
                 double const reach = regionShape == 2 ? 1.0 : std::sqrt(chance(born, i, 4));
