@@ -75,7 +75,7 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
             painter.setOpacity(m_bitmapFlow / 100.0);
             painter.drawImage(QPointF(0, 0), dab);
             painter.restore();
-        }, asShape ? tr("Paint Brush Stroke") : tr("Paint Stroke"));
+        }, asShape ? tr("Paint Brush Stroke") : tr("Paint Stroke"), stroke.bounds());
         return;
     }
     if (m_tool == Brush && m_brushShapes) {

@@ -778,7 +778,8 @@ private:
     // What the pen drew, as the tool in hand keeps it: a brush shape, or a line.
     void commitPenStroke(Stroke const& stroke, double tolerance);
     // On a bitmap layer: what `paint` draws (in the coordinates of the drawing) goes into the pixels of the drawing.
-    void paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text);
+    // `reach`, when given, is how far the paint goes: pixels too few to take it in grow first.
+    void paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text, QRectF reach = QRectF());
     // Rubs `rubbed` out of the pixels of the drawing's pictures (those kept in the scene); true when one was reached.
     static bool erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed);
     // With a Symmetry guide in use: the turn-over about its axis, for what is on the layer.

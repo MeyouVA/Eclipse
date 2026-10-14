@@ -322,7 +322,7 @@ bool Canvas::bitmapNow() const
     return m_art == LineArt && m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].bitmap && scene.layers[m_layer].holdsDrawings();
 }
 
-void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text)
+void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text, QRectF reach)
 {
     Scene const& scene = m_document->scene();
     Drawing art = realDrawing() ? *realDrawing() : Drawing();
@@ -348,6 +348,28 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
     if (pixels.image.isNull() || !pixels.placement.isInvertible())
         return;
     QImage image = pixels.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    if (reach.isValid() && !pixels.bounds().contains(reach) && pixels.placement.type() <= QTransform::TxScale) {
+        // Paint reaching beyond the pixels: they grow to take it in (and a little more), up to 8192 pixels each way.
+        QRect const old = image.rect();
+        QRect const wanted = pixels.placement.inverted().mapRect(reach).toAlignedRect().adjusted(-64, -64, 64, 64);
+        QRect grown = old.united(wanted);
+        grown.setLeft(std::max(grown.left(), old.right() + 1 - 8192));
+        grown.setTop(std::max(grown.top(), old.bottom() + 1 - 8192));
+        grown.setRight(std::min(grown.right(), grown.left() + 8191));
+        grown.setBottom(std::min(grown.bottom(), grown.top() + 8191));
+        if (grown != old) {
+            QImage bigger(grown.size(), QImage::Format_ARGB32_Premultiplied);
+            bigger.fill(Qt::transparent);
+            {
+                QPainter onto(&bigger);
+                onto.setCompositionMode(QPainter::CompositionMode_Source);
+                onto.drawImage(-grown.topLeft(), image);
+            }
+            image = bigger;
+            pixels.placement = QTransform::fromTranslate(grown.left(), grown.top()) * pixels.placement;
+            pixels.size = grown.size();
+        }
+    }
     // Pieces of the pixels cut loose (and perhaps moved) go back into them first, where they now lie.
     QVector<int> pieces;
     for (int i = at + 1; i < art.pictures.size(); ++i)
@@ -512,7 +534,7 @@ void Canvas::addStrokeToArt(Stroke const& stroke)
 {
     if (bitmapNow()) {
         Scene const& scene = m_document->scene();
-        paintIntoBitmap([&](QPainter& painter) { paintStroke(painter, stroke, scene.brushFor(stroke)); }, tr("Paint Stroke"));
+        paintIntoBitmap([&](QPainter& painter) { paintStroke(painter, stroke, scene.brushFor(stroke)); }, tr("Paint Stroke"), stroke.bounds());
         return;
     }
     if (m_art == LineArt) {
