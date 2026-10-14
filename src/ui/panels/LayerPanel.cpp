@@ -128,6 +128,13 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
             ++at;
         }
     }
+    m_bitmap = new QCheckBox(tr("Bitmap layer"), this);
+    m_bitmap->setObjectName(QStringLiteral("LayerBitmap"));
+    m_bitmap->setToolTip(tr("What is drawn on the layer's line art is painted in pixels, and the eraser rubs pixels out.\nWhat was drawn before stays as it is."));
+    connect(m_bitmap, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_refreshing)
+            m_document->setLayerBitmap(m_layer, on);
+    });
     m_easeIn->setSuffix(QStringLiteral(" %"));
     m_easeOut->setSuffix(QStringLiteral(" %"));
     m_easeIn->setToolTip(tr("How gently the motion arrives at the keyframe on this frame."));
@@ -149,6 +156,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("Length"), m_length);
     form->addRow(tr("IK"), m_ikRow);
     form->addRow(tr("Art Layers"), m_artRow);
+    form->addRow(QString(), m_bitmap);
     form->addRow(tr("Attached to"), m_parent);
     form->addRow(tr("Rides on"), m_bone);
     form->addRow(tr("Position"), pair(m_x, m_y));
@@ -237,6 +245,8 @@ void LayerPanel::refresh()
     m_length->setValue(layer.boneLength);
     m_form->setRowVisible(m_ikRow, layer.kind == Layer::Bone);
     m_form->setRowVisible(m_artRow, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
+    m_form->setRowVisible(m_bitmap, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
+    m_bitmap->setChecked(layer.bitmap);
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
         m_artShown[sheet]->setChecked(layer.sheetShown(sheet));
     m_ikExcluded->setChecked(layer.ikExcluded);

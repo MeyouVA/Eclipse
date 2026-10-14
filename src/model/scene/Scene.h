@@ -226,6 +226,8 @@ struct Picture {
     // from here each time the scene is opened.
     QString file;
     bool linked = false;
+    // The pixels a bitmap layer is painted in: made by the program, painted on by the brush.
+    bool painted = false;
     // From the pixels of the image to the coordinates of the drawing.
     QTransform placement;
     // The size the picture had when it came in (kept so that a linked picture whose file
@@ -537,6 +539,8 @@ struct Layer {
     // Art layers of the drawings that are left out of the picture: bit `Drawing::Sheet` set = not shown.
     // (The one being worked on is still seen in the Camera view while only it is shown.)
     int hiddenSheets = 0;
+    // A bitmap layer: what is drawn on its line art is painted in pixels, not kept as lines.
+    bool bitmap = false;
     bool sheetShown(int sheet) const { return (hiddenSheets & (1 << sheet)) == 0; }
     bool showsSymbol() const { return symbolId != 0; }
     // Frames of the layer marked with a colour in the Timeline (a note to oneself: "redo", "hold" ...).

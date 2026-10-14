@@ -175,6 +175,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                                         {"width", p.size.width()},
                                         {"height", p.size.height()},
                                         {"placement", QJsonArray{t.m11(), t.m12(), t.m13(), t.m21(), t.m22(), t.m23(), t.m31(), t.m32(), t.m33()}}};
+                    if (p.painted)
+                        picture["painted"] = true;
                     if (p.linked) {
                         picture["linked"] = true;
                         if (QString const relative = pathFrom(folder, p.file); !relative.isEmpty())
@@ -339,6 +341,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["symbol"] = layer.symbolId;
         if (layer.syncGroup != 0)
             layerObject["sync"] = layer.syncGroup;
+        if (layer.bitmap)
+            layerObject["bitmap"] = true;
         if (layer.hiddenSheets != 0)
             layerObject["hiddenSheets"] = layer.hiddenSheets;
         if (layer.ikExcluded)

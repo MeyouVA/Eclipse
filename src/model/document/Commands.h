@@ -284,6 +284,8 @@ public:
     void setLayerLocked(int layer, bool locked);
     // An art layer (Drawing::Sheet) of the layer's drawings shown in the picture, or left out of it.
     void setLayerSheetShown(int layer, int sheet, bool shown);
+    // A drawing layer painted in pixels (a bitmap layer), or drawn in lines.
+    void setLayerBitmap(int layer, bool bitmap);
     void setLayerSolo(int layer, bool solo);
     void setLayerCollapsed(int layer, bool collapsed);
     // An invalid colour gives the row its usual grey back.

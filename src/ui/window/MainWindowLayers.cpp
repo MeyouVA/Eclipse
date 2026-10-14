@@ -61,14 +61,16 @@ void MainWindow::onActionAddDrawingLayer()
     name->setObjectName(QStringLiteral("LayerName"));
     name->selectAll();
     // What each sheet of its drawings is made of.  Eclipse draws in vectors.
-    auto kinds = [&dialog, this](char const* objectName) {
+    auto kinds = [&dialog, this](char const* objectName, bool canBitmap) {
         QWidget* const row = new QWidget(&dialog);
         row->setObjectName(QLatin1String(objectName));
         QRadioButton* const vector = new QRadioButton(tr("Vector"), row);
         QRadioButton* const bitmap = new QRadioButton(tr("Bitmap"), row);
         vector->setChecked(true);
-        bitmap->setEnabled(false);
-        bitmap->setToolTip(tr("Eclipse draws in vectors; pictures are brought in with File > Import."));
+        bitmap->setObjectName(QLatin1String(objectName) + QStringLiteral("Bitmap"));
+        bitmap->setEnabled(canBitmap);
+        bitmap->setToolTip(canBitmap ? tr("A bitmap layer: what is drawn is painted in pixels, and the eraser rubs pixels out.")
+                                     : tr("The colour art is drawn in vectors."));
         QHBoxLayout* const across = new QHBoxLayout(row);
         across->setContentsMargins(0, 0, 0, 0);
         across->addWidget(vector);
@@ -81,8 +83,8 @@ void MainWindow::onActionAddDrawingLayer()
     wholeScene->setToolTip(tr("The layer starts with an empty drawing held from the first frame to the last."));
     QFormLayout* const form = new QFormLayout;
     form->addRow(tr("Name:"), name);
-    form->addRow(tr("Line Art"), kinds("LayerLineArt"));
-    form->addRow(tr("Colour Art"), kinds("LayerColourArt"));
+    form->addRow(tr("Line Art"), kinds("LayerLineArt", true));
+    form->addRow(tr("Colour Art"), kinds("LayerColourArt", false));
     form->addRow(wholeScene);
     QPushButton* const addAndClose = new QPushButton(tr("Add and Close"), &dialog);
     addAndClose->setObjectName(QStringLiteral("LayerAddAndClose"));
@@ -99,8 +101,13 @@ void MainWindow::onActionAddDrawingLayer()
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addLayout(form);
     layout->addLayout(buttons);
-    auto addOne = [this, name, wholeScene] {
-        addDrawingLayer(name->text(), wholeScene->isChecked());
+    auto addOne = [this, name, wholeScene, &dialog] {
+        QRadioButton* const bitmap = dialog.findChild<QRadioButton*>(QStringLiteral("LayerLineArtBitmap"));
+        m_document->beginMacro(tr("Add Drawing Layer"));
+        int const at = addDrawingLayer(name->text(), wholeScene->isChecked());
+        if (bitmap && bitmap->isChecked())
+            m_document->setLayerBitmap(at, true);
+        m_document->endMacro();
         name->setFocus();
         name->selectAll();
     };

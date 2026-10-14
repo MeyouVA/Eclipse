@@ -200,6 +200,8 @@ public:
     bool bothArtsNow() const { return m_selectBothArts && (m_tool == Select || m_tool == Cutter) && (m_art == LineArt || m_art == ColourArt); }
     // Pictures lie with the line art: they can be taken when it is (one of) the sheets worked on.
     bool picturesHere() const { return m_art == LineArt || bothArtsNow(); }
+    // The layer worked on is a bitmap layer, and its pixels are what the tools reach (they lie with the line art).
+    bool bitmapNow() const;
     bool eraserBothArts() const { return m_bothArts; }
     // The Envelope tool: how many points the outline round the selection has.
     int envelopeToolPoints() const { return m_envCount; }
@@ -731,6 +733,10 @@ private:
     void addStrokeToArt(Stroke const& stroke);
     // What the pen drew, as the tool in hand keeps it: a brush shape, or a line.
     void commitPenStroke(Stroke const& stroke, double tolerance);
+    // On a bitmap layer: what `paint` draws (in the coordinates of the drawing) goes into the pixels of the drawing.
+    void paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text);
+    // Rubs `rubbed` out of the pixels of the drawing's pictures (those kept in the scene); true when one was reached.
+    static bool erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed);
     // With a Symmetry guide in use: the turn-over about its axis, for what is on the layer.
     bool symmetry(QTransform* mirror) const;
     // Every way what is drawn is to be repeated: with a Symmetry guide chosen, all the Symmetry guides of the

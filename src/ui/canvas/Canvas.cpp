@@ -316,8 +316,78 @@ void Canvas::onActionPreviewAllArt(bool on)
     update();
 }
 
+bool Canvas::bitmapNow() const
+{
+    Scene const& scene = m_document->scene();
+    return m_art == LineArt && m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].bitmap && scene.layers[m_layer].holdsDrawings();
+}
+
+void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text)
+{
+    Scene const& scene = m_document->scene();
+    Drawing art = realDrawing() ? *realDrawing() : Drawing();
+    int at = -1;
+    for (int i = 0; i < art.pictures.size() && at < 0; ++i)
+        if (art.pictures[i].painted)
+            at = i;
+    if (at < 0) {
+        // The pixels of the drawing: the frame of the scene and a quarter of it more on every side.
+        QRectF const area(-scene.width * 0.25, -scene.height * 0.25, scene.width * 1.5, scene.height * 1.5);
+        Picture pixels;
+        pixels.painted = true;
+        pixels.size = QSize(int(std::ceil(area.width())), int(std::ceil(area.height())));
+        pixels.image = QImage(pixels.size, QImage::Format_ARGB32_Premultiplied);
+        pixels.image.fill(Qt::transparent);
+        pixels.placement = QTransform::fromTranslate(area.left(), area.top());
+        at = int(art.pictures.size());
+        art.pictures.push_back(pixels);
+    }
+    Picture& pixels = art.pictures[at];
+    if (pixels.image.isNull() || !pixels.placement.isInvertible())
+        return;
+    QImage image = pixels.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    {
+        QPainter painter(&image);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.setTransform(pixels.placement.inverted());
+        paint(painter);
+    }
+    pixels.image = image;
+    m_document->setDrawing(m_layer, m_frame, art, text);
+}
+
+bool Canvas::erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed)
+{
+    QPainterPath area;
+    area.setFillRule(Qt::WindingFill);
+    for (QPolygonF const& polygon : rubbed)
+        area.addPolygon(polygon);
+    QRectF const reach = area.boundingRect();
+    bool any = false;
+    for (Picture& picture : art.pictures) {
+        if (picture.linked || picture.image.isNull() || !picture.placement.isInvertible() || !picture.bounds().intersects(reach))
+            continue;
+        QImage image = picture.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        {
+            QPainter painter(&image);
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setTransform(picture.placement.inverted());
+            painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+            painter.fillPath(area, Qt::black);
+        }
+        picture.image = image;
+        any = true;
+    }
+    return any;
+}
+
 void Canvas::addStrokeToArt(Stroke const& stroke)
 {
+    if (bitmapNow()) {
+        Scene const& scene = m_document->scene();
+        paintIntoBitmap([&](QPainter& painter) { paintStroke(painter, stroke, scene.brushFor(stroke)); }, tr("Paint Stroke"));
+        return;
+    }
     if (m_art == LineArt) {
         m_document->addStroke(m_layer, m_frame, stroke);
         return;
@@ -385,7 +455,9 @@ void Canvas::eraseStretch(int from)
             strokes.push_back(stroke);
         any = any || changed;
     }
-    if (!any)
+    // Pictures kept in the scene - the pixels of a bitmap layer among them - are rubbed out where it passes.
+    bool const pixels = m_art == LineArt && erasePictures(m_eraseArt, rubbed);
+    if (!any && !pixels)
         return;
     m_eraseArt.fills = fills;
     m_eraseArt.strokes = strokes;
@@ -430,6 +502,8 @@ void Canvas::cutWithEraser()
             art.strokes += stroke.minus(rubbed, fine, &changed);
             any = any || changed;
         }
+        if (m_art == LineArt && erasePictures(art, rubbed))
+            any = true;
         return any;
     };
     // Each drawing to erase in is come to by a frame that shows it: this one, or with

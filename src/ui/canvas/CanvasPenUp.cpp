@@ -8,6 +8,23 @@
 
 void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
 {
+    if (bitmapNow()) {
+        // A bitmap layer: the stroke is painted into the pixels of the drawing, looking as it would as a line or a shape.
+        Scene const& scene = m_document->scene();
+        if (m_tool == Brush && m_brushShapes) {
+            Fill shape = Fill::fromStroke(stroke, std::max(tolerance * 0.5, 0.05));
+            shape.texture = m_brushTexture;
+            shape.textureAmount = float(m_brushTextureAmount) / 100.0f;
+            shape.textureCrisp = m_brushTextureCrisp;
+            shape.textureLow = float(m_brushRampLow) / 100.0f;
+            shape.textureHigh = float(m_brushRampHigh) / 100.0f;
+            if (!shape.outlines.isEmpty())
+                paintIntoBitmap([&](QPainter& painter) { paintFill(painter, shape, scene.brushFor(shape)); }, tr("Paint Brush Stroke"));
+        } else {
+            paintIntoBitmap([&](QPainter& painter) { paintStroke(painter, stroke, scene.brushFor(stroke)); }, tr("Paint Stroke"));
+        }
+        return;
+    }
     if (m_tool == Brush && m_brushShapes) {
         // A brush stroke is a shape, not a line: the area the stroke covers, with a
         // contour of its own that the Contour Editor can pull about.
@@ -175,7 +192,7 @@ void Canvas::penUp()
         update();
         return;
     }
-    if (drag == DragErase && m_eraserCuts) {
+    if (drag == DragErase && (m_eraserCuts || bitmapNow())) {
         m_drag = DragNone;
         cutWithEraser();
         update();

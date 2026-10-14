@@ -482,6 +482,13 @@ void Document::setLayerSheetShown(int layer, int sheet, bool shown)
     });
 }
 
+void Document::setLayerBitmap(int layer, bool bitmap)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].bitmap == bitmap)
+        return;
+    apply(bitmap ? tr("Make Bitmap Layer") : tr("Make Vector Layer"), [&](Scene& s) { s.layers[layer].bitmap = bitmap; });
+}
+
 void Document::setLayerSolo(int layer, bool solo)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].solo == solo)

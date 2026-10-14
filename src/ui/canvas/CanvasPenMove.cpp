@@ -250,7 +250,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     }
     case DragErase: {
-        if (m_eraserCuts) {
+        if (m_eraserCuts || bitmapNow()) {
             if (m_stroke.points.isEmpty() || QLineF(m_stroke.points.last().pos, p).length() * m_zoom >= 1.0) {
                 m_stroke.points.push_back({p, 1.0f});
                 eraseStretch(std::max(0, int(m_stroke.points.size()) - 2));

@@ -214,7 +214,7 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         m_stroke.points.push_back({p, pressure});
     } else if (m_tool == Eraser) {
         m_drag = DragErase;
-        if (m_eraserCuts) {
+        if (m_eraserCuts || bitmapNow()) {
             // What it passes over is cut out as it goes, in a drawing of its own; the scene
             // gets the result, as one step, when it lifts.
             m_stroke = Stroke();
