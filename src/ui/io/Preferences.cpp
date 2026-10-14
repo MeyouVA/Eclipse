@@ -235,6 +235,7 @@ void MainWindow::applyPreferences()
     m_document->setUndoLevels(std::clamp(s.value(QStringLiteral("prefs/undoLevels"), 100).toInt(), 0, 10000));
     m_document->setNameDrawingsByFrame(s.value(QStringLiteral("prefs/nameByFrame"), false).toBool());
     m_document->setExtendPreviousExposure(s.value(QStringLiteral("prefs/extendExposure"), true).toBool());
+    m_document->setStopMotionKeys(s.value(QStringLiteral("prefs/stopMotionKeys"), false).toBool());
     m_canvas->setKeysFrameOne(s.value(QStringLiteral("prefs/keyFrameOne"), true).toBool());
     m_canvas->setNudgeStep(std::clamp(s.value(QStringLiteral("prefs/nudge"), 1).toInt(), 1, 100));
     m_canvas->setProportionParts(std::clamp(s.value(QStringLiteral("prefs/proportionAcross"), 3).toInt(), 2, 12),
@@ -386,6 +387,12 @@ void MainWindow::onActionPreferences()
     frameWidth->setToolTip(tr("How wide a frame of the Timeline is when Eclipse starts (the zoom of the Timeline changes it afterwards)."));
     QFormLayout* const timelineLayout = new QFormLayout(timelinePage);
     timelineLayout->addRow(tr("Frame width"), frameWidth);
+    QCheckBox* const stopMotion = new QCheckBox(tr("Default: Stop-Motion Keyframes"), timelinePage);
+    stopMotion->setObjectName(QStringLiteral("PrefStopMotionKeys"));
+    stopMotion->setToolTip(tr("A keyframe made new holds its pose until the next keyframe, instead of moving on to it.\n"
+                              "(A keyframe can be turned either way afterwards, as always.)"));
+    stopMotion->setChecked(m_document->stopMotionKeys());
+    timelineLayout->addRow(stopMotion);
 
     // Render: the preview.
     QGroupBox* const renderPage = new QGroupBox(tr("Render"), &dialog);
@@ -573,6 +580,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/undoLevels"), undoLevels->value());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), extend->isChecked());
+    s.setValue(QStringLiteral("prefs/stopMotionKeys"), stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/nameByFrame"), byFrame->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
     s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());

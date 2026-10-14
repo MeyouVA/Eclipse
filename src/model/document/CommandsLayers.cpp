@@ -623,7 +623,7 @@ void Document::applyController(int controller, int frame, double value)
             if (l < 0)
                 continue;
             Layer& layer = s.layers[l];
-            layer.setKey(frame, Pose::lerp(from.poses[i], to.poses[i], t));
+            keyOn(layer, frame, Pose::lerp(from.poses[i], to.poses[i], t));
             int const drawing = nearer.drawings[i];
             if (layer.holdsDrawings() && drawing >= 0 && drawing < layer.drawings.size() && frame < layer.cells.size())
                 layer.cells[frame] = drawing;
@@ -691,7 +691,7 @@ void Document::applyControllerPoint(int controller, int frame, QPointF where)
                     blended = Pose::lerp(blended, into.states[k].poses[i], weights[k] / taken);
             }
             Layer& layer = s.layers[l];
-            layer.setKey(frame, blended);
+            keyOn(layer, frame, blended);
             int const drawing = into.states[nearest].drawings[i];
             if (layer.holdsDrawings() && drawing >= 0 && drawing < layer.drawings.size() && frame < layer.cells.size())
                 layer.cells[frame] = drawing;

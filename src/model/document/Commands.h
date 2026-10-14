@@ -45,6 +45,9 @@ public:
     // empty frames up to it (off: they stay empty).
     bool extendsPreviousExposure() const { return m_extendPrevious; }
     void setExtendPreviousExposure(bool on) { m_extendPrevious = on; }
+    // A keyframe made new holds its pose up to the next one (stop-motion) instead of moving on to it.
+    bool stopMotionKeys() const { return m_stopMotionKeys; }
+    void setStopMotionKeys(bool on) { m_stopMotionKeys = on; }
     // How many steps can be undone (0: as many as there are).  It takes hold at once when there is
     // nothing to undo yet, and otherwise with the next scene made or opened.
     // A drawing made on a frame is named after that frame (off: it goes by its number in the layer).
@@ -431,6 +434,9 @@ private:
     QVector<Around> m_around;
     bool m_unsavedInside = false;       // (what was not saved when the list of things to undo was emptied)
     bool m_extendPrevious = false;
+    bool m_stopMotionKeys = false;
+    // A keyframe of that pose on that frame; one made new is stop-motion if that is asked for.
+    void keyOn(Layer& layer, int frame, Pose const& pose) const;
     bool m_nameByFrame = false;
     int m_undoLevels = 0;
     QUndoStack m_undo;

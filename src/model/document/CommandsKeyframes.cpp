@@ -4,6 +4,14 @@
 
 #include "model/document/CommandsPrivate.h"
 
+void Document::keyOn(Layer& layer, int frame, Pose const& pose) const
+{
+    bool const made = layer.keyIndex(frame) < 0;
+    layer.setKey(frame, pose);
+    if (made && m_stopMotionKeys)
+        layer.keys[layer.keyIndex(frame)].tween = false;
+}
+
 void Document::setKeyframe(int layer, int frame, Pose const& pose, QString const& text)
 {
     if (!validCell(m_scene, layer, frame))
@@ -12,7 +20,7 @@ void Document::setKeyframe(int layer, int frame, Pose const& pose, QString const
     int const index = l.keyIndex(frame);
     if (index >= 0 && l.keys[index].pose == pose && l.keys[index].parts == Keyframe::AllParts)
         return;
-    apply(text, [&](Scene& s) { s.layers[layer].setKey(frame, pose); });
+    apply(text, [&](Scene& s) { keyOn(s.layers[layer], frame, pose); });
 }
 
 void Document::setPartKeyframe(int layer, int frame, int part, Pose const& pose, QString const& text)
@@ -56,7 +64,7 @@ void Document::setPartKeyframe(int layer, int frame, int part, Pose const& pose,
     take(made, pose);
     apply(text, [&](Scene& s) {
         Layer& to = s.layers[layer];
-        to.setKey(frame, made);
+        keyOn(to, frame, made);
         to.keys[to.keyIndex(frame)].parts = part;
     });
 }
@@ -66,7 +74,7 @@ void Document::insertKeyframe(int layer, int frame)
     if (!validCell(m_scene, layer, frame) || m_scene.layers[layer].keyIndex(frame) >= 0)
         return;
     Pose const pose = m_scene.layers[layer].poseAt(frame);
-    apply(tr("Insert Keyframe"), [&](Scene& s) { s.layers[layer].setKey(frame, pose); });
+    apply(tr("Insert Keyframe"), [&](Scene& s) { keyOn(s.layers[layer], frame, pose); });
 }
 
 void Document::removeKeyframe(int layer, int frame)
@@ -259,7 +267,7 @@ void Document::setFov(int layer, double degrees, int frame)
             if (k.pose.fov <= 0.0)
                 k.pose.fov = l.fov;
         pose.fov = degrees;
-        l.setKey(frame, pose);
+        keyOn(l, frame, pose);
     });
 }
 
@@ -299,7 +307,7 @@ void Document::setQuad(int layer, QVector<QPointF> const& corners, int frame)
         pose.quad.resize(4);
         for (int i = 0; i < 4; ++i)
             pose.quad[i] = corners[i] - l.quad[i];
-        l.setKey(frame, pose);
+        keyOn(l, frame, pose);
     });
 }
 
@@ -314,7 +322,7 @@ void Document::shiftPoses(int layer, int frame, Pose const& from, Pose const& to
         for (Keyframe const& k : std::as_const(l.keys))
             within = within || (k.frame >= first && k.frame <= last);
         if (l.keys.isEmpty() || (ranged && !within)) {
-            l.setKey(frame, to);    // one keyframe: the same pose on every frame (or none in the range: this frame's)
+            keyOn(l, frame, to);    // one keyframe: the same pose on every frame (or none in the range: this frame's)
             return;
         }
         auto ratio = [](double was, double is) { return std::abs(was) > 1e-9 ? is / was : 1.0; };
