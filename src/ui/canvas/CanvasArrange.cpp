@@ -360,6 +360,9 @@ void Canvas::onActionBreakApartText()
                 letter.textAlign = 0;
                 letter.textSpacing = fill.textSpacing;
                 letter.textKerning = fill.textKerning;
+            } else {
+                // A single letter broken apart is a shape of its own: a contour shape, its points there to be edited.
+                letter.giveContours(0.5);
             }
             picked.push_back(int(edited.fills.size()));
             edited.fills.push_back(letter);

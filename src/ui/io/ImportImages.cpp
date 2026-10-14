@@ -65,6 +65,8 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         QTransform placement = QTransform::fromScale(scale, scale);
         placement *= QTransform::fromTranslate((scene.width - image.width() * scale) / 2.0, (scene.height - image.height() * scale) / 2.0);
         Drawing drawing;
+        // How far a traced shape's curves may stray from the edge of the picture (scene units).
+        double constexpr kTraceTolerance = 0.75;
         if (options.vectorize && options.colours > 0) {
             // In colour: a painted shape for the area of each colour, the largest underneath.
             for (Vectorize::ColourShape const& area : Vectorize::traceColours(image, options.colours, options.paper)) {
@@ -72,6 +74,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
                 shape.color = area.colour;
                 for (QPolygonF const& outline : area.outlines)
                     shape.outlines.push_back(placement.map(outline));
+                shape.giveContours(kTraceTolerance);        // shapes with points, as the brush makes
                 drawing.fills.push_back(shape);
             }
         } else if (options.vectorize && options.centreLines) {
@@ -93,6 +96,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
             shape.color = scene.resolve(shape.swatch, QColor(Qt::black));
             for (QPolygonF const& outline : Vectorize::trace(image, options.threshold))
                 shape.outlines.push_back(placement.map(outline));
+            shape.giveContours(kTraceTolerance);
             if (!shape.outlines.isEmpty())
                 drawing.fills.push_back(shape);
         } else {

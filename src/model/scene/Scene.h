@@ -172,7 +172,7 @@ struct Fill {
     // A contour shape - what the brush makes: each outline is a closed curve with points
     // and handles (the geometry of a Stroke; its thickness and colour are not used), and
     // `outlines` is those curves drawn out.  Empty for an area that is only outlines (paint
-    // from the bucket, traced pictures, text).
+    // from the bucket, text not yet broken apart into shapes).
     QVector<Stroke> contours;
     // Painted with a gradient colour: where the gradient lies in the area, once it has been
     // placed by hand (the Edit Gradient tool) - from its first colour to its last; for a
@@ -206,6 +206,9 @@ struct Fill {
     void transform(QTransform const& t);
     // Makes `outlines` again from `contours` (after a contour was edited).
     void rebuild();
+    // An area that is only outlines made a contour shape: a curve with points and handles round each outline, fitted
+    // to stray no further than `tolerance` from it.  An area that has contours already is left as it is.
+    void giveContours(double tolerance);
     // What is left of the area when `area` (outlines, odd-even) is cut out of it: nothing,
     // the area itself (when they do not meet), or the pieces - each piece that stands apart
     // an area of its own.  A piece whose edge was cut gets a contour with points and

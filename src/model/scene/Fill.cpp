@@ -472,6 +472,22 @@ QVector<Stroke> Stroke::minus(QVector<QPolygonF> const& area, double tolerance, 
     return pieces;
 }
 
+void Fill::giveContours(double tolerance)
+{
+    if (!contours.isEmpty() || outlines.isEmpty())
+        return;
+    for (QPolygonF const& outline : std::as_const(outlines))
+        contours.push_back(contourOf(outline, tolerance));
+    rebuild();
+    // (An outline too small to make a curve of would leave the two out of step: then the outlines stay as they were.)
+    if (contours.size() != outlines.size()) {
+        contours.clear();
+        for (QPolygonF const& outline : std::as_const(outlines))
+            contours.push_back(contourOf(outline, -1.0));
+        rebuild();
+    }
+}
+
 void Fill::rebuild()
 {
     if (contours.isEmpty())
