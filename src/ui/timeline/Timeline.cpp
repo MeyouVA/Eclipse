@@ -157,7 +157,7 @@ QRect Timeline::syncMarkRect(int layer) const
 {
     Scene const& scene = m_document->scene();
     QRect const name = nameRect(layer);
-    if (name.isNull() || layer < 0 || layer >= scene.layers.size() || scene.layers[layer].syncGroup == 0)
+    if (name.isNull() || layer < 0 || layer >= scene.layers.size() || (scene.layers[layer].syncGroup == 0 && scene.layers[layer].cloneGroup == 0))
         return QRect();
     return QRect(name.right() - 47, name.top() + (kRowHeight - 8) / 2, 14, 8);
 }

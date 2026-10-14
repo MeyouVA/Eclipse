@@ -410,6 +410,29 @@ void MainWindow::onActionCloneLayer()
     statusBar()->showMessage(tr("The two layers show the same drawings (a symbol): change them with Edit > Symbol > Edit Symbol and both change. Each keeps a timing of its own."), 8000);
 }
 
+void MainWindow::onActionCloneLayerTiming()
+{
+    int const at = m_document->addCloneLayer(layer());
+    if (at < 0) {
+        statusBar()->showMessage(tr("Select a drawing layer to clone."), 5000);
+        return;
+    }
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, frame());
+    updateActionStates();
+    statusBar()->showMessage(tr("The two layers are the same drawings and the same timing: what is drawn or timed on one is so on the other. Each has its own place."), 8000);
+}
+
+void MainWindow::onActionMakeCloneIndependent()
+{
+    if (layer() < 0 || layer() >= m_document->scene().layers.size() || m_document->scene().layers[layer()].cloneGroup == 0) {
+        statusBar()->showMessage(tr("Select a layer that is a clone."), 5000);
+        return;
+    }
+    m_document->makeCloneIndependent(layer());
+    updateActionStates();
+}
+
 void MainWindow::onActionDuplicateSymbol()
 {
     if (!m_document->duplicateSymbol(layer()))

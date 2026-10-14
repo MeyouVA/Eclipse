@@ -443,6 +443,77 @@ void Scene::syncLayerWith(int layer, int other)
             l.syncGroup = 0;
 }
 
+void Scene::followClones(Scene const& before)
+{
+    // The layer of each group this change touched (the first, should there be several).
+    QHash<int, int> touched;
+    QVector<bool> same(layers.size(), false);
+    for (int l = 0; l < layers.size(); ++l) {
+        if (layers[l].cloneGroup == 0)
+            continue;
+        int const was = before.layerIndex(layers[l].id);
+        // (A layer new to its group counts as untouched: it is the one that follows.)
+        bool changed = false;
+        if (was >= 0 && before.layers[was].cloneGroup == layers[l].cloneGroup) {
+            Layer const& old = before.layers[was];
+            // (Drawings that were not touched are still the very ones the scene had before.)
+            changed = old.cells != layers[l].cells || old.drawings.size() != layers[l].drawings.size() || old.drawings.constData() != layers[l].drawings.constData();
+        }
+        same[l] = !changed;
+        if (changed && !touched.contains(layers[l].cloneGroup))
+            touched.insert(layers[l].cloneGroup, l);
+    }
+    for (int l = 0; l < layers.size(); ++l) {
+        if (layers[l].cloneGroup == 0 || !same[l])
+            continue;
+        auto leader = touched.constFind(layers[l].cloneGroup);
+        if (leader == touched.constEnd() || layers[*leader].cells.size() != layers[l].cells.size())
+            continue;
+        layers[l].drawings = layers[*leader].drawings;
+        layers[l].cells = layers[*leader].cells;
+        layers[l].keyExposures = layers[*leader].keyExposures;
+    }
+}
+
+int Scene::addCloneLayer(int layer)
+{
+    if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())
+        return -1;
+    int const id = layers[layer].id, parent = layers[layer].parent;
+    int const at = addLayer(layers[layer].name + QStringLiteral(" Clone"), layer + 1);
+    int const from = layerIndex(id);
+    if (layers[from].cloneGroup == 0) {
+        int next = 1;
+        for (Layer const& l : std::as_const(layers))
+            next = std::max(next, l.cloneGroup + 1);
+        layers[from].cloneGroup = next;
+    }
+    layers[at].parent = parent;
+    layers[at].parentBone = layers[from].parentBone;
+    layers[at].cloneGroup = layers[from].cloneGroup;
+    layers[at].bitmap = layers[from].bitmap;
+    layers[at].drawings = layers[from].drawings;
+    layers[at].cells = layers[from].cells;
+    layers[at].keyExposures = layers[from].keyExposures;
+    return at;
+}
+
+void Scene::makeCloneIndependent(int layer)
+{
+    if (layer < 0 || layer >= layers.size() || layers[layer].cloneGroup == 0)
+        return;
+    int const group = layers[layer].cloneGroup;
+    layers[layer].cloneGroup = 0;
+    // A layer left alone in its group is a clone of nothing.
+    int members = 0;
+    for (Layer const& l : std::as_const(layers))
+        members += l.cloneGroup == group ? 1 : 0;
+    if (members < 2)
+        for (Layer& l : layers)
+            if (l.cloneGroup == group)
+                l.cloneGroup = 0;
+}
+
 int Scene::addSyncedLayer(int layer)
 {
     if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())

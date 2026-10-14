@@ -245,6 +245,9 @@ public:
     // Synced layers: a new drawing layer with the timing of `layer`, kept the same from then on; and a layer
     // synced with another (-1: with none any more).
     int addSyncedLayer(int layer);
+    // A clone of the layer: the same drawings and timing, changed on either; its place, or -1.
+    int addCloneLayer(int layer);
+    void makeCloneIndependent(int layer);
     void syncLayerWith(int layer, int other);
     // IK constraints of a bone: left out of IK; and whether it is turned only between two angles, and which.
     void setIkConstraints(int layer, bool excluded, bool limited, double minimum, double maximum);

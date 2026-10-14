@@ -488,8 +488,10 @@ void Timeline::paintEvent(QPaintEvent*)
         if (QRect const mark = syncMarkRect(layerIndex); !mark.isNull()) {
             // A synced layer: two links of a chain, in the colour of the layers it keeps time with.
             p.setRenderHint(QPainter::Antialiasing, true);
-            p.setPen(QPen(syncColour(layer.syncGroup), 1.6));
-            p.setBrush(Qt::NoBrush);
+            // (A clone: the links are filled.)
+            QColor const colour = layer.cloneGroup != 0 ? syncColour(layer.cloneGroup + 3) : syncColour(layer.syncGroup);
+            p.setPen(QPen(colour, 1.6));
+            p.setBrush(layer.cloneGroup != 0 ? QBrush(colour) : QBrush(Qt::NoBrush));
             p.drawRoundedRect(QRectF(mark.left() + 0.5, mark.top() + 0.5, 8, 7), 3.5, 3.5);
             p.drawRoundedRect(QRectF(mark.left() + 5.5, mark.top() + 0.5, 8, 7), 3.5, 3.5);
             p.setRenderHint(QPainter::Antialiasing, false);

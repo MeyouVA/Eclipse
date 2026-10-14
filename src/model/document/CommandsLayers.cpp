@@ -412,6 +412,22 @@ bool Document::duplicateSymbol(int layer)
     return true;
 }
 
+int Document::addCloneLayer(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())
+        return -1;
+    int at = -1;
+    apply(tr("Clone Layer"), [&](Scene& s) { at = s.addCloneLayer(layer); });
+    return at;
+}
+
+void Document::makeCloneIndependent(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].cloneGroup == 0)
+        return;
+    apply(tr("Make Clone Independent"), [&](Scene& s) { s.makeCloneIndependent(layer); });
+}
+
 int Document::addSyncedLayer(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())

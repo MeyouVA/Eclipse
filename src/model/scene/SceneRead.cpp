@@ -240,6 +240,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.symbolId = lo["symbol"].toInt(0);
         layer.syncGroup = std::max(0, lo["sync"].toInt(0));
         layer.hiddenSheets = lo["hiddenSheets"].toInt(0) & 15;
+        layer.cloneGroup = std::max(0, lo["clone"].toInt(0));
         layer.bitmap = lo["bitmap"].toBool(false);
         layer.ikExcluded = lo["ikExcluded"].toBool(false);
         if (QJsonArray const limits = lo["ikLimits"].toArray(); limits.size() == 2) {

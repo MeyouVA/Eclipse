@@ -341,6 +341,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["symbol"] = layer.symbolId;
         if (layer.syncGroup != 0)
             layerObject["sync"] = layer.syncGroup;
+        if (layer.cloneGroup != 0)
+            layerObject["clone"] = layer.cloneGroup;
         if (layer.bitmap)
             layerObject["bitmap"] = true;
         if (layer.hiddenSheets != 0)

@@ -54,6 +54,8 @@ void MainWindow::updateActionStates()
     set("LeaveSymbol", m_document->insideSymbol());
     set("CloneLayer", current.holdsDrawings());
     set("AddSyncedLayer", current.holdsDrawings() && !current.showsSymbol());
+    set("CloneLayerTiming", current.holdsDrawings() && !current.showsSymbol());
+    set("MakeCloneIndependent", current.cloneGroup != 0);
     set("SyncLayerWith", current.holdsDrawings() && !current.showsSymbol());
     set("InsertSymbol", !scene.symbols.isEmpty());
     // Keyframes.
