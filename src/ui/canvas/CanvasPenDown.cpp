@@ -18,6 +18,15 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         zoomAt(widgetPos, modifiers & Qt::AltModifier ? 1.0 / 1.5 : 1.5);
         return;
     }
+    // A frame in between the two drawings of a morphing has no drawing of its own to work on: a tool that changes artwork
+    // makes the morphing's frames real drawings first (a step of its own), then works on this one.
+    {
+        static QVector<Tool> const looking = {Hand, Zoom, RotateView, Transform, IK, Rigging, Dropper, Morphing, SplineOffset, Turn3D, Reposition};
+        Scene const& scene = m_document->scene();
+        if (!looking.contains(m_tool) && m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].holdsDrawings()
+            && scene.layers[m_layer].morphing(m_frame) && m_document->convertMorph(m_layer, m_frame))
+            emit message(tr("The morphing's frames in between were made drawings of their own, to draw on."));
+    }
     if (m_tool == Turn3D) {
         Scene const& scene = m_document->scene();
         if (m_layer >= 0 && m_layer < scene.layers.size() && !m_drawingView && !scene.layers[m_layer].locked) {
