@@ -33,7 +33,13 @@ QVector<Effect::Particle> Effect::particles(double rate, int frame) const
             double const angle = (direction + (chance(born, i, 0) - 0.5) * spread) * 3.14159265358979323846 / 180.0;
             double const pace = speed * (0.6 + 0.8 * chance(born, i, 1));
             Particle p;
-            QPointF const from((chance(born, i, 3) - 0.5) * regionWidth, (chance(born, i, 4) - 0.5) * regionHeight);
+            QPointF from((chance(born, i, 3) - 0.5) * regionWidth, (chance(born, i, 4) - 0.5) * regionHeight);
+            if (regionShape != 0) {
+                // Round: evenly over the inside of the ellipse, or along its edge.
+                double const turn = chance(born, i, 3) * 2.0 * 3.14159265358979323846;
+                double const reach = regionShape == 2 ? 1.0 : std::sqrt(chance(born, i, 4));
+                from = QPointF(std::cos(turn) * reach * regionWidth / 2.0, std::sin(turn) * reach * regionHeight / 2.0);
+            }
             double y = -std::sin(angle) * pace * age + 0.5 * gravity * age * age;
             if (floor > 0.0) {
                 // Off the floor: from one bounce to the next, each time with what is kept of its speed, going up again.

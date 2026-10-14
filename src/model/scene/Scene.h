@@ -438,6 +438,7 @@ struct Effect {
     double spin = 0.0;          // each turns by up to so many degrees a frame, one way or the other
     double regionWidth = 0.0;   // where they are let go from: anywhere in a box this wide and high about the drawing (0: from it)
     double regionHeight = 0.0;
+    int regionShape = 0;        // the region: 0 a box, 1 a round one (an ellipse that wide and high), 2 its edge only (a ring)
     double floor = 0.0;         // a floor so far below where they are let go, that they bounce off (0: none)
     double bounce = 0.5;        // how much of its speed a particle keeps when it bounces (0..1)
     struct Particle {

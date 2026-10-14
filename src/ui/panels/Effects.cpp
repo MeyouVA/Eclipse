@@ -286,6 +286,15 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
                     });
             });
         }
+        // The shape of the region they are let go from.
+        m_particleShape = new QComboBox(m_particles);
+        m_particleShape->setObjectName(QStringLiteral("ParticleRegionShape"));
+        m_particleShape->addItems({tr("Box"), tr("Round"), tr("Ring (its edge)")});
+        form->addRow(tr("Region Shape"), m_particleShape);
+        connect(m_particleShape, &QComboBox::currentIndexChanged, this, [this](int shape) {
+            if (!m_rebuilding && shape >= 0)
+                edit([shape](Effect& e) { e.regionShape = shape; });
+        });
         // The colour they turn to as they age.
         m_particleRecolour = new QCheckBox(tr("Turn to"), m_particles);
         m_particleRecolour->setObjectName(QStringLiteral("ParticleRecolour"));
@@ -492,6 +501,7 @@ void EffectsPanel::showEditors()
         m_particleBox[10]->setValue(e.regionHeight);
         m_particleBox[11]->setValue(e.floor);
         m_particleBox[12]->setValue(e.bounce);
+        m_particleShape->setCurrentIndex(std::clamp(e.regionShape, 0, 2));
         m_particleRecolour->setChecked(e.endColor.isValid());
         m_particleColour->setEnabled(e.endColor.isValid());
         m_particleColour->setStyleSheet(e.endColor.isValid() ? QStringLiteral("background-color: %1;").arg(e.endColor.name()) : QString());

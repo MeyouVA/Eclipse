@@ -345,6 +345,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                     one["spin"] = e.spin;
                     one["regionW"] = e.regionWidth;
                     one["regionH"] = e.regionHeight;
+                    one["regionShape"] = e.regionShape;
                     one["floor"] = e.floor;
                     one["bounce"] = e.bounce;
                 }

@@ -67,6 +67,7 @@ private:
     // life, speed, spread, direction, gravity, seed, size at the end, wind, spin, region width and height, floor, bounce
     QDoubleSpinBox* m_particleBox[13] = {};
     QPushButton* m_particleColour = nullptr;
+    class QComboBox* m_particleShape = nullptr;
     class QCheckBox* m_particleRecolour = nullptr;
     class QCheckBox* m_particleFollow = nullptr;
     QCheckBox* m_animated;
