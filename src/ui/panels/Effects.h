@@ -64,7 +64,8 @@ private:
     QComboBox* m_matte;
     QCheckBox* m_invert;
     QWidget* m_particles = nullptr;
-    QDoubleSpinBox* m_particleBox[6] = {};
+    QDoubleSpinBox* m_particleBox[7] = {};
+    class QCheckBox* m_particleFollow = nullptr;
     QCheckBox* m_animated;
     QLabel* m_offsetLabel;
     QDoubleSpinBox* m_offsetX;

@@ -386,6 +386,8 @@ public:
 
 signals:
     void changed();
+    // The scene worked on is another one: a symbol gone into or come out of (by undo and redo too).
+    void levelChanged();
 
 private:
     friend class SceneStateCommand;

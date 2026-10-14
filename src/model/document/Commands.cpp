@@ -13,16 +13,26 @@ public:
     }
     void undo() override
     {
+        if (!fits(true))
+            return;     // (never so: the scene is the one the stroke was drawn on)
         m_doc->m_scene.layers[m_layer].drawings[m_drawing].strokes.removeLast();
         emit m_doc->changed();
     }
     void redo() override
     {
+        if (!fits(false))
+            return;
         m_doc->m_scene.layers[m_layer].drawings[m_drawing].strokes.push_back(m_stroke);
         emit m_doc->changed();
     }
 
 private:
+    bool fits(bool taking) const
+    {
+        Scene const& s = m_doc->m_scene;
+        return m_layer >= 0 && m_layer < s.layers.size() && m_drawing >= 0 && m_drawing < s.layers[m_layer].drawings.size()
+               && (!taking || !s.layers[m_layer].drawings[m_drawing].strokes.isEmpty());
+    }
     Document* m_doc;
     int m_layer;
     int m_drawing;
@@ -48,6 +58,7 @@ private:
         m_doc->m_scene = scene;
         m_doc->m_around = around;
         emit m_doc->changed();
+        emit m_doc->levelChanged();
     }
     Document* m_doc;
     Scene m_before, m_after;

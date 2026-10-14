@@ -608,10 +608,23 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         if (thrown < 0) {
             picture();
         } else {
+            Effect const& emitter = layer.effects[thrown];
             double const rate = layer.effectAmount(thrown, layer.poseAt(frame));
-            for (Effect::Particle const& particle : layer.effects[thrown].particles(rate, frame)) {
+            QTransform const now = scene.worldTransform(l, frame);
+            QTransform const base = off.transform();
+            for (Effect::Particle const& particle : emitter.particles(rate, frame)) {
                 off.save();
+                // Each stays where the layer was when it was let go (unless it is to move with the layer).
+                if (!emitter.followLayer && particle.born != frame && now.isInvertible())
+                    off.setTransform(scene.worldTransform(l, particle.born) * now.inverted() * base);
                 off.translate(particle.offset);
+                if (particle.scale != 1.0) {
+                    // Grown or shrunk about the middle of the drawing.
+                    QPointF const middle = drawing.bounds().center();
+                    off.translate(middle);
+                    off.scale(particle.scale, particle.scale);
+                    off.translate(-middle);
+                }
                 off.setOpacity(particle.opacity);
                 picture();
                 off.restore();

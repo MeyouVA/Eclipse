@@ -46,6 +46,8 @@ class ECLIPSE_UI_API MainWindow : public QMainWindow {
 
 public:
     explicit MainWindow(QWidget* parent = nullptr);
+    // (Lets go of the application's signals first: nothing reaches a window half taken apart.)
+    ~MainWindow() override;
 
     bool openFile(QString const& path);
     // The frames playback runs between (the first is 0).  `stop` -1 is the end of the scene.

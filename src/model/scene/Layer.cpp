@@ -35,6 +35,8 @@ QVector<Effect::Particle> Effect::particles(double rate, int frame) const
             Particle p;
             p.offset = QPointF(std::cos(angle) * pace * age, -std::sin(angle) * pace * age + 0.5 * gravity * age * age);
             p.opacity = 1.0 - age / lasts;
+            p.scale = 1.0 + (endSize - 1.0) * age / lasts;
+            p.born = born;
             out.push_back(p);
         }
     }

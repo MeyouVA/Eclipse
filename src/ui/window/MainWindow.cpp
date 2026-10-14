@@ -2,6 +2,7 @@
 #include "ui/window/MainWindow.h"
 #include "model/geometry/Deform.h"
 
+#include <QApplication>
 #include <QMenu>
 #include <QMessageBox>
 #include <QStatusBar>
@@ -29,6 +30,23 @@
 #include <QLabel>
 #include <QSlider>
 #include <QSpinBox>
+
+MainWindow::~MainWindow()
+{
+    // The views are taken apart after this: the keyboard focus moving among them, and events on the way to them,
+    // are not to come here any more.
+    disconnect(qApp, nullptr, this, nullptr);
+    qApp->removeEventFilter(this);
+    if (m_actions)
+        m_actions->setActiveView(nullptr);
+    // Nor are the views, panels and the document to tell anyone anything while they go (a dock hidden, a focus moved):
+    // what would hear it may already be gone.
+    for (QObject* const child : findChildren<QObject*>())
+        child->blockSignals(true);
+    // The list of things to undo is emptied as the document goes, and says so: no one is to hear it.
+    if (m_document)
+        m_document->undoStack()->blockSignals(true);
+}
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -119,6 +137,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(m_timeline, &Timeline::currentCellChanged, this, &MainWindow::updateActionStates);
     connect(m_timeline, &Timeline::selectionChanged, this, &MainWindow::updateActionStates);
     connect(m_document, &Document::changed, this, &MainWindow::updateActionStates);
+    // Another scene in hand (a symbol gone into or out of, by undo as well): nothing of the old one stays picked.
+    connect(m_document, &Document::levelChanged, this, [this] {
+        if (m_playTimer.isActive())
+            stop();
+        m_canvas->clearSelection();
+        m_canvas->pickControlPoint(-1, -1);
+        m_timeline->clearRange();
+        Scene const& scene = m_document->scene();
+        m_timeline->setCurrentCell(std::clamp(layer(), 0, std::max(0, int(scene.layers.size()) - 1)), std::clamp(frame(), 0, std::max(0, scene.frameCount() - 1)));
+        updateTitle();
+        updateActionStates();
+    });
     updateActionStates();
     connect(m_canvas, &Canvas::colourPicked, this, [this](int swatch, QColor const& colour) {
         // The colour of the palette it was painted with; else one of the same colour; else

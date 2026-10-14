@@ -429,9 +429,13 @@ struct Effect {
     double direction = 90.0;
     double gravity = 0.3;
     int seed = 1;               // another number, another scattering
+    double endSize = 1.0;       // how big a particle is at the end of its life (1: as big as when it left)
+    bool followLayer = false;   // the particles move with the layer; off: each stays where the layer was when it was let go
     struct Particle {
-        QPointF offset;         // from where the drawing itself is
+        QPointF offset;         // from where the drawing itself is (was, on the frame it was let go)
         double opacity = 1.0;
+        double scale = 1.0;
+        int born = 0;           // the frame it was let go on
         bool operator==(Particle const&) const = default;
     };
     // The particles there are on `frame` (from 0) with `rate` let go each frame: the same every time it is asked.

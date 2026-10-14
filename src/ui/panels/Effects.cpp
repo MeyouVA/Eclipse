@@ -245,6 +245,27 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
                 });
             });
         }
+        // How big at the end of its life; and whether they move with the layer.
+        m_particleBox[6] = new QDoubleSpinBox(m_particles);
+        m_particleBox[6]->setObjectName(QStringLiteral("ParticleEndSize"));
+        m_particleBox[6]->setRange(0.0, 20.0);
+        m_particleBox[6]->setSingleStep(0.1);
+        m_particleBox[6]->setDecimals(2);
+        m_particleBox[6]->setKeyboardTracking(false);
+        m_particleBox[6]->setToolTip(tr("How big a particle is when it dies, against how big it was when it left (1: the same)."));
+        form->addRow(tr("Size at the End"), m_particleBox[6]);
+        connect(m_particleBox[6], &QDoubleSpinBox::valueChanged, this, [this](double v) {
+            if (!m_rebuilding)
+                edit([v](Effect& e) { e.endSize = v; });
+        });
+        m_particleFollow = new QCheckBox(tr("Move with the layer"), m_particles);
+        m_particleFollow->setObjectName(QStringLiteral("ParticleFollow"));
+        m_particleFollow->setToolTip(tr("On: the particles go where the layer goes. Off: each stays where the layer was when it was let go."));
+        form->addRow(m_particleFollow);
+        connect(m_particleFollow, &QCheckBox::toggled, this, [this](bool on) {
+            if (!m_rebuilding)
+                edit([on](Effect& e) { e.followLayer = on; });
+        });
         layout->addWidget(m_particles);
     }
 
@@ -413,6 +434,8 @@ void EffectsPanel::showEditors()
         double const values[6] = {double(e.life), e.speed, e.spread, e.direction, e.gravity, double(e.seed)};
         for (int i = 0; i < 6; ++i)
             m_particleBox[i]->setValue(values[i]);
+        m_particleBox[6]->setValue(e.endSize);
+        m_particleFollow->setChecked(e.followLayer);
         m_amountLabel->setText(tr("Each Frame"));
         m_amount->setRange(0.0, 50.0);
         m_amount->setDecimals(1);

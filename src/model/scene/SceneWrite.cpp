@@ -337,6 +337,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                     one["direction"] = e.direction;
                     one["gravity"] = e.gravity;
                     one["seed"] = e.seed;
+                    one["endSize"] = e.endSize;
+                    one["follow"] = e.followLayer;
                 }
                 effects.append(one);
             }
