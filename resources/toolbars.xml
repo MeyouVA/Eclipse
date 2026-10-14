@@ -93,14 +93,21 @@
 
  <!-- Belongs to the Timeline view and sits inside it. -->
  <toolbar id="TimelineViewToolbar" text="Timeline View">
-  <item id="InsertDrawing" toolbarText="+ Drawing"/>
-  <item id="InsertPeg" toolbarText="+ Peg"/>
-  <item id="InsertCamera"/>
-  <item id="ImportSound"/>
-  <item id="DeleteLayers" toolbarText="- Layer"/>
+  <item id="OnionSkinToggle" toolbarText="Onion Skin"/>
+  <item id="ShowWaveforms" toolbarText="Waveforms"/>
+  <item id="ImportImages" toolbarText="Import"/>
+  <separator/>
+  <item id="CloneLayer" toolbarText="Clone"/>
+  <item id="CloneLayerTiming" toolbarText="Clone + Timing"/>
+  <item id="DuplicateLayer" toolbarText="Duplicate Layers"/>
   <separator/>
   <item id="CreateEmptyDrawing" toolbarText="New Drawing"/>
   <item id="DuplicateDrawing" toolbarText="Duplicate"/>
+  <separator/>
+  <item id="AddKeyExposure" toolbarText="+ Key Exposure"/>
+  <item id="FillEmptyCells" toolbarText="Fill"/>
+  <item id="RemoveDuplicateKeyExposure" toolbarText="- Duplicate Keys"/>
+  <item id="RemoveKeyExposure" toolbarText="- Key Exposure"/>
   <separator/>
   <item id="InsertKeyframe" toolbarText="+ Key"/>
   <item id="DeleteKeyframe" toolbarText="- Key"/>
@@ -108,6 +115,20 @@
   <item id="GotoNextKeyframe" toolbarText="Key &gt;"/>
   <item id="SetMotionKeyframe" toolbarText="Motion"/>
   <item id="SetStopMotionKeyframe" toolbarText="Stop-Motion"/>
+  <separator/>
+  <item id="PasteSpecial" toolbarText="Paste Special"/>
+  <item id="ImportMovie" visible="false"/>
+  <item id="EditCut" visible="false"/>
+  <item id="EditCopy" visible="false"/>
+  <item id="EditPaste" visible="false"/>
+  <item id="PasteSpecialAgain" visible="false"/>
+  <item id="EditDelete" visible="false"/>
+  <item id="EditSelectAll" visible="false"/>
+  <item id="DeleteLayers" toolbarText="- Layer" visible="false"/>
+  <item id="InsertDrawing" toolbarText="+ Drawing" visible="false"/>
+  <item id="ImportSound" visible="false"/>
+  <item id="InsertPeg" toolbarText="+ Peg" visible="false"/>
+  <item id="InsertCamera" visible="false"/>
   <item id="ExtendExposure" visible="false"/>
   <item id="ClearExposure" visible="false"/>
   <item id="InsertParentPeg" visible="false"/>
