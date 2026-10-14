@@ -51,6 +51,11 @@ void Timeline::rebuildRows()
             m_rows.push_back(l);
             m_params.push_back(which);
         }
+        // And the amount of each of its effects.
+        for (int e = 0; e < scene.layers[l].effects.size(); ++e) {
+            m_rows.push_back(l);
+            m_params.push_back(ParameterCount + e);
+        }
     }
 }
 

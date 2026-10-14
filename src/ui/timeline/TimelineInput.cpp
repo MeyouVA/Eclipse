@@ -316,10 +316,12 @@ void Timeline::mouseMoveEvent(QMouseEvent* event)
             return;
         if (!m_dragParamBegun) {
             m_dragParamBegun = true;
-            m_document->beginMacro(tr("Set %1").arg(parameterName(m_dragParam)));
+            m_document->beginMacro(tr("Set %1").arg(rowName(m_dragParamLayer, m_dragParam)));
         }
         // A pixel is one of what places and angles are counted in, a hundredth of a scale or of the opacity.
-        double const step = m_dragParam == ScaleX || m_dragParam == ScaleY || m_dragParam == Opacity ? 0.01 : m_dragParam == Fov ? 0.5 : 1.0;
+        double step = m_dragParam == ScaleX || m_dragParam == ScaleY || m_dragParam == Opacity ? 0.01 : m_dragParam == Fov ? 0.5 : 1.0;
+        if (isEffectRow(m_dragParam))
+            step = rowInPercent(m_dragParamLayer, m_dragParam) ? 0.01 : 0.1;
         setParameter(m_dragParamLayer, m_dragParam, m_dragParamFrom + moved * step);
         viewport()->update();
         return;

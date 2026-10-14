@@ -2,6 +2,7 @@
 #include "ui/timeline/Timeline.h"
 
 #include <QKeyEvent>
+#include <algorithm>
 #include <QLineEdit>
 
 #include "audio/sound/Sound.h"
@@ -94,7 +95,31 @@ QRect Timeline::parameterRowRect(int layer, Parameter which) const
     int const row = rowOfLayer(layer);
     if (row < 0 || !parametersShown(layer) || !parameterFor(m_document->scene().layers[layer].kind, which))
         return QRect();
-    return QRect(0, kRulerHeight + (row + 1 + int(which)) * kRowHeight - verticalScrollBar()->value(), kHeaderWidth, kRowHeight);
+    for (int r = row + 1; r < m_rows.size() && m_rows[r] == layer && m_params[r] >= 0; ++r)
+        if (m_params[r] == int(which))
+            return QRect(0, kRulerHeight + r * kRowHeight - verticalScrollBar()->value(), kHeaderWidth, kRowHeight);
+    return QRect();
+}
+
+// An effect whose amount is a share (shown in percent).
+static bool inPercent(Effect const& e)
+{
+    return e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast;
+}
+
+QString Timeline::rowName(int layer, Parameter which) const
+{
+    if (!isEffectRow(which))
+        return parameterName(which);
+    Scene const& scene = m_document->scene();
+    int const e = int(which) - ParameterCount;
+    if (layer < 0 || layer >= scene.layers.size() || e >= scene.layers[layer].effects.size())
+        return QString();
+    static char const* const kNames[Effect::TypeCount] = {QT_TR_NOOP("Blur"), QT_TR_NOOP("Tint"), QT_TR_NOOP("Cutter"), QT_TR_NOOP("Glow"),
+                                                          QT_TR_NOOP("Shadow"), QT_TR_NOOP("Particles"), QT_TR_NOOP("Transparency"),
+                                                          QT_TR_NOOP("Directional Blur"), QT_TR_NOOP("Hue-Saturation"), QT_TR_NOOP("Brightness-Contrast")};
+    Effect const& effect = scene.layers[layer].effects[e];
+    return tr("Effect: %1").arg(tr(kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)]));
 }
 
 QRect Timeline::parameterValueRect(int layer, Parameter which) const
@@ -113,6 +138,8 @@ double Timeline::parameter(int layer, Parameter which) const
     if (which == Fov)
         return scene.layers[layer].fovAt(m_frame);     // the angle it has, whether a keyframe says or the camera does
     Pose pose = scene.layers[layer].poseAt(m_frame);
+    if (isEffectRow(which))
+        return scene.layers[layer].effectAmount(int(which) - ParameterCount, pose);
     return poseField(pose, which);
 }
 
@@ -121,11 +148,25 @@ bool Timeline::parameterFor(int layerKind, Parameter which)
     return which != Fov || layerKind == Layer::Camera;
 }
 
+// Whether the row of `which` shows a share in percent.
+static bool percentRow(Scene const& scene, int layer, Timeline::Parameter which)
+{
+    if (which == Timeline::Opacity)
+        return true;
+    int const e = int(which) - Timeline::ParameterCount;
+    return e >= 0 && layer >= 0 && layer < scene.layers.size() && e < scene.layers[layer].effects.size() && inPercent(scene.layers[layer].effects[e]);
+}
+
+bool Timeline::rowInPercent(int layer, Parameter which) const
+{
+    return percentRow(m_document->scene(), layer, which);
+}
+
 QString Timeline::parameterText(int layer, Parameter which) const
 {
     double const value = parameter(layer, which);
     // Opacity as a percentage; the rest to three places, without noughts at the end.
-    QString text = QString::number(which == Opacity ? value * 100.0 : value, 'f', 3);
+    QString text = QString::number(percentRow(m_document->scene(), layer, which) ? value * 100.0 : value, 'f', 3);
     while (text.endsWith(QLatin1Char('0')))
         text.chop(1);
     if (text.endsWith(QLatin1Char('.')))
@@ -140,6 +181,22 @@ void Timeline::setParameter(int layer, Parameter which, double value)
         return;
     if (which == Opacity)
         value = std::clamp(value, 0.0, 1.0);
+    if (isEffectRow(which)) {
+        // An animated effect: a keyframe of its amount here; otherwise its one amount.
+        int const e = int(which) - ParameterCount;
+        if (e >= scene.layers[layer].effects.size())
+            return;
+        Effect const& effect = scene.layers[layer].effects[e];
+        value = std::max(0.0, inPercent(effect) ? std::min(value, 1.0) : value);
+        if (effect.animated) {
+            m_document->setEffectAmount(layer, m_frame, e, value);
+        } else if (effect.amount != value) {
+            QVector<Effect> effects = scene.layers[layer].effects;
+            effects[e].amount = value;
+            m_document->setEffects(layer, effects, tr("Change Effect"));
+        }
+        return;
+    }
     if (which == Fov) {
         if (scene.layers[layer].kind == Layer::Camera)
             m_document->setFov(layer, value, m_frame);
@@ -185,7 +242,7 @@ void Timeline::closeEntry(bool take)
     entry->hide();
     entry->deleteLater();
     if (take && ok)
-        setParameter(m_entryLayer, m_entryParam, m_entryParam == Opacity ? value / 100.0 : value);
+        setParameter(m_entryLayer, m_entryParam, percentRow(m_document->scene(), m_entryLayer, m_entryParam) ? value / 100.0 : value);
     viewport()->update();
 }
 

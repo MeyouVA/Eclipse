@@ -44,7 +44,12 @@ public:
     static QColor syncColour(int group) { return QColor::fromHsv((group * 67 + 150) % 360, 150, 235); }
 
     // ---- the parameters of a layer: a row each under it, opened with the + after its name ----
-    enum Parameter { PosX, PosY, ScaleX, ScaleY, Angle, Opacity, PosZ, Skew, Fov, ParameterCount };       // (Fov last: only cameras have it)
+    // (Fov last: only cameras have it.)  After them, a row for the amount of each effect of the layer: ParameterCount + its place.
+    enum Parameter : int { PosX, PosY, ScaleX, ScaleY, Angle, Opacity, PosZ, Skew, Fov, ParameterCount };
+    static bool isEffectRow(Parameter which) { return which >= ParameterCount; }
+    // The name a row goes by: a parameter's, or the effect's of the layer; whether its value is a share shown in percent.
+    QString rowName(int layer, Parameter which) const;
+    bool rowInPercent(int layer, Parameter which) const;
     // Whether a kind of layer has that parameter (the angle of view is a camera's alone).
     static bool parameterFor(int layerKind, Parameter which);
     static QString parameterName(Parameter which);

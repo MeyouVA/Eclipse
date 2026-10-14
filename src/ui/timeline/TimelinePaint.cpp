@@ -155,10 +155,14 @@ void Timeline::paintEvent(QPaintEvent*)
         QColor const keyColor(255, 190, 70);
         int const ky = layer.holdsDrawings() && !param ? y + kRowHeight - 6 : y + kRowHeight / 2;
         // On a parameter's row, the keyframes that set that parameter only.
-        int const part = param ? 1 << m_params[row] : Keyframe::AllParts;
+        // (On an effect's row, the keyframes that carry its amount: only an animated effect has them.)
+        bool const effectRow = param && m_params[row] >= ParameterCount;
+        int const effect = effectRow ? m_params[row] - ParameterCount : -1;
+        bool const keyedEffect = effectRow && effect < layer.effects.size() && layer.effects[effect].animated;
+        int const part = !param ? Keyframe::AllParts : effectRow ? Keyframe::PartRest : 1 << m_params[row];
         QVector<int> mine;
         for (int k = 0; k < layer.keys.size(); ++k)
-            if (layer.keys[k].parts & part)
+            if ((layer.keys[k].parts & part) && (!effectRow || (keyedEffect && effect < layer.keys[k].pose.fx.size())))
                 mine.push_back(k);
         for (int n = 0; n + 1 < mine.size(); ++n) {
             Keyframe const& key = layer.keys[mine[n]];
@@ -398,7 +402,7 @@ void Timeline::paintEvent(QPaintEvent*)
             p.fillRect(0, y, kHeaderWidth, kRowHeight, QColor(60, 60, 60));
             p.setPen(dim);
             int const nameLeft = kSwitches + std::min(scene.depth(layerIndex), 6) * 10 + 40;
-            p.drawText(QRect(nameLeft, y, nameEnd - nameLeft - 4, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft, parameterName(which));
+            p.drawText(QRect(nameLeft, y, nameEnd - nameLeft - 4, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft, rowName(layerIndex, which));
             QRect const box = parameterValueRect(layerIndex, which);
             p.setRenderHint(QPainter::Antialiasing, false);
             p.fillRect(box, QColor(46, 46, 46));
