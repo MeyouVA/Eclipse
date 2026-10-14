@@ -19,6 +19,7 @@
 #include "ui/views/GuidesView.h"
 #include "ui/views/CoordView.h"
 #include "ui/views/MetadataView.h"
+#include "ui/views/PythonConsole.h"
 #include "ui/views/ScriptView.h"
 #include "ui/views/ControllerView.h"
 #include "ui/views/Graph3DView.h"
@@ -90,6 +91,12 @@ void MainWindow::createWindowsMenuViews()
         addView(tr("Script Editor"), QStringLiteral("ScriptDock"), view, Qt::BottomDockWidgetArea)->hide();
         connect(view, &ScriptView::scriptsChanged, this, &MainWindow::refreshScriptCommands);
         refreshScriptCommands();
+    }
+    // Python Console: lines of Python run on the scene, by the Python installed on the computer.
+    {
+        PythonConsole* const view = new PythonConsole(m_document, m_timeline, this);
+        view->setObjectName(QStringLiteral("PythonConsole"));
+        addView(tr("Python Console"), QStringLiteral("PythonDock"), view, Qt::BottomDockWidgetArea)->hide();
     }
     // 3D Graph: the layers as they hang together, with where each stands in space.
     {
