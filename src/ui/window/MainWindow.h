@@ -62,7 +62,7 @@ public:
     int playStop() const;
     // Starts an empty scene of this camera size and saves it as `path`, making the
     // folder it goes in.
-    bool createScene(QString const& path, int width, int height, double fps);
+    bool createScene(QString const& path, int width, int height, double fps, double fov = 0.0);
     ActionManager* actions() const { return m_actions; }
 
     // ---- workspaces: named arrangements of the views ------------------------------------

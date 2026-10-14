@@ -406,7 +406,8 @@ public:
     // The same exposure command on several layers, as one undo step.
     void beginMacro(QString const& text) { m_undo.beginMacro(text); }
     void endMacro() { m_undo.endMacro(); }
-    void setSceneSettings(int width, int height, double fps);
+    // `fov` (above 0): the angle of view of the camera size; a camera that had the old one, and does not key it, takes it.
+    void setSceneSettings(int width, int height, double fps, double fov = 0.0);
 
 signals:
     void changed();

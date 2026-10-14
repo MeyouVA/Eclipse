@@ -123,6 +123,13 @@ void MainWindow::onActionSceneSettings()
     fps->setRange(1.0, 240.0);
     fps->setDecimals(3);
     fps->setValue(scene.fps);
+    QDoubleSpinBox* const fov = new QDoubleSpinBox(&dialog);
+    fov->setObjectName(QStringLiteral("SceneFov"));
+    fov->setRange(1.0, 170.0);
+    fov->setDecimals(3);
+    fov->setSuffix(tr(" deg"));
+    fov->setToolTip(tr("The angle of view of the camera size: cameras that have not been given another angle take it."));
+    fov->setValue(scene.fov);
     // The sizes there are to choose from: one picked fills in the width, the height and the rate.
     QComboBox* const presets = new QComboBox(&dialog);
     presets->setObjectName(QStringLiteral("ScenePresets"));
@@ -130,15 +137,16 @@ void MainWindow::onActionSceneSettings()
     QVector<Resolution> const known = WelcomeDialog::resolutions(ActionManager::defaultDirectory());
     for (Resolution const& r : known) {
         presets->addItem(tr("%1   (%2 x %3, %4 fps)").arg(r.name).arg(r.width).arg(r.height).arg(r.fps));
-        if (r.width == scene.width && r.height == scene.height && r.fps == scene.fps && presets->currentIndex() == 0)
+        if (r.width == scene.width && r.height == scene.height && r.fps == scene.fps && std::abs(r.fov - scene.fov) < 1e-6 && presets->currentIndex() == 0)
             presets->setCurrentIndex(presets->count() - 1);
     }
-    connect(presets, &QComboBox::activated, &dialog, [known, width, height, fps](int index) {
+    connect(presets, &QComboBox::activated, &dialog, [known, width, height, fps, fov](int index) {
         if (index < 1 || index > known.size())
             return;
         width->setValue(known[index - 1].width);
         height->setValue(known[index - 1].height);
         fps->setValue(known[index - 1].fps);
+        fov->setValue(known[index - 1].fov);
     });
     QLabel* const shape = new QLabel(&dialog);
     shape->setObjectName(QStringLiteral("SceneAspect"));
@@ -151,6 +159,7 @@ void MainWindow::onActionSceneSettings()
     form->addRow(tr("Height"), height);
     form->addRow(tr("Aspect ratio"), shape);
     form->addRow(tr("Frames per second"), fps);
+    form->addRow(tr("Field of view"), fov);
     QComboBox* const projection = new QComboBox(&dialog);
     projection->setObjectName(QStringLiteral("SceneProjection"));
     projection->addItems({tr("Perspective"), tr("Orthographic")});
@@ -163,7 +172,7 @@ void MainWindow::onActionSceneSettings()
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     if (dialog.exec() == QDialog::Accepted) {
         m_document->beginMacro(tr("Scene Settings"));
-        m_document->setSceneSettings(width->value(), height->value(), fps->value());
+        m_document->setSceneSettings(width->value(), height->value(), fps->value(), fov->value());
         m_document->setOrthographic(projection->currentIndex() == 1);
         m_document->endMacro();
         m_canvas->fitToWindow();

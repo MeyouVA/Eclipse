@@ -98,18 +98,22 @@ QVector<Resolution> WelcomeDialog::resolutions(QString const& resourceDirectory,
             r.width = a.value(QLatin1String("width")).toInt();
             r.height = a.value(QLatin1String("height")).toInt();
             r.fps = a.value(QLatin1String("fps")).toDouble();
+            if (a.hasAttribute(QLatin1String("fov")))
+                r.fov = std::clamp(a.value(QLatin1String("fov")).toDouble(), 1.0, 170.0);
             if (!r.name.isEmpty() && r.width > 0 && r.height > 0 && r.fps > 0.0)
                 all.push_back(r);
         }
     }
     if (all.isEmpty())
         all.push_back({QStringLiteral("HDTV_1080p24"), 1920, 1080, 24.0, false});  // the file is missing or empty
-    // The user's own: "name|width|height|fps".
+    // The user's own: "name|width|height|fps|fov" (the angle left out by sizes kept before there was one).
     for (QString const& line : settings().value(QStringLiteral("resolutions/custom")).toStringList()) {
         QStringList const parts = line.split(QLatin1Char('|'));
-        if (parts.size() != 4)
+        if (parts.size() != 4 && parts.size() != 5)
             continue;
         Resolution r{parts[0], parts[1].toInt(), parts[2].toInt(), parts[3].toDouble(), true};
+        if (parts.size() == 5 && parts[4].toDouble() > 0.0)
+            r.fov = std::clamp(parts[4].toDouble(), 1.0, 170.0);
         if (!r.name.isEmpty() && r.width > 0 && r.height > 0 && r.fps > 0.0)
             all.push_back(r);
     }
@@ -121,7 +125,7 @@ static void saveCustom(QVector<Resolution> const& all)
     QStringList lines;
     for (Resolution const& r : all)
         if (r.custom)
-            lines << QStringLiteral("%1|%2|%3|%4").arg(r.name).arg(r.width).arg(r.height).arg(fpsText(r.fps));
+            lines << QStringLiteral("%1|%2|%3|%4|%5").arg(r.name).arg(r.width).arg(r.height).arg(fpsText(r.fps)).arg(QString::number(r.fov, 'g', 6));
     settings().setValue(QStringLiteral("resolutions/custom"), lines);
 }
 
@@ -181,6 +185,7 @@ WelcomeDialog::WelcomeDialog(QString const& resourceDirectory, QWidget* parent, 
     m_width = readOnly("Width");
     m_height = readOnly("Height");
     m_fps = readOnly("FrameRate");
+    m_fov = readOnly("FieldOfView");
 
     QHBoxLayout* const sizeButtons = new QHBoxLayout;
     sizeButtons->addWidget(add);
@@ -208,7 +213,9 @@ WelcomeDialog::WelcomeDialog(QString const& resourceDirectory, QWidget* parent, 
     grid->addWidget(m_height, 4, 1, Qt::AlignLeft);
     label(tr("Frame Rate:"), 5);
     grid->addWidget(m_fps, 5, 1, Qt::AlignLeft);
-    grid->setRowStretch(6, 1);
+    label(tr("Field of View:"), 6);
+    grid->addWidget(m_fov, 6, 1, Qt::AlignLeft);
+    grid->setRowStretch(7, 1);
     grid->setColumnStretch(1, 1);
 
     // ---- a scene there already is ----
@@ -305,6 +312,7 @@ void WelcomeDialog::showResolution()
     m_width->setText(QString::number(r.width));
     m_height->setText(QString::number(r.height));
     m_fps->setText(fpsText(r.fps));
+    m_fov->setText(QString::number(r.fov, 'g', 6));
     m_remove->setEnabled(r.custom);
 }
 
@@ -326,10 +334,18 @@ void WelcomeDialog::addResolution()
     width->setValue(from.width);
     height->setValue(from.height);
     QLabel* const ratio = new QLabel(sizeBox);
+    QDoubleSpinBox* const fov = new QDoubleSpinBox(sizeBox);
+    fov->setObjectName(QStringLiteral("ResolutionFov"));
+    fov->setRange(1.0, 170.0);
+    fov->setDecimals(3);
+    fov->setSuffix(tr(" deg"));
+    fov->setToolTip(tr("The camera's angle of view, top to bottom: how much nearer layers grow, and further ones shrink, with depth."));
+    fov->setValue(from.fov);
     QFormLayout* const sizeForm = new QFormLayout(sizeBox);
     sizeForm->addRow(tr("Width:"), width);
     sizeForm->addRow(tr("Height:"), height);
     sizeForm->addRow(tr("Aspect Ratio:"), ratio);
+    sizeForm->addRow(tr("Field of View:"), fov);
 
     QGroupBox* const rateBox = new QGroupBox(tr("Frame Rate"), &dialog);
     QComboBox* const preset = new QComboBox(rateBox);
@@ -387,7 +403,7 @@ void WelcomeDialog::addResolution()
 
     if (dialog.exec() != QDialog::Accepted)
         return;
-    m_resolutions.push_back({name->text().trimmed(), width->value(), height->value(), fps->value(), true});
+    m_resolutions.push_back({name->text().trimmed(), width->value(), height->value(), fps->value(), true, fov->value()});
     saveCustom(m_resolutions);
     fillResolutions(m_resolutions.last().name);
 }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The camera sizes offered when a scene is made.  Add the ones you use often; sizes
-     made in the program itself are kept with the user's settings, not here. -->
+     made in the program itself are kept with the user's settings, not here.  A size may
+     give its camera's angle of view (fov, degrees top to bottom); 41.112 when it does not. -->
 <resolutions default="HDTV_1080p24">
  <resolution name="HDTV_1080p24" width="1920" height="1080" fps="24"/>
  <resolution name="HDTV_1080p25" width="1920" height="1080" fps="25"/>

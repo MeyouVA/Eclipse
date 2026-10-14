@@ -559,6 +559,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"height", height},
                        {"fps", fps},
                        {"orthographic", orthographic},
+                       {"fov", fov},
                        {"camera", activeCamera},
                        {"display", display},
                        {"references", referenceArray},

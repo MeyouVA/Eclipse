@@ -55,7 +55,7 @@ void MainWindow::onActionNewScene()
     if (form.exec() != QDialog::Accepted || form.choice() != WelcomeDialog::CreateScene || !confirmDiscard())
         return;
     Resolution const size = form.resolution();
-    createScene(form.path(), size.width, size.height, size.fps);
+    createScene(form.path(), size.width, size.height, size.fps, size.fov);
 }
 
 void MainWindow::onActionCloseScene()
@@ -72,7 +72,7 @@ void MainWindow::onActionCloseScene()
     onActionShowWelcome();
 }
 
-bool MainWindow::createScene(QString const& path, int width, int height, double fps)
+bool MainWindow::createScene(QString const& path, int width, int height, double fps, double fov)
 {
     if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(QFileInfo(path).absolutePath())));
@@ -83,6 +83,7 @@ bool MainWindow::createScene(QString const& path, int width, int height, double 
     scene.width = width;
     scene.height = height;
     scene.fps = fps;
+    scene.fov = fov > 0.0 ? std::clamp(fov, 1.0, 170.0) : Layer::kDefaultFov;    // (0: the usual angle)
     m_path.clear();
     m_document->reset(scene);
     m_timeline->setCurrentCell(0, 0);
@@ -108,7 +109,7 @@ void MainWindow::onActionShowWelcome()
         openFile(welcome.path());
     } else if (welcome.choice() == WelcomeDialog::CreateScene) {
         Resolution const size = welcome.resolution();
-        createScene(welcome.path(), size.width, size.height, size.fps);
+        createScene(welcome.path(), size.width, size.height, size.fps, size.fov);
     }
 }
 

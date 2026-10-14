@@ -265,11 +265,22 @@ void Document::setFrameCount(int count)
     apply(tr("Change Scene Length"), [&](Scene& s) { s.setFrameCount(count); });
 }
 
-void Document::setSceneSettings(int width, int height, double fps)
+void Document::setSceneSettings(int width, int height, double fps, double fov)
 {
     apply(tr("Scene Settings"), [&](Scene& s) {
         s.width = std::max(1, width);
         s.height = std::max(1, height);
         s.fps = std::clamp(fps, 1.0, 240.0);
+        if (fov > 0.0 && fov != s.fov) {
+            fov = std::clamp(fov, 1.0, 170.0);
+            for (Layer& l : s.layers) {
+                bool keyed = false;
+                for (Keyframe const& k : l.keys)
+                    keyed = keyed || k.pose.fov > 0.0;
+                if (l.kind == Layer::Camera && !keyed && std::abs(l.fov - s.fov) < 1e-9)
+                    l.fov = fov;
+            }
+            s.fov = fov;
+        }
     });
 }

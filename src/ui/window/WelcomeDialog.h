@@ -21,6 +21,7 @@ struct Resolution {
     int height = 1080;
     double fps = 24.0;
     bool custom = false;  // made by the user, kept with the settings
+    double fov = 41.112;  // the angle of view of the camera (degrees, top to bottom)
 };
 
 class ECLIPSE_UI_API WelcomeDialog : public QDialog {
@@ -67,6 +68,7 @@ private:
     QLineEdit* m_width;
     QLineEdit* m_height;
     QLineEdit* m_fps;
+    QLineEdit* m_fov;
     QListWidget* m_recent;
     QCheckBox* m_hide;
 };

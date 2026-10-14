@@ -812,6 +812,9 @@ public:
     // Orthographic: depth puts layers in front of and behind one another, but nothing looks bigger
     // or smaller for being nearer or further (off: in perspective, as a camera sees).
     bool orthographic = false;
+    // The angle of view (degrees, top to bottom) of the camera size: what a camera added starts with, and what the scene
+    // is seen with when it has no camera.
+    double fov = Layer::kDefaultFov;
     QStringList paletteNames = {QStringLiteral("Scene")};
     // A palette can be linked to a file that other scenes are linked to as well: its colours are
     // taken from the file when the scene is opened and written to it when the scene is saved.

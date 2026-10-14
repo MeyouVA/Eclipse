@@ -171,6 +171,8 @@ int Scene::addLayer(QString const& name, int at, Layer::Kind kind)
     layer.pivot = QPointF(width / 2.0, height / 2.0);
     layer.name = uniqueLayerName(name);
     layer.cells.fill(Layer::kNoDrawing, m_frameCount);
+    if (kind == Layer::Camera)
+        layer.fov = fov;
     if (kind == Layer::Quadmap) {
         // Nothing pulled yet: the corners are those of the frame.
         layer.quadSize = QSizeF(width, height);
