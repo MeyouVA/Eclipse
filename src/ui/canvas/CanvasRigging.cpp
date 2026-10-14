@@ -77,7 +77,16 @@ void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers mod
 // last, with a mark on each keyframe.
 void Canvas::paintMotionPath(QPainter& painter)
 {
-    Scene const& scene = m_document->scene();
+    // A control point being dragged: the path is shown as it will be when it is let go.
+    Scene dragged;
+    bool const moving = m_drag == DragControlPoint && m_cpMoved;
+    if (moving) {
+        dragged = m_document->scene();
+        Layer& l = dragged.layers[m_layer];
+        if (m_cpKey >= 0 && m_cpKey < l.keys.size() && m_cpIndex >= 0 && m_cpIndex < l.keys[m_cpKey].controls.size())
+            l.keys[m_cpKey].controls[m_cpIndex] = controlPointFromView(m_cpKey, m_cpIndex, m_cpDragPos);
+    }
+    Scene const& scene = moving ? dragged : m_document->scene();
     Layer const& layer = scene.layers[m_layer];
     if (m_drawingView || layer.keys.size() < 2)
         return;
