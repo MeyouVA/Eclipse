@@ -261,6 +261,14 @@ public:
     // The controller set to `value` on `frame`: keyframes there for its layers, the poses blended between the two states
     // either side of the value, and the drawing of the nearer one shown.  One step to undo.
     void applyController(int controller, int frame, double value);
+    // A 2D point controller (or a slider again).  Made one, states that all lie on the same place are spread round the
+    // middle of the pad.
+    void setControllerPoint(int controller, bool on);
+    // Where a state lies on the pad of a 2D point controller (0..1 across and down).
+    void moveControllerState(int controller, int state, QPointF at);
+    // The 2D point set to `where` on `frame`: keyframes there for its layers, the poses of all the states blended by how
+    // near each is (Scene::Controller::weightsAt), and the drawing of the nearest shown.  One step to undo.
+    void applyControllerPoint(int controller, int frame, QPointF where);
     // Control points of a layer's motion path (see Scene).  `key` is the keyframe the stretch starts at.
     int insertControlPoint(int layer, int frame);
     void moveControlPoint(int layer, int key, int control, QPointF to);

@@ -497,12 +497,20 @@ QJsonObject Scene::toJson(QString const& folder) const
             QJsonArray drawings;
             for (int d : s.drawings)
                 drawings.append(d);
-            states.append(QJsonObject{{"name", s.name}, {"poses", poses}, {"drawings", drawings}});
+            QJsonObject state{{"name", s.name}, {"poses", poses}, {"drawings", drawings}};
+            if (!s.at.isNull())
+                state["at"] = QJsonArray{s.at.x(), s.at.y()};
+            states.append(state);
         }
         QJsonArray layerIds;
         for (int id : c.layers)
             layerIds.append(id);
-        controllerArray.append(QJsonObject{{"id", c.id}, {"name", c.name}, {"layers", layerIds}, {"states", states}, {"value", c.value}});
+        QJsonObject controller{{"id", c.id}, {"name", c.name}, {"layers", layerIds}, {"states", states}, {"value", c.value}};
+        if (c.point) {
+            controller["point"] = true;
+            controller["where"] = QJsonArray{c.where.x(), c.where.y()};
+        }
+        controllerArray.append(controller);
     }
     QJsonArray writeArray;
     for (Write const& w : writes)

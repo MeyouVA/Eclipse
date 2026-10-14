@@ -188,6 +188,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         c.id = co["id"].toInt();
         c.name = co["name"].toString();
         c.value = co["value"].toDouble(0.0);
+        c.point = co["point"].toBool(false);
+        if (QJsonArray const where = co["where"].toArray(); where.size() == 2)
+            c.where = QPointF(where[0].toDouble(), where[1].toDouble());
         for (QJsonValue const& id : co["layers"].toArray())
             c.layers.push_back(id.toInt());
         for (QJsonValue const& sv : co["states"].toArray()) {
@@ -221,6 +224,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             }
             for (QJsonValue const& d : so["drawings"].toArray())
                 s.drawings.push_back(d.toInt(-1));
+            if (QJsonArray const place = so["at"].toArray(); place.size() == 2)
+                s.at = QPointF(place[0].toDouble(), place[1].toDouble());
             if (s.poses.size() == c.layers.size() && s.drawings.size() == c.layers.size())
                 c.states.push_back(s);
         }

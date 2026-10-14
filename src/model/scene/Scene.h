@@ -685,6 +685,7 @@ public:
             QString name;
             QVector<Pose> poses;        // one per layer of the controller
             QVector<int> drawings;      // the drawing each shows (its place in the layer), or -1: left as it is
+            QPointF at;                 // a 2D point controller: where the state lies on its pad (0..1 across and down)
             bool operator==(State const&) const = default;
         };
         int id = 0;
@@ -692,6 +693,13 @@ public:
         QVector<int> layers;            // the ids of the layers
         QVector<State> states;
         double value = 0.0;             // where its slider was last left (0: the first state, 1 the second ...)
+        // A 2D point instead of a slider: a point dragged on a pad among the states, the poses blended by how near
+        // each state is; and where the point was last left.
+        bool point = false;
+        QPointF where{0.5, 0.5};
+        // How much each state counts with the point at `spot` (adding up to 1): the nearer, the more - all of it
+        // at a state itself.
+        QVector<double> weightsAt(QPointF spot) const;
         bool operator==(Controller const&) const = default;
     };
     QVector<Controller> controllers;

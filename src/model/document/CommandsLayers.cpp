@@ -3,6 +3,10 @@
 
 #include "model/document/CommandsPrivate.h"
 
+#include <algorithm>
+#include <cmath>
+#include <numbers>
+
 int Document::addCamera()
 {
     // The first camera is the one the scene is seen through; a further one waits to be chosen.
@@ -566,6 +570,7 @@ int Document::addControllerState(int controller, int frame, QString const& name)
         Scene::Controller& c = s.controllers[controller];
         Scene::Controller::State state = stateAt(s, c, frame);
         state.name = name.trimmed().isEmpty() ? tr("State %1").arg(c.states.size() + 1) : name.trimmed();
+        state.at = c.where;     // on the pad of a 2D point: where the point is now
         at = int(c.states.size());
         c.states.push_back(state);
     });
@@ -579,8 +584,10 @@ void Document::replaceControllerState(int controller, int state, int frame)
     apply(tr("Replace State"), [&](Scene& s) {
         Scene::Controller& c = s.controllers[controller];
         QString const name = c.states[state].name;
+        QPointF const place = c.states[state].at;
         c.states[state] = stateAt(s, c, frame);
         c.states[state].name = name;
+        c.states[state].at = place;
     });
 }
 
@@ -618,6 +625,74 @@ void Document::applyController(int controller, int frame, double value)
             Layer& layer = s.layers[l];
             layer.setKey(frame, Pose::lerp(from.poses[i], to.poses[i], t));
             int const drawing = nearer.drawings[i];
+            if (layer.holdsDrawings() && drawing >= 0 && drawing < layer.drawings.size() && frame < layer.cells.size())
+                layer.cells[frame] = drawing;
+        }
+    });
+}
+
+void Document::setControllerPoint(int controller, bool on)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size() || m_scene.controllers[controller].point == on)
+        return;
+    apply(on ? tr("2D Point Controller") : tr("Slider Controller"), [&](Scene& s) {
+        Scene::Controller& c = s.controllers[controller];
+        c.point = on;
+        if (!on)
+            return;
+        bool together = true;
+        for (Scene::Controller::State const& state : std::as_const(c.states))
+            together = together && state.at == c.states.first().at;
+        if (together && c.states.size() > 1) {
+            // Round the middle, the first at the top, the others on clockwise.
+            for (int i = 0; i < c.states.size(); ++i) {
+                double const angle = -std::numbers::pi / 2.0 + 2.0 * std::numbers::pi * i / double(c.states.size());
+                c.states[i].at = QPointF(0.5 + 0.4 * std::cos(angle), 0.5 + 0.4 * std::sin(angle));
+            }
+        }
+        c.where = c.states.isEmpty() ? QPointF(0.5, 0.5) : c.states.first().at;
+    });
+}
+
+void Document::moveControllerState(int controller, int state, QPointF at)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size() || state < 0 || state >= m_scene.controllers[controller].states.size())
+        return;
+    at = QPointF(std::clamp(at.x(), 0.0, 1.0), std::clamp(at.y(), 0.0, 1.0));
+    if (m_scene.controllers[controller].states[state].at == at)
+        return;
+    apply(tr("Move State"), [&](Scene& s) { s.controllers[controller].states[state].at = at; });
+}
+
+void Document::applyControllerPoint(int controller, int frame, QPointF where)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size() || frame < 0 || frame >= m_scene.frameCount())
+        return;
+    Scene::Controller const& c = m_scene.controllers[controller];
+    if (c.states.isEmpty())
+        return;
+    where = QPointF(std::clamp(where.x(), 0.0, 1.0), std::clamp(where.y(), 0.0, 1.0));
+    QVector<double> const weights = c.weightsAt(where);
+    int const nearest = int(std::max_element(weights.begin(), weights.end()) - weights.begin());
+    apply(tr("Set Controller"), [&](Scene& s) {
+        Scene::Controller& into = s.controllers[controller];
+        into.where = where;
+        for (int i = 0; i < into.layers.size(); ++i) {
+            int const l = s.layerIndex(into.layers[i]);
+            if (l < 0)
+                continue;
+            // The weighted mean of the poses, built up a state at a time: each blended in by its share of what has
+            // been taken so far.
+            Pose blended = into.states[0].poses[i];
+            double taken = weights[0];
+            for (int k = 1; k < into.states.size(); ++k) {
+                taken += weights[k];
+                if (taken > 1e-12)
+                    blended = Pose::lerp(blended, into.states[k].poses[i], weights[k] / taken);
+            }
+            Layer& layer = s.layers[l];
+            layer.setKey(frame, blended);
+            int const drawing = into.states[nearest].drawings[i];
             if (layer.holdsDrawings() && drawing >= 0 && drawing < layer.drawings.size() && frame < layer.cells.size())
                 layer.cells[frame] = drawing;
         }

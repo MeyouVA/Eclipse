@@ -181,3 +181,26 @@ int Scene::addLayer(QString const& name, int at, Layer::Kind kind)
     layers.insert(at, layer);
     return at;
 }
+
+QVector<double> Scene::Controller::weightsAt(QPointF spot) const
+{
+    QVector<double> weights(states.size(), 0.0);
+    if (states.isEmpty())
+        return weights;
+    // Each state by one over its distance squared from the point: smooth between them, and exactly a state on it.
+    double total = 0.0;
+    for (int i = 0; i < states.size(); ++i) {
+        QPointF const d = states[i].at - spot;
+        double const distance2 = d.x() * d.x() + d.y() * d.y();
+        if (distance2 < 1e-12) {
+            std::fill(weights.begin(), weights.end(), 0.0);
+            weights[i] = 1.0;
+            return weights;
+        }
+        weights[i] = 1.0 / distance2;
+        total += weights[i];
+    }
+    for (double& w : weights)
+        w /= total;
+    return weights;
+}
