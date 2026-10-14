@@ -121,6 +121,10 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
                 }
                 art.fills = kept;
             }
+            // In the order of the sheet: under everything (Draw Behind), or over everything - lines it lies on among them.
+            int const place = m_drawBehind ? Drawing::bottomOrder(art.fills, art.strokes) : Drawing::orderOnTop(art.fills, art.strokes);
+            for (Fill& piece : mine)
+                piece.order = place;
             if (m_drawBehind)
                 art.fills = mine + art.fills;
             else
@@ -130,7 +134,11 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
         }
     } else if (m_tool == Brush && m_drawBehind) {
         Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
-        art.strokes.push_front(stroke);
+        Stroke placed = stroke;
+        // Under everything: below the lowest place of the order when a painted area is there (areas lie under lines).
+        int const bottom = Drawing::bottomOrder(art.fills, art.strokes);
+        placed.order = std::any_of(art.fills.begin(), art.fills.end(), [bottom](Fill const& f) { return f.order == bottom; }) ? bottom - 1 : bottom;
+        art.strokes.push_front(placed);
         commitDrawing(art, tr("Draw Stroke"));
     } else {
         addStrokeToArt(stroke);

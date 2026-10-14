@@ -175,7 +175,11 @@ void Document::addStroke(int layer, int frame, Stroke const& stroke)
         });
         return;
     }
-    m_undo.push(new AddStrokeCommand(this, layer, m_scene.layers[layer].cells[frame], stroke));
+    // On top of all that is in the drawing already (a brush shape drawn over the lines among it).
+    Drawing const& d = m_scene.layers[layer].drawings[m_scene.layers[layer].cells[frame]];
+    Stroke placed = stroke;
+    placed.order = Drawing::topOrder(d.fills, d.strokes);
+    m_undo.push(new AddStrokeCommand(this, layer, m_scene.layers[layer].cells[frame], placed));
 }
 
 int Document::eraseAt(int layer, int frame, QPointF p, double radius)

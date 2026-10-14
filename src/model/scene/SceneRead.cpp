@@ -31,6 +31,7 @@ static Fill fillFromJson(QJsonObject const& o)
     f.color = QColor(o["color"].toString("#ff000000"));
     f.swatch = o["swatch"].toInt(-1);
     f.group = o["group"].toInt(0);
+    f.order = o["order"].toInt(0);
     if (QJsonArray const grad = o["grad"].toArray(); grad.size() == 4) {
         f.gradPlaced = true;
         f.gradFrom = QPointF(grad[0].toDouble(), grad[1].toDouble());
@@ -83,6 +84,7 @@ static Stroke strokeFromJson(QJsonObject const& o)
     s.capEnd = both || o["capEnd"].toString() == QLatin1String("flat") ? Stroke::FlatCap : Stroke::RoundCap;
     s.curve = o["curve"].toBool(false);
     s.group = o["group"].toInt(0);
+    s.order = o["order"].toInt(0);
     s.closed = o["closed"].toBool(false);
     if (QJsonArray const grad = o["grad"].toArray(); grad.size() == 4) {
         s.gradPlaced = true;

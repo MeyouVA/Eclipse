@@ -204,3 +204,43 @@ QVector<double> Scene::Controller::weightsAt(QPointF spot) const
         w /= total;
     return weights;
 }
+
+int Drawing::topOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes)
+{
+    int top = 0;
+    bool any = false;
+    for (Fill const& f : fills) {
+        top = any ? std::max(top, f.order) : f.order;
+        any = true;
+    }
+    for (Stroke const& s : strokes) {
+        top = any ? std::max(top, s.order) : s.order;
+        any = true;
+    }
+    return top;
+}
+
+int Drawing::bottomOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes)
+{
+    int bottom = 0;
+    bool any = false;
+    for (Fill const& f : fills) {
+        bottom = any ? std::min(bottom, f.order) : f.order;
+        any = true;
+    }
+    for (Stroke const& s : strokes) {
+        bottom = any ? std::min(bottom, s.order) : s.order;
+        any = true;
+    }
+    return bottom;
+}
+
+int Drawing::orderOnTop(QVector<Fill> const& fills, QVector<Stroke> const& strokes)
+{
+    // On a par with the highest unless a line is there (lines lie over areas of the same number).
+    int const top = topOrder(fills, strokes);
+    for (Stroke const& s : strokes)
+        if (s.order == top)
+            return top + 1;
+    return top;
+}

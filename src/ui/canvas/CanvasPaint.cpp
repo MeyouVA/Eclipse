@@ -470,10 +470,34 @@ static void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing co
     }
     // From the sheet underneath to the one on top: underlay, colour art, lines, overlay.
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
-        for (Fill const& fill : drawing.fillsOf(sheet))
-            Canvas::paintFill(painter, fill, tint ? QBrush(*tint) : scene.brushFor(fill));
-        for (Stroke const& stroke : drawing.strokesOf(sheet))
-            Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : scene.brushFor(stroke));
+        QVector<Fill> const& fills = drawing.fillsOf(sheet);
+        QVector<Stroke> const& strokes = drawing.strokesOf(sheet);
+        if (Drawing::topOrder(fills, strokes) == Drawing::bottomOrder(fills, strokes)) {
+            // All in one place in the order (as nearly always): the areas, then the lines over them.
+            for (Fill const& fill : fills)
+                Canvas::paintFill(painter, fill, tint ? QBrush(*tint) : scene.brushFor(fill));
+            for (Stroke const& stroke : strokes)
+                Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : scene.brushFor(stroke));
+            continue;
+        }
+        // From the bottom of the order up: areas under lines of the same place, each list in its own order.
+        struct Item {
+            int order, kind, index;
+        };
+        QVector<Item> items;
+        for (int i = 0; i < fills.size(); ++i)
+            items.push_back({fills[i].order, 0, i});
+        for (int i = 0; i < strokes.size(); ++i)
+            items.push_back({strokes[i].order, 1, i});
+        std::stable_sort(items.begin(), items.end(), [](Item const& a, Item const& b) {
+            return a.order != b.order ? a.order < b.order : a.kind != b.kind ? a.kind < b.kind : a.index < b.index;
+        });
+        for (Item const& item : std::as_const(items)) {
+            if (item.kind == 0)
+                Canvas::paintFill(painter, fills[item.index], tint ? QBrush(*tint) : scene.brushFor(fills[item.index]));
+            else
+                Canvas::paintStroke(painter, strokes[item.index], tint ? QBrush(*tint) : scene.brushFor(strokes[item.index]));
+        }
     }
 }
 

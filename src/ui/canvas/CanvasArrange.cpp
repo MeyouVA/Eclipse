@@ -123,9 +123,34 @@ void Canvas::arrangeSelection(bool front)
         return now;
     };
     Drawing edited = *d;
+    // In the order of the sheet too: over (or under) all the rest, lines and areas alike.
+    bool reordered = false;
+    {
+        QVector<Fill> restFills;
+        QVector<Stroke> restStrokes;
+        for (int i = 0; i < edited.fills.size(); ++i)
+            if (!m_selFills.contains(i))
+                restFills.push_back(edited.fills[i]);
+        for (int i = 0; i < edited.strokes.size(); ++i)
+            if (!m_selStrokes.contains(i))
+                restStrokes.push_back(edited.strokes[i]);
+        if (!restFills.isEmpty() || !restStrokes.isEmpty()) {
+            int const place = front ? Drawing::topOrder(restFills, restStrokes) + 1 : Drawing::bottomOrder(restFills, restStrokes) - 1;
+            for (int i : std::as_const(m_selFills))
+                if (i >= 0 && i < edited.fills.size() && edited.fills[i].order != place) {
+                    edited.fills[i].order = place;
+                    reordered = true;
+                }
+            for (int i : std::as_const(m_selStrokes))
+                if (i >= 0 && i < edited.strokes.size() && edited.strokes[i].order != place) {
+                    edited.strokes[i].order = place;
+                    reordered = true;
+                }
+        }
+    }
     QVector<int> const strokes = arrange(edited.strokes, m_selStrokes);
     QVector<int> const fills = arrange(edited.fills, m_selFills);
-    if (strokes == m_selStrokes && fills == m_selFills)
+    if (strokes == m_selStrokes && fills == m_selFills && !reordered)
         return;  // there already
     commitDrawing(edited, front ? tr("Bring to Front") : tr("Send to Back"));
     setSelection(strokes, fills);
@@ -136,19 +161,24 @@ void Canvas::stepSelection(int direction)
     Drawing const* const d = currentDrawing();
     if (!selecting() || !d || !hasSelection())
         return;
-    // Each selected thing changes places with the unselected one next to it on that side.
-    auto step = [direction](auto& items, QVector<int> selected) {
+    // Each selected thing changes places with the unselected one next to it on that side (taking its place in
+    // the order of the sheet as well).
+    auto swapAt = [](auto& items, int a, int b) {
+        items.swapItemsAt(a, b);
+        std::swap(items[a].order, items[b].order);
+    };
+    auto step = [direction, &swapAt](auto& items, QVector<int> selected) {
         int const n = int(items.size());
         if (direction > 0) {
             for (int i = n - 2; i >= 0; --i)
                 if (selected.contains(i) && !selected.contains(i + 1)) {
-                    items.swapItemsAt(i, i + 1);
+                    swapAt(items, i, i + 1);
                     selected[selected.indexOf(i)] = i + 1;
                 }
         } else {
             for (int i = 1; i < n; ++i)
                 if (selected.contains(i) && !selected.contains(i - 1)) {
-                    items.swapItemsAt(i, i - 1);
+                    swapAt(items, i, i - 1);
                     selected[selected.indexOf(i)] = i - 1;
                 }
         }

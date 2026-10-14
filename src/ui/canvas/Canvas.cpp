@@ -542,7 +542,9 @@ void Canvas::addStrokeToArt(Stroke const& stroke)
         return;
     }
     Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
-    art.strokes.push_back(stroke);
+    Stroke placed = stroke;
+    placed.order = Drawing::topOrder(art.fills, art.strokes);
+    art.strokes.push_back(placed);
     commitDrawing(art, tr("Draw Stroke"));
 }
 

@@ -67,6 +67,9 @@ struct Stroke {
     // Things of one drawing sheet grouped together share a number here (0: on its own):
     // picking one of them with the Select tool picks them all.
     int group = 0;
+    // Where it lies among the lines and painted areas of its sheet: the higher, the nearer the top (lines over
+    // areas of the same number).  What is drawn later goes on top - a brush shape over the lines under it.
+    int order = 0;
     QColor color = Qt::black;
     float width = 4.0f;  // at full pressure
     // Drawn in a gradient colour: where the gradient lies, once it has been placed by hand (the Edit Gradient
@@ -159,6 +162,9 @@ struct Fill {
     // Things of one drawing sheet grouped together share a number here (0: on its own):
     // picking one of them with the Select tool picks them all.
     int group = 0;
+    // Where it lies among the lines and painted areas of its sheet: the higher, the nearer the top (lines over
+    // areas of the same number).  What is drawn later goes on top - a brush shape over the lines under it.
+    int order = 0;
     QColor color = Qt::black;
     // A contour shape - what the brush makes: each outline is a closed curve with points
     // and handles (the geometry of a Stroke; its thickness and colour are not used), and
@@ -281,6 +287,12 @@ struct Drawing {
         return pictures.isEmpty();
     }
     QRectF bounds() const;
+    // The places in the order of a sheet (see Stroke::order): the highest there is (a line given it is on top of
+    // everything), and the lowest (a painted area given it is under everything).  0 for an empty sheet.
+    static int topOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes);
+    static int bottomOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes);
+    // The order a new painted area takes to lie on top of everything in the sheet.
+    static int orderOnTop(QVector<Fill> const& fills, QVector<Stroke> const& strokes);
     // The colour art on its own, as a drawing.
     Drawing colourArt() const
     {

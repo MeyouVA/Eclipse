@@ -67,6 +67,8 @@ static QJsonObject strokeToJson(Stroke const& s)
         o["curve"] = true;
     if (s.closed)
         o["closed"] = true;
+    if (s.order != 0)
+        o["order"] = s.order;
     return o;
 }
 
@@ -82,6 +84,8 @@ static QJsonObject fillToJson(Fill const& f)
         outlines.append(pts);
     }
     QJsonObject o{{"color", f.color.name(QColor::HexArgb)}, {"swatch", f.swatch}, {"outlines", outlines}};
+    if (f.order != 0)
+        o["order"] = f.order;
     if (f.gradPlaced)
         o["grad"] = QJsonArray{f.gradFrom.x(), f.gradFrom.y(), f.gradTo.x(), f.gradTo.y()};
     if (f.texture != 0) {
