@@ -21,6 +21,7 @@
 #include "ui/window/WelcomeDialog.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/views/LipSyncView.h"
+#include "ui/timeline/Timeline.h"
 #include "audio/lipsync/LipSync.h"
 
 #include "ui/window/MainWindowPrivate.h"
@@ -43,6 +44,25 @@ int MainWindow::detectLipSync(int soundLayer)
 
 void MainWindow::onActionAutoLipSync()
 {
+    // Several sound layers selected in the Timeline: each of them, as one step.
+    QVector<int> sounds;
+    for (int l : m_timeline->selectedLayers())
+        if (l >= 0 && l < m_document->scene().layers.size() && m_document->scene().layers[l].kind == Layer::Sound)
+            sounds.push_back(l);
+    if (sounds.size() > 1) {
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        m_document->beginMacro(tr("Auto Lip-Sync Detection"));
+        int done = 0;
+        for (int l : std::as_const(sounds))
+            done += detectLipSync(l) >= 0 ? 1 : 0;
+        m_document->endMacro();
+        QApplication::restoreOverrideCursor();
+        statusBar()->showMessage(tr("Mouth shapes found for %1 of %2 sound layers. Correct them in the Lip-Sync view, then use Map Lip-Sync on each.")
+                                     .arg(done).arg(sounds.size()), 10000);
+        if (QDockWidget* const dock = dockOf("LipSyncDock"))
+            showView(dock);
+        return;
+    }
     int const sound = LipSyncView::soundLayerFor(m_document->scene(), layer());
     if (sound < 0) {
         statusBar()->showMessage(tr("Lip-sync is for a sound: import one first (File > Import > Sound)."), 7000);
