@@ -194,7 +194,7 @@ public:
     // The eraser rubs out of the line art and the colour art at once.
     void setEraserBothArts(bool on) { m_bothArts = on; }
     // The Select tool and the Cutter take from the line art and the colour art at once.
-    void setSelectBothArts(bool on);
+    Q_INVOKABLE void setSelectBothArts(bool on);
     bool selectBothArts() const { return m_selectBothArts; }
     // ... which is so just now (with one of those tools, on one of those two sheets).
     bool bothArtsNow() const { return m_selectBothArts && (m_tool == Select || m_tool == Cutter) && (m_art == LineArt || m_art == ColourArt); }
@@ -633,6 +633,7 @@ signals:
     void showControlChanged(bool on);
     void artChanged(int art);
     void drawingViewChanged(bool on);
+    void selectBothArtsChanged(bool on);
     // A template dragged out of the Library was let go over the view.
     void templateDropped(QString const& path);
     void lassoChanged(bool on);

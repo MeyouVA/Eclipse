@@ -293,6 +293,7 @@ void Canvas::setSelectBothArts(bool on)
     m_ceStroke = m_cePoint = m_ceFill = -1;
     m_selectBothArts = on;
     update();
+    emit selectBothArtsChanged(on);
 }
 
 void Canvas::setArt(Art art)

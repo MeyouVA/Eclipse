@@ -124,6 +124,38 @@
  </toolbar>
 
  <!-- Belongs to the Camera view. -->
+ <toolbar id="DrawingViewToolbar" text="Drawing View">
+  <item id="ShowGrid" toolbarText="Grid"/>
+  <item id="OnionSkinToggle" toolbarText="Onion Skin"/>
+  <item id="LightTable" toolbarText="Light Table"/>
+  <item id="Backlight" toolbarText="Backlight"/>
+  <separator/>
+  <item id="ApplyToLineAndColourArt" toolbarText="Both Arts"/>
+  <item id="CreateColourArt" toolbarText="Colour Art"/>
+  <separator/>
+  <item id="FlipHorizontal" toolbarText="Flip H"/>
+  <item id="MirrorView" toolbarText="Mirror"/>
+  <item id="FlipVertical" toolbarText="Flip V"/>
+  <separator/>
+  <item id="Smooth" toolbarText="Smooth"/>
+  <item id="Flatten" toolbarText="Flatten"/>
+  <item id="RemoveDirt" toolbarText="Remove Dirt" visible="false"/>
+  <item id="BringToFront" toolbarText="To Front" visible="false"/>
+  <item id="SendToBack" toolbarText="To Back" visible="false"/>
+  <item id="GroupArtwork" toolbarText="Group" visible="false"/>
+  <item id="UngroupArtwork" toolbarText="Ungroup" visible="false"/>
+  <item id="SnapToGrid" toolbarText="Snap to Grid" visible="false"/>
+  <item id="ShowStrokes" toolbarText="Strokes" visible="false"/>
+  <item id="CreateEmptyDrawing" visible="false"/>
+  <item id="DuplicateDrawing" visible="false"/>
+  <item id="PreviousDrawing" visible="false"/>
+  <item id="NextDrawing" visible="false"/>
+  <item id="ZoomIn" toolbarText="Zoom +" visible="false"/>
+  <item id="ZoomOut" toolbarText="Zoom -" visible="false"/>
+  <item id="ResetView" toolbarText="Reset View" visible="false"/>
+  <item id="TopLight" toolbarText="Top Light" visible="false"/>
+ </toolbar>
+
  <toolbar id="CameraViewToolbar" text="Camera View">
   <item id="NewToolPreset" toolbarText="New Preset"/>
   <item id="ManagePresets" toolbarText="Presets"/>

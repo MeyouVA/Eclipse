@@ -254,7 +254,19 @@ void MainWindow::createCameraView()
             a->setText(art == Canvas::ColourArt ? tr("Switch To Line Art") : tr("Switch To Colour Art"));
         updateStatus();
     });
-    QWidget* const panel = viewPanel(m_actions->createToolbar(QStringLiteral("CameraViewToolbar"), this), viewAndStrip, this);
+    QToolBar* const cameraBar = m_actions->createToolbar(QStringLiteral("CameraViewToolbar"), this);
+    QWidget* const panel = viewPanel(cameraBar, viewAndStrip, this);
+    // The Drawing view has a toolbar of its own, shown in place of the Camera view's while the view is the Drawing view.
+    if (QToolBar* const drawingBar = m_actions->createToolbar(QStringLiteral("DrawingViewToolbar"), this)) {
+        drawingBar->setIconSize(QSize(24, 24));
+        static_cast<QVBoxLayout*>(panel->layout())->insertWidget(1, drawingBar);
+        drawingBar->hide();
+        connect(m_canvas, &Canvas::drawingViewChanged, this, [cameraBar, drawingBar](bool on) {
+            cameraBar->setVisible(!on);
+            drawingBar->setVisible(on);
+        });
+    }
+    connect(m_canvas, &Canvas::selectBothArtsChanged, this, [this](bool on) { m_actions->setChecked(QStringLiteral("ApplyToLineAndColourArt"), on); });
     // Along the bottom of the view: how close it is, the tool in use (or a word to
     // the user), and where in the scene one is.  The window has no status bar of its own.
     QWidget* const status = new QWidget(panel);

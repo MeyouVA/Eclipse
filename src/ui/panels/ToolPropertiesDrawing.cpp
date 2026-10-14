@@ -326,6 +326,7 @@ void ToolProperties::addSelectRows()
     m_selectBothArts->setObjectName(QStringLiteral("SelectBothArts"));
     m_selectBothArts->setToolTip(tr("The tool takes the lines and the paint under them together: what is in the line art and what is in the colour art, as if they were one."));
     connect(m_selectBothArts, &QCheckBox::toggled, m_canvas, &Canvas::setSelectBothArts);
+    connect(m_canvas, &Canvas::selectBothArtsChanged, m_selectBothArts, &QCheckBox::setChecked);
     m_form->addRow(m_selectBothArts);
     m_paintAll = new QCheckBox(tr("Apply to All Drawings"), this);
     m_paintAll->setObjectName(QStringLiteral("PaintAllDrawings"));
