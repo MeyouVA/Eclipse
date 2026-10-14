@@ -84,6 +84,19 @@ bool CoordView::fieldValue(QString const& text, int axis, double sceneHeight, do
     return true;
 }
 
+void CoordView::setPixelUnits(bool pixels)
+{
+    if (m_pixels == pixels)
+        return;
+    m_pixels = pixels;
+    showCoordinates();
+}
+
+QString CoordView::positionText(double pixels, int axis, double sceneHeight) const
+{
+    return m_pixels ? shortNumber(pixels) : fieldText(pixels, axis, sceneHeight);
+}
+
 // A part of the form under a heading that folds it away.
 QWidget* CoordView::section(QString const& title, char const* objectName, QFormLayout** form)
 {
@@ -347,15 +360,16 @@ void CoordView::showCoordinates()
             edit->setText(text);
     };
     show(m_name, layer.name);
-    show(m_fields[FieldX], fieldText(pose.x, 0, scene.height));
-    show(m_fields[FieldY], fieldText(pose.y, 1, scene.height));
-    show(m_fields[FieldZ], fieldText(pose.z, 2, scene.height));
+    show(m_fields[FieldX], positionText(pose.x, 0, scene.height));
+    show(m_fields[FieldY], positionText(pose.y, 1, scene.height));
+    show(m_fields[FieldZ], positionText(pose.z, 2, scene.height));
     show(m_fields[FieldScaleX], shortNumber(pose.scaleX));
     show(m_fields[FieldScaleY], shortNumber(pose.scaleY));
     show(m_fields[FieldAngle], shortNumber(pose.rotation));
     show(m_fields[FieldSkew], shortNumber(pose.skew));
     double const field = scene.height / 24.0;
-    m_fields[FieldDepth]->setText(QString::number(field > 0.0 ? scene.depthOf(m_layer, m_frame) / field : 0.0, 'f', 4));
+    double const depth = scene.depthOf(m_layer, m_frame);
+    m_fields[FieldDepth]->setText(m_pixels ? shortNumber(depth) : QString::number(field > 0.0 ? depth / field : 0.0, 'f', 4));
 }
 
 void CoordView::applyCoordinate(int which)
@@ -368,7 +382,9 @@ void CoordView::applyCoordinate(int which)
     Pose const was = pose;
     double value = 0.0;
     bool ok = false;
-    if (which <= FieldZ) {
+    if (which <= FieldZ && m_pixels) {
+        value = edit->text().trimmed().replace(QLatin1Char(','), QLatin1Char('.')).toDouble(&ok);
+    } else if (which <= FieldZ) {
         ok = fieldValue(edit->text(), which, scene.height, &value);
     } else {
         value = edit->text().trimmed().replace(QLatin1Char(','), QLatin1Char('.')).toDouble(&ok);

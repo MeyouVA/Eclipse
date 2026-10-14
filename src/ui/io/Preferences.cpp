@@ -30,6 +30,7 @@
 #include "model/document/Commands.h"
 #include "ui/canvas/Canvas.h"
 #include "ui/views/PreviewManagerView.h"
+#include "ui/views/CoordView.h"
 #include "actions/manager/ActionManager.h"
 #include <QAction>
 #include <QToolButton>
@@ -253,6 +254,9 @@ void MainWindow::applyPreferences()
     if (s.contains(QStringLiteral("prefs/toolSize")))
         if (QSpinBox* const size = findChild<QSpinBox*>(QStringLiteral("ToolSize")))
             size->setValue(std::clamp(s.value(QStringLiteral("prefs/toolSize")).toInt(), 1, 200));
+    // Units: positions in fields or in pixels.
+    if (CoordView* const coord = findChild<CoordView*>())
+        coord->setPixelUnits(s.value(QStringLiteral("prefs/units"), 0).toInt() == 1);
     // Sound: heard while playing, and while the frame is changed by hand.
     m_soundOn = s.value(QStringLiteral("prefs/soundOn"), true).toBool();
     m_actions->setChecked(QStringLiteral("PlaySound"), m_soundOn);
@@ -390,6 +394,12 @@ void MainWindow::onActionPreferences()
     toolSize->setToolTip(tr("The size of the brush, the eraser and the other drawing tools when Eclipse starts."));
     QFormLayout* const toolsLayout = new QFormLayout(toolsPage);
     toolsLayout->addRow(tr("Size of the drawing tools"), toolSize);
+    QComboBox* const units = new QComboBox(toolsPage);
+    units->setObjectName(QStringLiteral("PrefUnits"));
+    units->addItems({tr("Fields"), tr("Pixels")});
+    units->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/units"), 0).toInt(), 0, 1));
+    units->setToolTip(tr("How positions are written in the Coord. and Control Points view: in fields, with the letter of the direction (3 E, 2 N), or in pixels of the scene."));
+    toolsLayout->addRow(tr("Positions in"), units);
 
     // Sound: when it is heard.
     QGroupBox* const soundPage = new QGroupBox(tr("Sound"), &dialog);
@@ -479,6 +489,7 @@ void MainWindow::onActionPreferences()
     if (toolSize->value() != int(m_canvas->brushWidth()) || s.contains(QStringLiteral("prefs/toolSize")))
         s.setValue(QStringLiteral("prefs/toolSize"), toolSize->value());
     s.setValue(QStringLiteral("prefs/soundOn"), soundOn->isChecked());
+    s.setValue(QStringLiteral("prefs/units"), units->currentIndex());
     s.setValue(QStringLiteral("prefs/scrub"), scrub->isChecked());
     s.setValue(QStringLiteral("prefs/backdrop"), backdrop->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(onionBefore->property("colour").value<QColor>(), onionAfter->property("colour").value<QColor>());

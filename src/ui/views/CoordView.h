@@ -23,6 +23,10 @@ public:
     static QString fieldText(double pixels, int axis, double sceneHeight);
     static bool fieldValue(QString const& text, int axis, double sceneHeight, double* pixels);
 
+    // Positions written in fields (the animation stand's units, with the letter of the direction) or in pixels of the scene.
+    void setPixelUnits(bool pixels);
+    bool pixelUnits() const { return m_pixels; }
+
 public slots:
     void setCurrentCell(int layer, int frame);
 
@@ -54,4 +58,6 @@ private:
     class QLabel* m_points = nullptr;       // how many control points that stretch has
     int pathKey() const;                    // the keyframe that stretch starts at, or -1
     bool m_rebuilding = false;
+    bool m_pixels = false;
+    QString positionText(double pixels, int axis, double sceneHeight) const;
 };
