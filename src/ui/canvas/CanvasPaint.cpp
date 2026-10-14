@@ -5,6 +5,7 @@
 #include <QPainterPath>
 
 #include <cmath>
+#include <limits>
 #include <numeric>
 
 #include "model/document/Commands.h"
@@ -814,8 +815,94 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
     painter.fillRect(QRectF(0, 0, scene.width, scene.height), scene.background);
     QTransform const base = painter.transform();
     QTransform const camera = scene.cameraTransform(frame);
+    QVector<int> const order = scene.drawOrder(frame);
+    // Layers turned in space pass through what lies about them: then each point of each layer is only seen where nothing
+    // nearer the camera is in front of it, so that where two cross, each is cut by the other.
+    bool turnedAny = false;
+    int drawn = 0;
+    for (int l : order) {
+        Layer const& layer = scene.layers[l];
+        if (!scene.enabled(l) || (layer.kind != Layer::ColourCard && layer.drawingAt(frame) == Layer::kNoDrawing))
+            continue;
+        ++drawn;
+        turnedAny = turnedAny || (layer.kind != Layer::ColourCard && scene.turned(l, frame));
+    }
+    if (turnedAny && drawn >= 2 && painter.device()) {
+        QPaintDevice* const device = painter.device();
+        double const dpr = device->devicePixelRatioF();
+        int const wide = int(device->width() * dpr), high = int(device->height() * dpr);
+        QImage built(wide, high, QImage::Format_ARGB32_Premultiplied);
+        built.fill(Qt::transparent);
+        QVector<float> nearest(qsizetype(wide) * high, -std::numeric_limits<float>::infinity());
+        for (int l : order) {
+            Layer const& layer = scene.layers[l];
+            int const index = layer.drawingAt(frame);
+            bool const card = layer.kind == Layer::ColourCard;
+            if (!scene.enabled(l) || (!card && index == Layer::kNoDrawing))
+                continue;
+            QImage alone(wide, high, QImage::Format_ARGB32_Premultiplied);
+            alone.setDevicePixelRatio(dpr);
+            alone.fill(Qt::transparent);
+            QTransform const onto = card ? base : scene.worldTransform(l, frame) * camera * base;
+            {
+                QPainter one(&alone);
+                one.setRenderHints(painter.renderHints());
+                if (card) {
+                    QColor colour = layer.cardColor;
+                    colour.setAlphaF(colour.alphaF() * float(layer.opacity));
+                    one.setTransform(base);
+                    one.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
+                } else {
+                    one.setTransform(onto);
+                    Pose const pose = layer.poseAt(frame);
+                    paintLayerDrawing(one, scene, l, frame,
+                                      Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose)),
+                                      layer.opacity * pose.opacity, camera * base);
+                }
+            }
+            double a = 0.0, b = 0.0, c = scene.depthOf(l, frame);
+            if (!card)
+                scene.depthPlane(l, frame, a, b, c);
+            QTransform const back = onto.isInvertible() ? onto.inverted() : QTransform();
+            for (int y = 0; y < high; ++y) {
+                QRgb const* const from = reinterpret_cast<QRgb const*>(alone.constScanLine(y));
+                QRgb* const to = reinterpret_cast<QRgb*>(built.scanLine(y));
+                float* const depth = nearest.data() + qsizetype(y) * wide;
+                for (int x = 0; x < wide; ++x) {
+                    QRgb const s = from[x];
+                    int const sa = qAlpha(s);
+                    if (sa == 0)
+                        continue;
+                    float z = float(c);
+                    if (a != 0.0 || b != 0.0) {
+                        QPointF const local = back.map(QPointF((x + 0.5) / dpr, (y + 0.5) / dpr));
+                        z = float(a * local.x() + b * local.y() + c);
+                    }
+                    QRgb const d = to[x];
+                    if (z >= depth[x] - 0.5f) {
+                        // In front of what is there: over it.
+                        int const keep = 255 - sa;
+                        to[x] = qRgba(qRed(s) + qRed(d) * keep / 255, qGreen(s) + qGreen(d) * keep / 255, qBlue(s) + qBlue(d) * keep / 255, sa + qAlpha(d) * keep / 255);
+                        if (sa > 127)
+                            depth[x] = z;
+                    } else {
+                        // Behind it: under it.
+                        int const keep = 255 - qAlpha(d);
+                        to[x] = qRgba(qRed(d) + qRed(s) * keep / 255, qGreen(d) + qGreen(s) * keep / 255, qBlue(d) + qBlue(s) * keep / 255, qAlpha(d) + sa * keep / 255);
+                    }
+                }
+            }
+        }
+        built.setDevicePixelRatio(dpr);
+        painter.save();
+        painter.resetTransform();
+        painter.drawImage(0, 0, built);
+        painter.restore();
+        painter.setTransform(base);
+        return;
+    }
     // The furthest first, so that what is nearer the camera covers it.
-    for (int l : scene.drawOrder(frame)) {
+    for (int l : order) {
         Layer const& layer = scene.layers[l];
         int const index = layer.drawingAt(frame);
         if (layer.kind == Layer::ColourCard && scene.enabled(l)) {

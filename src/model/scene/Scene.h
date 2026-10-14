@@ -852,6 +852,9 @@ public:
     // Where a point of a layer is in space: across and down as in the scene, and how far
     // towards the camera.  Before the camera has anything to do with it.
     void toSpace(int layer, int frame, QPointF p, double& x, double& y, double& z, PoseOverride const* over = nullptr) const;
+    // How near the camera each point of a layer is, as the camera sees it (the higher, the nearer): a x + b y + c for the
+    // point (x, y) of the layer.  (A layer is flat, so it is that simple.)
+    void depthPlane(int layer, int frame, double& a, double& b, double& c) const;
     // Level with the camera or behind it: not seen at all.
     bool behindCamera(int layer, int frame) const;
     // What depth does to something standing at `z` on a frame, in the coordinates of the

@@ -151,6 +151,32 @@ void Scene::toSpace(int layer, int frame, QPointF p, double& x, double& y, doubl
         spaceOf(*this, layer, frame, over).map(p, x, y, z);
 }
 
+void Scene::depthPlane(int layer, int frame, double& a, double& b, double& c) const
+{
+    a = b = 0.0;
+    c = depthOf(layer, frame);
+    if (layer < 0 || layer >= layers.size() || layers[layer].kind == Layer::Camera)
+        return;
+    Mat4 space = spaceOf(*this, layer, frame, nullptr);
+    int const camera = cameraIndex();
+    Pose const cameraPose = camera >= 0 ? poseFor(*this, camera, frame, nullptr) : Pose();
+    QTransform const lens = cameraTransform(frame);
+    if ((cameraPose.rotX != 0.0 || cameraPose.rotY != 0.0) && lens.isInvertible()) {
+        // As worldTransform() has it: what a turned camera sees is turned the other way.
+        double const cameraDepth = depthOf(camera, frame);
+        QPointF const centre = lens.inverted().map(QPointF(width / 2.0, height / 2.0));
+        space = space * Mat4::move(-centre.x(), -centre.y(), -cameraDepth) * Mat4::aboutX(-cameraPose.rotX) * Mat4::aboutY(-cameraPose.rotY)
+                * Mat4::move(centre.x(), centre.y(), cameraDepth);
+    }
+    double x, y, z0, z1, z2;
+    space.map(QPointF(0, 0), x, y, z0);
+    space.map(QPointF(1, 0), x, y, z1);
+    space.map(QPointF(0, 1), x, y, z2);
+    a = z1 - z0;
+    b = z2 - z0;
+    c = z0;
+}
+
 double Scene::depthOf(int layer, int frame, PoseOverride const* over) const
 {
     if (layer < 0 || layer >= layers.size())
