@@ -659,6 +659,11 @@ struct Layer {
     // A drawing layer attached to a chain of Game Bones: instead of riding the last bone whole, it bends along the chain
     // (each part of it follows the bone it lies along on frame 0, as the bones turn from how they stand there).
     bool bendOnBones = false;
+    // How the layer's picture goes onto what is under it: laid over it (Normal), or mixed with it - Multiply darkens
+    // as ink does, Screen lightens as light does, and so on, as in a paint program.  The layer is mixed as a whole.
+    enum Blend { BlendNormal, BlendMultiply, BlendScreen, BlendOverlay, BlendDarken, BlendLighten, BlendColourDodge, BlendColourBurn,
+                 BlendHardLight, BlendSoftLight, BlendDifference, BlendExclusion, BlendAdd, BlendCount };
+    int blend = BlendNormal;
     bool bitmapSheet(int sheet) const { return sheet == 2 ? bitmap : (bitmapArt & (1 << sheet)) != 0; }
     // How fine its pixels are, as a percentage: 100 is a pixel for each unit of the scene, 200 two across each unit.
     // Taken when the pixels of a drawing are first made.

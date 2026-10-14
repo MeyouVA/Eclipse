@@ -310,6 +310,15 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.bitmap = lo["bitmap"].toBool(false);
         layer.bitmapArt = lo["bitmapArt"].toInt(0) & 11;
         layer.bendOnBones = lo["bendOnBones"].toBool(false);
+        {
+            // (A mode of a newer version: laid over as usual.)
+            static char const* const kBlends[Layer::BlendCount] = {"normal", "multiply", "screen", "overlay", "darken", "lighten", "colourDodge",
+                                                                   "colourBurn", "hardLight", "softLight", "difference", "exclusion", "add"};
+            QString const blend = lo["blend"].toString();
+            for (int b = 0; b < Layer::BlendCount; ++b)
+                if (blend == QLatin1String(kBlends[b]))
+                    layer.blend = b;
+        }
         layer.bitmapResolution = std::clamp(lo["bitmapResolution"].toInt(100), 25, 400);
         layer.ikExcluded = lo["ikExcluded"].toBool(false);
         if (QJsonArray const limits = lo["ikLimits"].toArray(); limits.size() == 2) {

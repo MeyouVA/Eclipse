@@ -66,6 +66,7 @@ private:
     QWidget* m_artRow = nullptr;    // a drawing layer: which of its art layers are in the picture
     QCheckBox* m_bitmap = nullptr;  // a drawing layer: painted in pixels
     QCheckBox* m_bend = nullptr;    // a drawing layer on Game Bones: bends along them
+    QComboBox* m_blend = nullptr;   // how the layer's picture is mixed with what is under it
     QCheckBox* m_artShown[4] = {nullptr, nullptr, nullptr, nullptr};
     QCheckBox* m_ikExcluded = nullptr;
     QCheckBox* m_ikLimited = nullptr;

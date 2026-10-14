@@ -561,10 +561,42 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
     --depth;
 }
 
+// While a layer with a blend mode is painted alone, to be mixed with what is under it as a whole.
+static thread_local bool tPaintingToBlend = false;
+
 void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int frame, Drawing const& drawing, double opacity,
                                QTransform const& sceneToDevice, bool everySheet)
 {
     Layer const& layer = scene.layers[l];
+    if (layer.blend != Layer::BlendNormal && !tPaintingToBlend && opacity > 0.0) {
+        // The layer alone in a picture of its own (its lines over its paint as usual), mixed with what is under it once.
+        static QPainter::CompositionMode const kModes[Layer::BlendCount] = {
+            QPainter::CompositionMode_SourceOver, QPainter::CompositionMode_Multiply, QPainter::CompositionMode_Screen,
+            QPainter::CompositionMode_Overlay, QPainter::CompositionMode_Darken, QPainter::CompositionMode_Lighten,
+            QPainter::CompositionMode_ColorDodge, QPainter::CompositionMode_ColorBurn, QPainter::CompositionMode_HardLight,
+            QPainter::CompositionMode_SoftLight, QPainter::CompositionMode_Difference, QPainter::CompositionMode_Exclusion,
+            QPainter::CompositionMode_Plus};
+        QPaintDevice* const device = painter.device();
+        double const dpr = device->devicePixelRatioF();
+        QImage alone(QSize(int(device->width() * dpr), int(device->height() * dpr)), QImage::Format_ARGB32_Premultiplied);
+        alone.setDevicePixelRatio(dpr);
+        alone.fill(Qt::transparent);
+        {
+            QPainter off(&alone);
+            off.setRenderHints(painter.renderHints());
+            off.setTransform(painter.transform());
+            off.setClipRegion(painter.clipRegion(), painter.hasClipping() ? Qt::ReplaceClip : Qt::NoClip);
+            tPaintingToBlend = true;
+            paintLayerDrawing(off, scene, l, frame, drawing, opacity, sceneToDevice, everySheet);
+            tPaintingToBlend = false;
+        }
+        painter.save();
+        painter.resetTransform();
+        painter.setCompositionMode(kModes[std::clamp(layer.blend, 0, int(Layer::BlendCount) - 1)]);
+        painter.drawImage(0, 0, alone);
+        painter.restore();
+        return;
+    }
     if (!everySheet && layer.hiddenSheets != 0 && !layer.showsSymbol()) {
         // The art layers left out of the picture are not in it.
         Drawing kept = drawing;

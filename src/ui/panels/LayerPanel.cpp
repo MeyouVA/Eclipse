@@ -135,6 +135,15 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         if (!m_refreshing)
             m_document->setLayerBitmap(m_layer, on);
     });
+    m_blend = new QComboBox(this);
+    m_blend->setObjectName(QStringLiteral("LayerBlend"));
+    m_blend->addItems({tr("Normal"), tr("Multiply"), tr("Screen"), tr("Overlay"), tr("Darken"), tr("Lighten"), tr("Colour Dodge"), tr("Colour Burn"),
+                       tr("Hard Light"), tr("Soft Light"), tr("Difference"), tr("Exclusion"), tr("Add")});
+    m_blend->setToolTip(tr("How the layer is mixed with what is under it: Multiply darkens as ink does, Screen lightens as light does, Add adds light."));
+    connect(m_blend, &QComboBox::currentIndexChanged, this, [this](int mode) {
+        if (!m_refreshing && mode >= 0)
+            m_document->editLayers({m_layer}, tr("Blend Mode"), [mode](Layer& layer) { layer.blend = mode; });
+    });
     m_bend = new QCheckBox(tr("Bends on its bones"), this);
     m_bend->setObjectName(QStringLiteral("LayerBendOnBones"));
     m_bend->setToolTip(tr("Hanging from Game Bones, the drawing bends along them as they turn, instead of riding the last one whole.\n"
@@ -183,6 +192,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     ease->addWidget(new QLabel(tr("Out"), this));
     ease->addWidget(m_easeOut, 1);
     form->addRow(tr("Opacity"), m_opacity);
+    form->addRow(tr("Blend Mode"), m_blend);
     form->addRow(tr("Ease"), ease);
     form->addRow(QString(), m_key);
     form->addRow(m_effects);
@@ -261,6 +271,8 @@ void LayerPanel::refresh()
         m_form->setRowVisible(m_bend, layer.holdsDrawings() && up >= 0 && m_document->scene().layers[up].kind == Layer::Bone);
         m_bend->setChecked(layer.bendOnBones);
     }
+    m_form->setRowVisible(m_blend, layer.holdsDrawings());
+    m_blend->setCurrentIndex(std::clamp(layer.blend, 0, int(Layer::BlendCount) - 1));
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
         m_artShown[sheet]->setChecked(layer.sheetShown(sheet));
     m_ikExcluded->setChecked(layer.ikExcluded);
