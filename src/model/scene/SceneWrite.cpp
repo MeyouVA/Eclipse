@@ -343,6 +343,10 @@ QJsonObject Scene::toJson(QString const& folder) const
                         one["endColor"] = e.endColor.name(QColor::HexArgb);
                     one["wind"] = e.wind;
                     one["spin"] = e.spin;
+                    one["regionW"] = e.regionWidth;
+                    one["regionH"] = e.regionHeight;
+                    one["floor"] = e.floor;
+                    one["bounce"] = e.bounce;
                 }
                 effects.append(one);
             }

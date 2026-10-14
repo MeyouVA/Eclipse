@@ -64,7 +64,8 @@ private:
     QComboBox* m_matte;
     QCheckBox* m_invert;
     QWidget* m_particles = nullptr;
-    QDoubleSpinBox* m_particleBox[9] = {};    // life, speed, spread, direction, gravity, seed, size at the end, wind, spin
+    // life, speed, spread, direction, gravity, seed, size at the end, wind, spin, region width and height, floor, bounce
+    QDoubleSpinBox* m_particleBox[13] = {};
     QPushButton* m_particleColour = nullptr;
     class QCheckBox* m_particleRecolour = nullptr;
     class QCheckBox* m_particleFollow = nullptr;

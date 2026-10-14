@@ -33,7 +33,41 @@ QVector<Effect::Particle> Effect::particles(double rate, int frame) const
             double const angle = (direction + (chance(born, i, 0) - 0.5) * spread) * 3.14159265358979323846 / 180.0;
             double const pace = speed * (0.6 + 0.8 * chance(born, i, 1));
             Particle p;
-            p.offset = QPointF(std::cos(angle) * pace * age + 0.5 * wind * age * age, -std::sin(angle) * pace * age + 0.5 * gravity * age * age);
+            QPointF const from((chance(born, i, 3) - 0.5) * regionWidth, (chance(born, i, 4) - 0.5) * regionHeight);
+            double y = -std::sin(angle) * pace * age + 0.5 * gravity * age * age;
+            if (floor > 0.0) {
+                // Off the floor: from one bounce to the next, each time with what is kept of its speed, going up again.
+                double y0 = from.y(), v = -std::sin(angle) * pace, left = age;
+                y = from.y() + v * left + 0.5 * gravity * left * left - from.y();
+                for (int hits = 0; hits < 64; ++hits) {
+                    // When it next reaches the floor: y0 + v t + g t^2 / 2 = floor.
+                    double hit = -1.0;
+                    double const a = 0.5 * gravity, b = v, c = y0 - floor;
+                    if (std::abs(a) < 1e-12) {
+                        if (b > 1e-12)
+                            hit = -c / b;
+                    } else {
+                        double const d = b * b - 4.0 * a * c;
+                        if (d >= 0.0) {
+                            double const r = std::sqrt(d);
+                            double const t1 = (-b - r) / (2.0 * a), t2 = (-b + r) / (2.0 * a);
+                            hit = t1 > 1e-9 ? t1 : t2 > 1e-9 ? t2 : -1.0;
+                        }
+                    }
+                    if (hit < 0.0 || hit > left) {
+                        y = y0 + v * left + 0.5 * gravity * left * left - from.y();
+                        break;
+                    }
+                    left -= hit;
+                    v = -(v + gravity * hit) * std::clamp(bounce, 0.0, 1.0);
+                    y0 = floor;
+                    if (std::abs(v) < 0.05 && gravity >= 0.0) {
+                        y = floor - from.y();       // come to rest on it
+                        break;
+                    }
+                }
+            }
+            p.offset = from + QPointF(std::cos(angle) * pace * age + 0.5 * wind * age * age, y);
             p.opacity = 1.0 - age / lasts;
             p.scale = 1.0 + (endSize - 1.0) * age / lasts;
             p.tint = endColor.isValid() ? age / lasts : 0.0;

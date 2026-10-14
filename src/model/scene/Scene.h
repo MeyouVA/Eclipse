@@ -434,6 +434,10 @@ struct Effect {
     QColor endColor;            // the colour a particle turns to by the end of its life (none: it keeps the drawing's)
     double wind = 0.0;          // pushes the particles across by so many units a frame, each frame (positive: to the right)
     double spin = 0.0;          // each turns by up to so many degrees a frame, one way or the other
+    double regionWidth = 0.0;   // where they are let go from: anywhere in a box this wide and high about the drawing (0: from it)
+    double regionHeight = 0.0;
+    double floor = 0.0;         // a floor so far below where they are let go, that they bounce off (0: none)
+    double bounce = 0.5;        // how much of its speed a particle keeps when it bounces (0..1)
     struct Particle {
         QPointF offset;         // from where the drawing itself is (was, on the frame it was let go)
         double opacity = 1.0;
