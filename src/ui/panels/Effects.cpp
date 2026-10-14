@@ -861,8 +861,16 @@ void EffectsPanel::showEditors()
     }
     bool const particles = valid && e.type == Effect::Particles;
     {
-        bool const hs = valid && e.type == Effect::HueSaturation, bc = valid && e.type == Effect::BrightnessContrast, along = valid && e.type == Effect::DirectionalBlur;
+        bool const hs = valid && e.type == Effect::HueSaturation, bc = valid && e.type == Effect::BrightnessContrast;
+        bool const waves = valid && e.type == Effect::Ripple, along = (valid && e.type == Effect::DirectionalBlur) || waves;
         m_adjust->setVisible(hs || bc || along);
+        // The last box: the way a Directional Blur smears, or how far apart a Ripple's waves are.
+        if (QLabel* const label = qobject_cast<QLabel*>(m_adjustForm->labelForField(m_adjustBox[5])))
+            label->setText(waves ? tr("Wave Length") : tr("Direction"));
+        m_adjustBox[5]->setRange(waves ? 2.0 : -360.0, waves ? 2000.0 : 360.0);
+        m_adjustBox[5]->setSingleStep(waves ? 10.0 : 15.0);
+        m_adjustBox[5]->setToolTip(waves ? tr("How far apart the waves are, in scene units.")
+                                         : tr("Which way the picture is smeared (degrees: 0 across, 90 up and down)."));
         bool const shownFor[6] = {hs, hs, hs, bc, bc, along};
         double const values[6] = {e.hue, e.saturation, e.lightness, e.brightness, e.contrast, e.direction};
         for (int i = 0; i < 6; ++i) {
