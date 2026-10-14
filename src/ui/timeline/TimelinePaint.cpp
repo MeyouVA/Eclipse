@@ -156,10 +156,10 @@ void Timeline::paintEvent(QPaintEvent*)
         int const ky = layer.holdsDrawings() && !param ? y + kRowHeight - 6 : y + kRowHeight / 2;
         // On a parameter's row, the keyframes that set that parameter only.
         // (On an effect's row, the keyframes that carry its amount: only an animated effect has them.)
-        bool const effectRow = param && m_params[row] >= ParameterCount;
+        bool const effectRow = param && m_params[row] >= ParameterCount && m_params[row] < kBoneRows;
         int const effect = effectRow ? m_params[row] - ParameterCount : -1;
         bool const keyedEffect = effectRow && effect < layer.effects.size() && layer.effects[effect].animated;
-        int const part = !param ? Keyframe::AllParts : effectRow ? Keyframe::PartRest : 1 << m_params[row];
+        int const part = !param ? Keyframe::AllParts : m_params[row] >= ParameterCount ? Keyframe::PartRest : 1 << m_params[row];
         QVector<int> mine;
         for (int k = 0; k < layer.keys.size(); ++k)
             if ((layer.keys[k].parts & part) && (!effectRow || (keyedEffect && effect < layer.keys[k].pose.fx.size())))

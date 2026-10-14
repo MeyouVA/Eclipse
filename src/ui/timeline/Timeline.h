@@ -46,7 +46,10 @@ public:
     // ---- the parameters of a layer: a row each under it, opened with the + after its name ----
     // (Fov last: only cameras have it.)  After them, a row for the amount of each effect of the layer: ParameterCount + its place.
     enum Parameter : int { PosX, PosY, ScaleX, ScaleY, Angle, Opacity, PosZ, Skew, Fov, ParameterCount };
-    static bool isEffectRow(Parameter which) { return which >= ParameterCount; }
+    // And then a row for the angle of each bone of its chain: kBoneRows + the bone.
+    static constexpr int kBoneRows = ParameterCount + 1000;
+    static bool isEffectRow(Parameter which) { return which >= ParameterCount && which < kBoneRows; }
+    static bool isBoneRow(Parameter which) { return which >= kBoneRows; }
     // The name a row goes by: a parameter's, or the effect's of the layer; whether its value is a share shown in percent.
     QString rowName(int layer, Parameter which) const;
     bool rowInPercent(int layer, Parameter which) const;

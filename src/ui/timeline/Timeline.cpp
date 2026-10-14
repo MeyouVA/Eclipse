@@ -56,6 +56,11 @@ void Timeline::rebuildRows()
             m_rows.push_back(l);
             m_params.push_back(ParameterCount + e);
         }
+        // And the angle of each bone of the chain the drawings bend along.
+        for (int b = 0; b + 1 < scene.layers[l].bones.size(); ++b) {
+            m_rows.push_back(l);
+            m_params.push_back(kBoneRows + b);
+        }
     }
 }
 

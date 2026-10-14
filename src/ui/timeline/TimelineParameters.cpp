@@ -109,6 +109,8 @@ static bool inPercent(Effect const& e)
 
 QString Timeline::rowName(int layer, Parameter which) const
 {
+    if (isBoneRow(which))
+        return tr("Bone %1: Angle").arg(int(which) - kBoneRows + 1);
     if (!isEffectRow(which))
         return parameterName(which);
     Scene const& scene = m_document->scene();
@@ -140,6 +142,10 @@ double Timeline::parameter(int layer, Parameter which) const
     Pose pose = scene.layers[layer].poseAt(m_frame);
     if (isEffectRow(which))
         return scene.layers[layer].effectAmount(int(which) - ParameterCount, pose);
+    if (isBoneRow(which)) {
+        int const b = int(which) - kBoneRows;
+        return b < pose.bend.size() ? pose.bend[b] : 0.0;
+    }
     return poseField(pose, which);
 }
 
@@ -181,6 +187,21 @@ void Timeline::setParameter(int layer, Parameter which, double value)
         return;
     if (which == Opacity)
         value = std::clamp(value, 0.0, 1.0);
+    if (isBoneRow(which)) {
+        // A keyframe of the bones' angles here (the rest of the pose goes on from its own keyframes).
+        int const b = int(which) - kBoneRows;
+        if (b + 1 >= scene.layers[layer].bones.size())
+            return;
+        Pose pose = scene.layers[layer].poseAt(m_frame);
+        if (pose.bend.size() <= b)
+            pose.bend.resize(b + 1);
+        int const key = scene.layers[layer].keyIndex(m_frame);
+        if (pose.bend[b] == value && key >= 0 && scene.layers[layer].keys[key].sets(Keyframe::PartRest))
+            return;
+        pose.bend[b] = value;
+        m_document->setPartKeyframe(layer, m_frame, Keyframe::PartRest, pose, tr("Set %1").arg(rowName(layer, which)));
+        return;
+    }
     if (isEffectRow(which)) {
         // An animated effect: a keyframe of its amount here; otherwise its one amount.
         int const e = int(which) - ParameterCount;

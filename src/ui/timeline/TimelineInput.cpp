@@ -322,6 +322,8 @@ void Timeline::mouseMoveEvent(QMouseEvent* event)
         double step = m_dragParam == ScaleX || m_dragParam == ScaleY || m_dragParam == Opacity ? 0.01 : m_dragParam == Fov ? 0.5 : 1.0;
         if (isEffectRow(m_dragParam))
             step = rowInPercent(m_dragParamLayer, m_dragParam) ? 0.01 : 0.1;
+        else if (isBoneRow(m_dragParam))
+            step = 1.0;
         setParameter(m_dragParamLayer, m_dragParam, m_dragParamFrom + moved * step);
         viewport()->update();
         return;
