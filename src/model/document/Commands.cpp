@@ -29,6 +29,31 @@ private:
     Stroke m_stroke;
 };
 
+// Going into a symbol or out of one: the scene worked on, and the scenes around it, before and after.
+// A step of undo like any other, so that what was done before is still there to undo.
+class SymbolLevelCommand : public QUndoCommand {
+public:
+    SymbolLevelCommand(Document* doc, Scene before, QVector<Document::Around> aroundBefore, Scene after, QVector<Document::Around> aroundAfter,
+                       QString const& text)
+        : QUndoCommand(text), m_doc(doc), m_before(std::move(before)), m_after(std::move(after)), m_aroundBefore(std::move(aroundBefore)),
+          m_aroundAfter(std::move(aroundAfter))
+    {
+    }
+    void undo() override { put(m_before, m_aroundBefore); }
+    void redo() override { put(m_after, m_aroundAfter); }
+
+private:
+    void put(Scene const& scene, QVector<Document::Around> const& around)
+    {
+        m_doc->m_scene = scene;
+        m_doc->m_around = around;
+        emit m_doc->changed();
+    }
+    Document* m_doc;
+    Scene m_before, m_after;
+    QVector<Document::Around> m_aroundBefore, m_aroundAfter;
+};
+
 Document::Document(QObject* parent) : QObject(parent) {}
 
 void Document::setUndoLevels(int levels)
@@ -45,12 +70,9 @@ bool Document::enterSymbol(int symbolId)
         return false;
     Scene inner = m_scene.symbolScene(*symbol);
     inner.refreshSymbolInstances();
-    m_unsavedInside = unsaved();
-    m_around.push_back({m_scene, symbolId});
-    m_undo.clear();
-    m_undo.setUndoLimit(m_undoLevels);
-    m_scene = inner;
-    emit changed();
+    QVector<Around> around = m_around;
+    around.push_back({m_scene, symbolId});
+    m_undo.push(new SymbolLevelCommand(this, m_scene, m_around, inner, around, tr("Edit Symbol")));
     return true;
 }
 
@@ -58,14 +80,11 @@ bool Document::leaveSymbol()
 {
     if (m_around.isEmpty())
         return false;
-    Around const around = m_around.takeLast();
-    Scene outer = around.scene;
-    outer.takeSymbol(around.symbolId, m_scene);
-    m_unsavedInside = unsaved();
-    m_undo.clear();
-    m_undo.setUndoLimit(m_undoLevels);
-    m_scene = outer;
-    emit changed();
+    QVector<Around> around = m_around;
+    Around const left = around.takeLast();
+    Scene outer = left.scene;
+    outer.takeSymbol(left.symbolId, m_scene);
+    m_undo.push(new SymbolLevelCommand(this, m_scene, m_around, outer, around, tr("Leave Symbol")));
     return true;
 }
 

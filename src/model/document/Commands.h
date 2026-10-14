@@ -390,18 +390,23 @@ signals:
 private:
     friend class SceneStateCommand;
     friend class AddStrokeCommand;
+    friend class SymbolLevelCommand;
 
     // Runs `edit` on a copy of the scene and pushes the result as one undo step.
     template <class Edit> void apply(QString const& text, Edit edit);
     void setScene(Scene const& scene);
 
     Scene m_scene;
+public:
+    // (For the step of undo that goes into a symbol or out of one.)
     struct Around {
         Scene scene;        // the scene the symbol was gone into from
         int symbolId = 0;
     };
+
+private:
     QVector<Around> m_around;
-    bool m_unsavedInside = false;       // (going in and out empties the list of things to undo: what was not saved is remembered here)
+    bool m_unsavedInside = false;       // (what was not saved when the list of things to undo was emptied)
     bool m_extendPrevious = false;
     bool m_nameByFrame = false;
     int m_undoLevels = 0;
