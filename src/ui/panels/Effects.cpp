@@ -463,6 +463,12 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Median  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Ripple:
         return QObject::tr("Ripple  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Tone:
+    case Effect::Highlight: {
+        int const matte = scene.layerIndex(effect.matte);
+        return (effect.type == Effect::Tone ? QObject::tr("Tone  %1%2") : QObject::tr("Highlight  %1%2"))
+            .arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"), effect.invert ? QObject::tr("  inverted") : QString());
+    }
     default: {
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Cutter  %1%2").arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"),
@@ -501,6 +507,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Negate")), &QAction::triggered, this, [this] { add(Effect::Negate); });
     connect(menu->addAction(tr("Median")), &QAction::triggered, this, [this] { add(Effect::Median); });
     connect(menu->addAction(tr("Ripple")), &QAction::triggered, this, [this] { add(Effect::Ripple); });
+    connect(menu->addAction(tr("Tone")), &QAction::triggered, this, [this] { add(Effect::Tone); });
+    connect(menu->addAction(tr("Highlight")), &QAction::triggered, this, [this] { add(Effect::Highlight); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -840,7 +848,8 @@ void EffectsPanel::showEditors()
     bool const valid = m_layer >= 0 && m_layer < scene.layers.size() && row >= 0 && row < scene.layers[m_layer].effects.size();
     Effect const e = valid ? scene.layers[m_layer].effects[row] : Effect();
     bool const cutter = valid && e.type == Effect::Cutter;
-    bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale);
+    bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight);
+    bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading);
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
@@ -878,13 +887,16 @@ void EffectsPanel::showEditors()
             m_adjustBox[i]->setValue(values[i]);
         }
     }
-    m_matteLabel->setVisible(cutter || particles);
+    m_matteLabel->setVisible(cutter || particles || shading);
     m_matteLabel->setText(particles ? tr("Bounce Off") : tr("Matte"));
-    m_matte->setVisible(cutter || particles);
+    m_matte->setVisible(cutter || particles || shading);
     m_matte->setToolTip(particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
+                        : shading ? tr("The layer whose drawing says where the shade (or the light) falls on this one.")
                                   : tr("The layer whose drawing cuts this one: only what lies inside it stays."));
-    m_invert->setVisible(cutter);
-    if (cutter || particles) {
+    m_invert->setVisible(cutter || shading);
+    if (cutter || shading)
+        m_invert->setChecked(e.invert);
+    if (cutter || particles || shading) {
         m_matte->clear();
         m_matte->addItem(tr("(none)"), 0);
         for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
@@ -923,7 +935,7 @@ void EffectsPanel::showEditors()
         m_amount->setSuffix(QStringLiteral(" %"));
         m_amount->setValue(amount * 100.0);
     } else if (valid && !cutter) {
-        m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : tr("Radius"));
+        m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : shading ? tr("Softness") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());

@@ -448,6 +448,10 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.type = Effect::Median;
             else if (type == QLatin1String("ripple"))
                 e.type = Effect::Ripple;
+            else if (type == QLatin1String("tone"))
+                e.type = Effect::Tone;
+            else if (type == QLatin1String("highlight"))
+                e.type = Effect::Highlight;
             else
                 continue;  // an effect of a newer version: left out rather than guessed at
             e.enabled = eo["enabled"].toBool(true);

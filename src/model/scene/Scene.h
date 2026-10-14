@@ -445,7 +445,7 @@ struct Swatch {
 // a layer are applied in order.
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
-                ColourScale, Negate, Median, Ripple, TypeCount };
+                ColourScale, Negate, Median, Ripple, Tone, Highlight, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -457,7 +457,9 @@ struct Effect {
     // of the layer's picture, as a share of how far it is from it (0..1).  Colour-Scale: each colour multiplied by `color` (its red,
     // green and blue as shares), `amount` of the way (0..1).  Negate: the colours turned to their opposites, `amount` of the way
     // (0..1).  Median: each point the middle colour of those round it, `amount` scene units round.  Ripple: the picture rocked by
-    // waves `amount` scene units high, `direction` scene units apart, that move on each frame.
+    // waves `amount` scene units high, `direction` scene units apart, that move on each frame.  Tone and Highlight: where
+    // the drawing of the `matte` layer lies over the layer (or, inverted, where it does not), the layer is darkened (Tone,
+    // multiplied by `color`) or lightened (Highlight, screened with `color`), the edge softened `amount` scene units.
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;

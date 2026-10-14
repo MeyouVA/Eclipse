@@ -829,6 +829,44 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         } else if (e.type == Effect::Glow || e.type == Effect::Shadow) {
             // The offset is a direction on the picture: it does not turn with the layer.
             Effects::halo(image, e.color, amount * pixelsPerUnit, e.type == Effect::Shadow ? e.offset * (pixelsPerUnit / dpr) : QPointF());
+        } else if (e.type == Effect::Tone || e.type == Effect::Highlight) {
+            int const m = scene.layerIndex(e.matte);
+            if (m < 0)
+                continue;  // no matte: nowhere to shade
+            QImage where(size, QImage::Format_ARGB32_Premultiplied);
+            where.setDevicePixelRatio(dpr);
+            where.fill(Qt::transparent);
+            if (int const index = scene.layers[m].drawingAt(frame); index != Layer::kNoDrawing) {
+                QPainter mp(&where);
+                mp.setRenderHints(painter.renderHints());
+                mp.setTransform(scene.worldTransform(m, frame) * sceneToDevice);
+                paintDrawingOpaque(mp, scene, Deform::shown(scene.layers[m].drawings[index], scene.layers[m], scene.layers[m].poseAt(frame)), nullptr);
+            }
+            if (e.invert) {
+                // Outside the matte: the rest of the picture.
+                QImage outside(size, QImage::Format_ARGB32_Premultiplied);
+                outside.setDevicePixelRatio(dpr);
+                outside.fill(Qt::black);
+                QPainter op(&outside);
+                op.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+                op.drawImage(0, 0, where);
+                op.end();
+                where = outside;
+            }
+            Effects::blur(where, amount * pixelsPerUnit);
+            // The layer in the shade (or the light), then only where the matte says, over the layer as it is.
+            QImage shaded = image;
+            {
+                QPainter sp(&shaded);
+                sp.setCompositionMode(e.type == Effect::Tone ? QPainter::CompositionMode_Multiply : QPainter::CompositionMode_Screen);
+                sp.fillRect(shaded.rect(), QColor(e.color.red(), e.color.green(), e.color.blue()));
+                sp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                sp.drawImage(0, 0, image);
+                sp.drawImage(0, 0, where);
+            }
+            QPainter onto(&image);
+            onto.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+            onto.drawImage(0, 0, shaded);
         } else if (e.type == Effect::Cutter) {
             int const m = scene.layerIndex(e.matte);
             if (m < 0)

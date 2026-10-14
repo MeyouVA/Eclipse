@@ -80,6 +80,8 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Negate"), "effect:13", QT_TR_NOOP("Turns the layer's colours to their opposites, as a film negative"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Median"), "effect:14", QT_TR_NOOP("Takes out specks and grain while keeping the edges sharp"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Ripple"), "effect:15", QT_TR_NOOP("Rocks the layer with moving waves, as if seen through water or heat"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Tone"), "effect:16", QT_TR_NOOP("Darkens the layer in a colour where the drawing of a matte layer lies over it, as a cartoon tone"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Highlight"), "effect:17", QT_TR_NOOP("Lightens the layer in a colour where the drawing of a matte layer lies over it"), QT_TR_NOOP("Filter")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);
