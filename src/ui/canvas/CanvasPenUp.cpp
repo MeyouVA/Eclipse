@@ -1,6 +1,9 @@
 // Eclipse - the Camera view: the pen lifted - what each drag leaves in the scene.
 #include "ui/canvas/Canvas.h"
 
+#include <QImage>
+#include <QPainter>
+
 #include <cmath>
 #include <numeric>
 
@@ -11,18 +14,68 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
     if (bitmapNow()) {
         // A bitmap layer: the stroke is painted into the pixels of the drawing, looking as it would as a line or a shape.
         Scene const& scene = m_document->scene();
-        if (m_tool == Brush && m_brushShapes) {
-            Fill shape = Fill::fromStroke(stroke, std::max(tolerance * 0.5, 0.05));
+        bool const asShape = m_tool == Brush && m_brushShapes;
+        Fill shape;
+        if (asShape) {
+            shape = Fill::fromStroke(stroke, std::max(tolerance * 0.5, 0.05));
             shape.texture = m_brushTexture;
             shape.textureAmount = float(m_brushTextureAmount) / 100.0f;
             shape.textureCrisp = m_brushTextureCrisp;
             shape.textureLow = float(m_brushRampLow) / 100.0f;
             shape.textureHigh = float(m_brushRampHigh) / 100.0f;
-            if (!shape.outlines.isEmpty())
-                paintIntoBitmap([&](QPainter& painter) { paintFill(painter, shape, scene.brushFor(shape)); }, tr("Paint Brush Stroke"));
-        } else {
-            paintIntoBitmap([&](QPainter& painter) { paintStroke(painter, stroke, scene.brushFor(stroke)); }, tr("Paint Stroke"));
+            if (shape.outlines.isEmpty())
+                return;
         }
+        // The stroke at a share of its thickness, painted: as a shape (the Brush) or as a line.
+        auto paintAt = [&](QPainter& onto, double share) {
+            if (!asShape) {
+                Stroke thinner = stroke;
+                thinner.width = float(stroke.width * share);
+                paintStroke(onto, thinner, scene.brushFor(stroke));
+                return;
+            }
+            Fill piece = shape;
+            if (share < 1.0) {
+                Stroke thinner = stroke;
+                thinner.width = float(stroke.width * share);
+                piece = Fill::fromStroke(thinner, std::max(tolerance * 0.5, 0.05));
+                piece.texture = shape.texture;
+                piece.textureAmount = shape.textureAmount;
+                piece.textureCrisp = shape.textureCrisp;
+                piece.textureLow = shape.textureLow;
+                piece.textureHigh = shape.textureHigh;
+            }
+            if (!piece.outlines.isEmpty())
+                paintFill(onto, piece, scene.brushFor(shape));
+        };
+        bool const soft = m_tool == Brush && (m_bitmapHardness < 100 || m_bitmapFlow < 100);
+        paintIntoBitmap([&](QPainter& painter) {
+            QImage* const target = dynamic_cast<QImage*>(painter.device());
+            if (!soft || !target) {
+                paintAt(painter, 1.0);
+                return;
+            }
+            // A soft edge: the stroke laid down again and again, each time thinner and more opaque, so the paint
+            // fades out towards the edge; and all of it at the flow asked for.
+            QImage dab(target->size(), QImage::Format_ARGB32_Premultiplied);
+            dab.fill(Qt::transparent);
+            {
+                QPainter onto(&dab);
+                onto.setRenderHints(painter.renderHints());
+                onto.setTransform(painter.transform());
+                double const hard = m_bitmapHardness / 100.0;
+                int const passes = hard >= 1.0 ? 1 : 8;
+                for (int i = 0; i < passes; ++i) {
+                    onto.setOpacity(1.0 / double(passes - i));
+                    paintAt(onto, 1.0 - (1.0 - hard) * double(i) / passes);
+                }
+            }
+            painter.save();
+            painter.resetTransform();
+            painter.setOpacity(m_bitmapFlow / 100.0);
+            painter.drawImage(QPointF(0, 0), dab);
+            painter.restore();
+        }, asShape ? tr("Paint Brush Stroke") : tr("Paint Stroke"));
         return;
     }
     if (m_tool == Brush && m_brushShapes) {

@@ -50,6 +50,23 @@ void ToolProperties::addSizeRows()
                     settings().setValue(QStringLiteral("tools/brushMinSize"), v);
                 });
     }
+    // The Brush on a bitmap layer: how hard its edge is, and its flow.
+    {
+        int const hard = std::clamp(settings().value(QStringLiteral("tools/bitmapHardness"), 100).toInt(), 0, 100);
+        int const flow = std::clamp(settings().value(QStringLiteral("tools/bitmapFlow"), 100).toInt(), 1, 100);
+        m_canvas->setBitmapHardness(hard);
+        m_canvas->setBitmapFlow(flow);
+        m_hardnessRow = addSetting(tr("Bitmap Hardness"), tr("On a bitmap layer: how hard the brush's edge is. 100: crisp; less: the paint fades out towards the edge."),
+                0, 100, hard, QStringLiteral(" %"), [this](int v) {
+                    m_canvas->setBitmapHardness(v);
+                    settings().setValue(QStringLiteral("tools/bitmapHardness"), v);
+                });
+        m_flowRow = addSetting(tr("Bitmap Flow"), tr("On a bitmap layer: how much paint a stroke of the brush puts down; strokes over each other build it up."),
+                1, 100, flow, QStringLiteral(" %"), [this](int v) {
+                    m_canvas->setBitmapFlow(v);
+                    settings().setValue(QStringLiteral("tools/bitmapFlow"), v);
+                });
+    }
     // The paint tools: gaps in the lines round an area, up to this wide, are closed of themselves.
     {
         int const kept = std::clamp(settings().value(QStringLiteral("tools/closeGap"), 2).toInt(), 0, 40);
