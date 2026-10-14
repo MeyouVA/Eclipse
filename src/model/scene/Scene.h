@@ -5,6 +5,8 @@
 // over several frames is simply the same index repeated, as on a paper exposure sheet.
 #pragma once
 
+#include <functional>
+
 #include <QBrush>
 #include <QColor>
 #include <QPair>
@@ -12,6 +14,7 @@
 #include <QMap>
 #include <QImage>
 #include <QJsonObject>
+#include <QPainterPath>
 #include <QPointF>
 #include <QPolygonF>
 #include <QTransform>
@@ -437,7 +440,8 @@ struct Effect {
     bool animated = false;
     QColor color = Qt::black;   // tint: towards this colour; glow and shadow: their colour
     QPointF offset;             // shadow: where it falls, in scene units
-    int matte = 0;              // cutter: the id of the layer whose drawing cuts this one
+    int matte = 0;              // cutter: the id of the layer whose drawing cuts this one; particles: the layer whose drawing
+                                // they bounce off (0: none)
     bool invert = false;        // cutter: keep what lies outside the matte instead of inside
     // Particles: the layer's drawing is thrown out again and again.  `amount` is how many are let go each
     // frame; each lives `life` frames, fading; it leaves at about `speed` units a frame, within `spread`
@@ -471,7 +475,10 @@ struct Effect {
     };
     // The particles there are on `frame` (from 0) with `rate` let go each frame: the same every time it is asked.
     // With the drawing's own shape for a region, `places` are points on its artwork (from the drawing's middle) to let them go from.
-    QVector<Particle> particles(double rate, int frame, QVector<QPointF> const& places = {}) const;
+    // `shapeFor` gives, for particles let go on a frame, the shape they bounce off (the `matte` layer's drawing, where they
+    // are measured from); none, or empty: nothing in the way.
+    QVector<Particle> particles(double rate, int frame, QVector<QPointF> const& places = {},
+                                std::function<QPainterPath(int born)> const& shapeFor = {}) const;
 
     bool operator==(Effect const&) const = default;
 };

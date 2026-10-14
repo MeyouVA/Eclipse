@@ -40,7 +40,56 @@ static double between(double x, double v, double a, double lo, double hi, double
     return std::clamp(x, lo, hi);
 }
 
-QVector<Effect::Particle> Effect::particles(double rate, int frame, QVector<QPointF> const& places) const
+// Where something is after `age` frames that starts at `at` going `v` and gathering `a` each frame, when it bounces off
+// `shape` (and the floor and walls, when there are some), keeping `keep` of its speed each time.  Taken a quarter of a
+// frame at a time; on the way it goes exactly as it would with nothing in the way.
+static QPointF throughShape(QPointF at, QPointF v, QPointF a, double age, double floor, double walls, double keep, QPainterPath const& shape)
+{
+    QRectF const box = shape.boundingRect();
+    int const steps = int(std::ceil(age * 4.0));
+    double const dt = steps > 0 ? age / steps : 0.0;
+    for (int k = 0; k < steps; ++k) {
+        QPointF next = at + v * dt + a * (0.5 * dt * dt);
+        QPointF onward = v + a * dt;
+        if (floor > 0.0 && next.y() > floor) {
+            next.setY(floor);
+            onward.setY(-onward.y() * keep);
+        }
+        if (walls > 0.0 && std::abs(next.x()) > walls) {
+            next.setX(std::clamp(next.x(), -walls, walls));
+            onward.setX(-onward.x() * keep);
+        }
+        if (box.contains(next) && shape.contains(next)) {
+            // Which way the edge faces here: towards where, round about, it is outside the shape.
+            double const reach = std::max(2.0, 1.5 * std::hypot(onward.x(), onward.y()) * dt);
+            QPointF out;
+            for (int d = 0; d < 16; ++d) {
+                double const turn = d * 3.14159265358979323846 / 8.0;
+                QPointF const dir(std::cos(turn), std::sin(turn));
+                if (!shape.contains(next + dir * reach))
+                    out += dir;
+            }
+            double length = std::hypot(out.x(), out.y());
+            if (length < 1e-9) {
+                out = -onward;      // deep in it: straight back
+                length = std::hypot(out.x(), out.y());
+            }
+            if (length > 1e-9) {
+                out /= length;
+                double const into = onward.x() * out.x() + onward.y() * out.y();
+                if (into < 0.0)
+                    onward -= out * (2.0 * into);
+            }
+            onward *= keep;
+            next = at;              // it stays where it was, outside
+        }
+        at = next;
+        v = onward;
+    }
+    return at;
+}
+
+QVector<Effect::Particle> Effect::particles(double rate, int frame, QVector<QPointF> const& places, std::function<QPainterPath(int born)> const& shapeFor) const
 {
     QVector<Particle> out;
     int const lasts = std::max(1, life);
@@ -59,6 +108,7 @@ QVector<Effect::Particle> Effect::particles(double rate, int frame, QVector<QPoi
         // (A rate that is not a whole number: now one more, now one fewer.)
         int const count = int(std::floor(rate * (born + 1))) - int(std::floor(rate * born));
         double const age = frame - born;
+        QPainterPath const shape = count > 0 && shapeFor ? shapeFor(born) : QPainterPath();
         for (int i = 0; i < count; ++i) {
             double const angle = (direction + (chance(born, i, 0) - 0.5) * spread) * 3.14159265358979323846 / 180.0;
             double const pace = speed * (0.6 + 0.8 * chance(born, i, 1));
@@ -108,6 +158,9 @@ QVector<Effect::Particle> Effect::particles(double rate, int frame, QVector<QPoi
             p.offset = from + QPointF(std::cos(angle) * pace * age + 0.5 * wind * age * age, y);
             if (walls > 0.0 && std::abs(from.x()) < walls)
                 p.offset.setX(between(from.x(), std::cos(angle) * pace, wind, -walls, walls, age, std::clamp(bounce, 0.0, 1.0)));
+            if (!shape.isEmpty() && !shape.contains(from))
+                p.offset = throughShape(from, QPointF(std::cos(angle) * pace, -std::sin(angle) * pace), QPointF(wind, gravity), age, floor,
+                                        std::abs(from.x()) < walls ? walls : 0.0, std::clamp(bounce, 0.0, 1.0), shape);
             p.opacity = 1.0 - age / lasts;
             p.scale = 1.0 + (endSize - 1.0) * age / lasts;
             p.tint = endColor.isValid() ? age / lasts : 0.0;

@@ -485,10 +485,21 @@ void EffectsPanel::showEditors()
         m_offsetX->setValue(e.offset.x());
         m_offsetY->setValue(e.offset.y());
     }
-    m_matteLabel->setVisible(cutter);
-    m_matte->setVisible(cutter);
-    m_invert->setVisible(cutter);
     bool const particles = valid && e.type == Effect::Particles;
+    m_matteLabel->setVisible(cutter || particles);
+    m_matteLabel->setText(particles ? tr("Bounce Off") : tr("Matte"));
+    m_matte->setVisible(cutter || particles);
+    m_matte->setToolTip(particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
+                                  : tr("The layer whose drawing cuts this one: only what lies inside it stays."));
+    m_invert->setVisible(cutter);
+    if (cutter || particles) {
+        m_matte->clear();
+        m_matte->addItem(tr("(none)"), 0);
+        for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
+            if (l != m_layer && scene.layers[l].holdsDrawings())
+                m_matte->addItem(scene.layers[l].name, scene.layers[l].id);
+        m_matte->setCurrentIndex(std::max(0, m_matte->findData(e.matte)));
+    }
     m_particles->setVisible(particles);
     if (particles) {
         double const values[6] = {double(e.life), e.speed, e.spread, e.direction, e.gravity, double(e.seed)};
@@ -525,12 +536,6 @@ void EffectsPanel::showEditors()
         m_amount->setSuffix(QString());
         m_amount->setValue(amount);
     } else if (cutter) {
-        m_matte->clear();
-        m_matte->addItem(tr("(none)"), 0);
-        for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
-            if (l != m_layer && scene.layers[l].holdsDrawings())
-                m_matte->addItem(scene.layers[l].name, scene.layers[l].id);
-        m_matte->setCurrentIndex(std::max(0, m_matte->findData(e.matte)));
         m_invert->setChecked(e.invert);
     }
     m_rebuilding = false;

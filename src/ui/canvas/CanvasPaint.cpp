@@ -697,7 +697,35 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                         places.push_back(p - middle);
                 }
             }
-            for (Effect::Particle const& particle : emitter.particles(rate, frame, places)) {
+            // A layer to bounce off: its drawing on this frame, where the particles let go on each frame are measured from (each
+            // from where the layer was then, the middle of the drawing).
+            std::function<QPainterPath(int)> shapeFor;
+            int const wall = emitter.matte != 0 ? scene.layerIndex(emitter.matte) : -1;
+            QPainterPath obstacle;
+            if (wall >= 0 && wall != l) {
+                int const index = scene.layers[wall].drawingAt(frame);
+                if (index != Layer::kNoDrawing) {
+                    Drawing const shown = Deform::shown(scene.layers[wall].drawings[index], scene.layers[wall], scene.layers[wall].poseAt(frame));
+                    obstacle.setFillRule(Qt::WindingFill);
+                    for (Fill const& f : shown.fills)
+                        for (QPolygonF const& outline : f.outlines)
+                            obstacle.addPolygon(outline);
+                    for (Stroke const& s : shown.strokes)
+                        for (QPolygonF const& outline : s.outlinePolygons())
+                            obstacle.addPolygon(outline);
+                    obstacle = scene.worldTransform(wall, frame).map(obstacle);
+                }
+            }
+            if (!obstacle.isEmpty()) {
+                QPointF const middle = drawing.bounds().center();
+                shapeFor = [&, middle](int born) {
+                    QTransform const at = scene.worldTransform(l, emitter.followLayer ? frame : born);
+                    if (!at.isInvertible())
+                        return QPainterPath();
+                    return at.inverted().map(obstacle).translated(-middle);
+                };
+            }
+            for (Effect::Particle const& particle : emitter.particles(rate, frame, places, shapeFor)) {
                 off.save();
                 // Each stays where the layer was when it was let go (unless it is to move with the layer).
                 if (!emitter.followLayer && particle.born != frame && now.isInvertible())
