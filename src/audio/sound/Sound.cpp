@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 
 #include <cmath>
+#include <functional>
 
 #include "model/scene/Scene.h"
 
@@ -151,6 +152,8 @@ QVector<qint16> mix(Scene const& scene)
     qint64 const total = qint64(std::ceil(scene.frameCount() / scene.fps * SoundData::kRate));
     QVector<qint32> sum(total * 2, 0);
     bool any = false;
+    // Where in the sound a frame of the scene starts.
+    auto at = [&scene](double frame) { return qint64(std::llround(frame / scene.fps * SoundData::kRate)); };
     for (Layer const& layer : scene.layers) {
         if (layer.kind != Layer::Sound || !layer.visible)
             continue;
@@ -158,13 +161,59 @@ QVector<qint16> mix(Scene const& scene)
         if (!data)
             continue;
         any = true;
-        qint64 const offset = qint64(std::llround(layer.soundStart / scene.fps * SoundData::kRate));
+        qint64 const offset = at(layer.soundStart);
         qint64 const first = std::max<qint64>(0, -offset);
         qint64 const count = std::min<qint64>(data->frames(), total - offset);
         for (qint64 i = first; i < count; ++i) {
             sum[(offset + i) * 2] += data->samples[i * 2];
             sum[(offset + i) * 2 + 1] += data->samples[i * 2 + 1];
         }
+    }
+    // The sounds inside symbols: each frame of the scene a symbol is shown on plays the piece of its sound that belongs to the
+    // frame of the symbol shown there - so a symbol held holds its sound's piece, and one played backwards plays its pieces backwards.
+    std::function<void(QVector<Layer> const&, QVector<int> const&, int)> inside = [&](QVector<Layer> const& layers, QVector<int> const& shown, int depth) {
+        if (depth > Scene::kSymbolDepth)
+            return;
+        for (Layer const& layer : layers) {
+            if (!layer.visible)
+                continue;
+            if (layer.kind == Layer::Sound && depth > 0) {
+                std::shared_ptr<SoundData> const data = load(layer.soundFile);
+                if (!data)
+                    continue;
+                for (int f = 0; f < shown.size(); ++f) {
+                    if (shown[f] < 0)
+                        continue;
+                    qint64 const to = at(f), length = at(f + 1) - to;
+                    qint64 const from = at(shown[f] - layer.soundStart);
+                    for (qint64 i = 0; i < length && to + i < total; ++i) {
+                        qint64 const s = from + i;
+                        if (s < 0 || s >= data->frames())
+                            continue;
+                        any = true;
+                        sum[(to + i) * 2] += data->samples[s * 2];
+                        sum[(to + i) * 2 + 1] += data->samples[s * 2 + 1];
+                    }
+                }
+            } else if (layer.showsSymbol()) {
+                Scene::Symbol const* const symbol = scene.findSymbol(layer.symbolId);
+                if (!symbol)
+                    continue;
+                QVector<int> inner(shown.size(), -1);
+                for (int f = 0; f < shown.size(); ++f)
+                    if (shown[f] >= 0) {
+                        int const frame = layer.drawingAt(shown[f]);
+                        inner[f] = frame == Layer::kNoDrawing || frame >= symbol->frameCount ? -1 : frame;
+                    }
+                inside(symbol->layers, inner, depth + 1);
+            }
+        }
+    };
+    {
+        QVector<int> every(scene.frameCount());
+        for (int f = 0; f < every.size(); ++f)
+            every[f] = f;
+        inside(scene.layers, every, 0);
     }
     QVector<qint16> out;
     if (!any)

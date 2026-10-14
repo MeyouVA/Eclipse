@@ -86,10 +86,10 @@ void Scene::refreshSymbolInstances(int symbolId)
 
 int Scene::makeSymbol(QVector<int> const& picked, QString const& name)
 {
-    // Those picked, and everything attached to them.  (A camera and a sound stay in the scene: a symbol is a picture.)
+    // Those picked, and everything attached to them.  (A camera stays in the scene; a sound picked goes in, and plays where the symbol is shown.)
     QVector<bool> in(layers.size(), false);
     for (int l : picked)
-        if (l >= 0 && l < layers.size() && layers[l].kind != Layer::Camera && layers[l].kind != Layer::Sound)
+        if (l >= 0 && l < layers.size() && layers[l].kind != Layer::Camera)
             in[l] = true;
     for (bool grew = true; grew;) {
         grew = false;
