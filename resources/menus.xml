@@ -491,6 +491,7 @@
   <item id="ToolText" icon="tool/text" text="Te&amp;xt" shortcut="shortcut.toolText" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="text"/>
   <item id="ToolPaint" icon="tool/paint" text="&amp;Paint" shortcut="shortcut.toolPaint" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="paint"/>
   <item id="ToolInk" icon="tool/ink" text="In&amp;k" shortcut="shortcut.toolInk" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="ink"/>
+  <item id="ToolRepaintBrush" icon="tool/repaintbrush" text="Repaint &amp;Brush" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="repaintbrush"/>
   <separator/>
   <item id="ToolPaintUnpainted" icon="tool/paintunpainted" text="Paint &amp;Unpainted" shortcut="shortcut.toolPaintUnpainted" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="paintunpainted"/>
   <item id="ToolRepaint" icon="tool/repaint" text="Rep&amp;aint" shortcut="shortcut.toolRepaint" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="repaint"/>

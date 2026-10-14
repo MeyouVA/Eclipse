@@ -295,6 +295,20 @@ QVector<Fill> Fill::minus(QVector<QPolygonF> const& area, double tolerance, bool
     return areasOf(mine.subtracted(cut), *this, {this}, tolerance);
 }
 
+QVector<Fill> Fill::within(QVector<QPolygonF> const& area, double tolerance) const
+{
+    QPainterPath const cut = pathOfOutlines(area);
+    if (outlines.isEmpty() || !bounds().intersects(cut.boundingRect()))
+        return {};
+    QPainterPath const taken = pathOfOutlines(outlines).intersected(cut);
+    double kept = 0.0;
+    for (QPolygonF const& polygon : taken.toSubpathPolygons())
+        kept += areaOfPolygon(polygon);
+    if (kept < 0.01)
+        return {};
+    return areasOf(taken, *this, {this}, tolerance);
+}
+
 bool Fill::mergeWith(Fill const& other, double tolerance)
 {
     if (!overlaps(other))

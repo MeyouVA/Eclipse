@@ -60,6 +60,9 @@ public:
         // Morphing hints: on the first drawing of a morphing a click puts a hint down; on the second it is
         // dragged to where that place is to go.  Alt and a click takes one away.
         Morphing,
+        // Rubbed over painted areas and brush shapes, it gives the part of them it covers the colour in hand: the rest
+        // keeps its colour.  Lines are left alone (the Ink tool is for those).
+        RepaintBrush,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -846,7 +849,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -998,6 +1001,10 @@ private:
     void thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
     bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
     void inkAt(QPointF p);
+    // The Repaint Brush: the drawing as it was, the way the pen has gone, and that way's colour put on it.
+    Drawing m_repaintFrom;
+    Stroke m_repaintPath;
+    void repaintTo(QPointF p, double tolerance);
     void smoothAt(QPointF p);
     // The Envelope tool: the outline round what is selected as it was when a point of it was taken
     // hold of, as it is pulled to, and the point in hand.

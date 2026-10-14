@@ -284,6 +284,13 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     case DragInk:
         inkAt(p);
         break;
+    case DragRepaint:
+        // Every few pixels: the whole way so far, cut from the drawing as it was (so the pieces do not pile up).
+        if (QLineF(m_dragNow, p).length() * m_zoom >= 3.0) {
+            m_dragNow = p;
+            repaintTo(p, -1.0);
+        }
+        break;
     case DragSmooth:
         // Once for every few pixels the pen goes: the longer it is rubbed, the smoother.
         if (QLineF(m_dragNow, p).length() * m_zoom >= 3.0) {

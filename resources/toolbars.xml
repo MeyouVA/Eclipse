@@ -63,6 +63,7 @@
    <item id="ToolRepaint"/>
    <item id="ToolUnpaint"/>
    <item id="ToolInk"/>
+   <item id="ToolRepaintBrush"/>
    <item id="ToolStroke"/>
    <item id="ToolCloseGap"/>
    <item id="ToolEditGradient"/>

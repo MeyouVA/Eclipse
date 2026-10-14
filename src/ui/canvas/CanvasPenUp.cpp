@@ -137,6 +137,21 @@ void Canvas::penUp()
         update();
         return;
     }
+    if (drag == DragRepaint) {
+        m_drag = DragNone;
+        // Once more, the edges fitted with points and handles as the brush makes them.
+        repaintTo(m_dragNow, std::max(0.25 / m_zoom, 0.05));
+        if (m_inked) {
+            Drawing const art = m_eraseArt;
+            commitDrawing(art, tr("Repaint Brush"));
+        }
+        m_eraseArt = Drawing();
+        m_repaintFrom = Drawing();
+        m_repaintPath = Stroke();
+        m_inked = false;
+        update();
+        return;
+    }
     if (drag == DragInk || drag == DragSmooth) {
         m_drag = DragNone;
         if (m_inked) {

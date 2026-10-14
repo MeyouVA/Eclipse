@@ -172,14 +172,14 @@ void ToolProperties::showFor(int tool)
     using T = Canvas::Tool;
     bool const brush = tool == T::Brush, pencil = tool == T::Pencil, eraser = tool == T::Eraser;
     bool const shape = tool == T::Line || tool == T::Rectangle || tool == T::Ellipse || tool == T::Polyline;
-    bool const draws = brush || pencil || eraser || shape || tool == T::SmoothEditor;      // (the Smooth Editor has a size too)
+    bool const draws = brush || pencil || eraser || shape || tool == T::SmoothEditor || tool == T::RepaintBrush;   // (these have a size too)
     bool const lines = pencil || shape || tool == T::Select || tool == T::ContourEditor;
     bool const text = tool == T::Text, contour = tool == T::ContourEditor;
     static char const* const ids[] = {"ToolSelect", "ToolTransform", "ToolBrush",  "ToolEraser",    "ToolPaint",  "ToolHand",
                                       "ToolPencil", "ToolLine",      "ToolRectangle", "ToolEllipse", "ToolContourEditor",
                                       "ToolRigging", "ToolIK", "ToolDropper", "ToolZoom", "ToolPolyline",
                                       "ToolPaintUnpainted", "ToolRepaint", "ToolUnpaint", "ToolText", "ToolRotateView", "ToolCutter", "ToolStroke", "ToolCloseGap",
-                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing"};
+                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
     bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));

@@ -203,6 +203,8 @@ struct Fill {
     // handles, with new points where the cut meets the old edge; outlines the cut did not
     // reach keep the points they had.
     QVector<Fill> minus(QVector<QPolygonF> const& area, double tolerance, bool* changed = nullptr) const;
+    // The other half of the same cut: what of this area lies inside `area`, in pieces as minus() gives them (none when nothing does).
+    QVector<Fill> within(QVector<QPolygonF> const& area, double tolerance) const;
     // The two areas as one, in the colour of this one; false (and nothing done) when they do not meet.
     bool mergeWith(Fill const& other, double tolerance);
     bool overlaps(Fill const& other) const;

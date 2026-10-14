@@ -132,6 +132,19 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         }
         return;
     }
+    if (m_tool == RepaintBrush) {
+        if (Drawing const* const d = currentDrawing()) {
+            m_repaintFrom = *d;
+            m_eraseArt = *d;
+            m_repaintPath = Stroke();
+            m_repaintPath.width = float(std::max(m_brushWidth, 1.0));
+            m_inked = false;
+            m_drag = DragRepaint;
+            m_dragNow = p;
+            repaintTo(p, -1.0);
+        }
+        return;
+    }
     if (m_tool == Ink) {
         if (Drawing const* const d = currentDrawing()) {
             m_eraseArt = *d;

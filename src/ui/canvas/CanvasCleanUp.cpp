@@ -609,6 +609,54 @@ void Canvas::inkAt(QPointF p)
     update();
 }
 
+// ---- the Repaint Brush -----------------------------------------------------------------------------
+
+void Canvas::repaintTo(QPointF p, double tolerance)
+{
+    if (m_repaintPath.points.isEmpty() || QLineF(m_repaintPath.points.last().pos, p).length() > 1e-9)
+        {
+        StrokePoint point;
+        point.pos = p;
+        m_repaintPath.points.push_back(point);
+    }
+    QVector<QPolygonF> area = m_repaintPath.outlinePolygons();
+    if (area.isEmpty()) {
+        // One point: a round dab.
+        double const r = m_repaintPath.width / 2.0;
+        QPolygonF dab;
+        for (int k = 0; k < 24; ++k)
+            dab << p + QPointF(std::cos(k * 3.14159265358979323846 / 12.0) * r, std::sin(k * 3.14159265358979323846 / 12.0) * r);
+        area = {dab};
+    }
+    QColor const colour = m_document->scene().resolve(m_swatch, Qt::black);
+    Drawing art = m_repaintFrom;
+    art.fills.clear();
+    bool any = false;
+    for (Fill const& fill : m_repaintFrom.fills) {
+        if ((fill.swatch == m_swatch && fill.color == colour) || keepsColour(fill.swatch)) {
+            art.fills.push_back(fill);
+            continue;
+        }
+        QVector<Fill> inside = fill.within(area, tolerance);
+        if (inside.isEmpty()) {
+            art.fills.push_back(fill);
+            continue;
+        }
+        any = true;
+        art.fills += fill.minus(area, tolerance);
+        for (Fill& piece : inside) {
+            piece.swatch = m_swatch;
+            piece.color = colour;
+            piece.text.clear();
+            piece.gradPlaced = false;
+        }
+        art.fills += inside;
+    }
+    m_eraseArt = art;
+    m_inked = any;
+    update();
+}
+
 // ---- the Smooth Editor -----------------------------------------------------------------------------
 
 void Canvas::smoothAt(QPointF p)
