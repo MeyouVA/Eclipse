@@ -779,6 +779,14 @@ Drawing Canvas::previewDrawing() const
             line.points[other].pos += by;
         contourEdited(shown);
     }
+    if (m_drag == DragHandle && contourValid() && m_ceHandle == 2 && pulledHandles()) {
+        // Handles pulled out of the point: the one after it where the pen is, the one before it opposite.
+        Stroke& stroke = *contourLine(shown);
+        QPointF const reach = m_dragNow - stroke.points[m_cePoint].pos;
+        stroke.setHandles(m_cePoint, -reach, reach);
+        stroke.points[m_cePoint].corner = false;
+        contourEdited(shown);
+    }
     if (m_drag == DragHandle && contourValid() && (m_ceHandle == 0 || m_ceHandle == 1)) {
         Stroke& stroke = *contourLine(shown);
         QPointF in, out;

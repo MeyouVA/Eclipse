@@ -1083,7 +1083,9 @@ private:
     Stroke* contourLine(Drawing& drawing) const;
     // After that curve was changed: a brush shape draws its outline out again.
     void contourEdited(Drawing& drawing) const;
-    int m_ceHandle = -1;      // the handle of that point being dragged: 0 the one before it, 1 the one after
+    int m_ceHandle = -1;      // the handle of that point being dragged: 0 the one before it, 1 the one after, 2 both pulled out of it (Alt)
+    // Alt-pressed on a point: whether the pen has gone far enough from it to pull its handles out (or only clicked).
+    bool pulledHandles() const { return std::hypot(m_dragNow.x() - m_dragStart.x(), m_dragNow.y() - m_dragStart.y()) * m_zoom > 3.0; }
     bool m_ceBreak = false;   // Alt: the handle moves alone, and the point becomes a cusp
 
     // bones: the joint being dragged (rigging tool) or the bone being turned (transform tool)

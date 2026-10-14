@@ -95,18 +95,12 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
             if (std::abs(w.x() - press.x()) <= 6 && std::abs(w.y() - press.y()) <= 6) {
                 m_cePoint = i;
                 if (modifiers & Qt::AltModifier) {
-                    // Alt-click: a corner becomes smooth, a smooth point a corner.
-                    Drawing edited = *d;
-                    Stroke& target = *contourLine(edited);
-                    bool const corner = target.isCorner(i);
-                    target.setCorner(i, !corner);
-                    contourEdited(edited);
-                    int const stroke = m_ceStroke, fill = m_ceFill, contour = m_ceContour;
-                    commitDrawing(edited, corner ? tr("Smooth Point") : tr("Corner Point"));
-                    m_ceStroke = stroke;
-                    m_ceFill = fill;
-                    m_ceContour = contour;
-                    m_cePoint = i;
+                    // Alt: dragged, the point's two handles are pulled out of it (in line, as long as each other);
+                    // clicked, a corner becomes smooth and a smooth point a corner (when the pen comes up).
+                    m_ceHandle = 2;
+                    m_ceBreak = false;
+                    m_dragStart = m_dragNow = points[i].pos;
+                    m_drag = DragHandle;
                     return;
                 }
                 if (modifiers & Qt::ShiftModifier) {

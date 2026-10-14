@@ -322,6 +322,28 @@ void Canvas::penUp()
             m_drag = DragNone;
             commitDrawing(edited, tr("Move Point"));
         }
+    } else if (drag == DragHandle && m_ceHandle == 2) {
+        if (contourValid()) {
+            bool const pulled = pulledHandles();
+            Drawing edited = pulled ? previewDrawing() : *currentDrawing();
+            m_drag = DragNone;
+            int const stroke = m_ceStroke, point = m_cePoint, fill = m_ceFill, contour = m_ceContour;
+            QString name = tr("Pull Handles");
+            if (!pulled) {
+                // Only clicked: a corner becomes smooth, a smooth point a corner.
+                Stroke& target = *contourLine(edited);
+                bool const corner = target.isCorner(point);
+                target.setCorner(point, !corner);
+                contourEdited(edited);
+                name = corner ? tr("Smooth Point") : tr("Corner Point");
+            }
+            commitDrawing(edited, name);
+            m_ceStroke = stroke;     // the point stays picked, with its handles showing
+            m_cePoint = point;
+            m_ceFill = fill;
+            m_ceContour = contour;
+        }
+        m_ceHandle = -1;
     } else if (drag == DragHandle) {
         if (contourValid() && m_dragNow != m_dragStart) {
             Drawing const edited = previewDrawing();
