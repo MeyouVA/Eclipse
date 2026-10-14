@@ -164,5 +164,31 @@ QPointF Canvas::snapped(QPointF p) const
     for (Fill const& fill : d->fills)
         for (Stroke const& contour : fill.contours)
             look(contour);
+    if (best != p)
+        return best;
+    // No point near: the nearest place along another line, a little closer in.
+    nearest = 6.0 / m_zoom;
+    auto along = [&](Stroke const& line) {
+        if (&line == mine)
+            return;
+        QVector<StrokePoint> const run = line.path();
+        int const pieces = int(run.size()) - 1 + (line.closed && run.size() > 2 ? 1 : 0);
+        for (int i = 0; i < pieces; ++i) {
+            QPointF const a = run[i].pos, ab = run[(i + 1) % run.size()].pos - a;
+            double const len2 = ab.x() * ab.x() + ab.y() * ab.y();
+            double const t = len2 > 0 ? std::clamp(((p.x() - a.x()) * ab.x() + (p.y() - a.y()) * ab.y()) / len2, 0.0, 1.0) : 0.0;
+            QPointF const on = a + ab * t;
+            double const distance = QLineF(on, p).length();
+            if (distance < nearest) {
+                nearest = distance;
+                best = on;
+            }
+        }
+    };
+    for (Stroke const& stroke : d->strokes)
+        along(stroke);
+    for (Fill const& fill : d->fills)
+        for (Stroke const& contour : fill.contours)
+            along(contour);
     return best;
 }
