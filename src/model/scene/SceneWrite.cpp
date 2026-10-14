@@ -438,7 +438,30 @@ QJsonObject Scene::toJson(QString const& folder) const
                 textureArray.append(QJsonObject{{"name", entry.name}, {"edge", entry.edge}, {"png", TextureBank::grainToText(entry.grain)}});
         }
     }
+    QJsonArray controllerArray;
+    for (Controller const& c : controllers) {
+        QJsonArray states;
+        for (Controller::State const& s : c.states) {
+            QJsonArray poses;
+            for (Pose const& p : s.poses) {
+                QJsonArray bend;
+                for (double b : p.bend)
+                    bend.append(b);
+                poses.append(QJsonObject{{"x", p.x}, {"y", p.y}, {"sx", p.scaleX}, {"sy", p.scaleY}, {"rot", p.rotation}, {"skew", p.skew},
+                                         {"z", p.z}, {"op", p.opacity}, {"bend", bend}});
+            }
+            QJsonArray drawings;
+            for (int d : s.drawings)
+                drawings.append(d);
+            states.append(QJsonObject{{"name", s.name}, {"poses", poses}, {"drawings", drawings}});
+        }
+        QJsonArray layerIds;
+        for (int id : c.layers)
+            layerIds.append(id);
+        controllerArray.append(QJsonObject{{"id", c.id}, {"name", c.name}, {"layers", layerIds}, {"states", states}, {"value", c.value}});
+    }
     QJsonObject whole{{"format", "eclipse-scene"},
+                       {"controllers", controllerArray},
                        {"symbols", symbolArray},
                        {"version", 3},
                        {"markers", markerArray},

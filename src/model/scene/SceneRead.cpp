@@ -170,6 +170,41 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         scene.references << found(folder, rv.toObject()["file"].toString(), rv.toObject()["relative"].toString());
     scene.m_frameCount = std::max(1, json["frames"].toInt(24));
     scene.background = QColor(json["background"].toString("#ffffff"));
+    for (QJsonValue const& cv : json["controllers"].toArray()) {
+        QJsonObject const co = cv.toObject();
+        Controller c;
+        c.id = co["id"].toInt();
+        c.name = co["name"].toString();
+        c.value = co["value"].toDouble(0.0);
+        for (QJsonValue const& id : co["layers"].toArray())
+            c.layers.push_back(id.toInt());
+        for (QJsonValue const& sv : co["states"].toArray()) {
+            QJsonObject const so = sv.toObject();
+            Controller::State s;
+            s.name = so["name"].toString();
+            for (QJsonValue const& pv : so["poses"].toArray()) {
+                QJsonObject const po = pv.toObject();
+                Pose p;
+                p.x = po["x"].toDouble();
+                p.y = po["y"].toDouble();
+                p.scaleX = po["sx"].toDouble(1.0);
+                p.scaleY = po["sy"].toDouble(1.0);
+                p.rotation = po["rot"].toDouble();
+                p.skew = po["skew"].toDouble();
+                p.z = po["z"].toDouble();
+                p.opacity = std::clamp(po["op"].toDouble(1.0), 0.0, 1.0);
+                for (QJsonValue const& b : po["bend"].toArray())
+                    p.bend.push_back(b.toDouble());
+                s.poses.push_back(p);
+            }
+            for (QJsonValue const& d : so["drawings"].toArray())
+                s.drawings.push_back(d.toInt(-1));
+            if (s.poses.size() == c.layers.size() && s.drawings.size() == c.layers.size())
+                c.states.push_back(s);
+        }
+        if (c.id > 0)
+            scene.controllers.push_back(c);
+    }
     for (QJsonValue const& mv : json["markers"].toArray()) {
         QJsonObject const mo = mv.toObject();
         Marker m;

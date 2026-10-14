@@ -20,6 +20,7 @@
 #include "ui/views/CoordView.h"
 #include "ui/views/MetadataView.h"
 #include "ui/views/ScriptView.h"
+#include "ui/views/ControllerView.h"
 #include "ui/views/Graph3DView.h"
 #include "ui/views/PreviewManagerView.h"
 #include "ui/views/PerspectiveView.h"
@@ -74,6 +75,12 @@ void MainWindow::createWindowsMenuViews()
         view->setObjectName(QStringLiteral("MetadataView"));
         connect(m_timeline, &Timeline::currentCellChanged, view, &MetadataView::setCurrentCell);
         addView(tr("Metadata"), QStringLiteral("MetadataDock"), view, Qt::RightDockWidgetArea)->hide();
+    }
+    // Pose Controllers: poses of a set of layers kept under names, and a slider between them.
+    {
+        ControllerView* const view = new ControllerView(m_document, m_timeline, this);
+        view->setObjectName(QStringLiteral("ControllerView"));
+        addView(tr("Pose Controllers"), QStringLiteral("ControllerDock"), view, Qt::RightDockWidgetArea)->hide();
     }
     // Script Editor: scripts written, kept and run on the scene.
     {

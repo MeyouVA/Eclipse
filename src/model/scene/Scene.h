@@ -649,6 +649,23 @@ public:
         bool operator==(Marker const&) const = default;
     };
     QVector<Marker> markers;    // sorted by frame
+    // Pose controllers: a set of layers and poses of them kept under names (states).  A value between two
+    // states blends the poses of the two; the drawing each layer shows is the nearer state's.
+    struct Controller {
+        struct State {
+            QString name;
+            QVector<Pose> poses;        // one per layer of the controller
+            QVector<int> drawings;      // the drawing each shows (its place in the layer), or -1: left as it is
+            bool operator==(State const&) const = default;
+        };
+        int id = 0;
+        QString name;
+        QVector<int> layers;            // the ids of the layers
+        QVector<State> states;
+        double value = 0.0;             // where its slider was last left (0: the first state, 1 the second ...)
+        bool operator==(Controller const&) const = default;
+    };
+    QVector<Controller> controllers;
     // Guides (in the coordinates of the frame), seen in the Camera view and never rendered.
     // A plain line across or down the picture is snapped to.  The other kinds are drawn
     // along: with one of them in use, a line drawn with the brush or pencil is kept straight

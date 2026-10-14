@@ -245,6 +245,17 @@ public:
     // Synced layers: a new drawing layer with the timing of `layer`, kept the same from then on; and a layer
     // synced with another (-1: with none any more).
     int addSyncedLayer(int layer);
+    // Pose controllers (see Scene::Controller).  `controller` is its place in the scene's list.
+    int addController(QString const& name, QVector<int> const& layers);
+    void removeController(int controller);
+    void renameController(int controller, QString const& name);
+    // The poses (and drawings) the controller's layers have on `frame`, kept as a state; or put in place of one.
+    int addControllerState(int controller, int frame, QString const& name);
+    void replaceControllerState(int controller, int state, int frame);
+    void removeControllerState(int controller, int state);
+    // The controller set to `value` on `frame`: keyframes there for its layers, the poses blended between the two states
+    // either side of the value, and the drawing of the nearer one shown.  One step to undo.
+    void applyController(int controller, int frame, double value);
     // Control points of a layer's motion path (see Scene).  `key` is the keyframe the stretch starts at.
     int insertControlPoint(int layer, int frame);
     void moveControlPoint(int layer, int key, int control, QPointF to);
