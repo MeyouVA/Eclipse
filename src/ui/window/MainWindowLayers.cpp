@@ -3,6 +3,7 @@
 
 #include "actions/manager/ActionManager.h"
 #include <QCheckBox>
+#include <QSpinBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QLabel>
@@ -833,6 +834,15 @@ void MainWindow::onActionColumnProperties()
     bitmap->setObjectName(QStringLiteral("ColumnBitmap"));
     bitmap->setChecked(was.bitmap);
     bitmap->setVisible(was.holdsDrawings() && !was.showsSymbol());
+    QSpinBox* const fineness = new QSpinBox(&dialog);
+    fineness->setObjectName(QStringLiteral("ColumnBitmapResolution"));
+    fineness->setRange(25, 400);
+    fineness->setSingleStep(25);
+    fineness->setSuffix(tr(" %"));
+    fineness->setValue(was.bitmapResolution);
+    fineness->setToolTip(tr("How fine the pixels of a bitmap layer are: 100 % is a pixel for each unit of the scene, 200 % two across each. "
+                            "Drawings already painted keep the pixels they have."));
+    fineness->setVisible(was.holdsDrawings() && !was.showsSymbol());
     QLabel* const drawings = new QLabel(&dialog);
     drawings->setObjectName(QStringLiteral("ColumnDrawings"));
     if (was.holdsDrawings())
@@ -846,6 +856,8 @@ void MainWindow::onActionColumnProperties()
     form->addRow(QString(), enabled);
     form->addRow(QString(), locked);
     form->addRow(QString(), bitmap);
+    if (was.holdsDrawings() && !was.showsSymbol())
+        form->addRow(tr("Bitmap resolution:"), fineness);
     if (was.holdsDrawings())
         form->addRow(tr("Drawings:"), drawings);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -859,7 +871,7 @@ void MainWindow::onActionColumnProperties()
     QColor const newColour = defaultColour->isChecked() ? QColor() : colour;
     bool const nameChanged = !name->text().trimmed().isEmpty() && name->text().trimmed() != was.name;
     bool const rest = newColour != was.trackColor || enabled->isChecked() != was.visible || locked->isChecked() != was.locked
-                      || (bitmap->isVisible() || was.bitmap) && bitmap->isChecked() != was.bitmap;
+                      || (bitmap->isVisible() || was.bitmap) && bitmap->isChecked() != was.bitmap || fineness->value() != was.bitmapResolution;
     if (!nameChanged && !rest)
         return;
     m_document->beginMacro(tr("Column Properties"));
@@ -867,7 +879,9 @@ void MainWindow::onActionColumnProperties()
         m_document->renameLayer(l, name->text().trimmed());
     if (rest) {
         bool const on = enabled->isChecked(), lock = locked->isChecked(), pixels = bitmap->isChecked() && was.holdsDrawings() && !was.showsSymbol();
-        m_document->editLayers({l}, tr("Column Properties"), [newColour, on, lock, pixels](Layer& layer) {
+        int const resolution = fineness->value();
+        m_document->editLayers({l}, tr("Column Properties"), [newColour, on, lock, pixels, resolution](Layer& layer) {
+            layer.bitmapResolution = resolution;
             layer.trackColor = newColour;
             layer.visible = on;
             layer.locked = lock;

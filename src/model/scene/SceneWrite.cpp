@@ -383,6 +383,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["cloneTiming"] = false;
         if (layer.bitmap)
             layerObject["bitmap"] = true;
+        if (layer.bitmapResolution != 100)
+            layerObject["bitmapResolution"] = layer.bitmapResolution;
         if (layer.hiddenSheets != 0)
             layerObject["hiddenSheets"] = layer.hiddenSheets;
         if (layer.ikExcluded)

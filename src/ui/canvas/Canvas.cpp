@@ -333,12 +333,14 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
     if (at < 0) {
         // The pixels of the drawing: the frame of the scene and a quarter of it more on every side.
         QRectF const area(-scene.width * 0.25, -scene.height * 0.25, scene.width * 1.5, scene.height * 1.5);
+        // As fine as the layer asks: so many pixels across each unit of the scene.
+        double const fine = m_layer >= 0 && m_layer < scene.layers.size() ? std::clamp(scene.layers[m_layer].bitmapResolution, 25, 400) / 100.0 : 1.0;
         Picture pixels;
         pixels.painted = true;
-        pixels.size = QSize(int(std::ceil(area.width())), int(std::ceil(area.height())));
+        pixels.size = QSize(int(std::ceil(area.width() * fine)), int(std::ceil(area.height() * fine)));
         pixels.image = QImage(pixels.size, QImage::Format_ARGB32_Premultiplied);
         pixels.image.fill(Qt::transparent);
-        pixels.placement = QTransform::fromTranslate(area.left(), area.top());
+        pixels.placement = QTransform::fromScale(1.0 / fine, 1.0 / fine) * QTransform::fromTranslate(area.left(), area.top());
         at = int(art.pictures.size());
         art.pictures.push_back(pixels);
     }

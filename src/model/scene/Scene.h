@@ -598,6 +598,9 @@ struct Layer {
     int hiddenSheets = 0;
     // A bitmap layer: what is drawn on its line art is painted in pixels, not kept as lines.
     bool bitmap = false;
+    // How fine its pixels are, as a percentage: 100 is a pixel for each unit of the scene, 200 two across each unit.
+    // Taken when the pixels of a drawing are first made.
+    int bitmapResolution = 100;
     bool sheetShown(int sheet) const { return (hiddenSheets & (1 << sheet)) == 0; }
     bool showsSymbol() const { return symbolId != 0; }
     // Frames of the layer marked with a colour in the Timeline (a note to oneself: "redo", "hold" ...).

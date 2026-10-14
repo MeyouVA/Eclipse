@@ -300,6 +300,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.cloneGroup = std::max(0, lo["clone"].toInt(0));
         layer.cloneTiming = lo["cloneTiming"].toBool(true);
         layer.bitmap = lo["bitmap"].toBool(false);
+        layer.bitmapResolution = std::clamp(lo["bitmapResolution"].toInt(100), 25, 400);
         layer.ikExcluded = lo["ikExcluded"].toBool(false);
         if (QJsonArray const limits = lo["ikLimits"].toArray(); limits.size() == 2) {
             layer.ikLimited = true;
