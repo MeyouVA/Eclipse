@@ -83,6 +83,7 @@ void MainWindow::createWindowsMenuViews()
     // Pose Controllers: poses of a set of layers kept under names, and a slider between them.
     {
         ControllerView* const view = new ControllerView(m_document, m_timeline, this);
+        view->setCameraHost(m_canvas);
         view->setObjectName(QStringLiteral("ControllerView"));
         addView(tr("Pose Controllers"), QStringLiteral("ControllerDock"), view, Qt::RightDockWidgetArea)->hide();
     }

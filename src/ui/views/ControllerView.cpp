@@ -3,6 +3,9 @@
 
 #include <cmath>
 
+#include <QCheckBox>
+#include <QEvent>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
@@ -53,9 +56,14 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
     stateButtons->addWidget(replace);
     stateButtons->addWidget(drop);
     stateButtons->addStretch(1);
+    m_inCamera = new QCheckBox(tr("Show in Camera"), this);
+    m_inCamera->setObjectName(QStringLiteral("ControllerInCamera"));
+    m_inCamera->setToolTip(tr("The controller's slider in the lower left corner of the Camera view as well."));
+    connect(m_inCamera, &QCheckBox::toggled, this, &ControllerView::setShownInCamera);
     QHBoxLayout* const sliderRow = new QHBoxLayout;
     sliderRow->addWidget(m_slider, 1);
     sliderRow->addWidget(m_value);
+    sliderRow->addWidget(m_inCamera);
     QHBoxLayout* const lists = new QHBoxLayout;
     lists->addWidget(m_controllers, 1);
     lists->addWidget(m_states, 1);
@@ -124,6 +132,13 @@ void ControllerView::refresh()
     m_slider->setRange(0, std::max(0, states - 1) * kSteps);
     m_slider->setValue(c >= 0 ? int(std::lround(scene.controllers[c].value * kSteps)) : 0);
     m_value->setText(c >= 0 ? tr("%1").arg(scene.controllers[c].value, 0, 'f', 2) : QString());
+    if (m_overlay) {
+        m_overlaySlider->setRange(m_slider->minimum(), m_slider->maximum());
+        m_overlaySlider->setValue(m_slider->value());
+        m_overlayName->setText(c >= 0 ? scene.controllers[c].name : QString());
+        m_overlay->setVisible(m_inCamera->isChecked() && states >= 2);
+        placeOverlay();
+    }
     m_refreshing = false;
 }
 
@@ -174,4 +189,54 @@ void ControllerView::removeState()
     int const c = currentController();
     if (c >= 0 && m_states->currentRow() >= 0)
         m_document->removeControllerState(c, m_states->currentRow());
+}
+
+void ControllerView::setCameraHost(QWidget* camera)
+{
+    m_camera = camera;
+    m_overlay = new QFrame(camera);
+    m_overlay->setObjectName(QStringLiteral("CameraControllerOverlay"));
+    m_overlay->setFrameShape(QFrame::StyledPanel);
+    m_overlay->setAutoFillBackground(true);
+    m_overlayName = new QLabel(m_overlay);
+    m_overlaySlider = new QSlider(Qt::Horizontal, m_overlay);
+    m_overlaySlider->setObjectName(QStringLiteral("CameraControllerSlider"));
+    m_overlaySlider->setMinimumWidth(160);
+    QHBoxLayout* const row = new QHBoxLayout(m_overlay);
+    row->setContentsMargins(6, 3, 6, 3);
+    row->addWidget(m_overlayName);
+    row->addWidget(m_overlaySlider, 1);
+    // As the slider in the view: set when it is let go, or moved with the keys.
+    connect(m_overlaySlider, &QSlider::sliderReleased, this, [this] { setValue(m_overlaySlider->value() / double(kSteps)); });
+    connect(m_overlaySlider, &QSlider::valueChanged, this, [this](int v) {
+        if (!m_refreshing && !m_overlaySlider->isSliderDown())
+            setValue(v / double(kSteps));
+    });
+    m_overlay->hide();
+    camera->installEventFilter(this);
+    refresh();
+}
+
+void ControllerView::setShownInCamera(bool on)
+{
+    if (m_inCamera->isChecked() != on)
+        m_inCamera->setChecked(on);     // (comes back here)
+    else
+        refresh();
+}
+
+void ControllerView::placeOverlay()
+{
+    if (!m_overlay || !m_camera)
+        return;
+    m_overlay->adjustSize();
+    m_overlay->move(10, m_camera->height() - m_overlay->height() - 10);
+    m_overlay->raise();
+}
+
+bool ControllerView::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_camera && event->type() == QEvent::Resize)
+        placeOverlay();
+    return QWidget::eventFilter(watched, event);
 }

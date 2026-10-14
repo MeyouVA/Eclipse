@@ -22,6 +22,9 @@ public:
     int currentController() const;
     // The slider moved to `value` (0: the first state, 1: the second ...): the controller is set on the current frame.
     void setValue(double value);
+    // The Camera view: the controller chosen can have its slider there too, in its lower left corner ("Show in Camera").
+    void setCameraHost(QWidget* camera);
+    void setShownInCamera(bool on);
 
 public slots:
     void newController();
@@ -39,4 +42,11 @@ private:
     QSlider* m_slider;
     QLabel* m_value;
     bool m_refreshing = false;
+    QWidget* m_camera = nullptr;
+    class QFrame* m_overlay = nullptr;     // in the Camera view: the controller's name and a slider
+    QLabel* m_overlayName = nullptr;
+    QSlider* m_overlaySlider = nullptr;
+    class QCheckBox* m_inCamera = nullptr;
+    void placeOverlay();
+    bool eventFilter(QObject* watched, QEvent* event) override;
 };
