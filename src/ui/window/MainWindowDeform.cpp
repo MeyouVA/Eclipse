@@ -41,9 +41,49 @@ void MainWindow::onActionRemoveDeformer()
 
 void MainWindow::onActionCreateEnvelope()
 {
-    Layer const& now = m_document->scene().layers[layer()];
+    Scene const& scene = m_document->scene();
+    Layer const& now = scene.layers[layer()];
+    if (now.kind == Layer::Peg) {
+        // On a peg: one envelope round all that hangs from it, which reshapes all of it.
+        if (!now.warp.isEmpty()) {
+            statusBar()->showMessage(tr("This peg has a deformer already. Remove it first (Animation > Deformation > Remove Deformer)."), 7000);
+            return;
+        }
+        Drawing all;
+        QTransform const there = scene.worldTransform(layer(), frame());
+        for (int l = 0; l < scene.layers.size() && there.isInvertible(); ++l) {
+            bool under = false;
+            for (int up = scene.parentIndex(l), guard = 0; up >= 0 && guard < 256 && !under; up = scene.parentIndex(up), ++guard)
+                under = up == layer();
+            int const index = scene.layers[l].holdsDrawings() ? scene.layers[l].drawingAt(frame()) : Layer::kNoDrawing;
+            if (!under || index == Layer::kNoDrawing)
+                continue;
+            // Into the peg's own coordinates.
+            QTransform const into = scene.worldTransform(l, frame()) * there.inverted();
+            Drawing const& d = scene.layers[l].drawings[index];
+            for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                for (Fill fill : d.fillsOf(sheet)) {
+                    fill.transform(into);
+                    all.fills.push_back(fill);
+                }
+                for (Stroke stroke : d.strokesOf(sheet)) {
+                    stroke.transform(into);
+                    all.strokes.push_back(stroke);
+                }
+            }
+        }
+        // (Round all of it - the hull - however many pieces there are, never one piece's outline.)
+        QVector<QPointF> const points = Deform::envelopeAround(all, m_envelopePoints, 12.0, false);
+        if (points.isEmpty()) {
+            statusBar()->showMessage(tr("Nothing drawn hangs from this peg on this frame to put an envelope round."), 6000);
+            return;
+        }
+        m_document->setWarp(layer(), points, true, tr("Create Envelope"));
+        statusBar()->showMessage(tr("An envelope of %1 points round all that hangs from the peg. Pull them about with the Transform tool.").arg(points.size() / 3), 6000);
+        return;
+    }
     if (!now.holdsDrawings() || now.drawingAt(frame()) == Layer::kNoDrawing) {
-        statusBar()->showMessage(tr("An envelope goes round a drawing: select a cell that shows one."), 6000);
+        statusBar()->showMessage(tr("An envelope goes round a drawing, or round all that hangs from a peg: select a cell that shows one, or a peg."), 6000);
         return;
     }
     if (!now.warp.isEmpty()) {

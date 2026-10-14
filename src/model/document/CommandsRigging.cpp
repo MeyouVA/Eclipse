@@ -37,7 +37,9 @@ void Document::setBones(int layer, QVector<QPointF> const& joints, QString const
 
 void Document::setWarp(int layer, QVector<QPointF> const& points, bool closed, QString const& text)
 {
-    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || points.size() % 3 != 0)
+    // (On a peg, a deformer above all the layers attached to it.)
+    if (layer < 0 || layer >= m_scene.layers.size() || !(m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].kind == Layer::Peg)
+        || points.size() % 3 != 0)
         return;
     if (m_scene.layers[layer].warp == points && m_scene.layers[layer].warpClosed == closed)
         return;
