@@ -292,12 +292,59 @@ void pairByHints(QVector<Shape> const& from, QVector<Shape> const& to, QVector<Q
             left.push_back(k);
 }
 
+// More points on a curve without changing its shape: its longest pieces are each split in two where they are half done
+// (de Casteljau), until it has `count`.  False when it cannot be (a point without handles, too few points).
+bool splitTo(Stroke& s, int count)
+{
+    int const segments = [&] { return int(s.points.size()) - (s.closed ? 0 : 1); }();
+    if (!s.curve || segments < 1 || s.points.size() > count)
+        return false;
+    for (StrokePoint const& p : std::as_const(s.points))
+        if (!p.handles)
+            return false;
+    while (s.points.size() < count) {
+        int const n = int(s.points.size()), pieces = n - (s.closed ? 0 : 1);
+        int longest = 0;
+        double most = -1.0;
+        for (int i = 0; i < pieces; ++i) {
+            StrokePoint const& p = s.points[i];
+            StrokePoint const& q = s.points[(i + 1) % n];
+            double const length = QLineF(p.pos, p.pos + p.out).length() + QLineF(p.pos + p.out, q.pos + q.in).length() + QLineF(q.pos + q.in, q.pos).length();
+            if (length > most) {
+                most = length;
+                longest = i;
+            }
+        }
+        StrokePoint& p = s.points[longest];
+        StrokePoint& q = s.points[(longest + 1) % n];
+        QPointF const p0 = p.pos, p1 = p.pos + p.out, p2 = q.pos + q.in, p3 = q.pos;
+        QPointF const a = (p0 + p1) / 2, b = (p1 + p2) / 2, c = (p2 + p3) / 2, d = (a + b) / 2, e = (b + c) / 2, middle = (d + e) / 2;
+        p.out = a - p0;
+        q.in = c - p3;
+        StrokePoint made;
+        made.pos = middle;
+        made.pressure = (p.pressure + q.pressure) / 2.0f;
+        made.handles = true;
+        made.in = d - middle;
+        made.out = e - middle;
+        s.points.insert(longest + 1, made);
+    }
+    return true;
+}
+
 // Two curves of as many points (with their handles), point for point - the points of the one paired with those of the
 // other where that moves them least (round a closed one, and either way along) - as far from the one to the other as `t`.
-// The points, handles and corners are kept: what comes between is a curve of those points too.  False when they cannot
-// be paired so (not curves, not as many points, one closed and one not).
-bool curveBetween(Stroke const& a, Stroke const& b, double t, Stroke& out)
+// The points, handles and corners are kept: what comes between is a curve of those points too.  Curves of different numbers
+// of points: the one with fewer is split (in shape as it was) to as many.  False when they cannot be paired so (not curves,
+// a point without handles where points are to be added, one closed and one not).
+bool curveBetween(Stroke const& fromCurve, Stroke const& toCurve, double t, Stroke& out)
 {
+    // Not as many points: the one with fewer is given more, its shape as it was.
+    Stroke a = fromCurve, b = toCurve;
+    if (a.points.size() < b.points.size())
+        splitTo(a, int(b.points.size()));
+    else if (b.points.size() < a.points.size())
+        splitTo(b, int(a.points.size()));
     int const n = int(a.points.size());
     if (n < 2 || b.points.size() != n || a.closed != b.closed || !a.curve || !b.curve)
         return false;
