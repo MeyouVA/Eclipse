@@ -112,6 +112,10 @@ public:
     void setBitmapHardness(int percent) { m_bitmapHardness = std::clamp(percent, 0, 100); }
     void setBitmapFlow(int percent) { m_bitmapFlow = std::clamp(percent, 1, 100); }
     int bitmapHardness() const { return m_bitmapHardness; }
+    // The Brush on a bitmap layer: the shape of its tip, pressed down again and again along the stroke.
+    enum BitmapTip { BitmapRound, BitmapSquare, BitmapChisel, BitmapSpray };
+    BitmapTip bitmapTip() const { return m_bitmapTip; }
+    void setBitmapTip(BitmapTip tip) { m_bitmapTip = tip; }
     int bitmapFlow() const { return m_bitmapFlow; }
     // What the tool in hand makes of how hard the pen is pressed (0 to 1).
     float pressureFor(float raw) const
@@ -803,6 +807,9 @@ private:
     int liftedPieceAt(QPointF p) const;
     QPointer<Canvas> m_leader;     // the view whose tool settings this one follows (none: its own)
     int m_bitmapHardness = 100, m_bitmapFlow = 100;
+    BitmapTip m_bitmapTip = BitmapRound;
+    // The tip pressed along the stroke (its size `share` of the stroke's thickness at each place), in `brush`.
+    void stampTip(QPainter& onto, Stroke const& stroke, double share, QBrush const& brush) const;
     bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept
     QRectF selectionBounds() const;
     QPointF handlePos(Handle handle, QRectF const& bounds) const;  // in scene coordinates

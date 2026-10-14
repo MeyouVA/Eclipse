@@ -76,6 +76,7 @@ private:
     QLayout* m_minSizeRow = nullptr;
     QLayout* m_hardnessRow = nullptr;      // the Brush on a bitmap layer
     QLayout* m_flowRow = nullptr;
+    QLayout* m_tipRow = nullptr;
     QLayout* m_gapRow = nullptr;
     QLayout* m_envToolRow = nullptr;
     QCheckBox* m_brushShape = nullptr;

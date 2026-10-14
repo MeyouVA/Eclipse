@@ -28,6 +28,10 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
         }
         // The stroke at a share of its thickness, painted: as a shape (the Brush) or as a line.
         auto paintAt = [&](QPainter& onto, double share) {
+            if (m_tool == Brush && m_bitmapTip != BitmapRound) {
+                stampTip(onto, stroke, share, scene.brushFor(stroke));
+                return;
+            }
             if (!asShape) {
                 Stroke thinner = stroke;
                 thinner.width = float(stroke.width * share);
@@ -562,4 +566,64 @@ void Canvas::finishPolyline(bool keep)
     update();
     if (keep && line.points.size() >= 2 && m_layer >= 0 && m_layer < m_document->scene().layers.size())
         keepStroke(line, false);
+}
+
+void Canvas::stampTip(QPainter& onto, Stroke const& stroke, double share, QBrush const& brush) const
+{
+    QVector<StrokePoint> const run = stroke.path();
+    if (run.isEmpty())
+        return;
+    onto.save();
+    onto.setPen(Qt::NoPen);
+    onto.setBrush(brush);
+    // The same grains of spray each time the stroke is painted (a soft edge paints it more than once).
+    quint32 seed = 0x9e3779b9u;
+    auto random = [&seed] {
+        seed = seed * 1664525u + 1013904223u;
+        return double(seed >> 8) / double(1u << 24);
+    };
+    auto stamp = [&](QPointF at, double pressure) {
+        double const size = std::max(0.5, stroke.width * std::clamp(pressure, 0.05, 1.0) * share);
+        switch (m_bitmapTip) {
+        case BitmapSquare:
+            onto.drawRect(QRectF(at - QPointF(size / 2, size / 2), QSizeF(size, size)));
+            break;
+        case BitmapChisel: {
+            // A flat tip held at 45 degrees: thick one way, thin the other, as a calligraphy pen.
+            onto.save();
+            onto.translate(at);
+            onto.rotate(-45.0);
+            onto.drawEllipse(QRectF(-size / 2, -size / 8, size, size / 4));
+            onto.restore();
+            break;
+        }
+        case BitmapSpray:
+            for (int k = 0; k < 10; ++k) {
+                double const angle = random() * 2.0 * 3.14159265358979, reach = std::sqrt(random()) * size / 2;
+                double const grain = std::max(0.35, size * 0.04);
+                onto.drawEllipse(at + QPointF(std::cos(angle) * reach, std::sin(angle) * reach), grain, grain);
+            }
+            break;
+        case BitmapRound:
+            onto.drawEllipse(at, size / 2, size / 2);
+            break;
+        }
+    };
+    double const step = std::max(0.4, stroke.width * share * (m_bitmapTip == BitmapSpray ? 0.3 : 0.12));
+    stamp(run[0].pos, run[0].pressure);
+    double carried = 0.0;
+    for (int i = 0; i + 1 < run.size(); ++i) {
+        QPointF const a = run[i].pos, b = run[i + 1].pos;
+        double const length = QLineF(a, b).length();
+        double along = step - carried;
+        while (along <= length) {
+            double const t = length > 0 ? along / length : 0.0;
+            stamp(a + (b - a) * t, run[i].pressure + (run[i + 1].pressure - run[i].pressure) * t);
+            along += step;
+        }
+        carried = length - (along - step);
+    }
+    if (run.size() > 1)
+        stamp(run.last().pos, run.last().pressure);
+    onto.restore();
 }

@@ -371,6 +371,7 @@ void Canvas::followSettings(Canvas const& leader)
     m_brushWidth = leader.m_brushWidth;
     m_bitmapHardness = leader.m_bitmapHardness;
     m_bitmapFlow = leader.m_bitmapFlow;
+    m_bitmapTip = leader.m_bitmapTip;
     m_smoothing = leader.m_smoothing;
     m_minSize = leader.m_minSize;
     m_cornerAngle = leader.m_cornerAngle;

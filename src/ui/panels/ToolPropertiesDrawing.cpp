@@ -61,6 +61,23 @@ void ToolProperties::addSizeRows()
                     m_canvas->setBitmapHardness(v);
                     settings().setValue(QStringLiteral("tools/bitmapHardness"), v);
                 });
+        {
+            QComboBox* const tip = new QComboBox(this);
+            tip->setObjectName(QStringLiteral("BitmapTip"));
+            tip->setToolTip(tr("On a bitmap layer: the shape of the brush's tip, pressed down along the stroke."));
+            tip->addItems({tr("Round"), tr("Square"), tr("Chisel"), tr("Spray")});
+            int const kept = std::clamp(settings().value(QStringLiteral("tools/bitmapTip"), 0).toInt(), 0, 3);
+            tip->setCurrentIndex(kept);
+            m_canvas->setBitmapTip(Canvas::BitmapTip(kept));
+            connect(tip, &QComboBox::currentIndexChanged, this, [this](int i) {
+                m_canvas->setBitmapTip(Canvas::BitmapTip(std::clamp(i, 0, 3)));
+                settings().setValue(QStringLiteral("tools/bitmapTip"), i);
+            });
+            QHBoxLayout* const row = new QHBoxLayout;
+            row->addWidget(tip, 1);
+            m_form->addRow(tr("Bitmap Tip"), row);
+            m_tipRow = row;
+        }
         m_flowRow = addSetting(tr("Bitmap Flow"), tr("On a bitmap layer: how much paint a stroke of the brush puts down; strokes over each other build it up."),
                 1, 100, flow, QStringLiteral(" %"), [this](int v) {
                     m_canvas->setBitmapFlow(v);
