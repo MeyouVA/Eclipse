@@ -75,6 +75,18 @@ void Canvas::onActionSmooth()
             points[k].pos = before[k].pos * 0.5 + (a.pos + b.pos) * 0.25;
             points[k].pressure = before[k].pressure * 0.5f + (a.pressure + b.pressure) * 0.25f;
             changed = changed || points[k].pos != before[k].pos;
+            // A point with handles: they are put in one line, so the curve passes through it without a kink.
+            if (before[k].handles) {
+                QPointF const across = before[k].out - before[k].in;
+                double const length = std::hypot(across.x(), across.y());
+                if (length > 1e-9) {
+                    QPointF const way = across / length;
+                    double const in = std::hypot(before[k].in.x(), before[k].in.y()), out = std::hypot(before[k].out.x(), before[k].out.y());
+                    points[k].in = -way * in;
+                    points[k].out = way * out;
+                    changed = changed || points[k].in != before[k].in || points[k].out != before[k].out;
+                }
+            }
         }
     }
     if (changed)
@@ -114,6 +126,68 @@ static void keepNeeded(QVector<StrokePoint> const& points, int first, int last, 
     keep[at] = true;
     keepNeeded(points, first, at, tolerance, keep);
     keepNeeded(points, at, last, tolerance, keep);
+}
+
+// How far the line `a` strays from the line `b` at most, measured along `a` as it is drawn.
+static double strayFrom(Stroke const& a, Stroke const& b)
+{
+    QVector<StrokePoint> const from = a.path(), to = b.path();
+    if (to.isEmpty())
+        return 1e9;
+    double worst = 0.0;
+    for (StrokePoint const& p : from) {
+        double nearest = QLineF(p.pos, to[0].pos).length();
+        for (int k = 1; k < to.size(); ++k) {
+            QLineF const piece(to[k - 1].pos, to[k].pos);
+            double const len2 = piece.length() * piece.length();
+            double const t = len2 < 1e-12 ? 0.0 : std::clamp(QPointF::dotProduct(p.pos - piece.p1(), piece.p2() - piece.p1()) / len2, 0.0, 1.0);
+            nearest = std::min(nearest, QLineF(piece.pointAt(t), p.pos).length());
+        }
+        worst = std::max(worst, nearest);
+    }
+    return worst;
+}
+
+// A curve with handles loses a point only where the curve, its neighbours' handles stretched over the gap, stays
+// where it was (within `tolerance` both ways); a corner stays.  How many points it lost.
+static int reduceCurve(Stroke& stroke, double tolerance)
+{
+    Stroke const original = stroke;
+    int removed = 0;
+    for (int k = 0; k < stroke.points.size();) {
+        int const n = int(stroke.points.size());
+        if (n <= (stroke.closed ? 3 : 2) || stroke.points[k].corner || (!stroke.closed && (k == 0 || k == n - 1))) {
+            ++k;
+            continue;
+        }
+        int const p = (k + n - 1) % n, q = (k + 1) % n;
+        // The neighbours' handles stretched over the gap: by how much is tried, and the best kept.
+        double const gap = QLineF(stroke.points[p].pos, stroke.points[q].pos).length();
+        double const outBy = gap / std::max(QLineF(stroke.points[p].pos, stroke.points[k].pos).length(), 1e-9);
+        double const inBy = gap / std::max(QLineF(stroke.points[k].pos, stroke.points[q].pos).length(), 1e-9);
+        Stroke best;
+        double bestStray = 1e18;
+        for (double const f : {0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.45, 1.6}) {
+            Stroke trial = stroke;
+            if (trial.points[p].handles)
+                trial.points[p].out *= std::min(3.0, outBy * f);
+            if (trial.points[q].handles)
+                trial.points[q].in *= std::min(3.0, inBy * f);
+            trial.points.removeAt(k);
+            double const stray = std::max(strayFrom(original, trial), strayFrom(trial, original));
+            if (stray < bestStray) {
+                bestStray = stray;
+                best = trial;
+            }
+        }
+        if (bestStray <= tolerance) {
+            stroke = best;
+            ++removed;
+        } else {
+            ++k;
+        }
+    }
+    return removed;
 }
 
 // ---- Clean Up ---------------------------------------------------------------------------------
@@ -263,6 +337,10 @@ void Canvas::onActionReducePoints()
         int const n = int(before.size());
         if (n < 3)
             continue;
+        if (std::any_of(before.begin(), before.end(), [](StrokePoint const& point) { return point.handles; })) {
+            removed += reduceCurve(stroke, 2.0);     // (two curves drawn out never lie closer than a pixel or so)
+            continue;
+        }
         // Half a pixel of the drawing for a line of straight pieces; a curve bends between
         // its points, so it can lose more.
         QVector<bool> keep(n, false);
