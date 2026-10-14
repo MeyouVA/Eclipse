@@ -69,6 +69,8 @@ public:
 signals:
     // Insert pressed, or a template double-clicked.
     void insertRequested(QString const& path);
+    // "As Symbol" pressed: the template is to come in as a symbol, on one layer.
+    void insertAsSymbolRequested(QString const& path);
     // "New Template from Selection" pressed.
     void createRequested();
 

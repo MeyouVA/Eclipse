@@ -98,6 +98,8 @@ public:
     // The layers of a template file brought into the scene from `frame` on.  Returns the
     // first of them, or -1 with a message.
     int insertTemplate(QString const& path, int frame, QString* error);
+    // The template put in as a symbol (its layers in the symbol, one layer showing it); that layer, or -1.
+    int insertTemplateAsSymbol(QString const& path, int frame, QString* error);
     // Record and Play: the frames playing runs between, written as a small movie in the temporary folder.
     // The file, or nothing (with a message, unless it was stopped).
     QString recordForPlay(QString* error);

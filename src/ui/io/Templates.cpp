@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QSet>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QInputDialog>
@@ -56,6 +57,29 @@ int MainWindow::insertTemplate(QString const& path, int frame, QString* error)
     }
     m_timeline->clearRange();
     m_timeline->setCurrentCell(at, frame);
+    return at;
+}
+
+int MainWindow::insertTemplateAsSymbol(QString const& path, int frame, QString* error)
+{
+    QSet<int> had;
+    for (Layer const& l : m_document->scene().layers)
+        had.insert(l.id);
+    m_document->beginMacro(tr("Insert Template as Symbol"));
+    int at = insertTemplate(path, frame, error);
+    if (at >= 0) {
+        QVector<int> made;
+        for (int l = 0; l < m_document->scene().layers.size(); ++l)
+            if (!had.contains(m_document->scene().layers[l].id))
+                made.push_back(l);
+        at = made.isEmpty() ? -1 : m_document->createSymbol(made, QFileInfo(path).completeBaseName());
+    }
+    m_document->endMacro();
+    if (at >= 0) {
+        m_timeline->clearRange();
+        m_timeline->setCurrentCell(at, frame);
+        updateActionStates();
+    }
     return at;
 }
 

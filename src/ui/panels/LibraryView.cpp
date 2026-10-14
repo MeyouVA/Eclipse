@@ -174,6 +174,9 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     create->setObjectName(QStringLiteral("LibraryCreate"));
     QPushButton* const insert = new QPushButton(tr("Insert"), this);
     insert->setObjectName(QStringLiteral("LibraryInsert"));
+    QPushButton* const asSymbol = new QPushButton(tr("As Symbol"), this);
+    asSymbol->setObjectName(QStringLiteral("LibraryInsertSymbol"));
+    asSymbol->setToolTip(tr("Puts the template in as a symbol: its layers kept together, shown by one layer."));
     QPushButton* const rename = new QPushButton(tr("Rename..."), this);
     rename->setObjectName(QStringLiteral("LibraryRename"));
     QPushButton* const remove = new QPushButton(tr("Delete"), this);
@@ -202,6 +205,7 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     buttons->addWidget(create);
     buttons->addStretch(1);
     buttons->addWidget(insert);
+    buttons->addWidget(asSymbol);
     buttons->addWidget(rename);
     buttons->addWidget(remove);
     QVBoxLayout* const layout = new QVBoxLayout(this);
@@ -223,6 +227,10 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     connect(insert, &QPushButton::clicked, this, [this] {
         if (!currentTemplate().isEmpty())
             emit insertRequested(currentTemplate());
+    });
+    connect(asSymbol, &QPushButton::clicked, this, [this] {
+        if (currentTemplate().endsWith(QLatin1Char('.') + kSuffix))
+            emit insertAsSymbolRequested(currentTemplate());
     });
     connect(remove, &QPushButton::clicked, this, [this] { deleteCurrent(true); });
     connect(rename, &QPushButton::clicked, this, [this] {

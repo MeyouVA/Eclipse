@@ -137,6 +137,11 @@ void MainWindow::createViews()
     m_library = new LibraryView(this);
     connect(m_library, &LibraryView::insertRequested, this, [this](QString const& path) { dropTemplate(path, frame()); });
     connect(m_library, &LibraryView::createRequested, this, &MainWindow::onActionCreateTemplate);
+    connect(m_library, &LibraryView::insertAsSymbolRequested, this, [this](QString const& path) {
+        QString error;
+        if (insertTemplateAsSymbol(path, frame(), &error) < 0 && !error.isEmpty())
+            statusBar()->showMessage(error, 6000);
+    });
     connect(m_timeline, &Timeline::templateDropped, this, &MainWindow::dropTemplate);
     connect(m_canvas, &Canvas::templateDropped, this, [this](QString const& path) { dropTemplate(path, frame()); });
     addView(tr("Library"), QStringLiteral("LibraryDock"), m_library, Qt::RightDockWidgetArea)->hide();
