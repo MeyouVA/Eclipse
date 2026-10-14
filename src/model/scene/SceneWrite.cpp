@@ -407,6 +407,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["bitmap"] = true;
         if (layer.bitmapArt != 0)
             layerObject["bitmapArt"] = layer.bitmapArt;
+        if (layer.bendOnBones)
+            layerObject["bendOnBones"] = true;
         if (layer.bitmapResolution != 100)
             layerObject["bitmapResolution"] = layer.bitmapResolution;
         if (layer.hiddenSheets != 0)

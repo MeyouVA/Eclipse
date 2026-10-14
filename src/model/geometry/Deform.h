@@ -75,5 +75,8 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose);
 // A drawing of a layer attached to layers with a deformer that is reshaped (its parent, its parent's parent ...): reshaped
 // by each of those deformers too, as if it were drawn on that layer - it rides on the curve.  As it was when there is none.
 Drawing ridden(Scene const& scene, int layer, int frame, Drawing const& drawing);
+// A drawing of a layer that bends on the Game Bones it hangs from (Layer::bendOnBones): bent along the chain, given back
+// in the layer's own coordinates.  As it was when the layer does not bend, or does not hang from bones.
+Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& drawing);
 
 }

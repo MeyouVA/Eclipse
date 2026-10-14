@@ -247,7 +247,7 @@ Drawing Canvas::shown(int layer, int frame, Drawing const& drawing) const
     Layer const& l = scene.layers[layer];
     bool const plain = (l.bones.size() < 2 && !l.hasWarp()) || showsRest(layer);
     // (And on the curve of a deformer of a layer it is attached to.)
-    bool const rides = !showsRest(layer) && l.parent != 0;
+    bool const rides = !showsRest(layer) && l.parent != 0;      // (and bends on bones it hangs from)
     if (!m_highlightColour || m_playing) {
         Drawing const own = plain ? drawing : Deform::shown(drawing, l, poseOf(layer, frame));
         return rides ? Deform::ridden(scene, layer, frame, own) : own;

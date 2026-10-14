@@ -601,11 +601,57 @@ static void transformAll(Drawing& drawing, QTransform const& t)
         picture.transform(t);
 }
 
+Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& drawing)
+{
+    if (layer < 0 || layer >= scene.layers.size() || !scene.layers[layer].bendOnBones)
+        return drawing;
+    // The chain: the bones it hangs from, from the one nearest it up to the first of them.
+    QVector<int> chain;
+    for (int b = scene.parentIndex(layer), guard = 0; b >= 0 && guard < 64 && scene.layers[b].kind == Layer::Bone; b = scene.parentIndex(b), ++guard)
+        chain.push_back(b);
+    if (chain.isEmpty() || scene.turned(layer, frame))
+        return drawing;
+    std::reverse(chain.begin(), chain.end());      // from the first bone to the last
+    int const root = chain.first();
+    auto local = [&scene](int l, int f) { return scene.layers[l].matrixFor(scene.layers[l].poseAt(f)); };
+    // From each bone (on frame 0) to the first bone's own coordinates; and the drawing there - its own place on this frame,
+    // the bones as they stand on frame 0.
+    QVector<QTransform> toRoot(chain.size());
+    for (int i = 0; i < chain.size(); ++i)
+        toRoot[i] = i == 0 ? QTransform() : local(chain[i], 0) * toRoot[i - 1];
+    QTransform const into = local(layer, frame) * toRoot.last();
+    QVector<QPointF> joints;
+    QVector<double> bend;
+    for (int i = 0; i < chain.size(); ++i) {
+        Layer const& bone = scene.layers[chain[i]];
+        joints.push_back(toRoot[i].map(bone.pivot));
+        bend.push_back(bone.poseAt(frame).rotation - bone.poseAt(0).rotation);
+    }
+    Layer const& last = scene.layers[chain.last()];
+    joints.push_back(toRoot.last().map(last.pivot + QPointF(last.boneLength, 0.0)));
+    if (!isBent(joints, bend))
+        return drawing;
+    // The first bone where it is on this frame, but turned as on frame 0: its turning is in the bending.
+    PoseOverride over;
+    over.layer = root;
+    over.frame = frame;
+    over.pose = scene.layers[root].poseAt(frame);
+    over.pose.rotation = scene.layers[root].poseAt(0).rotation;
+    QTransform const rootNow = scene.worldTransform(root, frame, &over), here = scene.worldTransform(layer, frame);
+    if (!here.isInvertible())
+        return drawing;
+    Drawing out = drawing;
+    transformAll(out, into);
+    out = deform(out, joints, bend);
+    transformAll(out, rootNow * here.inverted());
+    return out;
+}
+
 Drawing ridden(Scene const& scene, int layer, int frame, Drawing const& drawing)
 {
     if (layer < 0 || layer >= scene.layers.size())
         return drawing;
-    Drawing out = drawing;
+    Drawing out = bentOnBones(scene, layer, frame, drawing);
     QTransform const own = scene.worldTransform(layer, frame);
     int guard = 0;
     for (int a = scene.parentIndex(layer); a >= 0 && guard < 64; a = scene.parentIndex(a), ++guard) {

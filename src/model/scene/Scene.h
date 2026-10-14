@@ -641,6 +641,9 @@ struct Layer {
     bool bitmap = false;
     // The other art layers painted in pixels too (one bit for each Drawing::Sheet; the line art's is `bitmap`).
     int bitmapArt = 0;
+    // A drawing layer attached to a chain of Game Bones: instead of riding the last bone whole, it bends along the chain
+    // (each part of it follows the bone it lies along on frame 0, as the bones turn from how they stand there).
+    bool bendOnBones = false;
     bool bitmapSheet(int sheet) const { return sheet == 2 ? bitmap : (bitmapArt & (1 << sheet)) != 0; }
     // How fine its pixels are, as a percentage: 100 is a pixel for each unit of the scene, 200 two across each unit.
     // Taken when the pixels of a drawing are first made.

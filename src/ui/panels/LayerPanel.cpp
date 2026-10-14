@@ -135,6 +135,14 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         if (!m_refreshing)
             m_document->setLayerBitmap(m_layer, on);
     });
+    m_bend = new QCheckBox(tr("Bends on its bones"), this);
+    m_bend->setObjectName(QStringLiteral("LayerBendOnBones"));
+    m_bend->setToolTip(tr("Hanging from Game Bones, the drawing bends along them as they turn, instead of riding the last one whole.\n"
+                          "Each part of it follows the bone it lies along on frame 0."));
+    connect(m_bend, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_refreshing)
+            m_document->editLayers({m_layer}, on ? tr("Bend on Bones") : tr("Ride on Bones"), [on](Layer& layer) { layer.bendOnBones = on; });
+    });
     m_easeIn->setSuffix(QStringLiteral(" %"));
     m_easeOut->setSuffix(QStringLiteral(" %"));
     m_easeIn->setToolTip(tr("How gently the motion arrives at the keyframe on this frame."));
@@ -159,6 +167,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(QString(), m_bitmap);
     form->addRow(tr("Attached to"), m_parent);
     form->addRow(tr("Rides on"), m_bone);
+    form->addRow(QString(), m_bend);
     form->addRow(tr("Position"), pair(m_x, m_y));
     form->addRow(tr("Depth (Z)"), m_z);
     m_turnRow = pair(m_rotX, m_rotY);
@@ -247,6 +256,11 @@ void LayerPanel::refresh()
     m_form->setRowVisible(m_artRow, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
     m_form->setRowVisible(m_bitmap, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
     m_bitmap->setChecked(layer.bitmap);
+    {
+        int const up = m_document->scene().parentIndex(m_layer);
+        m_form->setRowVisible(m_bend, layer.holdsDrawings() && up >= 0 && m_document->scene().layers[up].kind == Layer::Bone);
+        m_bend->setChecked(layer.bendOnBones);
+    }
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
         m_artShown[sheet]->setChecked(layer.sheetShown(sheet));
     m_ikExcluded->setChecked(layer.ikExcluded);
