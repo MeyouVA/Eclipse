@@ -494,6 +494,13 @@ void Canvas::penUp()
                 clearSelection();
         } else if (rect.width() * m_zoom > 2 || rect.height() * m_zoom > 2)
             selectInRect(rect, m_marqueeAdds);
+    } else if (drag == DragWeights) {
+        m_drag = DragNone;
+        QVector<SkinDab> const dabs = m_weightDabs;
+        m_weightDabs.clear();
+        if (!dabs.isEmpty())
+            m_document->editLayers({m_layer}, dabs.first().strength < 0 ? tr("Erase Weights") : tr("Paint Weights"),
+                                   [dabs](Layer& layer) { layer.skin += dabs; });
     } else if (drag == DragJoint) {
         m_drag = DragNone;
         QVector<QPointF> joints = m_document->scene().layers[m_layer].bones;

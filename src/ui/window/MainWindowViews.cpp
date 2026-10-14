@@ -114,6 +114,10 @@ void MainWindow::createViews()
     ToolProperties* const properties = new ToolProperties(m_document, m_canvas, m_actions, m_envelopePoints, this);
     connect(properties, &ToolProperties::envelopePointsChanged, this, [this](int count) { m_envelopePoints = count; });
     connect(properties, &ToolProperties::envelopeOutlineChanged, this, [this](bool on) { m_envelopeOutline = on; });
+    connect(properties, &ToolProperties::clearWeightsRequested, this, [this] {
+        if (layer() >= 0 && layer() < m_document->scene().layers.size() && !m_document->scene().layers[layer()].skin.isEmpty())
+            m_document->editLayers({layer()}, tr("Clear Painted Weights"), [](Layer& l) { l.skin.clear(); });
+    });
     m_refreshToolProperties = [properties] { properties->refresh(); };
     addView(tr("Tool Properties"), QStringLiteral("ToolPropertiesDock"), scrollingView(properties), Qt::RightDockWidgetArea);
 

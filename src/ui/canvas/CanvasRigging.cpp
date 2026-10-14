@@ -20,6 +20,22 @@
 void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers)
 {
     Scene const& scene = m_document->scene();
+    if (m_rigMode == RigWeights) {
+        // Painting the pull of a bone onto the drawing: a dab here, more as the pointer goes; with Alt, taking it away.
+        Layer const& layer = scene.layers[m_layer];
+        if (layer.bones.size() < 2) {
+            emit message(tr("Weights are painted for bones: lay down a bone chain on the layer first (Rigging tool, Mode: Bone)."));
+            return;
+        }
+        if (m_weightBone >= layer.bones.size() - 1) {
+            emit message(tr("The layer has %n bone(s): choose one of them in the Tool Properties.", nullptr, int(layer.bones.size()) - 1));
+            return;
+        }
+        m_weightDabs = {SkinDab{m_weightBone, p, m_weightRadius, (modifiers & Qt::AltModifier) ? -m_weightStrength : m_weightStrength}};
+        m_drag = DragWeights;
+        update();
+        return;
+    }
     if (m_rigMode != RigBones) {
         // A curve or an envelope: a point or handle of it under the pointer is dragged; a
         // click anywhere else adds a point after the last.

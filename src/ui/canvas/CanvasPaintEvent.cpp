@@ -441,6 +441,35 @@ void Canvas::paintEvent(QPaintEvent*)
         return;
     }
     if (m_tool == Rigging && !m_playing && m_layer >= 0 && m_layer < scene.layers.size()) {
+        if (m_rigMode == RigWeights) {
+            // The pull painted for the chosen bone: warm where it is added, cool where it is taken away; the bone itself picked out.
+            Layer const& layer = scene.layers[m_layer];
+            QTransform const toWidget = layerViewTransform();
+            painter.save();
+            painter.resetTransform();
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setPen(Qt::NoPen);
+            QVector<SkinDab> all = layer.skin;
+            all += m_weightDabs;
+            for (SkinDab const& d : std::as_const(all)) {
+                if (d.bone != m_weightBone)
+                    continue;
+                QPointF const c = toWidget.map(d.at);
+                double const r = QLineF(toWidget.map(d.at), toWidget.map(d.at + QPointF(d.radius, 0.0))).length();
+                QRadialGradient glow(c, std::max(r, 1.0));
+                QColor const tint = d.strength >= 0 ? QColor(255, 90, 40) : QColor(60, 140, 255);
+                QColor inner = tint, outer = tint;
+                inner.setAlphaF(float(std::min(1.0, std::abs(d.strength)) * 0.35));
+                outer.setAlphaF(0.0f);
+                glow.setColorAt(0.0, inner);
+                glow.setColorAt(1.0, outer);
+                painter.setBrush(glow);
+                painter.drawEllipse(c, r, r);
+            }
+            painter.restore();
+            paintBones(painter, layer.bones, m_weightBone + 1 < layer.bones.size() ? m_weightBone + 1 : -1);
+            return;
+        }
         if (m_rigMode != RigBones) {
             paintWarp(painter, warpRestDragged(), scene.layers[m_layer].warpClosed, m_drag == DragWarpRest ? m_warpIndex : -1);
             return;

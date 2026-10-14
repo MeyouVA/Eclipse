@@ -13,6 +13,8 @@ class Canvas;
 class Document;
 class QCheckBox;
 class QComboBox;
+class QDoubleSpinBox;
+class QPushButton;
 class QFormLayout;
 class QHBoxLayout;
 class QLabel;
@@ -38,6 +40,8 @@ public:
 signals:
     void envelopePointsChanged(int count);
     void envelopeOutlineChanged(bool on);
+    // Clear Painted Weights (Rigging tool, Weights).
+    void clearWeightsRequested();
 
 private:
     // The parts of the form, from the top down.
@@ -88,6 +92,9 @@ private:
     QCheckBox* m_lineCrisp = nullptr;
     QHBoxLayout* m_paperRow = nullptr;      // the paper texture of the brush, and how much of it shows
     QComboBox* m_rigMode = nullptr;
+    QSpinBox* m_weightBone = nullptr;           // Rigging, Weights: the bone painted for
+    QDoubleSpinBox* m_weightSize = nullptr;     // and how big a dab is
+    QPushButton* m_weightClear = nullptr;       // all the painted weights of the layer taken away
     QSpinBox* m_envelopePoints = nullptr;
     QCheckBox* m_applyAll = nullptr;
     QCheckBox* m_dropperAll = nullptr;

@@ -318,7 +318,13 @@ public:
     bool highlightColour() const { return m_highlightColour; }
     // What the Rigging tool lays down: a chain of bones, a curve the drawing bends along, or
     // an envelope round it.
-    enum RigMode { RigBones, RigCurve, RigEnvelope };
+    enum RigMode { RigBones, RigCurve, RigEnvelope, RigWeights };
+    // Weights: the bone (0: the first) whose pull is painted, how big the dab is (scene units), and how strongly each one adds.
+    int weightBone() const { return m_weightBone; }
+    void setWeightBone(int bone) { m_weightBone = std::max(0, bone); update(); }
+    double weightRadius() const { return m_weightRadius; }
+    void setWeightRadius(double radius) { m_weightRadius = std::max(1.0, radius); }
+    void setWeightStrength(double strength) { m_weightStrength = std::clamp(strength, 0.01, 1.0); }
     RigMode rigMode() const { return m_rigMode; }
     void setRigMode(RigMode mode) { m_rigMode = mode; update(); }
     void setDrawBehind(bool on) { m_drawBehind = on; }
@@ -897,7 +903,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -1118,6 +1124,10 @@ private:
     // deformers: the point or handle being dragged (its place in Layer::warp)
     int m_warpIndex = -1;
     RigMode m_rigMode = RigBones;
+    int m_weightBone = 0;
+    double m_weightRadius = 30.0;
+    double m_weightStrength = 0.5;
+    QVector<SkinDab> m_weightDabs;      // painted in this stroke, not yet in the scene
 
     // transform tool
     Pose m_poseStart;             // the pose of the layer when the drag began

@@ -19,6 +19,8 @@
 #include "ui/canvas/Canvas.h"
 #include "ui/window/MainWindowPrivate.h"
 #include <QCheckBox>
+#include <QDoubleSpinBox>
+#include <QPushButton>
 #include <QComboBox>
 #include <QSettings>
 
@@ -184,6 +186,8 @@ void ToolProperties::showFor(int tool)
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
     bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
+    for (QWidget* const row : {static_cast<QWidget*>(m_weightBone), static_cast<QWidget*>(m_weightSize), static_cast<QWidget*>(m_weightClear)})
+        m_form->setRowVisible(row, tool == T::Rigging && m_rigMode->currentIndex() == Canvas::RigWeights);
     m_form->setRowVisible(m_envelopePoints, tool == T::Rigging);
     m_form->setRowVisible(m_envelopeOutline, tool == T::Rigging);
     // What the settings are headed with: the tools that have a tip to set up are headed

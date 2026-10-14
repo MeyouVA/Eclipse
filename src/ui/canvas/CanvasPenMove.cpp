@@ -51,7 +51,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         widgetPos = guidedFrom(layerViewTransform().map(m_dragStart), widgetPos);
     // While a pose is being dragged the layer moves under the pointer: those drags work
     // from the scene position instead.
-    QPointF const p = posing() || m_drag == DragPivot || m_drag == DragPan || m_drag == DragJoint || m_drag == DragWarpRest || m_drag == DragQuad || m_drag == DragRotateView ? QPointF() : toLayer(widgetPos);
+    QPointF const p = posing() || m_drag == DragPivot || m_drag == DragPan || m_drag == DragJoint || m_drag == DragWeights || m_drag == DragWarpRest || m_drag == DragQuad || m_drag == DragRotateView ? QPointF() : toLayer(widgetPos);
     switch (m_drag) {
     case DragPoseMove: {
         // The offset is in the coordinates of the parent.
@@ -185,6 +185,17 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         if (m_quadCorner >= 0 && m_quadCorner < m_dragQuad.size())
             m_dragQuad[m_quadCorner] = after.inverted().map(toScene(widgetPos));
         update();
+        break;
+    }
+    case DragWeights: {
+        // A dab each time the pointer has gone a quarter of the dab's size.
+        QPointF const at = toLayer(widgetPos);
+        if (!m_weightDabs.isEmpty() && QLineF(m_weightDabs.last().at, at).length() >= m_weightRadius / 4.0) {
+            SkinDab next = m_weightDabs.last();
+            next.at = at;
+            m_weightDabs.push_back(next);
+            update();
+        }
         break;
     }
     case DragJoint:

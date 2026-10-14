@@ -28,8 +28,10 @@ struct Chain {
     QVector<QPointF> joints;
     QVector<QTransform> bones;
     double smooth = 0.0;    // how far round a joint the bend is shared out (scene units); 0: as good as a fold
+    QVector<SkinDab> skin;  // weights painted for the bones
 
-    Chain(QVector<QPointF> const& rest, QVector<double> const& bend, double smoothness = 0.0) : joints(rest), smooth(smoothness)
+    Chain(QVector<QPointF> const& rest, QVector<double> const& bend, double smoothness = 0.0, QVector<SkinDab> const& painted = {})
+        : joints(rest), smooth(smoothness), skin(painted)
     {
         QPointF origin = rest.isEmpty() ? QPointF() : rest[0];  // where the bone starts, posed
         double angle = 0.0;                                      // how far it is turned in all
@@ -50,8 +52,33 @@ struct Chain {
             return p;
         // Each bone pulls with a strength that falls off fast with distance, so a point
         // beside one bone follows that bone, and one at a joint goes half way with each.
+        // The pull of each bone by nearness; then what is painted added to it (never below nothing).  Where the painting
+        // takes every pull away, nearness alone says.
+        QVarLengthArray<double, 16> pull(bones.size());
+        nearness(p, pull);
+        if (!skin.isEmpty()) {
+            QVarLengthArray<double, 16> painted(bones.size());
+            double total = 0.0;
+            for (int i = 0; i < bones.size(); ++i) {
+                painted[i] = std::max(0.0, pull[i] + 3.0 * paintedWeight(skin, i, p));
+                total += painted[i];
+            }
+            if (total > 1e-12)
+                for (int i = 0; i < bones.size(); ++i)
+                    pull[i] = painted[i];
+        }
         double total = 0.0;
         QPointF sum;
+        for (int i = 0; i < bones.size(); ++i) {
+            total += pull[i];
+            sum += bones[i].map(p) * pull[i];
+        }
+        return total > 0.0 ? sum / total : p;
+    }
+
+    // How strongly each bone pulls on `p` by how near it is.
+    void nearness(QPointF p, QVarLengthArray<double, 16>& pull) const
+    {
         if (smooth > 1.0) {
             // Smoothed joints: the nearest bone pulls fully, another as much less as it is further than that one, and
             // not at all once it is `smooth` further - so the bend is shared out round a joint, and nowhere else.
@@ -63,19 +90,14 @@ struct Chain {
             }
             for (int i = 0; i < bones.size(); ++i) {
                 double const share = std::max(0.0, 1.0 - (away[i] - nearest) / smooth);
-                double const w = share * share;
-                total += w;
-                sum += bones[i].map(p) * w;
+                pull[i] = share * share;
             }
-            return sum / total;
+            return;
         }
         for (int i = 0; i < bones.size(); ++i) {
             double const d = distanceToSegment(p, joints[i], joints[i + 1]);
-            double const w = 1.0 / ((d * d + 1.0) * (d * d + 1.0));
-            total += w;
-            sum += bones[i].map(p) * w;
+            pull[i] = 1.0 / ((d * d + 1.0) * (d * d + 1.0));
         }
-        return sum / total;
     }
 };
 
@@ -146,9 +168,23 @@ QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, in
     return bend;
 }
 
-QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth)
+double paintedWeight(QVector<SkinDab> const& skin, int bone, QPointF p)
 {
-    return Chain(joints, bend, smooth).map(p);
+    double sum = 0.0;
+    for (SkinDab const& d : skin) {
+        if (d.bone != bone || d.radius <= 0.0)
+            continue;
+        QPointF const off = p - d.at;
+        double const t = (off.x() * off.x() + off.y() * off.y()) / (d.radius * d.radius);
+        if (t < 1.0)
+            sum += d.strength * (1.0 - t) * (1.0 - t);
+    }
+    return sum;
+}
+
+QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth, QVector<SkinDab> const& skin)
+{
+    return Chain(joints, bend, smooth, skin).map(p);
 }
 
 namespace {
@@ -212,11 +248,11 @@ template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
 
 }
 
-Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth)
+Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth, QVector<SkinDab> const& skin)
 {
     if (!isBent(joints, bend))
         return drawing;
-    Chain const chain(joints, bend, smooth);
+    Chain const chain(joints, bend, smooth, skin);
     return mapped(drawing, [&chain](QPointF p) { return chain.map(p); });
 }
 
@@ -701,8 +737,8 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose)
     if (!bent)
         return warp(drawing, layer.warp, layer.warpClosed, pose.warp);
     if (!warped)
-        return deform(drawing, layer.bones, pose.bend, layer.jointSmoothness);
-    return deform(warp(drawing, layer.warp, layer.warpClosed, pose.warp), layer.bones, pose.bend, layer.jointSmoothness);
+        return deform(drawing, layer.bones, pose.bend, layer.jointSmoothness, layer.skin);
+    return deform(warp(drawing, layer.warp, layer.warpClosed, pose.warp), layer.bones, pose.bend, layer.jointSmoothness, layer.skin);
 }
 
 }

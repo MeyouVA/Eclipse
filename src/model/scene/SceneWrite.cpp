@@ -424,6 +424,12 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["bendOnBones"] = true;
         if (layer.jointSmoothness > 0.0)
             layerObject["jointSmooth"] = layer.jointSmoothness;
+        if (!layer.skin.isEmpty()) {
+            QJsonArray dabs;
+            for (SkinDab const& d : layer.skin)
+                dabs.append(QJsonArray{d.bone, d.at.x(), d.at.y(), d.radius, d.strength});
+            layerObject["skin"] = dabs;
+        }
         if (layer.blend > Layer::BlendNormal && layer.blend < Layer::BlendCount) {
             static char const* const kBlends[Layer::BlendCount] = {"normal", "multiply", "screen", "overlay", "darken", "lighten", "colourDodge",
                                                                    "colourBurn", "hardLight", "softLight", "difference", "exclusion", "add"};

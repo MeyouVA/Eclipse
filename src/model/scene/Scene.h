@@ -537,6 +537,16 @@ struct Morph {
     QVector<QLineF> hints;
 };
 
+// A dab of painted weight (skinning): near `at` (within `radius`, in the layer's own coordinates at rest), bone `bone` of
+// the layer's bone deformer pulls on the drawing more (a `strength` above 0) or less (below 0), the most at the middle.
+struct SkinDab {
+    int bone = 0;
+    QPointF at;
+    double radius = 20.0;
+    double strength = 0.5;
+    bool operator==(SkinDab const&) const = default;
+};
+
 struct Layer {
     static constexpr int kNoDrawing = -1;
 
@@ -667,6 +677,9 @@ struct Layer {
     // How far from a joint of its bones (its own bone deformer, or the Game Bones it bends on) the bend is shared out
     // between the two bones, in scene units: the drawing bends round the joint smoothly instead of folding (0: a fold).
     double jointSmoothness = 0.0;
+    // Weights painted on the drawing for the bones of its bone deformer (the Rigging tool, Weights): where a bone is to pull
+    // more, or less, than its nearness alone says.
+    QVector<SkinDab> skin;
     // How the layer's picture goes onto what is under it: laid over it (Normal), or mixed with it - Multiply darkens
     // as ink does, Screen lightens as light does, and so on, as in a paint program.  The layer is mixed as a whole.
     enum Blend { BlendNormal, BlendMultiply, BlendScreen, BlendOverlay, BlendDarken, BlendLighten, BlendColourDodge, BlendColourBurn,

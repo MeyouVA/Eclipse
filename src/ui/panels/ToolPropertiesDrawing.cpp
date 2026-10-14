@@ -11,6 +11,7 @@
 #include <QMenu>
 #include <QToolButton>
 #include <QPainter>
+#include <QDoubleSpinBox>
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
@@ -268,13 +269,43 @@ void ToolProperties::addRiggingRows()
 {
     m_rigMode = new QComboBox(this);
     m_rigMode->setObjectName(QStringLiteral("RigMode"));
-    m_rigMode->addItems({tr("Bone"), tr("Curve"), tr("Envelope")});
+    m_rigMode->addItems({tr("Bone"), tr("Curve"), tr("Envelope"), tr("Weights")});
     m_rigMode->setToolTip(tr("Bone: a chain of bones the drawing bends at.\n"
                              "Curve: a curve the drawing bends along.\n"
                              "Envelope: an outline round the drawing that pulls it about.\n"
+                             "Weights: paint where a bone of the chain pulls on the drawing more (Alt: less).\n"
                              "Click to lay down points; pose them with the Transform tool."));
-    connect(m_rigMode, &QComboBox::currentIndexChanged, this, [this](int index) { m_canvas->setRigMode(Canvas::RigMode(index)); });
     m_form->addRow(tr("Mode"), m_rigMode);
+    m_weightBone = new QSpinBox(this);
+    m_weightBone->setObjectName(QStringLiteral("WeightBone"));
+    m_weightBone->setRange(1, 64);
+    m_weightBone->setToolTip(tr("The bone whose pull is painted: 1 is the first of the chain."));
+    connect(m_weightBone, &QSpinBox::valueChanged, this, [this](int bone) { m_canvas->setWeightBone(bone - 1); });
+    m_form->addRow(tr("Bone"), m_weightBone);
+    m_weightSize = new QDoubleSpinBox(this);
+    m_weightSize->setObjectName(QStringLiteral("WeightSize"));
+    m_weightSize->setRange(1.0, 1000.0);
+    m_weightSize->setDecimals(0);
+    m_weightSize->setValue(m_canvas->weightRadius());
+    m_weightSize->setToolTip(tr("How far round the pointer each dab of weight reaches (scene units)."));
+    connect(m_weightSize, &QDoubleSpinBox::valueChanged, m_canvas, &Canvas::setWeightRadius);
+    m_form->addRow(tr("Brush size"), m_weightSize);
+    m_weightClear = new QPushButton(tr("Clear Painted Weights"), this);
+    m_weightClear->setObjectName(QStringLiteral("WeightClear"));
+    m_weightClear->setToolTip(tr("Takes away all the weights painted on the current layer: nearness alone says again how the bones pull."));
+    connect(m_weightClear, &QPushButton::clicked, this, [this] { emit clearWeightsRequested(); });
+    m_form->addRow(m_weightClear);
+    auto weightsShown = [this](int index) {
+        bool const weights = index == Canvas::RigWeights && m_canvas->tool() == Canvas::Rigging;
+        m_form->setRowVisible(m_weightBone, weights);
+        m_form->setRowVisible(m_weightSize, weights);
+        m_form->setRowVisible(m_weightClear, weights);
+    };
+    connect(m_rigMode, &QComboBox::currentIndexChanged, this, [this, weightsShown](int index) {
+        m_canvas->setRigMode(Canvas::RigMode(index));
+        weightsShown(index);
+    });
+    weightsShown(m_rigMode->currentIndex());
     m_envelopePoints = new QSpinBox(this);
     m_envelopePoints->setObjectName(QStringLiteral("EnvelopePoints"));
     m_envelopePoints->setRange(4, 32);

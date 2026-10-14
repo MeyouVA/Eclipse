@@ -311,6 +311,12 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.bitmapArt = lo["bitmapArt"].toInt(0) & 11;
         layer.bendOnBones = lo["bendOnBones"].toBool(false);
         layer.jointSmoothness = std::clamp(lo["jointSmooth"].toDouble(0.0), 0.0, 1000.0);
+        for (QJsonValue const& dv : lo["skin"].toArray()) {
+            QJsonArray const d = dv.toArray();
+            if (d.size() != 5 || d[0].toInt(-1) < 0 || d[3].toDouble() <= 0.0)
+                continue;
+            layer.skin.push_back({d[0].toInt(), QPointF(d[1].toDouble(), d[2].toDouble()), d[3].toDouble(), std::clamp(d[4].toDouble(), -1.0, 1.0)});
+        }
         {
             // (A mode of a newer version: laid over as usual.)
             static char const* const kBlends[Layer::BlendCount] = {"normal", "multiply", "screen", "overlay", "darken", "lighten", "colourDodge",
