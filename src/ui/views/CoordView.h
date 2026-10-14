@@ -32,6 +32,12 @@ signals:
 private:
     void rebuild();
     void cellEdited(int row, int column);
+    // The control points of the stretch of path the frame is on, as a table of their own.
+    void rebuildPoints();
+    void pointEdited(int row, int column);
+    QTableWidget* m_pointTable = nullptr;
+    class QPushButton* m_pointLock = nullptr;
+    class QPushButton* m_pointRemove = nullptr;
     // The form: shows the layer as it is on the current frame; takes what was typed in one of its boxes.
     void showCoordinates();
     void applyCoordinate(int which);

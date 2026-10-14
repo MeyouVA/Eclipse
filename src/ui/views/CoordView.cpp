@@ -129,6 +129,36 @@ CoordView::CoordView(Document* document, QWidget* parent) : QWidget(parent), m_d
     add->setToolTip(tr("A keyframe on the current frame, with the pose the layer has there."));
     QPushButton* const remove = new QPushButton(tr("Delete Keyframe"), this);
     remove->setObjectName(QStringLiteral("CoordRemove"));
+    // Under them, the control points of the stretch of path the current frame is on.
+    m_pointTable = new QTableWidget(0, 4, this);
+    m_pointTable->setObjectName(QStringLiteral("CoordPointsTable"));
+    m_pointTable->setHorizontalHeaderLabels({tr("Point"), tr("X"), tr("Y"), tr("Frame")});
+    m_pointTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    m_pointTable->verticalHeader()->setVisible(false);
+    m_pointTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_pointTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_pointTable->setToolTip(tr("The control points the path passes through between this keyframe and the next. "
+                                "Frame: where the layer comes by the point."));
+    m_pointLock = new QPushButton(tr("Lock in Time"), this);
+    m_pointLock->setObjectName(QStringLiteral("CoordPointLock"));
+    m_pointLock->setToolTip(tr("The control point chosen becomes a keyframe on the frame the layer comes by it."));
+    m_pointRemove = new QPushButton(tr("Delete Point"), this);
+    m_pointRemove->setObjectName(QStringLiteral("CoordPointRemove"));
+    QHBoxLayout* const pointButtons = new QHBoxLayout;
+    pointButtons->addWidget(m_pointLock);
+    pointButtons->addWidget(m_pointRemove);
+    pointButtons->addStretch(1);
+    connect(m_pointTable, &QTableWidget::cellChanged, this, &CoordView::pointEdited);
+    connect(m_pointLock, &QPushButton::clicked, this, [this] {
+        int const key = pathKey(), row = m_pointTable->currentRow();
+        if (key >= 0 && row >= 0)
+            m_document->lockControlPointInTime(m_layer, key, row);
+    });
+    connect(m_pointRemove, &QPushButton::clicked, this, [this] {
+        int const key = pathKey(), row = m_pointTable->currentRow();
+        if (key >= 0 && row >= 0)
+            m_document->removeControlPoint(m_layer, key, row);
+    });
     QHBoxLayout* const buttons = new QHBoxLayout;
     buttons->addWidget(add);
     buttons->addWidget(remove);
@@ -214,6 +244,10 @@ CoordView::CoordView(Document* document, QWidget* parent) : QWidget(parent), m_d
     keys->addWidget(m_title);
     keys->addWidget(m_table, 1);
     keys->addLayout(buttons);
+    QLabel* const pointsHeading = new QLabel(tr("Control Points"), this);
+    keys->addWidget(pointsHeading);
+    keys->addWidget(m_pointTable, 1);
+    keys->addLayout(pointButtons);
     QHBoxLayout* const layout = new QHBoxLayout(this);
     layout->setContentsMargins(4, 4, 4, 4);
     layout->addWidget(coordinates);
@@ -251,6 +285,7 @@ void CoordView::setCurrentCell(int layer, int frame)
         return;
     }
     showCoordinates();
+    rebuildPoints();
     // The same layer: only the row of the frame is shown as the one in hand.
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
@@ -370,6 +405,7 @@ void CoordView::rebuild()
 {
     Scene const& scene = m_document->scene();
     showCoordinates();
+    rebuildPoints();
     m_rebuilding = true;
     m_table->setRowCount(0);
     if (m_layer < 0 || m_layer >= scene.layers.size()) {
@@ -430,4 +466,50 @@ void CoordView::cellEdited(int row, int column)
         return;
     }
     m_document->setKeyframe(m_layer, key.frame, pose, tr("Change Keyframe"));
+}
+
+void CoordView::rebuildPoints()
+{
+    Scene const& scene = m_document->scene();
+    int const key = pathKey();
+    int const row = m_pointTable->currentRow();
+    bool const was = m_rebuilding;
+    m_rebuilding = true;
+    m_pointTable->setRowCount(0);
+    QVector<QPointF> const points = key >= 0 ? scene.layers[m_layer].keys[key].controls : QVector<QPointF>();
+    m_pointTable->setRowCount(int(points.size()));
+    for (int p = 0; p < points.size(); ++p) {
+        QString const texts[4] = {QString::number(p + 1), shortNumber(points[p].x()), shortNumber(points[p].y()),
+                                  QString::number(scene.controlPointFrame(m_layer, key, p) + 1)};
+        for (int column = 0; column < 4; ++column) {
+            QTableWidgetItem* const item = new QTableWidgetItem(texts[column]);
+            item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            if (column == 0 || column == 3)
+                item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+            m_pointTable->setItem(p, column, item);
+        }
+    }
+    if (row >= 0 && row < points.size())
+        m_pointTable->selectRow(row);
+    m_pointLock->setEnabled(!points.isEmpty());
+    m_pointRemove->setEnabled(!points.isEmpty());
+    m_rebuilding = was;
+}
+
+void CoordView::pointEdited(int row, int column)
+{
+    Scene const& scene = m_document->scene();
+    int const key = pathKey();
+    if (m_rebuilding || key < 0 || row < 0 || row >= scene.layers[m_layer].keys[key].controls.size() || (column != 1 && column != 2))
+        return;
+    QPointF to = scene.layers[m_layer].keys[key].controls[row];
+    bool ok = false;
+    double const value = m_pointTable->item(row, column)->text().trimmed().replace(QLatin1Char(','), QLatin1Char('.')).toDouble(&ok);
+    if (ok)
+        (column == 1 ? to.rx() : to.ry()) = value;
+    if (!ok || to == scene.layers[m_layer].keys[key].controls[row]) {
+        rebuildPoints();    // not a number, or nothing changed: what was there is shown again
+        return;
+    }
+    m_document->moveControlPoint(m_layer, key, row, to);
 }
