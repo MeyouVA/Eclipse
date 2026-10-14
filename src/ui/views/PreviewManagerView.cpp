@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "model/scene/Scene.h"
 #include "ui/canvas/Canvas.h"
@@ -237,6 +238,7 @@ int PreviewManagerView::render(bool everything)
     }
     m_frames = frames;
     m_prints = prints;
+    m_sound = Sound::mix(scene);
     m_canvas->setPreview(frames);
     showStatus();
     return made;
@@ -246,6 +248,7 @@ void PreviewManagerView::clear()
 {
     m_frames.clear();
     m_prints.clear();
+    m_sound.clear();
     m_canvas->setPreview({});
     showStatus();
 }

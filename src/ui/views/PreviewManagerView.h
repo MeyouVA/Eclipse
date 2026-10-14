@@ -35,6 +35,8 @@ public:
     // How big the frames are kept: 100, 50 or 25 (per cent of the scene's size).
     void setSizePercent(int percent);
     int sizePercent() const;
+    // The sound of the scene, mixed when the frames were rendered and kept with them: what plays with the preview.
+    QVector<qint16> const& sound() const { return m_sound; }
 
 private:
     void showStatus(bool stale = false);
@@ -49,4 +51,5 @@ private:
     QTimer* m_autoTimer = nullptr;
     QVector<QImage> m_frames;          // what was rendered last, frame by frame (kept when the preview goes stale)
     QVector<quint64> m_prints;         // and the fingerprint of each
+    QVector<qint16> m_sound;           // the sound mixed with the last complete render
 };

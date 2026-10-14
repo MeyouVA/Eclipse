@@ -60,7 +60,9 @@ void MainWindow::onActionTogglePlayback()
         m_timeline->setCurrentFrame(m_playStart);
     m_canvas->setPlaying(true);
     m_actions->setChecked(QStringLiteral("PlayToggle"), true);
-    m_playMix = m_soundOn && m_playSpeed == 100 ? Sound::mix(m_document->scene()) : QVector<qint16>();
+    // Playing from the Preview Manager's frames: the sound kept with them; otherwise the scene's, mixed now.
+    PreviewManagerView* const preview = m_canvas->previewFrames() > 0 ? findChild<PreviewManagerView*>() : nullptr;
+    m_playMix = !m_soundOn || m_playSpeed != 100 ? QVector<qint16>() : preview ? preview->sound() : Sound::mix(m_document->scene());
     startPlayingFrom(frame());
     // Look at the clock a few times per frame.
     m_playTimer.start(std::max(1, int(250.0 / m_document->scene().fps)));
