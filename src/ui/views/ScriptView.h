@@ -19,6 +19,7 @@
 #include "EclipseExport.h"
 
 #include <QJSValue>
+#include <QKeySequence>
 #include <QObject>
 #include <QWidget>
 
@@ -151,6 +152,17 @@ public:
     bool open(QString const& name);
     QString currentName() const { return m_name; }
     QStringList names() const;
+    // Opens the script kept under that name and runs it; what run() says, or a message when there is no such script.
+    QString runSaved(QString const& name);
+    // A script's own shortcut, and whether it has a button on the Scripts toolbar (kept in the settings, by name).
+    QKeySequence shortcutOf(QString const& name) const;
+    void setShortcutOf(QString const& name, QKeySequence const& key);
+    bool onToolbar(QString const& name) const;
+    void setOnToolbar(QString const& name, bool on);
+
+signals:
+    // Scripts were saved, thrown away, or given another shortcut or toolbar button.
+    void scriptsChanged();
 
 public slots:
     void newScript();
@@ -168,4 +180,7 @@ private:
     QListWidget* m_list;
     QPlainTextEdit* m_text;
     QPlainTextEdit* m_output;
+    class QKeySequenceEdit* m_shortcut = nullptr;
+    class QCheckBox* m_toolbar = nullptr;
+    void showCommands();     // the shortcut and toolbar boxes, for the script shown
 };

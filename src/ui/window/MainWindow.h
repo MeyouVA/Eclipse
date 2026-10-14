@@ -211,6 +211,10 @@ public slots:
     void onActionInsertControlPoint();
     void onActionColumnProperties();
     void onShowDisplays(QMenu* menu);
+    // Runs a script kept by the Script Editor, by name.
+    void runScript(QString const& name);
+    // The shortcuts and Scripts toolbar buttons the scripts were given.
+    void refreshScriptCommands();
     void onActionRenderPreview();
     void onShowScripts(QMenu* menu);
     void onActionAutoRender(bool on);
@@ -485,6 +489,7 @@ private:
     QWidget* makeReferenceView();
     QListWidget* m_references = nullptr;
     class LibraryView* m_library = nullptr;
+    class QToolBar* m_scriptBar = nullptr;     // Scripts: the buttons of the scripts put on it
     // (`onto`: put on the layers of the same names when the scene has them all - a drop on the cells of the Timeline.)
     void dropTemplate(QString const& path, int frame, bool onto = false);
     void askExportImages(bool preview);

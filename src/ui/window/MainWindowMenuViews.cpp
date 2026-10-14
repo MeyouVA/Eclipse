@@ -30,7 +30,7 @@
 #include <QFile>
 #include <QMenu>
 #include <QStatusBar>
-#include <QStatusBar>
+#include <QToolBar>
 
 // The views opened from the Windows menu that are classes of their own: each is made, wired to the
 // Timeline and the commands, and put away until it is asked for.
@@ -91,6 +91,8 @@ void MainWindow::createWindowsMenuViews()
         ScriptView* const view = new ScriptView(m_document, m_timeline, this);
         view->setObjectName(QStringLiteral("ScriptView"));
         addView(tr("Script Editor"), QStringLiteral("ScriptDock"), view, Qt::BottomDockWidgetArea)->hide();
+        connect(view, &ScriptView::scriptsChanged, this, &MainWindow::refreshScriptCommands);
+        refreshScriptCommands();
     }
     // 3D Graph: the layers as they hang together, with where each stands in space.
     {
@@ -168,15 +170,10 @@ void MainWindow::onShowScripts(QMenu* menu)
         return;
     QStringList const names = view->names();
     for (QString const& name : names) {
-        connect(menu->addAction(name), &QAction::triggered, this, [this, view, name] {
-            if (!view->open(name))
-                return;
-            QFile file(view->folder() + QLatin1Char('/') + name + QStringLiteral(".js"));
-            if (!file.open(QIODevice::ReadOnly))
-                return;
-            QString const said = view->run(QString::fromUtf8(file.readAll()), name);
-            statusBar()->showMessage(said.isEmpty() ? tr("Script %1 run.").arg(name) : said.section(QLatin1Char('\n'), -1), 8000);
-        });
+        // (Its shortcut is shown; the shortcut itself belongs to the window - see refreshScriptCommands.)
+        QKeySequence const key = view->shortcutOf(name);
+        QString const text = key.isEmpty() ? name : name + QLatin1Char('\t') + key.toString(QKeySequence::NativeText);
+        connect(menu->addAction(text), &QAction::triggered, this, [this, name] { runScript(name); });
     }
     if (names.isEmpty())
         menu->addAction(tr("(No scripts yet)"))->setEnabled(false);
@@ -185,4 +182,50 @@ void MainWindow::onShowScripts(QMenu* menu)
         if (QDockWidget* const dock = findChild<QDockWidget*>(QStringLiteral("ScriptDock")))
             showView(dock);
     });
+}
+
+void MainWindow::runScript(QString const& name)
+{
+    ScriptView* const view = findChild<ScriptView*>(QStringLiteral("ScriptView"));
+    if (!view)
+        return;
+    QString const said = view->runSaved(name);
+    statusBar()->showMessage(said.isEmpty() ? tr("Script %1 run.").arg(name) : said.section(QLatin1Char('\n'), -1), 8000);
+}
+
+// The scripts given a shortcut of their own, and those with a button on the Scripts toolbar: made again whenever they change.
+void MainWindow::refreshScriptCommands()
+{
+    ScriptView* const view = findChild<ScriptView*>(QStringLiteral("ScriptView"));
+    if (!view)
+        return;
+    for (QAction* const old : findChildren<QAction*>(QStringLiteral("ScriptCommand"), Qt::FindDirectChildrenOnly)) {
+        removeAction(old);
+        delete old;
+    }
+    if (!m_scriptBar) {
+        m_scriptBar = new QToolBar(tr("Scripts"), this);
+        m_scriptBar->setObjectName(QStringLiteral("ScriptsToolbar"));
+        addToolBar(Qt::TopToolBarArea, m_scriptBar);
+    }
+    m_scriptBar->clear();
+    for (QString const& name : view->names()) {
+        QKeySequence const key = view->shortcutOf(name);
+        bool const button = view->onToolbar(name);
+        if (key.isEmpty() && !button)
+            continue;
+        QAction* const a = new QAction(name, this);
+        a->setObjectName(QStringLiteral("ScriptCommand"));
+        a->setData(name);
+        a->setToolTip(key.isEmpty() ? tr("Runs the script %1").arg(name) : tr("Runs the script %1 (%2)").arg(name, key.toString(QKeySequence::NativeText)));
+        if (!key.isEmpty()) {
+            a->setShortcut(key);
+            a->setShortcutContext(Qt::ApplicationShortcut);
+            addAction(a);
+        }
+        if (button)
+            m_scriptBar->addAction(a);
+        connect(a, &QAction::triggered, this, [this, name] { runScript(name); });
+    }
+    m_scriptBar->setVisible(!m_scriptBar->actions().isEmpty());
 }

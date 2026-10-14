@@ -110,7 +110,7 @@ int MainWindow::pasteTemplateSpecial(QString const& path, int frame, bool onto, 
 
 void MainWindow::onTemplatePasteSpecial(QString const& path)
 {
-    QSettings s;
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
     QDialog dialog(this);
     dialog.setObjectName(QStringLiteral("TemplatePasteSpecialDialog"));
     dialog.setWindowTitle(tr("Paste Special: %1").arg(QFileInfo(path).completeBaseName()));

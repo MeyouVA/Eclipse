@@ -19,6 +19,10 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QCheckBox>
+#include <QKeySequenceEdit>
+#include <QLabel>
+#include <QSettings>
 #include <QSplitter>
 #include <QStandardPaths>
 #include <QVBoxLayout>
@@ -332,12 +336,37 @@ ScriptView::ScriptView(Document* document, Timeline* timeline, QWidget* parent)
     QPushButton* const save = button("ScriptSave", tr("Save"), tr("Keeps the script as it is written now."));
     QPushButton* const remove = button("ScriptDelete", tr("Delete"), tr("Throws the script away."));
     QPushButton* const run = button("ScriptRun", tr("Run"), tr("Runs the script on the scene. Everything it changes is one step to undo."));
+    // The script's own shortcut, and a button for it on the Scripts toolbar.
+    m_shortcut = new QKeySequenceEdit(this);
+    m_shortcut->setObjectName(QStringLiteral("ScriptShortcut"));
+    m_shortcut->setMaximumSequenceLength(1);
+    m_shortcut->setClearButtonEnabled(true);
+    m_shortcut->setToolTip(tr("A shortcut that runs this script from anywhere in Eclipse."));
+    m_shortcut->setMaximumWidth(140);
+    m_toolbar = new QCheckBox(tr("On toolbar"), this);
+    m_toolbar->setObjectName(QStringLiteral("ScriptOnToolbar"));
+    m_toolbar->setToolTip(tr("A button for this script on the Scripts toolbar."));
+    connect(m_shortcut, &QKeySequenceEdit::editingFinished, this, [this] {
+        if (!m_name.isEmpty())
+            setShortcutOf(m_name, m_shortcut->keySequence());
+    });
+    connect(m_shortcut, &QKeySequenceEdit::keySequenceChanged, this, [this](QKeySequence const& key) {
+        if (key.isEmpty() && !m_name.isEmpty() && !shortcutOf(m_name).isEmpty())
+            setShortcutOf(m_name, key);     // (cleared with its button)
+    });
+    connect(m_toolbar, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_name.isEmpty())
+            setOnToolbar(m_name, on);
+    });
     QHBoxLayout* const buttons = new QHBoxLayout;
     buttons->setContentsMargins(0, 0, 0, 0);
     buttons->addWidget(add);
     buttons->addWidget(save);
     buttons->addWidget(remove);
     buttons->addStretch(1);
+    buttons->addWidget(new QLabel(tr("Shortcut:"), this));
+    buttons->addWidget(m_shortcut);
+    buttons->addWidget(m_toolbar);
     buttons->addWidget(run);
     QSplitter* const upDown = new QSplitter(Qt::Vertical, this);
     upDown->addWidget(m_text);
@@ -387,12 +416,76 @@ QStringList ScriptView::names() const
 
 void ScriptView::refreshList()
 {
-    QSignalBlocker const quiet(m_list);
-    m_list->clear();
-    m_list->addItems(names());
-    for (int i = 0; i < m_list->count(); ++i)
-        if (m_list->item(i)->text() == m_name)
-            m_list->setCurrentRow(i);
+    {
+        QSignalBlocker const quiet(m_list);
+        m_list->clear();
+        m_list->addItems(names());
+        for (int i = 0; i < m_list->count(); ++i)
+            if (m_list->item(i)->text() == m_name)
+                m_list->setCurrentRow(i);
+    }
+    showCommands();
+    emit scriptsChanged();
+}
+
+void ScriptView::showCommands()
+{
+    QSignalBlocker const quietKey(m_shortcut), quietBox(m_toolbar);
+    bool const any = !m_name.isEmpty();
+    m_shortcut->setEnabled(any);
+    m_toolbar->setEnabled(any);
+    m_shortcut->setKeySequence(any ? shortcutOf(m_name) : QKeySequence());
+    m_toolbar->setChecked(any && onToolbar(m_name));
+}
+
+QKeySequence ScriptView::shortcutOf(QString const& name) const
+{
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    s.beginGroup(QStringLiteral("scriptShortcuts"));
+    return QKeySequence(s.value(name).toString(), QKeySequence::PortableText);
+}
+
+void ScriptView::setShortcutOf(QString const& name, QKeySequence const& key)
+{
+    {
+        QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+        s.beginGroup(QStringLiteral("scriptShortcuts"));
+        if (key.isEmpty())
+            s.remove(name);
+        else
+            s.setValue(name, key.toString(QKeySequence::PortableText));
+    }
+    showCommands();
+    emit scriptsChanged();
+}
+
+bool ScriptView::onToolbar(QString const& name) const
+{
+    return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("scripts/toolbar")).toStringList().contains(name);
+}
+
+void ScriptView::setOnToolbar(QString const& name, bool on)
+{
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    QStringList shown = s.value(QStringLiteral("scripts/toolbar")).toStringList();
+    shown.removeAll(name);
+    if (on)
+        shown << name;
+    s.setValue(QStringLiteral("scripts/toolbar"), shown);
+    showCommands();
+    emit scriptsChanged();
+}
+
+QString ScriptView::runSaved(QString const& name)
+{
+    if (!open(name))
+        return tr("There is no script called %1.").arg(name);
+    QFile file(pathOf(name));
+    if (!file.open(QIODevice::ReadOnly))
+        return tr("The script %1 could not be read.").arg(name);
+    QString const said = run(QString::fromUtf8(file.readAll()), name);
+    m_output->appendPlainText(said.isEmpty() ? tr("%1: done.").arg(name) : said);
+    return said;
 }
 
 bool ScriptView::open(QString const& name)
