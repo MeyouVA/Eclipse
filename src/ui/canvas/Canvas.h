@@ -367,6 +367,9 @@ public:
     void setOnionStrength(bool after, int step, int percent);
     int onionStrength(bool after, int step) const { return step >= 0 && step < kOnionSteps ? m_onionStrength[after ? 1 : 0][step] : 0; }
     bool showsControl() const { return m_showControl; }
+    bool showsSymbolPivots() const { return m_symbolPivots; }
+    // Where the pivot of a layer is in the view on the current frame.
+    QPointF pivotInView(int layer) const;
     // The points of the polyline being laid down (empty when there is none).
     int polylinePoints() const { return m_polyActive ? int(m_stroke.points.size()) : 0; }
     // Ends the polyline being laid down: kept (when it has two points), or thrown away.
@@ -480,6 +483,7 @@ public slots:
     void onActionBacklight(bool on);
     // Layers that are locked shown as outlines, so that they do not hide what is worked on.
     void onActionOutlineLocked(bool on);
+    void onActionShowSymbolPivot(bool on);
     // Show > BBox Selection Style: what is selected is told by its box alone - no line drawn over each thing.
     void onActionBBoxSelectionStyle(bool on)
     {
@@ -817,6 +821,7 @@ private:
     bool m_gridUnder = false;
     bool m_backlight = false;
     bool m_outlineLocked = false;
+    bool m_symbolPivots = false;    // the pivot of every layer that shows a symbol is marked
     bool m_bboxSelection = false;
     void paintGrid(QPainter& painter, QRectF const& frameRect) const;
     bool m_safeArea = false;

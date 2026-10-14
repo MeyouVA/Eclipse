@@ -82,6 +82,20 @@ void Canvas::onActionBacklight(bool on)
     update();
 }
 
+void Canvas::onActionShowSymbolPivot(bool on)
+{
+    m_symbolPivots = on;
+    update();
+}
+
+QPointF Canvas::pivotInView(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size())
+        return QPointF();
+    return (worldOf(layer, m_frame) * viewTransform()).map(scene.layers[layer].pivot);
+}
+
 void Canvas::onActionOutlineLocked(bool on)
 {
     m_outlineLocked = on;

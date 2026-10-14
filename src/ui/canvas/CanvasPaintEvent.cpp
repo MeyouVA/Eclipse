@@ -377,6 +377,25 @@ void Canvas::paintEvent(QPaintEvent*)
 
     if (!m_playing)
         paintBoneLayers(painter);
+        if (m_symbolPivots && !m_drawingView && !m_playing) {
+            // Show > Symbol Pivot: a mark on the pivot of each layer that shows a symbol.
+            painter.save();
+            painter.resetTransform();
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            for (int l = 0; l < scene.layers.size(); ++l) {
+                if (!scene.layers[l].showsSymbol() || !scene.shows(l))
+                    continue;
+                QPointF const at = pivotInView(l);
+                // (A diamond, to tell it from the pivot of the layer in hand.)
+                QPolygonF const diamond({at + QPointF(0, -11), at + QPointF(11, 0), at + QPointF(0, 11), at + QPointF(-11, 0)});
+                painter.setBrush(Qt::NoBrush);
+                painter.setPen(QPen(QColor(20, 20, 20), 3.4));
+                painter.drawPolygon(diamond);
+                painter.setPen(QPen(QColor(210, 110, 235), 2.0));
+                painter.drawPolygon(diamond);
+            }
+            painter.restore();
+        }
         paintMorphHints(painter);
     if (m_tool == Transform && !m_playing) {
         if (m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].kind == Layer::Quadmap)
