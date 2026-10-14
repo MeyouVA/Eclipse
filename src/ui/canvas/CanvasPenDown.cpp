@@ -262,6 +262,9 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         } else {
             eraseArtAt(p, m_brushWidth / 2.0);
         }
+    } else if ((m_tool == Paint || m_tool == Unpaint) && bitmapNow()) {
+        // On a bitmap layer the bucket fills pixels.
+        fillBitmapAt(p, m_tool == Unpaint);
     } else if (isPaintTool(m_tool)) {
         // A click paints what is under it (when the pen lifts); a drag draws round things to paint them all.
         m_drag = DragPaint;

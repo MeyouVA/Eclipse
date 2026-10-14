@@ -774,6 +774,10 @@ private:
     void commitDrawing(Drawing const& drawing, QString const& text);
 
     void paintAt(QPointF scenePos);
+    // On a bitmap layer: the pixels joined to the one clicked that are near enough its colour take the colour in hand
+    // (or, `clear`, are cleared).  False when there was nothing to change.
+    bool fillBitmapAt(QPointF p, bool clear);
+    bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept
     QRectF selectionBounds() const;
     QPointF handlePos(Handle handle, QRectF const& bounds) const;  // in scene coordinates
     Handle handleAt(QPointF widgetPos) const;
