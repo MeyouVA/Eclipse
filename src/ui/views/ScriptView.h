@@ -6,7 +6,11 @@
 //   layers  - count, current (may be set); name(i), kind(i), indexOf(name), visible(i), setVisible(i, on),
 //             add(name), addPeg(name), rename(i, name), remove(i),
 //             pose(i, frame) -> {x, y, z, scaleX, scaleY, angle, skew, opacity}, setKeyframe(i, frame, {...}),
-//             drawing(i, frame) -> the name of the drawing shown there ("" for none)
+//             drawing(i, frame) -> the name of the drawing shown there ("" for none),
+//             drawings(i) -> the names of the layer's drawings, expose(i, frame, name) shows that drawing there,
+//             newDrawing(i, frame), hold(i, frame, length) (the exposure that frame is in lasts so many frames),
+//             clear(i, first, last), renameDrawing(i, frame, name)
+//   palette - count; name(k), colour(k) -> "#rrggbb", setColour(k, "#rrggbb"), add(name, "#rrggbb") -> its place
 //   log(text) (print is the same)
 // Layers are counted from 0, from the one furthest back; frames from 1.
 // Everything one run changes is one step to undo.
@@ -87,12 +91,35 @@ public:
     Q_INVOKABLE QJSValue pose(int layer, int frame) const;
     Q_INVOKABLE void setKeyframe(int layer, int frame, QJSValue const& values);
     Q_INVOKABLE QString drawing(int layer, int frame) const;
+    Q_INVOKABLE QStringList drawings(int layer) const;
+    Q_INVOKABLE bool expose(int layer, int frame, QString const& name);
+    Q_INVOKABLE void newDrawing(int layer, int frame);
+    Q_INVOKABLE void hold(int layer, int frame, int length);
+    Q_INVOKABLE void clear(int layer, int first, int last);
+    Q_INVOKABLE bool renameDrawing(int layer, int frame, QString const& name);
 
 private:
     bool has(int layer) const;
     Document* m_document;
     Timeline* m_timeline;
     QJSEngine* m_engine;
+};
+
+// What a script calls `palette`: the colours of the scene, all palettes together, in order.
+class ECLIPSE_UI_API ScriptPalette : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(int count READ count)
+
+public:
+    ScriptPalette(Document* document, QObject* parent) : QObject(parent), m_document(document) {}
+    int count() const;
+    Q_INVOKABLE QString name(int colour) const;
+    Q_INVOKABLE QString colour(int colour) const;
+    Q_INVOKABLE void setColour(int colour, QString const& value);
+    Q_INVOKABLE int add(QString const& name, QString const& value);
+
+private:
+    Document* m_document;
 };
 
 // Takes what a script logs.

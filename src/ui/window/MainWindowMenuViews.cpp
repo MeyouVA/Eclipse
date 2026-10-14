@@ -27,6 +27,9 @@
 
 #include "ui/window/MainWindowPrivate.h"
 #include <QDockWidget>
+#include <QFile>
+#include <QMenu>
+#include <QStatusBar>
 #include <QStatusBar>
 
 // The views opened from the Windows menu that are classes of their own: each is made, wired to the
@@ -76,6 +79,7 @@ void MainWindow::createWindowsMenuViews()
         connect(m_timeline, &Timeline::currentCellChanged, view, &MetadataView::setCurrentCell);
         addView(tr("Metadata"), QStringLiteral("MetadataDock"), view, Qt::RightDockWidgetArea)->hide();
     }
+    // (Scripts > the scripts kept, each run on a click: see onShowScripts.)
     // Pose Controllers: poses of a set of layers kept under names, and a slider between them.
     {
         ControllerView* const view = new ControllerView(m_document, m_timeline, this);
@@ -153,4 +157,32 @@ void MainWindow::createWindowsMenuViews()
     connect(m_timeline, &Timeline::selectionChanged, function, [this, function] { function->setOtherLayers(m_timeline->selectedLayers()); });
     connect(function, &FunctionView::framePicked, m_timeline, &Timeline::setCurrentFrame);
     addView(tr("Function"), QStringLiteral("FunctionDock"), function, Qt::BottomDockWidgetArea)->hide();
+}
+
+// Scripts: the scripts kept by the Script Editor, each run on the scene by a click; and the editor itself.
+void MainWindow::onShowScripts(QMenu* menu)
+{
+    menu->clear();
+    ScriptView* const view = findChild<ScriptView*>(QStringLiteral("ScriptView"));
+    if (!view)
+        return;
+    QStringList const names = view->names();
+    for (QString const& name : names) {
+        connect(menu->addAction(name), &QAction::triggered, this, [this, view, name] {
+            if (!view->open(name))
+                return;
+            QFile file(view->folder() + QLatin1Char('/') + name + QStringLiteral(".js"));
+            if (!file.open(QIODevice::ReadOnly))
+                return;
+            QString const said = view->run(QString::fromUtf8(file.readAll()), name);
+            statusBar()->showMessage(said.isEmpty() ? tr("Script %1 run.").arg(name) : said.section(QLatin1Char('\n'), -1), 8000);
+        });
+    }
+    if (names.isEmpty())
+        menu->addAction(tr("(No scripts yet)"))->setEnabled(false);
+    menu->addSeparator();
+    connect(menu->addAction(tr("Script Editor...")), &QAction::triggered, this, [this] {
+        if (QDockWidget* const dock = findChild<QDockWidget*>(QStringLiteral("ScriptDock")))
+            showView(dock);
+    });
 }

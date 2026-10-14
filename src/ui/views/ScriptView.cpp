@@ -214,6 +214,91 @@ QString ScriptLayers::drawing(int layer, int frame) const
     return l.drawingLabel(l.drawingAt(frame - 1));
 }
 
+QStringList ScriptLayers::drawings(int layer) const
+{
+    QStringList names;
+    if (!has(layer))
+        return names;
+    Layer const& l = m_document->scene().layers[layer];
+    for (int i = 0; i < l.drawings.size(); ++i)
+        names << l.drawingLabel(i);
+    return names;
+}
+
+bool ScriptLayers::expose(int layer, int frame, QString const& name)
+{
+    if (!has(layer) || frame < 1 || frame > m_document->scene().frameCount())
+        return false;
+    Layer const& l = m_document->scene().layers[layer];
+    for (int i = 0; i < l.drawings.size(); ++i) {
+        if (l.drawingLabel(i) == name) {
+            m_document->substituteDrawing(layer, frame - 1, i);
+            return true;
+        }
+    }
+    return false;
+}
+
+void ScriptLayers::newDrawing(int layer, int frame)
+{
+    if (has(layer) && frame >= 1 && frame <= m_document->scene().frameCount())
+        m_document->newDrawing(layer, frame - 1);
+}
+
+void ScriptLayers::hold(int layer, int frame, int length)
+{
+    if (has(layer) && frame >= 1 && frame <= m_document->scene().frameCount() && length >= 1)
+        m_document->setExposure(layer, frame - 1, length);
+}
+
+void ScriptLayers::clear(int layer, int first, int last)
+{
+    if (has(layer) && first >= 1 && last >= first)
+        m_document->clearCells({layer}, first - 1, std::min(last, m_document->scene().frameCount()) - 1, tr("Clear Cells"));
+}
+
+bool ScriptLayers::renameDrawing(int layer, int frame, QString const& name)
+{
+    return has(layer) && frame >= 1 && !name.trimmed().isEmpty() && m_document->renameDrawing(layer, frame - 1, name.trimmed());
+}
+
+// ---- palette ------------------------------------------------------------------------------
+
+int ScriptPalette::count() const
+{
+    return int(m_document->scene().palette.size());
+}
+
+QString ScriptPalette::name(int colour) const
+{
+    return colour >= 0 && colour < count() ? m_document->scene().palette[colour].name : QString();
+}
+
+QString ScriptPalette::colour(int colour) const
+{
+    return colour >= 0 && colour < count() ? m_document->scene().palette[colour].color.name() : QString();
+}
+
+void ScriptPalette::setColour(int colour, QString const& value)
+{
+    QColor const c(value);
+    if (colour >= 0 && colour < count() && c.isValid())
+        m_document->editSwatch(m_document->scene().palette[colour].id, m_document->scene().palette[colour].name, c);
+}
+
+int ScriptPalette::add(QString const& name, QString const& value)
+{
+    QColor const c(value);
+    if (!c.isValid())
+        return -1;
+    int const id = m_document->addSwatch(name.trimmed().isEmpty() ? tr("Colour") : name.trimmed(), c);
+    Scene const& scene = m_document->scene();
+    for (int k = 0; k < scene.palette.size(); ++k)
+        if (scene.palette[k].id == id)
+            return k;
+    return -1;
+}
+
 // ---- the view -----------------------------------------------------------------------------
 
 QString ScriptView::defaultFolder()
@@ -381,12 +466,14 @@ QString ScriptView::run(QString const& code, QString const& name)
     ScriptScene scene(m_document, nullptr);
     ScriptFrame frame(m_timeline, nullptr);
     ScriptLayers layers(m_document, m_timeline, &engine, nullptr);
-    for (QObject* o : {static_cast<QObject*>(&output), static_cast<QObject*>(&scene), static_cast<QObject*>(&frame), static_cast<QObject*>(&layers)})
+    ScriptPalette palette(m_document, nullptr);
+    for (QObject* o : {static_cast<QObject*>(&output), static_cast<QObject*>(&scene), static_cast<QObject*>(&frame), static_cast<QObject*>(&layers), static_cast<QObject*>(&palette)})
         QJSEngine::setObjectOwnership(o, QJSEngine::CppOwnership);
     engine.globalObject().setProperty(QStringLiteral("__out"), engine.newQObject(&output));
     engine.globalObject().setProperty(QStringLiteral("scene"), engine.newQObject(&scene));
     engine.globalObject().setProperty(QStringLiteral("frame"), engine.newQObject(&frame));
     engine.globalObject().setProperty(QStringLiteral("layers"), engine.newQObject(&layers));
+    engine.globalObject().setProperty(QStringLiteral("palette"), engine.newQObject(&palette));
     engine.evaluate(QStringLiteral("function log(t) { __out.log(String(t)); } var print = log;"));
 
     // A script that never ends is stopped after a while.

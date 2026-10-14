@@ -395,6 +395,8 @@
    <item id="LayerProperties" icon="timeline/layerprops" text="Layer Proper&amp;ties..." responder="window" slot="onActionShowLayerProperties()"/>
   </menu>
 
+  <menu id="Scripts" text="Scri&amp;pts" responder="window" aboutToShowSlot="onShowScripts(QMenu*)"/>
+
   <menu id="Windows" text="&amp;Windows">
    <item id="RestoreDefaultWorkspace" icon="view/workspace" text="&amp;Restore Default Workspace" responder="window" slot="onActionRestoreDefaultWorkspace()"/>
    <separator/>
