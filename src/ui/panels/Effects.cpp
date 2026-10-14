@@ -14,6 +14,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <cmath>
 
 #include "model/document/Commands.h"
@@ -91,6 +92,129 @@ void tint(QImage& image, QColor const& color, double amount)
     }
 }
 
+void transparency(QImage& image, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const k = int(std::lround((1.0 - amount) * 256.0));
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x)
+            if (row[x] != 0)
+                row[x] = qRgba(qRed(row[x]) * k / 256, qGreen(row[x]) * k / 256, qBlue(row[x]) * k / 256, qAlpha(row[x]) * k / 256);
+    }
+}
+
+void directionalBlur(QImage& image, double length, double degrees)
+{
+    if (length < 0.5)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    // Samples along the line, from one end to the other, averaged (no more than 48 of them).
+    int const samples = std::clamp(int(std::ceil(length)), 2, 48);
+    double const turn = degrees * 3.14159265358979323846 / 180.0;
+    QPointF const along(std::cos(turn), -std::sin(turn));
+    QVector<QPoint> steps;
+    for (int s = 0; s < samples; ++s) {
+        double const t = (double(s) / (samples - 1) - 0.5) * length;
+        steps.push_back(QPoint(int(std::lround(along.x() * t)), int(std::lround(along.y() * t))));
+    }
+    QImage const source = image;
+    for (int y = 0; y < h; ++y) {
+        QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            int r = 0, g = 0, b = 0, a = 0;
+            for (QPoint const& step : std::as_const(steps)) {
+                int const sx = x + step.x(), sy = y + step.y();
+                if (sx < 0 || sy < 0 || sx >= w || sy >= h)
+                    continue;       // beyond the picture: nothing (so the edge fades out)
+                QRgb const p = reinterpret_cast<QRgb const*>(source.constScanLine(sy))[sx];
+                r += qRed(p);
+                g += qGreen(p);
+                b += qBlue(p);
+                a += qAlpha(p);
+            }
+            out[x] = qRgba(r / samples, g / samples, b / samples, a / samples);
+        }
+    }
+}
+
+void hueSaturation(QImage& image, double hue, double saturation, double lightness, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0 || (hue == 0.0 && saturation == 0.0 && lightness == 0.0))
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    double const satBy = 1.0 + std::clamp(saturation, -100.0, 100.0) / 100.0, lightBy = std::clamp(lightness, -100.0, 100.0) / 100.0;
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const a = qAlpha(row[x]);
+            if (a == 0)
+                continue;
+            // The colour as it is, not multiplied by how opaque it is; then as hue, saturation and lightness.
+            double const r = qRed(row[x]) / double(a), g = qGreen(row[x]) / double(a), b = qBlue(row[x]) / double(a);
+            double const most = std::max({r, g, b}), least = std::min({r, g, b});
+            double l = (most + least) / 2.0, s = 0.0, hh = 0.0;
+            if (most - least > 1e-9) {
+                double const d = most - least;
+                s = l > 0.5 ? d / (2.0 - most - least) : d / (most + least);
+                hh = most == r ? (g - b) / d + (g < b ? 6.0 : 0.0) : most == g ? (b - r) / d + 2.0 : (r - g) / d + 4.0;
+                hh *= 60.0;
+            }
+            hh = std::fmod(hh + hue + 720.0, 360.0);
+            s = std::clamp(s * satBy, 0.0, 1.0);
+            l = std::clamp(lightBy >= 0.0 ? l + (1.0 - l) * lightBy : l * (1.0 + lightBy), 0.0, 1.0);
+            auto part = [](double p, double q, double t) {
+                t = t < 0.0 ? t + 1.0 : t > 1.0 ? t - 1.0 : t;
+                return t < 1.0 / 6.0 ? p + (q - p) * 6.0 * t : t < 0.5 ? q : t < 2.0 / 3.0 ? p + (q - p) * (2.0 / 3.0 - t) * 6.0 : p;
+            };
+            double nr = l, ng = l, nb = l;
+            if (s > 1e-9) {
+                double const q = l < 0.5 ? l * (1.0 + s) : l + s - l * s, p = 2.0 * l - q, t = hh / 360.0;
+                nr = part(p, q, t + 1.0 / 3.0);
+                ng = part(p, q, t);
+                nb = part(p, q, t - 1.0 / 3.0);
+            }
+            auto mix = [&](double was, double now) { return std::clamp(int(std::lround((was + (now - was) * amount) * a)), 0, a); };
+            row[x] = qRgba(mix(r, nr), mix(g, ng), mix(b, nb), a);
+        }
+    }
+}
+
+void brightnessContrast(QImage& image, double brightness, double contrast, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0 || (brightness == 0.0 && contrast == 0.0))
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    double const c = std::clamp(contrast, -100.0, 100.0) / 100.0;
+    double const factor = c >= 0.0 ? 1.0 / std::max(0.01, 1.0 - c) : 1.0 + c;     // all the way: black and white, or flat grey
+    double const lift = std::clamp(brightness, -100.0, 100.0) / 100.0;
+    int table[256];
+    for (int v = 0; v < 256; ++v) {
+        double const now = std::clamp((v / 255.0 - 0.5) * factor + 0.5 + lift, 0.0, 1.0);
+        table[v] = std::clamp(int(std::lround((v / 255.0 + (now - v / 255.0) * amount) * 255.0)), 0, 255);
+    }
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const a = qAlpha(row[x]);
+            if (a == 0)
+                continue;
+            auto one = [&](int premultiplied) { return table[std::clamp(premultiplied * 255 / a, 0, 255)] * a / 255; };
+            row[x] = qRgba(one(qRed(row[x])), one(qGreen(row[x])), one(qBlue(row[x])), a);
+        }
+    }
+}
+
 void halo(QImage& image, QColor const& color, double radius, QPointF offset)
 {
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
@@ -131,6 +255,14 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Colour Tint  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::Particles:
         return QObject::tr("Particles  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Transparency:
+        return QObject::tr("Transparency  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::DirectionalBlur:
+        return QObject::tr("Directional Blur  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::HueSaturation:
+        return QObject::tr("Hue-Saturation  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::BrightnessContrast:
+        return QObject::tr("Brightness-Contrast  %1%").arg(int(std::lround(effect.amount * 100.0)));
     default: {
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Cutter  %1%2").arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"),
@@ -159,6 +291,10 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Glow")), &QAction::triggered, this, [this] { add(Effect::Glow); });
     connect(menu->addAction(tr("Drop Shadow")), &QAction::triggered, this, [this] { add(Effect::Shadow); });
     connect(menu->addAction(tr("Particles")), &QAction::triggered, this, [this] { add(Effect::Particles); });
+    connect(menu->addAction(tr("Transparency")), &QAction::triggered, this, [this] { add(Effect::Transparency); });
+    connect(menu->addAction(tr("Directional Blur")), &QAction::triggered, this, [this] { add(Effect::DirectionalBlur); });
+    connect(menu->addAction(tr("Hue-Saturation")), &QAction::triggered, this, [this] { add(Effect::HueSaturation); });
+    connect(menu->addAction(tr("Brightness-Contrast")), &QAction::triggered, this, [this] { add(Effect::BrightnessContrast); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -211,6 +347,39 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     layout->addLayout(amountRow);
     layout->addLayout(offsetRow);
     layout->addLayout(matteRow);
+    {
+        // Hue-Saturation, Brightness-Contrast, Directional Blur: what they change, and by how much.
+        m_adjust = new QWidget(this);
+        m_adjust->setObjectName(QStringLiteral("AdjustSettings"));
+        m_adjustForm = new QFormLayout(m_adjust);
+        m_adjustForm->setContentsMargins(0, 0, 0, 0);
+        struct { char const* name; char const* label; char const* tip; double low, high; } const kBoxes[6] = {
+            {"AdjustHue", QT_TR_NOOP("Hue"), QT_TR_NOOP("How far round the colour wheel each colour is turned (degrees)."), -180, 180},
+            {"AdjustSaturation", QT_TR_NOOP("Saturation"), QT_TR_NOOP("Colours made richer (more) or greyer (less), in percent."), -100, 100},
+            {"AdjustLightness", QT_TR_NOOP("Lightness"), QT_TR_NOOP("Colours made lighter (more) or darker (less), in percent."), -100, 100},
+            {"AdjustBrightness", QT_TR_NOOP("Brightness"), QT_TR_NOOP("The whole picture made brighter (more) or darker (less), in percent."), -100, 100},
+            {"AdjustContrast", QT_TR_NOOP("Contrast"), QT_TR_NOOP("Lights lighter and darks darker (more), or all nearer grey (less), in percent."), -100, 100},
+            {"BlurDirection", QT_TR_NOOP("Direction"), QT_TR_NOOP("Which way the picture is smeared (degrees: 0 across, 90 up and down)."), -360, 360}};
+        for (int i = 0; i < 6; ++i) {
+            m_adjustBox[i] = new QDoubleSpinBox(m_adjust);
+            m_adjustBox[i]->setObjectName(QLatin1String(kBoxes[i].name));
+            m_adjustBox[i]->setRange(kBoxes[i].low, kBoxes[i].high);
+            m_adjustBox[i]->setDecimals(1);
+            m_adjustBox[i]->setSingleStep(i == 5 ? 15.0 : 5.0);
+            m_adjustBox[i]->setKeyboardTracking(false);
+            m_adjustBox[i]->setToolTip(tr(kBoxes[i].tip));
+            m_adjustForm->addRow(tr(kBoxes[i].label), m_adjustBox[i]);
+            connect(m_adjustBox[i], &QDoubleSpinBox::valueChanged, this, [this, i](double v) {
+                if (m_rebuilding)
+                    return;
+                edit([i, v](Effect& e) {
+                    double* const fields[6] = {&e.hue, &e.saturation, &e.lightness, &e.brightness, &e.contrast, &e.direction};
+                    *fields[i] = v;
+                });
+            });
+        }
+        layout->addWidget(m_adjust);
+    }
     {
         // Particles: how long each lives, how fast and which way it leaves, how it falls.
         m_particles = new QWidget(this);
@@ -349,7 +518,9 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         if (m_layer < 0 || m_layer >= scene.layers.size() || row < 0 || row >= scene.layers[m_layer].effects.size())
             return;
         Effect const& effect = scene.layers[m_layer].effects[row];
-        double const amount = effect.type == Effect::Tint ? v / 100.0 : v;
+        bool const percent = effect.type == Effect::Tint || effect.type == Effect::Transparency || effect.type == Effect::HueSaturation
+                             || effect.type == Effect::BrightnessContrast;
+        double const amount = percent ? v / 100.0 : v;
         if (effect.animated) {
             // On this frame only: a keyframe.
             m_document->setEffectAmount(m_layer, m_frame, row, amount);
@@ -419,11 +590,7 @@ void EffectsPanel::add(Effect::Type type)
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
-    Effect e;
-    e.type = type;
-    e.amount = type == Effect::Tint ? 0.5 : type == Effect::Shadow ? 6.0 : type == Effect::Particles ? 2.0 : 8.0;
-    e.color = type == Effect::Shadow ? QColor(0, 0, 0, 150) : type == Effect::Glow ? QColor(255, 240, 160) : QColor(40, 110, 200);
-    e.offset = type == Effect::Shadow ? QPointF(10, 10) : QPointF();
+    Effect const e = Effect::made(type);
     QVector<Effect> effects = scene.layers[m_layer].effects;
     effects.push_back(e);
     m_document->setEffects(m_layer, effects, tr("Add Effect"));
@@ -486,6 +653,16 @@ void EffectsPanel::showEditors()
         m_offsetY->setValue(e.offset.y());
     }
     bool const particles = valid && e.type == Effect::Particles;
+    {
+        bool const hs = valid && e.type == Effect::HueSaturation, bc = valid && e.type == Effect::BrightnessContrast, along = valid && e.type == Effect::DirectionalBlur;
+        m_adjust->setVisible(hs || bc || along);
+        bool const shownFor[6] = {hs, hs, hs, bc, bc, along};
+        double const values[6] = {e.hue, e.saturation, e.lightness, e.brightness, e.contrast, e.direction};
+        for (int i = 0; i < 6; ++i) {
+            m_adjustForm->setRowVisible(m_adjustBox[i], shownFor[i]);
+            m_adjustBox[i]->setValue(values[i]);
+        }
+    }
     m_matteLabel->setVisible(cutter || particles);
     m_matteLabel->setText(particles ? tr("Bounce Off") : tr("Matte"));
     m_matte->setVisible(cutter || particles);
@@ -523,8 +700,8 @@ void EffectsPanel::showEditors()
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());
         m_amount->setValue(amount);
-    } else if (valid && e.type == Effect::Tint) {
-        m_amountLabel->setText(tr("Amount"));
+    } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast)) {
+        m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);
         m_amount->setSuffix(QStringLiteral(" %"));

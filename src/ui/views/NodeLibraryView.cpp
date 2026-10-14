@@ -70,6 +70,10 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Glow"), "effect:3", QT_TR_NOOP("A soft light round the layer"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Shadow"), "effect:4", QT_TR_NOOP("A shadow cast by the layer"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Particles"), "effect:5", QT_TR_NOOP("The layer's drawing thrown out again and again: sparks, rain, smoke"), QT_TR_NOOP("Particle")},
+        {QT_TR_NOOP("Transparency"), "effect:6", QT_TR_NOOP("Makes the layer see-through"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Directional Blur"), "effect:7", QT_TR_NOOP("Smears the layer one way, as if it moved fast"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Hue-Saturation"), "effect:8", QT_TR_NOOP("Turns the colours round the wheel, richer or greyer, lighter or darker"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Brightness-Contrast"), "effect:9", QT_TR_NOOP("Makes the layer brighter or darker, with more or less contrast"), QT_TR_NOOP("Filter")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);

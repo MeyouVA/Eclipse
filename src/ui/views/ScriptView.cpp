@@ -272,7 +272,7 @@ bool ScriptLayers::renameDrawing(int layer, int frame, QString const& name)
 
 // ---- effects ------------------------------------------------------------------------------
 
-static char const* const kEffectNames[] = {"blur", "tint", "cutter", "glow", "shadow", "particles"};
+static char const* const kEffectNames[] = {"blur", "tint", "cutter", "glow", "shadow", "particles", "transparency", "directionalBlur", "hueSaturation", "brightnessContrast"};
 
 bool ScriptEffects::has(int layer, int effect) const
 {
@@ -345,9 +345,9 @@ int ScriptEffects::add(int layer, QString const& type)
     if (kind < 0 || layer < 0 || layer >= m_document->scene().layers.size())
         return -1;
     change(layer, [kind](QVector<Effect>& e) {
-        Effect made;
-        made.type = Effect::Type(kind);
-        made.amount = kind == Effect::Tint ? 0.5 : kind == Effect::Particles ? 1.0 : 4.0;
+        Effect made = Effect::made(Effect::Type(kind));
+        if (kind < Effect::Transparency)
+            made.amount = kind == Effect::Tint ? 0.5 : kind == Effect::Particles ? 1.0 : 4.0;
         e.push_back(made);
     });
     return count(layer) - 1;

@@ -771,6 +771,15 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::blur(image, amount * pixelsPerUnit);
         } else if (e.type == Effect::Tint) {
             Effects::tint(image, e.color, amount);
+        } else if (e.type == Effect::Transparency) {
+            Effects::transparency(image, amount);
+        } else if (e.type == Effect::DirectionalBlur) {
+            // (A direction on the picture, as a shadow's: it does not turn with the layer.)
+            Effects::directionalBlur(image, amount * pixelsPerUnit, e.direction);
+        } else if (e.type == Effect::HueSaturation) {
+            Effects::hueSaturation(image, e.hue, e.saturation, e.lightness, amount);
+        } else if (e.type == Effect::BrightnessContrast) {
+            Effects::brightnessContrast(image, e.brightness, e.contrast, amount);
         } else if (e.type == Effect::Glow || e.type == Effect::Shadow) {
             // The offset is a direction on the picture: it does not turn with the layer.
             Effects::halo(image, e.color, amount * pixelsPerUnit, e.type == Effect::Shadow ? e.offset * (pixelsPerUnit / dpr) : QPointF());

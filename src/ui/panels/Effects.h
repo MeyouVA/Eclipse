@@ -28,6 +28,15 @@ void tint(QImage& image, QColor const& color, double amount);
 // `offset` pixels, put under the picture (a shadow) - or with no offset, around it (a glow).
 void halo(QImage& image, QColor const& color, double radius, QPointF offset);
 
+// Makes the picture `amount` (0..1) see-through.
+void transparency(QImage& image, double amount);
+// Smears the picture `length` pixels along a direction (degrees, 0: across, 90: up and down).
+void directionalBlur(QImage& image, double length, double degrees);
+// Turns the hue by `hue` degrees, and raises the saturation and the lightness by so many percent; `amount` of it (0..1).
+void hueSaturation(QImage& image, double hue, double saturation, double lightness, double amount);
+// So many percent brighter and more contrast; `amount` of it (0..1).
+void brightnessContrast(QImage& image, double brightness, double contrast, double amount);
+
 QString name(Effect const& effect, Scene const& scene);
 
 }
@@ -64,6 +73,10 @@ private:
     QComboBox* m_matte;
     QCheckBox* m_invert;
     QWidget* m_particles = nullptr;
+    // Hue-Saturation, Brightness-Contrast and Directional Blur: hue, saturation, lightness, brightness, contrast, direction.
+    QWidget* m_adjust = nullptr;
+    class QFormLayout* m_adjustForm = nullptr;
+    QDoubleSpinBox* m_adjustBox[6] = {};
     // life, speed, spread, direction, gravity, seed, size at the end, wind, spin, region width and height, floor, bounce
     QDoubleSpinBox* m_particleBox[14] = {};
     QPushButton* m_particleColour = nullptr;

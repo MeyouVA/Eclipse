@@ -417,6 +417,14 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.type = Effect::Shadow;
             else if (type == QLatin1String("particles"))
                 e.type = Effect::Particles;
+            else if (type == QLatin1String("transparency"))
+                e.type = Effect::Transparency;
+            else if (type == QLatin1String("directionalBlur"))
+                e.type = Effect::DirectionalBlur;
+            else if (type == QLatin1String("hueSaturation"))
+                e.type = Effect::HueSaturation;
+            else if (type == QLatin1String("brightnessContrast"))
+                e.type = Effect::BrightnessContrast;
             else
                 continue;  // an effect of a newer version: left out rather than guessed at
             e.enabled = eo["enabled"].toBool(true);
@@ -441,6 +449,13 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.bounce = std::clamp(eo["bounce"].toDouble(0.5), 0.0, 1.0);
                 e.walls = std::max(0.0, eo["walls"].toDouble(0.0));
             }
+            if (e.type == Effect::DirectionalBlur)
+                e.direction = eo["direction"].toDouble(0.0);
+            e.hue = std::clamp(eo["hue"].toDouble(0.0), -180.0, 180.0);
+            e.saturation = std::clamp(eo["saturation"].toDouble(0.0), -100.0, 100.0);
+            e.lightness = std::clamp(eo["lightness"].toDouble(0.0), -100.0, 100.0);
+            e.brightness = std::clamp(eo["brightness"].toDouble(0.0), -100.0, 100.0);
+            e.contrast = std::clamp(eo["contrast"].toDouble(0.0), -100.0, 100.0);
             e.offset = QPointF(eo["dx"].toDouble(), eo["dy"].toDouble());
             e.color = QColor(eo["color"].toString("#ff000000"));
             e.matte = eo["matte"].toInt(0);

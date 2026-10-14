@@ -338,10 +338,23 @@ QJsonObject Scene::toJson(QString const& folder) const
             QJsonArray effects;
             for (Effect const& e : layer.effects) {
                 QJsonObject one{{"type", e.type == Effect::Blur ? "blur" : e.type == Effect::Tint ? "tint" : e.type == Effect::Glow ? "glow"
-                                         : e.type == Effect::Shadow ? "shadow" : e.type == Effect::Particles ? "particles" : "cutter"},
+                                         : e.type == Effect::Shadow ? "shadow" : e.type == Effect::Particles ? "particles"
+                                         : e.type == Effect::Transparency ? "transparency" : e.type == Effect::DirectionalBlur ? "directionalBlur"
+                                         : e.type == Effect::HueSaturation ? "hueSaturation" : e.type == Effect::BrightnessContrast ? "brightnessContrast" : "cutter"},
                                 {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                                 {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
                                 {"matte", e.matte}, {"invert", e.invert}};
+                if (e.type == Effect::DirectionalBlur)
+                    one["direction"] = e.direction;
+                if (e.type == Effect::HueSaturation) {
+                    one["hue"] = e.hue;
+                    one["saturation"] = e.saturation;
+                    one["lightness"] = e.lightness;
+                }
+                if (e.type == Effect::BrightnessContrast) {
+                    one["brightness"] = e.brightness;
+                    one["contrast"] = e.contrast;
+                }
                 if (e.type == Effect::Particles) {
                     one["life"] = e.life;
                     one["speed"] = e.speed;

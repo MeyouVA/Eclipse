@@ -244,3 +244,20 @@ int Drawing::orderOnTop(QVector<Fill> const& fills, QVector<Stroke> const& strok
             return top + 1;
     return top;
 }
+
+Effect Effect::made(Type type)
+{
+    Effect e;
+    e.type = type;
+    e.amount = type == Tint ? 0.5 : type == Shadow ? 6.0 : type == Particles ? 2.0 : type == Transparency ? 0.5
+             : type == HueSaturation || type == BrightnessContrast ? 1.0 : type == DirectionalBlur ? 12.0 : 8.0;
+    e.color = type == Shadow ? QColor(0, 0, 0, 150) : type == Glow ? QColor(255, 240, 160) : QColor(40, 110, 200);
+    e.offset = type == Shadow ? QPointF(10, 10) : QPointF();
+    if (type == DirectionalBlur)
+        e.direction = 0.0;
+    if (type == HueSaturation)
+        e.hue = 30.0;
+    if (type == BrightnessContrast)
+        e.brightness = 20.0;
+    return e;
+}

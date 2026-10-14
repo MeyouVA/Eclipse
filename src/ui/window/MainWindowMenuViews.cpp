@@ -47,11 +47,7 @@ void MainWindow::createWindowsMenuViews()
                 statusBar()->showMessage(tr("An effect goes on a drawing layer: select one first."), 6000);
                 return;
             }
-            Effect e;
-            e.type = Effect::Type(std::clamp(type, 0, 5));
-            e.amount = e.type == Effect::Tint ? 0.5 : e.type == Effect::Shadow ? 6.0 : e.type == Effect::Particles ? 2.0 : 8.0;
-            e.color = e.type == Effect::Shadow ? QColor(0, 0, 0, 150) : e.type == Effect::Glow ? QColor(255, 240, 160) : QColor(40, 110, 200);
-            e.offset = e.type == Effect::Shadow ? QPointF(10, 10) : QPointF();
+            Effect const e = Effect::made(Effect::Type(std::clamp(type, 0, int(Effect::TypeCount) - 1)));
             QVector<Effect> effects = scene.layers[layer()].effects;
             effects.push_back(e);
             m_document->setEffects(layer(), effects, tr("Add Effect"));
