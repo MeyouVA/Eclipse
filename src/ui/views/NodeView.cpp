@@ -591,7 +591,16 @@ void NodeView::mouseReleaseEvent(QMouseEvent* event)
     m_drag = DragNone;
     m_dragLayer = -1;
     if (drag == DragNode && m_moved) {
-        m_document->setNodePos(layer, m_nodeStart + (event->position() - m_pressPos) / m_zoom);
+        Scene const& scene = m_document->scene();
+        // Dropped on a group: it goes into the group.  Dropped on the way along the top (inside a group): out to the level above.
+        int const onto = nodeAt(event->position());
+        if (onto >= 0 && onto != layer && scene.layers[onto].kind == Layer::Group && scene.parentIndex(layer) != onto) {
+            m_document->setParent(layer, onto);
+        } else if (enteredGroup() >= 0 && pathRect().contains(event->position())) {
+            m_document->setParent(layer, scene.parentIndex(enteredGroup()));
+        } else {
+            m_document->setNodePos(layer, m_nodeStart + (event->position() - m_pressPos) / m_zoom);
+        }
     } else if (drag == DragCable) {
         // Dropped on a node: that layer is attached to the one the cable came from.
         int const target = nodeAt(event->position());
