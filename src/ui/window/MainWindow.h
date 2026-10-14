@@ -39,6 +39,9 @@ struct MovieChoices {
     int last = -1;
     int percent = 100;
     int quality = 18;
+    int codec = 0;          // as MovieExport::Options
+    int speed = 1;
+    int audioKbps = 192;
 };
 
 class ECLIPSE_UI_API MainWindow : public QMainWindow {

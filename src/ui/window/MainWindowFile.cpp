@@ -241,12 +241,38 @@ void MainWindow::onActionExportMovie()
     quality->addItem(tr("Fine (largest file)"), 18);
     quality->addItem(tr("Medium"), 23);
     quality->addItem(tr("Small file"), 28);
-    quality->setEnabled(QFileInfo(path).suffix().toLower() != QLatin1String("gif") && QFileInfo(path).suffix().toLower() != QLatin1String("webm"));
+    QString const movieKind = QFileInfo(path).suffix().toLower();
+    quality->setEnabled(movieKind != QLatin1String("gif"));
+    // The codec (a .mp4 or a .mov), how long the encoder takes, and the sound's bit rate.
+    QComboBox* const codec = new QComboBox(&dialog);
+    codec->setObjectName(QStringLiteral("MovieCodec"));
+    codec->addItem(tr("H.264 (plays everywhere)"), 0);
+    codec->addItem(tr("H.265 / HEVC (smaller file)"), 1);
+    if (movieKind == QLatin1String("mov"))
+        codec->addItem(tr("ProRes 422 HQ (for editing)"), 2);
+    codec->setEnabled(movieKind == QLatin1String("mp4") || movieKind == QLatin1String("mov"));
+    connect(codec, &QComboBox::currentIndexChanged, quality, [codec, quality] { quality->setEnabled(codec->currentData().toInt() != 2); });
+    QComboBox* const speed = new QComboBox(&dialog);
+    speed->setObjectName(QStringLiteral("MovieSpeed"));
+    speed->addItem(tr("Fast"), 0);
+    speed->addItem(tr("Medium"), 1);
+    speed->addItem(tr("Slow (smaller file)"), 2);
+    speed->setCurrentIndex(1);
+    speed->setEnabled(movieKind != QLatin1String("gif"));
+    QComboBox* const audio = new QComboBox(&dialog);
+    audio->setObjectName(QStringLiteral("MovieAudio"));
+    for (int kbps : {128, 192, 256, 320})
+        audio->addItem(tr("%1 kb/s").arg(kbps), kbps);
+    audio->setCurrentIndex(1);
+    audio->setEnabled(movieKind != QLatin1String("gif"));
     form->addRow(tr("From frame"), first);
     form->addRow(tr("To frame"), last);
     form->addRow(tr("Size"), size);
     form->addRow(tr("Custom size"), custom);
     form->addRow(tr("Quality"), quality);
+    form->addRow(tr("Codec"), codec);
+    form->addRow(tr("Encoding"), speed);
+    form->addRow(tr("Sound"), audio);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -260,6 +286,9 @@ void MainWindow::onActionExportMovie()
     if (choices.percent == 0)
         choices.percent = std::clamp(int(std::lround(custom->value() * 100.0 / std::max(1, m_document->scene().width))), 1, 1000);
     choices.quality = quality->currentData().toInt();
+    choices.codec = codec->currentData().toInt();
+    choices.speed = speed->currentData().toInt();
+    choices.audioKbps = audio->currentData().toInt();
     exportMovieTo(path, &choices);
 }
 
@@ -273,6 +302,9 @@ void MainWindow::exportMovieTo(QString const& path, MovieChoices const* choices)
         options.last = choices->last;
         options.scale = choices->percent / 100.0;
         options.quality = choices->quality;
+        options.codec = choices->codec;
+        options.speed = choices->speed;
+        options.audioKbps = choices->audioKbps;
     }
     QProgressDialog progress(tr("Exporting movie..."), tr("Stop"), 0, scene.frameCount(), this);
     progress.setWindowModality(Qt::WindowModal);

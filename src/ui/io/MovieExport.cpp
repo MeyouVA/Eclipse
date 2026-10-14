@@ -17,6 +17,52 @@
 
 namespace MovieExport {
 
+QStringList encoderArguments(QString const& suffix, Options const& options, bool sound)
+{
+    QStringList args;
+    QString const kind = suffix.toLower();
+    int const quality = std::clamp(options.quality, 0, 51);
+    QString const audio = QString::number(std::clamp(options.audioKbps, 32, 512)) + QLatin1Char('k');
+    static char const* const kSpeeds[3] = {"veryfast", "medium", "slow"};
+    QString const speed = QLatin1String(kSpeeds[std::clamp(options.speed, 0, 2)]);
+    if (kind == QLatin1String("gif")) {
+        args << QStringLiteral("-vf") << QStringLiteral("split[a][b];[a]palettegen[p];[b][p]paletteuse");
+        return args;
+    }
+    if (kind == QLatin1String("webm")) {
+        // VP9's scale of quality runs higher than H.264's: about twelve steps on for the same look.
+        args << QStringLiteral("-c:v") << QStringLiteral("libvpx-vp9") << QStringLiteral("-crf") << QString::number(std::clamp(quality + 12, 0, 63))
+             << QStringLiteral("-b:v") << QStringLiteral("0") << QStringLiteral("-deadline") << (options.speed == 0 ? QStringLiteral("realtime") : QStringLiteral("good"))
+             << QStringLiteral("-cpu-used") << QString::number(options.speed == 2 ? 1 : options.speed == 0 ? 5 : 2);
+        if (sound)
+            args << QStringLiteral("-c:a") << QStringLiteral("libopus") << QStringLiteral("-b:a") << audio;
+        return args;
+    }
+    // The others want even sizes.
+    args << QStringLiteral("-vf") << QStringLiteral("pad=ceil(iw/2)*2:ceil(ih/2)*2");
+    if (options.codec == 2 && kind == QLatin1String("mov")) {
+        // ProRes 422 HQ: for editing further; it keeps everything, and has no quality to choose.
+        args << QStringLiteral("-c:v") << QStringLiteral("prores_ks") << QStringLiteral("-profile:v") << QStringLiteral("3")
+             << QStringLiteral("-pix_fmt") << QStringLiteral("yuv422p10le");
+        if (sound)
+            args << QStringLiteral("-c:a") << QStringLiteral("pcm_s16le");
+        return args;
+    }
+    if (options.codec == 1) {
+        // H.265: the same picture in about half the file; tagged so that players on every system take it.
+        args << QStringLiteral("-c:v") << QStringLiteral("libx265") << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
+             << QStringLiteral("-crf") << QString::number(std::clamp(quality + 4, 0, 51)) << QStringLiteral("-preset") << speed
+             << QStringLiteral("-tag:v") << QStringLiteral("hvc1");
+    } else {
+        // H.264 in this pixel layout plays everywhere.
+        args << QStringLiteral("-c:v") << QStringLiteral("libx264") << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
+             << QStringLiteral("-crf") << QString::number(quality) << QStringLiteral("-preset") << speed;
+    }
+    if (sound)
+        args << QStringLiteral("-c:a") << QStringLiteral("aac") << QStringLiteral("-b:a") << audio;
+    return args;
+}
+
 bool write(Scene const& scene, QString const& path, std::function<bool(int frame)> const& progress, QString* error, Options const& options)
 {
     auto fail = [&](QString const& why) {
@@ -50,21 +96,7 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     if (!sound.isEmpty())
         args << QStringLiteral("-ss") << QString::number(first / scene.fps, 'f', 4) << QStringLiteral("-t")
              << QString::number((last - first + 1) / scene.fps, 'f', 4) << QStringLiteral("-i") << wav;
-    if (gif) {
-        args << QStringLiteral("-vf") << QStringLiteral("split[a][b];[a]palettegen[p];[b][p]paletteuse");
-    } else if (suffix == QLatin1String("webm")) {
-        args << QStringLiteral("-c:v") << QStringLiteral("libvpx-vp9") << QStringLiteral("-crf") << QStringLiteral("30")
-             << QStringLiteral("-b:v") << QStringLiteral("0");
-        if (!sound.isEmpty())
-            args << QStringLiteral("-c:a") << QStringLiteral("libopus");
-    } else {
-        // H.264 wants even sizes and this pixel layout to play everywhere.
-        args << QStringLiteral("-vf") << QStringLiteral("pad=ceil(iw/2)*2:ceil(ih/2)*2") << QStringLiteral("-c:v")
-             << QStringLiteral("libx264") << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p") << QStringLiteral("-crf")
-             << QString::number(std::clamp(options.quality, 0, 51));
-        if (!sound.isEmpty())
-            args << QStringLiteral("-c:a") << QStringLiteral("aac") << QStringLiteral("-b:a") << QStringLiteral("192k");
-    }
+    args << encoderArguments(suffix, options, !sound.isEmpty());
     args << QDir::toNativeSeparators(path);
 
     QProcess process;
