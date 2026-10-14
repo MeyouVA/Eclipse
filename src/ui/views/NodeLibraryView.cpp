@@ -62,6 +62,7 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Cutter"), "effect:2", QT_TR_NOOP("Cuts the layer by the drawing of another"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Glow"), "effect:3", QT_TR_NOOP("A soft light round the layer"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Shadow"), "effect:4", QT_TR_NOOP("A shadow cast by the layer"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Particles"), "effect:5", QT_TR_NOOP("The layer's drawing thrown out again and again: sparks, rain, smoke"), QT_TR_NOOP("Particle")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);

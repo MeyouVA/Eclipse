@@ -4,6 +4,7 @@
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
@@ -128,6 +129,8 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Blur  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Tint:
         return QObject::tr("Colour Tint  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::Particles:
+        return QObject::tr("Particles  %1").arg(effect.amount, 0, 'f', 1);
     default: {
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Cutter  %1%2").arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"),
@@ -143,6 +146,7 @@ QString name(Effect const& effect, Scene const& scene)
 EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
 {
     m_list = new QListWidget(this);
+    m_list->setObjectName(QStringLiteral("EffectsList"));
     m_list->setMaximumHeight(96);
     QToolButton* const addButton = new QToolButton(this);
     addButton->setText(QStringLiteral("+"));
@@ -154,6 +158,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Cutter")), &QAction::triggered, this, [this] { add(Effect::Cutter); });
     connect(menu->addAction(tr("Glow")), &QAction::triggered, this, [this] { add(Effect::Glow); });
     connect(menu->addAction(tr("Drop Shadow")), &QAction::triggered, this, [this] { add(Effect::Shadow); });
+    connect(menu->addAction(tr("Particles")), &QAction::triggered, this, [this] { add(Effect::Particles); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -206,6 +211,42 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     layout->addLayout(amountRow);
     layout->addLayout(offsetRow);
     layout->addLayout(matteRow);
+    {
+        // Particles: how long each lives, how fast and which way it leaves, how it falls.
+        m_particles = new QWidget(this);
+        m_particles->setObjectName(QStringLiteral("ParticleSettings"));
+        QFormLayout* const form = new QFormLayout(m_particles);
+        form->setContentsMargins(0, 0, 0, 0);
+        struct { char const* name; char const* label; double low, high, step; int decimals; } const kBoxes[6] = {
+            {"ParticleLife", QT_TR_NOOP("Life (frames)"), 1, 600, 1, 0}, {"ParticleSpeed", QT_TR_NOOP("Speed"), 0, 500, 1, 1},
+            {"ParticleSpread", QT_TR_NOOP("Spread"), 0, 360, 5, 0}, {"ParticleDirection", QT_TR_NOOP("Direction"), -360, 360, 5, 0},
+            {"ParticleGravity", QT_TR_NOOP("Gravity"), -50, 50, 0.1, 2}, {"ParticleSeed", QT_TR_NOOP("Scattering"), 1, 9999, 1, 0}};
+        for (int i = 0; i < 6; ++i) {
+            m_particleBox[i] = new QDoubleSpinBox(m_particles);
+            m_particleBox[i]->setObjectName(QLatin1String(kBoxes[i].name));
+            m_particleBox[i]->setRange(kBoxes[i].low, kBoxes[i].high);
+            m_particleBox[i]->setSingleStep(kBoxes[i].step);
+            m_particleBox[i]->setDecimals(kBoxes[i].decimals);
+            m_particleBox[i]->setKeyboardTracking(false);
+            form->addRow(tr(kBoxes[i].label), m_particleBox[i]);
+            connect(m_particleBox[i], &QDoubleSpinBox::valueChanged, this, [this] {
+                if (m_rebuilding)
+                    return;
+                double v[6];
+                for (int k = 0; k < 6; ++k)
+                    v[k] = m_particleBox[k]->value();
+                edit([v](Effect& e) {
+                    e.life = int(v[0]);
+                    e.speed = v[1];
+                    e.spread = v[2];
+                    e.direction = v[3];
+                    e.gravity = v[4];
+                    e.seed = int(v[5]);
+                });
+            });
+        }
+        layout->addWidget(m_particles);
+    }
 
     connect(m_list, &QListWidget::currentRowChanged, this, [this] {
         if (!m_rebuilding)
@@ -299,7 +340,7 @@ void EffectsPanel::add(Effect::Type type)
         return;
     Effect e;
     e.type = type;
-    e.amount = type == Effect::Tint ? 0.5 : type == Effect::Shadow ? 6.0 : 8.0;
+    e.amount = type == Effect::Tint ? 0.5 : type == Effect::Shadow ? 6.0 : type == Effect::Particles ? 2.0 : 8.0;
     e.color = type == Effect::Shadow ? QColor(0, 0, 0, 150) : type == Effect::Glow ? QColor(255, 240, 160) : QColor(40, 110, 200);
     e.offset = type == Effect::Shadow ? QPointF(10, 10) : QPointF();
     QVector<Effect> effects = scene.layers[m_layer].effects;
@@ -366,7 +407,18 @@ void EffectsPanel::showEditors()
     m_matteLabel->setVisible(cutter);
     m_matte->setVisible(cutter);
     m_invert->setVisible(cutter);
-    if (valid && e.type == Effect::Tint) {
+    bool const particles = valid && e.type == Effect::Particles;
+    m_particles->setVisible(particles);
+    if (particles) {
+        double const values[6] = {double(e.life), e.speed, e.spread, e.direction, e.gravity, double(e.seed)};
+        for (int i = 0; i < 6; ++i)
+            m_particleBox[i]->setValue(values[i]);
+        m_amountLabel->setText(tr("Each Frame"));
+        m_amount->setRange(0.0, 50.0);
+        m_amount->setDecimals(1);
+        m_amount->setSuffix(QString());
+        m_amount->setValue(amount);
+    } else if (valid && e.type == Effect::Tint) {
         m_amountLabel->setText(tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);

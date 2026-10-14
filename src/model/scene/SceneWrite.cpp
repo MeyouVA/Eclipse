@@ -324,12 +324,22 @@ QJsonObject Scene::toJson(QString const& folder) const
                                       {"cells", cells}};
         if (!layer.effects.isEmpty()) {
             QJsonArray effects;
-            for (Effect const& e : layer.effects)
-                effects.append(QJsonObject{{"type", e.type == Effect::Blur ? "blur" : e.type == Effect::Tint ? "tint" : e.type == Effect::Glow ? "glow"
-                                                   : e.type == Effect::Shadow ? "shadow" : "cutter"},
-                                           {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
-                                           {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
-                                           {"matte", e.matte}, {"invert", e.invert}});
+            for (Effect const& e : layer.effects) {
+                QJsonObject one{{"type", e.type == Effect::Blur ? "blur" : e.type == Effect::Tint ? "tint" : e.type == Effect::Glow ? "glow"
+                                         : e.type == Effect::Shadow ? "shadow" : e.type == Effect::Particles ? "particles" : "cutter"},
+                                {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
+                                {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
+                                {"matte", e.matte}, {"invert", e.invert}};
+                if (e.type == Effect::Particles) {
+                    one["life"] = e.life;
+                    one["speed"] = e.speed;
+                    one["spread"] = e.spread;
+                    one["direction"] = e.direction;
+                    one["gravity"] = e.gravity;
+                    one["seed"] = e.seed;
+                }
+                effects.append(one);
+            }
             layerObject["effects"] = effects;
         }
         if (layer.nodePlaced)

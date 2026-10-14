@@ -10,6 +10,37 @@
 
 // ---- Pose ---------------------------------------------------------------------------------
 
+QVector<Effect::Particle> Effect::particles(double rate, int frame) const
+{
+    QVector<Particle> out;
+    int const lasts = std::max(1, life);
+    rate = std::clamp(rate, 0.0, 50.0);
+    // A number between 0 and 1 that depends on nothing but what it is asked for.
+    auto chance = [this](int born, int which, int what) {
+        quint32 h = quint32(seed) * 2654435761u ^ quint32(born) * 2246822519u ^ quint32(which) * 3266489917u ^ quint32(what) * 668265263u;
+        h ^= h >> 15;
+        h *= 2246822519u;
+        h ^= h >> 13;
+        h *= 3266489917u;
+        h ^= h >> 16;
+        return double(h & 0xffffff) / double(0x1000000);
+    };
+    for (int born = std::max(0, frame - lasts + 1); born <= frame && out.size() < 600; ++born) {
+        // (A rate that is not a whole number: now one more, now one fewer.)
+        int const count = int(std::floor(rate * (born + 1))) - int(std::floor(rate * born));
+        double const age = frame - born;
+        for (int i = 0; i < count; ++i) {
+            double const angle = (direction + (chance(born, i, 0) - 0.5) * spread) * 3.14159265358979323846 / 180.0;
+            double const pace = speed * (0.6 + 0.8 * chance(born, i, 1));
+            Particle p;
+            p.offset = QPointF(std::cos(angle) * pace * age, -std::sin(angle) * pace * age + 0.5 * gravity * age * age);
+            p.opacity = 1.0 - age / lasts;
+            out.push_back(p);
+        }
+    }
+    return out;
+}
+
 Pose Pose::lerp(Pose const& a, Pose const& b, double t)
 {
     Pose p;

@@ -409,7 +409,7 @@ struct Swatch {
 // Something done to the picture of a layer before it goes into the frame.  The effects of
 // a layer are applied in order.
 struct Effect {
-    enum Type { Blur, Tint, Cutter, Glow, Shadow };
+    enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles };
     Type type = Blur;
     bool enabled = true;
     // Blur, glow and shadow: the radius of the softening, in scene units.  Tint: how much, 0..1.
@@ -420,6 +420,22 @@ struct Effect {
     QPointF offset;             // shadow: where it falls, in scene units
     int matte = 0;              // cutter: the id of the layer whose drawing cuts this one
     bool invert = false;        // cutter: keep what lies outside the matte instead of inside
+    // Particles: the layer's drawing is thrown out again and again.  `amount` is how many are let go each
+    // frame; each lives `life` frames, fading; it leaves at about `speed` units a frame, within `spread`
+    // degrees of `direction` (0: to the right, 90: straight up), and falls by `gravity` units a frame, each frame.
+    int life = 24;
+    double speed = 6.0;
+    double spread = 60.0;
+    double direction = 90.0;
+    double gravity = 0.3;
+    int seed = 1;               // another number, another scattering
+    struct Particle {
+        QPointF offset;         // from where the drawing itself is
+        double opacity = 1.0;
+        bool operator==(Particle const&) const = default;
+    };
+    // The particles there are on `frame` (from 0) with `rate` let go each frame: the same every time it is asked.
+    QVector<Particle> particles(double rate, int frame) const;
 
     bool operator==(Effect const&) const = default;
 };

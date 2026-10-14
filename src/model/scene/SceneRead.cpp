@@ -347,11 +347,21 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.type = Effect::Glow;
             else if (type == QLatin1String("shadow"))
                 e.type = Effect::Shadow;
+            else if (type == QLatin1String("particles"))
+                e.type = Effect::Particles;
             else
                 continue;  // an effect of a newer version: left out rather than guessed at
             e.enabled = eo["enabled"].toBool(true);
             e.amount = std::max(0.0, eo["amount"].toDouble());
             e.animated = eo["animated"].toBool(false);
+            if (e.type == Effect::Particles) {
+                e.life = std::clamp(eo["life"].toInt(24), 1, 600);
+                e.speed = eo["speed"].toDouble(6.0);
+                e.spread = std::clamp(eo["spread"].toDouble(60.0), 0.0, 360.0);
+                e.direction = eo["direction"].toDouble(90.0);
+                e.gravity = eo["gravity"].toDouble(0.3);
+                e.seed = eo["seed"].toInt(1);
+            }
             e.offset = QPointF(eo["dx"].toDouble(), eo["dy"].toDouble());
             e.color = QColor(eo["color"].toString("#ff000000"));
             e.matte = eo["matte"].toInt(0);

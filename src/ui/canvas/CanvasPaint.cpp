@@ -594,10 +594,29 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         QPainter off(&image);
         off.setRenderHints(painter.renderHints());
         off.setTransform(painter.transform());
-        if (symbol)
-            paintSymbol(off, scene, layer.symbolId, symbolFrame);
-        else
-            paintDrawingOpaque(off, scene, drawing, nullptr);
+        // Particles: the picture is thrown out again and again, each copy where it has got to and as faint as it has grown.
+        int thrown = -1;
+        for (int i = 0; i < layer.effects.size() && thrown < 0; ++i)
+            if (layer.effects[i].enabled && layer.effects[i].type == Effect::Particles)
+                thrown = i;
+        auto picture = [&] {
+            if (symbol)
+                paintSymbol(off, scene, layer.symbolId, symbolFrame);
+            else
+                paintDrawingOpaque(off, scene, drawing, nullptr);
+        };
+        if (thrown < 0) {
+            picture();
+        } else {
+            double const rate = layer.effectAmount(thrown, layer.poseAt(frame));
+            for (Effect::Particle const& particle : layer.effects[thrown].particles(rate, frame)) {
+                off.save();
+                off.translate(particle.offset);
+                off.setOpacity(particle.opacity);
+                picture();
+                off.restore();
+            }
+        }
     }
     // A blur is so many scene units wide: on screen that depends on the zoom.
     double const pixelsPerUnit = std::sqrt(std::abs(sceneToDevice.determinant())) * dpr;
