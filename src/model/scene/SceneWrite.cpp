@@ -339,6 +339,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["symbol"] = layer.symbolId;
         if (layer.syncGroup != 0)
             layerObject["sync"] = layer.syncGroup;
+        if (layer.hiddenSheets != 0)
+            layerObject["hiddenSheets"] = layer.hiddenSheets;
         if (layer.ikExcluded)
             layerObject["ikExcluded"] = true;
         if (layer.ikLimited)

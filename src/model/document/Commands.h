@@ -282,6 +282,8 @@ public:
     void renameLayer(int layer, QString const& name);
     void setLayerVisible(int layer, bool visible);
     void setLayerLocked(int layer, bool locked);
+    // An art layer (Drawing::Sheet) of the layer's drawings shown in the picture, or left out of it.
+    void setLayerSheetShown(int layer, int sheet, bool shown);
     void setLayerSolo(int layer, bool solo);
     void setLayerCollapsed(int layer, bool collapsed);
     // An invalid colour gives the row its usual grey back.

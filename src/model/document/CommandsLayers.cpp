@@ -470,6 +470,18 @@ void Document::setLayerLocked(int layer, bool locked)
     apply(locked ? tr("Lock Layer") : tr("Unlock Layer"), [&](Scene& s) { s.layers[layer].locked = locked; });
 }
 
+void Document::setLayerSheetShown(int layer, int sheet, bool shown)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || sheet < 0 || sheet >= Drawing::SheetCount || m_scene.layers[layer].sheetShown(sheet) == shown)
+        return;
+    apply(shown ? tr("Show Art Layer") : tr("Hide Art Layer"), [&](Scene& s) {
+        if (shown)
+            s.layers[layer].hiddenSheets &= ~(1 << sheet);
+        else
+            s.layers[layer].hiddenSheets |= 1 << sheet;
+    });
+}
+
 void Document::setLayerSolo(int layer, bool solo)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].solo == solo)

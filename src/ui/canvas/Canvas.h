@@ -426,8 +426,9 @@ public:
     // The drawing of a layer with the effects of the layer applied.  The painter is set up
     // for the coordinates of the layer; `sceneToDevice` is what it would be for those of
     // the scene (the matte of a cutter is another layer, found from there).
+    // (`everySheet`: the art layers the layer leaves out of the picture are painted all the same.)
     static void paintLayerDrawing(QPainter& painter, Scene const& scene, int layer, int frame, Drawing const& drawing,
-                                  double opacity, QTransform const& sceneToDevice);
+                                  double opacity, QTransform const& sceneToDevice, bool everySheet = false);
     static void paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
     static void paintFill(QPainter& painter, Fill const& fill, QBrush const& color);
 

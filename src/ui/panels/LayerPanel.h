@@ -63,6 +63,8 @@ private:
     class QPushButton* m_card;      // a colour-card: its colour
     QDoubleSpinBox* m_length;       // a bone: how long it is
     QWidget* m_ikRow = nullptr;     // a bone: its IK constraints
+    QWidget* m_artRow = nullptr;    // a drawing layer: which of its art layers are in the picture
+    QCheckBox* m_artShown[4] = {nullptr, nullptr, nullptr, nullptr};
     QCheckBox* m_ikExcluded = nullptr;
     QCheckBox* m_ikLimited = nullptr;
     QDoubleSpinBox* m_ikMin = nullptr;

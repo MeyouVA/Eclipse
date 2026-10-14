@@ -1,6 +1,7 @@
 #include "ui/panels/LayerPanel.h"
 
 #include <QCheckBox>
+#include <QGridLayout>
 #include <QComboBox>
 #include <QVBoxLayout>
 #include <QDoubleSpinBox>
@@ -103,6 +104,30 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         connect(m_ikMin, &QDoubleSpinBox::valueChanged, this, changed);
         connect(m_ikMax, &QDoubleSpinBox::valueChanged, this, changed);
     }
+    {
+        // Art layers, from the one on top to the one underneath; `sheet` is the Drawing::Sheet of each.
+        m_artRow = new QWidget(this);
+        QGridLayout* const grid = new QGridLayout(m_artRow);
+        grid->setContentsMargins(0, 0, 0, 0);
+        grid->setSpacing(2);
+        struct { int sheet; char const* text; char const* name; } const kArts[] = {
+            {Drawing::OverlaySheet, QT_TR_NOOP("Overlay"), "ArtShownOverlay"}, {Drawing::LineSheet, QT_TR_NOOP("Line Art"), "ArtShownLine"},
+            {Drawing::ColourSheet, QT_TR_NOOP("Colour Art"), "ArtShownColour"}, {Drawing::UnderlaySheet, QT_TR_NOOP("Underlay"), "ArtShownUnderlay"}};
+        int at = 0;
+        for (auto const& art : kArts) {
+            QCheckBox* const box = new QCheckBox(tr(art.text), m_artRow);
+            box->setObjectName(QLatin1String(art.name));
+            box->setToolTip(tr("Whether this art layer of the layer's drawings is part of the picture."));
+            int const sheet = art.sheet;
+            connect(box, &QCheckBox::toggled, this, [this, sheet](bool on) {
+                if (!m_refreshing)
+                    m_document->setLayerSheetShown(m_layer, sheet, on);
+            });
+            m_artShown[sheet] = box;
+            grid->addWidget(box, at / 2, at % 2);
+            ++at;
+        }
+    }
     m_easeIn->setSuffix(QStringLiteral(" %"));
     m_easeOut->setSuffix(QStringLiteral(" %"));
     m_easeIn->setToolTip(tr("How gently the motion arrives at the keyframe on this frame."));
@@ -123,6 +148,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("Colour"), m_card);
     form->addRow(tr("Length"), m_length);
     form->addRow(tr("IK"), m_ikRow);
+    form->addRow(tr("Art Layers"), m_artRow);
     form->addRow(tr("Attached to"), m_parent);
     form->addRow(tr("Rides on"), m_bone);
     form->addRow(tr("Position"), pair(m_x, m_y));
@@ -210,6 +236,9 @@ void LayerPanel::refresh()
     m_card->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px;").arg(layer.cardColor.name()));
     m_length->setValue(layer.boneLength);
     m_form->setRowVisible(m_ikRow, layer.kind == Layer::Bone);
+    m_form->setRowVisible(m_artRow, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+        m_artShown[sheet]->setChecked(layer.sheetShown(sheet));
     m_ikExcluded->setChecked(layer.ikExcluded);
     m_ikLimited->setChecked(layer.ikLimited);
     m_ikMin->setValue(layer.ikMin);

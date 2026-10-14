@@ -530,9 +530,21 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
 }
 
 void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int frame, Drawing const& drawing, double opacity,
-                               QTransform const& sceneToDevice)
+                               QTransform const& sceneToDevice, bool everySheet)
 {
     Layer const& layer = scene.layers[l];
+    if (!everySheet && layer.hiddenSheets != 0 && !layer.showsSymbol()) {
+        // The art layers left out of the picture are not in it.
+        Drawing kept = drawing;
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            if (!layer.sheetShown(sheet)) {
+                kept.fillsOf(sheet).clear();
+                kept.strokesOf(sheet).clear();
+            }
+        }
+        paintLayerDrawing(painter, scene, l, frame, kept, opacity, sceneToDevice, true);
+        return;
+    }
     bool effects = false;
     for (Effect const& e : layer.effects)
         effects = effects || e.enabled;

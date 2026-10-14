@@ -534,6 +534,10 @@ struct Layer {
     // Synced layers: drawing layers of the same number here (0: none) keep the same timing - where one starts a
     // drawing, holds it or shows nothing, so do the others, each with drawings of its own.
     int syncGroup = 0;
+    // Art layers of the drawings that are left out of the picture: bit `Drawing::Sheet` set = not shown.
+    // (The one being worked on is still seen in the Camera view while only it is shown.)
+    int hiddenSheets = 0;
+    bool sheetShown(int sheet) const { return (hiddenSheets & (1 << sheet)) == 0; }
     bool showsSymbol() const { return symbolId != 0; }
     // Frames of the layer marked with a colour in the Timeline (a note to oneself: "redo", "hold" ...).
     QMap<int, QColor> frameMarks;

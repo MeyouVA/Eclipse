@@ -184,7 +184,7 @@ void Canvas::paintEvent(QPaintEvent*)
                         painter.drawPolyline(centre);
                 }
         } else if (l == m_layer && transforming)
-            paintLayerDrawing(painter, scene, l, m_frame, withArt(previewDrawing()), layer.opacity * poseOf(l, m_frame).opacity, view);
+            paintLayerDrawing(painter, scene, l, m_frame, withArt(previewDrawing()), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
         else if (index != Layer::kNoDrawing && l == m_layer && !m_previewAllArt && !m_playing) {
             // Only the sheet being worked on.
             Drawing one = erasing ? withArt(m_eraseArt) : layer.drawings[index];
@@ -194,7 +194,7 @@ void Canvas::paintEvent(QPaintEvent*)
                     one.strokesOf(sheet).clear();
                 }
             }
-            paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, view);
+            paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, view, true);
         } else if (index != Layer::kNoDrawing)
             paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layer.drawings[index]),
                               layer.opacity * poseOf(l, m_frame).opacity * faint
