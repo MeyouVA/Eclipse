@@ -96,7 +96,7 @@ void Canvas::deleteSelection()
         if (!m_selFills.contains(i))
             kept.fills.push_back(d->fills[i]);
     // The pictures selected go too (they lie with the line art).
-    bool const picturesGo = m_art == LineArt && !m_selPictures.isEmpty();
+    bool const picturesGo = picturesHere() && !m_selPictures.isEmpty();
     if (picturesGo)
         for (int i = 0; i < d->pictures.size(); ++i)
             if (!m_selPictures.contains(i))
@@ -124,7 +124,7 @@ void Canvas::copySelection()
         s_clipboard.strokes.push_back(d->strokes[i]);
     for (int i : m_selFills)
         s_clipboard.fills.push_back(d->fills[i]);
-    if (m_art == LineArt)
+    if (picturesHere())
         for (int i : m_selPictures)
             if (i >= 0 && i < d->pictures.size())
                 s_clipboard.pictures.push_back(d->pictures[i]);
@@ -143,7 +143,7 @@ void Canvas::cutSelection()
     for (int i = 0; i < d->fills.size(); ++i)
         if (!m_selFills.contains(i))
             kept.fills.push_back(d->fills[i]);
-    bool const picturesGo = m_art == LineArt && !m_selPictures.isEmpty();
+    bool const picturesGo = picturesHere() && !m_selPictures.isEmpty();
     if (picturesGo)
         for (int i = 0; i < d->pictures.size(); ++i)
             if (!m_selPictures.contains(i))
@@ -179,7 +179,7 @@ void Canvas::paste()
     }
     // Pictures go where pictures are: with the line art.
     QVector<int> pictures;
-    if (m_art == LineArt) {
+    if (picturesHere()) {
         for (Picture const& picture : s_clipboard.pictures) {
             pictures.push_back(int(merged.pictures.size()));
             merged.pictures.push_back(picture);

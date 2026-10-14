@@ -42,7 +42,12 @@ void Canvas::setTool(Tool tool)
         finishPolyline(true);
         endText(true);
     }
+    bool const bothWas = bothArtsNow();
+    if (bothWas && tool != Select && tool != Cutter)
+        clearSelection();       // (the next tool sees one sheet only: what is selected would not be the same things)
     m_tool = tool;
+    if (!bothWas && bothArtsNow())
+        clearSelection();
     if (tool != Select && tool != Cutter && tool != Reposition && tool != Perspective && tool != Envelope)
         clearSelection();
     if (tool == Reposition)
@@ -192,6 +197,33 @@ int Canvas::sheetOf(Art art)
 Drawing const* Canvas::currentDrawing() const
 {
     Drawing const* const real = realDrawing();
+    if (real && bothArtsNow()) {
+        // The colour art and, over it, the line art, as one drawing; each thing remembers its sheet.
+        void const* const key[5] = {real->strokes.constData(), real->fills.constData(), real->colourStrokes.constData(), real->colourFills.constData(), real->pictures.constData()};
+        qsizetype const size[5] = {real->strokes.size(), real->fills.size(), real->colourStrokes.size(), real->colourFills.size(), real->pictures.size()};
+        bool same = true;
+        for (int i = 0; i < 5; ++i)
+            same = same && key[i] == m_bothKey[i] && size[i] == m_bothSize[i];
+        if (!same) {
+            for (int i = 0; i < 5; ++i) {
+                m_bothKey[i] = key[i];
+                m_bothSize[i] = size[i];
+            }
+            m_bothView = Drawing();
+            m_bothView.pictures = real->pictures;
+            for (int sheet : {int(Drawing::ColourSheet), int(Drawing::LineSheet)}) {
+                for (Fill fill : real->fillsOf(sheet)) {
+                    fill.sheet = sheet;
+                    m_bothView.fills.push_back(fill);
+                }
+                for (Stroke stroke : real->strokesOf(sheet)) {
+                    stroke.sheet = sheet;
+                    m_bothView.strokes.push_back(stroke);
+                }
+            }
+        }
+        return &m_bothView;
+    }
     if (!real || m_art == LineArt)
         return real;
     // The colour art, as a drawing.  It is taken afresh only when the scene has another
@@ -208,6 +240,28 @@ Drawing const* Canvas::currentDrawing() const
 
 Drawing Canvas::withArt(Drawing const& art) const
 {
+    if (bothArtsNow()) {
+        // Each thing goes back to the sheet it came from; what is new goes to the sheet chosen.
+        Drawing whole = realDrawing() ? *realDrawing() : Drawing();
+        for (int sheet : {int(Drawing::ColourSheet), int(Drawing::LineSheet)}) {
+            whole.fillsOf(sheet).clear();
+            whole.strokesOf(sheet).clear();
+        }
+        int const mine = sheetOf(m_art);
+        for (Fill fill : art.fills) {
+            int const sheet = fill.sheet == Drawing::ColourSheet || fill.sheet == Drawing::LineSheet ? fill.sheet : mine;
+            fill.sheet = -1;
+            whole.fillsOf(sheet).push_back(fill);
+        }
+        for (Stroke stroke : art.strokes) {
+            int const sheet = stroke.sheet == Drawing::ColourSheet || stroke.sheet == Drawing::LineSheet ? stroke.sheet : mine;
+            stroke.sheet = -1;
+            whole.strokesOf(sheet).push_back(stroke);
+        }
+        if (!art.pictures.isEmpty() || m_keepNoPictures || !realDrawing())
+            whole.pictures = art.pictures;
+        return whole;
+    }
     if (m_art == LineArt) {
         // The lines are the drawing itself; its other sheets come along untouched.
         Drawing whole = art;
@@ -228,6 +282,17 @@ Drawing Canvas::withArt(Drawing const& art) const
     whole.fillsOf(sheetOf(m_art)) = art.fills;
     whole.strokesOf(sheetOf(m_art)) = art.strokes;
     return whole;
+}
+
+void Canvas::setSelectBothArts(bool on)
+{
+    if (on == m_selectBothArts)
+        return;
+    // (What is selected is counted differently with both sheets as one.)
+    clearSelection();
+    m_ceStroke = m_cePoint = m_ceFill = -1;
+    m_selectBothArts = on;
+    update();
 }
 
 void Canvas::setArt(Art art)

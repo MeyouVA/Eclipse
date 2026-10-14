@@ -470,7 +470,7 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
                 if (painted)
                     continue;
                 Drawing bounded = edited;
-                if (m_art != LineArt && realDrawing()) {
+                if (m_art != LineArt && !bothArtsNow() && realDrawing()) {
                     bounded.strokes += realDrawing()->strokes;
                     for (Fill const& shape : realDrawing()->fills)
                         if (!shape.contours.isEmpty())

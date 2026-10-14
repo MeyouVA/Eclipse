@@ -72,7 +72,7 @@ QRectF Canvas::selectionBounds() const
         add(d->strokes[i].bounds());
     for (int i : m_selFills)
         add(d->fills[i].bounds());
-    if (m_art == LineArt)
+    if (picturesHere())
         for (int i : m_selPictures)
             if (i >= 0 && i < d->pictures.size())
                 add(d->pictures[i].bounds());
@@ -258,7 +258,7 @@ bool Canvas::selectAt(QPointF p, bool toggle)
             }
         }
         // A picture, under the lines and the paint: pressed anywhere on it.  (They are picked on the line art, which they lie with.)
-        for (int i = m_art == LineArt ? int(d->pictures.size()) - 1 : -1; i >= 0; --i) {
+        for (int i = picturesHere() ? int(d->pictures.size()) - 1 : -1; i >= 0; --i) {
             Picture const& picture = d->pictures[i];
             if (!picture.placement.isInvertible() || !QRectF(QPointF(0, 0), QSizeF(picture.size)).contains(picture.placement.inverted().map(p)))
                 continue;
@@ -285,7 +285,7 @@ void Canvas::selectInside(std::function<bool(QPointF)> const& within, bool add)
     QVector<int> pictures = add ? m_selPictures : QVector<int>();
     if (d) {
         // A picture is taken when all of it is inside the shape.
-        for (int i = 0; m_art == LineArt && i < d->pictures.size(); ++i) {
+        for (int i = 0; picturesHere() && i < d->pictures.size(); ++i) {
             if (pictures.contains(i))
                 continue;
             QPolygonF const corners = d->pictures[i].placement.map(QPolygonF(QRectF(QPointF(0, 0), QSizeF(d->pictures[i].size))));

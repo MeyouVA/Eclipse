@@ -322,6 +322,11 @@ void ToolProperties::addSelectRows()
     m_bothArts->setToolTip(tr("The eraser rubs out of the line art and the colour art at once, whichever of the two is being worked on."));
     connect(m_bothArts, &QCheckBox::toggled, m_canvas, &Canvas::setEraserBothArts);
     m_form->addRow(m_bothArts);
+    m_selectBothArts = new QCheckBox(tr("Apply to Line and Colour Art"), this);
+    m_selectBothArts->setObjectName(QStringLiteral("SelectBothArts"));
+    m_selectBothArts->setToolTip(tr("The tool takes the lines and the paint under them together: what is in the line art and what is in the colour art, as if they were one."));
+    connect(m_selectBothArts, &QCheckBox::toggled, m_canvas, &Canvas::setSelectBothArts);
+    m_form->addRow(m_selectBothArts);
     m_paintAll = new QCheckBox(tr("Apply to All Drawings"), this);
     m_paintAll->setObjectName(QStringLiteral("PaintAllDrawings"));
     m_paintAll->setToolTip(tr("What you paint, repaint, unpaint or erase is painted, repainted, unpainted or erased in the same place in every drawing of the layer."));

@@ -692,7 +692,7 @@ Drawing Canvas::previewDrawing() const
             shown.strokes[i].transform(m_dragTransform);
         for (int i : m_selFills)
             shown.fills[i].transform(m_dragTransform);
-        if (m_art == LineArt)
+        if (picturesHere())
             for (int i : m_selPictures)
                 if (i >= 0 && i < shown.pictures.size())
                     shown.pictures[i].transform(m_dragTransform);

@@ -193,6 +193,13 @@ public:
     void setPaintAllDrawings(bool on) { m_paintAll = on; }
     // The eraser rubs out of the line art and the colour art at once.
     void setEraserBothArts(bool on) { m_bothArts = on; }
+    // The Select tool and the Cutter take from the line art and the colour art at once.
+    void setSelectBothArts(bool on);
+    bool selectBothArts() const { return m_selectBothArts; }
+    // ... which is so just now (with one of those tools, on one of those two sheets).
+    bool bothArtsNow() const { return m_selectBothArts && (m_tool == Select || m_tool == Cutter) && (m_art == LineArt || m_art == ColourArt); }
+    // Pictures lie with the line art: they can be taken when it is (one of) the sheets worked on.
+    bool picturesHere() const { return m_art == LineArt || bothArtsNow(); }
     bool eraserBothArts() const { return m_bothArts; }
     // The Envelope tool: how many points the outline round the selection has.
     int envelopeToolPoints() const { return m_envCount; }
@@ -796,6 +803,9 @@ private:
     Art m_art = LineArt;
     bool m_previewAllArt = true;
     mutable Drawing m_artView;   // the colour art of the current drawing, for currentDrawing()
+    mutable Drawing m_bothView;  // the line art and the colour art as one drawing, while both are worked on
+    mutable void const* m_bothKey[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
+    mutable qsizetype m_bothSize[5] = {-1, -1, -1, -1, -1};
     bool m_showStrokes = false;
     bool m_strokesWash = false;
     void stepSelection(int direction);
@@ -886,6 +896,7 @@ private:
     bool m_paintAll = false;
     bool m_paintLayers = false;
     bool m_bothArts = false;
+    bool m_selectBothArts = false;
     bool m_permanentSelection = false;
     bool m_snapAlign = false;
     QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)

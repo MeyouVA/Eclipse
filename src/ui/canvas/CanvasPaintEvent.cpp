@@ -189,7 +189,7 @@ void Canvas::paintEvent(QPaintEvent*)
             // Only the sheet being worked on.
             Drawing one = erasing ? withArt(m_eraseArt) : layer.drawings[index];
             for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
-                if (sheet != sheetOf(m_art)) {
+                if (sheet != sheetOf(m_art) && !(bothArtsNow() && (sheet == Drawing::LineSheet || sheet == Drawing::ColourSheet))) {
                     one.fillsOf(sheet).clear();
                     one.strokesOf(sheet).clear();
                 }

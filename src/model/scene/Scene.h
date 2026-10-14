@@ -40,6 +40,8 @@ struct StrokePoint {
 // One pen stroke, in scene coordinates (pixels of the camera frame).
 struct Stroke {
     QVector<StrokePoint> points;
+    // Only while two sheets of a drawing are worked on as one: the sheet this came from (not kept in the file).
+    int sheet = -1;
     // A curve passes smoothly through its points instead of going straight from one to the
     // next: a few points are then enough for a flowing line, and moving one reshapes it.
     bool curve = false;
@@ -135,6 +137,8 @@ struct Stroke {
 // inside another is a hole).  Fills are drawn under the strokes of their drawing.
 struct Fill {
     QVector<QPolygonF> outlines;
+    // Only while two sheets of a drawing are worked on as one: the sheet this came from (not kept in the file).
+    int sheet = -1;
     // Words written with the Text tool are a painted area like any other, which remembers
     // what it says, in what font (QFont::toString) and where its first line stands - so
     // that the Text tool can change the words or the font later.  Empty for other areas;

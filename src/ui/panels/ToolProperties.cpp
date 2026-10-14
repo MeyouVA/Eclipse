@@ -228,6 +228,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_paintLayers, Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_permanent, tool == T::Select);
     m_form->setRowVisible(m_bothArts, tool == T::Eraser);
+    m_form->setRowVisible(m_selectBothArts, tool == T::Select || tool == T::Cutter);
     m_form->setRowVisible(m_snapAlign, tool == T::Select);
     m_form->setRowVisible(m_stampScale, tool == T::Stamp);
     m_form->setRowVisible(m_stampRow, tool == T::Stamp);

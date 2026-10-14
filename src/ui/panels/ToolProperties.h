@@ -92,6 +92,7 @@ private:
     QCheckBox* m_paintAll = nullptr;
     QCheckBox* m_paintLayers = nullptr;
     QCheckBox* m_bothArts = nullptr;
+    QCheckBox* m_selectBothArts = nullptr;
     QCheckBox* m_permanent = nullptr;
     QCheckBox* m_envelopeOutline = nullptr;
     QCheckBox* m_snapAlign = nullptr;
