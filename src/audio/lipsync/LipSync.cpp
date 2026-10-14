@@ -1,6 +1,8 @@
 #include "audio/lipsync/LipSync.h"
 
 #include <QCoreApplication>
+#include <QRegularExpression>
+#include <QStringList>
 
 #include <algorithm>
 #include <cmath>
@@ -107,6 +109,114 @@ QChar vowelShape(double first, double second)
     if (first < 400.0)
         return QLatin1Char('F');        // u, oo: small and pushed out
     return QLatin1Char('E');            // o: round
+}
+
+QString wordShapes(QString const& word)
+{
+    QString w;
+    for (QChar const c : word.toLower())
+        if (c.isLetter())
+            w += c;
+    // A silent e at the end ("make", "tone") says nothing.
+    if (w.size() > 2 && w.endsWith(QLatin1Char('e')) && QStringLiteral("aeiouy").indexOf(w.at(w.size() - 2)) < 0)
+        w.chop(1);
+    QString shapes;
+    auto say = [&shapes](char shape) {
+        if (shapes.isEmpty() || shapes.back() != QLatin1Char(shape))
+            shapes += QLatin1Char(shape);
+    };
+    for (qsizetype i = 0; i < w.size(); ++i) {
+        QString const two = w.mid(i, 2);
+        // Two letters that are one sound.
+        struct Pair { char const* letters; char shape; };
+        static Pair const kPairs[] = {{"th", 'B'}, {"sh", 'B'}, {"ch", 'B'}, {"ph", 'G'}, {"wh", 'F'}, {"ng", 'B'}, {"ck", 'B'},
+                                      {"oo", 'F'}, {"ou", 'E'}, {"ow", 'E'}, {"oa", 'E'}, {"ee", 'B'}, {"ea", 'B'}, {"ai", 'C'},
+                                      {"ay", 'C'}, {"au", 'E'}, {"aw", 'E'}, {"oi", 'E'}, {"oy", 'E'}, {"ew", 'F'}, {"qu", 'F'}};
+        bool paired = false;
+        for (Pair const& p : kPairs)
+            if (two == QLatin1String(p.letters)) {
+                say(p.shape);
+                ++i;
+                paired = true;
+                break;
+            }
+        if (paired)
+            continue;
+        switch (w.at(i).unicode()) {
+        case 'a': say('D'); break;
+        case 'e': say('C'); break;
+        case 'i': say('C'); break;
+        case 'o': say('E'); break;
+        case 'u': say('F'); break;
+        case 'y': say(i == 0 ? 'B' : 'C'); break;
+        case 'w': say('F'); break;
+        case 'm': case 'b': case 'p': say('A'); break;
+        case 'f': case 'v': say('G'); break;
+        case 'h': break;        // a breath: the mouth as the sound after it has it
+        default: say('B'); break;
+        }
+    }
+    return shapes;
+}
+
+QString fromText(QString const& text, QString const& detected)
+{
+    QStringList words;
+    for (QString const& word : text.split(QRegularExpression(QStringLiteral("[^\\w']+")), Qt::SkipEmptyParts))
+        if (!wordShapes(word).isEmpty())
+            words << word;
+    int const frames = int(detected.size());
+    QString out(frames, QLatin1Char('X'));
+    if (words.isEmpty() || frames == 0)
+        return out;
+    // The stretches of speech: frames not at rest, a single frame at rest within one not breaking it.
+    QVector<QPair<int, int>> stretches;     // first frame, frame after the last
+    for (int f = 0; f < frames;) {
+        if (detected[f] == QLatin1Char('X')) {
+            ++f;
+            continue;
+        }
+        int end = f + 1;
+        while (end < frames && (detected[end] != QLatin1Char('X') || (end + 1 < frames && detected[end + 1] != QLatin1Char('X'))))
+            ++end;
+        stretches.push_back({f, end});
+        f = end;
+    }
+    if (stretches.isEmpty())
+        stretches.push_back({0, frames});
+    // Each word's sounds; a word belongs to the stretch its middle falls in, by sounds against frames of speech.
+    QVector<QString> said;
+    int sounds = 0;
+    for (QString const& word : std::as_const(words)) {
+        said.push_back(wordShapes(word));
+        sounds += int(said.last().size());
+    }
+    int speech = 0;
+    for (auto const& s : std::as_const(stretches))
+        speech += s.second - s.first;
+    QVector<QVector<int>> wordsOf(stretches.size());
+    int before = 0;
+    for (int w = 0; w < said.size(); ++w) {
+        double const middle = (before + said[w].size() / 2.0) / sounds * speech;
+        before += int(said[w].size());
+        int at = 0, covered = 0;
+        while (at + 1 < stretches.size() && covered + (stretches[at].second - stretches[at].first) <= middle) {
+            covered += stretches[at].second - stretches[at].first;
+            ++at;
+        }
+        wordsOf[at].push_back(w);
+    }
+    for (int s = 0; s < stretches.size(); ++s) {
+        QString line;
+        for (int w : std::as_const(wordsOf[s]))
+            line += said[w];
+        if (line.isEmpty())
+            continue;       // a stretch with no word: left at rest
+        int const first = stretches[s].first, length = stretches[s].second - first;
+        for (int f = 0; f < length; ++f)
+            out[first + f] = line.at(std::min(int(line.size()) - 1, int(qint64(f) * line.size() / length)));
+    }
+    return out;
 }
 
 QString detect(QVector<qint16> const& stereo, int rate, double fps)

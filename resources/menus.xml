@@ -353,6 +353,7 @@
    </menu>
    <menu id="AnimationLipSync" text="&amp;Lip-Sync">
     <item id="AutoLipSync" icon="anim/lipsyncauto" text="&amp;Auto Lip-Sync Detection" responder="window" slot="onActionAutoLipSync()"/>
+    <item id="LipSyncFromWords" icon="anim/lipsyncauto" text="Lip-Sync from &amp;Words..." responder="window" slot="onActionLipSyncFromWords()"/>
     <item id="MapLipSync" icon="anim/lipsyncmap" text="&amp;Map Lip-Sync..." responder="window" slot="onActionMapLipSync()"/>
     <menu id="AnimationMouthShape" text="&amp;Change Mouth Shape to">
      <item id="MouthA" icon="anim/mouth_a" text="&amp;A - closed (m, b, p)" responder="window" slot="onActionMouthShape(QString)" itemParameter="A"/>
@@ -715,6 +716,7 @@
   <item id="LayerProperties"/>
   <menu id="TimelineLipSync" text="Lip-Sync">
    <item id="AutoLipSync"/>
+   <item id="LipSyncFromWords"/>
    <item id="MapLipSync"/>
    <menu id="TimelineMouthShape" text="Change Mouth Shape to">
     <item id="MouthA"/>

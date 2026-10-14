@@ -9,6 +9,9 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPlainTextEdit>
+#include <QSettings>
+#include <QVBoxLayout>
 
 #include "actions/manager/ActionManager.h"
 #include "actions/dialogs/ShortcutsDialog.h"
@@ -40,6 +43,61 @@ int MainWindow::detectLipSync(int soundLayer)
     shapes.truncate(std::max(0, scene.frameCount() - scene.layers[soundLayer].soundStart));
     m_document->setLipSync(soundLayer, shapes, tr("Auto Lip-Sync Detection"));
     return int(shapes.size());
+}
+
+int MainWindow::lipSyncFromWords(int soundLayer, QString const& words)
+{
+    Scene const& scene = m_document->scene();
+    if (soundLayer < 0 || soundLayer >= scene.layers.size() || scene.layers[soundLayer].kind != Layer::Sound)
+        return -1;
+    std::shared_ptr<SoundData> const sound = Sound::load(scene.layers[soundLayer].soundFile);
+    if (!sound)
+        return -1;
+    // Where the speech is, from the sound; what is said there, from the words.
+    QString shapes = LipSync::fromText(words, LipSync::detect(sound->samples, SoundData::kRate, scene.fps));
+    shapes.truncate(std::max(0, scene.frameCount() - scene.layers[soundLayer].soundStart));
+    m_document->setLipSync(soundLayer, shapes, tr("Lip-Sync from Words"));
+    return int(shapes.size());
+}
+
+void MainWindow::onActionLipSyncFromWords()
+{
+    int const sound = LipSyncView::soundLayerFor(m_document->scene(), layer());
+    if (sound < 0) {
+        statusBar()->showMessage(tr("Lip-sync is for a sound: import one first (File > Import > Sound)."), 7000);
+        return;
+    }
+    Layer const& soundLayer = m_document->scene().layers[sound];
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("LipSyncWordsDialog"));
+    dialog.setWindowTitle(tr("Lip-Sync from Words: %1").arg(soundLayer.name));
+    QPlainTextEdit* const text = new QPlainTextEdit(&dialog);
+    text->setObjectName(QStringLiteral("LipSyncWords"));
+    text->setPlaceholderText(tr("Type what is said in the sound, word for word."));
+    // What was typed for this sound before.
+    QSettings settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    QString const key = QStringLiteral("lipsyncWords/") + QString::fromLatin1(soundLayer.soundFile.toUtf8().toBase64(QByteArray::Base64UrlEncoding));
+    text->setPlainText(settings.value(key).toString());
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("The words are spread over the stretches of speech the sound has, each sound of a word as long as the others.\n"
+                                    "Correct what is off in the Lip-Sync view, then use Map Lip-Sync."), &dialog));
+    layout->addWidget(text);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted || text->toPlainText().trimmed().isEmpty())
+        return;
+    settings.setValue(key, text->toPlainText());
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    int const frames = lipSyncFromWords(sound, text->toPlainText());
+    QApplication::restoreOverrideCursor();
+    if (frames < 0) {
+        statusBar()->showMessage(tr("The sound file of %1 could not be read.").arg(m_document->scene().layers[sound].name), 7000);
+        return;
+    }
+    if (QDockWidget* const dock = dockOf("LipSyncDock"))
+        showView(dock);
 }
 
 void MainWindow::onActionAutoLipSync()

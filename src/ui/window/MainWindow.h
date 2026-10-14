@@ -168,6 +168,8 @@ public:
     // Lip-sync: listens to the sound of a sound layer and gives each of its frames a mouth
     // shape.  The number of frames lettered; -1 when the layer has no sound that can be read.
     int detectLipSync(int soundLayer);
+    // The same, from the words said (see LipSync::fromText); the text is kept for the next time.
+    int lipSyncFromWords(int soundLayer, QString const& words);
 
 public slots:
     // ---- File ----
@@ -374,6 +376,8 @@ public slots:
     // Morphing between the key drawing of the current cell and the next one of the layer.
     void onActionCreateMorphing();
     void onActionAutoLipSync();
+    // The line that is said, typed: its words' mouth shapes laid over the stretches of speech in the sound.
+    void onActionLipSyncFromWords();
     void onActionMapLipSync();
     void onActionClearLipSync();
     void onActionMouthShape(QString const& shape);
