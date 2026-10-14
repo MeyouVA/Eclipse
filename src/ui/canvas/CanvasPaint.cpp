@@ -553,7 +553,7 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
             continue;
         painter.setTransform(inner.worldTransform(l, f) * base);
         Pose const pose = layer.poseAt(f);
-        paintLayerDrawing(painter, inner, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose),
+        paintLayerDrawing(painter, inner, l, f, Deform::ridden(inner, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose)),
                           layer.opacity * pose.opacity, base);
     }
     painter.setTransform(base);
@@ -821,7 +821,8 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
             continue;
         painter.setTransform(scene.worldTransform(l, frame) * camera * base);
         Pose const pose = layer.poseAt(frame);
-        paintLayerDrawing(painter, scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose),
+        paintLayerDrawing(painter, scene, l, frame,
+                          Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose)),
                           layer.opacity * pose.opacity, camera * base);
     }
     painter.setTransform(base);

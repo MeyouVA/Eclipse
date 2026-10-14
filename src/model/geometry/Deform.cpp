@@ -588,6 +588,47 @@ Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, 
     return mapped(drawing, [&warper](QPointF p) { return warper.map(p); });
 }
 
+// Everything of a drawing moved by `t`.
+static void transformAll(Drawing& drawing, QTransform const& t)
+{
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        for (Fill& fill : drawing.fillsOf(sheet))
+            fill.transform(t);
+        for (Stroke& stroke : drawing.strokesOf(sheet))
+            stroke.transform(t);
+    }
+    for (Picture& picture : drawing.pictures)
+        picture.transform(t);
+}
+
+Drawing ridden(Scene const& scene, int layer, int frame, Drawing const& drawing)
+{
+    if (layer < 0 || layer >= scene.layers.size())
+        return drawing;
+    Drawing out = drawing;
+    QTransform const own = scene.worldTransform(layer, frame);
+    int guard = 0;
+    for (int a = scene.parentIndex(layer); a >= 0 && guard < 64; a = scene.parentIndex(a), ++guard) {
+        Layer const& up = scene.layers[a];
+        if (!up.hasWarp())
+            continue;
+        Pose const pose = up.poseAt(frame);
+        if (!isWarped(up.warp, up.warpClosed, pose.warp))
+            continue;
+        // Into the coordinates of that layer, where its deformer lies; reshaped there; and back.
+        QTransform const there = scene.worldTransform(a, frame);
+        if (!there.isInvertible())
+            continue;
+        QTransform const into = own * there.inverted();
+        if (!into.isInvertible())
+            continue;
+        transformAll(out, into);
+        out = warp(out, up.warp, up.warpClosed, pose.warp);
+        transformAll(out, into.inverted());
+    }
+    return out;
+}
+
 Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose)
 {
     bool const warped = isWarped(layer.warp, layer.warpClosed, pose.warp), bent = isBent(layer.bones, pose.bend);

@@ -196,7 +196,7 @@ void PerspectiveView::paintEvent(QPaintEvent*)
             continue;
         Pose const pose = layer.poseAt(m_frame);
         painter.setTransform(onto);
-        Canvas::paintDrawing(painter, scene, Deform::shown(layer.shownAt(m_frame), layer, pose), layer.opacity * pose.opacity);
+        Canvas::paintDrawing(painter, scene, Deform::ridden(scene, item.layer, m_frame, Deform::shown(layer.shownAt(m_frame), layer, pose)), layer.opacity * pose.opacity);
         painter.resetTransform();
         bool const current = item.layer == m_layer;
         painter.setBrush(Qt::NoBrush);
