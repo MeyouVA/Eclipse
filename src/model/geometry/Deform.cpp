@@ -27,8 +27,9 @@ namespace {
 struct Chain {
     QVector<QPointF> joints;
     QVector<QTransform> bones;
+    double smooth = 0.0;    // how far round a joint the bend is shared out (scene units); 0: as good as a fold
 
-    Chain(QVector<QPointF> const& rest, QVector<double> const& bend) : joints(rest)
+    Chain(QVector<QPointF> const& rest, QVector<double> const& bend, double smoothness = 0.0) : joints(rest), smooth(smoothness)
     {
         QPointF origin = rest.isEmpty() ? QPointF() : rest[0];  // where the bone starts, posed
         double angle = 0.0;                                      // how far it is turned in all
@@ -51,6 +52,23 @@ struct Chain {
         // beside one bone follows that bone, and one at a joint goes half way with each.
         double total = 0.0;
         QPointF sum;
+        if (smooth > 1.0) {
+            // Smoothed joints: the nearest bone pulls fully, another as much less as it is further than that one, and
+            // not at all once it is `smooth` further - so the bend is shared out round a joint, and nowhere else.
+            QVarLengthArray<double, 16> away(bones.size());
+            double nearest = 1e300;
+            for (int i = 0; i < bones.size(); ++i) {
+                away[i] = distanceToSegment(p, joints[i], joints[i + 1]);
+                nearest = std::min(nearest, away[i]);
+            }
+            for (int i = 0; i < bones.size(); ++i) {
+                double const share = std::max(0.0, 1.0 - (away[i] - nearest) / smooth);
+                double const w = share * share;
+                total += w;
+                sum += bones[i].map(p) * w;
+            }
+            return sum / total;
+        }
         for (int i = 0; i < bones.size(); ++i) {
             double const d = distanceToSegment(p, joints[i], joints[i + 1]);
             double const w = 1.0 / ((d * d + 1.0) * (d * d + 1.0));
@@ -128,9 +146,9 @@ QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, in
     return bend;
 }
 
-QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend)
+QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth)
 {
-    return Chain(joints, bend).map(p);
+    return Chain(joints, bend, smooth).map(p);
 }
 
 namespace {
@@ -194,11 +212,11 @@ template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
 
 }
 
-Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<double> const& bend)
+Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth)
 {
     if (!isBent(joints, bend))
         return drawing;
-    Chain const chain(joints, bend);
+    Chain const chain(joints, bend, smooth);
     return mapped(drawing, [&chain](QPointF p) { return chain.map(p); });
 }
 
@@ -642,7 +660,7 @@ Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& dra
         return drawing;
     Drawing out = drawing;
     transformAll(out, into);
-    out = deform(out, joints, bend);
+    out = deform(out, joints, bend, scene.layers[layer].jointSmoothness);
     transformAll(out, rootNow * here.inverted());
     return out;
 }
@@ -683,8 +701,8 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose)
     if (!bent)
         return warp(drawing, layer.warp, layer.warpClosed, pose.warp);
     if (!warped)
-        return deform(drawing, layer.bones, pose.bend);
-    return deform(warp(drawing, layer.warp, layer.warpClosed, pose.warp), layer.bones, pose.bend);
+        return deform(drawing, layer.bones, pose.bend, layer.jointSmoothness);
+    return deform(warp(drawing, layer.warp, layer.warpClosed, pose.warp), layer.bones, pose.bend, layer.jointSmoothness);
 }
 
 }

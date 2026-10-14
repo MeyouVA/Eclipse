@@ -661,6 +661,9 @@ struct Layer {
     // A drawing layer attached to a chain of Game Bones: instead of riding the last bone whole, it bends along the chain
     // (each part of it follows the bone it lies along on frame 0, as the bones turn from how they stand there).
     bool bendOnBones = false;
+    // How far from a joint of its bones (its own bone deformer, or the Game Bones it bends on) the bend is shared out
+    // between the two bones, in scene units: the drawing bends round the joint smoothly instead of folding (0: a fold).
+    double jointSmoothness = 0.0;
     // How the layer's picture goes onto what is under it: laid over it (Normal), or mixed with it - Multiply darkens
     // as ink does, Screen lightens as light does, and so on, as in a paint program.  The layer is mixed as a whole.
     enum Blend { BlendNormal, BlendMultiply, BlendScreen, BlendOverlay, BlendDarken, BlendLighten, BlendColourDodge, BlendColourBurn,

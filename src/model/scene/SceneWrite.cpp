@@ -421,6 +421,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["bitmapArt"] = layer.bitmapArt;
         if (layer.bendOnBones)
             layerObject["bendOnBones"] = true;
+        if (layer.jointSmoothness > 0.0)
+            layerObject["jointSmooth"] = layer.jointSmoothness;
         if (layer.blend > Layer::BlendNormal && layer.blend < Layer::BlendCount) {
             static char const* const kBlends[Layer::BlendCount] = {"normal", "multiply", "screen", "overlay", "darken", "lighten", "colourDodge",
                                                                    "colourBurn", "hardLight", "softLight", "difference", "exclusion", "add"};

@@ -21,7 +21,9 @@ bool isBent(QVector<QPointF> const& joints, QVector<double> const& bend);
 QVector<QPointF> posedJoints(QVector<QPointF> const& joints, QVector<double> const& bend);
 
 // The drawing bent along the chain.  Lines come back as plain runs of short straight pieces.
-Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<double> const& bend);
+// `smooth` (scene units): how far from a joint the bend is shared out between the two bones, so the drawing bends round
+// it instead of folding there (Layer::jointSmoothness); 0 or less: within about a unit.
+Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth = 0.0);
 
 // What bone `bone` does to what belongs to it: from where it lies at rest to where the pose
 // puts it.  Identity when there is no such bone.
@@ -35,7 +37,7 @@ int nearestBone(QVector<QPointF> const& joints, QPointF p);
 QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, int endJoint, QPointF target);
 
 // One point, the same way.
-QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend);
+QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth = 0.0);
 
 // ---- curve and envelope deformers ---------------------------------------------------------
 // A deformer is a Bezier curve through a few points (see Layer::warp for how it is laid

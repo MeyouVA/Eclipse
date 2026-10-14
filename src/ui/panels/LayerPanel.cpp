@@ -144,6 +144,18 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         if (!m_refreshing && mode >= 0)
             m_document->editLayers({m_layer}, tr("Blend Mode"), [mode](Layer& layer) { layer.blend = mode; });
     });
+    m_smooth = new QDoubleSpinBox(this);
+    m_smooth->setObjectName(QStringLiteral("LayerJointSmoothness"));
+    m_smooth->setRange(0.0, 1000.0);
+    m_smooth->setDecimals(1);
+    m_smooth->setSingleStep(5.0);
+    m_smooth->setKeyboardTracking(false);
+    m_smooth->setToolTip(tr("How far from each joint of the bones the bend is shared between the two bones (scene units):\n"
+                            "the drawing bends round the joint smoothly, as an elbow does. 0: it folds at the joint."));
+    connect(m_smooth, &QDoubleSpinBox::valueChanged, this, [this](double v) {
+        if (!m_refreshing)
+            m_document->editLayers({m_layer}, tr("Joint Smoothness"), [v](Layer& layer) { layer.jointSmoothness = v; });
+    });
     m_bend = new QCheckBox(tr("Bends on its bones"), this);
     m_bend->setObjectName(QStringLiteral("LayerBendOnBones"));
     m_bend->setToolTip(tr("Hanging from Game Bones, the drawing bends along them as they turn, instead of riding the last one whole.\n"
@@ -177,6 +189,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("Attached to"), m_parent);
     form->addRow(tr("Rides on"), m_bone);
     form->addRow(QString(), m_bend);
+    form->addRow(tr("Joint Smoothness"), m_smooth);
     form->addRow(tr("Position"), pair(m_x, m_y));
     form->addRow(tr("Depth (Z)"), m_z);
     m_turnRow = pair(m_rotX, m_rotY);
@@ -270,6 +283,10 @@ void LayerPanel::refresh()
         int const up = m_document->scene().parentIndex(m_layer);
         m_form->setRowVisible(m_bend, layer.holdsDrawings() && up >= 0 && m_document->scene().layers[up].kind == Layer::Bone);
         m_bend->setChecked(layer.bendOnBones);
+        // For a drawing that bends on bones: its own bone deformer, or Game Bones it bends on.
+        m_form->setRowVisible(m_smooth, layer.holdsDrawings() && (layer.bones.size() >= 2 || (layer.bendOnBones && up >= 0
+                                                                   && m_document->scene().layers[up].kind == Layer::Bone)));
+        m_smooth->setValue(layer.jointSmoothness);
     }
     m_form->setRowVisible(m_blend, layer.holdsDrawings());
     m_blend->setCurrentIndex(std::clamp(layer.blend, 0, int(Layer::BlendCount) - 1));

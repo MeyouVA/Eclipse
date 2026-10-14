@@ -310,6 +310,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.bitmap = lo["bitmap"].toBool(false);
         layer.bitmapArt = lo["bitmapArt"].toInt(0) & 11;
         layer.bendOnBones = lo["bendOnBones"].toBool(false);
+        layer.jointSmoothness = std::clamp(lo["jointSmooth"].toDouble(0.0), 0.0, 1000.0);
         {
             // (A mode of a newer version: laid over as usual.)
             static char const* const kBlends[Layer::BlendCount] = {"normal", "multiply", "screen", "overlay", "darken", "lighten", "colourDodge",

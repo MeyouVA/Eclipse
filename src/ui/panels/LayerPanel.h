@@ -67,6 +67,7 @@ private:
     QCheckBox* m_bitmap = nullptr;  // a drawing layer: painted in pixels
     QCheckBox* m_bend = nullptr;    // a drawing layer on Game Bones: bends along them
     QComboBox* m_blend = nullptr;   // how the layer's picture is mixed with what is under it
+    QDoubleSpinBox* m_smooth = nullptr;     // how far round a joint of its bones the drawing bends
     QCheckBox* m_artShown[4] = {nullptr, nullptr, nullptr, nullptr};
     QCheckBox* m_ikExcluded = nullptr;
     QCheckBox* m_ikLimited = nullptr;
