@@ -612,21 +612,65 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             double const rate = layer.effectAmount(thrown, layer.poseAt(frame));
             QTransform const now = scene.worldTransform(l, frame);
             QTransform const base = off.transform();
+            // Turning to another colour as they age: the picture, once, as an image; and from it, the picture part way to that
+            // colour (in eight steps), each made when first wanted.  A particle with any of the colour is drawn from those.
+            QImage plain;
+            QRectF area;
+            QVector<QImage> mixed;
+            if (emitter.endColor.isValid()) {
+                QRectF const whole(QPointF(0, 0), QSizeF(size) / dpr);
+                area = symbol ? whole : base.mapRect(drawing.bounds()).adjusted(-4, -4, 4, 4) & whole;
+                if (!area.isEmpty()) {
+                    plain = QImage((area.size() * dpr).toSize().expandedTo(QSize(1, 1)), QImage::Format_ARGB32_Premultiplied);
+                    plain.setDevicePixelRatio(dpr);
+                    plain.fill(Qt::transparent);
+                    QPainter once(&plain);
+                    once.setRenderHints(painter.renderHints());
+                    once.setTransform(base * QTransform::fromTranslate(-area.left(), -area.top()));
+                    if (symbol)
+                        paintSymbol(once, scene, layer.symbolId, symbolFrame);
+                    else
+                        paintDrawingOpaque(once, scene, drawing, nullptr);
+                    mixed.resize(9);
+                }
+            }
+            auto mixedImage = [&](int step) -> QImage const& {
+                if (mixed[step].isNull()) {
+                    QImage made = plain.copy();
+                    made.setDevicePixelRatio(dpr);
+                    QPainter tint(&made);
+                    tint.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+                    QColor colour = emitter.endColor;
+                    colour.setAlphaF(float(step / 8.0));
+                    tint.fillRect(QRectF(QPointF(0, 0), area.size()), colour);
+                    tint.end();
+                    mixed[step] = made;
+                }
+                return mixed[step];
+            };
+            QTransform const backToScene = base.isInvertible() ? base.inverted() : QTransform();
             for (Effect::Particle const& particle : emitter.particles(rate, frame)) {
                 off.save();
                 // Each stays where the layer was when it was let go (unless it is to move with the layer).
                 if (!emitter.followLayer && particle.born != frame && now.isInvertible())
                     off.setTransform(scene.worldTransform(l, particle.born) * now.inverted() * base);
                 off.translate(particle.offset);
-                if (particle.scale != 1.0) {
-                    // Grown or shrunk about the middle of the drawing.
+                if (particle.scale != 1.0 || particle.angle != 0.0) {
+                    // Grown or shrunk, and turned, about the middle of the drawing.
                     QPointF const middle = drawing.bounds().center();
                     off.translate(middle);
+                    off.rotate(particle.angle);
                     off.scale(particle.scale, particle.scale);
                     off.translate(-middle);
                 }
                 off.setOpacity(particle.opacity);
-                picture();
+                int const step = int(std::lround(std::clamp(particle.tint, 0.0, 1.0) * 8.0));
+                if (step > 0 && !plain.isNull()) {
+                    off.setTransform(QTransform::fromTranslate(area.left(), area.top()) * backToScene * off.transform());
+                    off.drawImage(QPointF(0, 0), mixedImage(step));
+                } else {
+                    picture();
+                }
                 off.restore();
             }
         }

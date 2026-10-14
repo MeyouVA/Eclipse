@@ -258,6 +258,49 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
             if (!m_rebuilding)
                 edit([v](Effect& e) { e.endSize = v; });
         });
+        // Wind across, and turning.
+        struct Extra { char const* name; char const* label; char const* tip; double low, high, step; };
+        static Extra const kExtras[2] = {
+            {"ParticleWind", QT_TR_NOOP("Wind"), QT_TR_NOOP("Pushes the particles across by so many units a frame, each frame (less than 0: to the left)."), -20.0, 20.0, 0.1},
+            {"ParticleSpin", QT_TR_NOOP("Spin"), QT_TR_NOOP("Each particle turns by up to so many degrees a frame, one way or the other."), 0.0, 360.0, 1.0},
+        };
+        for (int i = 0; i < 2; ++i) {
+            QDoubleSpinBox* const box = new QDoubleSpinBox(m_particles);
+            m_particleBox[7 + i] = box;
+            box->setObjectName(QLatin1String(kExtras[i].name));
+            box->setRange(kExtras[i].low, kExtras[i].high);
+            box->setSingleStep(kExtras[i].step);
+            box->setDecimals(2);
+            box->setKeyboardTracking(false);
+            box->setToolTip(tr(kExtras[i].tip));
+            form->addRow(tr(kExtras[i].label), box);
+            connect(box, &QDoubleSpinBox::valueChanged, this, [this, i](double v) {
+                if (!m_rebuilding)
+                    edit([i, v](Effect& e) { (i == 0 ? e.wind : e.spin) = v; });
+            });
+        }
+        // The colour they turn to as they age.
+        m_particleRecolour = new QCheckBox(tr("Turn to"), m_particles);
+        m_particleRecolour->setObjectName(QStringLiteral("ParticleRecolour"));
+        m_particleRecolour->setToolTip(tr("On: each particle turns to the colour beside it by the end of its life."));
+        m_particleColour = new QPushButton(m_particles);
+        m_particleColour->setObjectName(QStringLiteral("ParticleEndColour"));
+        m_particleColour->setFixedWidth(60);
+        form->addRow(m_particleRecolour, m_particleColour);
+        connect(m_particleRecolour, &QCheckBox::toggled, this, [this](bool on) {
+            if (!m_rebuilding)
+                edit([on](Effect& e) { e.endColor = on ? (e.endColor.isValid() ? e.endColor : QColor(255, 140, 40)) : QColor(); });
+        });
+        connect(m_particleColour, &QPushButton::clicked, this, [this] {
+            Scene const& scene = m_document->scene();
+            int const row = m_list->currentRow();
+            if (m_layer < 0 || m_layer >= scene.layers.size() || row < 0 || row >= scene.layers[m_layer].effects.size())
+                return;
+            QColor const was = scene.layers[m_layer].effects[row].endColor;
+            QColor const chosen = QColorDialog::getColor(was.isValid() ? was : QColor(255, 140, 40), this, tr("Particle Colour at the End"));
+            if (chosen.isValid())
+                edit([chosen](Effect& e) { e.endColor = chosen; });
+        });
         m_particleFollow = new QCheckBox(tr("Move with the layer"), m_particles);
         m_particleFollow->setObjectName(QStringLiteral("ParticleFollow"));
         m_particleFollow->setToolTip(tr("On: the particles go where the layer goes. Off: each stays where the layer was when it was let go."));
@@ -436,6 +479,11 @@ void EffectsPanel::showEditors()
             m_particleBox[i]->setValue(values[i]);
         m_particleBox[6]->setValue(e.endSize);
         m_particleFollow->setChecked(e.followLayer);
+        m_particleBox[7]->setValue(e.wind);
+        m_particleBox[8]->setValue(e.spin);
+        m_particleRecolour->setChecked(e.endColor.isValid());
+        m_particleColour->setEnabled(e.endColor.isValid());
+        m_particleColour->setStyleSheet(e.endColor.isValid() ? QStringLiteral("background-color: %1;").arg(e.endColor.name()) : QString());
         m_amountLabel->setText(tr("Each Frame"));
         m_amount->setRange(0.0, 50.0);
         m_amount->setDecimals(1);

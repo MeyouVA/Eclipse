@@ -33,9 +33,11 @@ QVector<Effect::Particle> Effect::particles(double rate, int frame) const
             double const angle = (direction + (chance(born, i, 0) - 0.5) * spread) * 3.14159265358979323846 / 180.0;
             double const pace = speed * (0.6 + 0.8 * chance(born, i, 1));
             Particle p;
-            p.offset = QPointF(std::cos(angle) * pace * age, -std::sin(angle) * pace * age + 0.5 * gravity * age * age);
+            p.offset = QPointF(std::cos(angle) * pace * age + 0.5 * wind * age * age, -std::sin(angle) * pace * age + 0.5 * gravity * age * age);
             p.opacity = 1.0 - age / lasts;
             p.scale = 1.0 + (endSize - 1.0) * age / lasts;
+            p.tint = endColor.isValid() ? age / lasts : 0.0;
+            p.angle = spin * (2.0 * chance(born, i, 2) - 1.0) * age;
             p.born = born;
             out.push_back(p);
         }

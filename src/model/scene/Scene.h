@@ -431,10 +431,15 @@ struct Effect {
     int seed = 1;               // another number, another scattering
     double endSize = 1.0;       // how big a particle is at the end of its life (1: as big as when it left)
     bool followLayer = false;   // the particles move with the layer; off: each stays where the layer was when it was let go
+    QColor endColor;            // the colour a particle turns to by the end of its life (none: it keeps the drawing's)
+    double wind = 0.0;          // pushes the particles across by so many units a frame, each frame (positive: to the right)
+    double spin = 0.0;          // each turns by up to so many degrees a frame, one way or the other
     struct Particle {
         QPointF offset;         // from where the drawing itself is (was, on the frame it was let go)
         double opacity = 1.0;
         double scale = 1.0;
+        double tint = 0.0;      // how far it has turned to endColor (0..1)
+        double angle = 0.0;     // how far it has turned about its middle (degrees)
         int born = 0;           // the frame it was let go on
         bool operator==(Particle const&) const = default;
     };

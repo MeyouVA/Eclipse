@@ -339,6 +339,10 @@ QJsonObject Scene::toJson(QString const& folder) const
                     one["seed"] = e.seed;
                     one["endSize"] = e.endSize;
                     one["follow"] = e.followLayer;
+                    if (e.endColor.isValid())
+                        one["endColor"] = e.endColor.name(QColor::HexArgb);
+                    one["wind"] = e.wind;
+                    one["spin"] = e.spin;
                 }
                 effects.append(one);
             }

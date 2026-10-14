@@ -400,6 +400,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.seed = eo["seed"].toInt(1);
                 e.endSize = std::clamp(eo["endSize"].toDouble(1.0), 0.0, 20.0);
                 e.followLayer = eo["follow"].toBool(false);
+                e.endColor = eo.contains("endColor") ? QColor(eo["endColor"].toString()) : QColor();
+                e.wind = eo["wind"].toDouble(0.0);
+                e.spin = std::clamp(eo["spin"].toDouble(0.0), 0.0, 360.0);
             }
             e.offset = QPointF(eo["dx"].toDouble(), eo["dy"].toDouble());
             e.color = QColor(eo["color"].toString("#ff000000"));
