@@ -303,6 +303,124 @@ int ScriptPalette::add(QString const& name, QString const& value)
     return -1;
 }
 
+// ---- colouring ----------------------------------------------------------------------------
+
+namespace {
+// One piece of a line: where it starts, how long it is, what it is.
+struct Piece {
+    int start;
+    int length;
+    char const* kind;
+};
+
+// The pieces of a line that are coloured; `comment` says whether the line starts inside a /* comment, and is left
+// saying whether it ends inside one.
+QVector<Piece> pieces(QString const& line, bool& comment)
+{
+    static QStringList const keywords = {
+        QStringLiteral("var"), QStringLiteral("let"), QStringLiteral("const"), QStringLiteral("function"), QStringLiteral("return"),
+        QStringLiteral("if"), QStringLiteral("else"), QStringLiteral("for"), QStringLiteral("while"), QStringLiteral("do"),
+        QStringLiteral("break"), QStringLiteral("continue"), QStringLiteral("switch"), QStringLiteral("case"), QStringLiteral("default"),
+        QStringLiteral("new"), QStringLiteral("true"), QStringLiteral("false"), QStringLiteral("null"), QStringLiteral("undefined"),
+        QStringLiteral("typeof"), QStringLiteral("in"), QStringLiteral("of"), QStringLiteral("this"), QStringLiteral("try"),
+        QStringLiteral("catch"), QStringLiteral("finally"), QStringLiteral("throw")};
+    static QStringList const eclipse = {QStringLiteral("scene"), QStringLiteral("frame"), QStringLiteral("layers"),
+                                        QStringLiteral("palette"), QStringLiteral("log"), QStringLiteral("print")};
+    QVector<Piece> out;
+    int i = 0;
+    int const n = int(line.size());
+    while (i < n) {
+        if (comment) {
+            int const end = int(line.indexOf(QStringLiteral("*/"), i));
+            int const stop = end < 0 ? n : end + 2;
+            out.push_back({i, stop - i, "comment"});
+            comment = end < 0;
+            i = stop;
+            continue;
+        }
+        QChar const c = line[i];
+        if (c == QLatin1Char('/') && i + 1 < n && line[i + 1] == QLatin1Char('/')) {
+            out.push_back({i, n - i, "comment"});
+            break;
+        }
+        if (c == QLatin1Char('/') && i + 1 < n && line[i + 1] == QLatin1Char('*')) {
+            comment = true;
+            int const end = int(line.indexOf(QStringLiteral("*/"), i + 2));
+            int const stop = end < 0 ? n : end + 2;
+            out.push_back({i, stop - i, "comment"});
+            comment = end < 0;
+            i = stop;
+            continue;
+        }
+        if (c == QLatin1Char('"') || c == QLatin1Char('\'') || c == QLatin1Char('`')) {
+            int j = i + 1;
+            while (j < n && line[j] != c)
+                j += line[j] == QLatin1Char('\\') ? 2 : 1;
+            int const stop = std::min(n, j + 1);
+            out.push_back({i, stop - i, "string"});
+            i = stop;
+            continue;
+        }
+        if (c.isDigit()) {
+            int j = i;
+            while (j < n && (line[j].isLetterOrNumber() || line[j] == QLatin1Char('.')))
+                ++j;
+            out.push_back({i, j - i, "number"});
+            i = j;
+            continue;
+        }
+        if (c.isLetter() || c == QLatin1Char('_') || c == QLatin1Char('$')) {
+            int j = i;
+            while (j < n && (line[j].isLetterOrNumber() || line[j] == QLatin1Char('_') || line[j] == QLatin1Char('$')))
+                ++j;
+            QString const word = line.mid(i, j - i);
+            bool const member = i > 0 && line[i - 1] == QLatin1Char('.');
+            if (keywords.contains(word))
+                out.push_back({i, j - i, "keyword"});
+            else if (!member && eclipse.contains(word))
+                out.push_back({i, j - i, "eclipse"});
+            i = j;
+            continue;
+        }
+        ++i;
+    }
+    return out;
+}
+}
+
+ScriptHighlighter::ScriptHighlighter(QTextDocument* document) : QSyntaxHighlighter(document) {}
+
+QString ScriptHighlighter::kindAt(QString const& line, int position, bool inComment)
+{
+    for (Piece const& p : pieces(line, inComment))
+        if (position >= p.start && position < p.start + p.length)
+            return QLatin1String(p.kind);
+    return QString();
+}
+
+void ScriptHighlighter::highlightBlock(QString const& text)
+{
+    bool comment = previousBlockState() == 1;
+    auto format = [](QColor colour, bool bold = false, bool italic = false) {
+        QTextCharFormat f;
+        f.setForeground(colour);
+        if (bold)
+            f.setFontWeight(QFont::Bold);
+        f.setFontItalic(italic);
+        return f;
+    };
+    static QTextCharFormat const keyword = format(QColor(86, 156, 214), true);
+    static QTextCharFormat const eclipse = format(QColor(78, 201, 176));
+    static QTextCharFormat const number = format(QColor(181, 206, 168));
+    static QTextCharFormat const string = format(QColor(214, 157, 133));
+    static QTextCharFormat const remark = format(QColor(106, 153, 85), false, true);
+    for (Piece const& p : pieces(text, comment)) {
+        QByteArray const kind(p.kind);
+        setFormat(p.start, p.length, kind == "keyword" ? keyword : kind == "eclipse" ? eclipse : kind == "number" ? number : kind == "string" ? string : remark);
+    }
+    setCurrentBlockState(comment ? 1 : 0);
+}
+
 // ---- the view -----------------------------------------------------------------------------
 
 QString ScriptView::defaultFolder()
@@ -319,6 +437,7 @@ ScriptView::ScriptView(Document* document, Timeline* timeline, QWidget* parent)
     m_text->setObjectName(QStringLiteral("ScriptText"));
     m_text->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
     m_text->setLineWrapMode(QPlainTextEdit::NoWrap);
+    new ScriptHighlighter(m_text->document());
     m_text->setTabStopDistance(m_text->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 4);
     m_text->setPlaceholderText(tr("// A script.  For instance:\nfor (var i = 0; i < layers.count; ++i)\n    log(i + \": \" + layers.name(i) + \" (\" + layers.kind(i) + \")\");"));
     m_output = new QPlainTextEdit(this);

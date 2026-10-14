@@ -20,6 +20,7 @@
 
 #include <QJSValue>
 #include <QKeySequence>
+#include <QSyntaxHighlighter>
 #include <QObject>
 #include <QWidget>
 
@@ -121,6 +122,20 @@ public:
 
 private:
     Document* m_document;
+};
+
+// Colours a script as it is written: words of the language, the names Eclipse gives a script, numbers, strings and comments.
+class ECLIPSE_UI_API ScriptHighlighter : public QSyntaxHighlighter {
+    Q_OBJECT
+
+public:
+    explicit ScriptHighlighter(QTextDocument* document);
+    // What kind of thing the text at `position` of a line is coloured as: "keyword", "eclipse", "number", "string",
+    // "comment" or "" (plain) - for the tests.
+    static QString kindAt(QString const& line, int position, bool inComment = false);
+
+protected:
+    void highlightBlock(QString const& text) override;
 };
 
 // Takes what a script logs.
