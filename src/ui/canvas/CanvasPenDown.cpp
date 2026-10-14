@@ -331,7 +331,13 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
                 m_drag = hasSelection() ? DragMove : DragNone;      // pressed anywhere, it all moves
             } else if (hasSelection() && !shift && m_dragBounds.contains(p)) {
                 m_drag = DragMove;
-            } else if (m_tool != Cutter && selectAt(p, shift)) {
+            } else if (int const piece = m_tool == Select && bitmapNow() ? liftedPieceAt(p) : -1; piece >= 0) {
+                // On a bitmap layer: a piece of its pixels cut loose before is picked up again (the rest of the pixels
+                // are not taken whole: a drag there picks pixels out instead).
+                setSelection({}, {}, {piece});
+                m_dragBounds = selectionBounds();
+                m_drag = DragMove;
+            } else if (m_tool != Cutter && !(m_tool == Select && bitmapNow()) && selectAt(p, shift)) {
                 m_dragBounds = selectionBounds();
                 m_drag = shift || !hasSelection() ? DragNone : DragMove;
             } else {

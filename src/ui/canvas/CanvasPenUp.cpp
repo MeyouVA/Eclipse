@@ -465,7 +465,8 @@ void Canvas::penUp()
         m_drag = DragNone;
         QRectF const rect = QRectF(m_dragStart, m_dragNow).normalized();
         // A click without movement on empty space just clears the selection.
-        if (m_tool == Cutter) {
+        if (m_tool == Cutter || (m_tool == Select && bitmapNow())) {
+            // (The Select tool on a bitmap layer picks pixels: those in the shape are cut loose, to be moved.)
             QPolygonF const shape = m_dragLasso ? m_lassoPath : QPolygonF(rect);
             m_lassoPath.clear();
             if (shape.size() >= 3 && (shape.boundingRect().width() * m_zoom > 2 || shape.boundingRect().height() * m_zoom > 2))

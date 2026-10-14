@@ -797,6 +797,9 @@ private:
     // On a bitmap layer: the pixels joined to the one clicked that are near enough its colour take the colour in hand
     // (or, `clear`, are cleared).  False when there was nothing to change.
     bool fillBitmapAt(QPointF p, bool clear);
+    // On a bitmap layer: a piece of its pixels cut loose (with the Cutter, or picked with the Select tool) that has a
+    // pixel at `p` (in the coordinates of the drawing); its place among the pictures, or -1.
+    int liftedPieceAt(QPointF p) const;
     QPointer<Canvas> m_leader;     // the view whose tool settings this one follows (none: its own)
     int m_bitmapHardness = 100, m_bitmapFlow = 100;
     bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept

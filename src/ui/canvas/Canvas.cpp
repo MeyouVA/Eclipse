@@ -348,18 +348,60 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
     if (pixels.image.isNull() || !pixels.placement.isInvertible())
         return;
     QImage image = pixels.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    // Pieces of the pixels cut loose (and perhaps moved) go back into them first, where they now lie.
+    QVector<int> pieces;
+    for (int i = at + 1; i < art.pictures.size(); ++i)
+        if (art.pictures[i].painted && !art.pictures[i].image.isNull())
+            pieces.push_back(i);
+    if (!pieces.isEmpty()) {
+        QPainter painter(&image);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        for (int i : std::as_const(pieces)) {
+            painter.setTransform(art.pictures[i].placement * pixels.placement.inverted());
+            painter.drawImage(QPointF(0, 0), art.pictures[i].image);
+        }
+    }
     {
         QPainter painter(&image);
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setTransform(pixels.placement.inverted());
         paint(painter);
     }
-    if (m_bitmapUnchanged) {
+    if (m_bitmapUnchanged && pieces.isEmpty()) {
         m_bitmapUnchanged = false;
         return;
     }
-    pixels.image = image;
+    m_bitmapUnchanged = false;
+    for (int k = int(pieces.size()) - 1; k >= 0; --k)
+        art.pictures.removeAt(pieces[k]);
+    if (!pieces.isEmpty())
+        clearSelection();
+    Picture& merged = art.pictures[at];
+    merged.image = image;
     m_document->setDrawing(m_layer, m_frame, art, text);
+}
+
+int Canvas::liftedPieceAt(QPointF p) const
+{
+    Drawing const* const d = currentDrawing();
+    if (!d)
+        return -1;
+    int first = -1;
+    for (int i = 0; i < d->pictures.size(); ++i) {
+        Picture const& piece = d->pictures[i];
+        if (!piece.painted)
+            continue;
+        if (first < 0) {
+            first = i;      // the pixels themselves, not a piece of them
+            continue;
+        }
+        if (!piece.image.isNull() && piece.placement.isInvertible()) {
+            QPoint const at = piece.placement.inverted().map(p).toPoint();
+            if (piece.image.rect().contains(at) && qAlpha(piece.image.pixel(at)) > 0)
+                return i;
+        }
+    }
+    return -1;
 }
 
 bool Canvas::fillBitmapAt(QPointF p, bool clear)
