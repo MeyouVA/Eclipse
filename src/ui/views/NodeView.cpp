@@ -90,8 +90,86 @@ void NodeView::setCurrentCell(int layer, int)
 {
     if (layer != m_layer) {
         m_layer = layer;
+        // A layer chosen elsewhere that is not on show: the view goes to the level it is on.
+        Scene const& scene = m_document->scene();
+        if (layer >= 0 && layer < scene.layers.size() && layer != enteredGroup() && !nodeShown(layer)) {
+            int group = -1;
+            for (int up = scene.parentIndex(layer), guard = 0; up >= 0 && guard < 256 && group < 0; up = scene.parentIndex(up), ++guard)
+                if (scene.layers[up].kind == Layer::Group)
+                    group = up;
+            m_groupId = group >= 0 ? scene.layers[group].id : 0;
+            m_centred = false;
+        }
         update();
     }
+}
+
+int NodeView::enteredGroup() const
+{
+    Scene const& scene = m_document->scene();
+    int const at = m_groupId != 0 ? scene.layerIndex(m_groupId) : -1;
+    return at >= 0 && scene.layers[at].kind == Layer::Group ? at : -1;
+}
+
+bool NodeView::nodeShown(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size())
+        return false;
+    // The nearest group it is in is the one the view is inside (or it is in none, and the view is at the top).
+    int group = -1;
+    for (int up = scene.parentIndex(layer), guard = 0; up >= 0 && guard < 256 && group < 0; up = scene.parentIndex(up), ++guard)
+        if (scene.layers[up].kind == Layer::Group)
+            group = up;
+    return group == enteredGroup();
+}
+
+void NodeView::enterGroup(int layer)
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size() || scene.layers[layer].kind != Layer::Group)
+        return;
+    m_groupId = scene.layers[layer].id;
+    m_cable = -1;
+    onActionResetView();
+}
+
+void NodeView::leaveGroup()
+{
+    Scene const& scene = m_document->scene();
+    int const inside = enteredGroup();
+    if (inside < 0) {
+        m_groupId = 0;
+        return;
+    }
+    int group = -1;
+    for (int up = scene.parentIndex(inside), guard = 0; up >= 0 && guard < 256 && group < 0; up = scene.parentIndex(up), ++guard)
+        if (scene.layers[up].kind == Layer::Group)
+            group = up;
+    m_groupId = group >= 0 ? scene.layers[group].id : 0;
+    m_cable = -1;
+    onActionResetView();
+}
+
+void NodeView::onActionEnterGroup()
+{
+    enterGroup(m_layer);
+}
+
+QString NodeView::pathText() const
+{
+    Scene const& scene = m_document->scene();
+    QStringList names;
+    for (int at = enteredGroup(), guard = 0; at >= 0 && guard < 256; at = scene.parentIndex(at), ++guard)
+        if (scene.layers[at].kind == Layer::Group)
+            names.prepend(scene.layers[at].name);
+    return names.isEmpty() ? QString() : tr("Top") + QStringLiteral("  /  ") + names.join(QStringLiteral("  /  "));
+}
+
+QRectF NodeView::pathRect() const
+{
+    QString const text = pathText();
+    return text.isEmpty() ? QRectF() : QRectF(6.0, 6.0, fontMetrics().horizontalAdvance(text) + 34.0, 22.0);
 }
 
 // ---- layout -------------------------------------------------------------------------------
@@ -195,7 +273,7 @@ int NodeView::nodeAt(QPointF widgetPos) const
 {
     QVector<QPointF> const p = positions();
     for (int l = int(p.size()) - 1; l >= 0; --l)
-        if (QRectF(toWidget(p[l]), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom)).contains(widgetPos))
+        if (nodeShown(l) && QRectF(toWidget(p[l]), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom)).contains(widgetPos))
             return l;
     return -1;
 }
@@ -205,7 +283,7 @@ int NodeView::cableAt(QPointF widgetPos) const
     Scene const& scene = m_document->scene();
     for (int l = 0; l < scene.layers.size(); ++l) {
         int const parent = scene.parentIndex(l);
-        if (parent < 0)
+        if (parent < 0 || !nodeShown(l) || !nodeShown(parent))
             continue;
         QRectF const r = nodeRect(l);
         for (QPointF const& q : cablePoints(outPort(parent), QPointF(r.center().x(), r.top())))
@@ -219,8 +297,9 @@ QRectF NodeView::graphBounds() const
 {
     QVector<QPointF> const p = positions();
     QRectF all(compositePos(p), QSizeF(kNodeWidth, kNodeHeight + 70.0));
-    for (QPointF const& q : p)
-        all = all.united(QRectF(q, QSizeF(kNodeWidth, kNodeHeight)));
+    for (int l = 0; l < p.size(); ++l)
+        if (nodeShown(l))
+            all = all.united(QRectF(p[l], QSizeF(kNodeWidth, kNodeHeight)));
     return all;
 }
 
@@ -291,8 +370,20 @@ void NodeView::paintEvent(QPaintEvent*)
 
     // ---- cables: drawings into the composite, the composite into the display ----
     QVector<int> drawings;
-    for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
+    // (A group stands for what is in it: its picture goes into the composite as one.)
+    auto holdsPicture = [&scene](int l) {
         if (scene.layers[l].holdsDrawings())
+            return true;
+        if (scene.layers[l].kind != Layer::Group)
+            return false;
+        for (int c = 0; c < scene.layers.size(); ++c)
+            for (int up = scene.parentIndex(c), guard = 0; scene.layers[c].holdsDrawings() && up >= 0 && guard < 256; up = scene.parentIndex(up), ++guard)
+                if (up == l)
+                    return true;
+        return false;
+    };
+    for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
+        if (nodeShown(l) && holdsPicture(l))
             drawings.push_back(l);
     // The front drawing takes the leftmost port, as it stands leftmost by default.
     for (int i = 0; i < drawings.size(); ++i) {
@@ -310,7 +401,7 @@ void NodeView::paintEvent(QPaintEvent*)
             p.drawLine(from, QPointF(er.center().x(), er.top()));
             // The matte of a cutter comes in from the side.
             int const matte = layer.effects[e].type == Effect::Cutter ? scene.layerIndex(layer.effects[e].matte) : -1;
-            if (matte >= 0) {
+            if (matte >= 0 && nodeShown(matte)) {
                 QRectF const mr = rectOf(pos[matte]);
                 p.setPen(QPen(QColor(200, 120, 220), 1.4, Qt::DashLine));
                 p.drawLine(QPointF(mr.center().x(), mr.bottom()), QPointF(er.left(), er.center().y()));
@@ -323,7 +414,7 @@ void NodeView::paintEvent(QPaintEvent*)
     // ---- cables: what a layer is attached to ----
     for (int l = 0; l < scene.layers.size(); ++l) {
         int const parent = scene.parentIndex(l);
-        if (parent < 0)
+        if (parent < 0 || !nodeShown(l) || !nodeShown(parent))
             continue;
         QRectF const from = rectOf(pos[parent]), to = rectOf(pos[l]);
         cable(QPointF(from.center().x(), from.bottom()), QPointF(to.center().x(), to.top()), l == m_cable ? picked : pegCable, l == m_cable ? 2.6 : 1.8);
@@ -344,11 +435,21 @@ void NodeView::paintEvent(QPaintEvent*)
         p.drawText(text, Qt::AlignVCenter | Qt::AlignLeft, p.fontMetrics().elidedText(name, Qt::ElideRight, int(text.width())));
     };
     for (int l = 0; l < scene.layers.size(); ++l) {
+        if (!nodeShown(l))
+            continue;
         Layer const& layer = scene.layers[l];
         QRectF const r = rectOf(pos[l]);
         QColor const color = layer.kind == Layer::Peg ? QColor(150, 108, 30) : layer.kind == Layer::Camera ? QColor(60, 96, 140)
-                             : layer.kind == Layer::Sound ? QColor(52, 120, 84) : QColor(72, 92, 128);
+                             : layer.kind == Layer::Sound ? QColor(52, 120, 84) : layer.kind == Layer::Group ? QColor(40, 118, 122) : QColor(72, 92, 128);
         node(r, layer.name, color, l == m_layer, !layer.visible);
+        if (layer.kind == Layer::Group) {
+            // A group can be gone into: a small arrow at its right end says so.
+            QPointF const tip(r.right() - 10 * m_zoom, r.center().y() + 4 * m_zoom);
+            p.setPen(QPen(QColor(235, 235, 235), 1.4));
+            p.drawLine(tip + QPointF(0, -8 * m_zoom), tip);
+            p.drawLine(tip + QPointF(-3.5 * m_zoom, -3.5 * m_zoom), tip);
+            p.drawLine(tip + QPointF(3.5 * m_zoom, -3.5 * m_zoom), tip);
+        }
         // The square on the left switches the layer on and off.
         QRectF const eye(r.left() + 6 * m_zoom, r.center().y() - 5 * m_zoom, 10 * m_zoom, 10 * m_zoom);
         p.setPen(QPen(QColor(235, 235, 235), 1));
@@ -361,6 +462,8 @@ void NodeView::paintEvent(QPaintEvent*)
         p.drawEllipse(QPointF(r.center().x(), r.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
     }
     for (int l = 0; l < scene.layers.size(); ++l) {
+        if (!nodeShown(l))
+            continue;
         Layer const& layer = scene.layers[l];
         for (int e = 0; e < layer.effects.size(); ++e) {
             QString const text = Effects::name(layer.effects[e], scene).section(QStringLiteral("  "), 0, 0);
@@ -369,6 +472,16 @@ void NodeView::paintEvent(QPaintEvent*)
     }
     node(composite, tr("Composite"), QColor(96, 76, 128), false, false);
     node(display, tr("Display"), QColor(70, 72, 78), false, false);
+    // Inside a group: the way here along the top; a click on it goes out one level.
+    if (QRectF const path = pathRect(); !path.isNull()) {
+        p.setFont(this->font());
+        p.setPen(QPen(QColor(24, 24, 24), 1));
+        p.setBrush(QColor(40, 118, 122));
+        p.drawRoundedRect(path, 4, 4);
+        p.setPen(QColor(245, 245, 245));
+        p.drawText(path.adjusted(8, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft, QStringLiteral("\u2191  ") + pathText());
+        p.setFont(font);
+    }
     // The map in the corner: every node as a small block, and what the view shows as a frame.
     if (width() > 320 && height() > 200) {
         QRectF const map = navigatorRect();
@@ -380,6 +493,8 @@ void NodeView::paintEvent(QPaintEvent*)
         double const k = std::min(inner.width() / std::max(all.width(), 1.0), inner.height() / std::max(all.height(), 1.0));
         p.setPen(Qt::NoPen);
         for (int l = 0; l < scene.layers.size(); ++l) {
+            if (!nodeShown(l))
+                continue;
             p.setBrush(l == m_layer ? QColor(72, 190, 200) : QColor(150, 152, 158));
             p.drawRect(QRectF(navigatorPoint(pos[l]), QSizeF(std::max(3.0, kNodeWidth * k), std::max(2.0, kNodeHeight * k))));
         }
@@ -396,6 +511,10 @@ void NodeView::paintEvent(QPaintEvent*)
 
 void NodeView::mousePressEvent(QMouseEvent* event)
 {
+    if (event->button() == Qt::LeftButton && pathRect().contains(event->position())) {
+        leaveGroup();
+        return;
+    }
     if (event->button() == Qt::LeftButton && width() > 320 && height() > 200 && navigatorRect().contains(event->position())) {
         // On the map: that part of the graph comes to the middle of the view.
         QRectF const map = navigatorRect().adjusted(5, 5, -5, -5), all = graphBounds();
@@ -485,7 +604,10 @@ void NodeView::mouseReleaseEvent(QMouseEvent* event)
 void NodeView::mouseDoubleClickEvent(QMouseEvent* event)
 {
     int const hit = nodeAt(event->position());
-    if (hit >= 0)
+    // A group is gone into; any other node is renamed.
+    if (hit >= 0 && m_document->scene().layers[hit].kind == Layer::Group)
+        enterGroup(hit);
+    else if (hit >= 0)
         emit renameRequested(hit);
 }
 

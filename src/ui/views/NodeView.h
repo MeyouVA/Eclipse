@@ -33,6 +33,16 @@ public:
     // The small map of the whole graph in the corner of the view: where it is, and where a place of
     // the graph is on it.  A click on the map brings that part of the graph to the middle of the view.
     QRectF navigatorRect() const;
+    // Groups: at the top a group is one node and what is in it is not shown; gone into, the view shows what
+    // is in it and nothing else.  The group the view is inside (its place among the layers), or -1 at the top.
+    int enteredGroup() const;
+    void enterGroup(int layer);
+    void leaveGroup();
+    // Whether the node of a layer is on show at the level the view is at.
+    bool nodeShown(int layer) const;
+    // The path along the top of the view while inside a group; a click on it goes out one level.
+    QRectF pathRect() const;
+    QString pathText() const;
     QPointF navigatorPoint(QPointF graph) const;
     // Where a place of the view is in the graph.
     QPointF graphPoint(QPointF widgetPos) const { return toGraph(widgetPos); }
@@ -46,6 +56,9 @@ public slots:
     // current layer.
     void deleteSelection();
     void onActionResetView();
+    // The group that is the current layer is gone into; and out again, one level.
+    void onActionEnterGroup();
+    void onActionExitGroup() { leaveGroup(); }
     // View > Zoom In and the rest, with this view in use.
     void onActionZoomIn() { zoomBy(1.25); }
     void onActionZoomOut() { zoomBy(0.8); }
@@ -92,6 +105,7 @@ private:
     Document* m_document;
     QLineEdit* m_search = nullptr;     // along the bottom: type a name, Enter goes to the next node of it
     int m_layer = 0;
+    int m_groupId = 0;      // the id of the group the view is inside; 0 at the top
     double m_zoom = 1.0;
     QPointF m_pan = QPointF(40, 150);
     bool m_centred = false;   // the graph is brought into view the first time it is shown
