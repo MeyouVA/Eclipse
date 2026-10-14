@@ -55,6 +55,13 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Bone"), "InsertBone", QT_TR_NOOP("A peg with a length; what hangs on it turns with it"), QT_TR_NOOP("Move")},
         {QT_TR_NOOP("Quadmap"), "InsertQuadmap", QT_TR_NOOP("Pulls what is attached to it by four corners"), QT_TR_NOOP("Deformation")},
         {QT_TR_NOOP("Sound"), "ImportSound", QT_TR_NOOP("A sound file, played from a frame on"), QT_TR_NOOP("Sound")},
+        {QT_TR_NOOP("Parent Peg"), "InsertParentPeg", QT_TR_NOOP("A peg put over the current layer, which then hangs from it"), QT_TR_NOOP("Move")},
+        {QT_TR_NOOP("Clone"), "CloneLayer", QT_TR_NOOP("Shows the current layer's drawings, with timing of its own"), QT_TR_NOOP("Image")},
+        {QT_TR_NOOP("Clone with Timing"), "CloneLayerTiming", QT_TR_NOOP("Shows the current layer's drawings with its timing too"), QT_TR_NOOP("Image")},
+        {QT_TR_NOOP("Synced Drawing"), "AddSyncedLayer", QT_TR_NOOP("A drawing layer of its own that keeps the current layer's timing"), QT_TR_NOOP("Image")},
+        {QT_TR_NOOP("Symbol"), "CreateEmptySymbol", QT_TR_NOOP("A symbol: layers kept together, shown by one layer"), QT_TR_NOOP("Group")},
+        {QT_TR_NOOP("Envelope Deformer"), "CreateEnvelope", QT_TR_NOOP("An outline round what is selected that pulls the artwork about"), QT_TR_NOOP("Deformation")},
+        {QT_TR_NOOP("Write"), "WriteOutputs", QT_TR_NOOP("A render kept with the scene: images or a movie, made with Render Write Nodes"), QT_TR_NOOP("Output")},
     };
     static Entry const kEffects[] = {
         {QT_TR_NOOP("Blur"), "effect:0", QT_TR_NOOP("Softens the layer"), QT_TR_NOOP("Filter")},
@@ -92,7 +99,7 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
     // The kinds there are, down the left: one chosen shows only what is of that kind.
     m_categories = new QListWidget(this);
     m_categories->setObjectName(QStringLiteral("NodeLibraryCategories"));
-    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound")});
+    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle")});
     m_categories->setCurrentRow(0);
     m_categories->setFixedWidth(104);
     QHBoxLayout* const lists = new QHBoxLayout;
