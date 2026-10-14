@@ -190,6 +190,12 @@
    <item id="SceneSettings" icon="misc/scenesettings" text="Scene &amp;Settings..." responder="window" slot="onActionSceneSettings()"/>
    <separator/>
    <item id="CheckFiles" icon="misc/checkfiles" text="&amp;Check Files..." responder="window" slot="onActionCheckFiles()"/>
+   <menu id="SceneRender" text="&amp;Render">
+    <item id="RenderPreview" icon="misc/renderpreview" text="Render &amp;Preview" responder="window" slot="onActionRenderPreview()"/>
+    <item id="AutoRender" icon="misc/autorender" text="&amp;Auto Render" checkable="true" responder="window" slot="onActionAutoRender(bool)"/>
+    <item id="RecalculateAll" icon="misc/recalculate" text="Recalculate A&amp;ll" responder="window" slot="onActionRecalculateAll()"/>
+    <item id="CancelPreviewRender" icon="misc/cancelrender" text="&amp;Cancel Preview Render" responder="window" slot="onActionCancelPreviewRender()"/>
+   </menu>
    <item id="ElementManager" icon="misc/elements" text="&amp;Element Manager..." responder="window" slot="onActionElementManager()"/>
   </menu>
 

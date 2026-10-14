@@ -200,6 +200,10 @@ public slots:
     void onActionCloneLayer();
     void onActionCloneLayerTiming();
     void onActionInsertControlPoint();
+    void onActionRenderPreview();
+    void onActionAutoRender(bool on);
+    void onActionRecalculateAll();
+    void onActionCancelPreviewRender();
     void onActionMakeCloneIndependent();
     void onActionAddSyncedLayer();
     void onActionSyncLayerWith();

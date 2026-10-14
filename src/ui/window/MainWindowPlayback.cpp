@@ -44,7 +44,7 @@ void MainWindow::onActionRenderAndPlay()
     if (m_playTimer.isActive())
         stop();
     PreviewManagerView* const preview = findChild<PreviewManagerView*>();
-    if (preview && preview->render() > 0)
+    if (preview && preview->render() >= 0 && m_canvas->previewFrames() > 0)
         onActionTogglePlayback();
 }
 
@@ -299,4 +299,33 @@ void MainWindow::shuttleStep()
     int const to = int(std::lround(m_shuttleAt));
     if (to != frame())
         m_timeline->setCurrentFrame(to);
+}
+
+// ---- Scene > Render: the preview of the Preview Manager -------------------------------------
+
+void MainWindow::onActionRenderPreview()
+{
+    if (PreviewManagerView* const preview = findChild<PreviewManagerView*>()) {
+        int const made = preview->render();
+        if (made >= 0)
+            statusBar()->showMessage(tr("Preview rendered: %n frame(s) drawn again, the rest unchanged.", nullptr, made), 5000);
+    }
+}
+
+void MainWindow::onActionAutoRender(bool on)
+{
+    if (PreviewManagerView* const preview = findChild<PreviewManagerView*>())
+        preview->setAutoRender(on);
+}
+
+void MainWindow::onActionRecalculateAll()
+{
+    if (PreviewManagerView* const preview = findChild<PreviewManagerView*>())
+        preview->render(true);
+}
+
+void MainWindow::onActionCancelPreviewRender()
+{
+    if (PreviewManagerView* const preview = findChild<PreviewManagerView*>())
+        preview->cancel();
 }
