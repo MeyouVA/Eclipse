@@ -822,8 +822,12 @@ public:
     // The same piece put onto layers the scene has already: each layer of the piece goes to the layer of
     // the same name and kind, its drawings and keyframes taking the place of what that layer had over
     // those frames.  -1, and nothing done, unless every layer of the piece has such a layer; else the
-    // index of the first of them.
-    int pasteOnto(Scene const& piece, int frame);
+    // index of the first of them.  Without `drawings` the layers keep their exposure; without `keys`, their keyframes.
+    int pasteOnto(Scene const& piece, int frame, bool drawings = true, bool keys = true);
+    // A piece made ready to be pasted the way Paste Special asks: without `drawings` its layers show nothing,
+    // without `keys` each keeps the pose of its first frame, held; with `room` > 0 what runs past that many
+    // frames is left out.
+    static Scene pasteReady(Scene piece, bool drawings, bool keys, int room);
 
     // `folder` is where the scene file is: the files the scene uses (linked pictures,
     // sounds) are then also written by their path from there, and looked for there when

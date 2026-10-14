@@ -84,7 +84,7 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
     return piece;
 }
 
-int Scene::pasteOnto(Scene const& piece, int frame)
+int Scene::pasteOnto(Scene const& piece, int frame, bool drawings, bool keys)
 {
     if (piece.layers.isEmpty() || frame < 0)
         return -1;
@@ -130,7 +130,7 @@ int Scene::pasteOnto(Scene const& piece, int frame)
     for (int i = 0; i < piece.layers.size(); ++i) {
         Layer const& theirs = piece.layers[i];
         Layer& mine = layers[target[i]];
-        if (mine.holdsDrawings()) {
+        if (drawings && mine.holdsDrawings()) {
             // Each drawing of theirs that is shown comes over once; the frames show what theirs showed.
             QHash<int, int> brought;
             for (int f = 0; f < count && f < theirs.cells.size() && frame + f < mine.cells.size(); ++f) {
@@ -157,6 +157,8 @@ int Scene::pasteOnto(Scene const& piece, int frame)
             mine.compact();
         }
         // The keyframes over those frames are theirs.
+        if (!keys)
+            continue;
         for (int k = int(mine.keys.size()) - 1; k >= 0; --k)
             if (mine.keys[k].frame >= frame && mine.keys[k].frame < frame + count)
                 mine.keys.removeAt(k);
@@ -165,6 +167,22 @@ int Scene::pasteOnto(Scene const& piece, int frame)
                 mine.setKey(frame + key.frame, key.pose);
     }
     return *std::min_element(target.begin(), target.end());
+}
+
+Scene Scene::pasteReady(Scene piece, bool drawings, bool keys, int room)
+{
+    if (room > 0 && piece.frameCount() > room)
+        piece.setFrameCount(room);
+    for (Layer& l : piece.layers) {
+        if (!keys && !l.keys.isEmpty()) {
+            Pose const first = l.poseAt(0);
+            l.keys.clear();
+            l.setKey(0, first);
+        }
+        if (!drawings && l.holdsDrawings() && !l.showsSymbol())
+            l.cells.fill(Layer::kNoDrawing);
+    }
+    return piece;
 }
 
 int Scene::insert(Scene const& piece, int frame)

@@ -177,6 +177,9 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     QPushButton* const asSymbol = new QPushButton(tr("As Symbol"), this);
     asSymbol->setObjectName(QStringLiteral("LibraryInsertSymbol"));
     asSymbol->setToolTip(tr("Puts the template in as a symbol: its layers kept together, shown by one layer."));
+    QPushButton* const special = new QPushButton(tr("Paste Special..."), this);
+    special->setObjectName(QStringLiteral("LibraryPasteSpecial"));
+    special->setToolTip(tr("Puts the template in as new layers or onto the layers of the same names, with or without its drawings and keyframes."));
     QPushButton* const rename = new QPushButton(tr("Rename..."), this);
     rename->setObjectName(QStringLiteral("LibraryRename"));
     QPushButton* const remove = new QPushButton(tr("Delete"), this);
@@ -206,6 +209,7 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     buttons->addStretch(1);
     buttons->addWidget(insert);
     buttons->addWidget(asSymbol);
+    buttons->addWidget(special);
     buttons->addWidget(rename);
     buttons->addWidget(remove);
     QVBoxLayout* const layout = new QVBoxLayout(this);
@@ -231,6 +235,10 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     connect(asSymbol, &QPushButton::clicked, this, [this] {
         if (currentTemplate().endsWith(QLatin1Char('.') + kSuffix))
             emit insertAsSymbolRequested(currentTemplate());
+    });
+    connect(special, &QPushButton::clicked, this, [this] {
+        if (currentTemplate().endsWith(QLatin1Char('.') + kSuffix))
+            emit pasteSpecialRequested(currentTemplate());
     });
     connect(remove, &QPushButton::clicked, this, [this] { deleteCurrent(true); });
     connect(rename, &QPushButton::clicked, this, [this] {

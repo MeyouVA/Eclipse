@@ -71,6 +71,8 @@ signals:
     void insertRequested(QString const& path);
     // "As Symbol" pressed: the template is to come in as a symbol, on one layer.
     void insertAsSymbolRequested(QString const& path);
+    // "Paste Special..." pressed: the template is to come in the way a window asks.
+    void pasteSpecialRequested(QString const& path);
     // "New Template from Selection" pressed.
     void createRequested();
 

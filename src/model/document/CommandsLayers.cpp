@@ -145,15 +145,15 @@ int Document::insertTemplate(Scene const& piece, int frame)
     return at;
 }
 
-int Document::pasteTemplateOnto(Scene const& piece, int frame)
+int Document::pasteTemplateOnto(Scene const& piece, int frame, bool drawings, bool keys)
 {
     if (piece.layers.isEmpty() || frame < 0)
         return -1;
     Scene trial = m_scene;
-    if (trial.pasteOnto(piece, frame) < 0)
+    if (trial.pasteOnto(piece, frame, drawings, keys) < 0)
         return -1;      // not every layer of it is here: nothing is done
     int at = -1;
-    apply(tr("Paste Template"), [&](Scene& s) { at = s.pasteOnto(piece, frame); });
+    apply(tr("Paste Template"), [&](Scene& s) { at = s.pasteOnto(piece, frame, drawings, keys); });
     return at;
 }
 

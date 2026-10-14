@@ -233,7 +233,7 @@ public:
     // `frame` on, as one undo step.  Returns the first of them, or -1.
     int insertTemplate(Scene const& piece, int frame);
     // The piece put onto the layers of the same names (Scene::pasteOnto); -1 when they are not all there.
-    int pasteTemplateOnto(Scene const& piece, int frame);
+    int pasteTemplateOnto(Scene const& piece, int frame, bool drawings = true, bool keys = true);
     // One drawing layer in the place of several: on each frame what they showed, where they
     // showed it (so the new layer needs no peg).  Returns its index; -1 with fewer than two
     // drawing layers.

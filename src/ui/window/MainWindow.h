@@ -100,6 +100,11 @@ public:
     int insertTemplate(QString const& path, int frame, QString* error);
     // The template put in as a symbol (its layers in the symbol, one layer showing it); that layer, or -1.
     int insertTemplateAsSymbol(QString const& path, int frame, QString* error);
+    // A template put in the way Paste Special asks: as new layers or onto the layers of the same names (`onto`), with or
+    // without its drawings and keyframes, and making the scene longer or not.  The first layer it went to, or -1.
+    int pasteTemplateSpecial(QString const& path, int frame, bool onto, bool drawings, bool keys, bool extend, QString* error);
+    // Library > Paste Special...: the window that asks how.
+    void onTemplatePasteSpecial(QString const& path);
     // Record and Play: the frames playing runs between, written as a small movie in the temporary folder.
     // The file, or nothing (with a message, unless it was stopped).
     QString recordForPlay(QString* error);

@@ -137,6 +137,7 @@ void MainWindow::createViews()
     m_library = new LibraryView(this);
     connect(m_library, &LibraryView::insertRequested, this, [this](QString const& path) { dropTemplate(path, frame()); });
     connect(m_library, &LibraryView::createRequested, this, &MainWindow::onActionCreateTemplate);
+    connect(m_library, &LibraryView::pasteSpecialRequested, this, &MainWindow::onTemplatePasteSpecial);
     connect(m_library, &LibraryView::insertAsSymbolRequested, this, [this](QString const& path) {
         QString error;
         if (insertTemplateAsSymbol(path, frame(), &error) < 0 && !error.isEmpty())

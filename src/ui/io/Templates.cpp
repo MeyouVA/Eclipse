@@ -13,6 +13,12 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QCheckBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QRadioButton>
+#include <QSettings>
+#include <QVBoxLayout>
 #include <QRegularExpression>
 
 #include "audio/sound/Sound.h"
@@ -81,6 +87,63 @@ int MainWindow::insertTemplateAsSymbol(QString const& path, int frame, QString* 
         updateActionStates();
     }
     return at;
+}
+
+int MainWindow::pasteTemplateSpecial(QString const& path, int frame, bool onto, bool drawings, bool keys, bool extend, QString* error)
+{
+    Scene loaded;
+    if (!Scene::load(path, loaded, error))
+        return -1;
+    int const start = std::clamp(frame, 0, m_document->scene().frameCount() - 1);
+    Scene const piece = Scene::pasteReady(loaded, drawings || onto, keys || onto, extend ? 0 : m_document->scene().frameCount() - start);
+    int const at = onto ? m_document->pasteTemplateOnto(piece, start, drawings, keys) : m_document->insertTemplate(piece, start);
+    if (at < 0) {
+        if (error)
+            *error = onto ? tr("The scene does not have a layer of the same name and kind for every layer of the template.")
+                          : tr("The template has nothing that can be put in this scene.");
+        return -1;
+    }
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, start);
+    return at;
+}
+
+void MainWindow::onTemplatePasteSpecial(QString const& path)
+{
+    QSettings s;
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("TemplatePasteSpecialDialog"));
+    dialog.setWindowTitle(tr("Paste Special: %1").arg(QFileInfo(path).completeBaseName()));
+    QRadioButton* const asNew = new QRadioButton(tr("As new layers"), &dialog);
+    asNew->setObjectName(QStringLiteral("TemplateAsNew"));
+    QRadioButton* const onto = new QRadioButton(tr("Onto the layers of the same names"), &dialog);
+    onto->setObjectName(QStringLiteral("TemplateOnto"));
+    (s.value(QStringLiteral("templatePaste/onto"), false).toBool() ? onto : asNew)->setChecked(true);
+    QCheckBox* const drawings = new QCheckBox(tr("Drawings (the exposure)"), &dialog);
+    drawings->setObjectName(QStringLiteral("TemplateDrawings"));
+    drawings->setChecked(s.value(QStringLiteral("templatePaste/drawings"), true).toBool());
+    QCheckBox* const keys = new QCheckBox(tr("Keyframes (without them a new layer holds its first pose)"), &dialog);
+    keys->setObjectName(QStringLiteral("TemplateKeyframes"));
+    keys->setChecked(s.value(QStringLiteral("templatePaste/keys"), true).toBool());
+    QCheckBox* const extend = new QCheckBox(tr("Make the scene longer when the template runs past its end"), &dialog);
+    extend->setObjectName(QStringLiteral("TemplateExtend"));
+    extend->setChecked(s.value(QStringLiteral("templatePaste/extend"), true).toBool());
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    for (QWidget* w : std::initializer_list<QWidget*>{asNew, onto, drawings, keys, extend})
+        layout->addWidget(w);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    s.setValue(QStringLiteral("templatePaste/onto"), onto->isChecked());
+    s.setValue(QStringLiteral("templatePaste/drawings"), drawings->isChecked());
+    s.setValue(QStringLiteral("templatePaste/keys"), keys->isChecked());
+    s.setValue(QStringLiteral("templatePaste/extend"), extend->isChecked());
+    QString error;
+    if (pasteTemplateSpecial(path, frame(), onto->isChecked(), drawings->isChecked(), keys->isChecked(), extend->isChecked(), &error) < 0)
+        QMessageBox::warning(this, tr("Eclipse"), tr("Could not paste %1:\n%2").arg(QFileInfo(path).completeBaseName(), error));
 }
 
 void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
