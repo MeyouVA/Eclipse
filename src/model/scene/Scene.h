@@ -574,6 +574,8 @@ struct Layer {
     // Clones: drawing layers of the same number here (0: none) are one set of drawings and one timing seen
     // twice - what is drawn or timed on one is so on the others; each has its own place, pegs and effects.
     int cloneGroup = 0;
+    // A clone that shares the drawings only: each layer of the group has a timing of its own.
+    bool cloneTiming = true;
     int hiddenSheets = 0;
     // A bitmap layer: what is drawn on its line art is painted in pixels, not kept as lines.
     bool bitmap = false;
@@ -858,7 +860,7 @@ public:
     // After a change: the clones of a layer whose drawings or timing it touched take them over.
     void followClones(Scene const& before);
     // A clone of the layer, over it; its place, or -1.  And a clone made a layer of its own again.
-    int addCloneLayer(int layer);
+    int addCloneLayer(int layer, bool timing = true);
     void makeCloneIndependent(int layer);
     void syncLayerWith(int layer, int other);
     // Makes a symbol of these layers and everything attached to them; one layer shows it in their place.

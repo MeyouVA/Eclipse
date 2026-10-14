@@ -399,6 +399,19 @@ void MainWindow::onActionSyncLayerWith()
 
 void MainWindow::onActionCloneLayer()
 {
+    // A drawing layer: a clone that shares its drawings and has a timing of its own, drawn on directly.
+    // (A layer that shows a symbol: another layer that shows the same symbol.)
+    Scene const& scene = m_document->scene();
+    if (layer() >= 0 && layer() < scene.layers.size() && scene.layers[layer()].holdsDrawings() && !scene.layers[layer()].showsSymbol()) {
+        int const at = m_document->addCloneLayer(layer(), false);
+        if (at >= 0) {
+            m_timeline->clearRange();
+            m_timeline->setCurrentCell(at, frame());
+            updateActionStates();
+            statusBar()->showMessage(tr("The two layers share their drawings: what is drawn on one is on the other. Each has a timing of its own."), 8000);
+        }
+        return;
+    }
     int const at = m_document->cloneLayer(layer());
     if (at < 0) {
         statusBar()->showMessage(tr("Select a drawing layer to clone."), 5000);

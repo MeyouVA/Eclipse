@@ -457,7 +457,8 @@ void Scene::followClones(Scene const& before)
         if (was >= 0 && before.layers[was].cloneGroup == layers[l].cloneGroup) {
             Layer const& old = before.layers[was];
             // (Drawings that were not touched are still the very ones the scene had before.)
-            changed = old.cells != layers[l].cells || old.drawings.size() != layers[l].drawings.size() || old.drawings.constData() != layers[l].drawings.constData();
+            bool const drawingsChanged = old.drawings.size() != layers[l].drawings.size() || old.drawings.constData() != layers[l].drawings.constData();
+            changed = drawingsChanged || (layers[l].cloneTiming && old.cells != layers[l].cells);
         }
         same[l] = !changed;
         if (changed && !touched.contains(layers[l].cloneGroup))
@@ -469,13 +470,21 @@ void Scene::followClones(Scene const& before)
         auto leader = touched.constFind(layers[l].cloneGroup);
         if (leader == touched.constEnd() || layers[*leader].cells.size() != layers[l].cells.size())
             continue;
+        if (!layers[*leader].cloneTiming) {
+            // The drawings only: every one of them is kept in the bank, so that the places the frames of
+            // each layer point to stay the same whatever the others show.
+            for (Drawing& d : layers[*leader].drawings)
+                d.pinned = true;
+            layers[l].drawings = layers[*leader].drawings;
+            continue;
+        }
         layers[l].drawings = layers[*leader].drawings;
         layers[l].cells = layers[*leader].cells;
         layers[l].keyExposures = layers[*leader].keyExposures;
     }
 }
 
-int Scene::addCloneLayer(int layer)
+int Scene::addCloneLayer(int layer, bool timing)
 {
     if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())
         return -1;
@@ -491,6 +500,13 @@ int Scene::addCloneLayer(int layer)
     layers[at].parent = parent;
     layers[at].parentBone = layers[from].parentBone;
     layers[at].cloneGroup = layers[from].cloneGroup;
+    // (A layer already a clone of the one kind stays it; a new group is of the kind asked for.)
+    if (layers[from].cloneGroup != 0 && std::count_if(layers.begin(), layers.end(), [&](Layer const& o) { return o.cloneGroup == layers[from].cloneGroup; }) == 2)
+        layers[from].cloneTiming = timing;
+    layers[at].cloneTiming = layers[from].cloneTiming;
+    if (!layers[at].cloneTiming)
+        for (Drawing& d : layers[from].drawings)
+            d.pinned = true;
     layers[at].bitmap = layers[from].bitmap;
     layers[at].drawings = layers[from].drawings;
     layers[at].cells = layers[from].cells;

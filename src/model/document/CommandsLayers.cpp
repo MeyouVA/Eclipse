@@ -412,12 +412,12 @@ bool Document::duplicateSymbol(int layer)
     return true;
 }
 
-int Document::addCloneLayer(int layer)
+int Document::addCloneLayer(int layer, bool timing)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())
         return -1;
     int at = -1;
-    apply(tr("Clone Layer"), [&](Scene& s) { at = s.addCloneLayer(layer); });
+    apply(tr("Clone Layer"), [&](Scene& s) { at = s.addCloneLayer(layer, timing); });
     return at;
 }
 

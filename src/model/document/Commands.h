@@ -263,7 +263,7 @@ public:
     int lockControlPointInTime(int layer, int key, int control);
     void setPathShape(int layer, int key, double tension, double continuity, double bias);
     // A clone of the layer: the same drawings and timing, changed on either; its place, or -1.
-    int addCloneLayer(int layer);
+    int addCloneLayer(int layer, bool timing = true);
     void makeCloneIndependent(int layer);
     void syncLayerWith(int layer, int other);
     // IK constraints of a bone: left out of IK; and whether it is turned only between two angles, and which.
