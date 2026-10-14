@@ -49,6 +49,8 @@ public:
           m_aroundAfter(std::move(aroundAfter))
     {
     }
+    static constexpr int kId = 0x5359;    // ("SY": tells these steps from the others)
+    int id() const override { return kId; }
     void undo() override { put(m_before, m_aroundBefore); }
     void redo() override { put(m_after, m_aroundAfter); }
 
@@ -66,6 +68,21 @@ private:
 };
 
 Document::Document(QObject* parent) : QObject(parent) {}
+
+bool Document::unsaved() const
+{
+    if (m_unsavedInside)
+        return true;
+    if (m_undo.isClean())
+        return false;
+    int const clean = m_undo.cleanIndex();
+    if (clean < 0)
+        return true;
+    for (int i = std::min(clean, m_undo.index()); i < std::max(clean, m_undo.index()); ++i)
+        if (m_undo.command(i)->id() != SymbolLevelCommand::kId)
+            return true;
+    return false;
+}
 
 void Document::setUndoLevels(int levels)
 {

@@ -208,7 +208,8 @@ public:
     // The scene as it is to be saved: the outermost one, with what is being worked on inside symbols put back.
     Scene wholeScene() const;
     // Whether there is anything that has not been saved; and that it has just been saved.
-    bool unsaved() const { return m_unsavedInside || !m_undo.isClean(); }
+    // Going into a symbol or out of one changes nothing that is saved: only other steps since the last save count.
+    bool unsaved() const;
     void setSaved();
     int addPeg(int above);
     // The camera of the scene, in front of everything; made if there is none yet.
