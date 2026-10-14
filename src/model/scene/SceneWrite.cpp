@@ -466,8 +466,30 @@ QJsonObject Scene::toJson(QString const& folder) const
                 QJsonArray bend;
                 for (double b : p.bend)
                     bend.append(b);
-                poses.append(QJsonObject{{"x", p.x}, {"y", p.y}, {"sx", p.scaleX}, {"sy", p.scaleY}, {"rot", p.rotation}, {"skew", p.skew},
-                                         {"z", p.z}, {"op", p.opacity}, {"bend", bend}});
+                QJsonObject one{{"x", p.x}, {"y", p.y}, {"sx", p.scaleX}, {"sy", p.scaleY}, {"rot", p.rotation}, {"skew", p.skew},
+                                {"z", p.z}, {"op", p.opacity}, {"bend", bend}};
+                // (What the rest of a keyframe has, kept only when there is any of it.)
+                if (p.rotX != 0.0)
+                    one["rx"] = p.rotX;
+                if (p.rotY != 0.0)
+                    one["ry"] = p.rotY;
+                if (p.fov != 0.0)
+                    one["fov"] = p.fov;
+                if (!p.fx.isEmpty()) {
+                    QJsonArray fx;
+                    for (double f : p.fx)
+                        fx.append(f);
+                    one["fx"] = fx;
+                }
+                for (auto const& [key, points] : {std::pair<char const*, QVector<QPointF> const*>{"warp", &p.warp}, {"quad", &p.quad}}) {
+                    if (points->isEmpty())
+                        continue;
+                    QJsonArray flat;
+                    for (QPointF const& q : *points)
+                        flat << q.x() << q.y();
+                    one[QLatin1String(key)] = flat;
+                }
+                poses.append(one);
             }
             QJsonArray drawings;
             for (int d : s.drawings)
@@ -479,8 +501,13 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerIds.append(id);
         controllerArray.append(QJsonObject{{"id", c.id}, {"name", c.name}, {"layers", layerIds}, {"states", states}, {"value", c.value}});
     }
+    QJsonArray writeArray;
+    for (Write const& w : writes)
+        writeArray.append(QJsonObject{{"name", w.name}, {"movie", w.movie}, {"path", w.path}, {"format", w.format},
+                                      {"percent", w.percent}, {"enabled", w.enabled}});
     QJsonObject whole{{"format", "eclipse-scene"},
                        {"controllers", controllerArray},
+                       {"writes", writeArray},
                        {"symbols", symbolArray},
                        {"version", 3},
                        {"markers", markerArray},

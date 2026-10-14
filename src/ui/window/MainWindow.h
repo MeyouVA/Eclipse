@@ -221,6 +221,12 @@ public slots:
     void setDrawingWindowShown(bool on);
     // What a workspace keeps besides the panels: whether the Camera view floats, and the Drawing window, and where they are.
     void saveWorkspaceExtras(QString const& name);
+    // File > Export > Render Write Nodes: every write output of the scene that is on, made.  How many were made;
+    // what went wrong with the others in `error`.
+    int renderWrites(QString* error);
+    void onActionRenderWrites();
+    // Scene > Write Outputs...: the outputs listed, to add to, change and take away.
+    void onActionWriteOutputs();
     void loadWorkspaceExtras(QString const& name);
     class Canvas* drawingWindowView() const;
     // The shortcuts and Scripts toolbar buttons the scripts were given.

@@ -171,6 +171,17 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         scene.references << found(folder, rv.toObject()["file"].toString(), rv.toObject()["relative"].toString());
     scene.m_frameCount = std::max(1, json["frames"].toInt(24));
     scene.background = QColor(json["background"].toString("#ffffff"));
+    for (QJsonValue const& wv : json["writes"].toArray()) {
+        QJsonObject const wo = wv.toObject();
+        Write w;
+        w.name = wo["name"].toString();
+        w.movie = wo["movie"].toBool(false);
+        w.path = wo["path"].toString();
+        w.format = wo["format"].toString(QStringLiteral("png"));
+        w.percent = std::clamp(wo["percent"].toInt(100), 1, 1000);
+        w.enabled = wo["enabled"].toBool(true);
+        scene.writes.push_back(w);
+    }
     for (QJsonValue const& cv : json["controllers"].toArray()) {
         QJsonObject const co = cv.toObject();
         Controller c;
@@ -196,6 +207,16 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 p.opacity = std::clamp(po["op"].toDouble(1.0), 0.0, 1.0);
                 for (QJsonValue const& b : po["bend"].toArray())
                     p.bend.push_back(b.toDouble());
+                p.rotX = po["rx"].toDouble();
+                p.rotY = po["ry"].toDouble();
+                p.fov = po["fov"].toDouble();
+                for (QJsonValue const& f : po["fx"].toArray())
+                    p.fx.push_back(f.toDouble());
+                QJsonArray const warp = po["warp"].toArray(), quad = po["quad"].toArray();
+                for (int i = 0; i + 1 < warp.size(); i += 2)
+                    p.warp.push_back(QPointF(warp[i].toDouble(), warp[i + 1].toDouble()));
+                for (int i = 0; i + 1 < quad.size(); i += 2)
+                    p.quad.push_back(QPointF(quad[i].toDouble(), quad[i + 1].toDouble()));
                 s.poses.push_back(p);
             }
             for (QJsonValue const& d : so["drawings"].toArray())

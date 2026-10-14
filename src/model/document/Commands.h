@@ -176,6 +176,8 @@ public:
     void setActiveCamera(int layer);
     // The Camera view shows that layer and what hangs under it (-1: the whole scene).
     void setDisplay(int layer);
+    // The scene's write outputs, all at once.
+    void setWrites(QVector<Scene::Write> const& writes);
     // The angle a camera sees, top to bottom (degrees).  A camera that has keyframes gets
     // the angle on a keyframe at `frame`, so that it can change in time; one that has none
     // simply has that angle.

@@ -37,6 +37,8 @@
     <item id="ExportOpenGLFrames" icon="file/exportopengl" text="&amp;OpenGL Frames..." responder="window" slot="onActionExportOpenGLFrames()"/>
     <separator/>
     <item id="ExportAudio" icon="file/exportaudio" text="&amp;Audio..." responder="window" slot="onActionExportAudio()"/>
+    <separator/>
+    <item id="RenderWriteNodes" icon="file/exportframes" text="Render &amp;Write Nodes" responder="window" slot="onActionRenderWrites()"/>
    </menu>
    <separator/>
    <item id="Print" icon="file/print" text="&amp;Print..." responder="window" slot="onActionPrint()"/>
@@ -188,6 +190,7 @@
    <separator/>
    <menu id="SceneCamera" text="&amp;Camera" responder="window" aboutToShowSlot="onShowCameras(QMenu*)"/>
    <menu id="SceneDisplay" text="Default &amp;Display" responder="window" aboutToShowSlot="onShowDisplays(QMenu*)"/>
+   <item id="WriteOutputs" icon="file/exportmovie" text="&amp;Write Outputs..." responder="window" slot="onActionWriteOutputs()"/>
    <item id="SceneSettings" icon="misc/scenesettings" text="Scene &amp;Settings..." responder="window" slot="onActionSceneSettings()"/>
    <separator/>
    <item id="CheckFiles" icon="misc/checkfiles" text="&amp;Check Files..." responder="window" slot="onActionCheckFiles()"/>

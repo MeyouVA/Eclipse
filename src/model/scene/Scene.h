@@ -691,6 +691,18 @@ public:
         bool operator==(Controller const&) const = default;
     };
     QVector<Controller> controllers;
+    // Write outputs: renders kept with the scene - a sequence of images into a folder, or a movie file - all made at
+    // once with Render Write Nodes.  A path not written in full is taken from the scene file's folder.
+    struct Write {
+        QString name;
+        bool movie = false;         // a movie file (its kind by its extension); otherwise images
+        QString path;               // the folder of the images, or the movie file
+        QString format = QStringLiteral("png");     // of the images
+        int percent = 100;          // of the scene's size
+        bool enabled = true;
+        bool operator==(Write const&) const = default;
+    };
+    QVector<Write> writes;
     // Guides (in the coordinates of the frame), seen in the Camera view and never rendered.
     // A plain line across or down the picture is snapped to.  The other kinds are drawn
     // along: with one of them in use, a line drawn with the brush or pencil is kept straight

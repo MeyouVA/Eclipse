@@ -21,6 +21,10 @@
 #include <QPainter>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QHeaderView>
+#include <QStatusBar>
+#include <QTableWidget>
+#include <QVBoxLayout>
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
@@ -200,4 +204,135 @@ void MainWindow::onActionExportAudio()
         statusBar()->showMessage(tr("Exported %1").arg(QDir::toNativeSeparators(path)), 6000);
     else
         QMessageBox::critical(this, tr("Eclipse"), tr("The sound could not be written.\n%1").arg(error));
+}
+
+int MainWindow::renderWrites(QString* error)
+{
+    Scene const scene = m_document->scene();
+    QDir const home = m_path.isEmpty() ? QDir::current() : QFileInfo(m_path).absoluteDir();
+    int made = 0;
+    QStringList problems;
+    for (Scene::Write const& w : scene.writes) {
+        if (!w.enabled || w.path.trimmed().isEmpty())
+            continue;
+        QString const where = QDir::cleanPath(home.absoluteFilePath(w.path.trimmed()));
+        QString why;
+        bool ok = false;
+        if (w.movie) {
+            MovieExport::Options options;
+            options.scale = std::clamp(w.percent, 1, 1000) / 100.0;
+            QDir().mkpath(QFileInfo(where).absolutePath());
+            ok = MovieExport::write(scene, where, nullptr, &why, options);
+        } else {
+            ImageExport images;
+            images.folder = where;
+            images.name = w.name.trimmed().isEmpty() ? QStringLiteral("frame") : w.name.trimmed();
+            images.format = w.format;
+            images.percent = std::clamp(w.percent, 1, 1000);
+            QDir().mkpath(where);
+            ok = exportImages(images, &why) == scene.frameCount();
+        }
+        if (ok)
+            ++made;
+        else
+            problems << QStringLiteral("%1: %2").arg(w.name, why);
+    }
+    if (error)
+        *error = problems.join(QLatin1Char('\n'));
+    return made;
+}
+
+void MainWindow::onActionRenderWrites()
+{
+    if (m_document->scene().writes.isEmpty()) {
+        statusBar()->showMessage(tr("The scene has no write outputs: add them with Scene > Write Outputs."), 7000);
+        onActionWriteOutputs();
+        return;
+    }
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString error;
+    int const made = renderWrites(&error);
+    QApplication::restoreOverrideCursor();
+    if (!error.isEmpty())
+        QMessageBox::warning(this, tr("Render Write Nodes"), tr("%n output(s) made. These could not be:", nullptr, made) + QLatin1Char('\n') + error);
+    else
+        statusBar()->showMessage(tr("%n write output(s) made.", nullptr, made), 6000);
+}
+
+void MainWindow::onActionWriteOutputs()
+{
+    QVector<Scene::Write> writes = m_document->scene().writes;
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("WriteOutputsDialog"));
+    dialog.setWindowTitle(tr("Write Outputs"));
+    QTableWidget* const table = new QTableWidget(0, 6, &dialog);
+    table->setObjectName(QStringLiteral("WriteOutputsTable"));
+    table->setHorizontalHeaderLabels({tr("On"), tr("Name"), tr("Kind"), tr("Folder or file"), tr("Images as"), tr("Size %")});
+    table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+    table->verticalHeader()->setVisible(false);
+    auto addRow = [table](Scene::Write const& w) {
+        int const row = table->rowCount();
+        table->insertRow(row);
+        QTableWidgetItem* const on = new QTableWidgetItem;
+        on->setCheckState(w.enabled ? Qt::Checked : Qt::Unchecked);
+        table->setItem(row, 0, on);
+        table->setItem(row, 1, new QTableWidgetItem(w.name));
+        QComboBox* const kind = new QComboBox(table);
+        kind->addItems({QObject::tr("Images"), QObject::tr("Movie")});
+        kind->setCurrentIndex(w.movie ? 1 : 0);
+        table->setCellWidget(row, 2, kind);
+        table->setItem(row, 3, new QTableWidgetItem(w.path));
+        QComboBox* const format = new QComboBox(table);
+        format->addItems({QStringLiteral("png"), QStringLiteral("jpg"), QStringLiteral("tga"), QStringLiteral("tif"), QStringLiteral("bmp")});
+        format->setCurrentText(w.format);
+        table->setCellWidget(row, 4, format);
+        QSpinBox* const size = new QSpinBox(table);
+        size->setRange(1, 1000);
+        size->setValue(w.percent);
+        table->setCellWidget(row, 5, size);
+    };
+    for (Scene::Write const& w : std::as_const(writes))
+        addRow(w);
+    QPushButton* const add = new QPushButton(tr("Add"), &dialog);
+    add->setObjectName(QStringLiteral("WriteOutputsAdd"));
+    QPushButton* const remove = new QPushButton(tr("Remove"), &dialog);
+    remove->setObjectName(QStringLiteral("WriteOutputsRemove"));
+    connect(add, &QPushButton::clicked, &dialog, [table, addRow] {
+        Scene::Write w;
+        w.name = QObject::tr("Write%1").arg(table->rowCount() + 1);
+        w.path = QStringLiteral("frames/") + w.name;
+        addRow(w);
+    });
+    connect(remove, &QPushButton::clicked, &dialog, [table] {
+        if (table->currentRow() >= 0)
+            table->removeRow(table->currentRow());
+    });
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QHBoxLayout* const row = new QHBoxLayout;
+    row->addWidget(add);
+    row->addWidget(remove);
+    row->addStretch(1);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("Renders kept with the scene: File > Export > Render Write Nodes makes all of them that are on. "
+                                    "A folder or file not written in full is taken from the scene file's folder."), &dialog));
+    layout->addWidget(table, 1);
+    layout->addLayout(row);
+    layout->addWidget(buttons);
+    dialog.resize(760, 320);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    QVector<Scene::Write> made;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        Scene::Write w;
+        w.enabled = table->item(r, 0)->checkState() == Qt::Checked;
+        w.name = table->item(r, 1)->text().trimmed();
+        w.movie = static_cast<QComboBox*>(table->cellWidget(r, 2))->currentIndex() == 1;
+        w.path = table->item(r, 3)->text().trimmed();
+        w.format = static_cast<QComboBox*>(table->cellWidget(r, 4))->currentText();
+        w.percent = static_cast<QSpinBox*>(table->cellWidget(r, 5))->value();
+        made.push_back(w);
+    }
+    m_document->setWrites(made);
 }

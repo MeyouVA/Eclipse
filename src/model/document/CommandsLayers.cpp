@@ -639,6 +639,13 @@ bool Document::offsetPath(int layer, QPointF by)
     return true;
 }
 
+void Document::setWrites(QVector<Scene::Write> const& writes)
+{
+    if (writes == m_scene.writes)
+        return;
+    apply(tr("Write Outputs"), [&](Scene& s) { s.writes = writes; });
+}
+
 void Document::setDisplay(int layer)
 {
     int const id = layer >= 0 && layer < m_scene.layers.size() ? m_scene.layers[layer].id : 0;
