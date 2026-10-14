@@ -249,6 +249,15 @@ void MainWindow::applyPreferences()
             m_actions->setChecked(QStringLiteral("AutoRender"), autoRender);
         }
     }
+    // Tools: the size the drawing tools start with (set through the Size box, so Tool Properties shows it).
+    if (s.contains(QStringLiteral("prefs/toolSize")))
+        if (QSpinBox* const size = findChild<QSpinBox*>(QStringLiteral("ToolSize")))
+            size->setValue(std::clamp(s.value(QStringLiteral("prefs/toolSize")).toInt(), 1, 200));
+    // Sound: heard while playing, and while the frame is changed by hand.
+    m_soundOn = s.value(QStringLiteral("prefs/soundOn"), true).toBool();
+    m_actions->setChecked(QStringLiteral("PlaySound"), m_soundOn);
+    m_scrub = s.value(QStringLiteral("prefs/scrub"), false).toBool();
+    m_actions->setChecked(QStringLiteral("PlayScrub"), m_scrub);
     m_autoSave.stop();
     if (m_autoSaveMinutes > 0)
         m_autoSave.start(m_autoSaveMinutes * 60 * 1000);
@@ -371,6 +380,29 @@ void MainWindow::onActionPreferences()
     renderLayout->addRow(tr("Preview size"), previewSize);
     renderLayout->addRow(autoRender);
 
+    // Tools: what the drawing tools start with.
+    QGroupBox* const toolsPage = new QGroupBox(tr("Tools"), &dialog);
+    QSpinBox* const toolSize = new QSpinBox(toolsPage);
+    toolSize->setObjectName(QStringLiteral("PrefToolSize"));
+    toolSize->setRange(1, 200);
+    toolSize->setSuffix(tr(" pixels"));
+    toolSize->setValue(std::clamp(s.value(QStringLiteral("prefs/toolSize"), int(m_canvas->brushWidth())).toInt(), 1, 200));
+    toolSize->setToolTip(tr("The size of the brush, the eraser and the other drawing tools when Eclipse starts."));
+    QFormLayout* const toolsLayout = new QFormLayout(toolsPage);
+    toolsLayout->addRow(tr("Size of the drawing tools"), toolSize);
+
+    // Sound: when it is heard.
+    QGroupBox* const soundPage = new QGroupBox(tr("Sound"), &dialog);
+    QCheckBox* const soundOn = new QCheckBox(tr("Play the sound when the scene plays"), soundPage);
+    soundOn->setObjectName(QStringLiteral("PrefSoundOn"));
+    soundOn->setChecked(m_soundOn);
+    QCheckBox* const scrub = new QCheckBox(tr("Play a frame of sound when the frame is changed by hand (scrubbing)"), soundPage);
+    scrub->setObjectName(QStringLiteral("PrefScrub"));
+    scrub->setChecked(m_scrub);
+    QFormLayout* const soundLayout = new QFormLayout(soundPage);
+    soundLayout->addRow(soundOn);
+    soundLayout->addRow(scrub);
+
     // Drawing: the light table.
     QGroupBox* const drawing = new QGroupBox(tr("Drawing"), &dialog);
     QSpinBox* const wash = new QSpinBox(drawing);
@@ -426,7 +458,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting, as Harmony has them.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {general, camera, sheet, timelinePage, drawing, colours, renderPage, advanced}) {
+    for (QGroupBox* const page : {general, camera, sheet, timelinePage, drawing, toolsPage, colours, renderPage, soundPage, advanced}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -444,6 +476,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/frameWidth"), frameWidth->value());
     s.setValue(QStringLiteral("prefs/previewSize"), previewSize->currentData().toInt());
     s.setValue(QStringLiteral("prefs/autoRender"), autoRender->isChecked());
+    if (toolSize->value() != int(m_canvas->brushWidth()) || s.contains(QStringLiteral("prefs/toolSize")))
+        s.setValue(QStringLiteral("prefs/toolSize"), toolSize->value());
+    s.setValue(QStringLiteral("prefs/soundOn"), soundOn->isChecked());
+    s.setValue(QStringLiteral("prefs/scrub"), scrub->isChecked());
     s.setValue(QStringLiteral("prefs/backdrop"), backdrop->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(onionBefore->property("colour").value<QColor>(), onionAfter->property("colour").value<QColor>());
     s.setValue(QStringLiteral("welcome/hide"), !welcome->isChecked());
