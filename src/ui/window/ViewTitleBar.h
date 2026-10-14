@@ -43,6 +43,8 @@ public:
     QStringList viewMenuEntries();
     // For the view in the middle: whether it is out in a window of its own just now (the tick beside Float).
     void setFloating(bool floating) { m_floating = floating; }
+    // ... or docked among the panels (on which side; Qt::NoDockWidgetArea: not).
+    void setDocked(int area) { m_docked = area; }
 
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
@@ -52,6 +54,9 @@ signals:
     // The view in the middle is asked out into a window of its own (or back), or to be closed.
     void floatRequested(bool floating);
     void closeRequested();
+    // The view in the middle asked to a side of the window among the panels (Qt::DockWidgetArea; with `tabbed`, as a tab of
+    // the panels there), or (Qt::NoDockWidgetArea) back into the middle.
+    void dockRequested(int area, bool tabbed);
 
 private:
     void build();
@@ -67,6 +72,7 @@ private:
     QStringList m_titles;
     int m_current = 0;
     bool m_floating = false;
+    int m_docked = 0;
     QHBoxLayout* m_tabs = nullptr;
     QToolButton* m_add = nullptr;
     QToolButton* m_menu = nullptr;

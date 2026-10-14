@@ -6,6 +6,8 @@
 #include <QHBoxLayout>
 #include <QMainWindow>
 #include <QMenu>
+
+#include <tuple>
 #include <QToolButton>
 
 ViewTitleBar::ViewTitleBar(QMainWindow* window, QDockWidget* dock, QList<QDockWidget*> const* all)
@@ -192,6 +194,27 @@ void ViewTitleBar::fillViewMenu(QMenu& menu)
         floating->setCheckable(true);
         floating->setChecked(m_floating);
         connect(floating, &QAction::triggered, this, &ViewTitleBar::floatRequested);
+        // Among the panels: at a side of the window, or as a tab of the panels on the right; and back.
+        QMenu* const dock = menu.addMenu(tr("Dock"));
+        dock->setObjectName(QStringLiteral("ViewDockMenu"));
+        for (auto const& [label, area, tabbed] : {std::tuple<char const*, int, bool>{QT_TR_NOOP("Dock Left"), int(Qt::LeftDockWidgetArea), false},
+                                                  {QT_TR_NOOP("Dock Right"), int(Qt::RightDockWidgetArea), false},
+                                                  {QT_TR_NOOP("Dock at Bottom"), int(Qt::BottomDockWidgetArea), false},
+                                                  {QT_TR_NOOP("Tab with the Panels on the Right"), int(Qt::RightDockWidgetArea), true}}) {
+            QAction* const a = dock->addAction(tr(label));
+            a->setCheckable(true);
+            a->setChecked(!tabbed && m_docked == area);
+            connect(a, &QAction::triggered, this, [this, area, tabbed] { emit dockRequested(area, tabbed); });
+        }
+        dock->addSeparator();
+        QAction* const back = dock->addAction(tr("Back to the Middle"));
+        back->setEnabled(m_docked != 0 || m_floating);
+        connect(back, &QAction::triggered, this, [this] {
+            if (m_floating)
+                emit floatRequested(false);
+            else
+                emit dockRequested(0, false);
+        });
         connect(menu.addAction(tr("Close View")), &QAction::triggered, this, &ViewTitleBar::closeRequested);
     }
 }

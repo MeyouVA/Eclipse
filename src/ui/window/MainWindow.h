@@ -125,9 +125,13 @@ public:
     // The view in the middle (Camera / Drawing) out in a window of its own, and back into the middle.
     void setCameraFloating(bool floating);
     bool cameraFloating() const { return m_cameraWindow != nullptr; }
+    // ... or docked at a side of the window among the panels (with `tabbed`, as a tab of the panels there); Qt::NoDockWidgetArea:
+    // back into the middle.  Where it is docked (none: it is not).
+    void setCameraDocked(Qt::DockWidgetArea area, bool tabbed = false);
+    Qt::DockWidgetArea cameraDockArea() const;
     // Shown at all: Close View hides it, Windows > Camera brings it back.
     void setCameraShown(bool shown);
-    bool cameraShown() const { return cameraFloating() || !m_middleCollapsed; }
+    bool cameraShown() const { return cameraFloating() || m_cameraDock || !m_middleCollapsed; }
     // Pictures to look at while drawing, shown in the Reference view (which comes up).
     // Returns how many could be read.
     int addReferences(QStringList const& files);
@@ -473,6 +477,7 @@ private:
     bool m_middleCollapsed = false;
     QWidget* m_cameraPanel = nullptr;      // the view in the middle, strip of tabs and all
     QWidget* m_cameraWindow = nullptr;     // the window it is in while it floats
+    class QDockWidget* m_cameraDock = nullptr;     // the panel it is in while it is docked
     QHash<QDockWidget*, QSize> m_sizesBeforeMiddle;     // how big the panels were with the middle view there
     // A panel (with those on its tabs) folded away from between two: which, which of them was in
     // front, the neighbour its arrows stay by, and whether it lay before that neighbour.

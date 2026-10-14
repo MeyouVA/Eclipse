@@ -352,6 +352,7 @@ void MainWindow::createCameraView()
     m_cameraPanel = camera;
     connect(bar, &ViewTitleBar::floatRequested, this, &MainWindow::setCameraFloating);
     connect(bar, &ViewTitleBar::closeRequested, this, [this] { setCameraShown(false); });
+    connect(bar, &ViewTitleBar::dockRequested, this, [this](int area, bool tabbed) { setCameraDocked(Qt::DockWidgetArea(area), tabbed); });
     setCentralWidget(holder);
 }
 

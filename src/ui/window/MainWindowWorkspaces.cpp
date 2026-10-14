@@ -133,6 +133,7 @@ void MainWindow::saveWorkspaceExtras(QString const& name)
     QSettings s = settings();
     QString const at = QStringLiteral("workspaceExtras/") + name + QLatin1Char('/');
     s.setValue(at + QStringLiteral("cameraFloating"), cameraFloating());
+    s.setValue(at + QStringLiteral("cameraDock"), int(cameraDockArea()));
     if (m_cameraWindow)
         s.setValue(at + QStringLiteral("cameraGeometry"), m_cameraWindow->saveGeometry());
     QWidget* const drawing = findChild<QWidget*>(QStringLiteral("DrawingWindow"), Qt::FindDirectChildrenOnly);
@@ -146,6 +147,9 @@ void MainWindow::loadWorkspaceExtras(QString const& name)
     QSettings const s = settings();
     QString const at = QStringLiteral("workspaceExtras/") + name + QLatin1Char('/');
     bool const floating = s.value(at + QStringLiteral("cameraFloating"), false).toBool();
+    int const docked = floating ? 0 : s.value(at + QStringLiteral("cameraDock"), 0).toInt();
+    setCameraDocked(docked == Qt::LeftDockWidgetArea || docked == Qt::RightDockWidgetArea || docked == Qt::BottomDockWidgetArea || docked == Qt::TopDockWidgetArea
+                        ? Qt::DockWidgetArea(docked) : Qt::NoDockWidgetArea);
     setCameraFloating(floating);
     if (floating && m_cameraWindow && s.contains(at + QStringLiteral("cameraGeometry")))
         m_cameraWindow->restoreGeometry(s.value(at + QStringLiteral("cameraGeometry")).toByteArray());

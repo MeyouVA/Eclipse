@@ -299,8 +299,8 @@ void MainWindow::pressSide(int side, bool second)
 void MainWindow::setMiddleCollapsed(bool collapsed)
 {
     QWidget* const middle = centralWidget();
-    if (!middle || collapsed == m_middleCollapsed || (!collapsed && m_cameraWindow))
-        return;     // (nothing to show in the middle while its view is out in a window)
+    if (!middle || collapsed == m_middleCollapsed || (!collapsed && (m_cameraWindow || m_cameraDock)))
+        return;     // (nothing to show in the middle while its view is out in a window, or among the panels)
     m_middleCollapsed = collapsed;
     m_collapsing = true;
     if (collapsed) {
@@ -417,6 +417,7 @@ void MainWindow::toggleSide(int side)
 void MainWindow::expandAllSides()
 {
     setCameraFloating(false);
+    setCameraDocked(Qt::NoDockWidgetArea);
     setMiddleCollapsed(false);
     for (int side = 0; side < SideCount; ++side)
         if (!m_collapsed[side].isEmpty())
@@ -433,10 +434,65 @@ void MainWindow::expandAllSides()
     placeCollapseArrows();
 }
 
+Qt::DockWidgetArea MainWindow::cameraDockArea() const
+{
+    return m_cameraDock ? dockWidgetArea(m_cameraDock) : Qt::NoDockWidgetArea;
+}
+
+void MainWindow::setCameraDocked(Qt::DockWidgetArea area, bool tabbed)
+{
+    if (!m_cameraPanel)
+        return;
+    ViewTitleBar* const bar = m_cameraPanel->findChild<ViewTitleBar*>(QStringLiteral("CameraTitleBar"));
+    if (area == Qt::NoDockWidgetArea) {
+        if (!m_cameraDock)
+            return;
+        // Back into the middle.
+        QDockWidget* const dock = m_cameraDock;
+        m_cameraDock = nullptr;
+        centralWidget()->layout()->addWidget(m_cameraPanel);
+        m_cameraPanel->show();
+        removeDockWidget(dock);
+        dock->deleteLater();
+        setMiddleCollapsed(false);
+        if (bar)
+            bar->setDocked(0);
+        return;
+    }
+    setCameraFloating(false);
+    if (!m_cameraDock) {
+        // A panel of its own; its strip of tabs and menu is the view's own, so the panel has no title bar of its own.
+        m_cameraDock = new QDockWidget(tr("Camera"), this);
+        m_cameraDock->setObjectName(QStringLiteral("CameraDock"));
+        m_cameraDock->setTitleBarWidget(new QWidget(m_cameraDock));
+        m_cameraDock->setFeatures(QDockWidget::DockWidgetMovable);
+        m_cameraDock->setWidget(m_cameraPanel);
+        m_cameraPanel->show();
+    } else {
+        removeDockWidget(m_cameraDock);
+    }
+    addDockWidget(area, m_cameraDock);
+    if (tabbed) {
+        // As a tab of the first panel shown on that side.
+        for (QDockWidget* const d : std::as_const(m_docks))
+            if (d != m_cameraDock && !d->isHidden() && !d->isFloating() && dockWidgetArea(d) == area) {
+                tabifyDockWidget(d, m_cameraDock);
+                break;
+            }
+    }
+    m_cameraDock->show();
+    m_cameraDock->raise();
+    setMiddleCollapsed(true);
+    if (bar)
+        bar->setDocked(int(area));
+}
+
 void MainWindow::setCameraFloating(bool floating)
 {
     if (floating == cameraFloating() || !m_cameraPanel)
         return;
+    if (floating && m_cameraDock)
+        setCameraDocked(Qt::NoDockWidgetArea);
     ViewTitleBar* const bar = m_cameraPanel->findChild<ViewTitleBar*>(QStringLiteral("CameraTitleBar"));
     if (floating) {
         QSize const size = m_cameraPanel->isVisible() ? m_cameraPanel->size() : QSize(900, 600);
@@ -474,12 +530,16 @@ void MainWindow::setCameraShown(bool shown)
         if (m_cameraWindow) {
             m_cameraWindow->raise();
             m_cameraWindow->activateWindow();
+        } else if (m_cameraDock) {
+            m_cameraDock->show();
+            m_cameraDock->raise();
         } else {
             setMiddleCollapsed(false);
         }
         return;
     }
     setCameraFloating(false);
+    setCameraDocked(Qt::NoDockWidgetArea);
     setMiddleCollapsed(true);
 }
 
