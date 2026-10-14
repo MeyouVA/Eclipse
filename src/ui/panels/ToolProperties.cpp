@@ -179,7 +179,7 @@ void ToolProperties::showFor(int tool)
                                       "ToolPencil", "ToolLine",      "ToolRectangle", "ToolEllipse", "ToolContourEditor",
                                       "ToolRigging", "ToolIK", "ToolDropper", "ToolZoom", "ToolPolyline",
                                       "ToolPaintUnpainted", "ToolRepaint", "ToolUnpaint", "ToolText", "ToolRotateView", "ToolCutter", "ToolStroke", "ToolCloseGap",
-                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset"};
+                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
     bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));

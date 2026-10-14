@@ -18,6 +18,15 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         zoomAt(widgetPos, modifiers & Qt::AltModifier ? 1.0 / 1.5 : 1.5);
         return;
     }
+    if (m_tool == Turn3D) {
+        Scene const& scene = m_document->scene();
+        if (m_layer >= 0 && m_layer < scene.layers.size() && !m_drawingView && !scene.layers[m_layer].locked) {
+            m_poseStart = m_dragPose = scene.layers[m_layer].poseAt(m_frame);
+            m_turnFrom = widgetPos;
+            m_drag = DragPoseTurn;
+        }
+        return;
+    }
     if (m_tool == SplineOffset) {
         Scene const& scene = m_document->scene();
         if (m_layer >= 0 && m_layer < scene.layers.size() && !scene.layers[m_layer].keys.isEmpty()) {

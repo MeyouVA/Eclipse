@@ -79,6 +79,7 @@
   <item id="ToolRigging"/>
   <item id="ToolIK"/>
   <item id="ToolSplineOffset"/>
+  <item id="ToolTurn3D"/>
   <item id="OnionSkinToggle" toolbarText="Onion"/>
  </toolbar>
 

@@ -65,6 +65,9 @@ public:
         RepaintBrush,
         // Dragged anywhere, the current layer's whole motion path goes with the pen: every keyframe and control point.
         SplineOffset,
+        // Dragged across, the current layer turns about the line up it; dragged up or down, about the line across it
+        // (in space, as Layer Properties' turn across and up): keyframed on the current frame.
+        Turn3D,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -710,7 +713,7 @@ private:
     QTransform layerViewTransform() const;
     // Where the pointer is in the coordinates of the current layer: what the drawing tools use.
     QPointF toLayer(QPointF widgetPos) const;
-    bool posing() const { return m_drag == DragPoseSkew || m_drag == DragPoseMove || m_drag == DragPoseScale || m_drag == DragPoseRotate || m_drag == DragBone || m_drag == DragIK || m_drag == DragWarp; }
+    bool posing() const { return m_drag == DragPoseSkew || m_drag == DragPoseMove || m_drag == DragPoseScale || m_drag == DragPoseRotate || m_drag == DragBone || m_drag == DragIK || m_drag == DragWarp || m_drag == DragPoseTurn; }
     // The pose of a layer on a frame, with the one being dragged in place of the stored one.
     Pose poseOf(int layer, int frame) const;
     // A drawing as it is shown: bent along the bones of its layer, except on the layer
@@ -855,7 +858,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -1012,6 +1015,7 @@ private:
     Stroke m_repaintPath;
     // Spline Offset: where the pen went down and where it is (in the view), and that as a move of the path.
     QPointF m_splineFrom, m_splineNow;
+    QPointF m_turnFrom;          // Turn in Space: where the pen went down (in the view)
     QPointF splineOffset() const;
     void repaintTo(QPointF p, double tolerance);
     void smoothAt(QPointF p);

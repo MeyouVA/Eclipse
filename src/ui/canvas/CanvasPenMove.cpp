@@ -10,6 +10,15 @@
 
 void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers)
 {
+    if (m_drag == DragPoseTurn) {
+        // Half a degree for each pixel across or down; Shift: in steps of 15 degrees.
+        QPointF const by = (widgetPos - m_turnFrom) * 0.5;
+        auto step = [modifiers](double a) { return modifiers & Qt::ShiftModifier ? std::round(a / 15.0) * 15.0 : a; };
+        m_dragPose.rotY = step(m_poseStart.rotY + by.x());
+        m_dragPose.rotX = std::clamp(step(m_poseStart.rotX - by.y()), -89.0, 89.0);
+        update();
+        return;
+    }
     if (m_drag == DragSplineOffset) {
         m_splineNow = widgetPos;
         update();
