@@ -29,6 +29,8 @@
 
 #include "model/document/Commands.h"
 #include "ui/timeline/Timeline.h"
+#include "ui/canvas/Canvas.h"
+#include <QDockWidget>
 
 // ---- scene --------------------------------------------------------------------------------
 
@@ -357,6 +359,84 @@ void ScriptEffects::remove(int layer, int effect)
         change(layer, [effect](QVector<Effect>& e) { e.removeAt(effect); });
 }
 
+// ---- views --------------------------------------------------------------------------------
+
+QDockWidget* ScriptViews::dock(QString const& name) const
+{
+    if (!m_window)
+        return nullptr;
+    for (QDockWidget* const d : m_window->findChildren<QDockWidget*>())
+        if (d->windowTitle().compare(name, Qt::CaseInsensitive) == 0)
+            return d;
+    return nullptr;
+}
+
+Canvas* ScriptViews::canvas() const
+{
+    return m_window ? m_window->findChild<Canvas*>() : nullptr;
+}
+
+QStringList ScriptViews::list() const
+{
+    QStringList names;
+    if (m_window)
+        for (QDockWidget* const d : m_window->findChildren<QDockWidget*>())
+            if (!d->windowTitle().isEmpty())
+                names << d->windowTitle();
+    names.sort(Qt::CaseInsensitive);
+    return names;
+}
+
+bool ScriptViews::isOpen(QString const& name) const
+{
+    QDockWidget* const d = dock(name);
+    return d && !d->isHidden();
+}
+
+bool ScriptViews::open(QString const& name)
+{
+    QDockWidget* const d = dock(name);
+    if (!d)
+        return false;
+    d->show();
+    d->raise();
+    return true;
+}
+
+bool ScriptViews::close(QString const& name)
+{
+    QDockWidget* const d = dock(name);
+    if (!d)
+        return false;
+    d->hide();
+    return true;
+}
+
+bool ScriptViews::drawingView() const
+{
+    Canvas* const c = canvas();
+    return c && c->drawingView();
+}
+
+void ScriptViews::setDrawingView(bool on)
+{
+    if (Canvas* const c = canvas())
+        c->setDrawingView(on);
+}
+
+double ScriptViews::zoom() const
+{
+    Canvas* const c = canvas();
+    return c ? c->zoom() : 1.0;
+}
+
+void ScriptViews::setZoom(double zoom)
+{
+    if (Canvas* const c = canvas())
+        if (zoom > 0.0 && c->zoom() > 0.0)
+            c->zoomBy(zoom / c->zoom());
+}
+
 int ScriptPalette::count() const
 {
     return int(m_document->scene().palette.size());
@@ -414,7 +494,7 @@ QVector<Piece> pieces(QString const& line, bool& comment)
         QStringLiteral("typeof"), QStringLiteral("in"), QStringLiteral("of"), QStringLiteral("this"), QStringLiteral("try"),
         QStringLiteral("catch"), QStringLiteral("finally"), QStringLiteral("throw")};
     static QStringList const eclipse = {QStringLiteral("scene"), QStringLiteral("frame"), QStringLiteral("layers"),
-                                        QStringLiteral("palette"), QStringLiteral("effects"), QStringLiteral("log"), QStringLiteral("print")};
+                                        QStringLiteral("palette"), QStringLiteral("effects"), QStringLiteral("views"), QStringLiteral("log"), QStringLiteral("print")};
     QVector<Piece> out;
     int i = 0;
     int const n = int(line.size());
@@ -769,8 +849,9 @@ QString ScriptView::run(QString const& code, QString const& name)
     ScriptLayers layers(m_document, m_timeline, &engine, nullptr);
     ScriptPalette palette(m_document, nullptr);
     ScriptEffects effects(m_document, nullptr);
+    ScriptViews views(window(), nullptr);
     for (QObject* o : {static_cast<QObject*>(&output), static_cast<QObject*>(&scene), static_cast<QObject*>(&frame), static_cast<QObject*>(&layers),
-                       static_cast<QObject*>(&palette), static_cast<QObject*>(&effects)})
+                       static_cast<QObject*>(&palette), static_cast<QObject*>(&effects), static_cast<QObject*>(&views)})
         QJSEngine::setObjectOwnership(o, QJSEngine::CppOwnership);
     engine.globalObject().setProperty(QStringLiteral("__out"), engine.newQObject(&output));
     engine.globalObject().setProperty(QStringLiteral("scene"), engine.newQObject(&scene));
@@ -778,6 +859,7 @@ QString ScriptView::run(QString const& code, QString const& name)
     engine.globalObject().setProperty(QStringLiteral("layers"), engine.newQObject(&layers));
     engine.globalObject().setProperty(QStringLiteral("palette"), engine.newQObject(&palette));
     engine.globalObject().setProperty(QStringLiteral("effects"), engine.newQObject(&effects));
+    engine.globalObject().setProperty(QStringLiteral("views"), engine.newQObject(&views));
     engine.evaluate(QStringLiteral("function log(t) { __out.log(String(t)); } var print = log;"));
 
     // A script that never ends is stopped after a while.

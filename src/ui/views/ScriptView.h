@@ -14,6 +14,8 @@
 //   effects - count(i); type(i, e) -> "blur", "tint", "cutter", "glow", "shadow" or "particles"; amount(i, e),
 //             setAmount(i, e, value); enabled(i, e), setEnabled(i, e, on); colour(i, e), setColour(i, e, "#rrggbb");
 //             add(i, type) -> its place; remove(i, e)   (the effects of layer i, from 0)
+//   views   - list() -> the names of the views; isOpen(name), open(name), close(name);
+//             drawingView (may be set: the Drawing view rather than the Camera view); zoom (of the view shown, may be set)
 //   log(text) (print is the same)
 // Layers are counted from 0, from the one furthest back; frames from 1.
 // Everything one run changes is one step to undo.
@@ -164,6 +166,29 @@ private:
     bool has(int layer, int effect) const;
     void change(int layer, std::function<void(QVector<struct Effect>&)> const& how);
     Document* m_document;
+};
+
+// What a script calls `views`: the views of the window, by the names they have on their tabs, and the Camera view.
+class ECLIPSE_UI_API ScriptViews : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool drawingView READ drawingView WRITE setDrawingView)
+    Q_PROPERTY(double zoom READ zoom WRITE setZoom)
+
+public:
+    ScriptViews(QWidget* window, QObject* parent) : QObject(parent), m_window(window) {}
+    Q_INVOKABLE QStringList list() const;
+    Q_INVOKABLE bool isOpen(QString const& name) const;
+    Q_INVOKABLE bool open(QString const& name);
+    Q_INVOKABLE bool close(QString const& name);
+    bool drawingView() const;
+    void setDrawingView(bool on);
+    double zoom() const;
+    void setZoom(double zoom);
+
+private:
+    class QDockWidget* dock(QString const& name) const;
+    class Canvas* canvas() const;
+    QWidget* m_window;
 };
 
 // Takes what a script logs.
