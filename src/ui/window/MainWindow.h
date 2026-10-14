@@ -110,6 +110,12 @@ public:
     // `wholeScene`, an empty drawing in it held from the first frame to the last.  Its place.
     int addDrawingLayer(QString const& name, bool wholeScene);
     int autoSaveMinutes() const { return m_autoSaveMinutes; }
+    // The view in the middle (Camera / Drawing) out in a window of its own, and back into the middle.
+    void setCameraFloating(bool floating);
+    bool cameraFloating() const { return m_cameraWindow != nullptr; }
+    // Shown at all: Close View hides it, Windows > Camera brings it back.
+    void setCameraShown(bool shown);
+    bool cameraShown() const { return cameraFloating() || !m_middleCollapsed; }
     // Pictures to look at while drawing, shown in the Reference view (which comes up).
     // Returns how many could be read.
     int addReferences(QStringList const& files);
@@ -424,6 +430,8 @@ private:
     QList<QDockWidget*> m_collapsed[SideCount];        // the panels a press hid, to bring back
     QList<QDockWidget*> m_collapsedFront[SideCount];   // and which of them were in front of their tabs
     bool m_middleCollapsed = false;
+    QWidget* m_cameraPanel = nullptr;      // the view in the middle, strip of tabs and all
+    QWidget* m_cameraWindow = nullptr;     // the window it is in while it floats
     QHash<QDockWidget*, QSize> m_sizesBeforeMiddle;     // how big the panels were with the middle view there
     // A panel (with those on its tabs) folded away from between two: which, which of them was in
     // front, the neighbour its arrows stay by, and whether it lay before that neighbour.

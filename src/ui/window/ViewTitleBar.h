@@ -41,12 +41,17 @@ public:
     void setViewMenu(std::function<QMenu*()> make) { m_makeMenu = std::move(make); }
     // What the menu button offers, top to bottom (separators left out).
     QStringList viewMenuEntries();
+    // For the view in the middle: whether it is out in a window of its own just now (the tick beside Float).
+    void setFloating(bool floating) { m_floating = floating; }
 
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
 
 signals:
     void titleChosen(int index);
+    // The view in the middle is asked out into a window of its own (or back), or to be closed.
+    void floatRequested(bool floating);
+    void closeRequested();
 
 private:
     void build();
@@ -61,6 +66,7 @@ private:
     QList<QDockWidget*> const* m_all = nullptr;
     QStringList m_titles;
     int m_current = 0;
+    bool m_floating = false;
     QHBoxLayout* m_tabs = nullptr;
     QToolButton* m_add = nullptr;
     QToolButton* m_menu = nullptr;

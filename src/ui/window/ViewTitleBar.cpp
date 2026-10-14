@@ -63,6 +63,10 @@ void ViewTitleBar::build()
         layout->addWidget(close);
         connect(m_add, &QToolButton::clicked, this, [this] { showAddMenu(); });
         connect(close, &QToolButton::clicked, m_dock, &QDockWidget::close);
+    } else {
+        QToolButton* const close = button("ViewCloseButton", QString(QChar(0x00d7)), tr("Close View"));
+        layout->addWidget(close);
+        connect(close, &QToolButton::clicked, this, &ViewTitleBar::closeRequested);
     }
 }
 
@@ -184,6 +188,10 @@ void ViewTitleBar::fillViewMenu(QMenu& menu)
         connect(floating, &QAction::triggered, m_dock, &QDockWidget::setFloating);
         connect(menu.addAction(tr("Close View")), &QAction::triggered, m_dock, &QDockWidget::close);
     } else {
-        menu.addAction(tr("This view stays in the middle of the window"))->setEnabled(false);
+        QAction* const floating = menu.addAction(tr("Float"));
+        floating->setCheckable(true);
+        floating->setChecked(m_floating);
+        connect(floating, &QAction::triggered, this, &ViewTitleBar::floatRequested);
+        connect(menu.addAction(tr("Close View")), &QAction::triggered, this, &ViewTitleBar::closeRequested);
     }
 }

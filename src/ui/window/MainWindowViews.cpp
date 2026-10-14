@@ -189,7 +189,7 @@ void MainWindow::createViews()
     // The keyboard focus going into a view makes it the view in use as well (a click does both).
     connect(qApp, &QApplication::focusChanged, this, [this](QWidget*, QWidget* now) {
         for (QWidget* w = now; w && w != this; w = w->parentWidget()) {
-            if (w->objectName() == QLatin1String("ViewFrame") && w->window() == this) {
+            if (w->objectName() == QLatin1String("ViewFrame") && (w->window() == this || w->window() == m_cameraWindow)) {
                 setActiveView(w);
                 break;
             }
@@ -325,7 +325,16 @@ void MainWindow::createCameraView()
     panel->layout()->addWidget(status);
     connect(m_canvas, &Canvas::zoomChanged, this, [this] { m_zoomLabel->setText(QStringLiteral("%1%").arg(qRound(m_canvas->zoom() * 100.0))); });
     layout->addWidget(viewFrame(panel, camera), 1);
-    setCentralWidget(camera);
+    // The middle of the window holds it; it can be taken out into a window of its own, or closed.
+    QWidget* const holder = new QWidget(this);
+    holder->setObjectName(QStringLiteral("MiddleHolder"));
+    QVBoxLayout* const held = new QVBoxLayout(holder);
+    held->setContentsMargins(0, 0, 0, 0);
+    held->addWidget(camera);
+    m_cameraPanel = camera;
+    connect(bar, &ViewTitleBar::floatRequested, this, &MainWindow::setCameraFloating);
+    connect(bar, &ViewTitleBar::closeRequested, this, [this] { setCameraShown(false); });
+    setCentralWidget(holder);
 }
 
 void MainWindow::createTimelineView()

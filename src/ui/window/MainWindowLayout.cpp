@@ -299,8 +299,8 @@ void MainWindow::pressSide(int side, bool second)
 void MainWindow::setMiddleCollapsed(bool collapsed)
 {
     QWidget* const middle = centralWidget();
-    if (!middle || collapsed == m_middleCollapsed)
-        return;
+    if (!middle || collapsed == m_middleCollapsed || (!collapsed && m_cameraWindow))
+        return;     // (nothing to show in the middle while its view is out in a window)
     m_middleCollapsed = collapsed;
     m_collapsing = true;
     if (collapsed) {
@@ -416,6 +416,7 @@ void MainWindow::toggleSide(int side)
 
 void MainWindow::expandAllSides()
 {
+    setCameraFloating(false);
     setMiddleCollapsed(false);
     for (int side = 0; side < SideCount; ++side)
         if (!m_collapsed[side].isEmpty())
@@ -430,6 +431,56 @@ void MainWindow::expandAllSides()
                 d->raise();
     }
     placeCollapseArrows();
+}
+
+void MainWindow::setCameraFloating(bool floating)
+{
+    if (floating == cameraFloating() || !m_cameraPanel)
+        return;
+    ViewTitleBar* const bar = m_cameraPanel->findChild<ViewTitleBar*>(QStringLiteral("CameraTitleBar"));
+    if (floating) {
+        QSize const size = m_cameraPanel->isVisible() ? m_cameraPanel->size() : QSize(900, 600);
+        QPoint const at = centralWidget()->mapToGlobal(QPoint(30, 30));
+        QWidget* const out = new QWidget(this, Qt::Window);
+        out->setObjectName(QStringLiteral("CameraWindow"));
+        out->setWindowTitle(tr("Camera"));
+        QVBoxLayout* const layout = new QVBoxLayout(out);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->addWidget(m_cameraPanel);
+        out->installEventFilter(this);
+        out->resize(size);
+        out->move(at);
+        m_cameraWindow = out;
+        m_cameraPanel->show();
+        out->show();
+        setMiddleCollapsed(true);
+    } else {
+        QWidget* const out = m_cameraWindow;
+        m_cameraWindow = nullptr;
+        centralWidget()->layout()->addWidget(m_cameraPanel);
+        m_cameraPanel->show();
+        out->removeEventFilter(this);
+        out->hide();
+        out->deleteLater();
+        setMiddleCollapsed(false);
+    }
+    if (bar)
+        bar->setFloating(floating);
+}
+
+void MainWindow::setCameraShown(bool shown)
+{
+    if (shown) {
+        if (m_cameraWindow) {
+            m_cameraWindow->raise();
+            m_cameraWindow->activateWindow();
+        } else {
+            setMiddleCollapsed(false);
+        }
+        return;
+    }
+    setCameraFloating(false);
+    setMiddleCollapsed(true);
 }
 
 void MainWindow::setActiveView(QWidget* frame)
@@ -458,10 +509,16 @@ bool MainWindow::eventFilter(QObject* object, QEvent* event)
             placeCollapseArrows();
         });
     }
+    // The window of the floating middle view closed: the view goes back into the middle.
+    if (event->type() == QEvent::Close && object == m_cameraWindow && m_cameraWindow) {
+        event->ignore();
+        QTimer::singleShot(0, this, [this] { setCameraFloating(false); });
+        return true;
+    }
     // A click anywhere in a view makes it the view in use.
     if (event->type() == QEvent::MouseButtonPress && object->isWidgetType()) {
         for (QWidget* w = static_cast<QWidget*>(object); w && w != this; w = w->parentWidget()) {
-            if (w->objectName() == QLatin1String("ViewFrame") && w->window() == this) {
+            if (w->objectName() == QLatin1String("ViewFrame") && (w->window() == this || w->window() == m_cameraWindow)) {
                 setActiveView(w);
                 break;
             }
@@ -548,6 +605,10 @@ void MainWindow::onActionResetAllExceptZ()
 
 void MainWindow::onShowWindows(QMenu* menu)
 {
+    QAction* const camera = menu->addAction(tr("Camera"));
+    camera->setCheckable(true);
+    camera->setChecked(cameraShown());
+    connect(camera, &QAction::toggled, this, &MainWindow::setCameraShown);
     for (QDockWidget* dock : std::as_const(m_docks)) {
         QAction* const a = menu->addAction(dock->windowTitle());
         a->setCheckable(true);
