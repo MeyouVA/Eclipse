@@ -181,6 +181,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                                         {"placement", QJsonArray{t.m11(), t.m12(), t.m13(), t.m21(), t.m22(), t.m23(), t.m31(), t.m32(), t.m33()}}};
                     if (p.painted)
                         picture["painted"] = true;
+                    if (p.painted && p.sheet != Drawing::LineSheet)
+                        picture["sheet"] = p.sheet;
                     if (p.linked) {
                         picture["linked"] = true;
                         if (QString const relative = pathFrom(folder, p.file); !relative.isEmpty())
@@ -388,6 +390,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["cloneTiming"] = false;
         if (layer.bitmap)
             layerObject["bitmap"] = true;
+        if (layer.bitmapArt != 0)
+            layerObject["bitmapArt"] = layer.bitmapArt;
         if (layer.bitmapResolution != 100)
             layerObject["bitmapResolution"] = layer.bitmapResolution;
         if (layer.hiddenSheets != 0)

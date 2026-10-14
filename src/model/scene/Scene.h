@@ -239,6 +239,9 @@ struct Picture {
     bool linked = false;
     // The pixels a bitmap layer is painted in: made by the program, painted on by the brush.
     bool painted = false;
+    // The art layer painted pixels belong to (a Drawing::Sheet - the line art, unless that art layer of the layer is
+    // a bitmap one of its own); they lie under that art layer's lines and areas, over the art layers below it.
+    int sheet = 2;
     // From the pixels of the image to the coordinates of the drawing.
     QTransform placement;
     // The size the picture had when it came in (kept so that a linked picture whose file
@@ -618,6 +621,9 @@ struct Layer {
     int hiddenSheets = 0;
     // A bitmap layer: what is drawn on its line art is painted in pixels, not kept as lines.
     bool bitmap = false;
+    // The other art layers painted in pixels too (one bit for each Drawing::Sheet; the line art's is `bitmap`).
+    int bitmapArt = 0;
+    bool bitmapSheet(int sheet) const { return sheet == 2 ? bitmap : (bitmapArt & (1 << sheet)) != 0; }
     // How fine its pixels are, as a percentage: 100 is a pixel for each unit of the scene, 200 two across each unit.
     // Taken when the pixels of a drawing are first made.
     int bitmapResolution = 100;

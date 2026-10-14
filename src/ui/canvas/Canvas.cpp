@@ -231,9 +231,17 @@ Drawing const* Canvas::currentDrawing() const
     QVector<Stroke> const& sheetStrokes = real->strokesOf(sheetOf(m_art));
     QVector<Fill> const& sheetFills = real->fillsOf(sheetOf(m_art));
     if (m_artView.strokes.constData() != sheetStrokes.constData() || m_artView.fills.constData() != sheetFills.constData()
-        || m_artView.strokes.size() != sheetStrokes.size() || m_artView.fills.size() != sheetFills.size()) {
+        || m_artView.strokes.size() != sheetStrokes.size() || m_artView.fills.size() != sheetFills.size()
+        || m_artPictures != real->pictures.constData() || m_artPictureCount != real->pictures.size()) {
         m_artView.strokes = sheetStrokes;
         m_artView.fills = sheetFills;
+        // With pixels of its own: those of this art layer.
+        m_artView.pictures.clear();
+        for (Picture const& picture : real->pictures)
+            if (picture.painted && picture.sheet == sheetOf(m_art))
+                m_artView.pictures.push_back(picture);
+        m_artPictures = real->pictures.constData();
+        m_artPictureCount = real->pictures.size();
     }
     return &m_artView;
 }
@@ -281,6 +289,14 @@ Drawing Canvas::withArt(Drawing const& art) const
     Drawing whole = realDrawing() ? *realDrawing() : Drawing();
     whole.fillsOf(sheetOf(m_art)) = art.fills;
     whole.strokesOf(sheetOf(m_art)) = art.strokes;
+    // The pixels of this art layer, as they now are.
+    int const mine = sheetOf(m_art);
+    whole.pictures.removeIf([mine](Picture const& p) { return p.painted && p.sheet == mine; });
+    for (Picture picture : art.pictures) {
+        picture.painted = true;
+        picture.sheet = mine;
+        whole.pictures.push_back(picture);
+    }
     return whole;
 }
 
@@ -319,16 +335,19 @@ void Canvas::onActionPreviewAllArt(bool on)
 bool Canvas::bitmapNow() const
 {
     Scene const& scene = m_document->scene();
-    return m_art == LineArt && m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].bitmap && scene.layers[m_layer].holdsDrawings();
+    return m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].bitmapSheet(sheetOf(m_art)) && scene.layers[m_layer].holdsDrawings()
+           && !bothArtsNow();
 }
 
 void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text, QRectF reach)
 {
     Scene const& scene = m_document->scene();
     Drawing art = realDrawing() ? *realDrawing() : Drawing();
+    // The pixels of the art layer being worked on.
+    int const sheet = sheetOf(m_art);
     int at = -1;
     for (int i = 0; i < art.pictures.size() && at < 0; ++i)
-        if (art.pictures[i].painted)
+        if (art.pictures[i].painted && art.pictures[i].sheet == sheet)
             at = i;
     if (at < 0) {
         // The pixels of the drawing: the frame of the scene and a quarter of it more on every side.
@@ -337,6 +356,7 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
         double const fine = m_layer >= 0 && m_layer < scene.layers.size() ? std::clamp(scene.layers[m_layer].bitmapResolution, 25, 400) / 100.0 : 1.0;
         Picture pixels;
         pixels.painted = true;
+        pixels.sheet = sheet;
         pixels.size = QSize(int(std::ceil(area.width() * fine)), int(std::ceil(area.height() * fine)));
         pixels.image = QImage(pixels.size, QImage::Format_ARGB32_Premultiplied);
         pixels.image.fill(Qt::transparent);
@@ -373,7 +393,7 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
     // Pieces of the pixels cut loose (and perhaps moved) go back into them first, where they now lie.
     QVector<int> pieces;
     for (int i = at + 1; i < art.pictures.size(); ++i)
-        if (art.pictures[i].painted && !art.pictures[i].image.isNull())
+        if (art.pictures[i].painted && art.pictures[i].sheet == sheet && !art.pictures[i].image.isNull())
             pieces.push_back(i);
     if (!pieces.isEmpty()) {
         QPainter painter(&image);
@@ -411,7 +431,7 @@ int Canvas::liftedPieceAt(QPointF p) const
     int first = -1;
     for (int i = 0; i < d->pictures.size(); ++i) {
         Picture const& piece = d->pictures[i];
-        if (!piece.painted)
+        if (!piece.painted || !pictureHere(piece))
             continue;
         if (first < 0) {
             first = i;      // the pixels themselves, not a piece of them
@@ -505,7 +525,7 @@ bool Canvas::fillBitmapAt(QPointF p, bool clear)
     return changed;
 }
 
-bool Canvas::erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed)
+bool Canvas::erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed) const
 {
     QPainterPath area;
     area.setFillRule(Qt::WindingFill);
@@ -514,7 +534,7 @@ bool Canvas::erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed)
     QRectF const reach = area.boundingRect();
     bool any = false;
     for (Picture& picture : art.pictures) {
-        if (picture.linked || picture.image.isNull() || !picture.placement.isInvertible() || !picture.bounds().intersects(reach))
+        if (picture.linked || picture.image.isNull() || !picture.placement.isInvertible() || !picture.bounds().intersects(reach) || !pictureHere(picture))
             continue;
         QImage image = picture.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
         {
@@ -607,7 +627,7 @@ void Canvas::eraseStretch(int from)
         any = any || changed;
     }
     // Pictures kept in the scene - the pixels of a bitmap layer among them - are rubbed out where it passes.
-    bool const pixels = m_art == LineArt && erasePictures(m_eraseArt, rubbed);
+    bool const pixels = (m_art == LineArt || bitmapNow()) && erasePictures(m_eraseArt, rubbed);
     if (!any && !pixels)
         return;
     m_eraseArt.fills = fills;
@@ -653,7 +673,7 @@ void Canvas::cutWithEraser()
             art.strokes += stroke.minus(rubbed, fine, &changed);
             any = any || changed;
         }
-        if (m_art == LineArt && erasePictures(art, rubbed))
+        if ((m_art == LineArt || bitmapNow()) && erasePictures(art, rubbed))
             any = true;
         return any;
     };

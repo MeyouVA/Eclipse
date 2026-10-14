@@ -420,7 +420,7 @@ void Canvas::cutInside(QPolygonF const& shape)
         int const count = int(art.pictures.size());
         for (int i = 0; i < count; ++i) {
             Picture const whole = art.pictures[i];
-            if (whole.image.isNull() || !whole.placement.isInvertible() || !whole.bounds().intersects(shape.boundingRect()))
+            if (whole.image.isNull() || !whole.placement.isInvertible() || !whole.bounds().intersects(shape.boundingRect()) || !pictureHere(whole))
                 continue;
             QRectF const frame(QPointF(0, 0), QSizeF(whole.image.size()));
             QPolygonF const corners = whole.placement.map(QPolygonF(frame));

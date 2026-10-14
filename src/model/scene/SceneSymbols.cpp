@@ -508,6 +508,7 @@ int Scene::addCloneLayer(int layer, bool timing)
         for (Drawing& d : layers[from].drawings)
             d.pinned = true;
     layers[at].bitmap = layers[from].bitmap;
+    layers[at].bitmapArt = layers[from].bitmapArt;
     layers[at].drawings = layers[from].drawings;
     layers[at].cells = layers[from].cells;
     layers[at].keyExposures = layers[from].keyExposures;

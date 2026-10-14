@@ -834,6 +834,28 @@ void MainWindow::onActionColumnProperties()
     bitmap->setObjectName(QStringLiteral("ColumnBitmap"));
     bitmap->setChecked(was.bitmap);
     bitmap->setVisible(was.holdsDrawings() && !was.showsSymbol());
+    // The other art layers, each a bitmap one of its own or not.
+    QCheckBox* artBitmap[Drawing::SheetCount] = {};
+    QHBoxLayout* const artRow = new QHBoxLayout;
+    for (auto const& [sheet, label, id] : {std::tuple<int, char const*, char const*>{Drawing::UnderlaySheet, QT_TR_NOOP("Underlay"), "ColumnBitmapUnderlay"},
+                                           {Drawing::ColourSheet, QT_TR_NOOP("Colour Art"), "ColumnBitmapColour"},
+                                           {Drawing::OverlaySheet, QT_TR_NOOP("Overlay"), "ColumnBitmapOverlay"}}) {
+        QCheckBox* const box = new QCheckBox(tr(label), &dialog);
+        box->setObjectName(QLatin1String(id));
+        box->setToolTip(tr("What is drawn on this art layer is painted in pixels, not kept as lines."));
+        box->setChecked(was.bitmapSheet(sheet));
+        box->setVisible(was.holdsDrawings() && !was.showsSymbol());
+        artBitmap[sheet] = box;
+        artRow->addWidget(box);
+    }
+    artRow->addStretch(1);
+    auto artBits = [&artBitmap] {
+        int bits = 0;
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+            if (artBitmap[sheet] && artBitmap[sheet]->isChecked())
+                bits |= 1 << sheet;
+        return bits;
+    };
     QSpinBox* const fineness = new QSpinBox(&dialog);
     fineness->setObjectName(QStringLiteral("ColumnBitmapResolution"));
     fineness->setRange(25, 400);
@@ -856,8 +878,12 @@ void MainWindow::onActionColumnProperties()
     form->addRow(QString(), enabled);
     form->addRow(QString(), locked);
     form->addRow(QString(), bitmap);
-    if (was.holdsDrawings() && !was.showsSymbol())
+    if (was.holdsDrawings() && !was.showsSymbol()) {
+        form->addRow(tr("Bitmap art layers:"), artRow);
         form->addRow(tr("Bitmap resolution:"), fineness);
+    } else {
+        delete artRow;
+    }
     if (was.holdsDrawings())
         form->addRow(tr("Drawings:"), drawings);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -871,7 +897,8 @@ void MainWindow::onActionColumnProperties()
     QColor const newColour = defaultColour->isChecked() ? QColor() : colour;
     bool const nameChanged = !name->text().trimmed().isEmpty() && name->text().trimmed() != was.name;
     bool const rest = newColour != was.trackColor || enabled->isChecked() != was.visible || locked->isChecked() != was.locked
-                      || (bitmap->isVisible() || was.bitmap) && bitmap->isChecked() != was.bitmap || fineness->value() != was.bitmapResolution;
+                      || (bitmap->isVisible() || was.bitmap) && bitmap->isChecked() != was.bitmap || fineness->value() != was.bitmapResolution
+                      || (was.holdsDrawings() && !was.showsSymbol() && artBits() != was.bitmapArt);
     if (!nameChanged && !rest)
         return;
     m_document->beginMacro(tr("Column Properties"));
@@ -880,8 +907,10 @@ void MainWindow::onActionColumnProperties()
     if (rest) {
         bool const on = enabled->isChecked(), lock = locked->isChecked(), pixels = bitmap->isChecked() && was.holdsDrawings() && !was.showsSymbol();
         int const resolution = fineness->value();
-        m_document->editLayers({l}, tr("Column Properties"), [newColour, on, lock, pixels, resolution](Layer& layer) {
+        int const artPixels = was.holdsDrawings() && !was.showsSymbol() ? artBits() : was.bitmapArt;
+        m_document->editLayers({l}, tr("Column Properties"), [newColour, on, lock, pixels, resolution, artPixels](Layer& layer) {
             layer.bitmapResolution = resolution;
+            layer.bitmapArt = artPixels;
             layer.trackColor = newColour;
             layer.visible = on;
             layer.locked = lock;

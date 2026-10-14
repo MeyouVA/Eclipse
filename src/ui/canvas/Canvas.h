@@ -223,7 +223,14 @@ public:
     // ... which is so just now (with one of those tools, on one of those two sheets).
     bool bothArtsNow() const { return m_selectBothArts && (m_tool == Select || m_tool == Cutter) && (m_art == LineArt || m_art == ColourArt); }
     // Pictures lie with the line art: they can be taken when it is (one of) the sheets worked on.
-    bool picturesHere() const { return m_art == LineArt || bothArtsNow(); }
+    bool picturesHere() const { return m_art == LineArt || bothArtsNow() || bitmapNow(); }
+    // A picture of the current drawing that belongs to the art being worked on (painted pixels belong to one art layer).
+    bool pictureHere(Picture const& picture) const
+    {
+        int const mine = sheetOf(m_art);
+        return !picture.painted ? m_art == LineArt || bothArtsNow()
+                                : picture.sheet == mine || (bothArtsNow() && (picture.sheet == Drawing::LineSheet || picture.sheet == Drawing::ColourSheet));
+    }
     // The layer worked on is a bitmap layer, and its pixels are what the tools reach (they lie with the line art).
     bool bitmapNow() const;
     // Control points of the current layer's motion path.  `key`: the keyframe the stretch starts at.
@@ -785,7 +792,7 @@ private:
     // `reach`, when given, is how far the paint goes: pixels too few to take it in grow first.
     void paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text, QRectF reach = QRectF());
     // Rubs `rubbed` out of the pixels of the drawing's pictures (those kept in the scene); true when one was reached.
-    static bool erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed);
+    bool erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed) const;
     // With a Symmetry guide in use: the turn-over about its axis, for what is on the layer.
     bool symmetry(QTransform* mirror) const;
     // Every way what is drawn is to be repeated: with a Symmetry guide chosen, all the Symmetry guides of the
@@ -873,6 +880,8 @@ private:
     Art m_art = LineArt;
     bool m_previewAllArt = true;
     mutable Drawing m_artView;   // the colour art of the current drawing, for currentDrawing()
+    mutable Picture const* m_artPictures = nullptr;     // (the pictures it was taken from)
+    mutable qsizetype m_artPictureCount = 0;
     mutable Drawing m_bothView;  // the line art and the colour art as one drawing, while both are worked on
     mutable void const* m_bothKey[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
     mutable qsizetype m_bothSize[5] = {-1, -1, -1, -1, -1};

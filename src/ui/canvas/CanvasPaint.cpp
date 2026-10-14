@@ -449,8 +449,9 @@ void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
 
 static void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing const& drawing, QColor const* tint)
 {
-    // Pictures lie under everything drawn.  One whose file has gone shows where it was.
-    for (Picture const& picture : drawing.pictures) {
+    // Pictures lie under everything drawn.  One whose file has gone shows where it was.  The pixels of a bitmap art
+    // layer lie at the bottom of that art layer instead.
+    auto paintPicture = [&painter](Picture const& picture) {
         painter.save();
         painter.setTransform(picture.placement, true);
         QRectF const box(QPointF(0, 0), QSizeF(picture.size));
@@ -467,9 +468,15 @@ static void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing co
             painter.drawImage(box, picture.image);
         }
         painter.restore();
-    }
+    };
+    for (Picture const& picture : drawing.pictures)
+        if (!picture.painted)
+            paintPicture(picture);
     // From the sheet underneath to the one on top: underlay, colour art, lines, overlay.
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        for (Picture const& picture : drawing.pictures)
+            if (picture.painted && picture.sheet == sheet)
+                paintPicture(picture);
         QVector<Fill> const& fills = drawing.fillsOf(sheet);
         QVector<Stroke> const& strokes = drawing.strokesOf(sheet);
         if (Drawing::topOrder(fills, strokes) == Drawing::bottomOrder(fills, strokes)) {
@@ -564,6 +571,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             if (!layer.sheetShown(sheet)) {
                 kept.fillsOf(sheet).clear();
                 kept.strokesOf(sheet).clear();
+                kept.pictures.removeIf([sheet](Picture const& p) { return p.painted && p.sheet == sheet; });
             }
         }
         paintLayerDrawing(painter, scene, l, frame, kept, opacity, sceneToDevice, true);
