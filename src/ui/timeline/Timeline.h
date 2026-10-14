@@ -9,12 +9,16 @@
 #include <QAbstractScrollArea>
 #include <QSet>
 #include <QVector>
+#include <QHash>
+
+#include <memory>
 
 class Document;
 struct Pose;
 class QLineEdit;
 class QSlider;
 struct CellBlock;
+struct SoundData;
 
 class ECLIPSE_UI_API Timeline : public QAbstractScrollArea {
     Q_OBJECT
@@ -86,6 +90,9 @@ public:
     void setExtraLayers(QVector<int> const& layers);
     // Whether sound layers show how loud the sound is along their row.
     bool showWaveforms() const { return m_waveforms; }
+    // The sound a layer that shows a symbol plays (the sounds inside the symbol, where it shows them), from the scene's
+    // first frame; null when the symbol has none.  Worked out once for each way the layer and the symbol are.
+    std::shared_ptr<SoundData> symbolSound(int layer) const;
     void setShowWaveforms(bool on);
     // The onion skin: whether it is on, and how far before and after the current frame it
     // reaches.  Shown on the ruler, with a handle at each end to drag.
@@ -233,6 +240,7 @@ private:
     int m_moveRow = 0, m_moveFrame = 0;     // the cell it was taken by
     int m_moveRows = 0, m_moveFrames = 0;   // how far it has been dragged
     bool m_waveforms = true;
+    mutable QHash<int, QPair<quint64, std::shared_ptr<SoundData>>> m_symbolSounds;  // by layer id: what it was worked out for, and the sound
     bool m_onionOn = false;
     int m_onionPrev = 1, m_onionNext = 1;
     int m_dragOnion = 0;       // -1: the handle before is being dragged; +1: the one after

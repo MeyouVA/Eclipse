@@ -3,6 +3,8 @@
 
 #include <QPainter>
 
+#include <functional>
+
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include <QScrollBar>
@@ -91,6 +93,24 @@ void Timeline::paintEvent(QPaintEvent*)
                 p.setPen(QColor(220, 120, 100));
                 p.drawText(QRect(kHeaderWidth + 6, y, w - kHeaderWidth - 6, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft,
                            tr("sound file missing"));
+            }
+        }
+        // A layer that shows a symbol with sound in it: the waveform of what it plays.
+        if (!param && layer.showsSymbol() && m_waveforms) {
+            if (std::shared_ptr<SoundData> const sound = symbolSound(layerIndex)) {
+                double const perPixel = double(SoundData::kRate) / scene.fps / cw;
+                int const left = std::max(kHeaderWidth, kHeaderWidth - sx);
+                int const right = std::min(w, kHeaderWidth + scene.frameCount() * cw - sx);
+                int const mid = y + kRowHeight / 2;
+                p.setPen(QColor(120, 200, 150, 170));
+                for (int x = left; x < right; x += 2) {
+                    qint64 const first = qint64((x - kHeaderWidth + sx) * perPixel);
+                    if (first >= sound->frames())
+                        break;
+                    int const half = int(sound->peak(first, qint64(perPixel * 2) + 1) * (kRowHeight / 2 - 2) + 0.5);
+                    if (half > 0)
+                        p.drawLine(x, mid - half, x, mid + half);
+                }
             }
         }
         // Lip-sync: the shape of the mouth on each frame, where the frames are wide enough to letter.
@@ -535,4 +555,45 @@ void Timeline::paintEvent(QPaintEvent*)
     p.drawLine(kHeaderWidth - 1, 0, kHeaderWidth - 1, h);
     p.drawLine(nameEnd, 0, nameEnd, h);
     p.drawLine(0, kRulerHeight - 1, w, kRulerHeight - 1);
+}
+
+std::shared_ptr<SoundData> Timeline::symbolSound(int l) const
+{
+    Scene const& scene = m_document->scene();
+    if (l < 0 || l >= scene.layers.size() || !scene.layers[l].showsSymbol())
+        return nullptr;
+    Layer const& layer = scene.layers[l];
+    // What the sound depends on: the layer's frames, and the sounds and frames inside the symbol (and the symbols in it).
+    quint64 key = qHash(layer.cells) ^ (quint64(scene.frameCount()) << 32) ^ quint64(layer.visible) ^ qHash(scene.fps);
+    bool any = false;
+    std::function<void(int, int)> look = [&](int symbolId, int depth) {
+        Scene::Symbol const* const symbol = scene.findSymbol(symbolId);
+        if (!symbol || depth > Scene::kSymbolDepth)
+            return;
+        key = key * 1099511628211ull ^ quint64(symbolId);
+        for (Layer const& inner : symbol->layers) {
+            if (inner.kind == Layer::Sound) {
+                any = true;
+                key = key * 1099511628211ull ^ qHash(inner.soundFile) ^ quint64(inner.soundStart) * 31u ^ quint64(inner.visible);
+            } else if (inner.showsSymbol()) {
+                key = key * 1099511628211ull ^ qHash(inner.cells);
+                look(inner.symbolId, depth + 1);
+            }
+        }
+    };
+    look(layer.symbolId, 0);
+    if (!any)
+        return nullptr;
+    auto const found = m_symbolSounds.constFind(layer.id);
+    if (found != m_symbolSounds.constEnd() && found->first == key)
+        return found->second;
+    // The scene with that layer alone, mixed.
+    Scene alone = scene;
+    alone.layers = {layer};
+    alone.layers[0].parent = 0;
+    auto made = std::make_shared<SoundData>();
+    made->samples = Sound::mix(alone);
+    std::shared_ptr<SoundData> const sound = made->samples.isEmpty() ? nullptr : made;
+    m_symbolSounds.insert(layer.id, qMakePair(key, sound));
+    return sound;
 }
