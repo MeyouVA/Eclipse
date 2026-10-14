@@ -600,6 +600,14 @@ void Document::applyController(int controller, int frame, double value)
     });
 }
 
+void Document::setDisplay(int layer)
+{
+    int const id = layer >= 0 && layer < m_scene.layers.size() ? m_scene.layers[layer].id : 0;
+    if (id == m_scene.display)
+        return;
+    apply(tr("Set Default Display"), [&](Scene& s) { s.display = id; });
+}
+
 int Document::addSyncedLayer(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())

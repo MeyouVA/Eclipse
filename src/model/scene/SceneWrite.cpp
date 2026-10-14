@@ -477,6 +477,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"fps", fps},
                        {"orthographic", orthographic},
                        {"camera", activeCamera},
+                       {"display", display},
                        {"references", referenceArray},
                        {"guides", guideArray},
                        {"metadata", pairsJson(metadata)},

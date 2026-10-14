@@ -81,12 +81,14 @@ void Canvas::paintEvent(QPaintEvent*)
     std::iota(stacked.begin(), stacked.end(), 0);
     bool heldBack = false;
     for (int l : m_drawingView ? stacked : scene.drawOrder(m_frame)) {
+        if (!scene.inDisplay(l))
+            continue;      // (not in what the display shows)
         if (m_currentOnTop && !m_playing && l == m_layer)
             heldBack = true;
         else
             order.push_back(l);
     }
-    if (heldBack)
+    if (heldBack && scene.inDisplay(m_layer))
         order.push_back(m_layer);
     if (m_drawingView) {
         // The sheet of paper the drawing is on.

@@ -645,3 +645,26 @@ void MainWindow::onActionToggleFullScreen(bool on)
     else
         showNormal();
 }
+
+// Scene > Default Display: the whole scene, or the part under one group or peg, in the Camera view.
+void MainWindow::onShowDisplays(QMenu* menu)
+{
+    menu->clear();
+    Scene const& scene = m_document->scene();
+    int const shown = scene.display != 0 ? scene.layerIndex(scene.display) : -1;
+    QAction* const whole = menu->addAction(tr("Whole Scene"));
+    whole->setCheckable(true);
+    whole->setChecked(shown < 0);
+    connect(whole, &QAction::triggered, this, [this] { m_document->setDisplay(-1); });
+    menu->addSeparator();
+    for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {
+        Layer const& layer = scene.layers[l];
+        if (layer.kind != Layer::Group && layer.kind != Layer::Peg)
+            continue;
+        QAction* const a = menu->addAction(layer.name);
+        a->setCheckable(true);
+        a->setChecked(l == shown);
+        int const id = layer.id;
+        connect(a, &QAction::triggered, this, [this, id] { m_document->setDisplay(m_document->scene().layerIndex(id)); });
+    }
+}

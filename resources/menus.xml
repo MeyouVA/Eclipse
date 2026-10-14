@@ -187,6 +187,7 @@
    </menu>
    <separator/>
    <menu id="SceneCamera" text="&amp;Camera" responder="window" aboutToShowSlot="onShowCameras(QMenu*)"/>
+   <menu id="SceneDisplay" text="Default &amp;Display" responder="window" aboutToShowSlot="onShowDisplays(QMenu*)"/>
    <item id="SceneSettings" icon="misc/scenesettings" text="Scene &amp;Settings..." responder="window" slot="onActionSceneSettings()"/>
    <separator/>
    <item id="CheckFiles" icon="misc/checkfiles" text="&amp;Check Files..." responder="window" slot="onActionCheckFiles()"/>

@@ -754,6 +754,11 @@ public:
     // A scene may have several cameras; it is seen through one of them.  The id of that
     // layer, or 0 for the first camera there is.
     int activeCamera = 0;
+    // The Camera view's display: the id of the layer (a group, a peg ...) whose part of the scene it shows - that layer
+    // and what hangs under it; 0: the whole scene.
+    int display = 0;
+    // Whether a layer is in what the display shows.
+    bool inDisplay(int layer) const;
     // The camera the scene is seen through, or -1: then the scene is seen as it is.
     int cameraIndex() const;
     QVector<int> cameras() const;

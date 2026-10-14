@@ -601,6 +601,17 @@ int Scene::lockControlPointInTime(int layer, int key, int control)
     return frame;
 }
 
+bool Scene::inDisplay(int layer) const
+{
+    int const shown = display != 0 ? layerIndex(display) : -1;
+    if (shown < 0)
+        return true;
+    for (int at = layer, guard = 0; at >= 0 && guard < 256; at = parentIndex(at), ++guard)
+        if (at == shown)
+            return true;
+    return false;
+}
+
 int Scene::addSyncedLayer(int layer)
 {
     if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())
