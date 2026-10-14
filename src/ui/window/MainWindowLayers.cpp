@@ -4,6 +4,8 @@
 #include "actions/manager/ActionManager.h"
 #include <QCheckBox>
 #include <QDialog>
+#include <QDialogButtonBox>
+#include <QLabel>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
@@ -783,4 +785,94 @@ void MainWindow::onActionAttachTo()
 void MainWindow::onActionDetach()
 {
     m_document->setParent(layer(), -1);
+}
+
+// Column Properties: what the current layer is as a column of the Timeline and the Xsheet, in one window.
+void MainWindow::onActionColumnProperties()
+{
+    Scene const& scene = m_document->scene();
+    int const l = layer();
+    if (l < 0 || l >= scene.layers.size())
+        return;
+    Layer const was = scene.layers[l];
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("ColumnPropertiesDialog"));
+    dialog.setWindowTitle(tr("Column Properties"));
+    QLineEdit* const name = new QLineEdit(was.name, &dialog);
+    name->setObjectName(QStringLiteral("ColumnName"));
+    static char const* const kKinds[] = {QT_TR_NOOP("Drawing"), QT_TR_NOOP("Peg"), QT_TR_NOOP("Camera"), QT_TR_NOOP("Sound"),
+                                         QT_TR_NOOP("Colour-Card"), QT_TR_NOOP("Group"), QT_TR_NOOP("Bone"), QT_TR_NOOP("Quadmap")};
+    QLabel* const kind = new QLabel(tr(kKinds[was.kind]) + (was.showsSymbol() ? tr(" (shows a symbol)") : QString()), &dialog);
+    kind->setObjectName(QStringLiteral("ColumnKind"));
+    QColor colour = was.trackColor;
+    QPushButton* const colourButton = new QPushButton(&dialog);
+    colourButton->setObjectName(QStringLiteral("ColumnColour"));
+    QCheckBox* const defaultColour = new QCheckBox(tr("Default colour"), &dialog);
+    defaultColour->setObjectName(QStringLiteral("ColumnDefaultColour"));
+    auto showColour = [colourButton, defaultColour, &colour] {
+        colourButton->setEnabled(!defaultColour->isChecked());
+        colourButton->setText(defaultColour->isChecked() || !colour.isValid() ? QObject::tr("(default)") : colour.name());
+        colourButton->setStyleSheet(defaultColour->isChecked() || !colour.isValid() ? QString() : QStringLiteral("background-color: %1;").arg(colour.name()));
+    };
+    defaultColour->setChecked(!colour.isValid());
+    connect(defaultColour, &QCheckBox::toggled, &dialog, showColour);
+    connect(colourButton, &QPushButton::clicked, &dialog, [&] {
+        QColor const chosen = QColorDialog::getColor(colour.isValid() ? colour : QColor(90, 120, 160), &dialog, tr("Track Colour"));
+        if (chosen.isValid())
+            colour = chosen;
+        showColour();
+    });
+    showColour();
+    QCheckBox* const enabled = new QCheckBox(tr("Enabled (in the picture)"), &dialog);
+    enabled->setObjectName(QStringLiteral("ColumnEnabled"));
+    enabled->setChecked(was.visible);
+    QCheckBox* const locked = new QCheckBox(tr("Locked"), &dialog);
+    locked->setObjectName(QStringLiteral("ColumnLocked"));
+    locked->setChecked(was.locked);
+    QCheckBox* const bitmap = new QCheckBox(tr("Bitmap layer"), &dialog);
+    bitmap->setObjectName(QStringLiteral("ColumnBitmap"));
+    bitmap->setChecked(was.bitmap);
+    bitmap->setVisible(was.holdsDrawings() && !was.showsSymbol());
+    QLabel* const drawings = new QLabel(&dialog);
+    drawings->setObjectName(QStringLiteral("ColumnDrawings"));
+    if (was.holdsDrawings())
+        drawings->setText(tr("%n drawing(s)", nullptr, int(was.drawings.size())) + (was.syncGroup ? tr(", synced") : QString())
+                          + (was.cloneGroup ? (was.cloneTiming ? tr(", a clone (drawings and timing)") : tr(", a clone (drawings)")) : QString()));
+    QFormLayout* const form = new QFormLayout;
+    form->addRow(tr("Name:"), name);
+    form->addRow(tr("Type:"), kind);
+    form->addRow(tr("Colour:"), colourButton);
+    form->addRow(QString(), defaultColour);
+    form->addRow(QString(), enabled);
+    form->addRow(QString(), locked);
+    form->addRow(QString(), bitmap);
+    if (was.holdsDrawings())
+        form->addRow(tr("Drawings:"), drawings);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addLayout(form);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    QColor const newColour = defaultColour->isChecked() ? QColor() : colour;
+    bool const nameChanged = !name->text().trimmed().isEmpty() && name->text().trimmed() != was.name;
+    bool const rest = newColour != was.trackColor || enabled->isChecked() != was.visible || locked->isChecked() != was.locked
+                      || (bitmap->isVisible() || was.bitmap) && bitmap->isChecked() != was.bitmap;
+    if (!nameChanged && !rest)
+        return;
+    m_document->beginMacro(tr("Column Properties"));
+    if (nameChanged)
+        m_document->renameLayer(l, name->text().trimmed());
+    if (rest) {
+        bool const on = enabled->isChecked(), lock = locked->isChecked(), pixels = bitmap->isChecked() && was.holdsDrawings() && !was.showsSymbol();
+        m_document->editLayers({l}, tr("Column Properties"), [newColour, on, lock, pixels](Layer& layer) {
+            layer.trackColor = newColour;
+            layer.visible = on;
+            layer.locked = lock;
+            layer.bitmap = pixels;
+        });
+    }
+    m_document->endMacro();
 }

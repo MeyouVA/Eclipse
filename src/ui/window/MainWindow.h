@@ -204,6 +204,7 @@ public slots:
     void onActionCloneLayer();
     void onActionCloneLayerTiming();
     void onActionInsertControlPoint();
+    void onActionColumnProperties();
     void onActionRenderPreview();
     void onShowScripts(QMenu* menu);
     void onActionAutoRender(bool on);

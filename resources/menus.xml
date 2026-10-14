@@ -585,6 +585,7 @@
   <item id="DuplicateLayer" icon="timeline/duplicatelayer" text="Duplicate Selected Layers" responder="window" slot="onActionDuplicateLayer()"/>
   <item id="MergeLayers" icon="timeline/mergelayers" text="Merge Selected Layers" shortcut="shortcut.mergeLayers" responder="window" slot="onActionMergeLayers()"/>
   <item id="RenameLayer" icon="timeline/renamelayer" text="Rename Layer..." responder="window" slot="onActionRenameLayer()"/>
+  <item id="ColumnProperties" icon="timeline/columnprops" text="Column Properties..." responder="window" slot="onActionColumnProperties()"/>
   <item id="MoveLayerUp" icon="timeline/layerup" text="Move Layer Up" shortcut="shortcut.moveLayerUp" responder="window" slot="onActionMoveLayerUp()"/>
   <item id="MoveLayerDown" icon="timeline/layerdown" text="Move Layer Down" shortcut="shortcut.moveLayerDown" responder="window" slot="onActionMoveLayerDown()"/>
   <item id="AttachLayer"/>
@@ -740,6 +741,7 @@
  </menu>
 
  <menu id="menu.xsheet" text="Xsheet Menu">
+  <item id="ColumnProperties"/>
   <menu id="XsheetDrawings" text="Drawings">
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>
