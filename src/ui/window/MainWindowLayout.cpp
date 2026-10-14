@@ -698,9 +698,28 @@ void MainWindow::setDrawingWindowShown(bool on)
         view->setCurrentCell(layer(), frame());
         connect(m_timeline, &Timeline::currentCellChanged, view, &Canvas::setCurrentCell);
         connect(view, &Canvas::message, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
+        // A small bar of its own: the light table, and the zoom of this view.
+        QToolBar* const bar = new QToolBar(window);
+        bar->setObjectName(QStringLiteral("DrawingWindowBar"));
+        bar->setIconSize(QSize(18, 18));
+        auto put = [&](char const* id, QString const& text) {
+            QAction* const a = bar->addAction(text);
+            if (QAction* const known = m_actions->action(QLatin1String(id)))
+                a->setIcon(known->icon());
+            a->setObjectName(QLatin1String(id) + QStringLiteral("Here"));
+            return a;
+        };
+        QAction* const light = put("LightTable", tr("Light Table"));
+        light->setCheckable(true);
+        connect(light, &QAction::toggled, view, &Canvas::onActionLightTable);
+        connect(put("ZoomIn", tr("Zoom In")), &QAction::triggered, view, &Canvas::onActionZoomIn);
+        connect(put("ZoomOut", tr("Zoom Out")), &QAction::triggered, view, &Canvas::onActionZoomOut);
+        connect(put("ResetZoom", tr("Reset Zoom")), &QAction::triggered, view, &Canvas::onActionResetZoom);
         QVBoxLayout* const layout = new QVBoxLayout(window);
         layout->setContentsMargins(0, 0, 0, 0);
-        layout->addWidget(view);
+        layout->setSpacing(0);
+        layout->addWidget(bar);
+        layout->addWidget(view, 1);
         window->resize(700, 520);
         window->move(mapToGlobal(QPoint(width() - 760, 80)));
     }

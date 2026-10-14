@@ -124,6 +124,36 @@ void MainWindow::loadWorkspace(QString const& name)
     QByteArray const saved = m_persistWorkspaces ? settings().value(QStringLiteral("workspaces/") + name).toByteArray() : QByteArray();
     if (saved.isEmpty() || !restoreState(saved, kLayoutVersion))
         applyBuiltinWorkspace(builtinWorkspaces().contains(name) ? name : QStringLiteral("Default"));
+    if (m_persistWorkspaces)
+        loadWorkspaceExtras(name);
+}
+
+void MainWindow::saveWorkspaceExtras(QString const& name)
+{
+    QSettings s = settings();
+    QString const at = QStringLiteral("workspaceExtras/") + name + QLatin1Char('/');
+    s.setValue(at + QStringLiteral("cameraFloating"), cameraFloating());
+    if (m_cameraWindow)
+        s.setValue(at + QStringLiteral("cameraGeometry"), m_cameraWindow->saveGeometry());
+    QWidget* const drawing = findChild<QWidget*>(QStringLiteral("DrawingWindow"), Qt::FindDirectChildrenOnly);
+    s.setValue(at + QStringLiteral("drawingWindow"), drawing && drawing->isVisible());
+    if (drawing)
+        s.setValue(at + QStringLiteral("drawingGeometry"), drawing->saveGeometry());
+}
+
+void MainWindow::loadWorkspaceExtras(QString const& name)
+{
+    QSettings const s = settings();
+    QString const at = QStringLiteral("workspaceExtras/") + name + QLatin1Char('/');
+    bool const floating = s.value(at + QStringLiteral("cameraFloating"), false).toBool();
+    setCameraFloating(floating);
+    if (floating && m_cameraWindow && s.contains(at + QStringLiteral("cameraGeometry")))
+        m_cameraWindow->restoreGeometry(s.value(at + QStringLiteral("cameraGeometry")).toByteArray());
+    bool const drawing = s.value(at + QStringLiteral("drawingWindow"), false).toBool();
+    setDrawingWindowShown(drawing);
+    if (QWidget* const window = findChild<QWidget*>(QStringLiteral("DrawingWindow"), Qt::FindDirectChildrenOnly); drawing && window
+        && s.contains(at + QStringLiteral("drawingGeometry")))
+        window->restoreGeometry(s.value(at + QStringLiteral("drawingGeometry")).toByteArray());
 }
 
 void MainWindow::saveCurrentWorkspace()
@@ -131,8 +161,10 @@ void MainWindow::saveCurrentWorkspace()
     // Like the scene, a workspace is as the user left it: there is no separate "save".
     // (Panels hidden by a collapse arrow are brought back first: the arrow would not be there to do it next time.)
     expandAllSides();
-    if (m_persistWorkspaces)
+    if (m_persistWorkspaces) {
         settings().setValue(QStringLiteral("workspaces/") + m_workspace, saveState(kLayoutVersion));
+        saveWorkspaceExtras(m_workspace);
+    }
 }
 
 void MainWindow::switchWorkspace(QString const& name)
@@ -181,6 +213,7 @@ void MainWindow::onActionSaveWorkspaceAs()
     // when it was last left.
     m_workspace = name;
     settings().setValue(QStringLiteral("workspaces/") + name, saveState(kLayoutVersion));
+    saveWorkspaceExtras(name);
     refreshWorkspaceBox();
 }
 

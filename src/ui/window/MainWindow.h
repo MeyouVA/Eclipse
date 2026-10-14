@@ -216,6 +216,9 @@ public slots:
     // Windows > Drawing: a Drawing view in a window of its own, beside the Camera view - the current drawing, flat,
     // drawn on with the tool in hand.
     void setDrawingWindowShown(bool on);
+    // What a workspace keeps besides the panels: whether the Camera view floats, and the Drawing window, and where they are.
+    void saveWorkspaceExtras(QString const& name);
+    void loadWorkspaceExtras(QString const& name);
     class Canvas* drawingWindowView() const;
     // The shortcuts and Scripts toolbar buttons the scripts were given.
     void refreshScriptCommands();
