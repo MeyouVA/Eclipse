@@ -65,8 +65,9 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         QTransform placement = QTransform::fromScale(scale, scale);
         placement *= QTransform::fromTranslate((scene.width - image.width() * scale) / 2.0, (scene.height - image.height() * scale) / 2.0);
         Drawing drawing;
-        // How far a traced shape's curves may stray from the edge of the picture (scene units).
-        double constexpr kTraceTolerance = 0.75;
+        // How far a traced shape's curves may stray from the edge of the picture (scene units): about a pixel of the picture,
+        // so that the steps of its pixels are smoothed over rather than taken for corners.
+        double const kTraceTolerance = std::max(0.75, 1.25 * scale);
         if (options.vectorize && options.colours > 0) {
             // In colour: a painted shape for the area of each colour, the largest underneath.
             for (Vectorize::ColourShape const& area : Vectorize::traceColours(image, options.colours, options.paper)) {
