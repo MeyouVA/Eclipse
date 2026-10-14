@@ -268,6 +268,95 @@ bool ScriptLayers::renameDrawing(int layer, int frame, QString const& name)
 
 // ---- palette ------------------------------------------------------------------------------
 
+// ---- effects ------------------------------------------------------------------------------
+
+static char const* const kEffectNames[] = {"blur", "tint", "cutter", "glow", "shadow", "particles"};
+
+bool ScriptEffects::has(int layer, int effect) const
+{
+    Scene const& scene = m_document->scene();
+    return layer >= 0 && layer < scene.layers.size() && effect >= 0 && effect < scene.layers[layer].effects.size();
+}
+
+void ScriptEffects::change(int layer, std::function<void(QVector<Effect>&)> const& how)
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size())
+        return;
+    QVector<Effect> effects = scene.layers[layer].effects;
+    how(effects);
+    if (!(effects == scene.layers[layer].effects))
+        m_document->setEffects(layer, effects, tr("Effects"));
+}
+
+int ScriptEffects::count(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    return layer >= 0 && layer < scene.layers.size() ? int(scene.layers[layer].effects.size()) : 0;
+}
+
+QString ScriptEffects::type(int layer, int effect) const
+{
+    return has(layer, effect) ? QLatin1String(kEffectNames[m_document->scene().layers[layer].effects[effect].type]) : QString();
+}
+
+double ScriptEffects::amount(int layer, int effect) const
+{
+    return has(layer, effect) ? m_document->scene().layers[layer].effects[effect].amount : 0.0;
+}
+
+void ScriptEffects::setAmount(int layer, int effect, double value)
+{
+    if (has(layer, effect))
+        change(layer, [effect, value](QVector<Effect>& e) { e[effect].amount = std::max(0.0, value); });
+}
+
+bool ScriptEffects::enabled(int layer, int effect) const
+{
+    return has(layer, effect) && m_document->scene().layers[layer].effects[effect].enabled;
+}
+
+void ScriptEffects::setEnabled(int layer, int effect, bool on)
+{
+    if (has(layer, effect))
+        change(layer, [effect, on](QVector<Effect>& e) { e[effect].enabled = on; });
+}
+
+QString ScriptEffects::colour(int layer, int effect) const
+{
+    return has(layer, effect) ? m_document->scene().layers[layer].effects[effect].color.name() : QString();
+}
+
+void ScriptEffects::setColour(int layer, int effect, QString const& value)
+{
+    QColor const c(value);
+    if (has(layer, effect) && c.isValid())
+        change(layer, [effect, c](QVector<Effect>& e) { e[effect].color = c; });
+}
+
+int ScriptEffects::add(int layer, QString const& type)
+{
+    int kind = -1;
+    for (int k = 0; k < int(std::size(kEffectNames)); ++k)
+        if (type.compare(QLatin1String(kEffectNames[k]), Qt::CaseInsensitive) == 0)
+            kind = k;
+    if (kind < 0 || layer < 0 || layer >= m_document->scene().layers.size())
+        return -1;
+    change(layer, [kind](QVector<Effect>& e) {
+        Effect made;
+        made.type = Effect::Type(kind);
+        made.amount = kind == Effect::Tint ? 0.5 : kind == Effect::Particles ? 1.0 : 4.0;
+        e.push_back(made);
+    });
+    return count(layer) - 1;
+}
+
+void ScriptEffects::remove(int layer, int effect)
+{
+    if (has(layer, effect))
+        change(layer, [effect](QVector<Effect>& e) { e.removeAt(effect); });
+}
+
 int ScriptPalette::count() const
 {
     return int(m_document->scene().palette.size());
@@ -325,7 +414,7 @@ QVector<Piece> pieces(QString const& line, bool& comment)
         QStringLiteral("typeof"), QStringLiteral("in"), QStringLiteral("of"), QStringLiteral("this"), QStringLiteral("try"),
         QStringLiteral("catch"), QStringLiteral("finally"), QStringLiteral("throw")};
     static QStringList const eclipse = {QStringLiteral("scene"), QStringLiteral("frame"), QStringLiteral("layers"),
-                                        QStringLiteral("palette"), QStringLiteral("log"), QStringLiteral("print")};
+                                        QStringLiteral("palette"), QStringLiteral("effects"), QStringLiteral("log"), QStringLiteral("print")};
     QVector<Piece> out;
     int i = 0;
     int const n = int(line.size());
@@ -679,13 +768,16 @@ QString ScriptView::run(QString const& code, QString const& name)
     ScriptFrame frame(m_timeline, nullptr);
     ScriptLayers layers(m_document, m_timeline, &engine, nullptr);
     ScriptPalette palette(m_document, nullptr);
-    for (QObject* o : {static_cast<QObject*>(&output), static_cast<QObject*>(&scene), static_cast<QObject*>(&frame), static_cast<QObject*>(&layers), static_cast<QObject*>(&palette)})
+    ScriptEffects effects(m_document, nullptr);
+    for (QObject* o : {static_cast<QObject*>(&output), static_cast<QObject*>(&scene), static_cast<QObject*>(&frame), static_cast<QObject*>(&layers),
+                       static_cast<QObject*>(&palette), static_cast<QObject*>(&effects)})
         QJSEngine::setObjectOwnership(o, QJSEngine::CppOwnership);
     engine.globalObject().setProperty(QStringLiteral("__out"), engine.newQObject(&output));
     engine.globalObject().setProperty(QStringLiteral("scene"), engine.newQObject(&scene));
     engine.globalObject().setProperty(QStringLiteral("frame"), engine.newQObject(&frame));
     engine.globalObject().setProperty(QStringLiteral("layers"), engine.newQObject(&layers));
     engine.globalObject().setProperty(QStringLiteral("palette"), engine.newQObject(&palette));
+    engine.globalObject().setProperty(QStringLiteral("effects"), engine.newQObject(&effects));
     engine.evaluate(QStringLiteral("function log(t) { __out.log(String(t)); } var print = log;"));
 
     // A script that never ends is stopped after a while.

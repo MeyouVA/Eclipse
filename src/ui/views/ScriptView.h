@@ -11,6 +11,9 @@
 //             newDrawing(i, frame), hold(i, frame, length) (the exposure that frame is in lasts so many frames),
 //             clear(i, first, last), renameDrawing(i, frame, name)
 //   palette - count; name(k), colour(k) -> "#rrggbb", setColour(k, "#rrggbb"), add(name, "#rrggbb") -> its place
+//   effects - count(i); type(i, e) -> "blur", "tint", "cutter", "glow", "shadow" or "particles"; amount(i, e),
+//             setAmount(i, e, value); enabled(i, e), setEnabled(i, e, on); colour(i, e), setColour(i, e, "#rrggbb");
+//             add(i, type) -> its place; remove(i, e)   (the effects of layer i, from 0)
 //   log(text) (print is the same)
 // Layers are counted from 0, from the one furthest back; frames from 1.
 // Everything one run changes is one step to undo.
@@ -21,6 +24,8 @@
 #include <QJSValue>
 #include <QKeySequence>
 #include <QSyntaxHighlighter>
+
+#include <functional>
 #include <QObject>
 #include <QWidget>
 
@@ -136,6 +141,29 @@ public:
 
 protected:
     void highlightBlock(QString const& text) override;
+};
+
+// What a script calls `effects`: the effects of a layer.
+class ECLIPSE_UI_API ScriptEffects : public QObject {
+    Q_OBJECT
+
+public:
+    ScriptEffects(Document* document, QObject* parent) : QObject(parent), m_document(document) {}
+    Q_INVOKABLE int count(int layer) const;
+    Q_INVOKABLE QString type(int layer, int effect) const;
+    Q_INVOKABLE double amount(int layer, int effect) const;
+    Q_INVOKABLE void setAmount(int layer, int effect, double value);
+    Q_INVOKABLE bool enabled(int layer, int effect) const;
+    Q_INVOKABLE void setEnabled(int layer, int effect, bool on);
+    Q_INVOKABLE QString colour(int layer, int effect) const;
+    Q_INVOKABLE void setColour(int layer, int effect, QString const& value);
+    Q_INVOKABLE int add(int layer, QString const& type);
+    Q_INVOKABLE void remove(int layer, int effect);
+
+private:
+    bool has(int layer, int effect) const;
+    void change(int layer, std::function<void(QVector<struct Effect>&)> const& how);
+    Document* m_document;
 };
 
 // Takes what a script logs.
