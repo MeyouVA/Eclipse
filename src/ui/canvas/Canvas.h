@@ -750,6 +750,8 @@ private:
     Drawing shown(int layer, int frame, Drawing const& drawing) const;
     bool showsRest(int layer) const;
     void riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
+    // The chain weights are painted for, in the layer's own coordinates: its own bones, or the Game Bones it bends on.
+    QVector<QPointF> weightJoints() const;
     // The point or handle of a deformer under the pointer (its place in Layer::warp), or -1.
     int warpAt(QVector<QPointF> const& points, QPointF widgetPos) const;
     // The deformer at rest with the point being dragged by the Rigging tool where the pointer has it.

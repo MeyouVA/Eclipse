@@ -467,7 +467,8 @@ void Canvas::paintEvent(QPaintEvent*)
                 painter.drawEllipse(c, r, r);
             }
             painter.restore();
-            paintBones(painter, layer.bones, m_weightBone + 1 < layer.bones.size() ? m_weightBone + 1 : -1);
+            QVector<QPointF> const joints = weightJoints();
+            paintBones(painter, joints, m_weightBone + 1 < joints.size() ? m_weightBone + 1 : -1);
             return;
         }
         if (m_rigMode != RigBones) {

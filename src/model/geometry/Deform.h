@@ -84,5 +84,8 @@ Drawing ridden(Scene const& scene, int layer, int frame, Drawing const& drawing)
 // A drawing of a layer that bends on the Game Bones it hangs from (Layer::bendOnBones): bent along the chain, given back
 // in the layer's own coordinates.  As it was when the layer does not bend, or does not hang from bones.
 Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& drawing);
+// The joints of the chain of Game Bones a layer hangs from, as they stand on frame 0, in the layer's own coordinates on
+// `frame` (where weights for them are painted); none when it hangs from no bones.
+QVector<QPointF> gameBoneJoints(Scene const& scene, int layer, int frame);
 
 }

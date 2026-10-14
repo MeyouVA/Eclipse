@@ -17,18 +17,30 @@
 // so, from the second on, a bone), a joint can be dragged, Delete takes the last one off.
 // The transform tool then bends it: drag a joint to turn the bone that ends there.
 
+QVector<QPointF> Canvas::weightJoints() const
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return {};
+    Layer const& layer = scene.layers[m_layer];
+    if (layer.bones.size() >= 2)
+        return layer.bones;
+    return layer.bendOnBones ? Deform::gameBoneJoints(scene, m_layer, m_frame) : QVector<QPointF>();
+}
+
 void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers)
 {
     Scene const& scene = m_document->scene();
     if (m_rigMode == RigWeights) {
         // Painting the pull of a bone onto the drawing: a dab here, more as the pointer goes; with Alt, taking it away.
-        Layer const& layer = scene.layers[m_layer];
-        if (layer.bones.size() < 2) {
-            emit message(tr("Weights are painted for bones: lay down a bone chain on the layer first (Rigging tool, Mode: Bone)."));
+        QVector<QPointF> const joints = weightJoints();
+        if (joints.size() < 2) {
+            emit message(tr("Weights are painted for bones: lay down a bone chain on the layer first (Rigging tool, Mode: Bone), "
+                            "or have it bend on the Game Bones it hangs from (Layer Properties)."));
             return;
         }
-        if (m_weightBone >= layer.bones.size() - 1) {
-            emit message(tr("The layer has %n bone(s): choose one of them in the Tool Properties.", nullptr, int(layer.bones.size()) - 1));
+        if (m_weightBone >= joints.size() - 1) {
+            emit message(tr("The chain has %n bone(s): choose one of them in the Tool Properties.", nullptr, int(joints.size()) - 1));
             return;
         }
         m_weightDabs = {SkinDab{m_weightBone, p, m_weightRadius, (modifiers & Qt::AltModifier) ? -m_weightStrength : m_weightStrength}};

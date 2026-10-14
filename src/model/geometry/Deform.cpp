@@ -655,27 +655,28 @@ static void transformAll(Drawing& drawing, QTransform const& t)
         picture.transform(t);
 }
 
-Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& drawing)
+namespace {
+
+// The Game Bones a layer hangs from (from the first of the chain to the one it hangs on), the joints of the chain as they
+// stand on frame 0 in the first bone's own coordinates, how far each bone is turned on `frame` from how it stood then, and
+// from the layer's own coordinates (on `frame`) into the first bone's.  False when it hangs from none.
+bool gameChain(Scene const& scene, int layer, int frame, QVector<int>& chain, QVector<QPointF>& joints, QVector<double>& bend, QTransform& into)
 {
-    if (layer < 0 || layer >= scene.layers.size() || !scene.layers[layer].bendOnBones)
-        return drawing;
-    // The chain: the bones it hangs from, from the one nearest it up to the first of them.
-    QVector<int> chain;
+    chain.clear();
+    joints.clear();
+    bend.clear();
     for (int b = scene.parentIndex(layer), guard = 0; b >= 0 && guard < 64 && scene.layers[b].kind == Layer::Bone; b = scene.parentIndex(b), ++guard)
         chain.push_back(b);
-    if (chain.isEmpty() || scene.turned(layer, frame))
-        return drawing;
+    if (chain.isEmpty())
+        return false;
     std::reverse(chain.begin(), chain.end());      // from the first bone to the last
-    int const root = chain.first();
     auto local = [&scene](int l, int f) { return scene.layers[l].matrixFor(scene.layers[l].poseAt(f)); };
     // From each bone (on frame 0) to the first bone's own coordinates; and the drawing there - its own place on this frame,
     // the bones as they stand on frame 0.
     QVector<QTransform> toRoot(chain.size());
     for (int i = 0; i < chain.size(); ++i)
         toRoot[i] = i == 0 ? QTransform() : local(chain[i], 0) * toRoot[i - 1];
-    QTransform const into = local(layer, frame) * toRoot.last();
-    QVector<QPointF> joints;
-    QVector<double> bend;
+    into = local(layer, frame) * toRoot.last();
     for (int i = 0; i < chain.size(); ++i) {
         Layer const& bone = scene.layers[chain[i]];
         joints.push_back(toRoot[i].map(bone.pivot));
@@ -683,8 +684,43 @@ Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& dra
     }
     Layer const& last = scene.layers[chain.last()];
     joints.push_back(toRoot.last().map(last.pivot + QPointF(last.boneLength, 0.0)));
-    if (!isBent(joints, bend))
+    return true;
+}
+
+}  // namespace
+
+QVector<QPointF> gameBoneJoints(Scene const& scene, int layer, int frame)
+{
+    QVector<int> chain;
+    QVector<QPointF> joints;
+    QVector<double> bend;
+    QTransform into;
+    if (layer < 0 || layer >= scene.layers.size() || !gameChain(scene, layer, frame, chain, joints, bend, into) || !into.isInvertible())
+        return {};
+    QTransform const back = into.inverted();
+    for (QPointF& j : joints)
+        j = back.map(j);
+    return joints;
+}
+
+Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& drawing)
+{
+    if (layer < 0 || layer >= scene.layers.size() || !scene.layers[layer].bendOnBones || scene.turned(layer, frame))
         return drawing;
+    QVector<int> chain;
+    QVector<QPointF> joints;
+    QVector<double> bend;
+    QTransform into;
+    if (!gameChain(scene, layer, frame, chain, joints, bend, into) || !isBent(joints, bend))
+        return drawing;
+    int const root = chain.first();
+    // The weights painted on the drawing, where the drawing is taken to.
+    QVector<SkinDab> skin = scene.layers[layer].skin;
+    double const grow = std::sqrt(std::abs(into.determinant()));
+    for (SkinDab& d : skin) {
+        d.at = into.map(d.at);
+        d.radius *= grow;
+    }
     // The first bone where it is on this frame, but turned as on frame 0: its turning is in the bending.
     PoseOverride over;
     over.layer = root;
@@ -696,7 +732,7 @@ Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& dra
         return drawing;
     Drawing out = drawing;
     transformAll(out, into);
-    out = deform(out, joints, bend, scene.layers[layer].jointSmoothness);
+    out = deform(out, joints, bend, scene.layers[layer].jointSmoothness, skin);
     transformAll(out, rootNow * here.inverted());
     return out;
 }
