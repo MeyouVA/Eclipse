@@ -146,10 +146,12 @@ void Timeline::setParameter(int layer, Parameter which, double value)
         return;
     }
     Pose pose = scene.layers[layer].poseAt(m_frame);
-    if (poseField(pose, which) == value && scene.layers[layer].keyIndex(m_frame) >= 0)
+    int const key = scene.layers[layer].keyIndex(m_frame);
+    if (poseField(pose, which) == value && key >= 0 && scene.layers[layer].keys[key].sets(1 << int(which)))
         return;
     poseField(pose, which) = value;
-    m_document->setKeyframe(layer, m_frame, pose, tr("Set %1").arg(parameterName(which)));
+    // A keyframe of this parameter alone: the others keep going from their own keyframes.
+    m_document->setPartKeyframe(layer, m_frame, 1 << int(which), pose, tr("Set %1").arg(parameterName(which)));
 }
 
 void Timeline::editParameter(int layer, Parameter which)

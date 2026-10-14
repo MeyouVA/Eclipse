@@ -154,10 +154,17 @@ void Timeline::paintEvent(QPaintEvent*)
         // Keyframes: a diamond on the frame, and a line from a motion keyframe to the next.
         QColor const keyColor(255, 190, 70);
         int const ky = layer.holdsDrawings() && !param ? y + kRowHeight - 6 : y + kRowHeight / 2;
-        for (int k = 0; k < layer.keys.size(); ++k) {
-            int const x = kHeaderWidth + layer.keys[k].frame * cw - sx + cw / 2;
-            if (layer.keys[k].tween && k + 1 < layer.keys.size()) {
-                int const x2 = kHeaderWidth + layer.keys[k + 1].frame * cw - sx + cw / 2;
+        // On a parameter's row, the keyframes that set that parameter only.
+        int const part = param ? 1 << m_params[row] : Keyframe::AllParts;
+        QVector<int> mine;
+        for (int k = 0; k < layer.keys.size(); ++k)
+            if (layer.keys[k].parts & part)
+                mine.push_back(k);
+        for (int n = 0; n + 1 < mine.size(); ++n) {
+            Keyframe const& key = layer.keys[mine[n]];
+            if (key.tween) {
+                int const x = kHeaderWidth + key.frame * cw - sx + cw / 2;
+                int const x2 = kHeaderWidth + layer.keys[mine[n + 1]].frame * cw - sx + cw / 2;
                 p.setPen(QPen(keyColor, 1));
                 p.drawLine(x, ky, x2, ky);
             }
@@ -166,10 +173,13 @@ void Timeline::paintEvent(QPaintEvent*)
         p.setPen(QPen(QColor(40, 30, 10), 1));
         p.setBrush(keyColor);
         double const kd = std::clamp(cw / 2.0, 2.5, 4.5);
-        for (Keyframe const& key : layer.keys) {
+        for (int k : std::as_const(mine)) {
+            Keyframe const& key = layer.keys[k];
             double const x = kHeaderWidth + key.frame * cw - sx + cw / 2.0;
+            // (On the layer's row, a keyframe that sets only some of the pose is drawn smaller.)
+            double const size = !param && key.parts != Keyframe::AllParts ? kd * 0.6 : kd;
             QPolygonF diamond;
-            diamond << QPointF(x, ky - kd) << QPointF(x + kd, ky) << QPointF(x, ky + kd) << QPointF(x - kd, ky);
+            diamond << QPointF(x, ky - size) << QPointF(x + size, ky) << QPointF(x, ky + size) << QPointF(x - size, ky);
             p.drawPolygon(diamond);
         }
         p.setRenderHint(QPainter::Antialiasing, false);

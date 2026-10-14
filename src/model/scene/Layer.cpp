@@ -250,7 +250,47 @@ double Layer::effectAmount(int index, Pose const& pose) const
     return effects[index].animated && index < pose.fx.size() ? pose.fx[index] : effects[index].amount;
 }
 
+// The pose on `frame` of keyframes that set all of it (in order of frame).
+static Pose poseOfKeys(QVector<Keyframe> const& keys, int frame);
+
 Pose Layer::poseAt(int frame) const
+{
+    bool whole = true;
+    for (Keyframe const& k : keys)
+        whole = whole && k.parts == Keyframe::AllParts;
+    if (whole)
+        return poseOfKeys(keys, frame);
+    // Keyframes that set only some of the pose: each part goes from one keyframe that sets it to the next.
+    auto setting = [this](int part) {
+        QVector<Keyframe> some;
+        for (Keyframe const& k : keys)
+            if (k.sets(part))
+                some.push_back(k);
+        return some;
+    };
+    QVector<Keyframe> rest = setting(Keyframe::PartRest);
+    Pose pose = poseOfKeys(rest.isEmpty() ? keys : rest, frame);
+    for (int bit = 0; bit < 9; ++bit) {
+        QVector<Keyframe> const some = setting(1 << bit);
+        if (some.isEmpty() || some.size() == rest.size())
+            continue;   // (set by none: what the rest has; by just the keyframes that set the rest: as they have it)
+        Pose const own = poseOfKeys(some, frame);
+        switch (1 << bit) {
+        case Keyframe::PartX: pose.x = own.x; break;
+        case Keyframe::PartY: pose.y = own.y; break;
+        case Keyframe::PartScaleX: pose.scaleX = own.scaleX; break;
+        case Keyframe::PartScaleY: pose.scaleY = own.scaleY; break;
+        case Keyframe::PartAngle: pose.rotation = own.rotation; break;
+        case Keyframe::PartOpacity: pose.opacity = own.opacity; break;
+        case Keyframe::PartZ: pose.z = own.z; break;
+        case Keyframe::PartSkew: pose.skew = own.skew; break;
+        default: pose.fov = own.fov; break;
+        }
+    }
+    return pose;
+}
+
+static Pose poseOfKeys(QVector<Keyframe> const& keys, int frame)
 {
     if (keys.isEmpty())
         return Pose();
@@ -394,6 +434,7 @@ void Layer::setKey(int frame, Pose const& pose)
         ++i;
     if (i < keys.size() && keys[i].frame == frame) {
         keys[i].pose = pose;
+        keys[i].parts = Keyframe::AllParts;     // all of the pose given: all of it set here
         return;
     }
     Keyframe k;

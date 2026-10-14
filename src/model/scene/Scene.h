@@ -356,6 +356,13 @@ struct Pose {
 struct Keyframe {
     int frame = 0;
     Pose pose;
+    // What of the pose it sets (the rest it leaves to the keyframes about it): its position across, down and in depth,
+    // scale across and down, angle, opacity, skew, angle of view (as the Timeline's parameter rows, in that order), and
+    // all the rest (turning in space, effect amounts, bones, deformers).  A keyframe set on a parameter row sets that only.
+    enum Part { PartX = 1, PartY = 2, PartScaleX = 4, PartScaleY = 8, PartAngle = 16, PartOpacity = 32, PartZ = 64, PartSkew = 128,
+                PartFov = 256, PartRest = 512, AllParts = 1023 };
+    int parts = AllParts;
+    bool sets(int part) const { return (parts & part) != 0; }
     bool tween = true;
     // How gently the motion arrives at this keyframe and leaves it: 0 is constant speed,
     // 1 the slowest start or stop.

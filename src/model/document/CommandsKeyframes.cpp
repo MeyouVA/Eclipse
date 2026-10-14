@@ -10,9 +10,55 @@ void Document::setKeyframe(int layer, int frame, Pose const& pose, QString const
         return;
     Layer const& l = m_scene.layers[layer];
     int const index = l.keyIndex(frame);
-    if (index >= 0 && l.keys[index].pose == pose)
+    if (index >= 0 && l.keys[index].pose == pose && l.keys[index].parts == Keyframe::AllParts)
         return;
     apply(text, [&](Scene& s) { s.layers[layer].setKey(frame, pose); });
+}
+
+void Document::setPartKeyframe(int layer, int frame, int part, Pose const& pose, QString const& text)
+{
+    if (!validCell(m_scene, layer, frame) || part <= 0 || (part & ~Keyframe::AllParts) != 0)
+        return;
+    Layer const& l = m_scene.layers[layer];
+    int const index = l.keyIndex(frame);
+    // The values of that part, from `pose`.
+    auto take = [part](Pose& into, Pose const& from) {
+        if (part & Keyframe::PartX) into.x = from.x;
+        if (part & Keyframe::PartY) into.y = from.y;
+        if (part & Keyframe::PartScaleX) into.scaleX = from.scaleX;
+        if (part & Keyframe::PartScaleY) into.scaleY = from.scaleY;
+        if (part & Keyframe::PartAngle) into.rotation = from.rotation;
+        if (part & Keyframe::PartOpacity) into.opacity = from.opacity;
+        if (part & Keyframe::PartZ) into.z = from.z;
+        if (part & Keyframe::PartSkew) into.skew = from.skew;
+        if (part & Keyframe::PartFov) into.fov = from.fov;
+        if (part & Keyframe::PartRest) {
+            Pose const kept = into;
+            into = from;
+            into.x = kept.x, into.y = kept.y, into.scaleX = kept.scaleX, into.scaleY = kept.scaleY, into.rotation = kept.rotation;
+            into.opacity = kept.opacity, into.z = kept.z, into.skew = kept.skew, into.fov = kept.fov;
+        }
+    };
+    if (index >= 0) {
+        Pose changed = l.keys[index].pose;
+        take(changed, pose);
+        if (changed == l.keys[index].pose && l.keys[index].sets(part))
+            return;
+        apply(text, [&](Scene& s) {
+            Keyframe& k = s.layers[layer].keys[s.layers[layer].keyIndex(frame)];
+            k.pose = changed;
+            k.parts |= part;
+        });
+        return;
+    }
+    // A new keyframe: the rest of its pose as it is on that frame (it does not set it), that part as asked.
+    Pose made = l.poseAt(frame);
+    take(made, pose);
+    apply(text, [&](Scene& s) {
+        Layer& to = s.layers[layer];
+        to.setKey(frame, made);
+        to.keys[to.keyIndex(frame)].parts = part;
+    });
 }
 
 void Document::insertKeyframe(int layer, int frame)

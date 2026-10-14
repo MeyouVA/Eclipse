@@ -517,6 +517,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             layer.setKey(frame, pose);
             Keyframe& key = layer.keys[layer.keyIndex(frame)];
             key.tween = ko["tween"].toBool(true);
+            key.parts = ko["parts"].toInt(Keyframe::AllParts) & Keyframe::AllParts;
+            if (key.parts == 0)
+                key.parts = Keyframe::AllParts;
             key.easeIn = std::clamp(ko["ein"].toDouble(0.0), 0.0, 1.0);
             key.easeOut = std::clamp(ko["eout"].toDouble(0.0), 0.0, 1.0);
             key.liftIn = std::clamp(ko["lin"].toDouble(0.0), -2.0, 2.0);

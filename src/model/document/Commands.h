@@ -136,6 +136,9 @@ public:
     // ---- animation ----------------------------------------------------------------------
     // Sets (or adds) the keyframe of `layer` at `frame`, as one undo step named `text`.
     void setKeyframe(int layer, int frame, Pose const& pose, QString const& text);
+    // A keyframe of one part of the pose only (a Keyframe::Part): its value as `pose` has it.  On a frame with a keyframe,
+    // that keyframe sets that part too.
+    void setPartKeyframe(int layer, int frame, int part, Pose const& pose, QString const& text);
     // A keyframe at `frame` holding the pose the layer already has there.
     void insertKeyframe(int layer, int frame);
     void removeKeyframe(int layer, int frame);

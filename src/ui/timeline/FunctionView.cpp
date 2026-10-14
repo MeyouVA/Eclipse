@@ -312,7 +312,8 @@ void FunctionGraph::paintEvent(QPaintEvent*)
             p.setPen(QPen(QColor(24, 24, 24), 1));
             p.setBrush(colour);
             for (Keyframe const& key : source->keys)
-                p.drawRect(QRectF(xOfFrame(key.frame) - 3.5, yOfValue(value(key.frame)) - 3.5, 7, 7));
+                if (key.sets(1 << which))
+                    p.drawRect(QRectF(xOfFrame(key.frame) - 3.5, yOfValue(value(key.frame)) - 3.5, 7, 7));
         }
         // The ease handles of the keyframe on the current frame.
         int const here = m_easeDrag != 0 ? m_easeKey : layer.keyIndex(m_frame);
@@ -346,7 +347,7 @@ int FunctionGraph::keyAt(QPointF pos, int* param) const
         if (!m_shown[which])
             continue;
         for (int k = 0; k < layer.keys.size(); ++k) {
-            if (QLineF(pointAt(Timeline::Parameter(which), layer.keys[k].frame), pos).length() <= 6.0) {
+            if (layer.keys[k].sets(1 << which) && QLineF(pointAt(Timeline::Parameter(which), layer.keys[k].frame), pos).length() <= 6.0) {
                 if (param)
                     *param = which;
                 return k;
@@ -427,7 +428,7 @@ void FunctionGraph::mousePressEvent(QMouseEvent* event)
                 continue;
             for (int k = 0; k < layer.keys.size(); ++k) {
                 QPointF const at = pointAt(Timeline::Parameter(which), layer.keys[k].frame);
-                if (QLineF(at, event->position()).length() <= 6.0) {
+                if (layer.keys[k].sets(1 << which) && QLineF(at, event->position()).length() <= 6.0) {
                     m_dragParam = which;
                     m_dragKey = k;
                     m_dragValue = valueAt(Timeline::Parameter(which), layer.keys[k].frame);
