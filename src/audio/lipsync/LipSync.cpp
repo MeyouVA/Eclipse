@@ -290,11 +290,19 @@ QString detect(QVector<qint16> const& stereo, int rate, double fps)
         }
         shapes[f] = shape;
     }
-    // A shape held for a single frame between two frames of another is a flicker: it goes.
+    // A shape held for a single frame between two frames of another is a flicker: it goes - except a frame much quieter
+    // than the voice either side of it that is not quite silent (the hum through the nose of an m, the breath held for a
+    // b or a p), which is the lips closing between two sounds: closed.  (A frame of dead silence is a gap in the sound.)
     QString const raw = shapes;
-    for (int f = 1; f + 1 < frames; ++f)
-        if (raw[f - 1] == raw[f + 1] && raw[f] != raw[f - 1])
+    auto voiced = [](QChar c) { return c != QLatin1Char('X') && c != QLatin1Char('A') && c != QLatin1Char('G') && c != QLatin1Char('B'); };
+    for (int f = 1; f + 1 < frames; ++f) {
+        bool const dip = voiced(raw[f - 1]) && voiced(raw[f + 1]) && heard[f].loud >= 0.004
+                         && heard[f].loud < 0.5 * std::min(heard[f - 1].loud, heard[f + 1].loud);
+        if (dip)
+            shapes[f] = QLatin1Char('A');
+        else if (raw[f - 1] == raw[f + 1] && raw[f] != raw[f - 1])
             shapes[f] = raw[f - 1];
+    }
     return shapes;
 }
 
