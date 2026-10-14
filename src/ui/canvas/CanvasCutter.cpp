@@ -1,6 +1,9 @@
 // Eclipse - the Camera view: the Cutter and painting inside a lasso; the line style of what is selected.
 #include "ui/canvas/Canvas.h"
 
+#include <QPainter>
+#include <QPainterPath>
+
 #include <cmath>
 #include <numeric>
 
@@ -410,9 +413,70 @@ void Canvas::cutInside(QPolygonF const& shape)
             cut = true;
         }
     }
+    // Pictures kept in the scene (the pixels of a bitmap layer among them): the part inside the shape
+    // becomes a picture of its own, and is gone from the one it was cut out of.
+    QVector<int> pictures;
+    if (picturesHere()) {
+        int const count = int(art.pictures.size());
+        for (int i = 0; i < count; ++i) {
+            Picture const whole = art.pictures[i];
+            if (whole.image.isNull() || !whole.placement.isInvertible() || !whole.bounds().intersects(shape.boundingRect()))
+                continue;
+            QRectF const frame(QPointF(0, 0), QSizeF(whole.image.size()));
+            QPolygonF const corners = whole.placement.map(QPolygonF(frame));
+            bool allIn = true;
+            for (int c = 0; c < 4; ++c)
+                allIn = allIn && shape.containsPoint(corners[c], Qt::WindingFill);
+            if (allIn) {                // none of it is outside: taken whole
+                pictures.push_back(i);
+                continue;
+            }
+            if (whole.linked)
+                continue;               // (a linked picture is what its file is)
+            QPainterPath hole;
+            hole.setFillRule(Qt::WindingFill);
+            hole.addPolygon(whole.placement.inverted().map(shape));
+            QRect const reach = hole.boundingRect().toAlignedRect().intersected(whole.image.rect());
+            if (reach.isEmpty())
+                continue;
+            // The piece: only what is inside the shape, cropped to it.
+            QImage piece = whole.image.copy(reach).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            {
+                QPainter painter(&piece);
+                painter.setRenderHint(QPainter::Antialiasing, true);
+                painter.translate(-reach.topLeft());
+                painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                painter.fillPath(hole, Qt::black);
+            }
+            bool any = false;
+            for (int y = 0; y < piece.height() && !any; ++y) {
+                QRgb const* const row = reinterpret_cast<QRgb const*>(piece.constScanLine(y));
+                for (int x = 0; x < piece.width() && !any; ++x)
+                    any = qAlpha(row[x]) != 0;
+            }
+            if (!any)
+                continue;
+            QImage rest = whole.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            {
+                QPainter painter(&rest);
+                painter.setRenderHint(QPainter::Antialiasing, true);
+                painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+                painter.fillPath(hole, Qt::black);
+            }
+            art.pictures[i].image = rest;
+            Picture loose = whole;
+            loose.image = piece;
+            loose.size = piece.size();
+            loose.file.clear();
+            loose.placement = QTransform::fromTranslate(reach.left(), reach.top()) * whole.placement;
+            pictures.push_back(int(art.pictures.size()));
+            art.pictures.push_back(loose);
+            cut = true;
+        }
+    }
     if (cut)
         commitDrawing(art, tr("Cut Artwork"));
-    setSelection(strokes, fills);
+    setSelection(strokes, fills, pictures);
 }
 
 void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF const& reach)
