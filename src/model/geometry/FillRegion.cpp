@@ -15,6 +15,25 @@ static constexpr int kMaxRaster = 4096;
 
 static void rasterStroke(QPainter& painter, Stroke const& stroke, double extra)
 {
+    // A line that is seen: the area it really covers - its tips flat or round, its corners mitred, bevelled or round,
+    // thinner where the pen pressed less - thickened all round by the gap.
+    if (stroke.width > 0.0f) {
+        QVector<QPolygonF> const area = stroke.outlinePolygons();
+        if (!area.isEmpty()) {
+            QPainterPath shape;
+            shape.setFillRule(Qt::OddEvenFill);
+            for (QPolygonF const& outline : area) {
+                shape.addPolygon(outline);
+                shape.closeSubpath();
+            }
+            QPen edge(Qt::black, std::max(0.0, extra));
+            edge.setJoinStyle(Qt::RoundJoin);
+            painter.setPen(extra > 0.0 ? edge : QPen(Qt::NoPen));
+            painter.setBrush(Qt::black);
+            painter.drawPath(shape);
+            return;
+        }
+    }
     QPen pen(Qt::black);
     pen.setCapStyle(Qt::RoundCap);
     pen.setJoinStyle(Qt::RoundJoin);

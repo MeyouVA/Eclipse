@@ -149,9 +149,33 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
             from = i;
             turned = 0.0;
         }
-        for (int i = 0; i < n; ++i)
-            if (sharp[i])
+        // The sharp turns, finished as the line asks: rounded by a disc; or, on a line of one thickness, carried on to a
+        // point (mitre - cut flat across when that point would be too far out) or cut flat across (bevel).
+        bool const shaped = join != RoundJoin && uniform();
+        for (int i = 0; i < n; ++i) {
+            if (!sharp[i])
+                continue;
+            if (!shaped || half[i] <= 1e-6) {
                 disc(pos[i], half[i]);
+                continue;
+            }
+            for (int side : {1, -1}) {
+                QPointF const a = side > 0 ? leftIn[i] : rightIn[i], b = side > 0 ? leftOut[i] : rightOut[i];
+                QPolygonF piece;
+                piece << pos[i] << a;
+                if (join == MitreJoin) {
+                    QPointF const n0 = (a - pos[i]) / half[i], n1 = (b - pos[i]) / half[i];
+                    double const d = 1.0 + n0.x() * n1.x() + n0.y() * n1.y();
+                    if (d > 1e-6) {
+                        QPointF const tip = pos[i] + (n0 + n1) * (half[i] / d);
+                        if (QLineF(pos[i], tip).length() <= kMitreLimit * width)
+                            piece << tip;
+                    }
+                }
+                piece << b;
+                add(piece);
+            }
+        }
         if (!closed) {
             if (capStart == RoundCap)
                 disc(pos[0], half[0]);

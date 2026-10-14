@@ -273,6 +273,24 @@ bool Stroke::hit(QPointF p, double radius) const
     double const reach = radius + width / 2.0;
     if (points.size() == 1)
         return std::hypot(p.x() - points[0].pos.x(), p.y() - points[0].pos.y()) <= reach;
+    if (width > 0.0f) {
+        // On the area the line really covers (its tips, its corners, its thickness point by point), or within
+        // `radius` of its edge.
+        QVector<QPolygonF> const area = outlinePolygons();
+        if (!area.isEmpty()) {
+            QPainterPath shape;
+            shape.setFillRule(Qt::OddEvenFill);
+            for (QPolygonF const& outline : area)
+                shape.addPolygon(outline);
+            if (shape.contains(p))
+                return true;
+            for (QPolygonF const& outline : area)
+                for (int i = 0; i < outline.size(); ++i)
+                    if (distanceToSegment(p, outline[i], outline[(i + 1) % outline.size()]) <= radius)
+                        return true;
+            return false;
+        }
+    }
     QVector<StrokePoint> const line = path();
     for (int i = 1; i < line.size(); ++i) {
         if (distanceToSegment(p, line[i - 1].pos, line[i].pos) <= reach)
