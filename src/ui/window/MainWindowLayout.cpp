@@ -609,6 +609,10 @@ void MainWindow::onShowWindows(QMenu* menu)
     camera->setCheckable(true);
     camera->setChecked(cameraShown());
     connect(camera, &QAction::toggled, this, &MainWindow::setCameraShown);
+    QAction* const drawing = menu->addAction(tr("Drawing"));
+    drawing->setCheckable(true);
+    drawing->setChecked(drawingWindowView() && drawingWindowView()->window()->isVisible());
+    connect(drawing, &QAction::toggled, this, &MainWindow::setDrawingWindowShown);
     for (QDockWidget* dock : std::as_const(m_docks)) {
         QAction* const a = menu->addAction(dock->windowTitle());
         a->setCheckable(true);
@@ -667,4 +671,39 @@ void MainWindow::onShowDisplays(QMenu* menu)
         int const id = layer.id;
         connect(a, &QAction::triggered, this, [this, id] { m_document->setDisplay(m_document->scene().layerIndex(id)); });
     }
+}
+
+Canvas* MainWindow::drawingWindowView() const
+{
+    QWidget* const window = findChild<QWidget*>(QStringLiteral("DrawingWindow"), Qt::FindDirectChildrenOnly);
+    return window ? window->findChild<Canvas*>(QStringLiteral("DrawingWindowView")) : nullptr;
+}
+
+void MainWindow::setDrawingWindowShown(bool on)
+{
+    QWidget* window = findChild<QWidget*>(QStringLiteral("DrawingWindow"), Qt::FindDirectChildrenOnly);
+    if (!on) {
+        if (window)
+            window->hide();
+        return;
+    }
+    if (!window) {
+        window = new QWidget(this, Qt::Window);
+        window->setObjectName(QStringLiteral("DrawingWindow"));
+        window->setWindowTitle(tr("Drawing"));
+        Canvas* const view = new Canvas(m_document, window);
+        view->setObjectName(QStringLiteral("DrawingWindowView"));
+        view->setDrawingView(true);
+        view->setLeader(m_canvas);
+        view->setCurrentCell(layer(), frame());
+        connect(m_timeline, &Timeline::currentCellChanged, view, &Canvas::setCurrentCell);
+        connect(view, &Canvas::message, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
+        QVBoxLayout* const layout = new QVBoxLayout(window);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->addWidget(view);
+        window->resize(700, 520);
+        window->move(mapToGlobal(QPoint(width() - 760, 80)));
+    }
+    window->show();
+    window->raise();
 }

@@ -5,6 +5,7 @@
 
 #include <QTransform>
 #include <QFont>
+#include <QPointer>
 #include <QWidget>
 
 #include <functional>
@@ -83,6 +84,11 @@ public:
     bool previewsAllArt() const { return m_previewAllArt; }
 
     void setTool(Tool tool);
+    // A second view (the Drawing window) works with the tool and the settings of the main one: they are taken from
+    // `leader` each time the pen goes down here.
+    void setLeader(Canvas* leader);
+    void followSettings(Canvas const& leader);
+    int currentFrame() const { return m_frame; }
     Tool tool() const { return m_tool; }
     // The palette swatch new strokes and fills are linked to.
     void setSwatch(int id)
@@ -780,6 +786,7 @@ private:
     // On a bitmap layer: the pixels joined to the one clicked that are near enough its colour take the colour in hand
     // (or, `clear`, are cleared).  False when there was nothing to change.
     bool fillBitmapAt(QPointF p, bool clear);
+    QPointer<Canvas> m_leader;     // the view whose tool settings this one follows (none: its own)
     bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept
     QRectF selectionBounds() const;
     QPointF handlePos(Handle handle, QRectF const& bounds) const;  // in scene coordinates

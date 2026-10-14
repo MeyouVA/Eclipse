@@ -213,6 +213,10 @@ public slots:
     void onShowDisplays(QMenu* menu);
     // Runs a script kept by the Script Editor, by name.
     void runScript(QString const& name);
+    // Windows > Drawing: a Drawing view in a window of its own, beside the Camera view - the current drawing, flat,
+    // drawn on with the tool in hand.
+    void setDrawingWindowShown(bool on);
+    class Canvas* drawingWindowView() const;
     // The shortcuts and Scripts toolbar buttons the scripts were given.
     void refreshScriptCommands();
     void onActionRenderPreview();

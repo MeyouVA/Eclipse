@@ -8,6 +8,8 @@
 
 void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers)
 {
+    if (m_leader)
+        followSettings(*m_leader);
     m_lastWidgetPos = widgetPos;
     if (panning || m_spaceDown || m_tool == Hand) {
         m_drag = DragPan;
@@ -322,4 +324,59 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         }
     }
     update();
+}
+
+void Canvas::setLeader(Canvas* leader)
+{
+    m_leader = leader;
+    if (leader) {
+        followSettings(*leader);
+        connect(leader, &Canvas::toolChanged, this, [this](int tool) {
+            if (m_leader)
+                setTool(Tool(tool));
+        });
+    }
+}
+
+void Canvas::followSettings(Canvas const& leader)
+{
+    if (m_tool != leader.m_tool)
+        setTool(leader.m_tool);
+    m_swatch = leader.m_swatch;
+    m_brushWidth = leader.m_brushWidth;
+    m_smoothing = leader.m_smoothing;
+    m_minSize = leader.m_minSize;
+    m_cornerAngle = leader.m_cornerAngle;
+    m_join = leader.m_join;
+    m_capStart = leader.m_capStart;
+    m_capEnd = leader.m_capEnd;
+    m_lineTexture = leader.m_lineTexture;
+    m_lineTextureAmount = leader.m_lineTextureAmount;
+    m_lineTextureCrisp = leader.m_lineTextureCrisp;
+    m_lineRampLow = leader.m_lineRampLow;
+    m_lineRampHigh = leader.m_lineRampHigh;
+    m_brushTexture = leader.m_brushTexture;
+    m_brushTextureAmount = leader.m_brushTextureAmount;
+    m_brushTextureCrisp = leader.m_brushTextureCrisp;
+    m_brushRampLow = leader.m_brushRampLow;
+    m_brushRampHigh = leader.m_brushRampHigh;
+    m_autoFlatten = leader.m_autoFlatten;
+    m_eraserCuts = leader.m_eraserCuts;
+    m_gapSize = leader.m_gapSize;
+    m_paintAll = leader.m_paintAll;
+    m_bothArts = leader.m_bothArts;
+    m_lasso = leader.m_lasso;
+    m_dropperAllLayers = leader.m_dropperAllLayers;
+    m_drawBehind = leader.m_drawBehind;
+    m_brushShapes = leader.m_brushShapes;
+    m_textFont = leader.m_textFont;
+    m_textAlign = leader.m_textAlign;
+    m_textSpacing = leader.m_textSpacing;
+    m_textKerning = leader.m_textKerning;
+    m_animate = leader.m_animate;
+    m_animateRange = leader.m_animateRange;
+    m_keyFrameOne = leader.m_keyFrameOne;
+    m_nudgeStep = leader.m_nudgeStep;
+    if (m_art != leader.m_art)
+        setArt(leader.m_art);
 }
