@@ -332,11 +332,24 @@ void Canvas::updateShape(QPointF p, Qt::KeyboardModifiers modifiers)
     if (m_tool == Rectangle) {
         m_stroke.points = {{r.topLeft(), 1.0f}, {r.topRight(), 1.0f}, {r.bottomRight(), 1.0f}, {r.bottomLeft(), 1.0f}};
     } else {
-        // Twelve points round the ellipse; the curve through them is the rest of it.
+        // Four points round the ellipse - right, bottom, left, top - each with its two handles along the ellipse, so
+        // that the Contour Editor has them to pull from the start.  (A quarter of an ellipse is a Bezier curve with its
+        // handles 0.5523 of the way along the sides of the box round that quarter.)
         m_stroke.curve = true;
-        for (int i = 0; i < 12; ++i) {
-            double const angle = i * 3.14159265358979323846 / 6.0;
-            m_stroke.points.push_back({r.center() + QPointF(std::cos(angle) * r.width() / 2.0, std::sin(angle) * r.height() / 2.0), 1.0f});
+        double const k = 0.5522847498, rx = r.width() / 2.0, ry = r.height() / 2.0;
+        QPointF const c = r.center();
+        struct Side { QPointF at, in, out; };
+        Side const sides[4] = {{c + QPointF(rx, 0), QPointF(0, -k * ry), QPointF(0, k * ry)},
+                               {c + QPointF(0, ry), QPointF(k * rx, 0), QPointF(-k * rx, 0)},
+                               {c + QPointF(-rx, 0), QPointF(0, k * ry), QPointF(0, -k * ry)},
+                               {c + QPointF(0, -ry), QPointF(-k * rx, 0), QPointF(k * rx, 0)}};
+        for (Side const& side : sides) {
+            StrokePoint point;
+            point.pos = side.at;
+            point.handles = true;
+            point.in = side.in;
+            point.out = side.out;
+            m_stroke.points.push_back(point);
         }
     }
 }
