@@ -74,6 +74,9 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Directional Blur"), "effect:7", QT_TR_NOOP("Smears the layer one way, as if it moved fast"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Hue-Saturation"), "effect:8", QT_TR_NOOP("Turns the colours round the wheel, richer or greyer, lighter or darker"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Brightness-Contrast"), "effect:9", QT_TR_NOOP("Makes the layer brighter or darker, with more or less contrast"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Grain"), "effect:10", QT_TR_NOOP("A film grain over the layer, new each frame"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Radial Blur"), "effect:11", QT_TR_NOOP("Smears the layer along the lines from its middle, as if it rushed at the camera"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Colour-Scale"), "effect:12", QT_TR_NOOP("Multiplies the layer's red, green and blue by a colour"), QT_TR_NOOP("Filter")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);

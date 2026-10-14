@@ -36,6 +36,12 @@ void directionalBlur(QImage& image, double length, double degrees);
 void hueSaturation(QImage& image, double hue, double saturation, double lightness, double amount);
 // So many percent brighter and more contrast; `amount` of it (0..1).
 void brightnessContrast(QImage& image, double brightness, double contrast, double amount);
+// A grain over the picture (where it is painted), `amount` strong (0..1); `seed` says which grain.
+void grain(QImage& image, double amount, quint32 seed);
+// Each point smeared along the line from the middle of what is painted, `amount` (0..1) of how far it is from it.
+void radialBlur(QImage& image, double amount);
+// Each colour multiplied by `scale` (its red, green and blue as shares), `amount` of the way (0..1).
+void colourScale(QImage& image, QColor const& scale, double amount);
 
 QString name(Effect const& effect, Scene const& scene);
 

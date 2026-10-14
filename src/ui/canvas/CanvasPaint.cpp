@@ -781,6 +781,12 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::hueSaturation(image, e.hue, e.saturation, e.lightness, amount);
         } else if (e.type == Effect::BrightnessContrast) {
             Effects::brightnessContrast(image, e.brightness, e.contrast, amount);
+        } else if (e.type == Effect::Grain) {
+            Effects::grain(image, amount, quint32(e.seed) * 7919u + quint32(frame));     // a new grain each frame
+        } else if (e.type == Effect::RadialBlur) {
+            Effects::radialBlur(image, amount);
+        } else if (e.type == Effect::ColourScale) {
+            Effects::colourScale(image, e.color, amount);
         } else if (e.type == Effect::Glow || e.type == Effect::Shadow) {
             // The offset is a direction on the picture: it does not turn with the layer.
             Effects::halo(image, e.color, amount * pixelsPerUnit, e.type == Effect::Shadow ? e.offset * (pixelsPerUnit / dpr) : QPointF());

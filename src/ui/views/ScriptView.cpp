@@ -272,7 +272,8 @@ bool ScriptLayers::renameDrawing(int layer, int frame, QString const& name)
 
 // ---- effects ------------------------------------------------------------------------------
 
-static char const* const kEffectNames[] = {"blur", "tint", "cutter", "glow", "shadow", "particles", "transparency", "directionalBlur", "hueSaturation", "brightnessContrast"};
+static char const* const kEffectNames[] = {"blur", "tint", "cutter", "glow", "shadow", "particles", "transparency", "directionalBlur", "hueSaturation", "brightnessContrast",
+                                           "grain", "radialBlur", "colourScale"};
 
 bool ScriptEffects::has(int layer, int effect) const
 {

@@ -342,12 +342,16 @@ QJsonObject Scene::toJson(QString const& folder) const
                 QJsonObject one{{"type", e.type == Effect::Blur ? "blur" : e.type == Effect::Tint ? "tint" : e.type == Effect::Glow ? "glow"
                                          : e.type == Effect::Shadow ? "shadow" : e.type == Effect::Particles ? "particles"
                                          : e.type == Effect::Transparency ? "transparency" : e.type == Effect::DirectionalBlur ? "directionalBlur"
-                                         : e.type == Effect::HueSaturation ? "hueSaturation" : e.type == Effect::BrightnessContrast ? "brightnessContrast" : "cutter"},
+                                         : e.type == Effect::HueSaturation ? "hueSaturation" : e.type == Effect::BrightnessContrast ? "brightnessContrast"
+                                         : e.type == Effect::Grain ? "grain" : e.type == Effect::RadialBlur ? "radialBlur" : e.type == Effect::ColourScale ? "colourScale"
+                                         : "cutter"},
                                 {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                                 {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
                                 {"matte", e.matte}, {"invert", e.invert}};
                 if (e.type == Effect::DirectionalBlur)
                     one["direction"] = e.direction;
+                if (e.type == Effect::Grain)
+                    one["seed"] = e.seed;
                 if (e.type == Effect::HueSaturation) {
                     one["hue"] = e.hue;
                     one["saturation"] = e.saturation;

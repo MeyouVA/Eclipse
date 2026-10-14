@@ -441,14 +441,18 @@ struct Swatch {
 // Something done to the picture of a layer before it goes into the frame.  The effects of
 // a layer are applied in order.
 struct Effect {
-    enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, TypeCount };
+    enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
+                ColourScale, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
     // Hue-Saturation: the hue turned by so many degrees, the saturation and the lightness raised or lowered by so many
     // percent; Brightness-Contrast: so many percent brighter (or darker) and more (or less) contrast.  Both: `amount`
     // is how much of that is done (0..1).  Transparency: `amount` is how see-through (0..1).  Directional Blur: `amount`
-    // is how far each point is smeared, along `direction` (degrees, 0: across).
+    // is how far each point is smeared, along `direction` (degrees, 0: across).  Grain: `amount` is how strong (0..1), a new
+    // grain each frame (`seed` another).  Radial Blur: `amount` is how far each point is smeared along the line from the middle
+    // of the layer's picture, as a share of how far it is from it (0..1).  Colour-Scale: each colour multiplied by `color` (its red,
+    // green and blue as shares), `amount` of the way (0..1).
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;

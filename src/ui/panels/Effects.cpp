@@ -215,6 +215,96 @@ void brightnessContrast(QImage& image, double brightness, double contrast, doubl
     }
 }
 
+void grain(QImage& image, double amount, quint32 seed)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const spread = int(std::lround(amount * 160.0));
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const a = qAlpha(row[x]);
+            if (a == 0)
+                continue;
+            // A number for this point that depends on nothing but where it is and the seed.
+            quint32 h = quint32(x) * 73856093u ^ quint32(y) * 19349663u ^ seed * 83492791u;
+            h ^= h >> 13;
+            h *= 0x5bd1e995u;
+            h ^= h >> 15;
+            int const shift = (int(h & 0xff) - 128) * spread / 128 * a / 255;
+            auto one = [&](int v) { return std::clamp(v + shift, 0, a); };
+            row[x] = qRgba(one(qRed(row[x])), one(qGreen(row[x])), one(qBlue(row[x])), a);
+        }
+    }
+}
+
+void radialBlur(QImage& image, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    // The middle of what is painted.
+    int left = w, top = h, right = -1, bottom = -1;
+    for (int y = 0; y < h; ++y) {
+        QRgb const* const row = reinterpret_cast<QRgb const*>(image.constScanLine(y));
+        for (int x = 0; x < w; ++x)
+            if (qAlpha(row[x]) != 0) {
+                left = std::min(left, x);
+                right = std::max(right, x);
+                top = std::min(top, y);
+                bottom = std::max(bottom, y);
+            }
+    }
+    if (right < 0)
+        return;
+    double const cx = (left + right) / 2.0, cy = (top + bottom) / 2.0;
+    int const samples = 24;
+    QImage const source = image;
+    for (int y = 0; y < h; ++y) {
+        QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            int r = 0, g = 0, b = 0, al = 0;
+            for (int s = 0; s < samples; ++s) {
+                // Along the line from the middle through the point, so far either side of it.
+                double const k = 1.0 + amount * (0.5 - double(s) / (samples - 1));
+                int const sx = int(std::lround(cx + (x - cx) * k)), sy = int(std::lround(cy + (y - cy) * k));
+                if (sx < 0 || sy < 0 || sx >= w || sy >= h)
+                    continue;
+                QRgb const p = reinterpret_cast<QRgb const*>(source.constScanLine(sy))[sx];
+                r += qRed(p);
+                g += qGreen(p);
+                b += qBlue(p);
+                al += qAlpha(p);
+            }
+            out[x] = qRgba(r / samples, g / samples, b / samples, al / samples);
+        }
+    }
+}
+
+void colourScale(QImage& image, QColor const& scale, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    // (Premultiplied colours scale as they are: the shares apply to the colour, not to how opaque it is.)
+    int const kr = int(std::lround((1.0 + (scale.redF() - 1.0) * amount) * 256.0)), kg = int(std::lround((1.0 + (scale.greenF() - 1.0) * amount) * 256.0)),
+              kb = int(std::lround((1.0 + (scale.blueF() - 1.0) * amount) * 256.0));
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x)
+            if (row[x] != 0)
+                row[x] = qRgba(qRed(row[x]) * kr / 256, qGreen(row[x]) * kg / 256, qBlue(row[x]) * kb / 256, qAlpha(row[x]));
+    }
+}
+
 void halo(QImage& image, QColor const& color, double radius, QPointF offset)
 {
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
@@ -263,6 +353,12 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Hue-Saturation  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::BrightnessContrast:
         return QObject::tr("Brightness-Contrast  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::Grain:
+        return QObject::tr("Grain  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::RadialBlur:
+        return QObject::tr("Radial Blur  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::ColourScale:
+        return QObject::tr("Colour-Scale  %1%").arg(int(std::lround(effect.amount * 100.0)));
     default: {
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Cutter  %1%2").arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"),
@@ -295,6 +391,9 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Directional Blur")), &QAction::triggered, this, [this] { add(Effect::DirectionalBlur); });
     connect(menu->addAction(tr("Hue-Saturation")), &QAction::triggered, this, [this] { add(Effect::HueSaturation); });
     connect(menu->addAction(tr("Brightness-Contrast")), &QAction::triggered, this, [this] { add(Effect::BrightnessContrast); });
+    connect(menu->addAction(tr("Grain")), &QAction::triggered, this, [this] { add(Effect::Grain); });
+    connect(menu->addAction(tr("Radial Blur")), &QAction::triggered, this, [this] { add(Effect::RadialBlur); });
+    connect(menu->addAction(tr("Colour-Scale")), &QAction::triggered, this, [this] { add(Effect::ColourScale); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -519,7 +618,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
             return;
         Effect const& effect = scene.layers[m_layer].effects[row];
         bool const percent = effect.type == Effect::Tint || effect.type == Effect::Transparency || effect.type == Effect::HueSaturation
-                             || effect.type == Effect::BrightnessContrast;
+                             || effect.type == Effect::BrightnessContrast || effect.type == Effect::Grain || effect.type == Effect::RadialBlur
+                             || effect.type == Effect::ColourScale;
         double const amount = percent ? v / 100.0 : v;
         if (effect.animated) {
             // On this frame only: a keyframe.
@@ -633,7 +733,7 @@ void EffectsPanel::showEditors()
     bool const valid = m_layer >= 0 && m_layer < scene.layers.size() && row >= 0 && row < scene.layers[m_layer].effects.size();
     Effect const e = valid ? scene.layers[m_layer].effects[row] : Effect();
     bool const cutter = valid && e.type == Effect::Cutter;
-    bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow);
+    bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale);
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
@@ -700,7 +800,8 @@ void EffectsPanel::showEditors()
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());
         m_amount->setValue(amount);
-    } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast)) {
+    } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
+                         || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale)) {
         m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);

@@ -426,6 +426,12 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.type = Effect::HueSaturation;
             else if (type == QLatin1String("brightnessContrast"))
                 e.type = Effect::BrightnessContrast;
+            else if (type == QLatin1String("grain"))
+                e.type = Effect::Grain;
+            else if (type == QLatin1String("radialBlur"))
+                e.type = Effect::RadialBlur;
+            else if (type == QLatin1String("colourScale"))
+                e.type = Effect::ColourScale;
             else
                 continue;  // an effect of a newer version: left out rather than guessed at
             e.enabled = eo["enabled"].toBool(true);
@@ -452,6 +458,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             }
             if (e.type == Effect::DirectionalBlur)
                 e.direction = eo["direction"].toDouble(0.0);
+            if (e.type == Effect::Grain)
+                e.seed = eo["seed"].toInt(1);
             e.hue = std::clamp(eo["hue"].toDouble(0.0), -180.0, 180.0);
             e.saturation = std::clamp(eo["saturation"].toDouble(0.0), -100.0, 100.0);
             e.lightness = std::clamp(eo["lightness"].toDouble(0.0), -100.0, 100.0);

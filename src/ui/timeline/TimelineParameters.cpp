@@ -104,7 +104,8 @@ QRect Timeline::parameterRowRect(int layer, Parameter which) const
 // An effect whose amount is a share (shown in percent).
 static bool inPercent(Effect const& e)
 {
-    return e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast;
+    return e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
+           || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale;
 }
 
 QString Timeline::rowName(int layer, Parameter which) const
@@ -123,7 +124,8 @@ QString Timeline::rowName(int layer, Parameter which) const
         return QString();
     static char const* const kNames[Effect::TypeCount] = {QT_TR_NOOP("Blur"), QT_TR_NOOP("Tint"), QT_TR_NOOP("Cutter"), QT_TR_NOOP("Glow"),
                                                           QT_TR_NOOP("Shadow"), QT_TR_NOOP("Particles"), QT_TR_NOOP("Transparency"),
-                                                          QT_TR_NOOP("Directional Blur"), QT_TR_NOOP("Hue-Saturation"), QT_TR_NOOP("Brightness-Contrast")};
+                                                          QT_TR_NOOP("Directional Blur"), QT_TR_NOOP("Hue-Saturation"), QT_TR_NOOP("Brightness-Contrast"),
+                                                          QT_TR_NOOP("Grain"), QT_TR_NOOP("Radial Blur"), QT_TR_NOOP("Colour-Scale")};
     Effect const& effect = scene.layers[layer].effects[e];
     return tr("Effect: %1").arg(tr(kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)]));
 }
