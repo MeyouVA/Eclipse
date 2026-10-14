@@ -430,6 +430,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.regionShape = std::clamp(eo["regionShape"].toInt(0), 0, 3);
                 e.floor = std::max(0.0, eo["floor"].toDouble(0.0));
                 e.bounce = std::clamp(eo["bounce"].toDouble(0.5), 0.0, 1.0);
+                e.walls = std::max(0.0, eo["walls"].toDouble(0.0));
             }
             e.offset = QPointF(eo["dx"].toDouble(), eo["dy"].toDouble());
             e.color = QColor(eo["color"].toString("#ff000000"));

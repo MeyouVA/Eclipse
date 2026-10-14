@@ -354,6 +354,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                     one["regionShape"] = e.regionShape;
                     one["floor"] = e.floor;
                     one["bounce"] = e.bounce;
+                    one["walls"] = e.walls;
                 }
                 effects.append(one);
             }

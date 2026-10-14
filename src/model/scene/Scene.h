@@ -447,6 +447,7 @@ struct Effect {
                                 // 3 the drawing's own shape (anywhere on its artwork; `places` gives where that is)
     double floor = 0.0;         // a floor so far below where they are let go, that they bounce off (0: none)
     double bounce = 0.5;        // how much of its speed a particle keeps when it bounces (0..1)
+    double walls = 0.0;         // walls so far to the left and to the right of where they are let go, bounced off too (0: none)
     struct Particle {
         QPointF offset;         // from where the drawing itself is (was, on the frame it was let go)
         double opacity = 1.0;

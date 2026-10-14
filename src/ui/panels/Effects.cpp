@@ -260,15 +260,16 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         });
         // Wind across, and turning.
         struct Extra { char const* name; char const* label; char const* tip; double low, high, step; };
-        static Extra const kExtras[6] = {
+        static Extra const kExtras[7] = {
             {"ParticleWind", QT_TR_NOOP("Wind"), QT_TR_NOOP("Pushes the particles across by so many units a frame, each frame (less than 0: to the left)."), -20.0, 20.0, 0.1},
             {"ParticleSpin", QT_TR_NOOP("Spin"), QT_TR_NOOP("Each particle turns by up to so many degrees a frame, one way or the other."), 0.0, 360.0, 1.0},
             {"ParticleRegionWidth", QT_TR_NOOP("Region Width"), QT_TR_NOOP("They are let go from anywhere in a box this wide about the drawing (0: from the drawing itself)."), 0.0, 5000.0, 10.0},
             {"ParticleRegionHeight", QT_TR_NOOP("Region Height"), QT_TR_NOOP("They are let go from anywhere in a box this high about the drawing (0: from the drawing itself)."), 0.0, 5000.0, 10.0},
             {"ParticleFloor", QT_TR_NOOP("Floor"), QT_TR_NOOP("A floor so far below where they are let go, that they bounce off (0: none)."), 0.0, 5000.0, 10.0},
-            {"ParticleBounce", QT_TR_NOOP("Bounce"), QT_TR_NOOP("How much of its speed a particle keeps when it bounces off the floor (0: none, 1: all)."), 0.0, 1.0, 0.05},
+            {"ParticleBounce", QT_TR_NOOP("Bounce"), QT_TR_NOOP("How much of its speed a particle keeps when it bounces off the floor or a wall (0: none, 1: all)."), 0.0, 1.0, 0.05},
+            {"ParticleWalls", QT_TR_NOOP("Walls"), QT_TR_NOOP("Walls so far to the left and to the right of where they are let go, that they bounce off (0: none)."), 0.0, 5000.0, 10.0},
         };
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < 7; ++i) {
             QDoubleSpinBox* const box = new QDoubleSpinBox(m_particles);
             m_particleBox[7 + i] = box;
             box->setObjectName(QLatin1String(kExtras[i].name));
@@ -281,7 +282,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
             connect(box, &QDoubleSpinBox::valueChanged, this, [this, i](double v) {
                 if (!m_rebuilding)
                     edit([i, v](Effect& e) {
-                        double* const fields[6] = {&e.wind, &e.spin, &e.regionWidth, &e.regionHeight, &e.floor, &e.bounce};
+                        double* const fields[7] = {&e.wind, &e.spin, &e.regionWidth, &e.regionHeight, &e.floor, &e.bounce, &e.walls};
                         *fields[i] = v;
                     });
             });
@@ -501,6 +502,7 @@ void EffectsPanel::showEditors()
         m_particleBox[10]->setValue(e.regionHeight);
         m_particleBox[11]->setValue(e.floor);
         m_particleBox[12]->setValue(e.bounce);
+        m_particleBox[13]->setValue(e.walls);
         m_particleShape->setCurrentIndex(std::clamp(e.regionShape, 0, 3));
         m_particleRecolour->setChecked(e.endColor.isValid());
         m_particleColour->setEnabled(e.endColor.isValid());
