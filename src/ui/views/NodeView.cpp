@@ -166,6 +166,40 @@ QString NodeView::pathText() const
     return names.isEmpty() ? QString() : tr("Top") + QStringLiteral("  /  ") + names.join(QStringLiteral("  /  "));
 }
 
+QVector<int> NodeView::groupInputs() const
+{
+    Scene const& scene = m_document->scene();
+    int const inside = enteredGroup();
+    QVector<int> out;
+    for (int l = 0; inside >= 0 && l < scene.layers.size(); ++l)
+        if (scene.parentIndex(l) == inside && nodeShown(l))
+            out.push_back(l);
+    return out;
+}
+
+QRectF NodeView::groupInputRect() const
+{
+    if (enteredGroup() < 0)
+        return QRectF();
+    QVector<QPointF> const p = positions();
+    double top = 0.0;
+    bool any = false;
+    for (int l = 0; l < p.size(); ++l)
+        if (nodeShown(l)) {
+            top = any ? std::min(top, p[l].y()) : p[l].y();
+            any = true;
+        }
+    return QRectF(toWidget(QPointF(compositePos(p).x(), top - 84.0)), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom));
+}
+
+QRectF NodeView::groupOutputRect() const
+{
+    if (enteredGroup() < 0)
+        return QRectF();
+    QRectF const composite(toWidget(compositePos(positions())), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom));
+    return QRectF(composite.left(), composite.bottom() + 40.0 * m_zoom, composite.width(), composite.height());
+}
+
 QRectF NodeView::pathRect() const
 {
     QString const text = pathText();
@@ -300,6 +334,8 @@ QRectF NodeView::graphBounds() const
     for (int l = 0; l < p.size(); ++l)
         if (nodeShown(l))
             all = all.united(QRectF(p[l], QSizeF(kNodeWidth, kNodeHeight)));
+    if (enteredGroup() >= 0)
+        all = all.united(QRectF(QPointF(compositePos(p).x(), all.top() - 84.0), QSizeF(kNodeWidth, kNodeHeight)));
     return all;
 }
 
@@ -421,6 +457,13 @@ void NodeView::paintEvent(QPaintEvent*)
     }
     if (m_drag == DragCable && m_dragLayer >= 0)
         cable(outPort(m_dragLayer), m_dragNow, picked, 1.8);
+    // Inside a group: what comes into it, cabled to what hangs from the group itself.
+    QRectF const groupIn = groupInputRect();
+    if (!groupIn.isNull())
+        for (int l : groupInputs()) {
+            QRectF const to = rectOf(pos[l]);
+            cable(QPointF(groupIn.center().x(), groupIn.bottom()), QPointF(to.center().x(), to.top()), pegCable, 1.8);
+        }
 
     // ---- nodes ----
     QFont font = this->font();
@@ -471,7 +514,17 @@ void NodeView::paintEvent(QPaintEvent*)
         }
     }
     node(composite, tr("Composite"), QColor(96, 76, 128), false, false);
-    node(display, tr("Display"), QColor(70, 72, 78), false, false);
+    if (enteredGroup() >= 0) {
+        // In a group the composite goes out of the group, not to the display; and what comes in is a node of its own.
+        node(display, tr("Group Output"), QColor(40, 118, 122), false, false);
+        node(groupIn, tr("Group Input"), QColor(40, 118, 122), false, false);
+        p.setPen(QPen(QColor(20, 21, 23), 1));
+        p.setBrush(QColor(210, 212, 216));
+        p.drawEllipse(QPointF(groupIn.center().x(), groupIn.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
+        p.drawEllipse(QPointF(display.center().x(), display.top()), 3.5 * m_zoom, 3.5 * m_zoom);
+    } else {
+        node(display, tr("Display"), QColor(70, 72, 78), false, false);
+    }
     // Inside a group: the way here along the top; a click on it goes out one level.
     if (QRectF const path = pathRect(); !path.isNull()) {
         p.setFont(this->font());

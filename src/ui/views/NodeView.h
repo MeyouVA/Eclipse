@@ -43,6 +43,12 @@ public:
     // The path along the top of the view while inside a group; a click on it goes out one level.
     QRectF pathRect() const;
     QString pathText() const;
+    // Inside a group: the node that stands for what comes into it (its transformation, which what hangs from the group
+    // takes), above the rest; and the one that stands for what goes out (its picture), under the composite.  Null at the top.
+    QRectF groupInputRect() const;
+    QRectF groupOutputRect() const;
+    // The layers the input node is cabled to: those that hang from the group itself.
+    QVector<int> groupInputs() const;
     QPointF navigatorPoint(QPointF graph) const;
     // Where a place of the view is in the graph.
     QPointF graphPoint(QPointF widgetPos) const { return toGraph(widgetPos); }
