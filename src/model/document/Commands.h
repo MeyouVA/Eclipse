@@ -266,6 +266,8 @@ public:
     // (in the space of what the layer hangs from).  False when it has no keyframes to move.
     bool offsetPath(int layer, QPointF by);
     void removeControlPoint(int layer, int key, int control);
+    // How far a control point stands towards the camera: the path bends in depth through it.
+    void setControlPointDepth(int layer, int key, int control, double z);
     int lockControlPointInTime(int layer, int key, int control);
     void setPathShape(int layer, int key, double tension, double continuity, double bias);
     // A clone of the layer: the same drawings and timing, changed on either; its place, or -1.

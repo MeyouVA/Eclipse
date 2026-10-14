@@ -229,6 +229,12 @@ QJsonObject Scene::toJson(QString const& folder) const
                     controls.append(c.y());
                 }
                 key["controls"] = controls;
+                if (!k.controlsZ.isEmpty()) {
+                    QJsonArray depths;
+                    for (double z : k.controlsZ)
+                        depths.append(z);
+                    key["controlsZ"] = depths;
+                }
                 key["tcb"] = QJsonArray{k.tension, k.continuity, k.bias};
             }
             if (k.liftOut != 0.0)

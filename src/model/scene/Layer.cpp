@@ -188,8 +188,32 @@ Pose Layer::poseAt(int frame) const
         QPointF const at = a.pathPoint(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), along);
         pose.x = at.x();
         pose.y = at.y();
+        if (!a.controlsZ.isEmpty()) {
+            // And in depth: through the depths of the control points.
+            QVector<double> placed;
+            a.pathLine(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), &placed);
+            pose.z = a.pathDepth(a.pose.z, b.pose.z, along, placed);
+        }
     }
     return pose;
+}
+
+double Keyframe::pathDepth(double fromZ, double toZ, double along, QVector<double> const& controlsAt) const
+{
+    // Straight from one depth to the next between the points: the keyframes at 0 and 1, the control points where they lie.
+    double lastAt = 0.0, lastZ = fromZ;
+    for (int i = 0; i < controlsAt.size(); ++i) {
+        double const at = controlsAt[i];
+        double const z = i < controlsZ.size() ? controlsZ[i] : fromZ + (toZ - fromZ) * at;
+        if (along <= at) {
+            double const span = at - lastAt;
+            return span > 1e-12 ? lastZ + (z - lastZ) * (along - lastAt) / span : z;
+        }
+        lastAt = at;
+        lastZ = z;
+    }
+    double const span = 1.0 - lastAt;
+    return span > 1e-12 ? lastZ + (toZ - lastZ) * (along - lastAt) / span : toZ;
 }
 
 QVector<QPointF> Keyframe::pathLine(QPointF from, QPointF to, QVector<double>* controlsAt) const

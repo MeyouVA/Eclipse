@@ -130,9 +130,9 @@ CoordView::CoordView(Document* document, QWidget* parent) : QWidget(parent), m_d
     QPushButton* const remove = new QPushButton(tr("Delete Keyframe"), this);
     remove->setObjectName(QStringLiteral("CoordRemove"));
     // Under them, the control points of the stretch of path the current frame is on.
-    m_pointTable = new QTableWidget(0, 4, this);
+    m_pointTable = new QTableWidget(0, 5, this);
     m_pointTable->setObjectName(QStringLiteral("CoordPointsTable"));
-    m_pointTable->setHorizontalHeaderLabels({tr("Point"), tr("X"), tr("Y"), tr("Frame")});
+    m_pointTable->setHorizontalHeaderLabels({tr("Point"), tr("X"), tr("Y"), tr("Frame"), tr("Z")});
     m_pointTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_pointTable->verticalHeader()->setVisible(false);
     m_pointTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -479,9 +479,15 @@ void CoordView::rebuildPoints()
     QVector<QPointF> const points = key >= 0 ? scene.layers[m_layer].keys[key].controls : QVector<QPointF>();
     m_pointTable->setRowCount(int(points.size()));
     for (int p = 0; p < points.size(); ++p) {
-        QString const texts[4] = {QString::number(p + 1), shortNumber(points[p].x()), shortNumber(points[p].y()),
-                                  QString::number(scene.controlPointFrame(m_layer, key, p) + 1)};
-        for (int column = 0; column < 4; ++column) {
+        // Its depth: its own, or where the straight way between the keyframes' depths has it.
+        Keyframe const& a = scene.layers[m_layer].keys[key];
+        Keyframe const& b = scene.layers[m_layer].keys[key + 1];
+        QVector<double> placed;
+        a.pathLine(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), &placed);
+        double const z = p < a.controlsZ.size() ? a.controlsZ[p] : a.pose.z + (b.pose.z - a.pose.z) * placed.value(p, 0.0);
+        QString const texts[5] = {QString::number(p + 1), shortNumber(points[p].x()), shortNumber(points[p].y()),
+                                  QString::number(scene.controlPointFrame(m_layer, key, p) + 1), shortNumber(z)};
+        for (int column = 0; column < 5; ++column) {
             QTableWidgetItem* const item = new QTableWidgetItem(texts[column]);
             item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             if (column == 0 || column == 3)
@@ -500,8 +506,17 @@ void CoordView::pointEdited(int row, int column)
 {
     Scene const& scene = m_document->scene();
     int const key = pathKey();
-    if (m_rebuilding || key < 0 || row < 0 || row >= scene.layers[m_layer].keys[key].controls.size() || (column != 1 && column != 2))
+    if (m_rebuilding || key < 0 || row < 0 || row >= scene.layers[m_layer].keys[key].controls.size() || (column != 1 && column != 2 && column != 4))
         return;
+    if (column == 4) {
+        bool ok = false;
+        double const z = m_pointTable->item(row, column)->text().trimmed().replace(QLatin1Char(','), QLatin1Char('.')).toDouble(&ok);
+        if (ok)
+            m_document->setControlPointDepth(m_layer, key, row, z);
+        else
+            rebuildPoints();
+        return;
+    }
     QPointF to = scene.layers[m_layer].keys[key].controls[row];
     bool ok = false;
     double const value = m_pointTable->item(row, column)->text().trimmed().replace(QLatin1Char(','), QLatin1Char('.')).toDouble(&ok);

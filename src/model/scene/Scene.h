@@ -351,6 +351,11 @@ struct Keyframe {
     // Control points: places the way from this keyframe to the next passes through, in order.  They shape
     // the path and belong to no frame - the layer comes by each when the timing brings it there.
     QVector<QPointF> controls;
+    // How far each control point stands towards the camera (as Pose::z), by the same place; one not listed lies
+    // where the straight way from this keyframe's depth to the next one's has it.
+    QVector<double> controlsZ;
+    // The depth of the way `along` (0..1), through the control points' depths at the places `controlsAt` gives them.
+    double pathDepth(double fromZ, double toZ, double along, QVector<double> const& controlsAt) const;
     // How the path bends through its points: tension (1: straight from point to point), continuity
     // (away from 0: a corner at each point), bias (which side of a point the bend leans to); each -1..1.
     double tension = 0.0;

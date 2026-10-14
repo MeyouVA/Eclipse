@@ -552,6 +552,13 @@ int Scene::insertControlPoint(int layer, int frame)
         while (place < at.size() && at[place] < along)
             ++place;
         a.controls.insert(place, here);
+        if (!a.controlsZ.isEmpty()) {
+            // Its depth where the layer is now, so the way is as it was.
+            double const z = a.pathDepth(a.pose.z, b.pose.z, along, at);
+            while (a.controlsZ.size() < place)
+                a.controlsZ.push_back(a.pose.z + (b.pose.z - a.pose.z) * at.value(a.controlsZ.size(), 0.0));
+            a.controlsZ.insert(std::min(place, int(a.controlsZ.size())), z);
+        }
         return place;
     }
     return -1;
@@ -588,12 +595,16 @@ int Scene::lockControlPointInTime(int layer, int key, int control)
     Pose pose = l.poseAt(frame);
     pose.x = before.controls[control].x();
     pose.y = before.controls[control].y();
+    if (control < before.controlsZ.size())
+        pose.z = before.controlsZ[control];
     l.setKey(frame, pose);
     // The points before it stay on the way to the new keyframe; those after it go on from there.
     Keyframe& first = l.keys[l.keyIndex(before.frame)];
     Keyframe& second = l.keys[l.keyIndex(frame)];
     first.controls = before.controls.mid(0, control);
     second.controls = before.controls.mid(control + 1);
+    first.controlsZ = before.controlsZ.mid(0, std::min(control, int(before.controlsZ.size())));
+    second.controlsZ = control + 1 < before.controlsZ.size() ? before.controlsZ.mid(control + 1) : QVector<double>();
     second.tension = before.tension;
     second.continuity = before.continuity;
     second.bias = before.bias;

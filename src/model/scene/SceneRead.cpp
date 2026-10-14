@@ -477,6 +477,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             QJsonArray const controls = ko["controls"].toArray();
             for (int i = 0; i + 1 < controls.size(); i += 2)
                 key.controls.push_back(QPointF(controls[i].toDouble(), controls[i + 1].toDouble()));
+            for (QJsonValue const z : ko["controlsZ"].toArray())
+                if (key.controlsZ.size() < key.controls.size())
+                    key.controlsZ.push_back(z.toDouble());
             QJsonArray const tcb = ko["tcb"].toArray();
             if (tcb.size() == 3) {
                 key.tension = std::clamp(tcb[0].toDouble(), -1.0, 1.0);

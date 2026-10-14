@@ -455,7 +455,31 @@ void Document::removeControlPoint(int layer, int key, int control)
 {
     if (!hasControl(m_scene, layer, key, control))
         return;
-    apply(tr("Remove Control Point"), [&](Scene& s) { s.layers[layer].keys[key].controls.removeAt(control); });
+    apply(tr("Remove Control Point"), [&](Scene& s) {
+        Keyframe& k = s.layers[layer].keys[key];
+        k.controls.removeAt(control);
+        if (control < k.controlsZ.size())
+            k.controlsZ.removeAt(control);
+    });
+}
+
+void Document::setControlPointDepth(int layer, int key, int control, double z)
+{
+    if (!hasControl(m_scene, layer, key, control) || key + 1 >= m_scene.layers[layer].keys.size())
+        return;
+    Keyframe const& k = m_scene.layers[layer].keys[key];
+    if (control < k.controlsZ.size() && k.controlsZ[control] == z)
+        return;
+    apply(tr("Control Point Depth"), [&](Scene& s) {
+        Keyframe& a = s.layers[layer].keys[key];
+        Keyframe const& b = s.layers[layer].keys[key + 1];
+        // The points before it that had no depth of their own keep the one they had (on the straight way).
+        QVector<double> placed;
+        a.pathLine(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), &placed);
+        while (a.controlsZ.size() <= control)
+            a.controlsZ.push_back(a.pose.z + (b.pose.z - a.pose.z) * placed.value(a.controlsZ.size(), 0.0));
+        a.controlsZ[control] = z;
+    });
 }
 
 int Document::lockControlPointInTime(int layer, int key, int control)
