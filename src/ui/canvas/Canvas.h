@@ -757,6 +757,11 @@ private:
     bool contourValid() const;
     void paintTransformAids(QPainter& painter);
     void penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);
+    void penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);
+    // Drawing on a morphing's frame in between: the step that makes its frames drawings and what the tool then does,
+    // gathered into one until the pen comes up.
+    bool m_morphMacro = false;
+    void closeMorphMacro();
     void penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers);
     void penUp();
     void updateCursor();

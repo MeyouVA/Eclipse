@@ -96,6 +96,8 @@ void Canvas::mouseReleaseEvent(QMouseEvent*)
 {
     if (!m_tabletActive && m_drag != DragNone)
         penUp();
+    if (!m_tabletActive)
+        closeMorphMacro();
 }
 
 void Canvas::tabletEvent(QTabletEvent* event)
@@ -121,6 +123,7 @@ void Canvas::tabletEvent(QTabletEvent* event)
     case QEvent::TabletRelease:
         if (m_drag != DragNone)
             penUp();
+        closeMorphMacro();
         m_tabletActive = false;
         break;
     default:

@@ -8,6 +8,33 @@
 
 void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers)
 {
+    // A frame in between the two drawings of a morphing has no drawing of its own to work on: a tool that changes artwork
+    // makes the morphing's frames real drawings first, then works on this one - both one step to undo, closed when the
+    // pen comes up (or at once when the press starts no drag).
+    static QVector<Tool> const looking = {Hand, Zoom, RotateView, Transform, IK, Rigging, Dropper, Morphing, SplineOffset, Turn3D, Reposition};
+    Scene const& scene = m_document->scene();
+    if (!panning && !m_morphMacro && !looking.contains(m_tool) && m_layer >= 0 && m_layer < scene.layers.size()
+        && scene.layers[m_layer].holdsDrawings() && scene.layers[m_layer].morphing(m_frame)) {
+        m_document->beginMacro(tr("Draw on Morphing"));
+        m_morphMacro = true;
+        if (m_document->convertMorph(m_layer, m_frame))
+            emit message(tr("The morphing's frames in between were made drawings of their own, to draw on."));
+    }
+    penDownTool(widgetPos, pressure, panning, modifiers);
+    if (m_drag == DragNone)
+        closeMorphMacro();
+}
+
+void Canvas::closeMorphMacro()
+{
+    if (m_morphMacro) {
+        m_morphMacro = false;
+        m_document->endMacro();
+    }
+}
+
+void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers)
+{
     if (m_leader)
         followSettings(*m_leader);
     m_lastWidgetPos = widgetPos;
@@ -19,15 +46,6 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
     if (m_tool == Zoom) {
         zoomAt(widgetPos, modifiers & Qt::AltModifier ? 1.0 / 1.5 : 1.5);
         return;
-    }
-    // A frame in between the two drawings of a morphing has no drawing of its own to work on: a tool that changes artwork
-    // makes the morphing's frames real drawings first (a step of its own), then works on this one.
-    {
-        static QVector<Tool> const looking = {Hand, Zoom, RotateView, Transform, IK, Rigging, Dropper, Morphing, SplineOffset, Turn3D, Reposition};
-        Scene const& scene = m_document->scene();
-        if (!looking.contains(m_tool) && m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].holdsDrawings()
-            && scene.layers[m_layer].morphing(m_frame) && m_document->convertMorph(m_layer, m_frame))
-            emit message(tr("The morphing's frames in between were made drawings of their own, to draw on."));
     }
     if (m_tool == Turn3D) {
         Scene const& scene = m_document->scene();
