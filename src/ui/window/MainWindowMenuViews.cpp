@@ -19,6 +19,7 @@
 #include "ui/views/GuidesView.h"
 #include "ui/views/CoordView.h"
 #include "ui/views/MetadataView.h"
+#include "ui/views/ScriptView.h"
 #include "ui/views/Graph3DView.h"
 #include "ui/views/PreviewManagerView.h"
 #include "ui/views/PerspectiveView.h"
@@ -73,6 +74,12 @@ void MainWindow::createWindowsMenuViews()
         view->setObjectName(QStringLiteral("MetadataView"));
         connect(m_timeline, &Timeline::currentCellChanged, view, &MetadataView::setCurrentCell);
         addView(tr("Metadata"), QStringLiteral("MetadataDock"), view, Qt::RightDockWidgetArea)->hide();
+    }
+    // Script Editor: scripts written, kept and run on the scene.
+    {
+        ScriptView* const view = new ScriptView(m_document, m_timeline, this);
+        view->setObjectName(QStringLiteral("ScriptView"));
+        addView(tr("Script Editor"), QStringLiteral("ScriptDock"), view, Qt::BottomDockWidgetArea)->hide();
     }
     // 3D Graph: the layers as they hang together, with where each stands in space.
     {

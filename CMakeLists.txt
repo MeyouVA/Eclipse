@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg PrintSupport)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg PrintSupport Qml)
 
 # Eclipse is four libraries and a small program that starts them (see src/EclipseExport.h).
 # Each folder of src is a module, sorted into sub-folders by what the files are for; a source
@@ -41,7 +41,7 @@ target_link_libraries(EclipseActions PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets PRIV
 
 # The window and all its views.
 eclipse_module(EclipseUi ui ECLIPSE_UI_BUILD)
-target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets PRIVATE Qt6::Svg Qt6::PrintSupport winmm)
+target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport winmm)
 
 # The program: it starts the window.
 add_executable(Eclipse WIN32 src/app/main.cpp)
