@@ -292,8 +292,67 @@ void pairByHints(QVector<Shape> const& from, QVector<Shape> const& to, QVector<Q
             left.push_back(k);
 }
 
+// Two curves of as many points (with their handles), point for point - the points of the one paired with those of the
+// other where that moves them least (round a closed one, and either way along) - as far from the one to the other as `t`.
+// The points, handles and corners are kept: what comes between is a curve of those points too.  False when they cannot
+// be paired so (not curves, not as many points, one closed and one not).
+bool curveBetween(Stroke const& a, Stroke const& b, double t, Stroke& out)
+{
+    int const n = int(a.points.size());
+    if (n < 2 || b.points.size() != n || a.closed != b.closed || !a.curve || !b.curve)
+        return false;
+    auto partnerOf = [&](int i, int shift, bool reversed) {
+        int const j = reversed ? (a.closed ? shift - i : n - 1 - i) : (a.closed ? i + shift : i);
+        return ((j % n) + n) % n;
+    };
+    int bestShift = 0;
+    bool bestReversed = false;
+    double least = 1e300;
+    for (bool reversed : {false, true})
+        for (int shift = 0; shift < (a.closed ? n : 1); ++shift) {
+            double cost = 0.0;
+            for (int i = 0; i < n && cost < least; ++i) {
+                QPointF const d = a.points[i].pos - b.points[partnerOf(i, shift, reversed)].pos;
+                cost += d.x() * d.x() + d.y() * d.y();
+            }
+            if (cost < least) {
+                least = cost;
+                bestShift = shift;
+                bestReversed = reversed;
+            }
+        }
+    out = t < 0.5 ? a : b;
+    out.points.clear();
+    out.curve = true;
+    out.closed = a.closed;
+    out.group = 0;
+    for (int i = 0; i < n; ++i) {
+        StrokePoint const& p = a.points[i];
+        StrokePoint q = b.points[partnerOf(i, bestShift, bestReversed)];
+        if (bestReversed)
+            std::swap(q.in, q.out);     // (run backwards, its handles face the other way)
+        StrokePoint r;
+        r.pos = p.pos + (q.pos - p.pos) * t;
+        r.pressure = float(mix(p.pressure, q.pressure, t));
+        r.corner = t < 0.5 ? p.corner : q.corner;
+        r.handles = p.handles && q.handles;
+        if (r.handles) {
+            r.in = p.in + (q.in - p.in) * t;
+            r.out = p.out + (q.out - p.out) * t;
+        }
+        out.points.push_back(r);
+    }
+    return true;
+}
+
 Stroke strokeBetween(Stroke const& a, Stroke const& b, double t, QVector<QLineF> const& hints = {})
 {
+    if (Stroke curved; hints.isEmpty() && curveBetween(a, b, t, curved)) {
+        // Curves of as many points: each point goes to its partner, and the in-between is a curve of those points.
+        curved.width = float(mix(a.width, b.width, t));
+        colourBetween(a.swatch, a.color, b.swatch, b.color, t, curved.swatch, curved.color);
+        return curved;
+    }
     bool const closed = a.closed && b.closed;
     QVector<Sample> const from = spaced(samplesOf(a), kLinePoints, closed);
     QVector<Sample> const other = spaced(samplesOf(b), kLinePoints, closed);
@@ -364,6 +423,22 @@ Fill fillBetween(Fill const& a, Fill const& b, double t, QVector<QLineF> const& 
         second.push_back(outline.boundingRect().center());
     QVector<int> partner, left;
     pairUp(first, second, partner, left);
+    if (hints.isEmpty() && left.isEmpty() && !a.contours.isEmpty() && a.contours.size() == a.outlines.size() && b.contours.size() == b.outlines.size()) {
+        // Contour shapes whose contours pair up point for point: the contours themselves go from the one to the other,
+        // and the area in between is a contour shape with those points too.
+        QVector<Stroke> contours;
+        bool all = true;
+        for (int i = 0; i < a.contours.size() && all; ++i) {
+            Stroke made;
+            all = partner[i] >= 0 && curveBetween(a.contours[i], b.contours[partner[i]], t, made);
+            contours.push_back(made);
+        }
+        if (all) {
+            out.contours = contours;
+            out.rebuild();
+            return out;
+        }
+    }
     for (int i = 0; i < a.outlines.size(); ++i) {
         // A hint is for the outline of the area it lies nearest.
         QVector<QLineF> mine;
