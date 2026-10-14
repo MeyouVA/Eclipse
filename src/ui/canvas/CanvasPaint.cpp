@@ -829,6 +829,12 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         } else if (e.type == Effect::Glow || e.type == Effect::Shadow) {
             // The offset is a direction on the picture: it does not turn with the layer.
             Effects::halo(image, e.color, amount * pixelsPerUnit, e.type == Effect::Shadow ? e.offset * (pixelsPerUnit / dpr) : QPointF());
+        } else if (e.type == Effect::Bloom) {
+            Effects::bloom(image, amount * pixelsPerUnit);
+        } else if (e.type == Effect::Pixelate) {
+            Effects::pixelate(image, amount * pixelsPerUnit);
+        } else if (e.type == Effect::Turbulence) {
+            Effects::turbulence(image, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
         } else if (e.type == Effect::Tone || e.type == Effect::Highlight) {
             int const m = scene.layerIndex(e.matte);
             if (m < 0)

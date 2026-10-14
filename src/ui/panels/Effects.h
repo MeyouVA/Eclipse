@@ -48,6 +48,13 @@ void negate(QImage& image, double amount);
 void median(QImage& image, double radius);
 // The rows of the picture rocked side to side by waves `height` pixels high and `length` pixels apart, moved on by `frame`.
 void ripple(QImage& image, double height, double length, int frame);
+// The bright parts (lighter than about two thirds) blurred `radius` pixels and added back over the picture: a glow of light.
+void bloom(QImage& image, double radius);
+// Blocks `size` pixels across, each the mean colour of what lies in it.
+void pixelate(QImage& image, double size);
+// Each point taken from up to `strength` pixels away, by a smooth noise whose swirls are about `size` pixels across; it moves
+// on with `frame`.
+void turbulence(QImage& image, double strength, double size, int frame);
 
 QString name(Effect const& effect, Scene const& scene);
 

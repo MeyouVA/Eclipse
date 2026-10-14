@@ -254,7 +254,7 @@ Effect Effect::made(Type type)
     e.amount = type == Tint ? 0.5 : type == Shadow ? 6.0 : type == Particles ? 2.0 : type == Transparency ? 0.5
              : type == HueSaturation || type == BrightnessContrast || type == ColourScale ? 1.0 : type == DirectionalBlur ? 12.0
              : type == Grain ? 0.3 : type == RadialBlur ? 0.15 : type == Negate ? 1.0 : type == Median ? 2.0 : type == Tone || type == Highlight ? 2.0
-             : 8.0;
+             : type == Bloom ? 12.0 : type == Pixelate ? 10.0 : type == Turbulence ? 6.0 : 8.0;
     e.color = type == Shadow ? QColor(0, 0, 0, 150) : type == Glow ? QColor(255, 240, 160) : type == ColourScale ? QColor(255, 200, 150)
             : type == Tone ? QColor(120, 110, 170) : type == Highlight ? QColor(255, 245, 210) : QColor(40, 110, 200);
     e.offset = type == Shadow ? QPointF(10, 10) : QPointF();
@@ -262,6 +262,8 @@ Effect Effect::made(Type type)
         e.direction = 0.0;
     if (type == Ripple)
         e.direction = 60.0;
+    if (type == Turbulence)
+        e.direction = 40.0;
     if (type == HueSaturation)
         e.hue = 30.0;
     if (type == BrightnessContrast)

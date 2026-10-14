@@ -403,6 +403,103 @@ void ripple(QImage& image, double height, double length, int frame)
     }
 }
 
+void bloom(QImage& image, double radius)
+{
+    if (radius < 0.5)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    // The bright parts only, as bright as they are past the threshold.
+    QImage bright(image.size(), QImage::Format_ARGB32_Premultiplied);
+    bright.setDevicePixelRatio(image.devicePixelRatio());
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb const* const in = reinterpret_cast<QRgb const*>(image.constScanLine(y));
+        QRgb* const out = reinterpret_cast<QRgb*>(bright.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const light = (qRed(in[x]) * 30 + qGreen(in[x]) * 59 + qBlue(in[x]) * 11) / 100;
+            int const past = std::max(0, light - 170) * 255 / 85;       // 0 below two thirds, all of it at white
+            out[x] = qRgba(qRed(in[x]) * past / 255, qGreen(in[x]) * past / 255, qBlue(in[x]) * past / 255, qAlpha(in[x]) * past / 255);
+        }
+    }
+    blur(bright, radius);
+    QPainter p(&image);
+    p.setCompositionMode(QPainter::CompositionMode_Plus);
+    p.drawImage(QPointF(), bright);
+}
+
+void pixelate(QImage& image, double size)
+{
+    int const block = int(std::lround(size));
+    if (block < 2)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    for (int top = 0; top < h; top += block)
+        for (int left = 0; left < w; left += block) {
+            int const bottom = std::min(h, top + block), right = std::min(w, left + block);
+            qint64 r = 0, g = 0, b = 0, a = 0;
+            for (int y = top; y < bottom; ++y) {
+                QRgb const* const row = reinterpret_cast<QRgb const*>(image.constScanLine(y));
+                for (int x = left; x < right; ++x) {
+                    r += qRed(row[x]);
+                    g += qGreen(row[x]);
+                    b += qBlue(row[x]);
+                    a += qAlpha(row[x]);
+                }
+            }
+            qint64 const n = qint64(bottom - top) * (right - left);
+            QRgb const mean = qRgba(int(r / n), int(g / n), int(b / n), int(a / n));
+            for (int y = top; y < bottom; ++y) {
+                QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+                std::fill(row + left, row + right, mean);
+            }
+        }
+}
+
+namespace {
+
+// A smooth noise (-1..1) over the plane: random values on a grid, eased between.
+double smoothNoise(double x, double y, quint32 seed)
+{
+    auto at = [seed](qint64 i, qint64 j) {
+        quint32 h = quint32(i) * 73856093u ^ quint32(j) * 19349663u ^ seed * 83492791u;
+        h ^= h >> 13;
+        h *= 0x5bd1e995u;
+        h ^= h >> 15;
+        return double(h & 0xffff) / 32767.5 - 1.0;
+    };
+    double const fx = std::floor(x), fy = std::floor(y);
+    qint64 const i = qint64(fx), j = qint64(fy);
+    double const u = x - fx, v = y - fy;
+    double const su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+    double const top = at(i, j) + (at(i + 1, j) - at(i, j)) * su, bottom = at(i, j + 1) + (at(i + 1, j + 1) - at(i, j + 1)) * su;
+    return top + (bottom - top) * sv;
+}
+
+}  // namespace
+
+void turbulence(QImage& image, double strength, double size, int frame)
+{
+    if (strength <= 0.0 || size <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    QImage const source = image;
+    // The noise drifts on a little each frame (a third of a swirl), the two directions from noises of their own.
+    double const drift = frame / 3.0;
+    for (int y = 0; y < h; ++y) {
+        QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            double const nx = x / size, ny = y / size;
+            double const dx = strength * smoothNoise(nx + drift, ny, 11u), dy = strength * smoothNoise(nx, ny + drift, 29u);
+            int const sx = int(std::lround(x + dx)), sy = int(std::lround(y + dy));
+            out[x] = sx < 0 || sy < 0 || sx >= w || sy >= h ? QRgb(0) : reinterpret_cast<QRgb const*>(source.constScanLine(sy))[sx];
+        }
+    }
+}
+
 void halo(QImage& image, QColor const& color, double radius, QPointF offset)
 {
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
@@ -463,6 +560,12 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Median  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Ripple:
         return QObject::tr("Ripple  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Bloom:
+        return QObject::tr("Bloom  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Pixelate:
+        return QObject::tr("Pixelate  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Turbulence:
+        return QObject::tr("Turbulence  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Tone:
     case Effect::Highlight: {
         int const matte = scene.layerIndex(effect.matte);
@@ -509,6 +612,9 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Ripple")), &QAction::triggered, this, [this] { add(Effect::Ripple); });
     connect(menu->addAction(tr("Tone")), &QAction::triggered, this, [this] { add(Effect::Tone); });
     connect(menu->addAction(tr("Highlight")), &QAction::triggered, this, [this] { add(Effect::Highlight); });
+    connect(menu->addAction(tr("Bloom")), &QAction::triggered, this, [this] { add(Effect::Bloom); });
+    connect(menu->addAction(tr("Pixelate")), &QAction::triggered, this, [this] { add(Effect::Pixelate); });
+    connect(menu->addAction(tr("Turbulence")), &QAction::triggered, this, [this] { add(Effect::Turbulence); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -871,11 +977,12 @@ void EffectsPanel::showEditors()
     bool const particles = valid && e.type == Effect::Particles;
     {
         bool const hs = valid && e.type == Effect::HueSaturation, bc = valid && e.type == Effect::BrightnessContrast;
-        bool const waves = valid && e.type == Effect::Ripple, along = (valid && e.type == Effect::DirectionalBlur) || waves;
+        bool const swirls = valid && e.type == Effect::Turbulence;
+        bool const waves = (valid && e.type == Effect::Ripple) || swirls, along = (valid && e.type == Effect::DirectionalBlur) || waves;
         m_adjust->setVisible(hs || bc || along);
         // The last box: the way a Directional Blur smears, or how far apart a Ripple's waves are.
         if (QLabel* const label = qobject_cast<QLabel*>(m_adjustForm->labelForField(m_adjustBox[5])))
-            label->setText(waves ? tr("Wave Length") : tr("Direction"));
+            label->setText(swirls ? tr("Swirl Size") : waves ? tr("Wave Length") : tr("Direction"));
         m_adjustBox[5]->setRange(waves ? 2.0 : -360.0, waves ? 2000.0 : 360.0);
         m_adjustBox[5]->setSingleStep(waves ? 10.0 : 15.0);
         m_adjustBox[5]->setToolTip(waves ? tr("How far apart the waves are, in scene units.")
@@ -935,7 +1042,8 @@ void EffectsPanel::showEditors()
         m_amount->setSuffix(QStringLiteral(" %"));
         m_amount->setValue(amount * 100.0);
     } else if (valid && !cutter) {
-        m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : shading ? tr("Softness") : tr("Radius"));
+        m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : shading ? tr("Softness") : e.type == Effect::Pixelate ? tr("Block Size")
+                               : e.type == Effect::Turbulence ? tr("Strength") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());
