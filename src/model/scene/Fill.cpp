@@ -2,7 +2,9 @@
 #include "model/scene/Scene.h"
 #include "model/geometry/Morph.h"
 
+#include <QHash>
 #include <QPainterPath>
+#include <QSet>
 
 #include <QLineF>
 
@@ -102,6 +104,93 @@ double areaOfPolygon(QPolygonF const& polygon)
     return std::abs(twice) / 2.0;
 }
 
+// A contour for an outline that was changed by a cut or a join: where it still runs along a contour of `before` from one of
+// that contour's points to the next, that piece of curve is kept as it was (its points and handles); only the stretches that
+// are new (along the cut, or where two areas met) are fitted.  With fewer than two of the old points on it, all of it is fitted.
+Stroke keptContour(QPolygonF const& polygon, QVector<Fill const*> const& before, double tolerance)
+{
+    using Key = std::pair<qint64, qint64>;
+    auto key = [](QPointF p) { return Key(qRound64(p.x() * 4096.0), qRound64(p.y() * 4096.0)); };
+    struct Anchor {
+        int contour = -1;
+        int index = -1;
+    };
+    QSet<Key> wasEdge;                  // every corner of the outlines there were
+    QVector<Stroke const*> contours;
+    QHash<Key, Anchor> anchorAt;        // the points of their contours, by where they are
+    for (Fill const* fill : before)
+        for (int o = 0; o < fill->outlines.size(); ++o) {
+            for (QPointF const& p : fill->outlines[o])
+                wasEdge.insert(key(p));
+            if (o >= fill->contours.size() || !fill->contours[o].curve || !fill->contours[o].closed)
+                continue;
+            int const c = int(contours.size());
+            contours.push_back(&fill->contours[o]);
+            for (int a = 0; a < fill->contours[o].points.size(); ++a)
+                if (fill->contours[o].points[a].handles)
+                    anchorAt.insert(key(fill->contours[o].points[a].pos), {c, a});
+        }
+    int const n = int(polygon.size());
+    QVector<int> at;
+    QVector<Anchor> hits;
+    for (int i = 0; i < n; ++i)
+        if (auto const found = anchorAt.constFind(key(polygon[i])); found != anchorAt.cend()) {
+            at.push_back(i);
+            hits.push_back(*found);
+        }
+    int const count = int(at.size());
+    if (count < 2 || n < 4 || tolerance < 0)
+        return Fill::contourOf(polygon, tolerance);
+    Stroke out;
+    out.curve = true;
+    out.closed = true;
+    QPointF pendingIn;
+    bool pendingCorner = false;
+    for (int h = 0; h < count; ++h) {
+        Anchor const a = hits[h], b = hits[(h + 1) % count];
+        int const from = at[h], to = h + 1 < count ? at[h + 1] : at[0] + n;
+        Stroke const& old = *contours[a.contour];
+        int const m = int(old.points.size());
+        StrokePoint anchor = old.points[a.index];
+        anchor.pos = polygon[from];
+        anchor.handles = true;
+        anchor.in = pendingIn;
+        anchor.corner = anchor.corner || pendingCorner;
+        // The same piece of an old contour, either way round, with nothing new in between.
+        bool untouched = a.contour == b.contour && m > 2;
+        for (int k = from + 1; untouched && k < to; ++k)
+            untouched = wasEdge.contains(key(polygon[k % n]));
+        bool const forward = untouched && (a.index + 1) % m == b.index, backward = untouched && (b.index + 1) % m == a.index;
+        if (forward || backward) {
+            anchor.out = forward ? old.points[a.index].out : old.points[a.index].in;
+            pendingIn = forward ? old.points[b.index].in : old.points[b.index].out;
+            pendingCorner = false;
+            out.points.push_back(anchor);
+            continue;
+        }
+        // A new stretch: fitted, and where it meets what was kept, a corner (as a cut makes one).
+        Stroke stretch;
+        for (int k = from; k <= to; ++k)
+            stretch.points.push_back({polygon[k % n], 1.0f});
+        stretch.fit(tolerance, 55.0);
+        if (!stretch.curve || stretch.points.size() < 2) {
+            stretch.points.clear();
+            for (int k = from; k <= to; ++k)
+                stretch.points.push_back({polygon[k % n], 1.0f, true, true, QPointF(), QPointF()});
+        }
+        anchor.out = stretch.points.first().out;
+        anchor.corner = true;
+        out.points.push_back(anchor);
+        for (int k = 1; k + 1 < stretch.points.size(); ++k)
+            out.points.push_back(stretch.points[k]);
+        pendingIn = stretch.points.last().in;
+        pendingCorner = true;
+    }
+    out.points.first().in = pendingIn;
+    out.points.first().corner = out.points.first().corner || pendingCorner;
+    return out;
+}
+
 // The outlines of `result` as areas: each outer outline with the holes in it is one area,
 // in the colour of `like`.  An outline that is one of `before` (the outlines there were
 // before the cut or the join) keeps the contour it had; any other gets one fitted to it.
@@ -185,7 +274,7 @@ QVector<Fill> areasOf(QPainterPath const& result, Fill const& like, QVector<Fill
             } else if (known[m] && olds[m].hasContour) {
                 piece.contours.push_back(olds[m].contour);
             } else {
-                piece.contours.push_back(Fill::contourOf(known[m] ? olds[m].outline : polygons[members[m]], tolerance));
+                piece.contours.push_back(known[m] ? Fill::contourOf(olds[m].outline, tolerance) : keptContour(polygons[members[m]], before, tolerance));
             }
         }
         piece.rebuild();
