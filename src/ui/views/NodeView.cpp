@@ -282,8 +282,26 @@ QPointF NodeView::outPort(int layer) const
     return QPointF(r.center().x(), r.bottom());
 }
 
-QVector<QPointF> NodeView::cablePoints(QPointF from, QPointF to)
+void NodeView::setNavigatorShown(bool on)
 {
+    m_navigator = on;
+    update();
+}
+
+void NodeView::setStraightCables(bool on)
+{
+    m_straight = on;
+    update();
+}
+
+QVector<QPointF> NodeView::cablePoints(QPointF from, QPointF to) const
+{
+    if (m_straight) {
+        QVector<QPointF> out;
+        for (int i = 0; i <= 24; ++i)
+            out.push_back(from + (to - from) * (i / 24.0));
+        return out;
+    }
     // An S: down out of the port, across, down into the other.
     double const reach = std::max(24.0, std::abs(to.y() - from.y()) / 2.0);
     QPainterPath path(from);
@@ -536,7 +554,7 @@ void NodeView::paintEvent(QPaintEvent*)
         p.setFont(font);
     }
     // The map in the corner: every node as a small block, and what the view shows as a frame.
-    if (width() > 320 && height() > 200) {
+    if (m_navigator && width() > 320 && height() > 200) {
         QRectF const map = navigatorRect();
         p.setPen(QPen(QColor(24, 24, 24), 1));
         p.setBrush(QColor(44, 44, 46, 230));
@@ -568,7 +586,7 @@ void NodeView::mousePressEvent(QMouseEvent* event)
         leaveGroup();
         return;
     }
-    if (event->button() == Qt::LeftButton && width() > 320 && height() > 200 && navigatorRect().contains(event->position())) {
+    if (event->button() == Qt::LeftButton && m_navigator && width() > 320 && height() > 200 && navigatorRect().contains(event->position())) {
         // On the map: that part of the graph comes to the middle of the view.
         QRectF const map = navigatorRect().adjusted(5, 5, -5, -5), all = graphBounds();
         double const k = std::min(map.width() / std::max(all.width(), 1.0), map.height() / std::max(all.height(), 1.0));

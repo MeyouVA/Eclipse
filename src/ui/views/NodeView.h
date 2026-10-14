@@ -55,6 +55,11 @@ public:
     double zoom() const { return m_zoom; }
     // Larger or smaller about the middle of the view.
     void zoomBy(double factor);
+    // Preferences: the small map in the corner shown or not; cables drawn straight from port to port, or as curves.
+    void setNavigatorShown(bool on);
+    bool navigatorShown() const { return m_navigator; }
+    void setStraightCables(bool on);
+    bool straightCables() const { return m_straight; }
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -106,7 +111,9 @@ private:
     int nodeAt(QPointF widgetPos) const;
     QRectF graphBounds() const;
     int cableAt(QPointF widgetPos) const;
-    static QVector<QPointF> cablePoints(QPointF from, QPointF to);
+    QVector<QPointF> cablePoints(QPointF from, QPointF to) const;
+    bool m_navigator = true;
+    bool m_straight = false;
 
     Document* m_document;
     QLineEdit* m_search = nullptr;     // along the bottom: type a name, Enter goes to the next node of it

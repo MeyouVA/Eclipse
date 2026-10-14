@@ -38,6 +38,9 @@
 #include "ui/io/MovieExport.h"
 #include "ui/panels/PalettePanel.h"
 #include "ui/io/ImportExportPrivate.h"
+#include "ui/views/NodeView.h"
+
+#include <tuple>
 
 QStringList MainWindow::sceneFiles(bool missingOnly) const
 {
@@ -254,6 +257,16 @@ void MainWindow::applyPreferences()
     if (s.contains(QStringLiteral("prefs/toolSize")))
         if (QSpinBox* const size = findChild<QSpinBox*>(QStringLiteral("ToolSize")))
             size->setValue(std::clamp(s.value(QStringLiteral("prefs/toolSize")).toInt(), 1, 200));
+    // Smoothing and corners of drawn lines (through Tool Properties, so it shows them).
+    for (auto const& [key, box, usual] : {std::tuple<char const*, char const*, int>{"prefs/smoothing", "Smoothing", 25}, {"prefs/corners", "Corners", 50}})
+        if (s.contains(QLatin1String(key)))
+            if (QSpinBox* const spin = findChild<QSpinBox*>(QLatin1String(box)))
+                spin->setValue(s.value(QLatin1String(key), usual).toInt());
+    // Node View: the map in the corner, and straight or curved cables.
+    for (NodeView* const view : findChildren<NodeView*>()) {
+        view->setNavigatorShown(s.value(QStringLiteral("prefs/nodeNavigator"), true).toBool());
+        view->setStraightCables(s.value(QStringLiteral("prefs/nodeStraight"), false).toBool());
+    }
     // Units: positions in fields or in pixels.
     if (CoordView* const coord = findChild<CoordView*>())
         coord->setPixelUnits(s.value(QStringLiteral("prefs/units"), 0).toInt() == 1);
@@ -400,6 +413,32 @@ void MainWindow::onActionPreferences()
     units->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/units"), 0).toInt(), 0, 1));
     units->setToolTip(tr("How positions are written in the Coord. and Control Points view: in fields, with the letter of the direction (3 E, 2 N), or in pixels of the scene."));
     toolsLayout->addRow(tr("Positions in"), units);
+    QSpinBox* const smoothing = new QSpinBox(toolsPage);
+    smoothing->setObjectName(QStringLiteral("PrefSmoothing"));
+    smoothing->setRange(0, 100);
+    smoothing->setSuffix(tr(" %"));
+    smoothing->setToolTip(tr("How much a line drawn with the brush or pencil is smoothed when the pen lifts, when Eclipse starts."));
+    smoothing->setValue(std::clamp(s.value(QStringLiteral("prefs/smoothing"), 25).toInt(), 0, 100));
+    toolsLayout->addRow(tr("Smoothing"), smoothing);
+    QSpinBox* const corners = new QSpinBox(toolsPage);
+    corners->setObjectName(QStringLiteral("PrefCorners"));
+    corners->setRange(0, 180);
+    corners->setSuffix(tr(" deg"));
+    corners->setToolTip(tr("A turn sharper than this many degrees stays a sharp corner when a line is smoothed, when Eclipse starts."));
+    corners->setValue(std::clamp(s.value(QStringLiteral("prefs/corners"), 50).toInt(), 0, 180));
+    toolsLayout->addRow(tr("Corners"), corners);
+
+    // Node View: how the graph is shown.
+    QGroupBox* const nodePage = new QGroupBox(tr("Node View"), &dialog);
+    QCheckBox* const navigator = new QCheckBox(tr("Show the small map of the graph in the corner"), nodePage);
+    navigator->setObjectName(QStringLiteral("PrefNodeNavigator"));
+    navigator->setChecked(s.value(QStringLiteral("prefs/nodeNavigator"), true).toBool());
+    QCheckBox* const straight = new QCheckBox(tr("Straight cables (instead of curves)"), nodePage);
+    straight->setObjectName(QStringLiteral("PrefNodeStraight"));
+    straight->setChecked(s.value(QStringLiteral("prefs/nodeStraight"), false).toBool());
+    QFormLayout* const nodeLayout = new QFormLayout(nodePage);
+    nodeLayout->addRow(navigator);
+    nodeLayout->addRow(straight);
 
     // Sound: when it is heard.
     QGroupBox* const soundPage = new QGroupBox(tr("Sound"), &dialog);
@@ -468,7 +507,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting, as Harmony has them.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {general, camera, sheet, timelinePage, drawing, toolsPage, colours, renderPage, soundPage, advanced}) {
+    for (QGroupBox* const page : {general, camera, sheet, timelinePage, drawing, toolsPage, nodePage, colours, renderPage, soundPage, advanced}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -490,6 +529,10 @@ void MainWindow::onActionPreferences()
         s.setValue(QStringLiteral("prefs/toolSize"), toolSize->value());
     s.setValue(QStringLiteral("prefs/soundOn"), soundOn->isChecked());
     s.setValue(QStringLiteral("prefs/units"), units->currentIndex());
+    s.setValue(QStringLiteral("prefs/smoothing"), smoothing->value());
+    s.setValue(QStringLiteral("prefs/corners"), corners->value());
+    s.setValue(QStringLiteral("prefs/nodeNavigator"), navigator->isChecked());
+    s.setValue(QStringLiteral("prefs/nodeStraight"), straight->isChecked());
     s.setValue(QStringLiteral("prefs/scrub"), scrub->isChecked());
     s.setValue(QStringLiteral("prefs/backdrop"), backdrop->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(onionBefore->property("colour").value<QColor>(), onionAfter->property("colour").value<QColor>());
