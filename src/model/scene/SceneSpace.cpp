@@ -239,14 +239,22 @@ QTransform Scene::worldTransform(int layer, int frame, PoseOverride const* over)
     // A camera is not seen through itself: it lies where it lies.
     if (layers[layer].kind == Layer::Camera)
         return flatTransform(layer, frame, over);
-    if (turned(layer, frame, over)) {
-        // Turned in space: four points of it about its pivot, each where the camera sees it,
+    int const camera = cameraIndex();
+    Pose const cameraPose = camera >= 0 ? poseFor(*this, camera, frame, over) : Pose();
+    bool const cameraTurned = cameraPose.rotX != 0.0 || cameraPose.rotY != 0.0;
+    if (turned(layer, frame, over) || cameraTurned) {
+        // Turned in space (the layer, or the camera): four points of it about its pivot, each where the camera sees it,
         // give the whole of it in perspective.
-        int const camera = cameraIndex();
         QTransform const lens = cameraTransform(frame);
         double const cameraDepth = camera >= 0 ? depthOf(camera, frame) : 0.0, distance = focalDistance(frame);
         QPointF const middle(width / 2.0, height / 2.0), pivot = layers[layer].pivot;
-        Mat4 const space = spaceOf(*this, layer, frame, over);
+        Mat4 space = spaceOf(*this, layer, frame, over);
+        if (cameraTurned && lens.isInvertible()) {
+            // The camera turned one way: what it sees is turned the other, about the middle of what it looks at.
+            QPointF const centre = lens.inverted().map(middle);
+            space = space * Mat4::move(-centre.x(), -centre.y(), -cameraDepth) * Mat4::aboutX(-cameraPose.rotX) * Mat4::aboutY(-cameraPose.rotY)
+                    * Mat4::move(centre.x(), centre.y(), cameraDepth);
+        }
         QPolygonF from, to;
         bool seen = true;
         for (QPointF const& corner : {QPointF(-200, -200), QPointF(200, -200), QPointF(200, 200), QPointF(-200, 200)}) {
