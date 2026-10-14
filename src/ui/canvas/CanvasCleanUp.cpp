@@ -582,10 +582,12 @@ void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)
         }
     }
     if (m_thickStroke < 0) {
-        emit message(tr("Press on a point of a pencil line and pull: away from the line makes it thicker there, towards it thinner."));
+        emit message(tr("Press on a point of a pencil line and pull: away from the line makes it thicker there, towards it thinner. With Alt, only the side pulled on moves."));
         return;
     }
     m_eraseArt = *d;
+    m_thickPos0 = d->strokes[m_thickStroke].points[m_thickPoint].pos;
+    m_thickHalf0 = d->strokes[m_thickStroke].width * d->strokes[m_thickStroke].points[m_thickPoint].pressure / 2.0;
     m_drag = DragThickness;
     update();
 }

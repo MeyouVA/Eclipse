@@ -293,10 +293,29 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     case DragThickness:
         if (m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size() && m_thickPoint >= 0 && m_thickPoint < m_eraseArt.strokes[m_thickStroke].points.size()) {
-            // How far the pointer is from the point is half of how thick the line is there.
             Stroke& stroke = m_eraseArt.strokes[m_thickStroke];
             StrokePoint& point = stroke.points[m_thickPoint];
-            point.pressure = float(std::clamp(2.0 * QLineF(point.pos, p).length() / std::max(double(stroke.width), 1e-6), 0.02, 12.0));
+            double const width = std::max(double(stroke.width), 1e-6);
+            if (modifiers & Qt::AltModifier) {
+                // One side only: the edge on the pointer's side goes to the pointer, the other edge stays where it was.
+                // (A line thicker on one side is a line as thick as the two together, a little to that side.)
+                int const n = int(stroke.points.size());
+                QPointF const along = stroke.points[std::min(n - 1, m_thickPoint + 1)].pos - stroke.points[std::max(0, m_thickPoint - 1)].pos;
+                double const length = std::hypot(along.x(), along.y());
+                if (length > 1e-9) {
+                    QPointF const across(-along.y() / length, along.x() / length);
+                    double const pulled = QPointF::dotProduct(p - m_thickPos0, across);
+                    double const side = pulled < 0.0 ? -1.0 : 1.0;
+                    double const edge = std::max(std::abs(pulled), 0.01 * width - m_thickHalf0);
+                    double const half = std::max((edge + m_thickHalf0) / 2.0, 0.01 * width);
+                    point.pressure = float(std::clamp(2.0 * half / width, 0.02, 12.0));
+                    point.pos = m_thickPos0 + across * (side * (edge - m_thickHalf0) / 2.0);
+                }
+            } else {
+                // How far the pointer is from the point is half of how thick the line is there.
+                point.pos = m_thickPos0;
+                point.pressure = float(std::clamp(2.0 * QLineF(point.pos, p).length() / width, 0.02, 12.0));
+            }
             update();
         }
         break;
