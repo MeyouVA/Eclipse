@@ -63,6 +63,8 @@ public:
         // Rubbed over painted areas and brush shapes, it gives the part of them it covers the colour in hand: the rest
         // keeps its colour.  Lines are left alone (the Ink tool is for those).
         RepaintBrush,
+        // Dragged anywhere, the current layer's whole motion path goes with the pen: every keyframe and control point.
+        SplineOffset,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -849,7 +851,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -1004,6 +1006,9 @@ private:
     // The Repaint Brush: the drawing as it was, the way the pen has gone, and that way's colour put on it.
     Drawing m_repaintFrom;
     Stroke m_repaintPath;
+    // Spline Offset: where the pen went down and where it is (in the view), and that as a move of the path.
+    QPointF m_splineFrom, m_splineNow;
+    QPointF splineOffset() const;
     void repaintTo(QPointF p, double tolerance);
     void smoothAt(QPointF p);
     // The Envelope tool: the outline round what is selected as it was when a point of it was taken

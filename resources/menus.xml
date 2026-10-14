@@ -313,6 +313,7 @@
     <item id="ToolSkew" icon="tool/skew" text="S&amp;kew" shortcut="shortcut.toolSkew" responder="window" slot="onActionTransformMode(QString)" itemParameter="skew"/>
     <item id="ToolMaintainSize" icon="tool/maintainsize" text="&amp;Maintain Size" shortcut="shortcut.toolMaintainSize" responder="window" slot="onActionTransformMode(QString)" itemParameter="maintain"/>
     <item id="ToolIK" icon="tool/ik" text="&amp;Inverse Kinematics" shortcut="shortcut.toolIk" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="ik"/>
+    <item id="ToolSplineOffset" icon="tool/splineoffset" text="S&amp;pline Offset" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="splineoffset"/>
    </menu>
    <menu id="AnimationCell" text="&amp;Cell">
     <item id="ExtendExposure" icon="timeline/extend" text="&amp;Extend Exposure" shortcut="shortcut.extendExposure" responder="window" slot="onActionExtendExposure()"/>

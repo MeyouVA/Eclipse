@@ -600,6 +600,21 @@ void Document::applyController(int controller, int frame, double value)
     });
 }
 
+bool Document::offsetPath(int layer, QPointF by)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].keys.isEmpty() || by.isNull())
+        return false;
+    apply(tr("Spline Offset"), [&](Scene& s) {
+        for (Keyframe& key : s.layers[layer].keys) {
+            key.pose.x += by.x();
+            key.pose.y += by.y();
+            for (QPointF& control : key.controls)
+                control += by;
+        }
+    });
+    return true;
+}
+
 void Document::setDisplay(int layer)
 {
     int const id = layer >= 0 && layer < m_scene.layers.size() ? m_scene.layers[layer].id : 0;

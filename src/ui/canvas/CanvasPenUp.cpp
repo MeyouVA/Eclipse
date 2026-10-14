@@ -105,6 +105,14 @@ void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
 void Canvas::penUp()
 {
     Drag const drag = m_drag;
+    if (drag == DragSplineOffset) {
+        QPointF const by = splineOffset();
+        m_drag = DragNone;
+        if (QLineF(m_splineFrom, m_splineNow).length() >= 1.0)
+            m_document->offsetPath(m_layer, by);
+        update();
+        return;
+    }
     if (drag == DragControlPoint) {
         m_drag = DragNone;
         if (m_cpMoved)

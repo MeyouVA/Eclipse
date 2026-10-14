@@ -262,6 +262,9 @@ public:
     // Control points of a layer's motion path (see Scene).  `key` is the keyframe the stretch starts at.
     int insertControlPoint(int layer, int frame);
     void moveControlPoint(int layer, int key, int control, QPointF to);
+    // Spline Offset: the whole motion path of the layer - every keyframe's place and every control point - moved by `by`
+    // (in the space of what the layer hangs from).  False when it has no keyframes to move.
+    bool offsetPath(int layer, QPointF by);
     void removeControlPoint(int layer, int key, int control);
     int lockControlPointInTime(int layer, int key, int control);
     void setPathShape(int layer, int key, double tension, double continuity, double bias);

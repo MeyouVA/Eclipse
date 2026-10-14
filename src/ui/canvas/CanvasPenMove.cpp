@@ -10,6 +10,11 @@
 
 void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers)
 {
+    if (m_drag == DragSplineOffset) {
+        m_splineNow = widgetPos;
+        update();
+        return;
+    }
     if (m_drag == DragControlPoint) {
         m_cpMoved = m_cpMoved || QLineF(m_cpDragPos, widgetPos).length() >= 1.0;
         m_cpDragPos = widgetPos;

@@ -180,6 +180,14 @@ PoseOverride Canvas::dragged() const
         over.layer = m_layer;
         over.frame = m_frame;
         over.pose = m_dragPose;
+    } else if (m_drag == DragSplineOffset) {
+        // The layer where its moved path has it on this frame.
+        over.layer = m_layer;
+        over.frame = m_frame;
+        over.pose = scene.layers[m_layer].poseAt(m_frame);
+        QPointF const by = splineOffset();
+        over.pose.x += by.x();
+        over.pose.y += by.y();
     } else if (m_drag == DragQuad) {
         Layer const& l = scene.layers[m_layer];
         over.layer = m_layer;
@@ -188,6 +196,18 @@ PoseOverride Canvas::dragged() const
         over.matrix = Layer::quadWarp(l.quadSize, m_dragQuad) * Layer::matrix(l.poseAt(m_frame), l.pivot);
     }
     return over;
+}
+
+QPointF Canvas::splineOffset() const
+{
+    // The pen's move, seen in the space of what the layer hangs from (on this frame).
+    Scene const& scene = m_document->scene();
+    int const parent = m_layer >= 0 && m_layer < scene.layers.size() ? scene.parentIndex(m_layer) : -1;
+    QTransform const toView = (parent >= 0 ? scene.worldTransform(parent, m_frame) : QTransform()) * viewTransform();
+    if (!toView.isInvertible())
+        return QPointF();
+    QTransform const back = toView.inverted();
+    return back.map(m_splineNow) - back.map(m_splineFrom);
 }
 
 QTransform Canvas::worldOf(int layer, int frame) const

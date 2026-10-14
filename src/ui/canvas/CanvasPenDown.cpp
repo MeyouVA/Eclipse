@@ -18,6 +18,16 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         zoomAt(widgetPos, modifiers & Qt::AltModifier ? 1.0 / 1.5 : 1.5);
         return;
     }
+    if (m_tool == SplineOffset) {
+        Scene const& scene = m_document->scene();
+        if (m_layer >= 0 && m_layer < scene.layers.size() && !scene.layers[m_layer].keys.isEmpty()) {
+            m_drag = DragSplineOffset;
+            m_splineFrom = m_splineNow = widgetPos;
+        } else {
+            emit message(tr("Spline Offset moves the motion path of a layer that has keyframes."));
+        }
+        return;
+    }
     if (m_tool == RotateView) {
         m_drag = DragRotateView;
         return;
