@@ -552,6 +552,31 @@ bool Layer::morphing(int frame) const
     return index >= 0 && frame > morphs[index].from;
 }
 
+double Morph::progress(double t) const
+{
+    t = std::clamp(t, 0.0, 1.0);
+    if (velocity.isEmpty())
+        return easedProgress(t, easeOut, easeIn);
+    // A smooth curve through the ends and the points: each piece a cubic whose slopes at its ends are those of the
+    // straight line between the points either side.
+    QVector<QPointF> p{QPointF(0.0, 0.0)};
+    for (QPointF const& v : velocity)
+        if (v.x() > p.last().x() + 1e-6 && v.x() < 1.0 - 1e-6)
+            p.push_back(v);
+    p.push_back(QPointF(1.0, 1.0));
+    int i = 0;
+    while (i + 2 < p.size() && t > p[i + 1].x())
+        ++i;
+    auto slope = [&](int k) {
+        int const a = std::max(0, k - 1), b = std::min(int(p.size()) - 1, k + 1);
+        return (p[b].y() - p[a].y()) / (p[b].x() - p[a].x());
+    };
+    double const h = p[i + 1].x() - p[i].x(), s = (t - p[i].x()) / h;
+    double const s2 = s * s, s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * p[i].y() + (s3 - 2 * s2 + s) * h * slope(i) + (-2 * s3 + 3 * s2) * p[i + 1].y()
+           + (s3 - s2) * h * slope(i + 1);
+}
+
 Drawing Layer::shownAt(int frame) const
 {
     int const drawing = drawingAt(frame);
@@ -564,7 +589,7 @@ Drawing Layer::shownAt(int frame) const
     int const other = drawingAt(to);
     if (other < 0 || other >= drawings.size())
         return drawings[drawing];
-    double const t = easedProgress(double(frame - from) / double(to - from), morphs[index].easeOut, morphs[index].easeIn);
+    double const t = morphs[index].progress(double(frame - from) / double(to - from));
     return Morphing::between(drawings[drawing], drawings[other], t, morphs[index].hints);
 }
 

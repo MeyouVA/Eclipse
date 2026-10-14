@@ -518,6 +518,12 @@ struct Morph {
     // How gently the change leaves the first drawing and arrives at the second (0..1 each).
     double easeIn = 0.0;
     double easeOut = 0.0;
+    // The velocity curve: points (time, how far along: each 0..1 of the morphing; how far along may run a little past
+    // either end) the change goes through on its way from (0, 0) to (1, 1), in order of time.  With any, it says how far
+    // along each frame is, in place of the eases.
+    QVector<QPointF> velocity;
+    // How far along (0 the first drawing, 1 the second) the morphing is when `t` (0..1) of its time has passed.
+    double progress(double t) const;
     // Hints: a place on the first drawing (p1) and the place on the second it is to go to (p2).  The shape
     // nearest the one goes to the shape nearest the other, that point of it to that point.
     QVector<QLineF> hints;

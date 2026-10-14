@@ -5,6 +5,8 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QLabel>
+#include <QPushButton>
 #include <QSpinBox>
 
 #include "actions/manager/ActionManager.h"
@@ -13,6 +15,7 @@
 #include "ui/timeline/Timeline.h"
 
 #include "ui/window/MainWindowPrivate.h"
+#include "ui/window/MorphVelocityGraph.h"
 #include <QStatusBar>
 
 void MainWindow::onActionCreateMorphing()
@@ -153,10 +156,40 @@ void MainWindow::onActionMorphingEase()
     in->setValue(int(now.morphs[index].easeIn * 100.0 + 0.5));
     form->addRow(tr("Leaving the first drawing"), out);
     form->addRow(tr("Arriving at the second"), in);
+    // The velocity curve: how far along the change is as its time goes by, drawn and pulled about.
+    MorphVelocityGraph* const graph = new MorphVelocityGraph(now.morphs[index], &dialog);
+    auto easesFollow = [graph, in, out] {
+        bool const free = graph->points().isEmpty();
+        in->setEnabled(free);
+        out->setEnabled(free);
+    };
+    graph->changed = [graph, easesFollow] {
+        easesFollow();
+        graph->update();
+    };
+    for (QSpinBox* box : {in, out})
+        connect(box, &QSpinBox::valueChanged, graph, [graph, in, out] { graph->setEases(in->value() / 100.0, out->value() / 100.0); });
+    easesFollow();
+    QPushButton* const straighten = new QPushButton(tr("Clear the Curve"), &dialog);
+    straighten->setObjectName(QStringLiteral("MorphVelocityClear"));
+    straighten->setToolTip(tr("Takes out the points of the curve: the eases above say how it goes again."));
+    connect(straighten, &QPushButton::clicked, graph, [graph] { graph->setPoints({}); });
+    form->addRow(new QLabel(tr("Velocity: click to add a point, drag it, double-click it to take it out."), &dialog));
+    form->addRow(graph);
+    form->addRow(straighten);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    if (dialog.exec() == QDialog::Accepted)
-        m_document->setMorphEase(layer(), frame(), in->value() / 100.0, out->value() / 100.0);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    // (One step to undo, and none when nothing changed.)
+    Morph const was = m_document->scene().layers[layer()].morphs[index];
+    bool const eased = was.easeIn != in->value() / 100.0 || was.easeOut != out->value() / 100.0, curved = was.velocity != graph->points();
+    if (eased && curved)
+        m_document->beginMacro(tr("Morphing Ease"));
+    m_document->setMorphEase(layer(), frame(), in->value() / 100.0, out->value() / 100.0);
+    m_document->setMorphVelocity(layer(), frame(), graph->points());
+    if (eased && curved)
+        m_document->endMacro();
 }

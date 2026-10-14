@@ -139,6 +139,24 @@ bool Document::setMorphEase(int layer, int frame, double easeIn, double easeOut)
     return true;
 }
 
+bool Document::setMorphVelocity(int layer, int frame, QVector<QPointF> const& points)
+{
+    if (!validCell(m_scene, layer, frame))
+        return false;
+    int const index = m_scene.layers[layer].morphIndexAt(frame);
+    if (index < 0)
+        return false;
+    // In order of time, inside the morphing, how far along kept near the two drawings.
+    QVector<QPointF> curve;
+    for (QPointF const& p : points)
+        if (p.x() > 0.0 && p.x() < 1.0 && (curve.isEmpty() || p.x() > curve.last().x() + 1e-6))
+            curve.push_back(QPointF(p.x(), std::clamp(p.y(), -0.5, 1.5)));
+    if (m_scene.layers[layer].morphs[index].velocity == curve)
+        return false;
+    apply(tr("Morphing Velocity"), [&](Scene& s) { s.layers[layer].morphs[index].velocity = curve; });
+    return true;
+}
+
 bool Document::setMorphHints(int layer, int index, QVector<QLineF> const& hints, QString const& text)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || index < 0 || index >= m_scene.layers[layer].morphs.size()

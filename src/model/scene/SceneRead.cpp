@@ -500,6 +500,12 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 if (hint.size() == 4)
                     morph.hints.push_back(QLineF(hint[0].toDouble(), hint[1].toDouble(), hint[2].toDouble(), hint[3].toDouble()));
             }
+            for (QJsonValue const& vv : values.at(4).toArray()) {
+                QJsonArray const point = vv.toArray();
+                double const time = point.at(0).toDouble(-1.0);
+                if (point.size() == 2 && time > 0.0 && time < 1.0 && (morph.velocity.isEmpty() || time > morph.velocity.last().x()))
+                    morph.velocity.push_back(QPointF(time, std::clamp(point.at(1).toDouble(), -0.5, 1.5)));
+            }
             if (morph.from >= 0)
                 layer.morphs.push_back(morph);
         }

@@ -157,6 +157,8 @@ public:
     // The morphing `frame` lies in taken away (the frames show the first drawing again).
     bool deleteMorph(int layer, int frame);
     bool setMorphEase(int layer, int frame, double easeIn, double easeOut);
+    // The velocity curve of the morphing on that frame (see Morph::velocity); none: the eases say.
+    bool setMorphVelocity(int layer, int frame, QVector<QPointF> const& points);
     // The hints of a morphing of the layer (by its number among them): what is to go to what.
     bool setMorphHints(int layer, int index, QVector<QLineF> const& hints, QString const& text);
     // The drawings in between made real drawings of the layer, one a frame; the morphing goes.
