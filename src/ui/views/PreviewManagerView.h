@@ -32,6 +32,9 @@ public:
     bool autoRender() const { return m_auto; }
     // What a frame of the scene shows, as a number: the same number, the same picture.
     static quint64 fingerprint(Scene const& scene, int frame);
+    // How big the frames are kept: 100, 50 or 25 (per cent of the scene's size).
+    void setSizePercent(int percent);
+    int sizePercent() const;
 
 private:
     void showStatus(bool stale = false);

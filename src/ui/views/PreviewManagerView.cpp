@@ -168,6 +168,18 @@ quint64 PreviewManagerView::fingerprint(Scene const& scene, int frame)
     return h;
 }
 
+void PreviewManagerView::setSizePercent(int percent)
+{
+    int const at = m_size->findData(percent);
+    if (at >= 0)
+        m_size->setCurrentIndex(at);
+}
+
+int PreviewManagerView::sizePercent() const
+{
+    return m_size->currentData().toInt();
+}
+
 void PreviewManagerView::setAutoRender(bool on)
 {
     m_auto = on;

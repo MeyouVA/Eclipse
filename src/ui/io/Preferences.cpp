@@ -29,6 +29,7 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "ui/canvas/Canvas.h"
+#include "ui/views/PreviewManagerView.h"
 #include "actions/manager/ActionManager.h"
 #include <QAction>
 #include <QToolButton>
@@ -238,6 +239,16 @@ void MainWindow::applyPreferences()
     m_canvas->setBackdrop(QColor(s.value(QStringLiteral("prefs/backdrop"), QStringLiteral("#7f7f7f")).toString()));
     m_canvas->setLightTableWash(s.value(QStringLiteral("prefs/lightTableWash"), 30).toInt());
     m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
+    // Timeline: how wide a frame is to begin with.  Render: the preview's size, and whether it keeps itself up to date.
+    m_timeline->setCellWidth(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
+    if (PreviewManagerView* const preview = findChild<PreviewManagerView*>()) {
+        preview->setSizePercent(s.value(QStringLiteral("prefs/previewSize"), 50).toInt());
+        bool const autoRender = s.value(QStringLiteral("prefs/autoRender"), false).toBool();
+        if (preview->autoRender() != autoRender) {
+            preview->setAutoRender(autoRender);
+            m_actions->setChecked(QStringLiteral("AutoRender"), autoRender);
+        }
+    }
     m_autoSave.stop();
     if (m_autoSaveMinutes > 0)
         m_autoSave.start(m_autoSaveMinutes * 60 * 1000);
@@ -333,6 +344,33 @@ void MainWindow::onActionPreferences()
     QFormLayout* const advancedLayout = new QFormLayout(advanced);
     advancedLayout->addRow(moreArt);
 
+    // Timeline: how wide a frame is.
+    QGroupBox* const timelinePage = new QGroupBox(tr("Timeline"), &dialog);
+    QSpinBox* const frameWidth = new QSpinBox(timelinePage);
+    frameWidth->setObjectName(QStringLiteral("PrefFrameWidth"));
+    frameWidth->setRange(4, 30);
+    frameWidth->setSuffix(tr(" pixels"));
+    frameWidth->setValue(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
+    frameWidth->setToolTip(tr("How wide a frame of the Timeline is when Eclipse starts (the zoom of the Timeline changes it afterwards)."));
+    QFormLayout* const timelineLayout = new QFormLayout(timelinePage);
+    timelineLayout->addRow(tr("Frame width"), frameWidth);
+
+    // Render: the preview.
+    QGroupBox* const renderPage = new QGroupBox(tr("Render"), &dialog);
+    QComboBox* const previewSize = new QComboBox(renderPage);
+    previewSize->setObjectName(QStringLiteral("PrefPreviewSize"));
+    previewSize->addItem(tr("Full size"), 100);
+    previewSize->addItem(tr("Half size"), 50);
+    previewSize->addItem(tr("Quarter size"), 25);
+    previewSize->setCurrentIndex(std::max(0, previewSize->findData(s.value(QStringLiteral("prefs/previewSize"), 50).toInt())));
+    QCheckBox* const autoRender = new QCheckBox(tr("Auto Render the preview"), renderPage);
+    autoRender->setObjectName(QStringLiteral("PrefAutoRender"));
+    autoRender->setToolTip(tr("The preview of the Preview Manager is brought up to date by itself a moment after each change."));
+    autoRender->setChecked(s.value(QStringLiteral("prefs/autoRender"), false).toBool());
+    QFormLayout* const renderLayout = new QFormLayout(renderPage);
+    renderLayout->addRow(tr("Preview size"), previewSize);
+    renderLayout->addRow(autoRender);
+
     // Drawing: the light table.
     QGroupBox* const drawing = new QGroupBox(tr("Drawing"), &dialog);
     QSpinBox* const wash = new QSpinBox(drawing);
@@ -388,7 +426,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting, as Harmony has them.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {general, camera, sheet, drawing, colours, advanced}) {
+    for (QGroupBox* const page : {general, camera, sheet, timelinePage, drawing, colours, renderPage, advanced}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -403,6 +441,9 @@ void MainWindow::onActionPreferences()
     if (result != QDialog::Accepted)
         return;
     s.setValue(QStringLiteral("prefs/lightTableWash"), wash->value());
+    s.setValue(QStringLiteral("prefs/frameWidth"), frameWidth->value());
+    s.setValue(QStringLiteral("prefs/previewSize"), previewSize->currentData().toInt());
+    s.setValue(QStringLiteral("prefs/autoRender"), autoRender->isChecked());
     s.setValue(QStringLiteral("prefs/backdrop"), backdrop->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(onionBefore->property("colour").value<QColor>(), onionAfter->property("colour").value<QColor>());
     s.setValue(QStringLiteral("welcome/hide"), !welcome->isChecked());
