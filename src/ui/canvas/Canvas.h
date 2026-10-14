@@ -947,6 +947,8 @@ private:
     int m_cpKey = -1, m_cpIndex = -1;       // the control point picked
     QPointF m_cpDragPos;                    // where the pointer has it while it is dragged (view)
     bool m_cpMoved = false;
+    bool m_cpDepth = false;                 // taken with Alt: dragged up or down, it goes away from the camera or towards it
+    QPointF m_cpPressPos;                   // where it was taken (view)
     bool m_permanentSelection = false;
     bool m_snapAlign = false;
     QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)

@@ -79,7 +79,7 @@ void Canvas::paintMotionPath(QPainter& painter)
 {
     // A control point being dragged: the path is shown as it will be when it is let go.
     Scene dragged;
-    bool const moving = m_drag == DragControlPoint && m_cpMoved;
+    bool const moving = m_drag == DragControlPoint && m_cpMoved && !m_cpDepth;
     if (moving) {
         dragged = m_document->scene();
         Layer& l = dragged.layers[m_layer];
@@ -121,7 +121,7 @@ void Canvas::paintMotionPath(QPainter& painter)
     for (int k = 0; k + 1 < layer.keys.size(); ++k) {
         for (int c = 0; c < layer.keys[k].controls.size(); ++c) {
             bool const picked = k == m_cpKey && c == m_cpIndex;
-            QPointF const at = picked && m_drag == DragControlPoint && m_cpMoved ? m_cpDragPos : controlPointPos(k, c);
+            QPointF const at = picked && m_drag == DragControlPoint && m_cpMoved && !m_cpDepth ? m_cpDragPos : controlPointPos(k, c);
             painter.setPen(QPen(QColor(20, 20, 20), 3));
             painter.setBrush(Qt::NoBrush);
             painter.drawEllipse(at, 4.5, 4.5);

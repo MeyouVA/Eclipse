@@ -115,9 +115,24 @@ void Canvas::penUp()
     }
     if (drag == DragControlPoint) {
         m_drag = DragNone;
-        if (m_cpMoved)
+        if (m_cpMoved && m_cpDepth) {
+            // Up the view is away from the camera (as Alt with the Transform tool moves a layer), two units a pixel.
+            Scene const& scene = m_document->scene();
+            Layer const& l = scene.layers[m_layer];
+            if (m_cpKey >= 0 && m_cpKey + 1 < l.keys.size()) {
+                Keyframe const& a = l.keys[m_cpKey];
+                Keyframe const& b = l.keys[m_cpKey + 1];
+                QVector<double> placed;
+                a.pathLine(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), &placed);
+                double const was = m_cpIndex < a.controlsZ.size() ? a.controlsZ[m_cpIndex] : a.pose.z + (b.pose.z - a.pose.z) * placed.value(m_cpIndex, 0.0);
+                double const by = (m_cpDragPos.y() - m_cpPressPos.y()) / std::max(m_zoom, 1e-6) * 2.0;
+                m_document->setControlPointDepth(m_layer, m_cpKey, m_cpIndex, was - by);
+            }
+        } else if (m_cpMoved) {
             m_document->moveControlPoint(m_layer, m_cpKey, m_cpIndex, controlPointFromView(m_cpKey, m_cpIndex, m_cpDragPos));
+        }
         m_cpMoved = false;
+        m_cpDepth = false;
         update();
         return;
     }

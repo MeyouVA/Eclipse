@@ -66,8 +66,9 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         int key = -1, control = -1;
         if (controlPointAt(widgetPos, &key, &control)) {
             pickControlPoint(key, control);
-            m_cpDragPos = widgetPos;
+            m_cpDragPos = m_cpPressPos = widgetPos;
             m_cpMoved = false;
+            m_cpDepth = modifiers & Qt::AltModifier;
             m_drag = DragControlPoint;
             return;
         }
