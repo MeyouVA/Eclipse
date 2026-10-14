@@ -87,6 +87,45 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         m_dragPose = m_poseStart;
         m_dragPose.x += d.x();
         m_dragPose.y += d.y();
+        {
+            // Turned in space (or seen through a turned camera), the picture of a move is not the move itself: the place
+            // the layer was taken by is brought under the pointer by a few steps of correction.
+            Scene const& scene = m_document->scene();
+            int const camera = scene.cameraIndex();
+            Pose const lens = camera >= 0 ? scene.layers[camera].poseAt(m_frame) : Pose();
+            PoseOverride over;
+            over.layer = m_layer;
+            over.frame = m_frame;
+            over.pose = m_poseStart;
+            if (!(modifiers & Qt::ShiftModifier) && (scene.turned(m_layer, m_frame, &over) || lens.rotX != 0.0 || lens.rotY != 0.0)) {
+                QTransform const start = scene.worldTransform(m_layer, m_frame, &over);
+                if (start.isInvertible()) {
+                    QPointF const held = start.inverted().map(m_dragStartScene), want = toScene(widgetPos);
+                    auto seen = [&](double x, double y) {
+                        PoseOverride trial = over;
+                        trial.pose = m_dragPose;
+                        trial.pose.x = x;
+                        trial.pose.y = y;
+                        return scene.worldTransform(m_layer, m_frame, &trial).map(held);
+                    };
+                    double x = m_dragPose.x, y = m_dragPose.y;
+                    for (int step = 0; step < 6; ++step) {
+                        QPointF const at = seen(x, y), miss = want - at;
+                        if (std::hypot(miss.x(), miss.y()) < 0.01)
+                            break;
+                        double const h = 0.5;
+                        QPointF const ax = (seen(x + h, y) - at) / h, ay = (seen(x, y + h) - at) / h;
+                        double const det = ax.x() * ay.y() - ay.x() * ax.y();
+                        if (std::abs(det) < 1e-9)
+                            break;
+                        x += (miss.x() * ay.y() - ay.x() * miss.y()) / det;
+                        y += (ax.x() * miss.y() - miss.x() * ax.y()) / det;
+                    }
+                    m_dragPose.x = x;
+                    m_dragPose.y = y;
+                }
+            }
+        }
         update();
         break;
     }
