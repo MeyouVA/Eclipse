@@ -305,6 +305,104 @@ void colourScale(QImage& image, QColor const& scale, double amount)
     }
 }
 
+void negate(QImage& image, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const k = int(std::lround(amount * 256.0));
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const a = qAlpha(row[x]);
+            if (a == 0)
+                continue;
+            // (Premultiplied: the opposite of a colour is its opacity less it.)
+            auto one = [&](int v) { return v + ((a - 2 * v) * k) / 256; };
+            row[x] = qRgba(one(qRed(row[x])), one(qGreen(row[x])), one(qBlue(row[x])), a);
+        }
+    }
+}
+
+void median(QImage& image, double radius)
+{
+    // (Past a few pixels a median is slow and looks no different from a blur of the shapes.)
+    int const r = std::clamp(int(std::lround(radius)), 0, 8);
+    if (r == 0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    QImage const source = image;
+    std::vector<int> channel[4];
+    for (auto& c : channel)
+        c.reserve(size_t((2 * r + 1) * (2 * r + 1)));
+    for (int y = 0; y < h; ++y) {
+        QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            for (auto& c : channel)
+                c.clear();
+            bool any = false;
+            for (int dy = -r; dy <= r; ++dy) {
+                int const sy = y + dy;
+                if (sy < 0 || sy >= h)
+                    continue;
+                QRgb const* const row = reinterpret_cast<QRgb const*>(source.constScanLine(sy));
+                for (int dx = -r; dx <= r; ++dx) {
+                    int const sx = x + dx;
+                    if (sx < 0 || sx >= w || dx * dx + dy * dy > r * r)
+                        continue;
+                    QRgb const p = row[sx];
+                    any = any || p != 0;
+                    channel[0].push_back(qRed(p));
+                    channel[1].push_back(qGreen(p));
+                    channel[2].push_back(qBlue(p));
+                    channel[3].push_back(qAlpha(p));
+                }
+            }
+            if (!any)
+                continue;
+            int middle[4];
+            for (int c = 0; c < 4; ++c) {
+                auto const at = channel[c].begin() + qsizetype(channel[c].size() / 2);
+                std::nth_element(channel[c].begin(), at, channel[c].end());
+                middle[c] = *at;
+            }
+            // (Each part on its own: kept no brighter than it is opaque.)
+            out[x] = qRgba(std::min(middle[0], middle[3]), std::min(middle[1], middle[3]), std::min(middle[2], middle[3]), middle[3]);
+        }
+    }
+}
+
+void ripple(QImage& image, double height, double length, int frame)
+{
+    if (height <= 0.0 || length <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    QImage const source = image;
+    double constexpr kTau = 6.283185307179586;
+    // The waves move on a twelfth of their length each frame.
+    double const phase = frame * kTau / 12.0;
+    for (int y = 0; y < h; ++y) {
+        double const shift = height * std::sin(y * kTau / length - phase);
+        int const whole = int(std::floor(shift));
+        int const part = int(std::lround((shift - whole) * 256.0));
+        QRgb const* const in = reinterpret_cast<QRgb const*>(source.constScanLine(y));
+        QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
+        auto at = [&](int x) { return x < 0 || x >= w ? QRgb(0) : in[x]; };
+        for (int x = 0; x < w; ++x) {
+            // Between the two points it falls between, as near each as it is.
+            QRgb const a = at(x - whole), b = at(x - whole - 1);
+            auto mix = [&](int va, int vb) { return (va * (256 - part) + vb * part) / 256; };
+            out[x] = qRgba(mix(qRed(a), qRed(b)), mix(qGreen(a), qGreen(b)), mix(qBlue(a), qBlue(b)), mix(qAlpha(a), qAlpha(b)));
+        }
+    }
+}
+
 void halo(QImage& image, QColor const& color, double radius, QPointF offset)
 {
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
@@ -359,6 +457,12 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Radial Blur  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::ColourScale:
         return QObject::tr("Colour-Scale  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::Negate:
+        return QObject::tr("Negate  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::Median:
+        return QObject::tr("Median  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Ripple:
+        return QObject::tr("Ripple  %1").arg(effect.amount, 0, 'f', 1);
     default: {
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Cutter  %1%2").arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"),
@@ -394,6 +498,9 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Grain")), &QAction::triggered, this, [this] { add(Effect::Grain); });
     connect(menu->addAction(tr("Radial Blur")), &QAction::triggered, this, [this] { add(Effect::RadialBlur); });
     connect(menu->addAction(tr("Colour-Scale")), &QAction::triggered, this, [this] { add(Effect::ColourScale); });
+    connect(menu->addAction(tr("Negate")), &QAction::triggered, this, [this] { add(Effect::Negate); });
+    connect(menu->addAction(tr("Median")), &QAction::triggered, this, [this] { add(Effect::Median); });
+    connect(menu->addAction(tr("Ripple")), &QAction::triggered, this, [this] { add(Effect::Ripple); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -619,7 +726,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         Effect const& effect = scene.layers[m_layer].effects[row];
         bool const percent = effect.type == Effect::Tint || effect.type == Effect::Transparency || effect.type == Effect::HueSaturation
                              || effect.type == Effect::BrightnessContrast || effect.type == Effect::Grain || effect.type == Effect::RadialBlur
-                             || effect.type == Effect::ColourScale;
+                             || effect.type == Effect::ColourScale || effect.type == Effect::Negate;
         double const amount = percent ? v / 100.0 : v;
         if (effect.animated) {
             // On this frame only: a keyframe.
@@ -801,14 +908,14 @@ void EffectsPanel::showEditors()
         m_amount->setSuffix(QString());
         m_amount->setValue(amount);
     } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
-                         || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale)) {
+                         || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate)) {
         m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);
         m_amount->setSuffix(QStringLiteral(" %"));
         m_amount->setValue(amount * 100.0);
     } else if (valid && !cutter) {
-        m_amountLabel->setText(tr("Radius"));
+        m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());

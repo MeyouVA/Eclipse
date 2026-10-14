@@ -42,6 +42,12 @@ void grain(QImage& image, double amount, quint32 seed);
 void radialBlur(QImage& image, double amount);
 // Each colour multiplied by `scale` (its red, green and blue as shares), `amount` of the way (0..1).
 void colourScale(QImage& image, QColor const& scale, double amount);
+// The colours turned to their opposites, `amount` of the way (0..1).
+void negate(QImage& image, double amount);
+// Each point the middle colour (and opacity) of those within `radius` pixels: specks go, edges stay.
+void median(QImage& image, double radius);
+// The rows of the picture rocked side to side by waves `height` pixels high and `length` pixels apart, moved on by `frame`.
+void ripple(QImage& image, double height, double length, int frame);
 
 QString name(Effect const& effect, Scene const& scene);
 

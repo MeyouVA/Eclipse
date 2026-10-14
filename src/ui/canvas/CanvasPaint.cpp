@@ -787,6 +787,13 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::radialBlur(image, amount);
         } else if (e.type == Effect::ColourScale) {
             Effects::colourScale(image, e.color, amount);
+        } else if (e.type == Effect::Negate) {
+            Effects::negate(image, amount);
+        } else if (e.type == Effect::Median) {
+            Effects::median(image, amount * pixelsPerUnit);
+        } else if (e.type == Effect::Ripple) {
+            // (Waves across the picture, as a shadow's offset: they do not turn with the layer.)
+            Effects::ripple(image, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
         } else if (e.type == Effect::Glow || e.type == Effect::Shadow) {
             // The offset is a direction on the picture: it does not turn with the layer.
             Effects::halo(image, e.color, amount * pixelsPerUnit, e.type == Effect::Shadow ? e.offset * (pixelsPerUnit / dpr) : QPointF());
