@@ -514,6 +514,77 @@ void Scene::makeCloneIndependent(int layer)
                 l.cloneGroup = 0;
 }
 
+int Scene::insertControlPoint(int layer, int frame)
+{
+    if (layer < 0 || layer >= layers.size())
+        return -1;
+    Layer& l = layers[layer];
+    for (int k = 0; k + 1 < l.keys.size(); ++k) {
+        Keyframe& a = l.keys[k];
+        Keyframe const& b = l.keys[k + 1];
+        if (frame <= a.frame || frame >= b.frame)
+            continue;
+        if (!a.tween)
+            return -1;
+        double const t = double(frame - a.frame) / double(b.frame - a.frame);
+        double const along = std::clamp(easedProgress(t, a.easeOut, b.easeIn, a.liftOut, b.liftIn), 0.0, 1.0);
+        QVector<double> at;
+        QPointF const from(a.pose.x, a.pose.y), to(b.pose.x, b.pose.y);
+        a.pathLine(from, to, &at);
+        QPointF const here = a.pathPoint(from, to, along);
+        int place = 0;
+        while (place < at.size() && at[place] < along)
+            ++place;
+        a.controls.insert(place, here);
+        return place;
+    }
+    return -1;
+}
+
+int Scene::controlPointFrame(int layer, int key, int control) const
+{
+    if (layer < 0 || layer >= layers.size())
+        return -1;
+    Layer const& l = layers[layer];
+    if (key < 0 || key + 1 >= l.keys.size() || control < 0 || control >= l.keys[key].controls.size())
+        return -1;
+    QPointF const want = l.keys[key].controls[control];
+    int best = -1;
+    double nearest = 1e300;
+    for (int f = l.keys[key].frame + 1; f < l.keys[key + 1].frame; ++f) {
+        Pose const p = l.poseAt(f);
+        double const d = std::hypot(p.x - want.x(), p.y - want.y());
+        if (d < nearest) {
+            nearest = d;
+            best = f;
+        }
+    }
+    return best;
+}
+
+int Scene::lockControlPointInTime(int layer, int key, int control)
+{
+    int const frame = controlPointFrame(layer, key, control);
+    if (frame < 0)
+        return -1;
+    Layer& l = layers[layer];
+    Keyframe const before = l.keys[key];
+    Pose pose = l.poseAt(frame);
+    pose.x = before.controls[control].x();
+    pose.y = before.controls[control].y();
+    l.setKey(frame, pose);
+    // The points before it stay on the way to the new keyframe; those after it go on from there.
+    Keyframe& first = l.keys[l.keyIndex(before.frame)];
+    Keyframe& second = l.keys[l.keyIndex(frame)];
+    first.controls = before.controls.mid(0, control);
+    second.controls = before.controls.mid(control + 1);
+    second.tension = before.tension;
+    second.continuity = before.continuity;
+    second.bias = before.bias;
+    second.tween = before.tween;
+    return frame;
+}
+
 int Scene::addSyncedLayer(int layer)
 {
     if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())

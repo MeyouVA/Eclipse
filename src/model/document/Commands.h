@@ -245,6 +245,12 @@ public:
     // Synced layers: a new drawing layer with the timing of `layer`, kept the same from then on; and a layer
     // synced with another (-1: with none any more).
     int addSyncedLayer(int layer);
+    // Control points of a layer's motion path (see Scene).  `key` is the keyframe the stretch starts at.
+    int insertControlPoint(int layer, int frame);
+    void moveControlPoint(int layer, int key, int control, QPointF to);
+    void removeControlPoint(int layer, int key, int control);
+    int lockControlPointInTime(int layer, int key, int control);
+    void setPathShape(int layer, int key, double tension, double continuity, double bias);
     // A clone of the layer: the same drawings and timing, changed on either; its place, or -1.
     int addCloneLayer(int layer);
     void makeCloneIndependent(int layer);

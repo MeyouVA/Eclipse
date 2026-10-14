@@ -104,7 +104,76 @@ Pose Layer::poseAt(int frame) const
     if (!a.tween || frame == a.frame)
         return a.pose;
     double const t = double(frame - a.frame) / double(b.frame - a.frame);
-    return Pose::lerp(a.pose, b.pose, easedProgress(t, a.easeOut, b.easeIn, a.liftOut, b.liftIn));
+    double const along = easedProgress(t, a.easeOut, b.easeIn, a.liftOut, b.liftIn);
+    Pose pose = Pose::lerp(a.pose, b.pose, along);
+    if (!a.controls.isEmpty()) {
+        // The way there bends through the control points.
+        QPointF const at = a.pathPoint(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), along);
+        pose.x = at.x();
+        pose.y = at.y();
+    }
+    return pose;
+}
+
+QVector<QPointF> Keyframe::pathLine(QPointF from, QPointF to, QVector<double>* controlsAt) const
+{
+    QVector<QPointF> points;
+    points << from;
+    points += controls;
+    points << to;
+    int const n = int(points.size());
+    // The direction the path leaves each point in, and the one it arrives in (Kochanek-Bartels).
+    QVector<QPointF> leaves(n), arrives(n);
+    double const t = std::clamp(tension, -1.0, 1.0), c = std::clamp(continuity, -1.0, 1.0), b = std::clamp(bias, -1.0, 1.0);
+    for (int i = 0; i < n; ++i) {
+        QPointF const before = points[i] - points[std::max(0, i - 1)], after = points[std::min(n - 1, i + 1)] - points[i];
+        leaves[i] = before * ((1 - t) * (1 + b) * (1 + c) / 2.0) + after * ((1 - t) * (1 - b) * (1 - c) / 2.0);
+        arrives[i] = before * ((1 - t) * (1 + b) * (1 - c) / 2.0) + after * ((1 - t) * (1 - b) * (1 + c) / 2.0);
+    }
+    int const steps = 24;
+    QVector<QPointF> line;
+    line << from;
+    QVector<int> marks;         // where in `line` each control point is
+    for (int i = 0; i + 1 < n; ++i) {
+        for (int s = 1; s <= steps; ++s) {
+            double const u = double(s) / steps, u2 = u * u, u3 = u2 * u;
+            line << points[i] * (2 * u3 - 3 * u2 + 1) + leaves[i] * (u3 - 2 * u2 + u) + points[i + 1] * (-2 * u3 + 3 * u2) + arrives[i + 1] * (u3 - u2);
+        }
+        if (i + 2 < n)
+            marks << int(line.size()) - 1;
+    }
+    if (controlsAt) {
+        QVector<double> length(line.size(), 0.0);
+        for (int i = 1; i < line.size(); ++i)
+            length[i] = length[i - 1] + std::hypot(line[i].x() - line[i - 1].x(), line[i].y() - line[i - 1].y());
+        controlsAt->clear();
+        for (int mark : std::as_const(marks))
+            controlsAt->push_back(length.last() > 0.0 ? length[mark] / length.last() : 0.0);
+    }
+    return line;
+}
+
+QPointF Keyframe::pathPoint(QPointF from, QPointF to, double along) const
+{
+    QVector<QPointF> const line = pathLine(from, to);
+    double total = 0.0;
+    for (int i = 1; i < line.size(); ++i)
+        total += std::hypot(line[i].x() - line[i - 1].x(), line[i].y() - line[i - 1].y());
+    if (total <= 0.0)
+        return from;
+    // (Past either end - an ease pulled beyond it - the path goes straight on.)
+    if (along <= 0.0)
+        return from + (line[1] - line[0]) * (along * total / std::max(1e-9, std::hypot(line[1].x() - line[0].x(), line[1].y() - line[0].y())));
+    double want = along * total, gone = 0.0;
+    for (int i = 1; i < line.size(); ++i) {
+        double const piece = std::hypot(line[i].x() - line[i - 1].x(), line[i].y() - line[i - 1].y());
+        if (gone + piece >= want && piece > 0.0)
+            return line[i - 1] + (line[i] - line[i - 1]) * ((want - gone) / piece);
+        gone += piece;
+    }
+    QPointF const last = line.last() - line[line.size() - 2];
+    double const lastLength = std::max(1e-9, std::hypot(last.x(), last.y()));
+    return line.last() + last * ((want - total) / lastLength);
 }
 
 int Layer::keyIndex(int frame) const

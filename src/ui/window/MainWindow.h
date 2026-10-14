@@ -199,6 +199,7 @@ public slots:
     void onActionDuplicateSymbol();
     void onActionCloneLayer();
     void onActionCloneLayerTiming();
+    void onActionInsertControlPoint();
     void onActionMakeCloneIndependent();
     void onActionAddSyncedLayer();
     void onActionSyncLayerWith();

@@ -31,6 +31,17 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
         pickColourAt(widgetPos);
         return;
     }
+    // A control point of the motion path, taken hold of with the Transform tool: it is picked, and dragged.
+    if (m_tool == Transform && m_showControl && !m_drawingView) {
+        int key = -1, control = -1;
+        if (controlPointAt(widgetPos, &key, &control)) {
+            pickControlPoint(key, control);
+            m_cpDragPos = widgetPos;
+            m_cpMoved = false;
+            m_drag = DragControlPoint;
+            return;
+        }
+    }
     // A layer that shows a symbol is moved about like any other, but there is nothing on it to draw on: its
     // picture is the symbol's.
     if (scene.layers[m_layer].showsSymbol() && m_tool != Transform && m_tool != IK && m_tool != Rigging) {

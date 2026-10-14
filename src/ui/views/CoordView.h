@@ -44,5 +44,8 @@ private:
     QLineEdit* m_name = nullptr;
     QLineEdit* m_fields[8] = {};       // x, y, z, scale x, scale y, angle, skew - and the depth it comes to (not typed)
     QCheckBox* m_separateScale = nullptr;
+    class QDoubleSpinBox* m_shape[3] = {};  // tension, continuity, bias of the stretch of path the frame is on
+    class QLabel* m_points = nullptr;       // how many control points that stretch has
+    int pathKey() const;                    // the keyframe that stretch starts at, or -1
     bool m_rebuilding = false;
 };

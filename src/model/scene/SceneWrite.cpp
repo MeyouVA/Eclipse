@@ -222,6 +222,15 @@ QJsonObject Scene::toJson(QString const& folder) const
                             {"ein", k.easeIn}, {"eout", k.easeOut}};
             if (k.liftIn != 0.0)
                 key["lin"] = k.liftIn;
+            if (!k.controls.isEmpty()) {
+                QJsonArray controls;
+                for (QPointF const& c : k.controls) {
+                    controls.append(c.x());
+                    controls.append(c.y());
+                }
+                key["controls"] = controls;
+                key["tcb"] = QJsonArray{k.tension, k.continuity, k.bias};
+            }
             if (k.liftOut != 0.0)
                 key["lout"] = k.liftOut;
             if (k.pose.opacity != 1.0)

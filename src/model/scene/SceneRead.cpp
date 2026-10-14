@@ -417,6 +417,15 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             key.easeOut = std::clamp(ko["eout"].toDouble(0.0), 0.0, 1.0);
             key.liftIn = std::clamp(ko["lin"].toDouble(0.0), -2.0, 2.0);
             key.liftOut = std::clamp(ko["lout"].toDouble(0.0), -2.0, 2.0);
+            QJsonArray const controls = ko["controls"].toArray();
+            for (int i = 0; i + 1 < controls.size(); i += 2)
+                key.controls.push_back(QPointF(controls[i].toDouble(), controls[i + 1].toDouble()));
+            QJsonArray const tcb = ko["tcb"].toArray();
+            if (tcb.size() == 3) {
+                key.tension = std::clamp(tcb[0].toDouble(), -1.0, 1.0);
+                key.continuity = std::clamp(tcb[1].toDouble(), -1.0, 1.0);
+                key.bias = std::clamp(tcb[2].toDouble(), -1.0, 1.0);
+            }
         }
         if (!layer.holdsDrawings()) {
             layer.drawings.clear();

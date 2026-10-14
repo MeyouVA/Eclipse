@@ -10,6 +10,12 @@
 
 void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers)
 {
+    if (m_drag == DragControlPoint) {
+        m_cpMoved = m_cpMoved || QLineF(m_cpDragPos, widgetPos).length() >= 1.0;
+        m_cpDragPos = widgetPos;
+        update();
+        return;
+    }
     if (m_drag == DragGuide && m_guideLine >= 0) {
         if (m_guideLine < m_guideEdit.size()) {
             QPointF const at = toFrame(widgetPos);

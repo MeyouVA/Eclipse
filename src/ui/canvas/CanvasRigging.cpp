@@ -108,6 +108,120 @@ void Canvas::paintMotionPath(QPainter& painter)
         painter.setBrush(QColor(120, 200, 255));
         painter.drawRect(QRectF(at - QPointF(3.5, 3.5), QSizeF(7, 7)));
     }
+    // A ring on each control point; the one picked is filled.
+    for (int k = 0; k + 1 < layer.keys.size(); ++k) {
+        for (int c = 0; c < layer.keys[k].controls.size(); ++c) {
+            bool const picked = k == m_cpKey && c == m_cpIndex;
+            QPointF const at = picked && m_drag == DragControlPoint && m_cpMoved ? m_cpDragPos : controlPointPos(k, c);
+            painter.setPen(QPen(QColor(20, 20, 20), 3));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawEllipse(at, 4.5, 4.5);
+            painter.setPen(QPen(QColor(255, 190, 70), 1.6));
+            painter.setBrush(picked ? QBrush(QColor(255, 190, 70)) : QBrush(Qt::NoBrush));
+            painter.drawEllipse(at, 4.5, 4.5);
+        }
+    }
+}
+
+// ---- control points of the motion path --------------------------------------------------------
+
+// From where a layer's pivot would be, in what the layer hangs on, to the view - on the frame the layer comes by the point.
+static bool controlFrame(Scene const& scene, int layerIndex, int key, int control, QTransform const& view, int* frame, QTransform* toView)
+{
+    if (layerIndex < 0 || layerIndex >= scene.layers.size())
+        return false;
+    Layer const& layer = scene.layers[layerIndex];
+    if (key < 0 || key + 1 >= layer.keys.size() || control < 0 || control >= layer.keys[key].controls.size())
+        return false;
+    *frame = scene.controlPointFrame(layerIndex, key, control);
+    if (*frame < 0)
+        return false;
+    QTransform const local = layer.localTransform(*frame);
+    if (!local.isInvertible())
+        return false;
+    *toView = local.inverted() * scene.worldTransform(layerIndex, *frame) * view;
+    return true;
+}
+
+QPointF Canvas::controlPointPos(int key, int control) const
+{
+    Scene const& scene = m_document->scene();
+    int frame = -1;
+    QTransform toView;
+    if (!controlFrame(scene, m_layer, key, control, viewTransform(), &frame, &toView))
+        return QPointF();
+    Layer const& layer = scene.layers[m_layer];
+    Pose pose = layer.poseAt(frame);
+    pose.x = layer.keys[key].controls[control].x();
+    pose.y = layer.keys[key].controls[control].y();
+    return (layer.matrixFor(pose) * toView).map(layer.pivot);
+}
+
+QPointF Canvas::controlPointFromView(int key, int control, QPointF widgetPos) const
+{
+    Scene const& scene = m_document->scene();
+    int frame = -1;
+    QTransform toView;
+    if (!controlFrame(scene, m_layer, key, control, viewTransform(), &frame, &toView) || !toView.isInvertible())
+        return QPointF();
+    Layer const& layer = scene.layers[m_layer];
+    // Where the pivot would be with the layer not moved at all: the point is as far from there as the pointer is.
+    Pose still = layer.poseAt(frame);
+    still.x = 0.0;
+    still.y = 0.0;
+    return toView.inverted().map(widgetPos) - layer.matrixFor(still).map(layer.pivot);
+}
+
+bool Canvas::controlPointAt(QPointF widgetPos, int* key, int* control) const
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return false;
+    Layer const& layer = scene.layers[m_layer];
+    for (int k = 0; k + 1 < layer.keys.size(); ++k) {
+        for (int c = 0; c < layer.keys[k].controls.size(); ++c) {
+            QPointF const at = controlPointPos(k, c);
+            if (std::hypot(at.x() - widgetPos.x(), at.y() - widgetPos.y()) <= 7.0) {
+                *key = k;
+                *control = c;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void Canvas::pickControlPoint(int key, int control)
+{
+    if (key == m_cpKey && control == m_cpIndex)
+        return;
+    m_cpKey = key;
+    m_cpIndex = control;
+    update();
+    emit controlPointPicked(key, control);
+}
+
+void Canvas::onActionLockInTime()
+{
+    int const frame = m_document->lockControlPointInTime(m_layer, m_cpKey, m_cpIndex);
+    if (frame < 0) {
+        emit message(tr("Pick a control point of the motion path first (Show Control, then the Transform tool)."));
+        return;
+    }
+    pickControlPoint(-1, -1);
+    emit message(tr("The control point is a keyframe on frame %1.").arg(frame + 1));
+}
+
+void Canvas::onActionRemoveControlPoint()
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size() || m_cpKey < 0 || m_cpKey >= scene.layers[m_layer].keys.size()
+        || m_cpIndex < 0 || m_cpIndex >= scene.layers[m_layer].keys[m_cpKey].controls.size()) {
+        emit message(tr("Pick a control point of the motion path first (Show Control, then the Transform tool)."));
+        return;
+    }
+    m_document->removeControlPoint(m_layer, m_cpKey, m_cpIndex);
+    pickControlPoint(-1, -1);
 }
 
 void Canvas::onActionDistributeToLayers()

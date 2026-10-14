@@ -428,6 +428,63 @@ void Document::makeCloneIndependent(int layer)
     apply(tr("Make Clone Independent"), [&](Scene& s) { s.makeCloneIndependent(layer); });
 }
 
+int Document::insertControlPoint(int layer, int frame)
+{
+    Scene probe = m_scene;
+    if (probe.insertControlPoint(layer, frame) < 0)
+        return -1;
+    int at = -1;
+    apply(tr("Insert Control Point"), [&](Scene& s) { at = s.insertControlPoint(layer, frame); });
+    return at;
+}
+
+static bool hasControl(Scene const& scene, int layer, int key, int control)
+{
+    return layer >= 0 && layer < scene.layers.size() && key >= 0 && key < scene.layers[layer].keys.size() && control >= 0
+           && control < scene.layers[layer].keys[key].controls.size();
+}
+
+void Document::moveControlPoint(int layer, int key, int control, QPointF to)
+{
+    if (!hasControl(m_scene, layer, key, control) || m_scene.layers[layer].keys[key].controls[control] == to)
+        return;
+    apply(tr("Move Control Point"), [&](Scene& s) { s.layers[layer].keys[key].controls[control] = to; });
+}
+
+void Document::removeControlPoint(int layer, int key, int control)
+{
+    if (!hasControl(m_scene, layer, key, control))
+        return;
+    apply(tr("Remove Control Point"), [&](Scene& s) { s.layers[layer].keys[key].controls.removeAt(control); });
+}
+
+int Document::lockControlPointInTime(int layer, int key, int control)
+{
+    if (!hasControl(m_scene, layer, key, control) || m_scene.controlPointFrame(layer, key, control) < 0)
+        return -1;
+    int frame = -1;
+    apply(tr("Lock in Time"), [&](Scene& s) { frame = s.lockControlPointInTime(layer, key, control); });
+    return frame;
+}
+
+void Document::setPathShape(int layer, int key, double tension, double continuity, double bias)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || key < 0 || key >= m_scene.layers[layer].keys.size())
+        return;
+    Keyframe const& k = m_scene.layers[layer].keys[key];
+    tension = std::clamp(tension, -1.0, 1.0);
+    continuity = std::clamp(continuity, -1.0, 1.0);
+    bias = std::clamp(bias, -1.0, 1.0);
+    if (k.tension == tension && k.continuity == continuity && k.bias == bias)
+        return;
+    apply(tr("Shape Path"), [&](Scene& s) {
+        Keyframe& into = s.layers[layer].keys[key];
+        into.tension = tension;
+        into.continuity = continuity;
+        into.bias = bias;
+    });
+}
+
 int Document::addSyncedLayer(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())

@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QToolButton>
 #include <QHeaderView>
+#include <QDoubleSpinBox>
 #include <QLabel>
 #include <QPushButton>
 #include <QTableWidget>
@@ -183,6 +184,29 @@ CoordView::CoordView(Document* document, QWidget* parent) : QWidget(parent), m_d
         form->addRow(tr("Angle"), box(FieldAngle, "CoordAngle"));
         column->addWidget(section(tr("Skew"), "CoordSkewHeading", &form));
         form->addRow(tr("Skew"), box(FieldSkew, "CoordSkew"));
+        column->addWidget(section(tr("Path"), "CoordPathHeading", &form));
+        m_points = new QLabel(coordinates);
+        m_points->setObjectName(QStringLiteral("CoordControlPoints"));
+        form->addRow(tr("Control Points"), m_points);
+        static char const* const kNames[3] = {"CoordTension", "CoordContinuity", "CoordBias"};
+        QString const labels[3] = {tr("Tension"), tr("Continuity"), tr("Bias")};
+        QString const tips[3] = {tr("1: the path goes straight from point to point. 0: it bends through them. Below 0: it swings wide."),
+                                 tr("Away from 0 the path turns a corner at each control point."),
+                                 tr("Which side of a control point the bend leans to.")};
+        for (int i = 0; i < 3; ++i) {
+            m_shape[i] = new QDoubleSpinBox(coordinates);
+            m_shape[i]->setObjectName(QLatin1String(kNames[i]));
+            m_shape[i]->setRange(-1.0, 1.0);
+            m_shape[i]->setSingleStep(0.1);
+            m_shape[i]->setDecimals(2);
+            m_shape[i]->setMaximumWidth(140);
+            m_shape[i]->setToolTip(tips[i]);
+            form->addRow(labels[i], m_shape[i]);
+            connect(m_shape[i], &QDoubleSpinBox::valueChanged, this, [this] {
+                if (!m_rebuilding && pathKey() >= 0)
+                    m_document->setPathShape(m_layer, pathKey(), m_shape[0]->value(), m_shape[1]->value(), m_shape[2]->value());
+            });
+        }
         column->addStretch(1);
     }
     // At the right, its keyframes.
@@ -240,9 +264,36 @@ void CoordView::setCurrentCell(int layer, int frame)
     m_rebuilding = false;
 }
 
+int CoordView::pathKey() const
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return -1;
+    Layer const& layer = scene.layers[m_layer];
+    for (int k = 0; k + 1 < layer.keys.size(); ++k)
+        if (m_frame >= layer.keys[k].frame && m_frame < layer.keys[k + 1].frame)
+            return k;
+    return -1;
+}
+
 void CoordView::showCoordinates()
 {
     Scene const& scene = m_document->scene();
+    {
+        // The stretch of path the frame is on.
+        int const key = pathKey();
+        bool const was = m_rebuilding;
+        m_rebuilding = true;
+        Keyframe const shape = key >= 0 ? scene.layers[m_layer].keys[key] : Keyframe();
+        m_points->setText(QString::number(shape.controls.size()));
+        double const values[3] = {shape.tension, shape.continuity, shape.bias};
+        for (int i = 0; i < 3; ++i) {
+            m_shape[i]->setEnabled(key >= 0 && !shape.controls.isEmpty());
+            if (!m_shape[i]->hasFocus())
+                m_shape[i]->setValue(values[i]);
+        }
+        m_rebuilding = was;
+    }
     bool const any = m_layer >= 0 && m_layer < scene.layers.size();
     m_name->setEnabled(any);
     for (QLineEdit* field : m_fields)

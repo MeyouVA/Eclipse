@@ -202,6 +202,18 @@ public:
     bool picturesHere() const { return m_art == LineArt || bothArtsNow(); }
     // The layer worked on is a bitmap layer, and its pixels are what the tools reach (they lie with the line art).
     bool bitmapNow() const;
+    // Control points of the current layer's motion path.  `key`: the keyframe the stretch starts at.
+    // Where one is in the view; which one is at a place of the view; and where in the layer's own
+    // measure a place of the view is, for that control point.
+    QPointF controlPointPos(int key, int control) const;
+    bool controlPointAt(QPointF widgetPos, int* key, int* control) const;
+    QPointF controlPointFromView(int key, int control, QPointF widgetPos) const;
+    // The one picked last (-1, -1: none).
+    int pickedControlKey() const { return m_cpKey; }
+    int pickedControl() const { return m_cpIndex; }
+    void pickControlPoint(int key, int control);
+    // From the scene to the view (for checking where things are shown).
+    QTransform viewTransformForTest() const { return viewTransform(); }
     bool eraserBothArts() const { return m_bothArts; }
     // The Envelope tool: how many points the outline round the selection has.
     int envelopeToolPoints() const { return m_envCount; }
@@ -562,6 +574,8 @@ public slots:
     void onActionSmooth();
     void onActionReducePoints();
     // The other sheet of the drawing; one by name; and both shown, or only the one worked on.
+    void onActionLockInTime();
+    void onActionRemoveControlPoint();
     void onActionSwitchArt() { setArt(m_art == LineArt ? ColourArt : LineArt); }
     void onActionSetLineArt() { setArt(LineArt); }
     void onActionSetColourArt() { setArt(ColourArt); }
@@ -635,6 +649,7 @@ signals:
     void showControlChanged(bool on);
     void artChanged(int art);
     void drawingViewChanged(bool on);
+    void controlPointPicked(int key, int control);
     void selectBothArtsChanged(bool on);
     // A template dragged out of the Library was let go over the view.
     void templateDropped(QString const& path);
@@ -826,7 +841,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -905,6 +920,9 @@ private:
     bool m_paintLayers = false;
     bool m_bothArts = false;
     bool m_selectBothArts = false;
+    int m_cpKey = -1, m_cpIndex = -1;       // the control point picked
+    QPointF m_cpDragPos;                    // where the pointer has it while it is dragged (view)
+    bool m_cpMoved = false;
     bool m_permanentSelection = false;
     bool m_snapAlign = false;
     QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)

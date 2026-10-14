@@ -35,6 +35,18 @@ void MainWindow::onActionInsertKeyframe()
     m_document->insertKeyframe(layer(), frame());
 }
 
+// A point of the motion path where the layer is on this frame: it can be pulled about to bend the path.
+void MainWindow::onActionInsertControlPoint()
+{
+    if (m_document->insertControlPoint(layer(), frame()) < 0) {
+        statusBar()->showMessage(tr("A control point goes on a frame between two keyframes that the layer glides between."), 6000);
+        return;
+    }
+    m_actions->setChecked(QStringLiteral("ShowControl"), true);
+    m_canvas->onActionShowControl(true);
+    statusBar()->showMessage(tr("Control point added. With the Transform tool, drag it to bend the path; Animation > Lock in Time makes it a keyframe."), 8000);
+}
+
 // A keyframe on this frame, and a drawing of its own for it: a new pose to draw, in one step.
 void MainWindow::onActionKeyframeAndDuplicate()
 {

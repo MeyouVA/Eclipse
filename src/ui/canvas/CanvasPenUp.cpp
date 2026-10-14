@@ -105,6 +105,14 @@ void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
 void Canvas::penUp()
 {
     Drag const drag = m_drag;
+    if (drag == DragControlPoint) {
+        m_drag = DragNone;
+        if (m_cpMoved)
+            m_document->moveControlPoint(m_layer, m_cpKey, m_cpIndex, controlPointFromView(m_cpKey, m_cpIndex, m_cpDragPos));
+        m_cpMoved = false;
+        update();
+        return;
+    }
     if (drag == DragGuide) {
         m_drag = DragNone;
         QVector<Scene::Guide> const moved = m_guideEdit;

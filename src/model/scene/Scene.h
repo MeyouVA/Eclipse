@@ -346,6 +346,19 @@ struct Keyframe {
     // With either, the move may run past its end and come back, or start the wrong way.
     double liftIn = 0.0;
     double liftOut = 0.0;
+    // Control points: places the way from this keyframe to the next passes through, in order.  They shape
+    // the path and belong to no frame - the layer comes by each when the timing brings it there.
+    QVector<QPointF> controls;
+    // How the path bends through its points: tension (1: straight from point to point), continuity
+    // (away from 0: a corner at each point), bias (which side of a point the bend leans to); each -1..1.
+    double tension = 0.0;
+    double continuity = 0.0;
+    double bias = 0.0;
+    // The way from `from` (where this keyframe is) to `to` (where the next is) through the control points, as
+    // a line of many short pieces; and how far along it (0..1) each control point lies.
+    QVector<QPointF> pathLine(QPointF from, QPointF to, QVector<double>* controlsAt = nullptr) const;
+    // The place `along` (0..1) of the way.
+    QPointF pathPoint(QPointF from, QPointF to, double along) const;
 };
 
 // How far along a tween is (0..1, or beyond with lifted handles) when `t` of its time (0..1) has passed,
@@ -798,6 +811,13 @@ public:
     void followSyncedTiming(Scene const& before);
     // A new drawing layer over `layer`, synced with it; and a layer synced with another (-1: with none any more).
     int addSyncedLayer(int layer);
+    // Control points of the motion path.  `frame` lies between two keyframes of the layer that glide: a
+    // point is put on the path where the layer is on that frame; its place among the points of that stretch, or -1.
+    int insertControlPoint(int layer, int frame);
+    // The frame on which the layer is nearest the control point (between the two keyframes it lies between).
+    int controlPointFrame(int layer, int key, int control) const;
+    // The control point becomes a keyframe on that frame (locked in time); the frame, or -1.
+    int lockControlPointInTime(int layer, int key, int control);
     // After a change: the clones of a layer whose drawings or timing it touched take them over.
     void followClones(Scene const& before);
     // A clone of the layer, over it; its place, or -1.  And a clone made a layer of its own again.
