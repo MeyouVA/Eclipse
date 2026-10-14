@@ -262,6 +262,12 @@ void MainWindow::applyPreferences()
         if (s.contains(QLatin1String(key)))
             if (QSpinBox* const spin = findChild<QSpinBox*>(QLatin1String(box)))
                 spin->setValue(s.value(QLatin1String(key), usual).toInt());
+    // Onion skin: how many drawings either side, and how strongly (as set; otherwise as it is).
+    if (s.contains(QStringLiteral("prefs/onionPrevious")) || s.contains(QStringLiteral("prefs/onionNext")))
+        m_canvas->setOnionRange(std::clamp(s.value(QStringLiteral("prefs/onionPrevious"), m_canvas->onionPrevious()).toInt(), 0, 6),
+                                std::clamp(s.value(QStringLiteral("prefs/onionNext"), m_canvas->onionNext()).toInt(), 0, 6));
+    if (s.contains(QStringLiteral("prefs/onionOpacity")))
+        m_canvas->setOnionOpacity(std::clamp(s.value(QStringLiteral("prefs/onionOpacity"), 50).toInt(), 5, 100));
     // Node View: the map in the corner, and straight or curved cables.
     for (NodeView* const view : findChildren<NodeView*>()) {
         view->setNavigatorShown(s.value(QStringLiteral("prefs/nodeNavigator"), true).toBool());
@@ -440,6 +446,26 @@ void MainWindow::onActionPreferences()
     nodeLayout->addRow(navigator);
     nodeLayout->addRow(straight);
 
+    // Onion Skin: how many drawings either side it shows, and how strongly, when Eclipse starts.
+    QGroupBox* const onionPage = new QGroupBox(tr("Onion Skin"), &dialog);
+    QFormLayout* const onionLayout = new QFormLayout(onionPage);
+    QSpinBox* const onionCountBefore = new QSpinBox(onionPage);
+    onionCountBefore->setObjectName(QStringLiteral("PrefOnionPrevious"));
+    onionCountBefore->setRange(0, 6);
+    onionCountBefore->setValue(std::clamp(s.value(QStringLiteral("prefs/onionPrevious"), m_canvas->onionPrevious()).toInt(), 0, 6));
+    QSpinBox* const onionCountAfter = new QSpinBox(onionPage);
+    onionCountAfter->setObjectName(QStringLiteral("PrefOnionNext"));
+    onionCountAfter->setRange(0, 6);
+    onionCountAfter->setValue(std::clamp(s.value(QStringLiteral("prefs/onionNext"), m_canvas->onionNext()).toInt(), 0, 6));
+    QSpinBox* const onionStrength = new QSpinBox(onionPage);
+    onionStrength->setObjectName(QStringLiteral("PrefOnionOpacity"));
+    onionStrength->setRange(5, 100);
+    onionStrength->setSuffix(tr(" %"));
+    onionStrength->setValue(std::clamp(s.value(QStringLiteral("prefs/onionOpacity"), m_canvas->onionOpacity()).toInt(), 5, 100));
+    onionLayout->addRow(tr("Drawings before"), onionCountBefore);
+    onionLayout->addRow(tr("Drawings after"), onionCountAfter);
+    onionLayout->addRow(tr("Opacity"), onionStrength);
+
     // Sound: when it is heard.
     QGroupBox* const soundPage = new QGroupBox(tr("Sound"), &dialog);
     QCheckBox* const soundOn = new QCheckBox(tr("Play the sound when the scene plays"), soundPage);
@@ -507,7 +533,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting, as Harmony has them.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {general, camera, sheet, timelinePage, drawing, toolsPage, nodePage, colours, renderPage, soundPage, advanced}) {
+    for (QGroupBox* const page : {general, camera, sheet, timelinePage, drawing, toolsPage, onionPage, nodePage, colours, renderPage, soundPage, advanced}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -533,6 +559,9 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/corners"), corners->value());
     s.setValue(QStringLiteral("prefs/nodeNavigator"), navigator->isChecked());
     s.setValue(QStringLiteral("prefs/nodeStraight"), straight->isChecked());
+    s.setValue(QStringLiteral("prefs/onionPrevious"), onionCountBefore->value());
+    s.setValue(QStringLiteral("prefs/onionNext"), onionCountAfter->value());
+    s.setValue(QStringLiteral("prefs/onionOpacity"), onionStrength->value());
     s.setValue(QStringLiteral("prefs/scrub"), scrub->isChecked());
     s.setValue(QStringLiteral("prefs/backdrop"), backdrop->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(onionBefore->property("colour").value<QColor>(), onionAfter->property("colour").value<QColor>());
