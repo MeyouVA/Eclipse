@@ -48,8 +48,11 @@ public:
     enum Parameter : int { PosX, PosY, ScaleX, ScaleY, Angle, Opacity, PosZ, Skew, Fov, ParameterCount };
     // And then a row for the angle of each bone of its chain: kBoneRows + the bone.
     static constexpr int kBoneRows = ParameterCount + 1000;
+    // And two for each point of its deformer, how far the pose has moved it across and down: kWarpRows + 2 * the point (+ 1).
+    static constexpr int kWarpRows = ParameterCount + 2000;
     static bool isEffectRow(Parameter which) { return which >= ParameterCount && which < kBoneRows; }
-    static bool isBoneRow(Parameter which) { return which >= kBoneRows; }
+    static bool isBoneRow(Parameter which) { return which >= kBoneRows && which < kWarpRows; }
+    static bool isWarpRow(Parameter which) { return which >= kWarpRows; }
     // The name a row goes by: a parameter's, or the effect's of the layer; whether its value is a share shown in percent.
     QString rowName(int layer, Parameter which) const;
     bool rowInPercent(int layer, Parameter which) const;

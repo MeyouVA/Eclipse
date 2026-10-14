@@ -61,6 +61,13 @@ void Timeline::rebuildRows()
             m_rows.push_back(l);
             m_params.push_back(kBoneRows + b);
         }
+        // And how far each point of its deformer is moved, across and down.
+        if (scene.layers[l].hasWarp())
+            for (int p = 0; p < scene.layers[l].warpPoints(); ++p)
+                for (int side = 0; side < 2; ++side) {
+                    m_rows.push_back(l);
+                    m_params.push_back(kWarpRows + 2 * p + side);
+                }
     }
 }
 

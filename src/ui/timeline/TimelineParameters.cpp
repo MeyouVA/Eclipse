@@ -111,6 +111,10 @@ QString Timeline::rowName(int layer, Parameter which) const
 {
     if (isBoneRow(which))
         return tr("Bone %1: Angle").arg(int(which) - kBoneRows + 1);
+    if (isWarpRow(which)) {
+        int const at = int(which) - kWarpRows;
+        return (at % 2 == 0 ? tr("Deformer point %1: Offset x") : tr("Deformer point %1: Offset y")).arg(at / 2 + 1);
+    }
     if (!isEffectRow(which))
         return parameterName(which);
     Scene const& scene = m_document->scene();
@@ -145,6 +149,11 @@ double Timeline::parameter(int layer, Parameter which) const
     if (isBoneRow(which)) {
         int const b = int(which) - kBoneRows;
         return b < pose.bend.size() ? pose.bend[b] : 0.0;
+    }
+    if (isWarpRow(which)) {
+        int const at = int(which) - kWarpRows, entry = 3 * (at / 2);
+        QPointF const moved = entry < pose.warp.size() ? pose.warp[entry] : QPointF();
+        return at % 2 == 0 ? moved.x() : moved.y();
     }
     return poseField(pose, which);
 }
@@ -187,6 +196,23 @@ void Timeline::setParameter(int layer, Parameter which, double value)
         return;
     if (which == Opacity)
         value = std::clamp(value, 0.0, 1.0);
+    if (isWarpRow(which)) {
+        // A keyframe of the deformer here, that point moved so far (the rest of the pose goes on from its own keyframes).
+        int const at = int(which) - kWarpRows, entry = 3 * (at / 2);
+        if (!scene.layers[layer].hasWarp() || entry >= scene.layers[layer].warp.size())
+            return;
+        Pose pose = scene.layers[layer].poseAt(m_frame);
+        if (pose.warp.size() < scene.layers[layer].warp.size())
+            pose.warp.resize(scene.layers[layer].warp.size());
+        QPointF moved = pose.warp[entry];
+        (at % 2 == 0 ? moved.rx() : moved.ry()) = value;
+        int const key = scene.layers[layer].keyIndex(m_frame);
+        if (moved == pose.warp[entry] && key >= 0 && scene.layers[layer].keys[key].sets(Keyframe::PartRest))
+            return;
+        pose.warp[entry] = moved;
+        m_document->setPartKeyframe(layer, m_frame, Keyframe::PartRest, pose, tr("Set %1").arg(rowName(layer, which)));
+        return;
+    }
     if (isBoneRow(which)) {
         // A keyframe of the bones' angles here (the rest of the pose goes on from its own keyframes).
         int const b = int(which) - kBoneRows;
