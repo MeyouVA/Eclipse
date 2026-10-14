@@ -107,12 +107,32 @@ void MainWindow::onActionMouthShape(QString const& shape)
 
 void MainWindow::onActionMapLipSync()
 {
-    Scene const& scene = m_document->scene();
-    int const sound = LipSyncView::soundLayerFor(scene, layer());
-    if (sound < 0 || scene.layers[sound].lipsync.isEmpty()) {
+    // Several sound layers with lip-sync selected in the Timeline: each is mapped in turn (a window for each), as one step.
+    QVector<int> sounds;
+    for (int l : m_timeline->selectedLayers())
+        if (l >= 0 && l < m_document->scene().layers.size() && m_document->scene().layers[l].kind == Layer::Sound
+            && !m_document->scene().layers[l].lipsync.isEmpty())
+            sounds.push_back(l);
+    if (sounds.size() > 1) {
+        m_document->beginMacro(tr("Map Lip-Sync"));
+        int mapped = 0;
+        for (int l : std::as_const(sounds))
+            mapped += mapLipSyncFor(l) ? 1 : 0;
+        m_document->endMacro();
+        statusBar()->showMessage(tr("%1 of %2 sound layers mapped.").arg(mapped).arg(sounds.size()), 7000);
+        return;
+    }
+    int const sound = LipSyncView::soundLayerFor(m_document->scene(), layer());
+    if (sound < 0 || m_document->scene().layers[sound].lipsync.isEmpty()) {
         statusBar()->showMessage(tr("There is no lip-sync to map yet: use Auto Lip-Sync Detection on a sound layer first."), 8000);
         return;
     }
+    mapLipSyncFor(sound);
+}
+
+bool MainWindow::mapLipSyncFor(int sound)
+{
+    Scene const& scene = m_document->scene();
     // The layers that have drawings to be mouths.
     QVector<int> layers;
     for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
@@ -120,10 +140,11 @@ void MainWindow::onActionMapLipSync()
             layers.push_back(l);
     if (layers.isEmpty()) {
         statusBar()->showMessage(tr("Draw the mouths first: a drawing layer with one drawing for each shape."), 8000);
-        return;
+        return false;
     }
     QDialog dialog(this);
-    dialog.setWindowTitle(tr("Map Lip-Sync"));
+    dialog.setObjectName(QStringLiteral("MapLipSyncDialog"));
+    dialog.setWindowTitle(tr("Map Lip-Sync: %1").arg(scene.layers[sound].name));
     QFormLayout* const form = new QFormLayout(&dialog);
     QComboBox* const target = new QComboBox(&dialog);
     target->setObjectName(QStringLiteral("LipSyncTarget"));
@@ -173,15 +194,17 @@ void MainWindow::onActionMapLipSync()
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted)
-        return;
+        return false;
     QVector<int> drawingFor;
     for (QComboBox* const choice : std::as_const(choices))
         drawingFor.push_back(choice->currentData().toInt());
     int const to = m_document->scene().layerIndex(target->currentData().toInt());
-    if (!m_document->mapLipSync(sound, to, drawingFor))
+    if (!m_document->mapLipSync(sound, to, drawingFor)) {
         statusBar()->showMessage(tr("No shape was given a drawing: nothing was mapped."), 6000);
-    else
-        statusBar()->showMessage(tr("The mouths of %1 follow the sound of %2.").arg(m_document->scene().layers[to].name, m_document->scene().layers[sound].name), 7000);
+        return false;
+    }
+    statusBar()->showMessage(tr("The mouths of %1 follow the sound of %2.").arg(m_document->scene().layers[to].name, m_document->scene().layers[sound].name), 7000);
+    return true;
 }
 
 void MainWindow::playFrameSound(int frame)

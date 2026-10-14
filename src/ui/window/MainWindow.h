@@ -216,6 +216,8 @@ public slots:
     void onShowDisplays(QMenu* menu);
     // Runs a script kept by the Script Editor, by name.
     void runScript(QString const& name);
+    // Map Lip-Sync for one sound layer: the window that asks which drawings are the mouths, and the mapping.
+    bool mapLipSyncFor(int sound);
     // Windows > Drawing: a Drawing view in a window of its own, beside the Camera view - the current drawing, flat,
     // drawn on with the tool in hand.
     void setDrawingWindowShown(bool on);
