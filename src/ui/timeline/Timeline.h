@@ -34,6 +34,10 @@ public:
     // The triangle that folds the layers under `layer` away.
     QRect foldRect(int layer) const;
     QRect nameRect(int layer) const;
+    // Where the mark of a synced layer is drawn in its name (two links of a chain); nothing for a layer that is not synced.
+    QRect syncMarkRect(int layer) const;
+    // The colour of the mark: layers synced with each other have the same one.
+    static QColor syncColour(int group) { return QColor::fromHsv((group * 67 + 150) % 360, 150, 235); }
 
     // ---- the parameters of a layer: a row each under it, opened with the + after its name ----
     enum Parameter { PosX, PosY, ScaleX, ScaleY, Angle, Opacity, PosZ, Skew, Fov, ParameterCount };       // (Fov last: only cameras have it)

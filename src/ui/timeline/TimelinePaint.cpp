@@ -485,6 +485,15 @@ void Timeline::paintEvent(QPaintEvent*)
             p.drawPolygon(QPolygonF({QPointF(nameEnd - 30, y + 2), QPointF(nameEnd - 23, y + 2), QPointF(nameEnd - 23, y + 9)}));
             p.setBrush(Qt::NoBrush);
         }
+        if (QRect const mark = syncMarkRect(layerIndex); !mark.isNull()) {
+            // A synced layer: two links of a chain, in the colour of the layers it keeps time with.
+            p.setRenderHint(QPainter::Antialiasing, true);
+            p.setPen(QPen(syncColour(layer.syncGroup), 1.6));
+            p.setBrush(Qt::NoBrush);
+            p.drawRoundedRect(QRectF(mark.left() + 0.5, mark.top() + 0.5, 8, 7), 3.5, 3.5);
+            p.drawRoundedRect(QRectF(mark.left() + 5.5, mark.top() + 0.5, 8, 7), 3.5, 3.5);
+            p.setRenderHint(QPainter::Antialiasing, false);
+        }
         p.setPen(!layer.visible ? dim : layer.locked ? QColor(190, 170, 150) : text);
         p.drawText(QRect(textX, y, nameEnd - textX - 22, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft,
                    p.fontMetrics().elidedText(layer.name, Qt::ElideRight, nameEnd - textX - 22));
