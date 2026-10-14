@@ -6,8 +6,9 @@
 //   C  open (e)                                G  top teeth on the lower lip (f, v)
 //   D  wide open (a)                           X  at rest: nothing is being said
 // The detection listens to how loud each frame of the sound is and where its weight lies -
-// a hiss, a hum, a shout - and chooses the shape that goes with it.  It is a first pass for
-// the animator to correct, as such detection always is.
+// a hiss, a hum, a shout - and, for a voiced sound, which vowel it is by the two lowest
+// resonances of the voice (its formants); and chooses the shape that goes with it.  It does not
+// understand words: it is a first pass for the animator to correct, as such detection always is.
 #pragma once
 
 #include <QChar>
@@ -25,5 +26,10 @@ int indexOf(QChar shape);
 QString describe(QChar shape);
 // A letter for every frame of the sound (16-bit stereo at `rate`), at `fps` frames a second.
 QString detect(QVector<qint16> const& stereo, int rate, double fps);
+// The two lowest resonances of a stretch of voice (mono, -1..1, at `rate`), in Hz, found from its spectral envelope
+// (linear prediction); false when there are not two to be found.
+bool formants(QVector<double> const& samples, int rate, double& first, double& second);
+// The shape that goes with a vowel of those resonances.
+QChar vowelShape(double first, double second);
 
 }
