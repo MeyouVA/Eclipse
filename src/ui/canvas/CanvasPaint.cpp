@@ -899,6 +899,43 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     painter.restore();
 }
 
+// A point of a layer with a blend mode (`s`) mixed with what is under it (`d`), both premultiplied: where both are, the
+// mode's mix of their colours; where only one is, that one (as for the composition modes of a painter).
+static QRgb blendPixel(QRgb s, QRgb d, int mode)
+{
+    double const sa = qAlpha(s) / 255.0, da = qAlpha(d) / 255.0;
+    if (sa <= 0.0)
+        return d;
+    auto mix = [mode](double cs, double cb) {
+        auto hard = [](double a, double b) { return a <= 0.5 ? b * 2.0 * a : b + (2.0 * a - 1.0) - b * (2.0 * a - 1.0); };
+        switch (mode) {
+        case Layer::BlendMultiply: return cs * cb;
+        case Layer::BlendScreen: return cs + cb - cs * cb;
+        case Layer::BlendOverlay: return hard(cb, cs);
+        case Layer::BlendDarken: return std::min(cs, cb);
+        case Layer::BlendLighten: return std::max(cs, cb);
+        case Layer::BlendColourDodge: return cb <= 0.0 ? 0.0 : cs >= 1.0 ? 1.0 : std::min(1.0, cb / (1.0 - cs));
+        case Layer::BlendColourBurn: return cb >= 1.0 ? 1.0 : cs <= 0.0 ? 0.0 : 1.0 - std::min(1.0, (1.0 - cb) / cs);
+        case Layer::BlendHardLight: return hard(cs, cb);
+        case Layer::BlendSoftLight: {
+            double const dd = cb <= 0.25 ? ((16.0 * cb - 12.0) * cb + 4.0) * cb : std::sqrt(cb);
+            return cs <= 0.5 ? cb - (1.0 - 2.0 * cs) * cb * (1.0 - cb) : cb + (2.0 * cs - 1.0) * (dd - cb);
+        }
+        case Layer::BlendDifference: return std::abs(cb - cs);
+        case Layer::BlendExclusion: return cb + cs - 2.0 * cb * cs;
+        case Layer::BlendAdd: return std::min(1.0, cs + cb);
+        default: return cs;
+        }
+    };
+    auto one = [&](int sc, int dc) {
+        double const cs = sc / 255.0 / sa, cb = da > 0.0 ? dc / 255.0 / da : 0.0;
+        double const v = sc / 255.0 * (1.0 - da) + dc / 255.0 * (1.0 - sa) + sa * da * std::clamp(mix(std::min(cs, 1.0), std::min(cb, 1.0)), 0.0, 1.0);
+        return std::clamp(int(std::lround(v * 255.0)), 0, 255);
+    };
+    int const a = std::clamp(int(std::lround((sa + da - sa * da) * 255.0)), 0, 255);
+    return qRgba(std::min(one(qRed(s), qRed(d)), a), std::min(one(qGreen(s), qGreen(d)), a), std::min(one(qBlue(s), qBlue(d)), a), a);
+}
+
 void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
 {
     painter.fillRect(QRectF(0, 0, scene.width, scene.height), scene.background);
@@ -922,6 +959,14 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
         int const wide = int(device->width() * dpr), high = int(device->height() * dpr);
         QImage built(wide, high, QImage::Format_ARGB32_Premultiplied);
         built.fill(Qt::transparent);
+        {
+            // The ground of the frame in it too, for a layer with a blend mode to be mixed with.
+            built.setDevicePixelRatio(dpr);
+            QPainter ground(&built);
+            ground.setTransform(base);
+            ground.fillRect(QRectF(0, 0, scene.width, scene.height), scene.background);
+            built.setDevicePixelRatio(1.0);
+        }
         QVector<float> nearest(qsizetype(wide) * high, -std::numeric_limits<float>::infinity());
         for (int l : order) {
             Layer const& layer = scene.layers[l];
@@ -953,6 +998,7 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
             if (!card)
                 scene.depthPlane(l, frame, a, b, c);
             QTransform const back = onto.isInvertible() ? onto.inverted() : QTransform();
+            int const blend = card ? int(Layer::BlendNormal) : layer.blend;
             for (int y = 0; y < high; ++y) {
                 QRgb const* const from = reinterpret_cast<QRgb const*>(alone.constScanLine(y));
                 QRgb* const to = reinterpret_cast<QRgb*>(built.scanLine(y));
@@ -968,7 +1014,12 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
                         z = float(a * local.x() + b * local.y() + c);
                     }
                     QRgb const d = to[x];
-                    if (z >= depth[x] - 0.5f) {
+                    if (z >= depth[x] - 0.5f && blend != Layer::BlendNormal) {
+                        // In front of what is there, and mixed with it as the layer's blend mode says.
+                        to[x] = blendPixel(s, d, blend);
+                        if (sa > 127)
+                            depth[x] = z;
+                    } else if (z >= depth[x] - 0.5f) {
                         // In front of what is there: over it.
                         int const keep = 255 - sa;
                         to[x] = qRgba(qRed(s) + qRed(d) * keep / 255, qGreen(s) + qGreen(d) * keep / 255, qBlue(s) + qBlue(d) * keep / 255, sa + qAlpha(d) * keep / 255);
