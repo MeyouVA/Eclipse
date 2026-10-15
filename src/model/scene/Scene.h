@@ -829,6 +829,14 @@ public:
         // How much each state counts with the point at `spot` (adding up to 1): the nearer, the more - all of it
         // at a state itself.
         QVector<double> weightsAt(QPointF spot) const;
+        // Where it was set, frame by frame: the slider's place, and for a 2D point controller where the point was (the
+        // controller's own keyframes, shown on its row in the Timeline).
+        QMap<int, double> keys;
+        QMap<int, QPointF> pointKeys;
+        // Where the slider (or the point) stands on a frame: straight from one keyframe to the next, as the first one
+        // before them and as the last one after; with none, where it was last left.
+        double valueAt(int frame) const;
+        QPointF whereAt(int frame) const;
         bool operator==(Controller const&) const = default;
     };
     QVector<Controller> controllers;

@@ -615,6 +615,7 @@ void Document::applyController(int controller, int frame, double value)
     apply(tr("Set Controller"), [&](Scene& s) {
         Scene::Controller& into = s.controllers[controller];
         into.value = value;
+        into.keys.insert(frame, value);
         Scene::Controller::State const& from = into.states[a];
         Scene::Controller::State const& to = into.states[b];
         Scene::Controller::State const& nearer = t < 0.5 ? from : to;
@@ -677,6 +678,7 @@ void Document::applyControllerPoint(int controller, int frame, QPointF where)
     apply(tr("Set Controller"), [&](Scene& s) {
         Scene::Controller& into = s.controllers[controller];
         into.where = where;
+        into.pointKeys.insert(frame, where);
         for (int i = 0; i < into.layers.size(); ++i) {
             int const l = s.layerIndex(into.layers[i]);
             if (l < 0)

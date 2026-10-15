@@ -324,6 +324,8 @@ void Timeline::mouseMoveEvent(QMouseEvent* event)
             step = rowInPercent(m_dragParamLayer, m_dragParam) ? 0.01 : 0.1;
         else if (isBoneRow(m_dragParam) || isWarpRow(m_dragParam))
             step = 1.0;
+        else if (isControllerRow(m_dragParam))
+            step = 0.02;
         setParameter(m_dragParamLayer, m_dragParam, m_dragParamFrom + moved * step);
         viewport()->update();
         return;

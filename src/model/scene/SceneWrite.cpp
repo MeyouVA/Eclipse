@@ -602,6 +602,18 @@ QJsonObject Scene::toJson(QString const& folder) const
             controller["point"] = true;
             controller["where"] = QJsonArray{c.where.x(), c.where.y()};
         }
+        if (!c.keys.isEmpty()) {
+            QJsonArray keys;
+            for (auto it = c.keys.cbegin(); it != c.keys.cend(); ++it)
+                keys.append(QJsonArray{it.key(), it.value()});
+            controller["keys"] = keys;
+        }
+        if (!c.pointKeys.isEmpty()) {
+            QJsonArray keys;
+            for (auto it = c.pointKeys.cbegin(); it != c.pointKeys.cend(); ++it)
+                keys.append(QJsonArray{it.key(), it.value().x(), it.value().y()});
+            controller["pointKeys"] = keys;
+        }
         controllerArray.append(controller);
     }
     QJsonArray writeArray;

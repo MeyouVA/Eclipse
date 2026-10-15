@@ -231,6 +231,11 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
             setValue(v / double(kSteps));
     });
     connect(m_document, &Document::changed, this, &ControllerView::refresh);
+    // (Another frame: the slider shows where the controller stands there.)
+    connect(m_timeline, &Timeline::currentCellChanged, this, [this] {
+        if (!m_refreshing && !m_slider->isSliderDown())
+            refresh();
+    });
     refresh();
 }
 
@@ -259,8 +264,11 @@ void ControllerView::refresh()
     int const states = c >= 0 ? int(scene.controllers[c].states.size()) : 0;
     m_slider->setEnabled(states >= 2);
     m_slider->setRange(0, std::max(0, states - 1) * kSteps);
-    m_slider->setValue(c >= 0 ? int(std::lround(scene.controllers[c].value * kSteps)) : 0);
-    m_value->setText(c >= 0 ? tr("%1").arg(scene.controllers[c].value, 0, 'f', 2) : QString());
+    // (Where it stands on this frame: its keyframes say.)
+    int const frame = m_timeline->currentFrame();
+    double const value = c >= 0 ? scene.controllers[c].valueAt(frame) : 0.0;
+    m_slider->setValue(int(std::lround(value * kSteps)));
+    m_value->setText(c >= 0 ? tr("%1").arg(value, 0, 'f', 2) : QString());
     bool const point = c >= 0 && scene.controllers[c].point;
     m_point->setEnabled(c >= 0);
     m_point->setChecked(point);
@@ -271,7 +279,7 @@ void ControllerView::refresh()
             places.push_back(s.at);
             names.push_back(s.name);
         }
-    QPointF const where = c >= 0 ? scene.controllers[c].where : QPointF(0.5, 0.5);
+    QPointF const where = c >= 0 ? scene.controllers[c].whereAt(frame) : QPointF(0.5, 0.5);
     for (ControllerPad* pad : {m_pad, m_overlayPad})
         if (pad) {
             pad->setStates(places, names);

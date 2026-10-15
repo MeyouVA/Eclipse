@@ -93,7 +93,7 @@ QRect Timeline::parameterToggleRect(int layer) const
 QRect Timeline::parameterRowRect(int layer, Parameter which) const
 {
     int const row = rowOfLayer(layer);
-    if (row < 0 || !parametersShown(layer) || !parameterFor(m_document->scene().layers[layer].kind, which))
+    if (row < 0 || (!isControllerRow(which) && (!parametersShown(layer) || !parameterFor(m_document->scene().layers[layer].kind, which))))
         return QRect();
     for (int r = row + 1; r < m_rows.size() && m_rows[r] == layer && m_params[r] >= 0; ++r)
         if (m_params[r] == int(which))
@@ -111,6 +111,11 @@ static bool inPercent(Effect const& e)
 
 QString Timeline::rowName(int layer, Parameter which) const
 {
+    if (isControllerRow(which)) {
+        int const c = int(which) - kControllerRows;
+        QVector<Scene::Controller> const& all = m_document->scene().controllers;
+        return c < all.size() ? tr("Controller: %1").arg(all[c].name) : QString();
+    }
     if (isBoneRow(which))
         return tr("Bone %1: Angle").arg(int(which) - kBoneRows + 1);
     if (isWarpRow(which)) {
@@ -159,6 +164,10 @@ int Timeline::drivenBy(int layer, Parameter which) const
 double Timeline::parameter(int layer, Parameter which) const
 {
     Scene const& scene = m_document->scene();
+    if (isControllerRow(which)) {
+        int const c = int(which) - kControllerRows;
+        return c < scene.controllers.size() ? scene.controllers[c].valueAt(m_frame) : 0.0;
+    }
     if (layer < 0 || layer >= scene.layers.size())
         return 0.0;
     if (drivenBy(layer, which) >= 0)
@@ -201,6 +210,18 @@ bool Timeline::rowInPercent(int layer, Parameter which) const
 
 QString Timeline::parameterText(int layer, Parameter which) const
 {
+    if (isControllerRow(which)) {
+        // A slider: where it stands (0: the first state, 1 the second ...); a 2D point: where the point is on its pad.
+        int const c = int(which) - kControllerRows;
+        QVector<Scene::Controller> const& all = m_document->scene().controllers;
+        if (c >= all.size())
+            return QString();
+        if (all[c].point) {
+            QPointF const at = all[c].whereAt(m_frame);
+            return QStringLiteral("%1, %2").arg(at.x(), 0, 'f', 2).arg(at.y(), 0, 'f', 2);
+        }
+        return QString::number(all[c].valueAt(m_frame), 'f', 2);
+    }
     double const value = parameter(layer, which);
     // Opacity as a percentage; the rest to three places, without noughts at the end.
     QString text = QString::number(percentRow(m_document->scene(), layer, which) ? value * 100.0 : value, 'f', 3);
@@ -214,6 +235,13 @@ QString Timeline::parameterText(int layer, Parameter which) const
 void Timeline::setParameter(int layer, Parameter which, double value)
 {
     Scene const& scene = m_document->scene();
+    if (isControllerRow(which)) {
+        // The controller set here: its keyframe, and its layers posed between its states.
+        int const c = int(which) - kControllerRows;
+        if (c < scene.controllers.size() && !scene.controllers[c].point)
+            m_document->applyController(c, m_frame, value);
+        return;
+    }
     if (!hasParameters(layer))
         return;
     if (which == Opacity)
@@ -283,6 +311,11 @@ void Timeline::setParameter(int layer, Parameter which, double value)
 void Timeline::editParameter(int layer, Parameter which)
 {
     closeEntry(true);
+    if (isControllerRow(which)) {
+        int const c = int(which) - kControllerRows;
+        if (c >= m_document->scene().controllers.size() || m_document->scene().controllers[c].point)
+            return;     // a 2D point is set on its pad, in the Pose Controllers view
+    }
     if (drivenBy(layer, which) >= 0)
         return;     // it follows another layer: nothing to type in (Layer Properties > Attribute Controls)
     QRect const box = parameterValueRect(layer, which);

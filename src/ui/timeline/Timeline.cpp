@@ -62,6 +62,17 @@ void Timeline::rebuildRows()
             continue;       // a kind of layer that is not shown
         m_rows.push_back(l);
         m_params.push_back(-1);
+        // The row of each pose controller this layer is the first of.
+        for (int c = 0; c < scene.controllers.size(); ++c) {
+            int first = -1;
+            for (int id : scene.controllers[c].layers)
+                if ((first = scene.layerIndex(id)) >= 0)
+                    break;
+            if (first == l) {
+                m_rows.push_back(l);
+                m_params.push_back(kControllerRows + c);
+            }
+        }
         if (!parametersShown(l))
             continue;
         for (int which = 0; which < ParameterCount; ++which) {

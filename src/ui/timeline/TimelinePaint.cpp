@@ -161,6 +161,31 @@ void Timeline::paintEvent(QPaintEvent*)
         bool const keyedEffect = effectRow && effect < layer.effects.size() && layer.effects[effect].animated;
         int const part = !param ? Keyframe::AllParts : m_params[row] >= ParameterCount ? Keyframe::PartRest : 1 << m_params[row];
         QVector<int> mine;
+        if (param && isControllerRow(Parameter(m_params[row]))) {
+            // A pose controller's row: its own keyframes, the frames it was set on, joined by a line.
+            int const c = m_params[row] - kControllerRows;
+            if (c < scene.controllers.size()) {
+                Scene::Controller const& controller = scene.controllers[c];
+                QList<int> const keyed = controller.point ? controller.pointKeys.keys() : controller.keys.keys();
+                p.setPen(QPen(keyColor, 1));
+                for (int n = 0; n + 1 < keyed.size(); ++n)
+                    p.drawLine(kHeaderWidth + keyed[n] * cw - sx + cw / 2, ky, kHeaderWidth + keyed[n + 1] * cw - sx + cw / 2, ky);
+                p.setRenderHint(QPainter::Antialiasing, true);
+                p.setPen(QPen(QColor(40, 30, 10), 1));
+                p.setBrush(keyColor);
+                double const kd = std::clamp(cw / 2.0, 2.5, 4.5);
+                for (int frame : keyed) {
+                    double const x = kHeaderWidth + frame * cw - sx + cw / 2.0;
+                    QPolygonF diamond;
+                    diamond << QPointF(x, ky - kd) << QPointF(x + kd, ky) << QPointF(x, ky + kd) << QPointF(x - kd, ky);
+                    p.drawPolygon(diamond);
+                }
+                p.setRenderHint(QPainter::Antialiasing, false);
+            }
+            p.setPen(line);
+            p.drawLine(kHeaderWidth, y + kRowHeight - 1, rowRight, y + kRowHeight - 1);
+            continue;
+        }
         for (int k = 0; k < layer.keys.size(); ++k)
             if ((layer.keys[k].parts & part) && (!effectRow || (keyedEffect && effect < layer.keys[k].pose.fx.size())))
                 mine.push_back(k);
@@ -412,7 +437,12 @@ void Timeline::paintEvent(QPaintEvent*)
                 p.drawText(box.adjusted(4, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft,
                            parameterText(layerIndex, which) + QStringLiteral("  \u2190 ") + scene.layers[by].name);
             } else {
-                p.setPen(layer.keyIndex(m_frame) >= 0 ? QColor(255, 190, 70) : text);
+                bool keyed = layer.keyIndex(m_frame) >= 0;
+                if (isControllerRow(which) && m_params[row] - kControllerRows < scene.controllers.size()) {
+                    Scene::Controller const& c = scene.controllers[m_params[row] - kControllerRows];
+                    keyed = c.point ? c.pointKeys.contains(m_frame) : c.keys.contains(m_frame);
+                }
+                p.setPen(keyed ? QColor(255, 190, 70) : text);
                 p.drawText(box.adjusted(4, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft, parameterText(layerIndex, which));
             }
             p.setPen(line);

@@ -192,6 +192,12 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         c.name = co["name"].toString();
         c.value = co["value"].toDouble(0.0);
         c.point = co["point"].toBool(false);
+        for (QJsonValue const& kv : co["keys"].toArray())
+            if (QJsonArray const k = kv.toArray(); k.size() == 2)
+                c.keys.insert(k[0].toInt(), k[1].toDouble());
+        for (QJsonValue const& kv : co["pointKeys"].toArray())
+            if (QJsonArray const k = kv.toArray(); k.size() == 3)
+                c.pointKeys.insert(k[0].toInt(), QPointF(k[1].toDouble(), k[2].toDouble()));
         if (QJsonArray const where = co["where"].toArray(); where.size() == 2)
             c.where = QPointF(where[0].toDouble(), where[1].toDouble());
         for (QJsonValue const& id : co["layers"].toArray())

@@ -50,9 +50,13 @@ public:
     static constexpr int kBoneRows = ParameterCount + 1000;
     // And two for each point of its deformer, how far the pose has moved it across and down: kWarpRows + 2 * the point (+ 1).
     static constexpr int kWarpRows = ParameterCount + 2000;
+    // And, under the first layer of a pose controller, the controller's own row (always shown): where its slider stands
+    // on each frame, and the frames it was set on: kControllerRows + the controller.
+    static constexpr int kControllerRows = ParameterCount + 3000;
     static bool isEffectRow(Parameter which) { return which >= ParameterCount && which < kBoneRows; }
     static bool isBoneRow(Parameter which) { return which >= kBoneRows && which < kWarpRows; }
-    static bool isWarpRow(Parameter which) { return which >= kWarpRows; }
+    static bool isWarpRow(Parameter which) { return which >= kWarpRows && which < kControllerRows; }
+    static bool isControllerRow(Parameter which) { return which >= kControllerRows; }
     // The name a row goes by: a parameter's, or the effect's of the layer; whether its value is a share shown in percent.
     QString rowName(int layer, Parameter which) const;
     bool rowInPercent(int layer, Parameter which) const;

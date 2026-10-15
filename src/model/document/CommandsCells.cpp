@@ -637,6 +637,17 @@ void Document::insertFrames(int at, int count)
             else if (m.frame + m.length > at)
                 m.length += count;      // put in the middle of it: it grows
         }
+        // The controllers' own keyframes go with the frames too.
+        for (Scene::Controller& c : s.controllers) {
+            QMap<int, double> keys;
+            for (auto it = c.keys.cbegin(); it != c.keys.cend(); ++it)
+                keys.insert(it.key() >= at ? it.key() + count : it.key(), it.value());
+            c.keys = keys;
+            QMap<int, QPointF> points;
+            for (auto it = c.pointKeys.cbegin(); it != c.pointKeys.cend(); ++it)
+                points.insert(it.key() >= at ? it.key() + count : it.key(), it.value());
+            c.pointKeys = points;
+        }
     });
 }
 
@@ -682,6 +693,18 @@ void Document::removeFrames(int first, int last)
             m.length = newEnd - newStart;
         }
         s.markers.erase(std::remove_if(s.markers.begin(), s.markers.end(), [](Scene::Marker const& m) { return m.length < 1; }), s.markers.end());
+        for (Scene::Controller& c : s.controllers) {
+            QMap<int, double> keys;
+            for (auto it = c.keys.cbegin(); it != c.keys.cend(); ++it)
+                if (it.key() < first || it.key() > last)
+                    keys.insert(it.key() > last ? it.key() - count : it.key(), it.value());
+            c.keys = keys;
+            QMap<int, QPointF> points;
+            for (auto it = c.pointKeys.cbegin(); it != c.pointKeys.cend(); ++it)
+                if (it.key() < first || it.key() > last)
+                    points.insert(it.key() > last ? it.key() - count : it.key(), it.value());
+            c.pointKeys = points;
+        }
         s.setFrameCount(s.frameCount() - count);
     });
 }

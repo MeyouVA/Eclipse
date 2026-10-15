@@ -184,6 +184,34 @@ int Scene::addLayer(QString const& name, int at, Layer::Kind kind)
     return at;
 }
 
+// The keyframe value on a frame: straight between the keyframes either side; held before the first and after the last.
+template <typename T>
+static T keyedAt(QMap<int, T> const& keys, int frame, T const& none)
+{
+    if (keys.isEmpty())
+        return none;
+    auto after = keys.lowerBound(frame);
+    if (after != keys.cend() && after.key() == frame)
+        return after.value();
+    if (after == keys.cbegin())
+        return after.value();
+    auto before = std::prev(after);
+    if (after == keys.cend())
+        return before.value();
+    double const t = double(frame - before.key()) / double(after.key() - before.key());
+    return before.value() + (after.value() - before.value()) * t;
+}
+
+double Scene::Controller::valueAt(int frame) const
+{
+    return keyedAt(keys, frame, value);
+}
+
+QPointF Scene::Controller::whereAt(int frame) const
+{
+    return keyedAt(pointKeys, frame, where);
+}
+
 QVector<double> Scene::Controller::weightsAt(QPointF spot) const
 {
     QVector<double> weights(states.size(), 0.0);
