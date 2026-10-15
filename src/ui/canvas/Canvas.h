@@ -354,6 +354,14 @@ public:
     int previewFrames() const { return int(m_preview.size()); }
     QSize previewSize() const { return m_preview.isEmpty() ? QSize() : m_preview.first().size(); }
     bool usesPreview() const { return m_usePreview; }
+    // How the Camera view shows the frame: as one works on it (Normal), as it will be rendered (Render: no onion skin,
+    // guides or tool marks), its matte (white where it is painted, black where it is clear), or its depth (each layer as
+    // light as it is near the camera).
+    enum ViewMode { ViewNormal, ViewRender, ViewMatte, ViewDepth };
+    ViewMode viewMode() const { return m_viewMode; }
+    void setViewMode(ViewMode mode) { m_viewMode = mode; update(); }
+    // The frame as that mode shows it, the size of the scene's frame.
+    static QImage modeImage(Scene const& scene, int frame, ViewMode mode);
     bool snapsToGrid() const { return m_snapGrid; }
     bool animates() const { return m_animate; }
     // The first time the Transform tool moves a layer that has no keyframes, on a frame after the
@@ -1013,6 +1021,7 @@ private:
     void paintGuide(QPainter& painter);
     QVector<QImage> m_preview;
     bool m_usePreview = true;
+    ViewMode m_viewMode = ViewNormal;
     bool m_snapGrid = false;
     bool m_animate = true;
     bool m_keyFrameOne = false;

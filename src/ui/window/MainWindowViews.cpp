@@ -323,6 +323,18 @@ void MainWindow::createCameraView()
             row->addWidget(b);
         }
     }
+    {
+        // How the view shows the frame (Harmony's view modes at the foot of the Camera view).
+        QComboBox* const mode = new QComboBox(status);
+        mode->setObjectName(QStringLiteral("ViewMode"));
+        mode->addItems({tr("Normal View"), tr("Render View"), tr("Matte View"), tr("Depth View")});
+        mode->setToolTip(tr("Normal: the frame as you work on it.  Render: as it will be rendered.\n"
+                            "Matte: white where the frame is painted, black where it is clear.  Depth: each layer as light as it is near the camera."));
+        mode->setFocusPolicy(Qt::NoFocus);
+        connect(mode, &QComboBox::currentIndexChanged, m_canvas, [this](int index) { m_canvas->setViewMode(Canvas::ViewMode(index)); });
+        row->addSpacing(6);
+        row->addWidget(mode);
+    }
     row->addSpacing(8);
     row->addWidget(m_zoomLabel);
     row->addSpacing(8);

@@ -42,6 +42,78 @@ void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& dr
     painter.restore();
 }
 
+QImage Canvas::modeImage(Scene const& scene, int frame, ViewMode mode)
+{
+    QSize const size(std::max(1, scene.width), std::max(1, scene.height));
+    QImage out(size, QImage::Format_ARGB32_Premultiplied);
+    if (mode == ViewDepth) {
+        // Each layer alone; at each point, the nearest layer painted there - light near the camera, dark far from it.
+        out.fill(Qt::black);
+        QVector<int> layers;
+        double nearest = -1e300, furthest = 1e300;
+        for (int l : scene.drawOrder(frame)) {
+            Layer const& layer = scene.layers[l];
+            if (!scene.enabled(l) || layer.kind == Layer::ColourCard || layer.drawingAt(frame) == Layer::kNoDrawing || !layer.holdsDrawings())
+                continue;
+            layers.push_back(l);
+            double const z = scene.depthOf(l, frame);
+            nearest = std::max(nearest, z);
+            furthest = std::min(furthest, z);
+        }
+        QVector<float> depth(qsizetype(size.width()) * size.height(), -std::numeric_limits<float>::infinity());
+        QTransform const camera = scene.cameraTransform(frame);
+        for (int l : std::as_const(layers)) {
+            Layer const& layer = scene.layers[l];
+            QImage alone(size, QImage::Format_ARGB32_Premultiplied);
+            alone.fill(Qt::transparent);
+            {
+                QPainter p(&alone);
+                p.setTransform(scene.worldTransform(l, frame) * camera);
+                Pose const pose = scene.poseOf(l, frame);
+                paintLayerDrawing(p, scene, l, frame,
+                                  Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[layer.drawingAt(frame)], layer, pose)),
+                                  1.0, camera);
+            }
+            double const z = scene.depthOf(l, frame);
+            int const grey = nearest - furthest < 1e-9 ? 255 : int(std::lround(60.0 + 195.0 * (z - furthest) / (nearest - furthest)));
+            for (int y = 0; y < size.height(); ++y) {
+                QRgb const* const from = reinterpret_cast<QRgb const*>(alone.constScanLine(y));
+                QRgb* const to = reinterpret_cast<QRgb*>(out.scanLine(y));
+                float* const d = depth.data() + qsizetype(y) * size.width();
+                for (int x = 0; x < size.width(); ++x)
+                    if (qAlpha(from[x]) > 127 && float(z) >= d[x]) {
+                        d[x] = float(z);
+                        to[x] = qRgb(grey, grey, grey);
+                    }
+            }
+        }
+        return out;
+    }
+    out.fill(Qt::transparent);
+    {
+        QPainter p(&out);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        if (mode == ViewMatte) {
+            // (The matte is of what is painted: the paper behind it is clear.)
+            Scene clear = scene;
+            clear.background = Qt::transparent;
+            paintFrame(p, clear, frame);
+        } else {
+            paintFrame(p, scene, frame);
+        }
+    }
+    if (mode == ViewMatte) {
+        for (int y = 0; y < size.height(); ++y) {
+            QRgb* const row = reinterpret_cast<QRgb*>(out.scanLine(y));
+            for (int x = 0; x < size.width(); ++x) {
+                int const a = qAlpha(row[x]);
+                row[x] = qRgb(a, a, a);
+            }
+        }
+    }
+    return out;
+}
+
 void Canvas::paintEvent(QPaintEvent*)
 {
     Scene const& scene = m_document->scene();
@@ -58,6 +130,18 @@ void Canvas::paintEvent(QPaintEvent*)
     if (m_playing && m_usePreview && !m_drawingView && m_frame >= 0 && m_frame < m_preview.size() && !m_preview[m_frame].isNull()) {
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
         painter.drawImage(frameRect, m_preview[m_frame]);
+        QPen border(QColor(70, 70, 70));
+        border.setCosmetic(true);
+        painter.setPen(border);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRect(frameRect);
+        return;
+    }
+
+    // Render, Matte or Depth View: the frame as that mode shows it, and nothing else.
+    if (m_viewMode != ViewNormal && !m_drawingView && m_frame >= 0) {
+        painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        painter.drawImage(frameRect, modeImage(scene, m_frame, m_viewMode));
         QPen border(QColor(70, 70, 70));
         border.setCosmetic(true);
         painter.setPen(border);
