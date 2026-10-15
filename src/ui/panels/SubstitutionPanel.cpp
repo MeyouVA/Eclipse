@@ -152,3 +152,13 @@ void SubstitutionPanel::filter()
     for (int row = 1; row < m_list->count(); ++row)
         m_list->item(row)->setHidden(!wanted.isEmpty() && !m_list->item(row)->text().contains(wanted, Qt::CaseInsensitive));
 }
+
+void SubstitutionPanel::setThumbnailScale(int percent)
+{
+    m_size->setValue(std::clamp(percent, 50, 250));
+}
+
+int SubstitutionPanel::thumbnailScale() const
+{
+    return m_size->value();
+}

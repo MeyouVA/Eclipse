@@ -21,6 +21,9 @@ public:
     explicit SubstitutionPanel(Document* document, QWidget* parent = nullptr);
 
     int count() const;
+    // How big the pictures of the drawings are, as a percentage (50..250).
+    void setThumbnailScale(int percent);
+    int thumbnailScale() const;
 
 public slots:
     void setCurrentCell(int layer, int frame);

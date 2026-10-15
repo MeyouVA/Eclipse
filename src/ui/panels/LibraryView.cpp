@@ -1,4 +1,5 @@
 #include "ui/panels/LibraryView.h"
+#include <algorithm>
 
 #include <functional>
 
@@ -551,4 +552,21 @@ bool LibraryView::deleteCurrent(bool ask)
     bool const gone = QFile::remove(path);
     refresh();
     return gone;
+}
+
+void LibraryView::setThumbnailScale(int percent)
+{
+    percent = std::clamp(percent, 50, 200);
+    QSize const icon(96 * percent / 100, 54 * percent / 100);
+    if (icon == m_items->iconSize())
+        return;
+    m_items->setIconSize(icon);
+    m_items->setGridSize(QSize(icon.width() + 16, icon.height() + 28));
+    m_thumbnails.clear();
+    refresh();
+}
+
+QSize LibraryView::thumbnailSize() const
+{
+    return m_items->iconSize();
 }

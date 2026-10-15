@@ -37,6 +37,7 @@
 #include <QAction>
 #include <QToolButton>
 #include "ui/panels/LibraryView.h"
+#include "ui/panels/SubstitutionPanel.h"
 #include "ui/io/MovieExport.h"
 #include "ui/panels/PalettePanel.h"
 #include "ui/io/ImportExportPrivate.h"
@@ -300,6 +301,13 @@ void MainWindow::applyPreferences()
     m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
+    {
+        int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
+        if (m_library)
+            m_library->setThumbnailScale(thumbnails);
+        if (m_substitution)
+            m_substitution->setThumbnailScale(thumbnails);
+    }
     if (FunctionView* const function = findChild<FunctionView*>())
         function->graph()->setGridShown(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
     if (Xsheet* const xsheet = findChild<Xsheet*>())
@@ -654,6 +662,13 @@ void MainWindow::onActionPreferences()
     lineArtBitmap->setToolTip(tr("Add Drawing Layer starts with the line art painted in pixels rather than drawn in vectors."));
     lineArtBitmap->setChecked(s.value(QStringLiteral("prefs/lineArtBitmap"), false).toBool());
     drawingLayout->addRow(lineArtBitmap);
+    QSpinBox* const thumbnails = new QSpinBox(drawing);
+    thumbnails->setObjectName(QStringLiteral("PrefThumbnailSize"));
+    thumbnails->setRange(50, 200);
+    thumbnails->setSuffix(tr(" %"));
+    thumbnails->setToolTip(tr("How big the pictures are in the Library and in Drawing Substitution."));
+    thumbnails->setValue(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt());
+    drawingLayout->addRow(tr("Thumbnail size"), thumbnails);
 
     // Colours: of the view round the frame, and of the onion skin.
     QGroupBox* const colours = new QGroupBox(tr("Colours"), &dialog);
@@ -759,6 +774,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/lipSyncLead"), lipLead->value());
     s.setValue(QStringLiteral("prefs/onionBrightnessAlpha"), onionBrightness->isChecked());
     s.setValue(QStringLiteral("prefs/lineArtBitmap"), lineArtBitmap->isChecked());
+    s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
     s.setValue(QStringLiteral("prefs/functionGrid"), functionGrid->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), columnWidth->value());
     s.setValue(QStringLiteral("prefs/drawingOnTop"), onTop->isChecked());

@@ -60,6 +60,9 @@ public:
     static bool isTemplate(QString const& path);
     // Reads the folder again (a template was saved or deleted).
     void refresh();
+    // How big the pictures of the templates are, as a percentage (50..200).
+    void setThumbnailScale(int percent);
+    QSize thumbnailSize() const;
     // Deletes the file of the chosen template; with `ask`, after asking.
     bool deleteCurrent(bool ask);
     // The template chosen gets another name (its file is renamed); false when the name will not do or is taken.
