@@ -211,6 +211,10 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::ColourCurves;
     else if (type == QLatin1String("focus"))
         e.type = Effect::Focus;
+    else if (type == QLatin1String("applyPeg"))
+        e.type = Effect::ApplyPeg;
+    else if (type == QLatin1String("scaleOutput"))
+        e.type = Effect::ScaleOutput;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);

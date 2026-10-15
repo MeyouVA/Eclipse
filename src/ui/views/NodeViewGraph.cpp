@@ -522,6 +522,18 @@ void NodeView::editGraphNode(int id)
         channel->setCurrentIndex(std::clamp(e.channel, 0, 3));
         form->addRow(tr("Channel"), channel);
     }
+    QComboBox* peg = nullptr;
+    if (e.type == Effect::ApplyPeg) {
+        // The layer whose motion moves the picture.
+        Scene const& scene = m_document->scene();
+        peg = new QComboBox(&dialog);
+        peg->setObjectName(QStringLiteral("GraphEffectPeg"));
+        peg->addItem(tr("(none)"), 0);
+        for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
+            peg->addItem(scene.layers[l].name, scene.layers[l].id);
+        peg->setCurrentIndex(std::max(0, peg->findData(e.matte)));
+        form->addRow(tr("Peg"), peg);
+    }
     QComboBox* mode = nullptr;
     if (e.type == Effect::Blending) {
         mode = new QComboBox(&dialog);
@@ -569,6 +581,8 @@ void NodeView::editGraphNode(int id)
         e.channel = channel->currentIndex();
     if (mode)
         e.blendMode = mode->currentIndex();
+    if (peg)
+        e.matte = peg->currentData().toInt();
     if (area[0])
         e.area = QRectF(area[0]->value(), area[1]->value(), area[2]->value(), area[3]->value());
     for (int c = 0; c < 4; ++c)

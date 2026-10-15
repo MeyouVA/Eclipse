@@ -914,6 +914,14 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             image = trail;
         } else if (e.type == Effect::ColourCurves) {
             Effects::colourCurves(image, e.curves, amount);
+        } else if (e.type == Effect::ApplyPeg) {
+            // The peg's motion, in the picture's pixels: back to the scene, moved as the peg is, onto the picture again.
+            if (int const peg = scene.layerIndex(e.matte); peg >= 0 && peg != l) {
+                QTransform const toDevice = sceneToDevice * QTransform::fromScale(dpr, dpr);
+                Effects::transformImage(image, toDevice.inverted() * scene.worldTransform(peg, frame) * toDevice);
+            }
+        } else if (e.type == Effect::ScaleOutput) {
+            Effects::scaleOutput(image, amount);
         } else if (e.type == Effect::ChannelSelector) {
             Effects::channelSelect(image, e.channel);
         } else if (e.type == Effect::Crop) {
@@ -1394,6 +1402,13 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                                     amount * dpr);
             } else if (e.type == Effect::ColourCurves) {
                 Effects::colourCurves(out, e.curves, amount);
+            } else if (e.type == Effect::ApplyPeg) {
+                if (int const peg = scene.layerIndex(e.matte); peg >= 0) {
+                    QTransform const toDevice = camera * base * QTransform::fromScale(dpr, dpr);
+                    Effects::transformImage(out, toDevice.inverted() * scene.worldTransform(peg, frame) * toDevice);
+                }
+            } else if (e.type == Effect::ScaleOutput) {
+                Effects::scaleOutput(out, amount);
             } else if (e.type == Effect::ChannelSelector) {
                 Effects::channelSelect(out, e.channel);
             } else if (e.type == Effect::Crop) {

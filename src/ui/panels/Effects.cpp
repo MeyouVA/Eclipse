@@ -747,6 +747,12 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Field Chart");
     case Effect::ColourCurves:
         return QObject::tr("Colour Curves");
+    case Effect::ApplyPeg: {
+        int const l = scene.layerIndex(effect.matte);
+        return QObject::tr("Apply Peg  %1").arg(l >= 0 ? scene.layers[l].name : QObject::tr("(none)"));
+    }
+    case Effect::ScaleOutput:
+        return QObject::tr("Scale Output  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::Focus:
         return QObject::tr("Focus  %1 at %2").arg(effect.amount, 0, 'f', 1).arg(effect.direction, 0, 'f', 0);
     case Effect::Blending:
@@ -981,6 +987,39 @@ void Effects::colourCurves(QImage& image, QVector<QPointF> const (&curves)[4], d
     }
 }
 
+void Effects::transformImage(QImage& image, QTransform const& transform)
+{
+    if (transform.isIdentity())
+        return;
+    double const dpr = image.devicePixelRatio();
+    QImage source = image;
+    source.setDevicePixelRatio(1.0);
+    QImage out(image.size(), QImage::Format_ARGB32_Premultiplied);
+    out.fill(Qt::transparent);
+    {
+        QPainter p(&out);
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        p.setTransform(transform);
+        p.drawImage(0, 0, source);
+    }
+    out.setDevicePixelRatio(dpr);
+    image = out;
+}
+
+void Effects::scaleOutput(QImage& image, double scale)
+{
+    scale = std::clamp(scale, 0.01, 1.0);
+    if (scale >= 1.0 || image.isNull())
+        return;
+    double const dpr = image.devicePixelRatio();
+    QSize const small(std::max(1, int(std::lround(image.width() * scale))), std::max(1, int(std::lround(image.height() * scale))));
+    QImage out = image.scaled(small, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)
+                     .scaled(image.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation)
+                     .convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    out.setDevicePixelRatio(dpr);
+    image = out;
+}
+
 // ---- the curve to drag --------------------------------------------------------------------
 
 ColourCurveEdit::ColourCurveEdit(QWidget* parent)
@@ -1156,6 +1195,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Field Chart")), &QAction::triggered, this, [this] { add(Effect::FieldChart); });
     connect(menu->addAction(tr("Colour Curves")), &QAction::triggered, this, [this] { add(Effect::ColourCurves); });
     connect(menu->addAction(tr("Focus")), &QAction::triggered, this, [this] { add(Effect::Focus); });
+    connect(menu->addAction(tr("Apply Peg Transformation")), &QAction::triggered, this, [this] { add(Effect::ApplyPeg); });
+    connect(menu->addAction(tr("Scale Output")), &QAction::triggered, this, [this] { add(Effect::ScaleOutput); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -1564,7 +1605,9 @@ void EffectsPanel::showEditors()
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
-    bool const plain = valid && (e.type == Effect::ChannelSelector || e.type == Effect::Crop || e.type == Effect::MatteComposite || e.type == Effect::Blending);
+    bool const pegged = valid && e.type == Effect::ApplyPeg;
+    bool const plain = valid && (e.type == Effect::ChannelSelector || e.type == Effect::Crop || e.type == Effect::MatteComposite || e.type == Effect::Blending
+                                 || pegged);
     bool const curving = valid && e.type == Effect::ColourCurves;
     m_amountLabel->setVisible(valid && !cutter && !plain);
     m_amount->setVisible(valid && !cutter && !plain);
@@ -1622,10 +1665,11 @@ void EffectsPanel::showEditors()
             m_adjustBox[i]->setValue(values[i]);
         }
     }
-    m_matteLabel->setVisible(cutter || particles || shading);
-    m_matteLabel->setText(particles ? tr("Bounce Off") : tr("Matte"));
-    m_matte->setVisible(cutter || particles || shading);
-    m_matte->setToolTip(particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
+    m_matteLabel->setVisible(cutter || particles || shading || pegged);
+    m_matteLabel->setText(particles ? tr("Bounce Off") : pegged ? tr("Peg") : tr("Matte"));
+    m_matte->setVisible(cutter || particles || shading || pegged);
+    m_matte->setToolTip(pegged ? tr("The layer (a peg, mostly) whose motion on each frame moves this layer's picture as well.")
+                        : particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
                         : shading ? tr("The layer whose drawing says where the shade (or the light) falls on this one.")
                                   : tr("The layer whose drawing cuts this one: only what lies inside it stays."));
     m_invert->setVisible(cutter || shading || resizing || graded);
@@ -1634,11 +1678,11 @@ void EffectsPanel::showEditors()
                                   : tr("Keep what lies outside the matte instead."));
     if (cutter || shading || resizing || graded)
         m_invert->setChecked(e.invert);
-    if (cutter || particles || shading) {
+    if (cutter || particles || shading || pegged) {
         m_matte->clear();
         m_matte->addItem(tr("(none)"), 0);
         for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
-            if (l != m_layer && scene.layers[l].holdsDrawings())
+            if (l != m_layer && (pegged || scene.layers[l].holdsDrawings()))
                 m_matte->addItem(scene.layers[l].name, scene.layers[l].id);
         m_matte->setCurrentIndex(std::max(0, m_matte->findData(e.matte)));
     }
@@ -1678,7 +1722,7 @@ void EffectsPanel::showEditors()
                                : resizing ? tr("By") : e.type == Effect::Pixelate ? tr("Block Size")
                                : e.type == Effect::Turbulence ? tr("Strength") : e.type == Effect::MatteGenerator ? tr("Outer Radius")
                                : e.type == Effect::MotionBlur ? tr("Frames") : e.type == Effect::FieldChart ? tr("Line Width")
-                               : e.type == Effect::Focus ? tr("Blur per 100") : tr("Radius"));
+                               : e.type == Effect::Focus ? tr("Blur per 100") : e.type == Effect::ScaleOutput ? tr("Scale") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());

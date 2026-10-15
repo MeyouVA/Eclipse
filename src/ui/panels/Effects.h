@@ -88,6 +88,10 @@ void fieldChart(QImage& image, QRectF const& frame, QColor const& colour, double
 QVector<int> curveLevels(QVector<QPointF> const& points);
 // Each colour level changed as the curves say (the three together, then red, green and blue), `amount` of the way (0..1).
 void colourCurves(QImage& image, QVector<QPointF> const (&curves)[4], double amount);
+// The image moved by a transform (in its pixels).
+void transformImage(QImage& image, QTransform const& transform);
+// The image made at `scale` (0..1) of its resolution, then brought back to its size.
+void scaleOutput(QImage& image, double scale);
 
 }
 
