@@ -493,6 +493,9 @@ public:
 
     // Renders one frame of a scene the way the canvas shows it, without the editing aids.
     static void paintFrame(QPainter& painter, Scene const& scene, int frame);
+    // The frame as the scene's node graph puts it together (its Display's picture, over the paper); false, nothing
+    // painted, when the scene has no graph wired (or no Display in it).
+    static bool paintGraph(QPainter& painter, Scene const& scene, int frame);
     static void paintDrawing(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity,
                              QColor const* tint = nullptr);
     // The drawing of a layer with the effects of the layer applied.  The painter is set up

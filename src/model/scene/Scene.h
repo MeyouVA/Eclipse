@@ -790,6 +790,57 @@ struct PoseOverride {
     QTransform matrix;
 };
 
+// The node graph, wired by hand in the Node View: where the pictures of the layers go on their way to the frame - through
+// effects, into composites in the order their inputs say, in and out of groups by as many ports as they have - and which
+// one is shown (the Display).  The layers still place their pictures (pegs and parents move them as ever); the graph says
+// what becomes of them.  A scene without one is put together from its layers as they stack.
+struct GraphNode {
+    enum Kind { LayerNode, Composite, EffectNode, Group, GroupIn, GroupOut, Display, KindCount };
+    int id = 0;
+    Kind kind = Composite;
+    QString name;
+    int layer = 0;              // a layer node: the layer's id
+    Effect effect;              // an effect node: what it does (its input 0 the picture; input 1 the matte, for those that take one)
+    // How many inputs it has (a composite, a group, a group's output node), and outputs (a group, a group's input node).
+    int ports = 1;
+    int outPorts = 1;
+    int group = 0;              // the group node it is in (0: none, at the top)
+    QPointF at;                 // where it stands in the Node View
+    // The ports it has, in and out.
+    int inputs() const;
+    int outputs() const;
+    // An effect that takes a matte at its second input.
+    static bool takesMatte(Effect::Type type);
+    bool operator==(GraphNode const&) const = default;
+};
+
+struct GraphCable {
+    int from = 0, fromPort = 0;     // the node (its id) and its output the cable leaves
+    int to = 0, toPort = 0;         // the node and its input it goes into
+    bool operator==(GraphCable const&) const = default;
+};
+
+struct NodeGraph {
+    QVector<GraphNode> nodes;
+    QVector<GraphCable> cables;
+    bool isEmpty() const { return nodes.isEmpty(); }
+    int nodeIndex(int id) const;
+    GraphNode const* node(int id) const;
+    // The cable into an input (an input takes one), or null.
+    GraphCable const* into(int id, int port) const;
+    int nextId() const;
+    // The Display at the top that the frame shows (the first), its id; 0: none.
+    int display() const;
+    // The node of a layer (its id), 0: none.
+    int layerNode(int layerId) const;
+    // Whether a cable out of `from` into `to` would close a ring (`to` already feeds `from`).
+    bool feeds(int to, int from) const;
+    // A group's node for what comes into it, and for what goes out (ids), 0: none.
+    int groupIn(int group) const;
+    int groupOut(int group) const;
+    bool operator==(NodeGraph const&) const = default;
+};
+
 class Scene {
 public:
     Scene();
@@ -840,6 +891,15 @@ public:
         bool operator==(Controller const&) const = default;
     };
     QVector<Controller> controllers;
+    // The node graph, once wired by hand (empty: the layers stack as they are).
+    NodeGraph graph;
+    // The graph the layers make as they stand: each one's node (those seen in the frame), all into one composite in the
+    // order they stack, and that into the Display - the graph to start wiring from.
+    NodeGraph graphFromLayers() const;
+    // Keeping a wired graph up with the layers: a new layer (by its place) gets a node, into the composite the Display
+    // shows, where it stacks among the layers already there; a layer gone takes its node and cables with it.
+    void graphLayerAdded(int layer);
+    void graphLayerRemoved(int layerId);
     // Write outputs: renders kept with the scene - a sequence of images into a folder, or a movie file - all made at
     // once with Render Write Nodes.  A path not written in full is taken from the scene file's folder.
     struct Write {

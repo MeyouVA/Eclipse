@@ -4,7 +4,11 @@
 #include <QPainter>
 #include <QPainterPath>
 
+#include <QHash>
+#include <QSet>
+
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <numeric>
 
@@ -1012,6 +1016,9 @@ static QRgb blendPixel(QRgb s, QRgb d, int mode)
 void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
 {
     painter.fillRect(QRectF(0, 0, scene.width, scene.height), scene.background);
+    // Wired by hand in the Node View: the graph says what the frame is.
+    if (!scene.graph.isEmpty() && paintGraph(painter, scene, frame))
+        return;
     QTransform const base = painter.transform();
     QTransform const camera = scene.cameraTransform(frame);
     QVector<int> const order = scene.drawOrder(frame);
@@ -1188,4 +1195,205 @@ Drawing Canvas::previewDrawing() const
                     shown.pictures[i].transform(m_dragTransform);
     }
     return shown;
+}
+
+// ---- the frame as the node graph puts it together -----------------------------------------------------------------------
+
+bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
+{
+    NodeGraph const& graph = scene.graph;
+    int const display = graph.display();
+    QPaintDevice* const device = painter.device();
+    if (!display || !device)
+        return false;
+    double const dpr = device->devicePixelRatioF();
+    QSize const size(int(device->width() * dpr), int(device->height() * dpr));
+    QTransform const base = painter.transform();
+    QTransform const camera = scene.cameraTransform(frame);
+    // A blur is so many scene units wide: in the picture that depends on how big the frame is drawn.
+    double const pixelsPerUnit = std::sqrt(std::abs((camera * base).determinant())) * dpr;
+    auto blank = [&] {
+        QImage image(size, QImage::Format_ARGB32_Premultiplied);
+        image.setDevicePixelRatio(dpr);
+        image.fill(Qt::transparent);
+        return image;
+    };
+    // Each output of each node, worked out once; a ring (which the Node View does not let one make) gives nothing.
+    QHash<QPair<int, int>, QImage> made;
+    QSet<QPair<int, int>> working;
+    std::function<QImage(int, int)> picture = [&](int id, int port) -> QImage {
+        QPair<int, int> const key(id, port);
+        if (auto const found = made.constFind(key); found != made.cend())
+            return *found;
+        if (working.contains(key))
+            return blank();
+        working.insert(key);
+        QImage out = blank();
+        auto input = [&](int node, int in) {
+            GraphCable const* const c = graph.into(node, in);
+            return c ? picture(c->from, c->fromPort) : blank();
+        };
+        GraphNode const* const n = graph.node(id);
+        if (n && n->kind == GraphNode::LayerNode) {
+            // A layer's picture: where its pegs put it, with its own effects.
+            int const l = scene.layerIndex(n->layer);
+            if (l >= 0 && scene.enabled(l)) {
+                Layer const& layer = scene.layers[l];
+                QPainter p(&out);
+                p.setRenderHints(painter.renderHints());
+                if (layer.kind == Layer::ColourCard) {
+                    QColor colour = layer.cardColor;
+                    colour.setAlphaF(colour.alphaF() * float(layer.opacity));
+                    p.setTransform(base);
+                    p.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
+                } else if (int const index = layer.drawingAt(frame); index != Layer::kNoDrawing) {
+                    p.setTransform(scene.worldTransform(l, frame) * camera * base);
+                    Pose const pose = scene.poseOf(l, frame);
+                    paintLayerDrawing(p, scene, l, frame,
+                                      Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose)),
+                                      layer.opacity * pose.opacity, camera * base);
+                }
+            }
+        } else if (n && n->kind == GraphNode::Composite) {
+            // Its inputs one over the other, the first in front; a layer that comes straight in is mixed as its blend mode says.
+            for (int in = n->inputs() - 1; in >= 0; --in) {
+                GraphCable const* const c = graph.into(id, in);
+                if (!c)
+                    continue;
+                QImage const over = picture(c->from, c->fromPort);
+                GraphNode const* const from = graph.node(c->from);
+                int const l = from && from->kind == GraphNode::LayerNode ? scene.layerIndex(from->layer) : -1;
+                int const blend = l >= 0 ? scene.layers[l].blend : int(Layer::BlendNormal);
+                if (blend == Layer::BlendNormal) {
+                    QPainter p(&out);
+                    p.resetTransform();
+                    p.drawImage(0, 0, over);
+                    continue;
+                }
+                for (int y = 0; y < out.height(); ++y) {
+                    QRgb const* const s = reinterpret_cast<QRgb const*>(over.constScanLine(y));
+                    QRgb* const d = reinterpret_cast<QRgb*>(out.scanLine(y));
+                    for (int x = 0; x < out.width(); ++x)
+                        if (qAlpha(s[x]) > 0)
+                            d[x] = blendPixel(s[x], d[x], blend);
+                }
+            }
+        } else if (n && n->kind == GraphNode::EffectNode) {
+            out = input(id, 0);
+            Effect const& e = n->effect;
+            double const amount = e.amount;
+            if (!e.enabled) {
+                // (Turned off: the picture goes through as it is.)
+            } else if (e.type == Effect::Blur) {
+                Effects::blur(out, amount * pixelsPerUnit);
+            } else if (e.type == Effect::Tint) {
+                Effects::tint(out, e.color, amount);
+            } else if (e.type == Effect::Transparency) {
+                Effects::transparency(out, amount);
+            } else if (e.type == Effect::DirectionalBlur) {
+                Effects::directionalBlur(out, amount * pixelsPerUnit, e.direction);
+            } else if (e.type == Effect::HueSaturation) {
+                Effects::hueSaturation(out, e.hue, e.saturation, e.lightness, amount);
+            } else if (e.type == Effect::BrightnessContrast) {
+                Effects::brightnessContrast(out, e.brightness, e.contrast, amount);
+            } else if (e.type == Effect::Grain) {
+                Effects::grain(out, amount, quint32(e.seed) * 7919u + quint32(frame));
+            } else if (e.type == Effect::RadialBlur) {
+                Effects::radialBlur(out, amount);
+            } else if (e.type == Effect::ColourScale) {
+                Effects::colourScale(out, e.color, amount);
+            } else if (e.type == Effect::Negate) {
+                Effects::negate(out, amount);
+            } else if (e.type == Effect::Median) {
+                Effects::median(out, amount * pixelsPerUnit);
+            } else if (e.type == Effect::Ripple) {
+                Effects::ripple(out, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
+            } else if (e.type == Effect::Glow || e.type == Effect::Shadow) {
+                Effects::halo(out, e.color, amount * pixelsPerUnit, e.type == Effect::Shadow ? e.offset * (pixelsPerUnit / dpr) : QPointF());
+            } else if (e.type == Effect::MatteGenerator) {
+                Effects::matteGenerator(out, e.direction * pixelsPerUnit, amount * pixelsPerUnit, e.color);
+            } else if (e.type == Effect::Bloom) {
+                Effects::bloom(out, amount * pixelsPerUnit);
+            } else if (e.type == Effect::Pixelate) {
+                Effects::pixelate(out, amount * pixelsPerUnit);
+            } else if (e.type == Effect::Turbulence) {
+                Effects::turbulence(out, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
+            } else if (e.type == Effect::Gradient) {
+                Effects::gradient(out, e.color, e.endColor, e.direction, e.invert, amount);
+            } else if (e.type == Effect::BlackWhite) {
+                Effects::blackWhite(out, amount);
+            } else if (e.type == Effect::MatteResize) {
+                Effects::matteResize(out, amount * pixelsPerUnit, e.invert);
+            } else if (GraphNode::takesMatte(e.type) && graph.into(id, 1)) {
+                // The matte comes in at the second input: what is painted there (or, inverted, what is not).
+                QImage where = input(id, 1);
+                if (e.invert) {
+                    QImage outside = blank();
+                    outside.fill(Qt::black);
+                    QPainter op(&outside);
+                    op.resetTransform();
+                    op.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+                    op.drawImage(0, 0, where);
+                    op.end();
+                    where = outside;
+                }
+                if (e.type == Effect::Cutter) {
+                    QPainter cut(&out);
+                    cut.resetTransform();
+                    cut.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                    cut.drawImage(0, 0, where);
+                } else if (e.type == Effect::MatteBlur) {
+                    Effects::blur(where, std::max(1.0, amount * pixelsPerUnit / 3.0));
+                    QImage blurred = out;
+                    Effects::blur(blurred, amount * pixelsPerUnit);
+                    {
+                        QPainter bp(&blurred);
+                        bp.resetTransform();
+                        bp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                        bp.drawImage(0, 0, where);
+                    }
+                    QPainter ip(&out);
+                    ip.resetTransform();
+                    ip.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+                    ip.drawImage(0, 0, where);
+                    ip.setCompositionMode(QPainter::CompositionMode_Plus);
+                    ip.drawImage(0, 0, blurred);
+                } else {
+                    // Tone or Highlight: shaded (or lit) where the matte is, the edge softened.
+                    Effects::blur(where, amount * pixelsPerUnit);
+                    QImage shaded = out;
+                    {
+                        QPainter sp(&shaded);
+                        sp.resetTransform();
+                        sp.setCompositionMode(e.type == Effect::Tone ? QPainter::CompositionMode_Multiply : QPainter::CompositionMode_Screen);
+                        sp.fillRect(shaded.rect(), QColor(e.color.red(), e.color.green(), e.color.blue()));
+                        sp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                        sp.drawImage(0, 0, out);
+                        sp.drawImage(0, 0, where);
+                    }
+                    QPainter onto(&out);
+                    onto.resetTransform();
+                    onto.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+                    onto.drawImage(0, 0, shaded);
+                }
+            }
+        } else if (n && n->kind == GraphNode::Group) {
+            // What leaves a group's output: what comes into that input of its output node, inside.
+            if (int const inside = graph.groupOut(id))
+                out = input(inside, port);
+        } else if (n && n->kind == GraphNode::GroupIn) {
+            // What an output of a group's input node gives: what comes into that input of the group, outside.
+            out = input(n->group, port);
+        }
+        working.remove(key);
+        made.insert(key, out);
+        return out;
+    };
+    GraphCable const* const shown = graph.into(display, 0);
+    QImage const frameImage = shown ? picture(shown->from, shown->fromPort) : blank();
+    painter.save();
+    painter.resetTransform();
+    painter.drawImage(0, 0, frameImage);
+    painter.restore();
+    return true;
 }

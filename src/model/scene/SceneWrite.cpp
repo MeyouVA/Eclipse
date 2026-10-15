@@ -134,6 +134,63 @@ static QJsonArray pairsJson(QVector<QPair<QString, QString>> const& pairs)
     return array;
 }
 
+// An effect, as the scene file keeps it (on a layer, or on an effect node of the node graph).
+static QJsonObject effectToJson(Effect const& e)
+{
+    QJsonObject one{{"type", e.type == Effect::Blur ? "blur" : e.type == Effect::Tint ? "tint" : e.type == Effect::Glow ? "glow"
+                             : e.type == Effect::Shadow ? "shadow" : e.type == Effect::Particles ? "particles"
+                             : e.type == Effect::Transparency ? "transparency" : e.type == Effect::DirectionalBlur ? "directionalBlur"
+                             : e.type == Effect::HueSaturation ? "hueSaturation" : e.type == Effect::BrightnessContrast ? "brightnessContrast"
+                             : e.type == Effect::Grain ? "grain" : e.type == Effect::RadialBlur ? "radialBlur" : e.type == Effect::ColourScale ? "colourScale"
+                             : e.type == Effect::Negate ? "negate" : e.type == Effect::Median ? "median" : e.type == Effect::Ripple ? "ripple"
+                             : e.type == Effect::Tone ? "tone" : e.type == Effect::Highlight ? "highlight"
+                             : e.type == Effect::Bloom ? "bloom" : e.type == Effect::Pixelate ? "pixelate" : e.type == Effect::Turbulence ? "turbulence"
+                             : e.type == Effect::MatteGenerator ? "matteGenerator"
+                             : e.type == Effect::BlackWhite ? "blackWhite" : e.type == Effect::MatteResize ? "matteResize"
+                             : e.type == Effect::MatteBlur ? "matteBlur" : e.type == Effect::Gradient ? "gradient"
+                             : "cutter"},
+                    {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
+                    {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
+                    {"matte", e.matte}, {"invert", e.invert}};
+    if (e.type == Effect::Gradient)
+        one["endColor"] = e.endColor.name(QColor::HexArgb);
+    if (e.type == Effect::DirectionalBlur || e.type == Effect::Ripple || e.type == Effect::Turbulence || e.type == Effect::MatteGenerator
+        || e.type == Effect::Gradient)
+        one["direction"] = e.direction;
+    if (e.type == Effect::Grain)
+        one["seed"] = e.seed;
+    if (e.type == Effect::HueSaturation) {
+        one["hue"] = e.hue;
+        one["saturation"] = e.saturation;
+        one["lightness"] = e.lightness;
+    }
+    if (e.type == Effect::BrightnessContrast) {
+        one["brightness"] = e.brightness;
+        one["contrast"] = e.contrast;
+    }
+    if (e.type == Effect::Particles) {
+        one["life"] = e.life;
+        one["speed"] = e.speed;
+        one["spread"] = e.spread;
+        one["direction"] = e.direction;
+        one["gravity"] = e.gravity;
+        one["seed"] = e.seed;
+        one["endSize"] = e.endSize;
+        one["follow"] = e.followLayer;
+        if (e.endColor.isValid())
+            one["endColor"] = e.endColor.name(QColor::HexArgb);
+        one["wind"] = e.wind;
+        one["spin"] = e.spin;
+        one["regionW"] = e.regionWidth;
+        one["regionH"] = e.regionHeight;
+        one["regionShape"] = e.regionShape;
+        one["floor"] = e.floor;
+        one["bounce"] = e.bounce;
+        one["walls"] = e.walls;
+    }
+    return one;
+}
+
 QJsonObject Scene::toJson(QString const& folder) const
 {
     // Pictures kept in the file itself: each image once, as a PNG under a key the pictures that show it name.
@@ -370,58 +427,7 @@ QJsonObject Scene::toJson(QString const& folder) const
         if (!layer.effects.isEmpty()) {
             QJsonArray effects;
             for (Effect const& e : layer.effects) {
-                QJsonObject one{{"type", e.type == Effect::Blur ? "blur" : e.type == Effect::Tint ? "tint" : e.type == Effect::Glow ? "glow"
-                                         : e.type == Effect::Shadow ? "shadow" : e.type == Effect::Particles ? "particles"
-                                         : e.type == Effect::Transparency ? "transparency" : e.type == Effect::DirectionalBlur ? "directionalBlur"
-                                         : e.type == Effect::HueSaturation ? "hueSaturation" : e.type == Effect::BrightnessContrast ? "brightnessContrast"
-                                         : e.type == Effect::Grain ? "grain" : e.type == Effect::RadialBlur ? "radialBlur" : e.type == Effect::ColourScale ? "colourScale"
-                                         : e.type == Effect::Negate ? "negate" : e.type == Effect::Median ? "median" : e.type == Effect::Ripple ? "ripple"
-                                         : e.type == Effect::Tone ? "tone" : e.type == Effect::Highlight ? "highlight"
-                                         : e.type == Effect::Bloom ? "bloom" : e.type == Effect::Pixelate ? "pixelate" : e.type == Effect::Turbulence ? "turbulence"
-                                         : e.type == Effect::MatteGenerator ? "matteGenerator"
-                                         : e.type == Effect::BlackWhite ? "blackWhite" : e.type == Effect::MatteResize ? "matteResize"
-                                         : e.type == Effect::MatteBlur ? "matteBlur" : e.type == Effect::Gradient ? "gradient"
-                                         : "cutter"},
-                                {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
-                                {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
-                                {"matte", e.matte}, {"invert", e.invert}};
-                if (e.type == Effect::Gradient)
-                    one["endColor"] = e.endColor.name(QColor::HexArgb);
-                if (e.type == Effect::DirectionalBlur || e.type == Effect::Ripple || e.type == Effect::Turbulence || e.type == Effect::MatteGenerator
-                    || e.type == Effect::Gradient)
-                    one["direction"] = e.direction;
-                if (e.type == Effect::Grain)
-                    one["seed"] = e.seed;
-                if (e.type == Effect::HueSaturation) {
-                    one["hue"] = e.hue;
-                    one["saturation"] = e.saturation;
-                    one["lightness"] = e.lightness;
-                }
-                if (e.type == Effect::BrightnessContrast) {
-                    one["brightness"] = e.brightness;
-                    one["contrast"] = e.contrast;
-                }
-                if (e.type == Effect::Particles) {
-                    one["life"] = e.life;
-                    one["speed"] = e.speed;
-                    one["spread"] = e.spread;
-                    one["direction"] = e.direction;
-                    one["gravity"] = e.gravity;
-                    one["seed"] = e.seed;
-                    one["endSize"] = e.endSize;
-                    one["follow"] = e.followLayer;
-                    if (e.endColor.isValid())
-                        one["endColor"] = e.endColor.name(QColor::HexArgb);
-                    one["wind"] = e.wind;
-                    one["spin"] = e.spin;
-                    one["regionW"] = e.regionWidth;
-                    one["regionH"] = e.regionHeight;
-                    one["regionShape"] = e.regionShape;
-                    one["floor"] = e.floor;
-                    one["bounce"] = e.bounce;
-                    one["walls"] = e.walls;
-                }
-                effects.append(one);
+                effects.append(effectToJson(e));
             }
             layerObject["effects"] = effects;
         }
@@ -646,6 +652,22 @@ QJsonObject Scene::toJson(QString const& folder) const
         whole["textures"] = textureArray;
     if (!images.isEmpty())
         whole["images"] = images;
+    if (!graph.isEmpty()) {
+        static char const* const kinds[GraphNode::KindCount] = {"layer", "composite", "effect", "group", "groupIn", "groupOut", "display"};
+        QJsonArray nodes, cables;
+        for (GraphNode const& n : graph.nodes) {
+            QJsonObject node{{"id", n.id}, {"kind", kinds[n.kind]}, {"name", n.name}, {"ports", n.ports}, {"outPorts", n.outPorts},
+                             {"group", n.group}, {"at", QJsonArray{n.at.x(), n.at.y()}}};
+            if (n.kind == GraphNode::LayerNode)
+                node["layer"] = n.layer;
+            if (n.kind == GraphNode::EffectNode)
+                node["effect"] = effectToJson(n.effect);
+            nodes.append(node);
+        }
+        for (GraphCable const& c : graph.cables)
+            cables.append(QJsonArray{c.from, c.fromPort, c.to, c.toPort});
+        whole["graph"] = QJsonObject{{"nodes", nodes}, {"cables", cables}};
+    }
     return whole;
 }
 

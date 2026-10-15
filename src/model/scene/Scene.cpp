@@ -3,6 +3,8 @@
 
 #include "model/geometry/Deform.h"
 
+#include <QSet>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -124,6 +126,7 @@ int Scene::duplicateLayer(int layer)
     copy.name = uniqueLayerName(copy.name);
     copy.nodePlaced = false;
     layers.insert(layer + 1, copy);
+    graphLayerAdded(layer + 1);
     return layer + 1;
 }
 
@@ -160,6 +163,7 @@ void Scene::removeLayer(int layer)
             l.parentBone = -1;
         }
     }
+    graphLayerRemoved(id);
     layers.removeAt(layer);
 }
 
@@ -181,7 +185,55 @@ int Scene::addLayer(QString const& name, int at, Layer::Kind kind)
     if (at < 0 || at > layers.size())
         at = int(layers.size());
     layers.insert(at, layer);
+    graphLayerAdded(at);
     return at;
+}
+
+void Scene::graphLayerAdded(int layer)
+{
+    if (graph.isEmpty() || layer < 0 || layer >= layers.size())
+        return;
+    Layer const& added = layers[layer];
+    if (added.kind == Layer::Peg || added.kind == Layer::Camera || added.kind == Layer::Sound || added.kind == Layer::Group || added.kind == Layer::Bone)
+        return;     // (no picture of its own)
+    GraphNode n;
+    n.id = graph.nextId();
+    n.kind = GraphNode::LayerNode;
+    n.layer = added.id;
+    n.name = added.name;
+    // The composite the Display shows: the new node goes in among the layers there by where it stacks (the first input in
+    // front), after those above it.
+    GraphCable const* const shown = graph.display() ? graph.into(graph.display(), 0) : nullptr;
+    int const composite = shown ? shown->from : 0;
+    int const ci = graph.nodeIndex(composite);
+    if (ci < 0 || graph.nodes[ci].kind != GraphNode::Composite) {
+        n.at = QPointF(0.0, -90.0);
+        graph.nodes.push_back(n);
+        return;
+    }
+    int port = 0;
+    for (GraphCable const& c : std::as_const(graph.cables)) {
+        GraphNode const* const from = c.to == composite ? graph.node(c.from) : nullptr;
+        if (from && from->kind == GraphNode::LayerNode && layerIndex(from->layer) > layer)
+            port = std::max(port, c.toPort + 1);
+    }
+    for (GraphCable& c : graph.cables)
+        if (c.to == composite && c.toPort >= port)
+            ++c.toPort;
+    graph.nodes[ci].ports += 1;
+    n.at = graph.nodes[ci].at + QPointF(140.0 * (port - graph.nodes[ci].ports / 2.0), -120.0);
+    graph.nodes.push_back(n);
+    graph.cables.push_back({n.id, 0, composite, port});
+}
+
+void Scene::graphLayerRemoved(int layerId)
+{
+    int const node = graph.layerNode(layerId);
+    if (!node)
+        return;
+    graph.cables.erase(std::remove_if(graph.cables.begin(), graph.cables.end(), [node](GraphCable const& c) { return c.from == node || c.to == node; }),
+                       graph.cables.end());
+    graph.nodes.removeAt(graph.nodeIndex(node));
 }
 
 // The keyframe value on a frame: straight between the keyframes either side; held before the first and after the last.
@@ -210,6 +262,168 @@ double Scene::Controller::valueAt(int frame) const
 QPointF Scene::Controller::whereAt(int frame) const
 {
     return keyedAt(pointKeys, frame, where);
+}
+
+int GraphNode::inputs() const
+{
+    switch (kind) {
+    case LayerNode:
+    case GroupIn:
+        return 0;
+    case EffectNode:
+        return takesMatte(effect.type) ? 2 : 1;
+    case Display:
+        return 1;
+    case Composite:
+    case Group:
+    case GroupOut:
+    default:
+        return std::max(0, ports);
+    }
+}
+
+int GraphNode::outputs() const
+{
+    switch (kind) {
+    case GroupOut:
+    case Display:
+        return 0;
+    case Group:
+    case GroupIn:
+        return std::max(0, outPorts);
+    default:
+        return 1;
+    }
+}
+
+bool GraphNode::takesMatte(Effect::Type type)
+{
+    return type == Effect::Cutter || type == Effect::Tone || type == Effect::Highlight || type == Effect::MatteBlur;
+}
+
+int NodeGraph::nodeIndex(int id) const
+{
+    for (int i = 0; i < nodes.size(); ++i)
+        if (nodes[i].id == id)
+            return i;
+    return -1;
+}
+
+GraphNode const* NodeGraph::node(int id) const
+{
+    int const i = nodeIndex(id);
+    return i >= 0 ? &nodes[i] : nullptr;
+}
+
+GraphCable const* NodeGraph::into(int id, int port) const
+{
+    for (GraphCable const& c : cables)
+        if (c.to == id && c.toPort == port)
+            return &c;
+    return nullptr;
+}
+
+int NodeGraph::nextId() const
+{
+    int most = 0;
+    for (GraphNode const& n : nodes)
+        most = std::max(most, n.id);
+    return most + 1;
+}
+
+int NodeGraph::display() const
+{
+    for (GraphNode const& n : nodes)
+        if (n.kind == GraphNode::Display && n.group == 0)
+            return n.id;
+    return 0;
+}
+
+int NodeGraph::layerNode(int layerId) const
+{
+    for (GraphNode const& n : nodes)
+        if (n.kind == GraphNode::LayerNode && n.layer == layerId)
+            return n.id;
+    return 0;
+}
+
+bool NodeGraph::feeds(int to, int from) const
+{
+    // Walk back from `from` along what goes into it (into a group by its output node, out of one by its input node).
+    QVector<int> todo{from};
+    QSet<int> seen;
+    while (!todo.isEmpty()) {
+        int const at = todo.takeLast();
+        if (at == to)
+            return true;
+        if (seen.contains(at))
+            continue;
+        seen.insert(at);
+        for (GraphCable const& c : cables)
+            if (c.to == at)
+                todo.push_back(c.from);
+        GraphNode const* const n = node(at);
+        if (n && n->kind == GraphNode::Group)
+            if (int const out = groupOut(n->id))
+                todo.push_back(out);
+        if (n && n->kind == GraphNode::GroupIn)
+            todo.push_back(n->group);
+    }
+    return false;
+}
+
+int NodeGraph::groupIn(int group) const
+{
+    for (GraphNode const& n : nodes)
+        if (n.kind == GraphNode::GroupIn && n.group == group)
+            return n.id;
+    return 0;
+}
+
+int NodeGraph::groupOut(int group) const
+{
+    for (GraphNode const& n : nodes)
+        if (n.kind == GraphNode::GroupOut && n.group == group)
+            return n.id;
+    return 0;
+}
+
+NodeGraph Scene::graphFromLayers() const
+{
+    NodeGraph g;
+    GraphNode composite;
+    composite.id = 1;
+    composite.kind = GraphNode::Composite;
+    composite.name = QStringLiteral("Composite");
+    GraphNode screen;
+    screen.id = 2;
+    screen.kind = GraphNode::Display;
+    screen.name = QStringLiteral("Display");
+    // (In the composite, the first input is in front: the layers go in from the top of the stack down.)
+    QVector<int> shown;
+    for (int l = 0; l < layers.size(); ++l)
+        if (layers[l].kind != Layer::Peg && layers[l].kind != Layer::Camera && layers[l].kind != Layer::Sound && layers[l].kind != Layer::Group
+            && layers[l].kind != Layer::Bone)
+            shown.push_back(l);
+    double x = 0.0;
+    for (int i = int(shown.size()) - 1; i >= 0; --i) {
+        GraphNode n;
+        n.id = g.nextId() + 2;
+        n.kind = GraphNode::LayerNode;
+        n.layer = layers[shown[i]].id;
+        n.name = layers[shown[i]].name;
+        n.at = QPointF(x, 0.0);
+        x += 140.0;
+        g.nodes.push_back(n);
+        g.cables.push_back({n.id, 0, composite.id, int(shown.size()) - 1 - i});
+    }
+    composite.ports = std::max(1, int(shown.size()));
+    composite.at = QPointF(std::max(0.0, x - 140.0) / 2.0, 120.0);
+    screen.at = composite.at + QPointF(0.0, 90.0);
+    g.nodes.push_back(composite);
+    g.nodes.push_back(screen);
+    g.cables.push_back({composite.id, 0, screen.id, 0});
+    return g;
 }
 
 QVector<double> Scene::Controller::weightsAt(QPointF spot) const

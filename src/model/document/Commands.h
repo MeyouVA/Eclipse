@@ -212,6 +212,8 @@ public:
 
     // ---- structure ----------------------------------------------------------------------
     int addLayer(int above);
+    // The node graph replaced by another (one step to undo).
+    void setGraph(NodeGraph const& graph, QString const& text);
     // Symbols.  Create: these layers, and what is attached to them, become a symbol that one layer shows in their
     // place (returns that layer, or -1).  Insert: another layer that shows a symbol.  Expand: the layer becomes
     // a peg with copies of the symbol's layers attached.

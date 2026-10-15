@@ -602,6 +602,13 @@ void Document::removeControllerState(int controller, int state)
     });
 }
 
+void Document::setGraph(NodeGraph const& graph, QString const& text)
+{
+    if (graph == m_scene.graph)
+        return;
+    apply(text, [&](Scene& s) { s.graph = graph; });
+}
+
 void Document::applyController(int controller, int frame, double value)
 {
     if (controller < 0 || controller >= m_scene.controllers.size() || frame < 0 || frame >= m_scene.frameCount())

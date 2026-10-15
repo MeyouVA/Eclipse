@@ -135,6 +135,112 @@ static QVector<QPair<QString, QString>> pairsFromJson(QJsonArray const& array)
     return pairs;
 }
 
+// An effect from the scene file (false: one of a kind this version does not know).
+static bool effectFromJson(QJsonObject const& eo, Effect& e)
+{
+    QString const type = eo["type"].toString();
+    if (type == QLatin1String("blur"))
+        e.type = Effect::Blur;
+    else if (type == QLatin1String("tint"))
+        e.type = Effect::Tint;
+    else if (type == QLatin1String("cutter"))
+        e.type = Effect::Cutter;
+    else if (type == QLatin1String("glow"))
+        e.type = Effect::Glow;
+    else if (type == QLatin1String("shadow"))
+        e.type = Effect::Shadow;
+    else if (type == QLatin1String("particles"))
+        e.type = Effect::Particles;
+    else if (type == QLatin1String("transparency"))
+        e.type = Effect::Transparency;
+    else if (type == QLatin1String("directionalBlur"))
+        e.type = Effect::DirectionalBlur;
+    else if (type == QLatin1String("hueSaturation"))
+        e.type = Effect::HueSaturation;
+    else if (type == QLatin1String("brightnessContrast"))
+        e.type = Effect::BrightnessContrast;
+    else if (type == QLatin1String("grain"))
+        e.type = Effect::Grain;
+    else if (type == QLatin1String("radialBlur"))
+        e.type = Effect::RadialBlur;
+    else if (type == QLatin1String("colourScale"))
+        e.type = Effect::ColourScale;
+    else if (type == QLatin1String("negate"))
+        e.type = Effect::Negate;
+    else if (type == QLatin1String("median"))
+        e.type = Effect::Median;
+    else if (type == QLatin1String("ripple"))
+        e.type = Effect::Ripple;
+    else if (type == QLatin1String("tone"))
+        e.type = Effect::Tone;
+    else if (type == QLatin1String("highlight"))
+        e.type = Effect::Highlight;
+    else if (type == QLatin1String("bloom"))
+        e.type = Effect::Bloom;
+    else if (type == QLatin1String("pixelate"))
+        e.type = Effect::Pixelate;
+    else if (type == QLatin1String("turbulence"))
+        e.type = Effect::Turbulence;
+    else if (type == QLatin1String("matteGenerator"))
+        e.type = Effect::MatteGenerator;
+    else if (type == QLatin1String("blackWhite"))
+        e.type = Effect::BlackWhite;
+    else if (type == QLatin1String("matteResize"))
+        e.type = Effect::MatteResize;
+    else if (type == QLatin1String("matteBlur"))
+        e.type = Effect::MatteBlur;
+    else if (type == QLatin1String("gradient"))
+        e.type = Effect::Gradient;
+    else
+        return false;  // an effect of a newer version: left out rather than guessed at
+    e.enabled = eo["enabled"].toBool(true);
+    e.amount = std::max(0.0, eo["amount"].toDouble());
+    e.animated = eo["animated"].toBool(false);
+    if (e.type == Effect::Particles) {
+        e.life = std::clamp(eo["life"].toInt(24), 1, 600);
+        e.speed = eo["speed"].toDouble(6.0);
+        e.spread = std::clamp(eo["spread"].toDouble(60.0), 0.0, 360.0);
+        e.direction = eo["direction"].toDouble(90.0);
+        e.gravity = eo["gravity"].toDouble(0.3);
+        e.seed = eo["seed"].toInt(1);
+        e.endSize = std::clamp(eo["endSize"].toDouble(1.0), 0.0, 20.0);
+        e.followLayer = eo["follow"].toBool(false);
+        e.endColor = eo.contains("endColor") ? QColor(eo["endColor"].toString()) : QColor();
+        e.wind = eo["wind"].toDouble(0.0);
+        e.spin = std::clamp(eo["spin"].toDouble(0.0), 0.0, 360.0);
+        e.regionWidth = std::max(0.0, eo["regionW"].toDouble(0.0));
+        e.regionHeight = std::max(0.0, eo["regionH"].toDouble(0.0));
+        e.regionShape = std::clamp(eo["regionShape"].toInt(0), 0, 3);
+        e.floor = std::max(0.0, eo["floor"].toDouble(0.0));
+        e.bounce = std::clamp(eo["bounce"].toDouble(0.5), 0.0, 1.0);
+        e.walls = std::max(0.0, eo["walls"].toDouble(0.0));
+    }
+    if (e.type == Effect::DirectionalBlur)
+        e.direction = eo["direction"].toDouble(0.0);
+    if (e.type == Effect::Ripple)
+        e.direction = std::max(2.0, eo["direction"].toDouble(60.0));
+    if (e.type == Effect::Turbulence)
+        e.direction = std::max(2.0, eo["direction"].toDouble(40.0));
+    if (e.type == Effect::MatteGenerator)
+        e.direction = std::max(0.0, eo["direction"].toDouble(0.0));
+    if (e.type == Effect::Gradient) {
+        e.direction = eo["direction"].toDouble(90.0);
+        e.endColor = QColor(eo["endColor"].toString(QStringLiteral("#ffc83c8c")));
+    }
+    if (e.type == Effect::Grain)
+        e.seed = eo["seed"].toInt(1);
+    e.hue = std::clamp(eo["hue"].toDouble(0.0), -180.0, 180.0);
+    e.saturation = std::clamp(eo["saturation"].toDouble(0.0), -100.0, 100.0);
+    e.lightness = std::clamp(eo["lightness"].toDouble(0.0), -100.0, 100.0);
+    e.brightness = std::clamp(eo["brightness"].toDouble(0.0), -100.0, 100.0);
+    e.contrast = std::clamp(eo["contrast"].toDouble(0.0), -100.0, 100.0);
+    e.offset = QPointF(eo["dx"].toDouble(), eo["dy"].toDouble());
+    e.color = QColor(eo["color"].toString("#ff000000"));
+    e.matte = eo["matte"].toInt(0);
+    e.invert = eo["invert"].toBool(false);
+    return true;
+}
+
 bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QString const& folder)
 {
     if (json["format"].toString() != QLatin1String("eclipse-scene")) {
@@ -290,6 +396,37 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     for (QJsonValue const& tv : json["textures"].toArray()) {
         QJsonObject const to = tv.toObject();
         TextureBank::add(to["name"].toString(), TextureBank::grainFromText(to["png"].toString()), to["edge"].toDouble(0.5));
+    }
+    // The node graph, when wired by hand.
+    {
+        QJsonObject const g = json["graph"].toObject();
+        static QStringList const kinds{QStringLiteral("layer"), QStringLiteral("composite"), QStringLiteral("effect"), QStringLiteral("group"),
+                                       QStringLiteral("groupIn"), QStringLiteral("groupOut"), QStringLiteral("display")};
+        for (QJsonValue const& nv : g["nodes"].toArray()) {
+            QJsonObject const no = nv.toObject();
+            GraphNode n;
+            int const kind = int(kinds.indexOf(no["kind"].toString()));
+            if (kind < 0)
+                continue;   // a kind of node of a newer version: left out
+            n.kind = GraphNode::Kind(kind);
+            n.id = no["id"].toInt();
+            n.name = no["name"].toString();
+            n.layer = no["layer"].toInt(0);
+            n.ports = std::max(0, no["ports"].toInt(1));
+            n.outPorts = std::max(0, no["outPorts"].toInt(1));
+            n.group = no["group"].toInt(0);
+            if (QJsonArray const at = no["at"].toArray(); at.size() == 2)
+                n.at = QPointF(at[0].toDouble(), at[1].toDouble());
+            if (n.kind == GraphNode::EffectNode && !effectFromJson(no["effect"].toObject(), n.effect))
+                continue;
+            if (n.id > 0 && !scene.graph.node(n.id))
+                scene.graph.nodes.push_back(n);
+        }
+        for (QJsonValue const& cv : g["cables"].toArray()) {
+            QJsonArray const c = cv.toArray();
+            if (c.size() == 4 && scene.graph.node(c[0].toInt()) && scene.graph.node(c[2].toInt()))
+                scene.graph.cables.push_back({c[0].toInt(), c[1].toInt(), c[2].toInt(), c[3].toInt()});
+        }
     }
     // The pictures kept in the file itself, each image once (by the key the pictures name it by).
     QHash<QString, QImage> images;
@@ -461,109 +598,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.parent = lo["parent"].toInt(0);
         layer.parentBone = lo["parentBone"].toInt(-1);
         for (QJsonValue const& ev : lo["effects"].toArray()) {
-            QJsonObject const eo = ev.toObject();
-            QString const type = eo["type"].toString();
             Effect e;
-            if (type == QLatin1String("blur"))
-                e.type = Effect::Blur;
-            else if (type == QLatin1String("tint"))
-                e.type = Effect::Tint;
-            else if (type == QLatin1String("cutter"))
-                e.type = Effect::Cutter;
-            else if (type == QLatin1String("glow"))
-                e.type = Effect::Glow;
-            else if (type == QLatin1String("shadow"))
-                e.type = Effect::Shadow;
-            else if (type == QLatin1String("particles"))
-                e.type = Effect::Particles;
-            else if (type == QLatin1String("transparency"))
-                e.type = Effect::Transparency;
-            else if (type == QLatin1String("directionalBlur"))
-                e.type = Effect::DirectionalBlur;
-            else if (type == QLatin1String("hueSaturation"))
-                e.type = Effect::HueSaturation;
-            else if (type == QLatin1String("brightnessContrast"))
-                e.type = Effect::BrightnessContrast;
-            else if (type == QLatin1String("grain"))
-                e.type = Effect::Grain;
-            else if (type == QLatin1String("radialBlur"))
-                e.type = Effect::RadialBlur;
-            else if (type == QLatin1String("colourScale"))
-                e.type = Effect::ColourScale;
-            else if (type == QLatin1String("negate"))
-                e.type = Effect::Negate;
-            else if (type == QLatin1String("median"))
-                e.type = Effect::Median;
-            else if (type == QLatin1String("ripple"))
-                e.type = Effect::Ripple;
-            else if (type == QLatin1String("tone"))
-                e.type = Effect::Tone;
-            else if (type == QLatin1String("highlight"))
-                e.type = Effect::Highlight;
-            else if (type == QLatin1String("bloom"))
-                e.type = Effect::Bloom;
-            else if (type == QLatin1String("pixelate"))
-                e.type = Effect::Pixelate;
-            else if (type == QLatin1String("turbulence"))
-                e.type = Effect::Turbulence;
-            else if (type == QLatin1String("matteGenerator"))
-                e.type = Effect::MatteGenerator;
-            else if (type == QLatin1String("blackWhite"))
-                e.type = Effect::BlackWhite;
-            else if (type == QLatin1String("matteResize"))
-                e.type = Effect::MatteResize;
-            else if (type == QLatin1String("matteBlur"))
-                e.type = Effect::MatteBlur;
-            else if (type == QLatin1String("gradient"))
-                e.type = Effect::Gradient;
-            else
-                continue;  // an effect of a newer version: left out rather than guessed at
-            e.enabled = eo["enabled"].toBool(true);
-            e.amount = std::max(0.0, eo["amount"].toDouble());
-            e.animated = eo["animated"].toBool(false);
-            if (e.type == Effect::Particles) {
-                e.life = std::clamp(eo["life"].toInt(24), 1, 600);
-                e.speed = eo["speed"].toDouble(6.0);
-                e.spread = std::clamp(eo["spread"].toDouble(60.0), 0.0, 360.0);
-                e.direction = eo["direction"].toDouble(90.0);
-                e.gravity = eo["gravity"].toDouble(0.3);
-                e.seed = eo["seed"].toInt(1);
-                e.endSize = std::clamp(eo["endSize"].toDouble(1.0), 0.0, 20.0);
-                e.followLayer = eo["follow"].toBool(false);
-                e.endColor = eo.contains("endColor") ? QColor(eo["endColor"].toString()) : QColor();
-                e.wind = eo["wind"].toDouble(0.0);
-                e.spin = std::clamp(eo["spin"].toDouble(0.0), 0.0, 360.0);
-                e.regionWidth = std::max(0.0, eo["regionW"].toDouble(0.0));
-                e.regionHeight = std::max(0.0, eo["regionH"].toDouble(0.0));
-                e.regionShape = std::clamp(eo["regionShape"].toInt(0), 0, 3);
-                e.floor = std::max(0.0, eo["floor"].toDouble(0.0));
-                e.bounce = std::clamp(eo["bounce"].toDouble(0.5), 0.0, 1.0);
-                e.walls = std::max(0.0, eo["walls"].toDouble(0.0));
-            }
-            if (e.type == Effect::DirectionalBlur)
-                e.direction = eo["direction"].toDouble(0.0);
-            if (e.type == Effect::Ripple)
-                e.direction = std::max(2.0, eo["direction"].toDouble(60.0));
-            if (e.type == Effect::Turbulence)
-                e.direction = std::max(2.0, eo["direction"].toDouble(40.0));
-            if (e.type == Effect::MatteGenerator)
-                e.direction = std::max(0.0, eo["direction"].toDouble(0.0));
-            if (e.type == Effect::Gradient) {
-                e.direction = eo["direction"].toDouble(90.0);
-                e.endColor = QColor(eo["endColor"].toString(QStringLiteral("#ffc83c8c")));
-            }
-            if (e.type == Effect::Grain)
-                e.seed = eo["seed"].toInt(1);
-            e.hue = std::clamp(eo["hue"].toDouble(0.0), -180.0, 180.0);
-            e.saturation = std::clamp(eo["saturation"].toDouble(0.0), -100.0, 100.0);
-            e.lightness = std::clamp(eo["lightness"].toDouble(0.0), -100.0, 100.0);
-            e.brightness = std::clamp(eo["brightness"].toDouble(0.0), -100.0, 100.0);
-            e.contrast = std::clamp(eo["contrast"].toDouble(0.0), -100.0, 100.0);
-            e.offset = QPointF(eo["dx"].toDouble(), eo["dy"].toDouble());
-            e.color = QColor(eo["color"].toString("#ff000000"));
-            e.matte = eo["matte"].toInt(0);
-            e.invert = eo["invert"].toBool(false);
-            layer.effects.push_back(e);
+            if (effectFromJson(ev.toObject(), e))
+                layer.effects.push_back(e);
         }
         QJsonArray const node = lo["node"].toArray();
         layer.nodePlaced = node.size() == 2;
