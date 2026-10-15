@@ -324,6 +324,8 @@ public slots:
     void onActionLockAll();
     void onActionTagLayers(QString const& how);
     void onActionTimelineViewMode(QString const& mode);
+    // Lock Timeline Ruler (on or off; kept with the preferences).
+    void onActionLockTimelineRuler();
     void onActionTimelineShowKind(QString const& which);
     void onActionUnlockAll();
     void onActionLockAllOthers();

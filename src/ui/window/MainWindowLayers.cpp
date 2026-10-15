@@ -37,6 +37,7 @@
 #include "ui/views/PerspectiveView.h"
 
 #include "ui/window/MainWindowPrivate.h"
+#include <QSettings>
 #include <QStatusBar>
 
 int MainWindow::addDrawingLayer(QString const& name, bool wholeScene)
@@ -220,6 +221,16 @@ void MainWindow::onActionTagLayers(QString const& how)
         any = any || m_document->scene().layers[l].tagged != on;
     if (any)
         m_document->editLayers(layers, on ? tr("Tag Layers") : tr("Untag Layers"), [on](Layer& l) { l.tagged = on; });
+}
+
+void MainWindow::onActionLockTimelineRuler()
+{
+    bool const on = !m_timeline->rulerLocked();
+    m_timeline->setRulerLocked(on);
+    m_actions->setChecked(QStringLiteral("LockTimelineRuler"), on);
+    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("prefs/lockTimelineRuler"), on);
+    statusBar()->showMessage(on ? tr("The Timeline's ruler is locked: the end of the scene stays where it is.")
+                                : tr("The Timeline's ruler is unlocked: drag the end of the scene to make it longer or shorter."), 5000);
 }
 
 // `mode` is "all", "selected" or "tagged": which layers the Timeline shows.

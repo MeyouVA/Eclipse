@@ -246,6 +246,8 @@ void MainWindow::applyPreferences()
     m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
     // Timeline: how wide a frame is to begin with.  Render: the preview's size, and whether it keeps itself up to date.
     m_timeline->setCellWidth(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
+    m_timeline->setRulerLocked(s.value(QStringLiteral("prefs/lockTimelineRuler"), false).toBool());
+    m_actions->setChecked(QStringLiteral("LockTimelineRuler"), m_timeline->rulerLocked());
     if (PreviewManagerView* const preview = findChild<PreviewManagerView*>()) {
         preview->setSizePercent(s.value(QStringLiteral("prefs/previewSize"), 50).toInt());
         bool const autoRender = s.value(QStringLiteral("prefs/autoRender"), false).toBool();

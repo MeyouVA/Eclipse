@@ -647,6 +647,8 @@
    <item id="LockAll" icon="timeline/lockall" text="Lock All" responder="window" slot="onActionLockAll()"/>
    <item id="UnlockAll" icon="timeline/unlockall" text="Unlock All" responder="window" slot="onActionUnlockAll()"/>
    <item id="LockAllOthers" icon="timeline/lockothers" text="Lock All Others" responder="window" slot="onActionLockAllOthers()"/>
+   <separator/>
+   <item id="LockTimelineRuler" icon="timeline/lock" text="Lock Timeline &amp;Ruler" checkable="true" responder="window" slot="onActionLockTimelineRuler()"/>
   </menu>
   <menu id="TimelineEnable" text="Enable">
    <item id="ToggleLayerEnabled" icon="timeline/enable" text="Enable/Disable" responder="window" slot="onActionToggleLayerEnabled()"/>

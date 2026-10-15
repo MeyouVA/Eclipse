@@ -72,6 +72,9 @@ public:
     QRect parameterValueRect(int layer, Parameter which) const;
     // The value on the current frame, as it is shown; and set there, which makes a keyframe.
     double parameter(int layer, Parameter which) const;
+    // Lock Timeline Ruler: the end of the scene in the ruler cannot be dragged (the length is not changed by a slip).
+    bool rulerLocked() const { return m_rulerLocked; }
+    void setRulerLocked(bool on) { m_rulerLocked = on; }
     // The layer a parameter row follows (an attribute control of the layer), or -1 when it goes by its own keyframes.
     int drivenBy(int layer, Parameter which) const;
     QString parameterText(int layer, Parameter which) const;
@@ -245,6 +248,7 @@ private:
     int m_markerGrab = 0;      // how many frames into it it was taken hold of
     int m_markerFrame = 0;     // where it starts as it is dragged
     bool m_dragEnd = false;    // the end of the scene is being dragged
+    bool m_rulerLocked = false;    // Lock Timeline Ruler: the end of the scene stays where it is
     // The far corner of the block selected, from the current cell; -1 when there is none.
     int m_extentRow = -1;
     int m_extentFrame = -1;

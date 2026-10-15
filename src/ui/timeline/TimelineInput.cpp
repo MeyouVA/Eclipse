@@ -170,7 +170,7 @@ void Timeline::mousePressEvent(QMouseEvent* event)
 {
     QPoint const pos = event->pos();
     if (event->button() == Qt::LeftButton) {
-        if (pos.x() >= kHeaderWidth && sceneEndRect().contains(pos)) {
+        if (pos.x() >= kHeaderWidth && sceneEndRect().contains(pos) && !m_rulerLocked) {
             m_dragEnd = true;
             m_endFrames = m_document->scene().frameCount();
             return;
