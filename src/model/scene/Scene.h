@@ -813,11 +813,14 @@ struct PoseOverride {
 // one is shown (the Display).  The layers still place their pictures (pegs and parents move them as ever); the graph says
 // what becomes of them.  A scene without one is put together from its layers as they stack.
 struct GraphNode {
-    enum Kind { LayerNode, Composite, EffectNode, Group, GroupIn, GroupOut, Display, KindCount };
+    enum Kind { LayerNode, Composite, EffectNode, Group, GroupIn, GroupOut, Display, Note, KindCount };
     int id = 0;
     Kind kind = Composite;
     QString name;
     int layer = 0;              // a layer node: the layer's id
+    // A layer node: which of the layer's art layers it gives (a bit for each Drawing::Sheet; all of them to begin with) -
+    // Harmony's Line Art, Colour Art, Underlay and Overlay nodes.  (A note: `name` is what it says.)
+    int sheets = 0xf;
     Effect effect;              // an effect node: what it does (its input 0 the picture; input 1 the matte, for those that take one)
     // An effect node's amount, keyframed: so much on these frames, straight from one to the next (none: `effect.amount`).
     QMap<int, double> amountKeys;

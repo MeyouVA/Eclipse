@@ -417,7 +417,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     {
         QJsonObject const g = json["graph"].toObject();
         static QStringList const kinds{QStringLiteral("layer"), QStringLiteral("composite"), QStringLiteral("effect"), QStringLiteral("group"),
-                                       QStringLiteral("groupIn"), QStringLiteral("groupOut"), QStringLiteral("display")};
+                                       QStringLiteral("groupIn"), QStringLiteral("groupOut"), QStringLiteral("display"), QStringLiteral("note")};
         for (QJsonValue const& nv : g["nodes"].toArray()) {
             QJsonObject const no = nv.toObject();
             GraphNode n;
@@ -428,6 +428,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             n.id = no["id"].toInt();
             n.name = no["name"].toString();
             n.layer = no["layer"].toInt(0);
+            n.sheets = no["sheets"].toInt(0xf) & 0xf;
             n.ports = std::max(0, no["ports"].toInt(1));
             n.outPorts = std::max(0, no["outPorts"].toInt(1));
             n.group = no["group"].toInt(0);

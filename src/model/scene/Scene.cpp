@@ -280,6 +280,7 @@ int GraphNode::inputs() const
     switch (kind) {
     case LayerNode:
     case GroupIn:
+    case Note:
         return 0;
     case EffectNode:
         return takesMatte(effect.type) ? 2 : 1;
@@ -298,6 +299,7 @@ int GraphNode::outputs() const
     switch (kind) {
     case GroupOut:
     case Display:
+    case Note:
         return 0;
     case Group:
     case GroupIn:

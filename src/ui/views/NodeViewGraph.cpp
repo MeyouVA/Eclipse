@@ -66,8 +66,20 @@ QString NodeView::graphNodeName(GraphNode const& node) const
     switch (node.kind) {
     case GraphNode::LayerNode: {
         int const l = scene.layerIndex(node.layer);
-        return l >= 0 ? scene.layers[l].name : tr("(layer gone)");
+        QString name = l >= 0 ? scene.layers[l].name : tr("(layer gone)");
+        if ((node.sheets & 0xf) != 0xf) {
+            // (Only some of its art layers.)
+            QStringList parts;
+            QString const names[4] = {tr("Underlay"), tr("Colour Art"), tr("Line Art"), tr("Overlay")};
+            for (int sheet = 0; sheet < 4; ++sheet)
+                if (node.sheets & (1 << sheet))
+                    parts << names[sheet];
+            name += QStringLiteral(" (") + (parts.isEmpty() ? tr("nothing") : parts.join(QStringLiteral(", "))) + QLatin1Char(')');
+        }
+        return name;
     }
+    case GraphNode::Note:
+        return node.name.isEmpty() ? tr("Note") : node.name;
     case GraphNode::EffectNode:
         return node.name.isEmpty() ? Effects::name(node.effect, scene).section(QStringLiteral("  "), 0, 0) : node.name;
     case GraphNode::Composite:
@@ -611,6 +623,16 @@ void NodeView::paintGraphMode(QPainter& p)
         if (n.group != m_graphGroup)
             continue;
         QRectF const r = graphNodeRect(n.id).translated(shift(n.id));
+        if (n.kind == GraphNode::Note) {
+            // A note: what it says, on a pale card.
+            QRectF const card(r.topLeft(), QSizeF(std::max(r.width(), 180.0 * m_zoom), std::max(r.height(), 60.0 * m_zoom)));
+            p.setPen(QPen(n.id == m_graphNode || m_graphPicked.contains(n.id) ? QColor(255, 255, 255) : QColor(120, 110, 60), 1.2));
+            p.setBrush(QColor(240, 225, 140));
+            p.drawRect(card);
+            p.setPen(QColor(40, 36, 20));
+            p.drawText(card.adjusted(6 * m_zoom, 4 * m_zoom, -6 * m_zoom, -4 * m_zoom), Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, graphNodeName(n));
+            continue;
+        }
         QColor const color = n.kind == GraphNode::LayerNode ? QColor(72, 92, 128) : n.kind == GraphNode::Composite ? QColor(96, 76, 128)
                              : n.kind == GraphNode::EffectNode ? QColor(128, 70, 110) : n.kind == GraphNode::Display ? QColor(70, 72, 78)
                                                                                                     : QColor(40, 118, 122);
@@ -892,6 +914,14 @@ void NodeView::graphDoubleClick(QMouseEvent* event)
             else
                 emit renameRequested(l);
         }
+    } else if (n->kind == GraphNode::Note) {
+        bool ok = false;
+        QString const text = QInputDialog::getMultiLineText(this, tr("Note"), tr("What it says:"), n->name, &ok);
+        if (ok) {
+            NodeGraph g = m_document->scene().graph;
+            g.nodes[g.nodeIndex(hit)].name = text;
+            m_document->setGraph(g, tr("Edit Note"));
+        }
     } else if (n->kind == GraphNode::Composite || n->kind == GraphNode::Display) {
         bool ok = false;
         QString const name = QInputDialog::getText(this, tr("Rename Node"), tr("Name:"), QLineEdit::Normal, graphNodeName(*n), &ok);
@@ -922,6 +952,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
     };
     adder(tr("Composite"), GraphNode::Composite);
     adder(tr("Group"), GraphNode::Group);
+    adder(tr("Note"), GraphNode::Note);
     if (m_graphGroup == 0)
         adder(tr("Display"), GraphNode::Display);
     QMenu* const effects = add->addMenu(tr("Effect"));
@@ -964,6 +995,24 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
         }
         if (n->kind == GraphNode::EffectNode)
             connect(menu.addAction(tr("Edit Effect...")), &QAction::triggered, this, [this, hit] { editGraphNode(hit); });
+        if (n->kind == GraphNode::LayerNode && !pictureless(*n)) {
+            // Which of the layer's art layers the node gives (Harmony's Line Art, Colour Art, Underlay and Overlay nodes).
+            QMenu* const arts = menu.addMenu(tr("Art Layers"));
+            QString const names[4] = {tr("Underlay"), tr("Colour Art"), tr("Line Art"), tr("Overlay")};
+            for (int sheet = Drawing::SheetCount - 1; sheet >= 0; --sheet) {
+                QAction* const a = arts->addAction(names[sheet]);
+                a->setCheckable(true);
+                a->setChecked(n->sheets & (1 << sheet));
+                connect(a, &QAction::toggled, this, [this, hit, sheet](bool on) {
+                    NodeGraph g = m_document->scene().graph;
+                    int const i = g.nodeIndex(hit);
+                    if (i < 0)
+                        return;
+                    g.nodes[i].sheets = on ? (g.nodes[i].sheets | (1 << sheet)) : (g.nodes[i].sheets & ~(1 << sheet));
+                    m_document->setGraph(g, tr("Art Layers of Node"));
+                });
+            }
+        }
         if (n->kind != GraphNode::GroupIn && n->kind != GraphNode::GroupOut)
             connect(menu.addAction(tr("Delete Node")), &QAction::triggered, this, [this] { deleteGraphSelection(); });
     }

@@ -675,13 +675,15 @@ QJsonObject Scene::toJson(QString const& folder) const
     if (!images.isEmpty())
         whole["images"] = images;
     if (!graph.isEmpty()) {
-        static char const* const kinds[GraphNode::KindCount] = {"layer", "composite", "effect", "group", "groupIn", "groupOut", "display"};
+        static char const* const kinds[GraphNode::KindCount] = {"layer", "composite", "effect", "group", "groupIn", "groupOut", "display", "note"};
         QJsonArray nodes, cables;
         for (GraphNode const& n : graph.nodes) {
             QJsonObject node{{"id", n.id}, {"kind", kinds[n.kind]}, {"name", n.name}, {"ports", n.ports}, {"outPorts", n.outPorts},
                              {"group", n.group}, {"at", QJsonArray{n.at.x(), n.at.y()}}};
             if (n.kind == GraphNode::LayerNode)
                 node["layer"] = n.layer;
+            if (n.kind == GraphNode::LayerNode && n.sheets != 0xf)
+                node["sheets"] = n.sheets;
             if (n.kind == GraphNode::EffectNode) {
                 node["effect"] = effectToJson(n.effect);
                 if (!n.amountKeys.isEmpty()) {
