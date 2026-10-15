@@ -97,8 +97,26 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         angles->addWidget(m_ikMin, 1);
         angles->addWidget(new QLabel(tr("and"), m_ikRow));
         angles->addWidget(m_ikMax, 1);
+        m_ikNail = new QCheckBox(tr("Nail"), m_ikRow);
+        m_ikNail->setObjectName(QStringLiteral("IkNail"));
+        m_ikNail->setToolTip(tr("IK Nail: this bone and those it hangs on stay where they are; the IK tool turns only the bones below it."));
+        m_ikHold = new QCheckBox(tr("Hold orientation"), m_ikRow);
+        m_ikHold->setObjectName(QStringLiteral("IkHold"));
+        m_ikHold->setToolTip(tr("However the bones above it turn with the IK tool, this bone keeps the angle it has on screen - a hand that stays level."));
+        QHBoxLayout* const constraints = new QHBoxLayout;
+        constraints->addWidget(m_ikNail);
+        constraints->addWidget(m_ikHold);
         column->addWidget(m_ikExcluded);
+        column->addLayout(constraints);
         column->addLayout(angles);
+        connect(m_ikNail, &QCheckBox::toggled, this, [this](bool on) {
+            if (!m_refreshing)
+                m_document->editLayers({m_layer}, on ? tr("Set IK Nail") : tr("Remove IK Nail"), [on](Layer& l) { l.ikNail = on; });
+        });
+        connect(m_ikHold, &QCheckBox::toggled, this, [this](bool on) {
+            if (!m_refreshing)
+                m_document->editLayers({m_layer}, on ? tr("Set IK Hold Orientation") : tr("Remove IK Hold Orientation"), [on](Layer& l) { l.ikHoldAngle = on; });
+        });
         auto changed = [this] {
             if (!m_refreshing)
                 m_document->setIkConstraints(m_layer, m_ikExcluded->isChecked(), m_ikLimited->isChecked(), m_ikMin->value(), m_ikMax->value());
@@ -412,6 +430,8 @@ void LayerPanel::refresh()
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
         m_artShown[sheet]->setChecked(layer.sheetShown(sheet));
     m_ikExcluded->setChecked(layer.ikExcluded);
+    m_ikNail->setChecked(layer.ikNail);
+    m_ikHold->setChecked(layer.ikHoldAngle);
     m_ikLimited->setChecked(layer.ikLimited);
     m_ikMin->setValue(layer.ikMin);
     m_ikMax->setValue(layer.ikMax);

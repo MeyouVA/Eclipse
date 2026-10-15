@@ -1149,6 +1149,7 @@ private:
 
     // bones: the joint being dragged (rigging tool) or the bone being turned (transform tool)
     int m_bone = -1;
+    QVector<QPair<int, double>> m_ikHeld;   // IK: the bones holding their orientation, and the angle on screen each keeps
     // deformers: the point or handle being dragged (its place in Layer::warp)
     int m_warpIndex = -1;
     RigMode m_rigMode = RigBones;

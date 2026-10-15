@@ -455,6 +455,10 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["hiddenSheets"] = layer.hiddenSheets;
         if (layer.ikExcluded)
             layerObject["ikExcluded"] = true;
+        if (layer.ikNail)
+            layerObject["ikNail"] = true;
+        if (layer.ikHoldAngle)
+            layerObject["ikHoldAngle"] = true;
         if (layer.ikLimited)
             layerObject["ikLimits"] = QJsonArray{layer.ikMin, layer.ikMax};
         layerArray.append(layerObject);

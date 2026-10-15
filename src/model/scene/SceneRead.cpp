@@ -339,6 +339,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         }
         layer.bitmapResolution = std::clamp(lo["bitmapResolution"].toInt(100), 25, 400);
         layer.ikExcluded = lo["ikExcluded"].toBool(false);
+        layer.ikNail = lo["ikNail"].toBool(false);
+        layer.ikHoldAngle = lo["ikHoldAngle"].toBool(false);
         if (QJsonArray const limits = lo["ikLimits"].toArray(); limits.size() == 2) {
             layer.ikLimited = true;
             layer.ikMin = std::min(limits[0].toDouble(), limits[1].toDouble());

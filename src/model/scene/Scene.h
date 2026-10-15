@@ -621,6 +621,10 @@ struct Layer {
     // only between two angles (degrees, as its rotation is told).
     bool ikExcluded = false;
     bool ikLimited = false;
+    // IK constraints, as Harmony's: nailed (it and the bones it hangs on stay where they are: the IK tool turns only the
+    // bones below it), and holding its orientation (however the bones above it turn, it keeps the angle it had on screen).
+    bool ikNail = false;
+    bool ikHoldAngle = false;
     double ikMin = -90.0;
     double ikMax = 90.0;
     // A camera: the angle it sees from the top of the frame to the bottom (degrees).  It

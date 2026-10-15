@@ -75,6 +75,8 @@ private:
     QPushButton* m_drivers = nullptr;       // Attribute Controls...
     QCheckBox* m_artShown[4] = {nullptr, nullptr, nullptr, nullptr};
     QCheckBox* m_ikExcluded = nullptr;
+    QCheckBox* m_ikNail = nullptr;          // IK Nail
+    QCheckBox* m_ikHold = nullptr;          // IK Hold Orientation
     QCheckBox* m_ikLimited = nullptr;
     QDoubleSpinBox* m_ikMin = nullptr;
     QDoubleSpinBox* m_ikMax = nullptr;
