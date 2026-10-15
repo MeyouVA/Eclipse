@@ -209,6 +209,8 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::FieldChart;
     else if (type == QLatin1String("colourCurves"))
         e.type = Effect::ColourCurves;
+    else if (type == QLatin1String("focus"))
+        e.type = Effect::Focus;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);
@@ -233,7 +235,7 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.bounce = std::clamp(eo["bounce"].toDouble(0.5), 0.0, 1.0);
         e.walls = std::max(0.0, eo["walls"].toDouble(0.0));
     }
-    if (e.type == Effect::DirectionalBlur)
+    if (e.type == Effect::DirectionalBlur || e.type == Effect::Focus)
         e.direction = eo["direction"].toDouble(0.0);
     if (e.type == Effect::Ripple)
         e.direction = std::max(2.0, eo["direction"].toDouble(60.0));

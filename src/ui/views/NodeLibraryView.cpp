@@ -97,6 +97,7 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Variable Blur"), "effect:31", QT_TR_NOOP("Blurs the layer as much as the drawing of a matte layer is light"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Motion Blur"), "effect:32", QT_TR_NOOP("A fading trail of the layer as it was on the frames before"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Colour Curves"), "effect:34", QT_TR_NOOP("Each colour level changed along a curve: for all three colours, or red, green and blue alone"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Focus"), "effect:35", QT_TR_NOOP("Depth of field: the layer blurred the further it stands from the depth in focus"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Field Chart"), "effect:33", QT_TR_NOOP("A 12-field chart of the camera frame over the layer"), QT_TR_NOOP("Generator")},
     };
     auto heading = [this](QString const& text) {

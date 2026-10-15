@@ -840,6 +840,9 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         double const amount = layer.effectAmount(i, pose);
         if (e.type == Effect::Blur) {
             Effects::blur(image, amount * pixelsPerUnit);
+        } else if (e.type == Effect::Focus) {
+            // Out of focus as far as the layer stands from the depth that is sharp.
+            Effects::blur(image, amount * std::abs(scene.depthOf(l, frame) - e.direction) / 100.0 * pixelsPerUnit);
         } else if (e.type == Effect::Tint) {
             Effects::tint(image, e.color, amount);
         } else if (e.type == Effect::Transparency) {
@@ -1346,7 +1349,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
             double const amount = n->amountAt(frame);
             if (!e.enabled) {
                 // (Turned off: the picture goes through as it is.)
-            } else if (e.type == Effect::Blur) {
+            } else if (e.type == Effect::Blur || e.type == Effect::Focus) {
                 Effects::blur(out, amount * pixelsPerUnit);
             } else if (e.type == Effect::Tint) {
                 Effects::tint(out, e.color, amount);

@@ -747,6 +747,8 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Field Chart");
     case Effect::ColourCurves:
         return QObject::tr("Colour Curves");
+    case Effect::Focus:
+        return QObject::tr("Focus  %1 at %2").arg(effect.amount, 0, 'f', 1).arg(effect.direction, 0, 'f', 0);
     case Effect::Blending:
         return QObject::tr("Blending");
     case Effect::VariableBlur: {
@@ -1153,6 +1155,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Motion Blur")), &QAction::triggered, this, [this] { add(Effect::MotionBlur); });
     connect(menu->addAction(tr("Field Chart")), &QAction::triggered, this, [this] { add(Effect::FieldChart); });
     connect(menu->addAction(tr("Colour Curves")), &QAction::triggered, this, [this] { add(Effect::ColourCurves); });
+    connect(menu->addAction(tr("Focus")), &QAction::triggered, this, [this] { add(Effect::Focus); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -1600,14 +1603,16 @@ void EffectsPanel::showEditors()
         bool const hs = valid && e.type == Effect::HueSaturation, bc = valid && e.type == Effect::BrightnessContrast;
         bool const swirls = valid && e.type == Effect::Turbulence, generator = valid && e.type == Effect::MatteGenerator;
         bool const waves = (valid && e.type == Effect::Ripple) || swirls;
-        bool const along = (valid && (e.type == Effect::DirectionalBlur || e.type == Effect::Gradient)) || waves || generator;
+        bool const focusing = valid && e.type == Effect::Focus;
+        bool const along = (valid && (e.type == Effect::DirectionalBlur || e.type == Effect::Gradient)) || waves || generator || focusing;
         m_adjust->setVisible(hs || bc || along);
         // The last box: the way a Directional Blur smears, or how far apart a Ripple's waves are.
         if (QLabel* const label = qobject_cast<QLabel*>(m_adjustForm->labelForField(m_adjustBox[5])))
-            label->setText(generator ? tr("Inner Radius") : swirls ? tr("Swirl Size") : waves ? tr("Wave Length") : tr("Direction"));
-        m_adjustBox[5]->setRange(generator ? 0.0 : waves ? 2.0 : -360.0, waves || generator ? 2000.0 : 360.0);
-        m_adjustBox[5]->setSingleStep(waves || generator ? 10.0 : 15.0);
-        m_adjustBox[5]->setToolTip(generator ? tr("How far out from the drawing the matte stays solid, in scene units.")
+            label->setText(focusing ? tr("In Focus At") : generator ? tr("Inner Radius") : swirls ? tr("Swirl Size") : waves ? tr("Wave Length") : tr("Direction"));
+        m_adjustBox[5]->setRange(focusing ? -10000.0 : generator ? 0.0 : waves ? 2.0 : -360.0, focusing ? 10000.0 : waves || generator ? 2000.0 : 360.0);
+        m_adjustBox[5]->setSingleStep(focusing ? 10.0 : waves || generator ? 10.0 : 15.0);
+        m_adjustBox[5]->setToolTip(focusing ? tr("The depth that is sharp (towards the camera, in scene units): the further a layer stands from it, the more blurred.")
+                                   : generator ? tr("How far out from the drawing the matte stays solid, in scene units.")
                                    : waves   ? tr("How far apart the waves are, in scene units.")
                                              : tr("Which way the picture is smeared (degrees: 0 across, 90 up and down)."));
         bool const shownFor[6] = {hs, hs, hs, bc, bc, along};
@@ -1672,7 +1677,8 @@ void EffectsPanel::showEditors()
         m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : e.type == Effect::MatteBlur ? tr("Radius") : shading ? tr("Softness")
                                : resizing ? tr("By") : e.type == Effect::Pixelate ? tr("Block Size")
                                : e.type == Effect::Turbulence ? tr("Strength") : e.type == Effect::MatteGenerator ? tr("Outer Radius")
-                               : e.type == Effect::MotionBlur ? tr("Frames") : e.type == Effect::FieldChart ? tr("Line Width") : tr("Radius"));
+                               : e.type == Effect::MotionBlur ? tr("Frames") : e.type == Effect::FieldChart ? tr("Line Width")
+                               : e.type == Effect::Focus ? tr("Blur per 100") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());

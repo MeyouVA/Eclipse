@@ -456,7 +456,7 @@ struct Swatch {
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
-                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, TypeCount };
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -487,7 +487,8 @@ struct Effect {
     // where it is darker, not at all where it is not.  Motion Blur (a layer's): the layer as it was on the `amount` frames
     // before, fainter and fainter, trailing behind it.  Field Chart: a 12-field chart of the camera frame drawn over the
     // picture in `color`, its lines `amount` thick.  Colour Curves: each colour level changed as `curves` say, `amount` of
-    // the way (0..1).
+    // the way (0..1).  Focus: a layer the further from the depth in focus (`direction`, in scene units towards the camera)
+    // the more blurred - `amount` scene units for every 100 it stands off it; as a node of the graph, blurred `amount`.
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;
