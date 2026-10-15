@@ -844,6 +844,7 @@ private:
     void updateShape(QPointF p, Qt::KeyboardModifiers modifiers);
     void contourDown(QPointF p, Qt::KeyboardModifiers modifiers);
     void paintContourAids(QPainter& painter);
+    void paintMarquee(QPainter& painter);
     bool contourValid() const;
     void paintTransformAids(QPainter& painter);
     void penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);

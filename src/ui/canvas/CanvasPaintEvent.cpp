@@ -573,6 +573,7 @@ void Canvas::paintEvent(QPaintEvent*)
     }
     if (m_tool == ContourEditor && !m_playing) {
         paintContourAids(painter);
+        paintMarquee(painter);      // (the box dragged round points of the curve)
         return;
     }
     if (m_tool == IK && !m_playing && m_layer >= 0 && m_layer < scene.layers.size()) {
@@ -681,16 +682,25 @@ void Canvas::paintEvent(QPaintEvent*)
             painter.drawEllipse(knob, 5, 5);
         }
     }
-    if (m_drag == DragMarquee || m_drag == DragPaint || m_drag == DragPointMarquee) {
-        painter.setTransform(layerView);
-        QPen pen(accent);
-        pen.setCosmetic(true);
-        pen.setStyle(Qt::DashLine);
-        painter.setPen(pen);
-        painter.setBrush(QColor(accent.red(), accent.green(), accent.blue(), 40));
-        if (m_dragLasso && m_drag != DragPointMarquee)
-            painter.drawPolygon(m_lassoPath);
-        else
-            painter.drawRect(QRectF(m_dragStart, m_dragNow).normalized());
-    }
+    paintMarquee(painter);
+}
+
+void Canvas::paintMarquee(QPainter& painter)
+{
+    // The box (or lasso) being dragged round what is to be picked.
+    if (m_drag != DragMarquee && m_drag != DragPaint && m_drag != DragPointMarquee)
+        return;
+    QColor const accent(64, 156, 255);
+    painter.save();
+    painter.setTransform(layerViewTransform());
+    QPen pen(accent);
+    pen.setCosmetic(true);
+    pen.setStyle(Qt::DashLine);
+    painter.setPen(pen);
+    painter.setBrush(QColor(accent.red(), accent.green(), accent.blue(), 40));
+    if (m_dragLasso && m_drag != DragPointMarquee)
+        painter.drawPolygon(m_lassoPath);
+    else
+        painter.drawRect(QRectF(m_dragStart, m_dragNow).normalized());
+    painter.restore();
 }
