@@ -302,6 +302,8 @@ void MainWindow::applyPreferences()
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
     m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
+    m_canvas->setIkIterations(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
+    m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
     {
         int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
@@ -713,6 +715,19 @@ void MainWindow::onActionPreferences()
     closeGap->setToolTip(tr("The gaps the paint bucket closes by itself, as Eclipse starts (0: none)."));
     closeGap->setValue(s.value(QStringLiteral("prefs/closeGap"), 2.0).toDouble());
     drawingLayout->addRow(tr("Auto gap closing on startup"), closeGap);
+    QSpinBox* const ikIterations = new QSpinBox(drawing);
+    ikIterations->setObjectName(QStringLiteral("PrefIkIterations"));
+    ikIterations->setRange(1, 500);
+    ikIterations->setToolTip(tr("The IK tool: how many times at most it goes round the chain of bones, turning each to bring the tip nearer."));
+    ikIterations->setValue(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
+    drawingLayout->addRow(tr("IK: most iterations"), ikIterations);
+    QDoubleSpinBox* const ikError = new QDoubleSpinBox(drawing);
+    ikError->setObjectName(QStringLiteral("PrefIkError"));
+    ikError->setRange(0.001, 50.0);
+    ikError->setDecimals(3);
+    ikError->setToolTip(tr("The IK tool: how near the pointer the tip must come for it to stop (scene units)."));
+    ikError->setValue(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
+    drawingLayout->addRow(tr("IK: near enough"), ikError);
     QSpinBox* const thumbnails = new QSpinBox(drawing);
     thumbnails->setObjectName(QStringLiteral("PrefThumbnailSize"));
     thumbnails->setRange(50, 200);
@@ -829,6 +844,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionOver"), onionOver->isChecked());
     s.setValue(QStringLiteral("prefs/selectLasso"), selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/closeGap"), closeGap->value());
+    s.setValue(QStringLiteral("prefs/ikIterations"), ikIterations->value());
+    s.setValue(QStringLiteral("prefs/ikError"), ikError->value());
     s.setValue(QStringLiteral("prefs/xsheetCentre"), xsheetCentre->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetHold"), xsheetHold->value());
     s.setValue(QStringLiteral("prefs/focusOnEnter"), focusOnEnter->isChecked());

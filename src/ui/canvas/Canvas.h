@@ -298,6 +298,12 @@ public:
     // proportion grid has each way; how much of the frame, at each edge, lies outside the safe area.
     double nudgeStep() const { return m_nudgeStep; }
     void setNudgeStep(double pixels) { m_nudgeStep = pixels; }
+    // From Preferences: how many times round the chain the IK tool goes at most, and how near the pointer the tip must come
+    // for it to stop (scene units).
+    int ikIterations() const { return m_ikIterations; }
+    void setIkIterations(int rounds) { m_ikIterations = std::clamp(rounds, 1, 500); }
+    double ikError() const { return m_ikError; }
+    void setIkError(double units) { m_ikError = std::clamp(units, 0.001, 50.0); }
     int proportionAcross() const { return m_propAcross; }
     int proportionDown() const { return m_propDown; }
     void setProportionParts(int across, int down)
@@ -1154,6 +1160,8 @@ public:
     QPointF envelopeHandleInView(bool after) const;
 private:
     double m_nudgeStep = 1.0;
+    int m_ikIterations = 24;
+    double m_ikError = 0.2;
     int m_propAcross = 3;
     int m_propDown = 3;
     double m_safeMargin = 0.1;

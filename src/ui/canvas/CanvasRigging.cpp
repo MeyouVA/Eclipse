@@ -713,7 +713,7 @@ void Canvas::boneIkMove(QPointF widgetPos)
         Layer const& bone = posed.layers[grabbed];
         return posed.worldTransform(grabbed, m_frame).map(bone.pivot + QPointF(bone.boneLength, 0.0));
     };
-    for (int round = 0; round < 24 && QLineF(tip(), target).length() > 0.2; ++round) {
+    for (int round = 0; round < m_ikIterations && QLineF(tip(), target).length() > m_ikError; ++round) {
         for (int l : std::as_const(m_ikChain)) {
             Layer& bone = posed.layers[l];
             if (bone.ikExcluded || bone.ikHoldAngle)
