@@ -329,6 +329,8 @@ public slots:
     void onActionSubstituteSameSet(QString const& direction);
     void onActionSubstituteLayer(QString const& direction);
     void onActionSetDrawingLayer();
+    // Skins: a drawing layer applied to the whole scene or the layers selected, on all frames or those of a scene marker.
+    void onActionSkins();
     // Lock Timeline Ruler (on or off; kept with the preferences).
     void onActionLockTimelineRuler();
     void onActionTimelineShowKind(QString const& which);

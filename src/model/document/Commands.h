@@ -140,6 +140,9 @@ public:
     // The drawing on that frame put in a drawing layer (empty: none).  False when that drawing layer has a drawing of its
     // name already.
     bool setDrawingSet(int layer, int frame, QString const& set);
+    // A skin (Harmony's Skinning): on the frames from `first` to `last` of those layers, every drawing is swapped for the
+    // drawing of its name in that drawing layer, where it has one.  One step to undo; how many frames changed.
+    int applySkin(QVector<int> const& layers, QString const& set, int first, int last);
     // Puts `layer` just in front of (or with `behind`, just behind) layer `target`.
     // Returns where it ended up.
     int moveLayerBeside(int layer, int target, bool behind);

@@ -301,6 +301,45 @@ bool Document::stepDrawingSet(int layer, int frame, int direction)
     return false;
 }
 
+int Document::applySkin(QVector<int> const& layers, QString const& set, int first, int last)
+{
+    // Worked out first, so that a skin that changes nothing leaves nothing to undo.
+    QVector<QPair<int, QVector<int>>> changes;
+    int changed = 0;
+    for (int l : layers) {
+        if (l < 0 || l >= m_scene.layers.size() || !m_scene.layers[l].holdsDrawings())
+            continue;
+        Layer const& layer = m_scene.layers[l];
+        QVector<int> cells = layer.cells;
+        for (int f = std::max(0, first); f <= std::min(last, int(cells.size()) - 1); ++f) {
+            if (cells[f] == Layer::kNoDrawing || layer.drawings[cells[f]].set == set)
+                continue;
+            int const match = layer.drawingInSet(set, layer.drawingLabel(cells[f]));
+            if (match != Layer::kNoDrawing) {
+                cells[f] = match;
+                ++changed;
+            }
+        }
+        if (cells != layer.cells)
+            changes.push_back({l, cells});
+    }
+    if (changes.isEmpty())
+        return 0;
+    apply(tr("Apply Skin"), [&](Scene& s) {
+        for (auto const& change : changes) {
+            Layer& layer = s.layers[change.first];
+            for (int f = 0; f < change.second.size(); ++f)
+                if (change.second[f] != layer.cells[f] && change.second[f] != Layer::kNoDrawing) {
+                    layer.drawings[change.second[f]].pinned = true;
+                    if (layer.cells[f] != Layer::kNoDrawing)
+                        layer.drawings[layer.cells[f]].pinned = true;
+                }
+            layer.cells = change.second;
+        }
+    });
+    return changed;
+}
+
 bool Document::setDrawingSet(int layer, int frame, QString const& set)
 {
     if (!validCell(m_scene, layer, frame))

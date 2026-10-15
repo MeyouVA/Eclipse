@@ -379,6 +379,7 @@
    <item id="SubstituteSameSetNext" icon="anim/substitutenext" text="Substitute Drawing Next [Same Layer]" responder="window" slot="onActionSubstituteSameSet(QString)" itemParameter="1"/>
    <item id="SubstituteLayerPrevious" icon="anim/substituteprev" text="Substitute Layer Previous" responder="window" slot="onActionSubstituteLayer(QString)" itemParameter="-1"/>
    <item id="SubstituteLayerNext" icon="anim/substitutenext" text="Substitute Layer Next" responder="window" slot="onActionSubstituteLayer(QString)" itemParameter="1"/>
+   <item id="Skins" icon="anim/substitutenext" text="S&amp;kins..." responder="window" slot="onActionSkins()"/>
    <item id="GotoPrevKeyframe" icon="timeline/prevkey" text="Go to &amp;Previous Keyframe" shortcut="shortcut.prevKeyframe" responder="window" slot="onActionGotoPreviousKeyframe()"/>
    <item id="GotoNextKeyframe" icon="timeline/nextkey" text="Go to &amp;Next Keyframe" shortcut="shortcut.nextKeyframe" responder="window" slot="onActionGotoNextKeyframe()"/>
    <separator/>

@@ -4,6 +4,9 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QComboBox>
+#include <QLabel>
+#include <QPushButton>
 #include "ui/window/MainWindow.h"
 
 #include <QDockWidget>
@@ -149,6 +152,66 @@ void MainWindow::onActionSetDrawingLayer()
         return;
     if (!m_document->setDrawingSet(layer(), frame(), set) && set.trimmed() != l.drawings[shown].set)
         statusBar()->showMessage(tr("The drawing layer %1 has a drawing called %2 already.").arg(set.trimmed(), l.drawingLabel(shown)), 6000);
+}
+
+void MainWindow::onActionSkins()
+{
+    Scene const& scene = m_document->scene();
+    QStringList skins;
+    for (Layer const& l : scene.layers)
+        if (l.holdsDrawings())
+            for (QString const& set : l.drawingSets())
+                if (!set.isEmpty() && !skins.contains(set))
+                    skins << set;
+    if (skins.isEmpty()) {
+        statusBar()->showMessage(tr("No drawing is in a drawing layer yet: put drawings in drawing layers (Drawing > Drawing Layer) - each is a skin."), 7000);
+        return;
+    }
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("SkinsDialog"));
+    dialog.setWindowTitle(tr("Skins"));
+    QComboBox* const skin = new QComboBox(&dialog);
+    skin->setObjectName(QStringLiteral("SkinName"));
+    skin->addItems(skins);
+    QComboBox* const which = new QComboBox(&dialog);
+    which->setObjectName(QStringLiteral("SkinLayers"));
+    which->addItems({tr("The whole scene"), tr("The layers selected")});
+    QComboBox* const when = new QComboBox(&dialog);
+    when->setObjectName(QStringLiteral("SkinFrames"));
+    when->addItem(tr("All frames"));
+    int const marker = scene.markerAt(frame());
+    if (marker >= 0)
+        when->addItem(tr("The frames of the marker %1").arg(scene.markers[marker].name));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    form->addRow(new QLabel(tr("Each drawing is swapped for the drawing of its name in the skin's drawing layer, where there is one."), &dialog));
+    form->addRow(tr("Skin"), skin);
+    form->addRow(tr("On"), which);
+    form->addRow(tr("Over"), when);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Apply"));
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    QVector<int> layers;
+    if (which->currentIndex() == 1) {
+        layers = m_timeline->selectedLayers();
+        if (layers.isEmpty())
+            layers = {layer()};
+    } else {
+        for (int l = 0; l < scene.layers.size(); ++l)
+            layers.push_back(l);
+    }
+    int first = 0, last = scene.frameCount() - 1;
+    if (when->currentIndex() == 1 && marker >= 0) {
+        first = scene.markers[marker].frame;
+        last = first + std::max(1, scene.markers[marker].length) - 1;
+    }
+    int const changed = m_document->applySkin(layers, skin->currentText(), first, last);
+    statusBar()->showMessage(changed > 0 ? tr("The skin %1: %n frame(s) changed.", nullptr, changed).arg(skin->currentText())
+                                         : tr("Nothing to change: no drawing there has one of its name in %1.").arg(skin->currentText()),
+                             6000);
 }
 
 void MainWindow::onActionSelectParent()
