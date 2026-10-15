@@ -18,6 +18,12 @@ class ECLIPSE_UI_API Xsheet : public QAbstractScrollArea {
 public:
     // Preferences: how wide a column is (pixels).
     void setColumnWidth(int pixels);
+    // Preferences: the current frame kept in the middle of the sheet; and how many frames a drawing typed into a cell fills
+    // before the next cell down is typed in.
+    void setCentreOnFrame(bool on) { m_centreOnFrame = on; }
+    bool centreOnFrame() const { return m_centreOnFrame; }
+    void setDefaultHold(int frames) { m_defaultHold = std::clamp(frames, 1, 100); }
+    int defaultHold() const { return m_defaultHold; }
     int columnWidth() const { return m_columnWidth; }
     explicit Xsheet(Document* document, QWidget* parent = nullptr);
 
@@ -75,6 +81,8 @@ private:
     static constexpr int kHeaderHeight = 26;
     static constexpr int kColumnWidth = 78;
     int m_columnWidth = kColumnWidth;
+    bool m_centreOnFrame = false;
+    int m_defaultHold = 1;
     static constexpr int kRowHeight = 18;
 
     Document* m_document;

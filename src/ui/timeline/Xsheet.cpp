@@ -46,7 +46,9 @@ void Xsheet::setCurrentCell(int layer, int frame)
     int const y = frame * kRowHeight;
     int const viewHeight = viewport()->height() - kHeaderHeight;
     QScrollBar* const v = verticalScrollBar();
-    if (y < v->value())
+    if (m_centreOnFrame)
+        v->setValue(y + kRowHeight / 2 - viewHeight / 2);
+    else if (y < v->value())
         v->setValue(y);
     else if (y + kRowHeight > v->value() + viewHeight)
         v->setValue(y + kRowHeight - viewHeight);
@@ -358,11 +360,18 @@ void Xsheet::endTyping(bool keep)
         return;
     }
     int const layer = m_layer, frame = m_frame;
-    m_document->exposeDrawing(layer, frame, typed);
+    // Held for as many frames as the preference says (as far as the scene goes).
+    int const hold = std::max(1, std::min(m_defaultHold, m_document->scene().frameCount() - frame));
+    if (hold > 1)
+        m_document->beginMacro(tr("Type Drawing"));
+    for (int k = 0; k < hold; ++k)
+        m_document->exposeDrawing(layer, frame + k, typed);
+    if (hold > 1)
+        m_document->endMacro();
     // On to the frame below, to type the next.
-    if (frame + 1 < m_document->scene().frameCount()) {
-        setCurrentCell(layer, frame + 1);
-        emit cellPicked(layer, frame + 1);
+    if (frame + hold < m_document->scene().frameCount()) {
+        setCurrentCell(layer, frame + hold);
+        emit cellPicked(layer, frame + hold);
         beginTyping();
     } else {
         setFocus();

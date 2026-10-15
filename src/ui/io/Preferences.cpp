@@ -313,6 +313,10 @@ void MainWindow::applyPreferences()
         function->graph()->setGridShown(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
     if (Xsheet* const xsheet = findChild<Xsheet*>())
         xsheet->setColumnWidth(s.value(QStringLiteral("prefs/xsheetColumnWidth"), 78).toInt());
+    if (Xsheet* const xsheet = findChild<Xsheet*>()) {
+        xsheet->setCentreOnFrame(s.value(QStringLiteral("prefs/xsheetCentre"), false).toBool());
+        xsheet->setDefaultHold(s.value(QStringLiteral("prefs/xsheetHold"), 1).toInt());
+    }
     // (These two set how things start: the toggles in the menus change them afterwards.)
     if (!m_preferencesApplied) {
         bool const loop = s.value(QStringLiteral("prefs/loop"), true).toBool();
@@ -463,6 +467,18 @@ void MainWindow::onActionPreferences()
     columnWidth->setSuffix(tr(" pixels"));
     columnWidth->setValue(std::clamp(s.value(QStringLiteral("prefs/xsheetColumnWidth"), 78).toInt(), 40, 240));
     sheetLayout->addRow(tr("Column width"), columnWidth);
+    QCheckBox* const xsheetCentre = new QCheckBox(tr("Centre on current frame"), sheet);
+    xsheetCentre->setObjectName(QStringLiteral("PrefXsheetCentre"));
+    xsheetCentre->setToolTip(tr("The Xsheet keeps the current frame in the middle of the sheet, scrolling as it moves."));
+    xsheetCentre->setChecked(s.value(QStringLiteral("prefs/xsheetCentre"), false).toBool());
+    sheetLayout->addRow(xsheetCentre);
+    QSpinBox* const xsheetHold = new QSpinBox(sheet);
+    xsheetHold->setObjectName(QStringLiteral("PrefXsheetHold"));
+    xsheetHold->setRange(1, 100);
+    xsheetHold->setSuffix(tr(" frames"));
+    xsheetHold->setToolTip(tr("A drawing typed into a cell of the Xsheet fills so many frames; the next is typed below them."));
+    xsheetHold->setValue(s.value(QStringLiteral("prefs/xsheetHold"), 1).toInt());
+    sheetLayout->addRow(tr("Default hold"), xsheetHold);
 
     QGroupBox* const advanced = new QGroupBox(tr("Advanced"), &dialog);
     QCheckBox* const moreArt = new QCheckBox(tr("Support Overlay and Underlay Arts"), advanced);
@@ -789,6 +805,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionBrightnessAlpha"), onionBrightness->isChecked());
     s.setValue(QStringLiteral("prefs/lineArtBitmap"), lineArtBitmap->isChecked());
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
+    s.setValue(QStringLiteral("prefs/xsheetCentre"), xsheetCentre->isChecked());
+    s.setValue(QStringLiteral("prefs/xsheetHold"), xsheetHold->value());
     s.setValue(QStringLiteral("prefs/focusOnEnter"), focusOnEnter->isChecked());
     s.setValue(QStringLiteral("prefs/modelScale"), modelScale->value());
     s.setValue(QStringLiteral("prefs/functionGrid"), functionGrid->isChecked());
