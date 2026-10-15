@@ -637,6 +637,7 @@
    <item id="TimelineViewAll" icon="timeline/viewall" text="Normal View Mode" checkable="true" checked="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="all"/>
    <item id="TimelineViewSelected" icon="timeline/viewselected" text="View Selection Only" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="selected"/>
    <item id="TimelineViewTagged" icon="timeline/viewtagged" text="View Tagged Layers" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="tagged"/>
+   <item id="TimelineViewControlled" icon="timeline/viewselected" text="View Controlled Layers" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="controlled"/>
   </menu>
   <menu id="TimelineShow" text="Show">
    <item id="TimelineShowDrawings" icon="timeline/viewall" text="Show &amp;Drawings" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="drawings"/>

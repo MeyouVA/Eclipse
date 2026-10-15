@@ -127,7 +127,11 @@ public:
     void createCycle(int times);
     // Which layers have a row: all of them; only those that were selected when this was asked
     // for; or only the tagged ones.  (The current layer always has its row.)
-    enum ViewMode { ShowAll, ShowSelected, ShowTagged };
+    // ShowControlled: the layers a controller moves - those of the Pose Controllers, and those that follow another layer
+    // (Attribute Controls) with the layers they follow (Harmony's Controlled view mode).
+    enum ViewMode { ShowAll, ShowSelected, ShowTagged, ShowControlled };
+    // Whether a layer is among those ShowControlled shows.
+    bool controlled(int layer) const;
     ViewMode viewMode() const { return m_viewMode; }
     void setViewMode(ViewMode mode);
     // Show: the kinds of layer (Layer::Kind) that have rows.  The current layer always has its row.

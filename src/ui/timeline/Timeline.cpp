@@ -28,6 +28,24 @@ Timeline::Timeline(Document* document, QWidget* parent) : QAbstractScrollArea(pa
     updateScrollBars();
 }
 
+bool Timeline::controlled(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size())
+        return false;
+    int const id = scene.layers[layer].id;
+    for (Scene::Controller const& c : scene.controllers)
+        if (c.layers.contains(id))
+            return true;
+    if (!scene.layers[layer].drivers.isEmpty())
+        return true;
+    for (Layer const& other : scene.layers)
+        for (Driver const& d : other.drivers)
+            if (d.source == id)
+                return true;
+    return false;
+}
+
 void Timeline::rebuildRows()
 {
     Scene const& scene = m_document->scene();
@@ -37,7 +55,8 @@ void Timeline::rebuildRows()
         if (scene.foldedAway(l))
             continue;
         // A view of some of the layers only (the current one is always among them).
-        if (l != m_layer && ((m_viewMode == ShowTagged && !scene.layers[l].tagged) || (m_viewMode == ShowSelected && !m_shownIds.contains(scene.layers[l].id))))
+        if (l != m_layer && ((m_viewMode == ShowTagged && !scene.layers[l].tagged) || (m_viewMode == ShowSelected && !m_shownIds.contains(scene.layers[l].id))
+                             || (m_viewMode == ShowControlled && !controlled(l))))
             continue;
         if (l != m_layer && m_hiddenKinds.contains(int(scene.layers[l].kind)))
             continue;       // a kind of layer that is not shown

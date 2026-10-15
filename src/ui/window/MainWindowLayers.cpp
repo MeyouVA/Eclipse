@@ -236,7 +236,8 @@ void MainWindow::onActionLockTimelineRuler()
 // `mode` is "all", "selected" or "tagged": which layers the Timeline shows.
 void MainWindow::onActionTimelineViewMode(QString const& mode)
 {
-    m_timeline->setViewMode(mode == QLatin1String("selected") ? Timeline::ShowSelected : mode == QLatin1String("tagged") ? Timeline::ShowTagged : Timeline::ShowAll);
+    m_timeline->setViewMode(mode == QLatin1String("selected") ? Timeline::ShowSelected : mode == QLatin1String("tagged") ? Timeline::ShowTagged
+                            : mode == QLatin1String("controlled") ? Timeline::ShowControlled : Timeline::ShowAll);
 }
 
 // Timeline > Show: a kind of layer gets its rows, or loses them (the layers are in the scene all the same).
