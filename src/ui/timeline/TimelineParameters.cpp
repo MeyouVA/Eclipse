@@ -137,7 +137,8 @@ QString Timeline::rowName(int layer, Parameter which) const
                                                           QT_TR_NOOP("Matte Generator"), QT_TR_NOOP("Black & White"), QT_TR_NOOP("Matte Resize"),
                                                           QT_TR_NOOP("Matte Blur"), QT_TR_NOOP("Gradient"), QT_TR_NOOP("Channel Selector"),
                                                           QT_TR_NOOP("Crop"), QT_TR_NOOP("Remove Transparency"), QT_TR_NOOP("Matte Composite"),
-                                                          QT_TR_NOOP("Blending"), QT_TR_NOOP("Variable Blur")};
+                                                          QT_TR_NOOP("Blending"), QT_TR_NOOP("Variable Blur"), QT_TR_NOOP("Motion Blur"),
+                                                          QT_TR_NOOP("Field Chart")};
     Effect const& effect = scene.layers[layer].effects[e];
     return tr("Effect: %1").arg(tr(kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)]));
 }

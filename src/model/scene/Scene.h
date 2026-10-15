@@ -456,7 +456,7 @@ struct Swatch {
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
-                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, TypeCount };
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -484,7 +484,9 @@ struct Effect {
     // Transparency: what is more opaque than `amount` (0..1) made wholly so, the rest taken away.  Matte Composite: the
     // picture made a white matte of itself.  Blending (a node of the node graph): its picture laid over the one at its second
     // input as `blendMode` says (a Layer::Blend).  Variable Blur: blurred `amount` scene units where the `matte` is white, less
-    // where it is darker, not at all where it is not.
+    // where it is darker, not at all where it is not.  Motion Blur (a layer's): the layer as it was on the `amount` frames
+    // before, fainter and fainter, trailing behind it.  Field Chart: a 12-field chart of the camera frame drawn over the
+    // picture in `color`, its lines `amount` thick.
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;

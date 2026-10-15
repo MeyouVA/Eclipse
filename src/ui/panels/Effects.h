@@ -80,6 +80,9 @@ void matteComposite(QImage& image);
 void blendOnto(QImage& under, QImage const& top, int mode);
 // Blurred `radius` where the matte is white, less where it is darker, not at all where there is none.
 void variableBlur(QImage& image, QImage const& matte, double radius);
+// A 12-field chart of a frame (where it lies in the image, in its pixels) drawn over the image: its edge, the field lines
+// either side of the middle, the cross and the diagonals.
+void fieldChart(QImage& image, QRectF const& frame, QColor const& colour, double width);
 
 }
 

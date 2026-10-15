@@ -203,6 +203,10 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::Blending;
     else if (type == QLatin1String("variableBlur"))
         e.type = Effect::VariableBlur;
+    else if (type == QLatin1String("motionBlur"))
+        e.type = Effect::MotionBlur;
+    else if (type == QLatin1String("fieldChart"))
+        e.type = Effect::FieldChart;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);

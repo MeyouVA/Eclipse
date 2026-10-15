@@ -740,6 +740,10 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Remove Transparency  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::MatteComposite:
         return QObject::tr("Matte Composite");
+    case Effect::MotionBlur:
+        return QObject::tr("Motion Blur  %1 frames").arg(int(std::lround(effect.amount)));
+    case Effect::FieldChart:
+        return QObject::tr("Field Chart");
     case Effect::Blending:
         return QObject::tr("Blending");
     case Effect::VariableBlur: {
@@ -855,6 +859,33 @@ void Effects::variableBlur(QImage& image, QImage const& matte, double radius)
     }
 }
 
+void Effects::fieldChart(QImage& image, QRectF const& frame, QColor const& colour, double width)
+{
+    QPainter p(&image);
+    p.resetTransform();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(QPen(colour, std::max(0.5, width)));
+    p.setBrush(Qt::NoBrush);
+    p.drawRect(frame);
+    // Twelve fields across: six either side of the middle, and as many down as the frame's shape allows.
+    QPointF const middle = frame.center();
+    double const field = frame.width() / 12.0;
+    for (int k = 1; k <= 6; ++k) {
+        p.drawLine(QPointF(middle.x() - k * field, frame.top()), QPointF(middle.x() - k * field, frame.bottom()));
+        p.drawLine(QPointF(middle.x() + k * field, frame.top()), QPointF(middle.x() + k * field, frame.bottom()));
+        if (k * field <= frame.height() / 2.0 + 0.5) {
+            p.drawLine(QPointF(frame.left(), middle.y() - k * field), QPointF(frame.right(), middle.y() - k * field));
+            p.drawLine(QPointF(frame.left(), middle.y() + k * field), QPointF(frame.right(), middle.y() + k * field));
+        }
+    }
+    p.setPen(QPen(colour, std::max(1.0, width * 2.0)));
+    p.drawLine(QPointF(middle.x(), frame.top()), QPointF(middle.x(), frame.bottom()));
+    p.drawLine(QPointF(frame.left(), middle.y()), QPointF(frame.right(), middle.y()));
+    p.setPen(QPen(colour, std::max(0.5, width), Qt::DashLine));
+    p.drawLine(frame.topLeft(), frame.bottomRight());
+    p.drawLine(frame.topRight(), frame.bottomLeft());
+}
+
 // ---- the panel ----------------------------------------------------------------------------
 
 EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
@@ -898,6 +929,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Remove Transparency")), &QAction::triggered, this, [this] { add(Effect::RemoveTransparency); });
     connect(menu->addAction(tr("Matte Composite")), &QAction::triggered, this, [this] { add(Effect::MatteComposite); });
     connect(menu->addAction(tr("Variable Blur")), &QAction::triggered, this, [this] { add(Effect::VariableBlur); });
+    connect(menu->addAction(tr("Motion Blur")), &QAction::triggered, this, [this] { add(Effect::MotionBlur); });
+    connect(menu->addAction(tr("Field Chart")), &QAction::triggered, this, [this] { add(Effect::FieldChart); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -1286,6 +1319,7 @@ void EffectsPanel::showEditors()
     bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight || e.type == Effect::MatteBlur || e.type == Effect::VariableBlur);
     bool const resizing = valid && e.type == Effect::MatteResize;
     bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading
+                                    || e.type == Effect::FieldChart
                                     || e.type == Effect::MatteGenerator || e.type == Effect::Gradient) && e.type != Effect::MatteBlur;
     bool const graded = valid && e.type == Effect::Gradient;
     // What the amount is on this frame: the keyframes say, for an animated effect.
@@ -1397,7 +1431,8 @@ void EffectsPanel::showEditors()
     } else if (valid && !cutter && !plain) {
         m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : e.type == Effect::MatteBlur ? tr("Radius") : shading ? tr("Softness")
                                : resizing ? tr("By") : e.type == Effect::Pixelate ? tr("Block Size")
-                               : e.type == Effect::Turbulence ? tr("Strength") : e.type == Effect::MatteGenerator ? tr("Outer Radius") : tr("Radius"));
+                               : e.type == Effect::Turbulence ? tr("Strength") : e.type == Effect::MatteGenerator ? tr("Outer Radius")
+                               : e.type == Effect::MotionBlur ? tr("Frames") : e.type == Effect::FieldChart ? tr("Line Width") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());

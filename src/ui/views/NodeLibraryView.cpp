@@ -95,6 +95,8 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Remove Transparency"), "effect:28", QT_TR_NOOP("Makes what is mostly opaque wholly so, and takes the rest away"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Matte Composite"), "effect:29", QT_TR_NOOP("Turns the layer into a white matte of itself"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Variable Blur"), "effect:31", QT_TR_NOOP("Blurs the layer as much as the drawing of a matte layer is light"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Motion Blur"), "effect:32", QT_TR_NOOP("A fading trail of the layer as it was on the frames before"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Field Chart"), "effect:33", QT_TR_NOOP("A 12-field chart of the camera frame over the layer"), QT_TR_NOOP("Generator")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);
@@ -124,7 +126,7 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
     // The kinds there are, down the left: one chosen shows only what is of that kind.
     m_categories = new QListWidget(this);
     m_categories->setObjectName(QStringLiteral("NodeLibraryCategories"));
-    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle")});
+    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator")});
     m_categories->setCurrentRow(0);
     m_categories->setFixedWidth(104);
     QHBoxLayout* const lists = new QHBoxLayout;

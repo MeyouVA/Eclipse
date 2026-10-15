@@ -881,6 +881,34 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::blackWhite(image, amount);
         } else if (e.type == Effect::MatteResize) {
             Effects::matteResize(image, amount * pixelsPerUnit, e.invert);
+        } else if (e.type == Effect::FieldChart) {
+            Effects::fieldChart(image, QTransform::fromScale(dpr, dpr).mapRect(sceneToDevice.mapRect(QRectF(0, 0, scene.width, scene.height))), e.color,
+                                amount * dpr);
+        } else if (e.type == Effect::MotionBlur && !symbol) {
+            // The layer as it was on the frames before - where it was, with the drawing it had - fainter the further back, under
+            // it as it is now.
+            int const back = std::clamp(int(std::lround(amount)), 0, 60);
+            QImage trail(size, QImage::Format_ARGB32_Premultiplied);
+            trail.setDevicePixelRatio(dpr);
+            trail.fill(Qt::transparent);
+            {
+                QPainter tp(&trail);
+                tp.setRenderHints(painter.renderHints());
+                for (int k = back; k >= 1; --k) {
+                    int const f = frame - k;
+                    int const index = f >= 0 ? layer.drawingAt(f) : Layer::kNoDrawing;
+                    if (index == Layer::kNoDrawing)
+                        continue;
+                    tp.setOpacity(0.6 * (1.0 - double(k) / (back + 1)));
+                    tp.setTransform(scene.worldTransform(l, f) * sceneToDevice);
+                    Pose const then = scene.poseOf(l, f);
+                    paintDrawingOpaque(tp, scene, Deform::ridden(scene, l, f, Deform::shown(layer.drawings[index], layer, then)), nullptr);
+                }
+                tp.setOpacity(1.0);
+                tp.resetTransform();
+                tp.drawImage(0, 0, image);
+            }
+            image = trail;
         } else if (e.type == Effect::ChannelSelector) {
             Effects::channelSelect(image, e.channel);
         } else if (e.type == Effect::Crop) {
@@ -1356,6 +1384,9 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 Effects::blackWhite(out, amount);
             } else if (e.type == Effect::MatteResize) {
                 Effects::matteResize(out, amount * pixelsPerUnit, e.invert);
+            } else if (e.type == Effect::FieldChart) {
+                Effects::fieldChart(out, QTransform::fromScale(dpr, dpr).mapRect((camera * base).mapRect(QRectF(0, 0, scene.width, scene.height))), e.color,
+                                    amount * dpr);
             } else if (e.type == Effect::ChannelSelector) {
                 Effects::channelSelect(out, e.channel);
             } else if (e.type == Effect::Crop) {

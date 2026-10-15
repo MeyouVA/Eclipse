@@ -151,6 +151,7 @@ static QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::ChannelSelector ? "channelSelector" : e.type == Effect::Crop ? "crop"
                              : e.type == Effect::RemoveTransparency ? "removeTransparency" : e.type == Effect::MatteComposite ? "matteComposite"
                              : e.type == Effect::Blending ? "blending" : e.type == Effect::VariableBlur ? "variableBlur"
+                             : e.type == Effect::MotionBlur ? "motionBlur" : e.type == Effect::FieldChart ? "fieldChart"
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},

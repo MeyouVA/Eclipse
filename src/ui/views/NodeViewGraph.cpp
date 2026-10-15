@@ -29,6 +29,7 @@ namespace {
 bool takesColour(Effect::Type t)
 {
     return t == Effect::Tint || t == Effect::Glow || t == Effect::Shadow || t == Effect::ColourScale || t == Effect::Tone || t == Effect::Highlight
+           || t == Effect::FieldChart
            || t == Effect::MatteGenerator || t == Effect::Gradient;
 }
 
@@ -957,8 +958,8 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
         adder(tr("Display"), GraphNode::Display);
     QMenu* const effects = add->addMenu(tr("Effect"));
     for (int t = 0; t < Effect::TypeCount; ++t) {
-        if (t == Effect::Particles)
-            continue;   // (particles are thrown from a layer's drawing: they stay a layer effect)
+        if (t == Effect::Particles || t == Effect::MotionBlur)
+            continue;   // (particles and motion blur work from a layer's drawings on other frames: they stay layer effects)
         Effect const e = Effect::made(Effect::Type(t));
         connect(effects->addAction(Effects::name(e, scene).section(QStringLiteral("  "), 0, 0)), &QAction::triggered, this, [this, e, graphPos] {
             GraphNode n;
