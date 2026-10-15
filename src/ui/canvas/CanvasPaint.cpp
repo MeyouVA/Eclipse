@@ -1,6 +1,7 @@
 // Eclipse - the Camera view: painting a line, an area, a drawing, a layer with its effects, a whole frame.
 #include "ui/canvas/Canvas.h"
 
+#include <atomic>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -838,7 +839,9 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         if (!e.enabled)
             continue;
         double const amount = layer.effectAmount(i, pose);
-        if (e.type == Effect::Blur) {
+        if ((e.type == Effect::Blur && !blursEnabled()) || (e.type == Effect::Focus && !focusEnabled())) {
+            // (Switched off in the preferences: the picture goes through as it is.)
+        } else if (e.type == Effect::Blur) {
             Effects::blur(image, amount * pixelsPerUnit);
         } else if (e.type == Effect::Focus) {
             // Out of focus as far as the layer stands from the depth that is sharp.
@@ -1080,6 +1083,31 @@ static QRgb blendPixel(QRgb s, QRgb d, int mode)
     };
     int const a = std::clamp(int(std::lround((sa + da - sa * da) * 255.0)), 0, 255);
     return qRgba(std::min(one(qRed(s), qRed(d)), a), std::min(one(qGreen(s), qGreen(d)), a), std::min(one(qBlue(s), qBlue(d)), a), a);
+}
+
+namespace {
+std::atomic<bool> gBlurs{true};
+std::atomic<bool> gFocus{true};
+}
+
+void Canvas::setBlursEnabled(bool on)
+{
+    gBlurs = on;
+}
+
+bool Canvas::blursEnabled()
+{
+    return gBlurs;
+}
+
+void Canvas::setFocusEnabled(bool on)
+{
+    gFocus = on;
+}
+
+bool Canvas::focusEnabled()
+{
+    return gFocus;
 }
 
 void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
@@ -1361,6 +1389,8 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
             double const amount = n->amountAt(frame);
             if (!e.enabled) {
                 // (Turned off: the picture goes through as it is.)
+            } else if ((e.type == Effect::Blur && !blursEnabled()) || (e.type == Effect::Focus && !focusEnabled())) {
+                // (Switched off in the preferences.)
             } else if (e.type == Effect::Blur || e.type == Effect::Focus) {
                 Effects::blur(out, amount * pixelsPerUnit);
             } else if (e.type == Effect::Tint) {

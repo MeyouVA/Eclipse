@@ -516,6 +516,12 @@ public:
 
     // Renders one frame of a scene the way the canvas shows it, without the editing aids.
     static void paintFrame(QPainter& painter, Scene const& scene, int frame);
+    // Preferences (Render): blurs and focus (depth of field) effects worked out, or let through as they are - everywhere a
+    // frame is drawn - for speed while working.
+    static void setBlursEnabled(bool on);
+    static bool blursEnabled();
+    static void setFocusEnabled(bool on);
+    static bool focusEnabled();
     // The frame as the scene's node graph puts it together (its Display's picture, over the paper); false, nothing
     // painted, when the scene has no graph wired (or no Display in it).
     static bool paintGraph(QPainter& painter, Scene const& scene, int frame);

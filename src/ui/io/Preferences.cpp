@@ -303,6 +303,9 @@ void MainWindow::applyPreferences()
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
     m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
     m_canvas->setIkIterations(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
+    Canvas::setBlursEnabled(s.value(QStringLiteral("prefs/renderBlurs"), true).toBool());
+    Canvas::setFocusEnabled(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
+    m_canvas->update();
     m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
     {
@@ -563,6 +566,16 @@ void MainWindow::onActionPreferences()
     QFormLayout* const renderLayout = new QFormLayout(renderPage);
     renderLayout->addRow(tr("Preview size"), previewSize);
     renderLayout->addRow(autoRender);
+    QCheckBox* const renderBlurs = new QCheckBox(tr("Enable blur"), renderPage);
+    renderBlurs->setObjectName(QStringLiteral("PrefRenderBlurs"));
+    renderBlurs->setToolTip(tr("Off: Blur effects are left out wherever a frame is drawn - faster while working; switch on again to render."));
+    renderBlurs->setChecked(s.value(QStringLiteral("prefs/renderBlurs"), true).toBool());
+    renderLayout->addRow(renderBlurs);
+    QCheckBox* const renderFocus = new QCheckBox(tr("Enable focus"), renderPage);
+    renderFocus->setObjectName(QStringLiteral("PrefRenderFocus"));
+    renderFocus->setToolTip(tr("Off: Focus (depth of field) effects are left out wherever a frame is drawn."));
+    renderFocus->setChecked(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
+    renderLayout->addRow(renderFocus);
 
     // Tools: what the drawing tools start with.
     QGroupBox* const toolsPage = new QGroupBox(tr("Tools"), &dialog);
@@ -846,6 +859,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/closeGap"), closeGap->value());
     s.setValue(QStringLiteral("prefs/ikIterations"), ikIterations->value());
     s.setValue(QStringLiteral("prefs/ikError"), ikError->value());
+    s.setValue(QStringLiteral("prefs/renderBlurs"), renderBlurs->isChecked());
+    s.setValue(QStringLiteral("prefs/renderFocus"), renderFocus->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetCentre"), xsheetCentre->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetHold"), xsheetHold->value());
     s.setValue(QStringLiteral("prefs/focusOnEnter"), focusOnEnter->isChecked());
