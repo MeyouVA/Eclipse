@@ -500,6 +500,52 @@ void turbulence(QImage& image, double strength, double size, int frame)
     }
 }
 
+void gradient(QImage& image, QColor const& from, QColor const& to, double degrees, bool radial, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    // Across what is painted.
+    int left = w, top = h, right = -1, bottom = -1;
+    for (int y = 0; y < h; ++y) {
+        QRgb const* const row = reinterpret_cast<QRgb const*>(image.constScanLine(y));
+        for (int x = 0; x < w; ++x)
+            if (qAlpha(row[x]) != 0) {
+                left = std::min(left, x);
+                right = std::max(right, x);
+                top = std::min(top, y);
+                bottom = std::max(bottom, y);
+            }
+    }
+    if (right < 0)
+        return;
+    double const cx = (left + right) / 2.0, cy = (top + bottom) / 2.0;
+    double const a = degrees * 3.14159265358979323846 / 180.0, dx = std::cos(a), dy = -std::sin(a);
+    // How far the painting reaches along the way (or from the middle), so the gradient runs from end to end of it.
+    double reach = 0.0;
+    for (QPointF const corner : {QPointF(left, top), QPointF(right, top), QPointF(left, bottom), QPointF(right, bottom)})
+        reach = std::max(reach, radial ? std::hypot(corner.x() - cx, corner.y() - cy) : std::abs((corner.x() - cx) * dx + (corner.y() - cy) * dy));
+    reach = std::max(reach, 1.0);
+    for (int y = 0; y < h; ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            int const al = qAlpha(row[x]);
+            if (al == 0)
+                continue;
+            double const t = radial ? std::min(1.0, std::hypot(x - cx, y - cy) / reach) : std::clamp(0.5 + ((x - cx) * dx + (y - cy) * dy) / (2.0 * reach), 0.0, 1.0);
+            auto channel = [&](double f, double g, int now) {
+                int const want = int(std::lround((f + (g - f) * t) * al));
+                return std::clamp(int(std::lround(now + (want - now) * amount)), 0, al);
+            };
+            row[x] = qRgba(channel(from.redF(), to.redF(), qRed(row[x])), channel(from.greenF(), to.greenF(), qGreen(row[x])),
+                           channel(from.blueF(), to.blueF(), qBlue(row[x])), al);
+        }
+    }
+}
+
 void blackWhite(QImage& image, double amount)
 {
     amount = std::clamp(amount, 0.0, 1.0);
@@ -669,6 +715,8 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Pixelate  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Turbulence:
         return QObject::tr("Turbulence  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Gradient:
+        return QObject::tr("Gradient  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::BlackWhite:
         return QObject::tr("Black & White  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::MatteResize:
@@ -733,6 +781,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Black & White")), &QAction::triggered, this, [this] { add(Effect::BlackWhite); });
     connect(menu->addAction(tr("Matte Resize")), &QAction::triggered, this, [this] { add(Effect::MatteResize); });
     connect(menu->addAction(tr("Matte Blur")), &QAction::triggered, this, [this] { add(Effect::MatteBlur); });
+    connect(menu->addAction(tr("Gradient")), &QAction::triggered, this, [this] { add(Effect::Gradient); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -744,6 +793,10 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     m_amount->setKeyboardTracking(false);
     m_color = new QPushButton(this);
     m_color->setFixedWidth(60);
+    m_endColor = new QPushButton(this);
+    m_endColor->setObjectName(QStringLiteral("EffectEndColour"));
+    m_endColor->setFixedWidth(60);
+    m_endColor->setToolTip(tr("The colour the gradient goes to."));
     m_matteLabel = new QLabel(tr("Matte"), this);
     m_matte = new QComboBox(this);
     m_matte->setToolTip(tr("The layer whose drawing cuts this one: only what lies inside it stays."));
@@ -769,6 +822,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     amountRow->addWidget(m_amountLabel);
     amountRow->addWidget(m_amount, 1);
     amountRow->addWidget(m_color);
+    amountRow->addWidget(m_endColor);
     amountRow->addWidget(m_animated);
     QHBoxLayout* const offsetRow = new QHBoxLayout;
     offsetRow->addWidget(m_offsetLabel);
@@ -958,7 +1012,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         Effect const& effect = scene.layers[m_layer].effects[row];
         bool const percent = effect.type == Effect::Tint || effect.type == Effect::Transparency || effect.type == Effect::HueSaturation
                              || effect.type == Effect::BrightnessContrast || effect.type == Effect::Grain || effect.type == Effect::RadialBlur
-                             || effect.type == Effect::ColourScale || effect.type == Effect::Negate || effect.type == Effect::BlackWhite;
+                             || effect.type == Effect::ColourScale || effect.type == Effect::Negate || effect.type == Effect::BlackWhite
+                             || effect.type == Effect::Gradient;
         double const amount = percent ? v / 100.0 : v;
         if (effect.animated) {
             // On this frame only: a keyframe.
@@ -987,6 +1042,15 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         QColor const chosen = QColorDialog::getColor(scene.layers[m_layer].effects[row].color, this, tr("Effect Colour"), QColorDialog::ShowAlphaChannel);
         if (chosen.isValid())
             edit([chosen](Effect& e) { e.color = chosen; });
+    });
+    connect(m_endColor, &QPushButton::clicked, this, [this] {
+        Scene const& scene = m_document->scene();
+        int const row = m_list->currentRow();
+        if (m_layer < 0 || m_layer >= scene.layers.size() || row < 0 || row >= scene.layers[m_layer].effects.size())
+            return;
+        QColor const chosen = QColorDialog::getColor(scene.layers[m_layer].effects[row].endColor, this, tr("Gradient: To"));
+        if (chosen.isValid())
+            edit([chosen](Effect& e) { e.endColor = chosen; });
     });
     connect(m_matte, &QComboBox::activated, this, [this](int index) {
         int const id = m_matte->itemData(index).toInt();
@@ -1075,7 +1139,8 @@ void EffectsPanel::showEditors()
     bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight || e.type == Effect::MatteBlur);
     bool const resizing = valid && e.type == Effect::MatteResize;
     bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading
-                                    || e.type == Effect::MatteGenerator) && e.type != Effect::MatteBlur;
+                                    || e.type == Effect::MatteGenerator || e.type == Effect::Gradient) && e.type != Effect::MatteBlur;
+    bool const graded = valid && e.type == Effect::Gradient;
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
@@ -1084,6 +1149,9 @@ void EffectsPanel::showEditors()
     m_animated->setVisible(valid && !cutter);
     m_animated->setChecked(valid && e.animated);
     m_color->setVisible(coloured);
+    m_endColor->setVisible(graded);
+    if (graded)
+        m_endColor->setStyleSheet(QStringLiteral("background-color: %1;").arg(e.endColor.name()));
     if (coloured)
         m_color->setStyleSheet(QStringLiteral("background-color: %1;").arg(e.color.name()));
     bool const shadow = valid && e.type == Effect::Shadow;
@@ -1099,7 +1167,7 @@ void EffectsPanel::showEditors()
         bool const hs = valid && e.type == Effect::HueSaturation, bc = valid && e.type == Effect::BrightnessContrast;
         bool const swirls = valid && e.type == Effect::Turbulence, generator = valid && e.type == Effect::MatteGenerator;
         bool const waves = (valid && e.type == Effect::Ripple) || swirls;
-        bool const along = (valid && e.type == Effect::DirectionalBlur) || waves || generator;
+        bool const along = (valid && (e.type == Effect::DirectionalBlur || e.type == Effect::Gradient)) || waves || generator;
         m_adjust->setVisible(hs || bc || along);
         // The last box: the way a Directional Blur smears, or how far apart a Ripple's waves are.
         if (QLabel* const label = qobject_cast<QLabel*>(m_adjustForm->labelForField(m_adjustBox[5])))
@@ -1122,10 +1190,11 @@ void EffectsPanel::showEditors()
     m_matte->setToolTip(particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
                         : shading ? tr("The layer whose drawing says where the shade (or the light) falls on this one.")
                                   : tr("The layer whose drawing cuts this one: only what lies inside it stays."));
-    m_invert->setVisible(cutter || shading || resizing);
-    m_invert->setText(resizing ? tr("Shrink") : tr("Inverted"));
-    m_invert->setToolTip(resizing ? tr("Make what is painted smaller instead of bigger.") : tr("Keep what lies outside the matte instead."));
-    if (cutter || shading || resizing)
+    m_invert->setVisible(cutter || shading || resizing || graded);
+    m_invert->setText(resizing ? tr("Shrink") : graded ? tr("Radial") : tr("Inverted"));
+    m_invert->setToolTip(resizing ? tr("Make what is painted smaller instead of bigger.") : graded ? tr("From the middle out, instead of from side to side.")
+                                  : tr("Keep what lies outside the matte instead."));
+    if (cutter || shading || resizing || graded)
         m_invert->setChecked(e.invert);
     if (cutter || particles || shading) {
         m_matte->clear();
@@ -1160,7 +1229,7 @@ void EffectsPanel::showEditors()
         m_amount->setValue(amount);
     } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
                          || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate
-                         || e.type == Effect::BlackWhite)) {
+                         || e.type == Effect::BlackWhite || e.type == Effect::Gradient)) {
         m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);

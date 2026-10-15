@@ -89,6 +89,7 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Black & White"), "effect:22", QT_TR_NOOP("Turns the layer's colours grey, as light as they were"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Matte Resize"), "effect:23", QT_TR_NOOP("Grows or shrinks what is painted on the layer, all round"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Matte Blur"), "effect:24", QT_TR_NOOP("Blurs the layer only where the drawing of a matte layer lies over it"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Gradient"), "effect:25", QT_TR_NOOP("Colours the layer from one colour to another, across it or from its middle out"), QT_TR_NOOP("Filter")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);

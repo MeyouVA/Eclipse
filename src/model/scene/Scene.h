@@ -449,7 +449,7 @@ struct Swatch {
 // a layer are applied in order.
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
-                ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, TypeCount };
+                ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -471,6 +471,8 @@ struct Effect {
     // takes the layer as its matte takes that.  Black & White: the colours made grey, `amount` of the way (0..1).  Matte Resize:
     // what is painted grown by `amount` scene units all round (`invert`: shrunk).  Matte Blur: the layer blurred `amount`
     // scene units where the drawing of the `matte` layer lies over it (`invert`: where it does not), the change soft-edged.
+    // Gradient: what is painted coloured from `color` to `endColor` across it, along `direction` (degrees, 0: left to right;
+    // `invert`: from its middle out), `amount` of the way (0..1).
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;

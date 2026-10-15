@@ -255,7 +255,7 @@ Effect Effect::made(Type type)
              : type == HueSaturation || type == BrightnessContrast || type == ColourScale ? 1.0 : type == DirectionalBlur ? 12.0
              : type == Grain ? 0.3 : type == RadialBlur ? 0.15 : type == Negate ? 1.0 : type == Median ? 2.0 : type == Tone || type == Highlight ? 2.0
              : type == Bloom ? 12.0 : type == Pixelate ? 10.0 : type == Turbulence ? 6.0 : type == MatteGenerator ? 30.0
-             : type == BlackWhite ? 1.0 : type == MatteResize ? 4.0 : 8.0;
+             : type == BlackWhite || type == Gradient ? 1.0 : type == MatteResize ? 4.0 : 8.0;
     e.color = type == Shadow ? QColor(0, 0, 0, 150) : type == Glow ? QColor(255, 240, 160) : type == ColourScale ? QColor(255, 200, 150)
             : type == Tone ? QColor(120, 110, 170) : type == Highlight ? QColor(255, 245, 210) : type == MatteGenerator ? QColor(255, 255, 255)
             : QColor(40, 110, 200);
@@ -268,6 +268,11 @@ Effect Effect::made(Type type)
         e.direction = 40.0;
     if (type == MatteGenerator)
         e.direction = 0.0;
+    if (type == Gradient) {
+        e.direction = 90.0;
+        e.color = QColor(255, 210, 120);
+        e.endColor = QColor(200, 60, 140);
+    }
     if (type == HueSaturation)
         e.hue = 30.0;
     if (type == BrightnessContrast)

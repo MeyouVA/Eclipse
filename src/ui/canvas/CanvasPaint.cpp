@@ -854,6 +854,8 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::pixelate(image, amount * pixelsPerUnit);
         } else if (e.type == Effect::Turbulence) {
             Effects::turbulence(image, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
+        } else if (e.type == Effect::Gradient) {
+            Effects::gradient(image, e.color, e.endColor, e.direction, e.invert, amount);
         } else if (e.type == Effect::BlackWhite) {
             Effects::blackWhite(image, amount);
         } else if (e.type == Effect::MatteResize) {

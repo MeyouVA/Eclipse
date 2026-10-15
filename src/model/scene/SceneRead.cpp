@@ -485,6 +485,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.type = Effect::MatteResize;
             else if (type == QLatin1String("matteBlur"))
                 e.type = Effect::MatteBlur;
+            else if (type == QLatin1String("gradient"))
+                e.type = Effect::Gradient;
             else
                 continue;  // an effect of a newer version: left out rather than guessed at
             e.enabled = eo["enabled"].toBool(true);
@@ -517,6 +519,10 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.direction = std::max(2.0, eo["direction"].toDouble(40.0));
             if (e.type == Effect::MatteGenerator)
                 e.direction = std::max(0.0, eo["direction"].toDouble(0.0));
+            if (e.type == Effect::Gradient) {
+                e.direction = eo["direction"].toDouble(90.0);
+                e.endColor = QColor(eo["endColor"].toString(QStringLiteral("#ffc83c8c")));
+            }
             if (e.type == Effect::Grain)
                 e.seed = eo["seed"].toInt(1);
             e.hue = std::clamp(eo["hue"].toDouble(0.0), -180.0, 180.0);

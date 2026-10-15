@@ -62,6 +62,9 @@ void matteGenerator(QImage& image, double inner, double outer, QColor const& col
 void blackWhite(QImage& image, double amount);
 // What is painted grown by `radius` pixels all round (shrunk, with `shrink`): each point the strongest (weakest) of those round it.
 void matteResize(QImage& image, double radius, bool shrink);
+// What is painted coloured from `from` to `to` across it, along `degrees` (0: left to right) or, `radial`, from its middle
+// out - `amount` of the way (0..1); how see-through it is stays as it was.
+void gradient(QImage& image, QColor const& from, QColor const& to, double degrees, bool radial, double amount);
 
 QString name(Effect const& effect, Scene const& scene);
 
@@ -95,6 +98,7 @@ private:
     QLabel* m_amountLabel;
     QDoubleSpinBox* m_amount;
     QPushButton* m_color;
+    QPushButton* m_endColor = nullptr;     // a gradient's second colour
     QLabel* m_matteLabel;
     QComboBox* m_matte;
     QCheckBox* m_invert;
