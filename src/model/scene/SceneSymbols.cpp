@@ -86,10 +86,12 @@ void Scene::refreshSymbolInstances(int symbolId)
 
 int Scene::makeSymbol(QVector<int> const& picked, QString const& name)
 {
-    // Those picked, and everything attached to them.  (A camera stays in the scene; a sound picked goes in, and plays where the symbol is shown.)
+    // Those picked, and everything attached to them.  A camera picked goes in, as in Harmony (an ordinary layer there: the
+    // scene is seen through its own camera, never one inside a symbol); one only attached to them stays in the scene.  A
+    // sound picked goes in, and plays where the symbol is shown.
     QVector<bool> in(layers.size(), false);
     for (int l : picked)
-        if (l >= 0 && l < layers.size() && layers[l].kind != Layer::Camera)
+        if (l >= 0 && l < layers.size())
             in[l] = true;
     for (bool grew = true; grew;) {
         grew = false;
@@ -166,6 +168,19 @@ int Scene::makeSymbol(QVector<int> const& picked, QString const& name)
     shows.cells.resize(m_frameCount);
     for (int f = 0; f < m_frameCount; ++f)
         shows.cells[f] = f;         // frame for frame, as the layers played before
+    // The camera the scene is seen through, gone into the symbol: a copy of it stays, so that the scene is seen as before.
+    int const seenThrough = cameraIndex();
+    bool const keepCamera = seenThrough >= 0 && in[seenThrough];
+    Layer keptCamera;
+    if (keepCamera) {
+        keptCamera = layers[seenThrough];
+        keptCamera.id = m_nextLayerId++;
+        int const up = layerIndex(keptCamera.parent);
+        if (up >= 0 && in[up]) {
+            keptCamera.parent = 0;
+            keptCamera.parentBone = -1;
+        }
+    }
     // A camera or a sound left behind that was attached to one of them follows the whole now.
     QVector<int> goneIds;
     for (int l = 0; l < layers.size(); ++l)
@@ -183,6 +198,10 @@ int Scene::makeSymbol(QVector<int> const& picked, QString const& name)
     shows.name = uniqueLayerName(symbol.name);
     int const at = std::clamp(top - (count - 1), 0, int(layers.size()));
     layers.insert(at, shows);
+    if (keepCamera) {
+        layers.push_back(keptCamera);
+        activeCamera = keptCamera.id;
+    }
     symbols.push_back(symbol);
     refreshSymbolInstances(symbol.id);
     return at;
