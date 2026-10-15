@@ -12,7 +12,7 @@ int main(int argc, char** argv)
 {
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("Eclipse"));
-    QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QApplication::setApplicationVersion(QStringLiteral("0.2.0"));
 
     // The dark look, from the stylesheet and the icons in `resources`.
     QString error;

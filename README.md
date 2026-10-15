@@ -13,6 +13,9 @@ code and all of the icons are Eclipse's own.
 
 Eclipse is under active development. Expect rough edges.
 
+**Download:** the latest build is on the [Releases page](https://github.com/MeyouVA/Eclipse/releases) - unzip it
+anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed only for movies; see below).
+
 ## What it does
 
 **Drawing**
@@ -41,10 +44,22 @@ Eclipse is under active development. Expect rough edges.
 - Drawings marked as keys, breakdowns and in-betweens; frames marked with colours; tagged
   layers.
 - Pegs, layer hierarchies, bones, curve and envelope deformers, and inverse kinematics.
-- Morphing between two drawings.
+- Morphing between two drawings, guided by hints and by groups of shapes that only change into each other.
+- Pose controllers: poses of several layers kept under names, blended with a slider or a 2D pad, and keyframed.
+- 3D models (Wavefront OBJ, with their colours and textures) on layers of their own, turned in space with the layer.
 - Depth: layers nearer to and further from the camera, several cameras, and Top, Side and
   Perspective views.
-- Sound layers, sound scrubbing, and lip-sync detection that can be mapped onto mouth drawings.
+- Sound layers, sound scrubbing, and lip-sync detection - from the sound, or from the words typed - that can be mapped
+  onto mouth drawings.
+
+**Effects and compositing**
+
+- Over forty effects on a layer, each one animatable: blurs (directional, radial, variable, motion, depth of field),
+  colour (tint, curves, hue-saturation, brightness-contrast, gradients), glow, shadow, bloom, particles, mattes and
+  cutters, field charts - and Script (JavaScript run on the picture) and External (any program run on it).
+- A node graph: wire layers, effects, composites and groups together by hand in the Node View, and the frame is made as
+  the graph says.
+- Scripting: a Script Editor (JavaScript) and a Python console that work on the scene.
 
 **Views**
 
@@ -63,7 +78,9 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
 **Files**
 
 - Scenes are saved as `.ecl` files.
-- Imports pictures, movies and sound; exports movies, picture sequences and animated GIFs.
+- Imports pictures, movies, sound, 3D models (OBJ), pages from a scanner, Flash movies (SWF) and Flash documents
+  (FLA, the XFL kind of Flash CS5 and after: symbols, tweens, masks, text, bitmaps, video and sound come across).
+- Exports movies, picture sequences, animated GIFs and Flash movies (SWF).
   Movies and some sound formats are read and written through [FFmpeg](https://ffmpeg.org/),
   which has to be installed and on the `PATH` for those features.
 - Templates can be kept in a Library and dropped into other scenes.
@@ -79,7 +96,7 @@ Eclipse builds on Windows with the Microsoft compiler.
 |---|---|
 | **Visual Studio 2022 or later** | with the "Desktop development with C++" workload |
 | **CMake 3.21 or later** | and **Ninja** (both come with Visual Studio) |
-| **Qt 6** (built and tested with 6.8) | the MSVC 64-bit kit; the modules used are Core, Gui, Widgets, Svg and PrintSupport |
+| **Qt 6** (built and tested with 6.8) | the MSVC 64-bit kit; the modules used are Core, Gui, Widgets, Svg, PrintSupport and Qml |
 
 ### The quick way
 

@@ -1,0 +1,40 @@
+<html><head><meta charset="utf-8"><title>Eclipse Help</title><style>body { background: #2b2b2e; color: #d6d8dc; font-family: 'Segoe UI', sans-serif; font-size: 10pt; margin: 14px; } h1 { color: #ffffff; font-size: 16pt; } h2 { color: #7fd0de; font-size: 12pt; margin-top: 16px; } a { color: #6fc3d6; } b { color: #ffffff; } li { margin-bottom: 4px; }</style></head><body>
+<p><a href="index.html">Contents</a></p>
+<h1>Effects and the node graph</h1>
+<h2>Effects on a layer</h2>
+<p>The <b>Effects</b> panel lists what is done to the current layer's picture, in order: tick one to switch it on or off, pick it
+to change it. Their amounts can be animated - each has a row in the Timeline. The <b>Node Library</b> lists them all by kind.</p>
+<ul>
+<li><b>Blurs</b>: Blur, Directional Blur, Radial Blur, Variable Blur (as much as a matte layer is light), Motion Blur (a fading trail
+of the frames before) and Focus (depth of field: the further a layer stands from the depth in focus, the more blurred).</li>
+<li><b>Colour</b>: Tint, Colour-Scale, Hue-Saturation, Brightness-Contrast, Colour Curves (drag the curve, for all three colours or
+one), Negate, Black &amp; White, Gradient, Tone and Highlight (shade and light where a matte lies), Channel Selector.</li>
+<li><b>Light and shape</b>: Glow, Shadow, Bloom, Grain, Median, Pixelate, Ripple, Turbulence.</li>
+<li><b>Mattes</b>: Cutter, Matte Generator, Matte Resize, Matte Blur, Matte Composite, Crop, Remove Transparency, Transparency.</li>
+<li><b>Moving and output</b>: Apply Peg Transformation (moved as another layer moves), Scale Output (made at a fraction of the
+resolution), Field Chart (a 12-field chart over the picture).</li>
+<li><b>Particles</b>: the layer's drawing thrown out again and again - sparks, rain, smoke.</li>
+<li><b>Script</b>: JavaScript run on the picture each frame - <code>image.blur(4)</code>, <code>image.tint("#ff8000", 0.5)</code>,
+<code>image.pixel(x, y)</code>, <code>image.setPixel(x, y, "#rrggbb")</code> and more, with <code>frame</code> and <code>amount</code>.</li>
+<li><b>External</b>: a program run on the picture each frame: it reads <code>{in}</code> and writes <code>{out}</code> (PNG files);
+<code>{frame}</code> is the frame.</li>
+</ul>
+<p>Edit &gt; Preferences &gt; Render can switch Blur and Focus off everywhere, for speed while working.</p>
+<h2>The node graph</h2>
+<p>The <b>Node View</b> shows the layers as nodes. <b>Wire the Graph by Hand</b> (in its menu) turns that into a graph of nodes and
+cables you change yourself; the frame is then made as the graph says, in the Render view, exports and printing.</p>
+<ul>
+<li>Right-click to add nodes: Composite, effects, Group, Note, Display. Drag from an output to an input to cable them.</li>
+<li>Effects with a second input take their matte there - Cutter, Tone, Variable Blur, <b>Blending</b> (laid over it by a blend
+mode) and <b>Glue</b> (joined to it, the gap between filled smoothly).</li>
+<li>The ends of layer, peg and group nodes are their parenting: cable a layer to a peg to hang it there.</li>
+<li>A layer node can give only some of its art layers - Line Art, Colour Art, Underlay, Overlay (Art Layers, in its menu).</li>
+<li>Double-click an effect node to set it; its amount can be keyframed.</li>
+<li>Ctrl+click nodes, then Group: the cables across the group's edge become its inputs and outputs.</li>
+<li><b>Stack the Layers Again</b> goes back to the layers drawn in order.</li>
+</ul>
+<h2>Scripts</h2>
+<p>The <b>Script Editor</b> (Windows menu) keeps JavaScript scripts that change the scene - layers, keyframes, drawings, palettes,
+effects; the <b>Python Console</b> does the same in Python, if Python is installed. Each run is one step to undo.</p>
+<p><a href="index.html">Contents</a></p>
+</body></html>
