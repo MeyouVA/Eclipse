@@ -33,6 +33,7 @@
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
+#include "ui/io/Scanner.h"
 #include "model/geometry/Vectorize.h"
 #include "ui/canvas/Canvas.h"
 #include "ui/panels/LibraryView.h"
@@ -470,7 +471,21 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
     return at;
 }
 
-void MainWindow::askImportImages(bool linked)
+void MainWindow::onActionImportScanner()
+{
+    // The scans kept with the pictures, where they can be found again.
+    QString const folder = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) + QStringLiteral("/Eclipse Scans");
+    QString error;
+    QStringList const scanned = Scanner::acquire(this, folder, &error);
+    if (scanned.isEmpty()) {
+        if (!error.isEmpty())
+            QMessageBox::information(this, tr("From Scanner"), error);
+        return;
+    }
+    askImportImages(false, scanned);
+}
+
+void MainWindow::askImportImages(bool linked, QStringList const& given)
 {
     QDialog dialog(this);
     dialog.setWindowTitle(linked ? tr("Link to Images") : tr("Import Images"));
@@ -585,7 +600,13 @@ void MainWindow::askImportImages(bool linked)
     layout->addWidget(alignBox);
     layout->addWidget(asBox);
     layout->addWidget(buttons);
-    choose();       // straight to the files, as the first thing asked
+    if (given.isEmpty()) {
+        choose();   // straight to the files, as the first thing asked
+    } else {
+        files->addItems(given);
+        layerName->setText(tr("Scan"));
+        buttons->button(QDialogButtonBox::Ok)->setEnabled(true);
+    }
     if (files->count() == 0 || dialog.exec() != QDialog::Accepted)
         return;
 

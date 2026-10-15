@@ -42,6 +42,10 @@ target_link_libraries(EclipseActions PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets PRIV
 # The window and all its views.
 eclipse_module(EclipseUi ui ECLIPSE_UI_BUILD)
 target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport winmm)
+if(WIN32)
+    # Scanning, through Windows Image Acquisition.
+    target_link_libraries(EclipseUi PRIVATE wiaguid ole32 oleaut32)
+endif()
 
 # The program: it starts the window.
 add_executable(Eclipse WIN32 src/app/main.cpp)

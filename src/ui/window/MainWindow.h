@@ -270,6 +270,8 @@ public slots:
     void onActionPlaybackSpeed();
     void onActionImportImages() { askImportImages(false); }
     void onActionLinkImages() { askImportImages(true); }
+    // Pages scanned (the system's scanning dialog), then imported as images are.
+    void onActionImportScanner();
     void onActionImportMovie();
     void onActionImportReference();
     void onActionExportGif();
@@ -535,7 +537,8 @@ private:
     // Asks how many, then puts that many empty frames in before frame `at`.
     void addFrames(int at);
     void stepLayer(int direction);
-    void askImportImages(bool linked);
+    // (`files`: those to import, already chosen; none: they are asked for first.)
+    void askImportImages(bool linked, QStringList const& files = {});
     QWidget* makeReferenceView();
     QListWidget* m_references = nullptr;
     class LibraryView* m_library = nullptr;
