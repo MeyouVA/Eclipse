@@ -25,6 +25,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
+#include <QStandardPaths>
 #include <QVBoxLayout>
 
 #include "audio/sound/Sound.h"
@@ -38,6 +39,27 @@
 #include "ui/io/ImportExportPrivate.h"
 #include "ui/io/SwfImport.h"
 #include "ui/io/FlaImport.h"
+
+// A sound (or other media) that came inside an imported file, written out as a file of its own: into the folder kept
+// beside the scene (<scene>-media/<what it came from>/), or, for a scene not saved yet, into Eclipse's own folder of
+// imported media.  Empty when it could not be written.
+static QString saveImportedMedia(QString const& scenePath, QString const& source, QString const& name, QByteArray const& bytes)
+{
+    QString base;
+    if (!scenePath.isEmpty()) {
+        QFileInfo const scene(scenePath);
+        base = scene.dir().filePath(scene.completeBaseName() + QStringLiteral("-media"));
+    } else {
+        base = QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(QStringLiteral("Imported Media"));
+    }
+    QDir folder(QDir(base).filePath(QFileInfo(source).completeBaseName()));
+    if (!folder.mkpath(QStringLiteral(".")))
+        return QString();
+    QFile file(folder.filePath(name));
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size())
+        return QString();
+    return file.fileName();
+}
 
 int MainWindow::importSwf(QString const& path, QString* error)
 {
@@ -61,13 +83,41 @@ int MainWindow::importSwf(QString const& path, QString* error)
             fill.transform(place);
         for (Stroke& stroke : d.strokes)
             stroke.transform(place);        // (which scales the line's thickness with it)
+        for (Picture& picture : d.pictures)
+            picture.transform(place);
     }
+    m_document->beginMacro(tr("Import SWF"));
     int const at = m_document->importDrawings(-1, QFileInfo(path).completeBaseName(), 0, drawings, 1);
+    int const id = at < 0 ? 0 : m_document->scene().layers[at].id;
+    if (at >= 0) {
+        // Its frame labels as markers of the scene, its sounds on sound layers of their own.
+        for (SwfImport::Label const& label : std::as_const(movie.labels))
+            if (m_document->scene().markerAt(label.frame) < 0)
+                m_document->addMarker(label.frame, 1, label.name, QColor(60, 190, 205));
+        int lost = movie.skippedSounds;
+        for (int i = 0; i < movie.sounds.size(); ++i) {
+            SwfImport::Sound const& sound = movie.sounds[i];
+            QString const saved = saveImportedMedia(m_path, path, QStringLiteral("sound %1.%2").arg(i + 1).arg(sound.suffix), sound.bytes);
+            if (saved.isEmpty())
+                ++lost;
+            else
+                m_document->addSound(saved, sound.frame);
+        }
+        QStringList left;
+        if (lost > 0)
+            left << tr("%n sound(s)", nullptr, lost);
+        if (movie.skippedVideo > 0)
+            left << tr("%n video(s)", nullptr, movie.skippedVideo);
+        if (error && !left.isEmpty())
+            *error = tr("Left out: %1.").arg(left.join(QStringLiteral(", ")));
+    }
+    m_document->endMacro();
+    int const layerAt = at < 0 ? -1 : m_document->scene().layerIndex(id);
     if (at < 0 && error)
         *error = tr("The movie's frames could not be put on a layer.");
-    if (at >= 0)
-        m_timeline->setCurrentCell(at, 0);
-    return at;
+    if (layerAt >= 0)
+        m_timeline->setCurrentCell(layerAt, 0);
+    return layerAt;
 }
 
 int MainWindow::importFla(QString const& path, QString* error)
@@ -170,7 +220,9 @@ void MainWindow::onActionImportSwf()
         QMessageBox::warning(this, tr("Import SWF"), error);
         return;
     }
-    statusBar()->showMessage(tr("%1: a drawing for each frame of the movie, on the layer %2.").arg(QFileInfo(path).fileName(), m_document->scene().layers[at].name), 7000);
+    statusBar()->showMessage(tr("%1: a drawing for each frame of the movie, on the layer %2.").arg(QFileInfo(path).fileName(), m_document->scene().layers[at].name)
+                                 + (error.isEmpty() ? QString() : QLatin1Char(' ') + error),
+                             10000);
 }
 
 int MainWindow::importImages(ImageImport const& options, QString* error)
