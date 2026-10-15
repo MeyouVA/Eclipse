@@ -164,6 +164,15 @@ public:
     bool drawingView() const { return m_drawingView; }
     void setDrawingView(bool on);
     int gridKind() const { return m_gridKind; }
+    // Preferences: how many fields the standard field grid has from the middle to each side, across and down (12 each).
+    void setFieldChart(int across, int down)
+    {
+        m_fieldsAcross = std::clamp(across, 2, 64);
+        m_fieldsDown = std::clamp(down, 2, 64);
+        update();
+    }
+    int fieldsAcross() const { return m_fieldsAcross; }
+    int fieldsDown() const { return m_fieldsDown; }
     bool backlight() const { return m_backlight; }
     // While playing, nothing but the frame itself is shown (no onion skin, no editing).
     void setPlaying(bool playing);
@@ -937,6 +946,8 @@ private:
     bool m_drawingView = false;
     bool m_grid = false;
     int m_gridKind = 0;
+    int m_fieldsAcross = 12;
+    int m_fieldsDown = 12;
     bool m_gridOutline = false;
     bool m_gridUnder = false;
     bool m_backlight = false;

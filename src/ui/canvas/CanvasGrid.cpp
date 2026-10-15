@@ -68,7 +68,7 @@ void Canvas::paintGrid(QPainter& painter, QRectF const& frameRect) const
     }
     // A field grid: so many fields from the middle to each edge, the middle lines and the
     // diagonals stronger.
-    int const across = m_gridKind == 0 ? 24 : 32, down = m_gridKind == 1 ? 32 : 24;
+    int const across = m_gridKind == 0 ? 2 * m_fieldsAcross : 32, down = m_gridKind == 1 ? 32 : m_gridKind == 0 ? 2 * m_fieldsDown : 24;
     for (int i = 1; i < across; ++i) {
         painter.setPen(i == across / 2 ? strong : thin);
         painter.drawLine(QPointF(w * i / across, 0), QPointF(w * i / across, h));
@@ -136,8 +136,8 @@ QPointF Canvas::snapped(QPointF p) const
             stepX = stepY = h / 24.0;       // squares, counted out from the middle
             originX = w / 2.0;
         } else {
-            stepX = w / (m_gridKind == 0 ? 24.0 : 32.0);
-            stepY = h / (m_gridKind == 1 ? 32.0 : 24.0);
+            stepX = w / (m_gridKind == 0 ? 2.0 * m_fieldsAcross : 32.0);
+            stepY = h / (m_gridKind == 1 ? 32.0 : m_gridKind == 0 ? 2.0 * m_fieldsDown : 24.0);
         }
         QPointF const crossing(originX + std::round((q.x() - originX) / stepX) * stepX, std::round(q.y() / stepY) * stepY);
         if (QLineF(crossing, q).length() * m_zoom <= 8.0 && toPicture.isInvertible())

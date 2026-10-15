@@ -304,6 +304,7 @@ void MainWindow::applyPreferences()
     m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
     m_canvas->setIkIterations(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
     m_document->setSubstitutionCycles(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
+    m_canvas->setFieldChart(s.value(QStringLiteral("prefs/fieldsAcross"), 12).toInt(), s.value(QStringLiteral("prefs/fieldsDown"), 12).toInt());
     Canvas::setBlursEnabled(s.value(QStringLiteral("prefs/renderBlurs"), true).toBool());
     Canvas::setFocusEnabled(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
     m_canvas->update();
@@ -734,6 +735,21 @@ void MainWindow::onActionPreferences()
     drawingCycle->setToolTip(tr("Substitute Drawing Next on the last drawing goes back to the first (and Previous on the first, to the last); off: it stops."));
     drawingCycle->setChecked(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
     drawingLayout->addRow(drawingCycle);
+    QSpinBox* const fieldsAcross = new QSpinBox(drawing);
+    fieldsAcross->setObjectName(QStringLiteral("PrefFieldsAcross"));
+    fieldsAcross->setRange(2, 64);
+    fieldsAcross->setValue(s.value(QStringLiteral("prefs/fieldsAcross"), 12).toInt());
+    QSpinBox* const fieldsDown = new QSpinBox(drawing);
+    fieldsDown->setObjectName(QStringLiteral("PrefFieldsDown"));
+    fieldsDown->setRange(2, 64);
+    fieldsDown->setValue(s.value(QStringLiteral("prefs/fieldsDown"), 12).toInt());
+    QHBoxLayout* const fields = new QHBoxLayout;
+    fields->addWidget(fieldsAcross);
+    fields->addWidget(new QLabel(tr("across,"), drawing));
+    fields->addWidget(fieldsDown);
+    fields->addWidget(new QLabel(tr("down"), drawing));
+    fields->addStretch(1);
+    drawingLayout->addRow(tr("Field grid: fields"), fields);
     QDoubleSpinBox* const closeGap = new QDoubleSpinBox(drawing);
     closeGap->setObjectName(QStringLiteral("PrefCloseGap"));
     closeGap->setRange(0.0, 50.0);
@@ -872,6 +888,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/selectLasso"), selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/showStrokes"), showStrokes->isChecked());
     s.setValue(QStringLiteral("prefs/drawingCycle"), drawingCycle->isChecked());
+    s.setValue(QStringLiteral("prefs/fieldsAcross"), fieldsAcross->value());
+    s.setValue(QStringLiteral("prefs/fieldsDown"), fieldsDown->value());
     s.setValue(QStringLiteral("prefs/closeGap"), closeGap->value());
     s.setValue(QStringLiteral("prefs/ikIterations"), ikIterations->value());
     s.setValue(QStringLiteral("prefs/ikError"), ikError->value());
