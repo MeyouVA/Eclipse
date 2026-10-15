@@ -190,6 +190,13 @@ void MainWindow::advanceFrame()
         if (due != frame())
             m_timeline->setCurrentFrame(due);
     } else if (m_loop) {
+        // The last frame held a moment before it goes round again, when the preferences say so.
+        double const lastEnds = (last - m_playFrom + 1) * 1000.0 / std::max(scene.fps * m_playSpeed / 100.0, 1e-6);
+        if (m_loopPause > 0 && m_playClock.elapsed() < lastEnds + m_loopPause) {
+            if (frame() != last)
+                m_timeline->setCurrentFrame(last);
+            return;
+        }
         m_timeline->setCurrentFrame(m_playStart);
         startPlayingFrom(m_playStart);
     } else {

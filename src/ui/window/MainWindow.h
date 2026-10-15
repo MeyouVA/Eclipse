@@ -607,6 +607,7 @@ private:
     int m_autoSaveMinutes = 0;
     QTimer m_autoSave;
     int m_playSpeed = 100;
+    int m_loopPause = 0;        // ms the last frame is held before a loop plays again (Preferences)
     int m_playStop = -1;   // -1: the end of the scene, however long it gets
     QLabel* m_statusLabel = nullptr;   // the frame, and where the pointer is in fields
     QLabel* m_drawingLabel = nullptr;  // the drawing under the playhead: "Drawing-1", or "Drawing Empty Cell"

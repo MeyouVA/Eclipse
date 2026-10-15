@@ -386,6 +386,10 @@ public:
     void cutSelection();
     // Zooms about the middle of the view.
     void zoomBy(double factor);
+    // Zoom In and Zoom Out: about the pointer when it is over the view and the preferences say so; otherwise about the middle.
+    void zoomByShortcut(double factor);
+    bool zoomsOnMouse() const { return m_zoomOnMouse; }
+    void setZoomOnMouse(bool on) { m_zoomOnMouse = on; }
     // The same, keeping the point of the view under `anchor` where it is.
     void zoomAt(QPointF anchor, double factor);
     double zoom() const { return m_zoom; }
@@ -496,8 +500,8 @@ public slots:
     void deleteSelection();
     void selectAll();
     void deselectAll() { clearSelection(); }
-    void onActionZoomIn() { zoomBy(1.25); }
-    void onActionZoomOut() { zoomBy(0.8); }
+    void onActionZoomIn() { zoomByShortcut(1.25); }
+    void onActionZoomOut() { zoomByShortcut(0.8); }
     void onActionResetView() { fitToWindow(); }
     void onActionToggleOnionSkin(bool on) { setOnionSkin(on); }
     // The view turned on the screen (the scene is not changed), seen as in a mirror, and
@@ -963,6 +967,7 @@ private:
     QTransform m_dragTransform;   // applied to the selection while dragging
     bool m_marqueeAdds = false;
     bool m_lasso = true;
+    bool m_zoomOnMouse = false;
     bool m_snapContour = false;
     bool m_showGuides = true;
     int m_activeGuide = -1;

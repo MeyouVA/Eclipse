@@ -227,6 +227,15 @@ QTransform Canvas::parentSeen() const
     return flat * scene.depthTransform(scene.depthOf(m_layer, m_frame), m_frame);
 }
 
+void Canvas::zoomByShortcut(double factor)
+{
+    QPoint const pointer = mapFromGlobal(QCursor::pos());
+    if (m_zoomOnMouse && rect().contains(pointer))
+        zoomAt(QPointF(pointer), factor);
+    else
+        zoomBy(factor);
+}
+
 Pose Canvas::poseOf(int layer, int frame) const
 {
     if (layer == m_layer && frame == m_frame && posing())

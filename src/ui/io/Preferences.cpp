@@ -247,6 +247,9 @@ void MainWindow::applyPreferences()
     // Timeline: how wide a frame is to begin with.  Render: the preview's size, and whether it keeps itself up to date.
     m_timeline->setCellWidth(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
     m_timeline->setRulerLocked(s.value(QStringLiteral("prefs/lockTimelineRuler"), false).toBool());
+    m_loopPause = std::clamp(s.value(QStringLiteral("prefs/loopPause"), 0).toInt(), 0, 5000);
+    for (Canvas* const view : findChildren<Canvas*>())
+        view->setZoomOnMouse(s.value(QStringLiteral("prefs/zoomOnMouse"), false).toBool());
     m_actions->setChecked(QStringLiteral("LockTimelineRuler"), m_timeline->rulerLocked());
     if (PreviewManagerView* const preview = findChild<PreviewManagerView*>()) {
         preview->setSizePercent(s.value(QStringLiteral("prefs/previewSize"), 50).toInt());
@@ -356,6 +359,11 @@ void MainWindow::onActionPreferences()
     safe->setToolTip(tr("How much of the frame, at each edge, lies outside the safe area (the title-safe area leaves twice as much)."));
     safe->setValue(int(std::lround(m_canvas->safeMargin() * 100.0)));
     cameraLayout->addRow(tr("TV safety"), safe);
+    QCheckBox* const zoomOnMouse = new QCheckBox(tr("Zoom In and Zoom Out about the pointer"), camera);
+    zoomOnMouse->setObjectName(QStringLiteral("PrefZoomOnMouse"));
+    zoomOnMouse->setToolTip(tr("The zoom shortcuts zoom about where the pointer is over the view, instead of about its middle."));
+    zoomOnMouse->setChecked(m_canvas->zoomsOnMouse());
+    cameraLayout->addRow(zoomOnMouse);
 
     QGroupBox* const sheet = new QGroupBox(tr("Exposure Sheet"), &dialog);
     QCheckBox* const extend = new QCheckBox(tr("Extend Exposure of Previous Drawing"), sheet);
@@ -395,6 +403,15 @@ void MainWindow::onActionPreferences()
                               "(A keyframe can be turned either way afterwards, as always.)"));
     stopMotion->setChecked(m_document->stopMotionKeys());
     timelineLayout->addRow(stopMotion);
+    QSpinBox* const loopPause = new QSpinBox(timelinePage);
+    loopPause->setObjectName(QStringLiteral("PrefLoopPause"));
+    loopPause->setRange(0, 5000);
+    loopPause->setSingleStep(100);
+    loopPause->setSuffix(tr(" ms"));
+    loopPause->setSpecialValueText(tr("None"));
+    loopPause->setToolTip(tr("Playing in a loop: how long the last frame is held before the loop plays again."));
+    loopPause->setValue(m_loopPause);
+    timelineLayout->addRow(tr("Pause at the end of a loop"), loopPause);
 
     // Render: the preview.
     QGroupBox* const renderPage = new QGroupBox(tr("Render"), &dialog);
@@ -583,6 +600,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/keyFrameOne"), frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), extend->isChecked());
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), stopMotion->isChecked());
+    s.setValue(QStringLiteral("prefs/loopPause"), loopPause->value());
+    s.setValue(QStringLiteral("prefs/zoomOnMouse"), zoomOnMouse->isChecked());
     s.setValue(QStringLiteral("prefs/nameByFrame"), byFrame->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
     s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());
