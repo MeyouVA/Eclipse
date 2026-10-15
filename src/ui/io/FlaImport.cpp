@@ -1156,7 +1156,16 @@ public:
             int maskOrder = 0;
             layer(layerNode, frame, place, tint, masked, order, depth);
             layer(*mask, frame, place, Tint(), shape, maskOrder, depth);
-            FlashCut::cutInto(masked, FlashCut::areaOf(shape), drawing);
+            // A mask with nothing on this frame masks nothing: what it covers shows whole (as Flash plays it - no mask is
+            // placed).  One with only lines on it still hides all, as lines do not mask.
+            if (shape.isEmpty()) {
+                for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                    drawing.fillsOf(sheet) += masked.fillsOf(sheet);
+                    drawing.strokesOf(sheet) += masked.strokesOf(sheet);
+                }
+                drawing.pictures += masked.pictures;
+            } else
+                FlashCut::cutInto(masked, FlashCut::areaOf(shape), drawing);
         }
     }
 
@@ -1695,6 +1704,20 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
                 }
                 layer.cells[frame] = *found;
             }
+        }
+        if (layer.mask && layer.cells.contains(-1)) {
+            // A mask with nothing on a frame masks nothing then (Flash places no mask): there it is the whole stage and more,
+            // so that what it cuts shows whole.  (A mask layer is not seen itself.)
+            Drawing everything;
+            Fill stage;
+            stage.color = Qt::black;
+            stage.outlines = {QPolygonF(QRectF(-4.0 * out.size.width(), -4.0 * out.size.height(), 9.0 * out.size.width(), 9.0 * out.size.height()))};
+            everything.fills = {stage};
+            int const whole = int(layer.drawings.size());
+            layer.drawings.push_back(everything);
+            for (int& cell : layer.cells)
+                if (cell == -1)
+                    cell = whole;
         }
         made.insert(l, int(out.layers.size()));
         out.layers.push_back(layer);
