@@ -97,6 +97,7 @@ struct Shape {
     struct Line {
         QColor colour;
         double width = 20.0;
+        bool keepWidth = false;     // a line that keeps its thickness however the shape is scaled
         QPolygonF points;
     };
     QVector<Area> areas;
@@ -141,7 +142,13 @@ QColor fillStyle(QByteArray const& b, int& p, int version)
     return QColor(128, 128, 128);
 }
 
-void styles(QByteArray const& b, int& p, int version, QVector<QColor>& fills, QVector<QPair<QColor, double>>& lines)
+struct LineStyle {
+    QColor colour;
+    double width = 20.0;
+    bool keepWidth = false;
+};
+
+void styles(QByteArray const& b, int& p, int version, QVector<QColor>& fills, QVector<LineStyle>& lines)
 {
     int count = quint8(b[p++]);
     if (count == 0xff && version >= 2) {
@@ -164,12 +171,14 @@ void styles(QByteArray const& b, int& p, int version, QVector<QColor>& fills, QV
             p += 2;
             if (((flags >> 4) & 3) == 2)
                 p += 2;
+            // (Scaled neither across nor down: as thick on every scale.)
+            bool const keep = (flags & 0x0004) && (flags & 0x0002);
             if (flags & 0x0008)
-                lines.push_back({fillStyle(b, p, version), width});
+                lines.push_back({fillStyle(b, p, version), width, keep});
             else
-                lines.push_back({colourAt(b, p, true), width});
+                lines.push_back({colourAt(b, p, true), width, keep});
         } else {
-            lines.push_back({colourAt(b, p, version >= 3), width});
+            lines.push_back({colourAt(b, p, version >= 3), width, false});
         }
     }
 }
@@ -193,7 +202,7 @@ Shape shape(QByteArray const& b, int version)
         p = edge.byte() + 1;    // and its flags
     }
     QVector<QColor> fills;
-    QVector<QPair<QColor, double>> lineStyles;
+    QVector<LineStyle> lineStyles;
     styles(b, p, version, fills, lineStyles);
     Bits bits(b, p);
     int fillBits = int(bits.ub(4)), lineBits = int(bits.ub(4));
@@ -266,8 +275,9 @@ Shape shape(QByteArray const& b, int version)
         if (line != 0 && line + lineBase - 1 < lineStyles.size()) {
             if (currentLine < 0) {
                 Shape::Line l;
-                l.colour = lineStyles[line + lineBase - 1].first;
-                l.width = lineStyles[line + lineBase - 1].second;
+                l.colour = lineStyles[line + lineBase - 1].colour;
+                l.width = lineStyles[line + lineBase - 1].width;
+                l.keepWidth = lineStyles[line + lineBase - 1].keepWidth;
                 l.points = piece;
                 out.lines.push_back(l);
                 currentLine = int(out.lines.size()) - 1;
@@ -445,7 +455,7 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
                     Stroke stroke;
                     stroke.color = line.colour;
                     stroke.order = order;
-                    stroke.width = float(std::max(0.5, line.width / 20.0 * std::sqrt(std::abs(it->matrix.determinant()))));
+                    stroke.width = float(std::max(0.5, line.width / 20.0 * (line.keepWidth ? 1.0 : std::sqrt(std::abs(it->matrix.determinant())))));
                     for (QPointF const& point : place.map(line.points))
                         stroke.points.push_back({point, 1.0f});
                     if (stroke.points.size() >= 2)
