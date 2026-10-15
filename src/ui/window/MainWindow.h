@@ -324,6 +324,11 @@ public slots:
     void onActionLockAll();
     void onActionTagLayers(QString const& how);
     void onActionTimelineViewMode(QString const& mode);
+    // Drawing layers (sets of drawings within a layer): the next drawing of the same one; the drawing of the same name in
+    // the next one; and the drawing on the current frame put in one.  `direction` is "1" or "-1".
+    void onActionSubstituteSameSet(QString const& direction);
+    void onActionSubstituteLayer(QString const& direction);
+    void onActionSetDrawingLayer();
     // Lock Timeline Ruler (on or off; kept with the preferences).
     void onActionLockTimelineRuler();
     void onActionTimelineShowKind(QString const& which);

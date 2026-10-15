@@ -167,8 +167,8 @@ bool Document::renameDrawing(int layer, int frame, QString const& name)
     if (index == Layer::kNoDrawing || clean == l.drawings[index].name)
         return false;
     for (int i = 0; i < l.drawings.size(); ++i)
-        if (i != index && !clean.isEmpty() && l.drawingLabel(i) == clean)
-            return false;       // two drawings of a layer cannot go by one name
+        if (i != index && !clean.isEmpty() && l.drawingLabel(i) == clean && l.drawings[i].set == l.drawings[index].set)
+            return false;       // two drawings of a drawing layer cannot go by one name
     apply(tr("Rename Drawing"), [&](Scene& s) { s.layers[layer].drawings[index].name = clean; });
     return true;
 }
@@ -257,6 +257,64 @@ void Document::stepSubstitution(int layer, int frame, int direction)
     int const shown = l.cells[frame];
     int const next = shown == Layer::kNoDrawing ? (direction > 0 ? 0 : count - 1) : ((shown + direction) % count + count) % count;
     substituteDrawing(layer, frame, next);
+}
+
+void Document::stepSubstitutionInSet(int layer, int frame, int direction)
+{
+    if (!validCell(m_scene, layer, frame))
+        return;
+    Layer const& l = m_scene.layers[layer];
+    int const shown = l.cells[frame];
+    if (shown == Layer::kNoDrawing) {
+        stepSubstitution(layer, frame, direction);
+        return;
+    }
+    int const count = int(l.drawings.size());
+    for (int step = 1; step < count; ++step) {
+        int const next = ((shown + direction * step) % count + count) % count;
+        if (l.drawings[next].set == l.drawings[shown].set) {
+            substituteDrawing(layer, frame, next);
+            return;
+        }
+    }
+}
+
+bool Document::stepDrawingSet(int layer, int frame, int direction)
+{
+    if (!validCell(m_scene, layer, frame))
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    int const shown = l.cells[frame];
+    if (shown == Layer::kNoDrawing)
+        return false;
+    QStringList const sets = l.drawingSets();
+    int const at = int(sets.indexOf(l.drawings[shown].set));
+    QString const label = l.drawingLabel(shown);
+    for (int step = 1; step < sets.size(); ++step) {
+        QString const other = sets[((at + direction * step) % int(sets.size()) + int(sets.size())) % int(sets.size())];
+        int const match = l.drawingInSet(other, label);
+        if (match != Layer::kNoDrawing) {
+            substituteDrawing(layer, frame, match);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Document::setDrawingSet(int layer, int frame, QString const& set)
+{
+    if (!validCell(m_scene, layer, frame))
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    int const index = l.cells[frame];
+    QString const clean = set.trimmed();
+    if (index == Layer::kNoDrawing || l.drawings[index].set == clean)
+        return false;
+    int const same = l.drawingInSet(clean, l.drawingLabel(index));
+    if (same != Layer::kNoDrawing && same != index)
+        return false;       // that drawing layer has a drawing of this name
+    apply(tr("Set Drawing Layer"), [&](Scene& s) { s.layers[layer].drawings[index].set = clean; });
+    return true;
 }
 
 CellBlock CellBlock::reversed() const

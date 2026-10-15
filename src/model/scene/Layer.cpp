@@ -637,14 +637,31 @@ void Layer::substitute(int frame, int drawing)
         cells[f] = drawing;
 }
 
-// Two drawings of a layer cannot go by one name (pasted cells bring theirs along): the later one loses it.
+QStringList Layer::drawingSets() const
+{
+    QStringList sets;
+    for (Drawing const& d : drawings)
+        if (!sets.contains(d.set))
+            sets << d.set;
+    return sets;
+}
+
+int Layer::drawingInSet(QString const& set, QString const& label) const
+{
+    for (int i = 0; i < drawings.size(); ++i)
+        if (drawings[i].set == set && drawingLabel(i) == label)
+            return i;
+    return kNoDrawing;
+}
+
+// Two drawings of a drawing layer cannot go by one name (pasted cells bring theirs along): the later one loses it.
 static void oneNameEach(QVector<Drawing>& drawings)
 {
     for (int i = 1; i < drawings.size(); ++i) {
         if (drawings[i].name.isEmpty())
             continue;
         for (int k = 0; k < i; ++k) {
-            if (drawings[k].name == drawings[i].name) {
+            if (drawings[k].name == drawings[i].name && drawings[k].set == drawings[i].set) {
                 drawings[i].name.clear();
                 break;
             }

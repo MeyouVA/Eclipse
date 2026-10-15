@@ -109,6 +109,48 @@ void MainWindow::onActionSubstituteNext()
     m_document->stepSubstitution(layer(), frame(), +1);
 }
 
+void MainWindow::onActionSubstituteSameSet(QString const& direction)
+{
+    m_document->stepSubstitutionInSet(layer(), frame(), direction.toInt() < 0 ? -1 : 1);
+}
+
+void MainWindow::onActionSubstituteLayer(QString const& direction)
+{
+    Layer const& l = m_document->scene().layers[layer()];
+    int const shown = l.drawingAt(frame());
+    if (shown == Layer::kNoDrawing) {
+        statusBar()->showMessage(tr("There is no drawing on this frame to swap."), 5000);
+        return;
+    }
+    if (!m_document->stepDrawingSet(layer(), frame(), direction.toInt() < 0 ? -1 : 1))
+        statusBar()->showMessage(l.drawingSets().size() < 2
+                                     ? tr("The layer has one drawing layer only: put drawings in others with Drawing > Drawing Layer.")
+                                     : tr("No other drawing layer has a drawing called %1.").arg(l.drawingLabel(shown)),
+                                 6000);
+}
+
+void MainWindow::onActionSetDrawingLayer()
+{
+    Layer const& l = m_document->scene().layers[layer()];
+    int const shown = l.drawingAt(frame());
+    if (!l.holdsDrawings() || shown == Layer::kNoDrawing) {
+        statusBar()->showMessage(tr("Choose a cell with a drawing to put it in a drawing layer."), 5000);
+        return;
+    }
+    bool ok = false;
+    QStringList sets = l.drawingSets();
+    sets.removeAll(QString());
+    QString const set = QInputDialog::getItem(this, tr("Drawing Layer"),
+                                              tr("The drawing layer drawing %1 belongs to (a set of drawings of the layer - \"front\", \"side\";\n"
+                                                 "empty for none). Substitute Layer Next swaps a drawing for the one of its name in the next.")
+                                                  .arg(l.drawingLabel(shown)),
+                                              QStringList{QString()} + sets, int(sets.indexOf(l.drawings[shown].set)) + 1, true, &ok);
+    if (!ok)
+        return;
+    if (!m_document->setDrawingSet(layer(), frame(), set) && set.trimmed() != l.drawings[shown].set)
+        statusBar()->showMessage(tr("The drawing layer %1 has a drawing called %2 already.").arg(set.trimmed(), l.drawingLabel(shown)), 6000);
+}
+
 void MainWindow::onActionSelectParent()
 {
     int const parent = m_document->scene().parentIndex(layer());

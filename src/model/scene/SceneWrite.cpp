@@ -203,6 +203,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                 drawing["pinned"] = true;
             if (!d.name.isEmpty())
                 drawing["name"] = d.name;
+            if (!d.set.isEmpty())
+                drawing["set"] = d.set;
             if (d.mark != Drawing::NoMark)
                 drawing["mark"] = d.mark;
             drawings.append(drawing);

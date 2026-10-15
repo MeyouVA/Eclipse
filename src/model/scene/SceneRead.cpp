@@ -358,6 +358,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 d.fills.push_back(fillFromJson(fv.toObject()));
             d.pinned = dv.toObject()["pinned"].toBool(false);
             d.name = dv.toObject()["name"].toString();
+            d.set = dv.toObject()["set"].toString();
             d.mark = std::clamp(dv.toObject()["mark"].toInt(0), 0, int(Drawing::InBetweenMark));
             for (QJsonValue const& pv : dv.toObject()["pictures"].toArray()) {
                 QJsonObject const po = pv.toObject();

@@ -210,6 +210,7 @@
    <item id="DuplicateDrawing" icon="timeline/duplicatedrawing" text="&amp;Duplicate Drawings" shortcut="shortcut.duplicateDrawing" responder="window" slot="onActionDuplicateDrawing()"/>
    <item id="DeleteDrawing" icon="timeline/deletedrawing" text="Delete Selected Dra&amp;wings" responder="window" slot="onActionDeleteDrawing()"/>
    <item id="RenameWithPrefix" icon="timeline/renameprefix" text="Rename Drawing with &amp;Prefix..." shortcut="shortcut.renameWithPrefix" responder="window" slot="onActionRenameWithPrefix()"/>
+   <item id="SetDrawingLayer" icon="timeline/renameprefix" text="Drawing &amp;Layer..." responder="window" slot="onActionSetDrawingLayer()"/>
    <item id="RenameByFrame" icon="timeline/renamebyframe" text="Rename &amp;by Frame" shortcut="shortcut.renameByFrame" responder="window" slot="onActionRenameByFrame()"/>
    <menu id="DrawingMark" text="Mar&amp;k Drawing As">
     <item id="MarkKey" icon="timeline/markkey" text="&amp;Key Drawing" shortcut="shortcut.markKey" responder="window" slot="onActionMarkDrawing(QString)" itemParameter="key"/>
@@ -374,6 +375,10 @@
    <separator/>
    <item id="SubstitutePrevious" icon="anim/substituteprev" text="Substitute Drawing Pre&amp;vious" shortcut="shortcut.substitutePrev" responder="window" slot="onActionSubstitutePrevious()"/>
    <item id="SubstituteNext" icon="anim/substitutenext" text="Substitute Drawing Ne&amp;xt" shortcut="shortcut.substituteNext" responder="window" slot="onActionSubstituteNext()"/>
+   <item id="SubstituteSameSetPrevious" icon="anim/substituteprev" text="Substitute Drawing Previous [Same Layer]" responder="window" slot="onActionSubstituteSameSet(QString)" itemParameter="-1"/>
+   <item id="SubstituteSameSetNext" icon="anim/substitutenext" text="Substitute Drawing Next [Same Layer]" responder="window" slot="onActionSubstituteSameSet(QString)" itemParameter="1"/>
+   <item id="SubstituteLayerPrevious" icon="anim/substituteprev" text="Substitute Layer Previous" responder="window" slot="onActionSubstituteLayer(QString)" itemParameter="-1"/>
+   <item id="SubstituteLayerNext" icon="anim/substitutenext" text="Substitute Layer Next" responder="window" slot="onActionSubstituteLayer(QString)" itemParameter="1"/>
    <item id="GotoPrevKeyframe" icon="timeline/prevkey" text="Go to &amp;Previous Keyframe" shortcut="shortcut.prevKeyframe" responder="window" slot="onActionGotoPreviousKeyframe()"/>
    <item id="GotoNextKeyframe" icon="timeline/nextkey" text="Go to &amp;Next Keyframe" shortcut="shortcut.nextKeyframe" responder="window" slot="onActionGotoNextKeyframe()"/>
    <separator/>

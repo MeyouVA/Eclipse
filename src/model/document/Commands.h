@@ -132,6 +132,14 @@ public:
     void substituteDrawing(int layer, int frame, int drawing);
     // The drawing after (+1) or before (-1) the one shown, going round at the ends.
     void stepSubstitution(int layer, int frame, int direction);
+    // Substitute Drawing Next / Previous [Same Layer]: the next drawing (or the one before) of the same drawing layer.
+    void stepSubstitutionInSet(int layer, int frame, int direction);
+    // Substitute Layer Next / Previous: the drawing of that name in the next drawing layer (or the one before) that has
+    // one, round and round.  False when no other drawing layer has a drawing of that name.
+    bool stepDrawingSet(int layer, int frame, int direction);
+    // The drawing on that frame put in a drawing layer (empty: none).  False when that drawing layer has a drawing of its
+    // name already.
+    bool setDrawingSet(int layer, int frame, QString const& set);
     // Puts `layer` just in front of (or with `behind`, just behind) layer `target`.
     // Returns where it ended up.
     int moveLayerBeside(int layer, int target, bool behind);

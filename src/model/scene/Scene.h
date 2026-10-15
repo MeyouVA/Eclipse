@@ -264,6 +264,10 @@ struct Drawing {
     bool pinned = false;
     // A name of its own ("A", "blink"); without one it goes by its number in the layer.
     QString name;
+    // The drawing layer it belongs to, within the layer (a set of drawings: "front", "side"); empty for none.  Two
+    // drawings of one drawing layer cannot go by one name; drawings of different ones can - drawing "3" of the front and
+    // drawing "3" of the side - and Substitute Layer Next swaps the one for the other, keeping the timing.
+    QString set;
     // What the drawing is in the animation, when the animator has said: a key drawing, a
     // breakdown between keys, or an in-between.  Shown in the Timeline and the Xsheet.
     enum Mark { NoMark, KeyMark, BreakdownMark, InBetweenMark };
@@ -734,6 +738,10 @@ struct Layer {
     {
         return index < 0 || index >= drawings.size() ? QString() : drawings[index].name.isEmpty() ? QString::number(index + 1) : drawings[index].name;
     }
+    // The drawing layers of the layer, in the order their first drawings come (the drawings of none: "").
+    QStringList drawingSets() const;
+    // The drawing of that drawing layer that goes by that name, or kNoDrawing.
+    int drawingInSet(QString const& set, QString const& label) const;
     QVector<Morph> morphs;
     // The morphing `frame` lies in (from its first key drawing up to, not counting, its second), or -1.
     int morphIndexAt(int frame) const;

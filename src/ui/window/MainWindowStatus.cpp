@@ -122,7 +122,9 @@ void MainWindow::updateStatus()
     Layer const& current = scene.layers[layer()];
     int const drawing = current.holdsDrawings() ? current.drawingAt(frame()) : Layer::kNoDrawing;
     m_drawingLabel->setText(!current.holdsDrawings() ? current.name
-                            : drawing == Layer::kNoDrawing ? tr("%1 Empty Cell").arg(current.name) : tr("%1-%2").arg(current.name, current.drawingLabel(drawing)));
+                            : drawing == Layer::kNoDrawing ? tr("%1 Empty Cell").arg(current.name)
+                            : current.drawings[drawing].set.isEmpty() ? tr("%1-%2").arg(current.name, current.drawingLabel(drawing))
+                                                                      : tr("%1-%2 (%3)").arg(current.name, current.drawingLabel(drawing), current.drawings[drawing].set));
     // The frame, and where the pointer is.
     m_statusLabel->setText(m_pointerKnown ? tr("Fr %1      %2:%3").arg(frame() + 1).arg(m_pointer.x(), 0, 'f', 2).arg(m_pointer.y(), 0, 'f', 2)
                                           : tr("Fr %1").arg(frame() + 1));
