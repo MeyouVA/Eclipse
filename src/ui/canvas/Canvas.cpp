@@ -24,6 +24,7 @@ Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_documen
 
 void Canvas::onDocumentChanged()
 {
+    m_modeCache = QImage();
     // An edit that did not come from the selection itself (undo, another tool) may have
     // changed what the indices refer to.
     if (!m_committing) {

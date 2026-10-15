@@ -1028,6 +1028,10 @@ private:
     QVector<QImage> m_preview;
     bool m_usePreview = true;
     ViewMode m_viewMode = ViewNormal;
+    // The last picture a view mode made, for the frame and mode it was made for (made again when the scene changes).
+    QImage m_modeCache;
+    int m_modeCacheFrame = -1;
+    ViewMode m_modeCacheMode = ViewNormal;
     QImage m_snapshot;
     bool m_showSnapshot = false;
     bool m_snapGrid = false;

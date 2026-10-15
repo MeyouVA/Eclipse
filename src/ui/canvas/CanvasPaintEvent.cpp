@@ -147,7 +147,13 @@ void Canvas::paintEvent(QPaintEvent*)
     // A snapshot shown, or Render, Matte or Depth View: that picture of the frame, and nothing else.
     if (((m_showSnapshot && !m_snapshot.isNull()) || m_viewMode != ViewNormal) && !m_drawingView && m_frame >= 0) {
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-        painter.drawImage(frameRect, m_showSnapshot && !m_snapshot.isNull() ? m_snapshot : modeImage(scene, m_frame, m_viewMode));
+        if (!(m_showSnapshot && !m_snapshot.isNull()) && (m_modeCache.isNull() || m_modeCacheFrame != m_frame || m_modeCacheMode != m_viewMode)) {
+            // (Made again only when the frame, the mode or the scene has changed.)
+            m_modeCache = modeImage(scene, m_frame, m_viewMode);
+            m_modeCacheFrame = m_frame;
+            m_modeCacheMode = m_viewMode;
+        }
+        painter.drawImage(frameRect, m_showSnapshot && !m_snapshot.isNull() ? m_snapshot : m_modeCache);
         QPen border(QColor(70, 70, 70));
         border.setCosmetic(true);
         painter.setPen(border);
