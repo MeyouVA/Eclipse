@@ -381,6 +381,11 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
     struct Placed {
         int character = 0;
         QTransform matrix;
+        // A mask: what it covers (the depths above it up to this one) shows only where it is; it is not seen itself.
+        int clipDepth = 0;
+        // A colour effect: each colour times so much (in 256ths), and so much more - red, green, blue, opacity.
+        int mult[4] = {256, 256, 256, 256};
+        int add[4] = {0, 0, 0, 0};
     };
     QMap<int, Placed> list;     // the display list, by depth
     QTransform const toPixels = QTransform::fromTranslate(-xmin, -ymin) * QTransform::fromScale(1.0 / 20.0, 1.0 / 20.0);
@@ -422,7 +427,32 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
             if (flags & 0x04) {
                 Bits bits(body, q);
                 at.matrix = matrix(bits);
+                q = bits.byte();
             }
+            if (flags & 0x08) {
+                // A colour effect (with opacity).
+                Bits bits(body, q);
+                bool const adds = bits.ub(1), mults = bits.ub(1);
+                int const termBits = int(bits.ub(4));
+                for (int c = 0; c < 4; ++c) {
+                    at.mult[c] = 256;
+                    at.add[c] = 0;
+                }
+                if (mults)
+                    for (int c = 0; c < 4; ++c)
+                        at.mult[c] = bits.sb(termBits);
+                if (adds)
+                    for (int c = 0; c < 4; ++c)
+                        at.add[c] = bits.sb(termBits);
+                bits.align();
+                q = bits.byte();
+            }
+            if (flags & 0x10)
+                q += 2;     // a ratio
+            if (flags & 0x20)
+                while (q < body.size() && body[q++] != 0) {}       // a name
+            if (flags & 0x40)
+                at.clipDepth = u16(body, q);
         } else if (code == 4) {
             Placed placed;
             placed.character = u16(body, 0);
@@ -434,32 +464,80 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
         } else if (code == 5) {
             list.remove(u16(body, 2));
         } else if (code == 1) {
-            // The frame as the display list has it: from the deepest up, each on top of the one before.
+            // The frame as the display list has it: from the deepest up, each on top of the one before - what lies under a
+            // mask cut to it, the mask itself not seen.
             Drawing drawing;
             int order = 0;
+            struct Mask {
+                int upTo;
+                QVector<QPolygonF> area;
+            };
+            QVector<Mask> masks;
             for (auto it = list.cbegin(); it != list.cend(); ++it) {
+                masks.removeIf([&](Mask const& m) { return it.key() > m.upTo; });
                 auto const found = shapes.constFind(it->character);
                 if (found == shapes.cend())
                     continue;
                 QTransform const place = it->matrix * toPixels;
+                if (it->clipDepth > 0) {
+                    Mask mask;
+                    mask.upTo = it->clipDepth;
+                    for (Shape::Area const& area : found->areas)
+                        for (QPolygonF const& ring : area.rings)
+                            mask.area.push_back(place.map(ring));
+                    masks.push_back(mask);
+                    continue;
+                }
                 ++order;
+                auto colour = [&](QColor c) {
+                    int v[4] = {c.red(), c.green(), c.blue(), c.alpha()};
+                    for (int k = 0; k < 4; ++k)
+                        v[k] = std::clamp(v[k] * it->mult[k] / 256 + it->add[k], 0, 255);
+                    return QColor(v[0], v[1], v[2], v[3]);
+                };
+                // Kept, or cut to each mask it lies under.
+                auto masked = [&](Fill const& fill) {
+                    QVector<Fill> pieces{fill};
+                    for (Mask const& m : std::as_const(masks)) {
+                        QVector<Fill> cut;
+                        for (Fill const& piece : std::as_const(pieces))
+                            cut += piece.within(m.area, 0.25);
+                        pieces = cut;
+                    }
+                    for (Fill& piece : pieces) {
+                        piece.color = fill.color;
+                        piece.order = order;
+                        drawing.fills.push_back(piece);
+                    }
+                };
                 for (Shape::Area const& area : found->areas) {
                     Fill fill;
-                    fill.color = area.colour;
+                    fill.color = colour(area.colour);
                     fill.order = order;
                     for (QPolygonF const& ring : area.rings)
                         fill.outlines.push_back(place.map(ring));
-                    drawing.fills.push_back(fill);
+                    if (masks.isEmpty())
+                        drawing.fills.push_back(fill);
+                    else
+                        masked(fill);
                 }
                 for (Shape::Line const& line : found->lines) {
                     Stroke stroke;
-                    stroke.color = line.colour;
+                    stroke.color = colour(line.colour);
                     stroke.order = order;
                     stroke.width = float(std::max(0.5, line.width / 20.0 * (line.keepWidth ? 1.0 : std::sqrt(std::abs(it->matrix.determinant())))));
                     for (QPointF const& point : place.map(line.points))
                         stroke.points.push_back({point, 1.0f});
-                    if (stroke.points.size() >= 2)
+                    if (stroke.points.size() < 2)
+                        continue;
+                    if (masks.isEmpty()) {
                         drawing.strokes.push_back(stroke);
+                    } else {
+                        // (A line under a mask is cut as the area it covers.)
+                        Fill asArea = Fill::fromStroke(stroke, 0.25);
+                        asArea.color = stroke.color;
+                        masked(asArea);
+                    }
                 }
             }
             out.frames.push_back(drawing);
