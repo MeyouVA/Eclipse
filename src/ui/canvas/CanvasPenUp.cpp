@@ -515,6 +515,18 @@ void Canvas::penUp()
                             m_warpIndex % 3 == 0 ? tr("Move Deformer Point") : tr("Move Deformer Handle"));
     } else if (drag == DragPoseSkew || drag == DragPoseMove || drag == DragPoseScale || drag == DragPoseRotate || drag == DragBone || drag == DragIK || drag == DragWarp || drag == DragPoseTurn) {
         m_drag = DragNone;
+        {
+            // What was changed of a value that follows another layer does not show: say why.
+            Scene const& scene = m_document->scene();
+            for (Driver const& d : scene.layers[m_layer].drivers) {
+                int const by = scene.layerIndex(d.source);
+                if (by >= 0 && std::abs(Driver::read(m_dragPose, d.value) - Driver::read(m_poseStart, d.value)) > 1e-9) {
+                    emit message(tr("This layer follows %1 there (Layer Properties > Attribute Controls): the change is kept in its keyframes, "
+                                    "but shows only once it no longer follows it.").arg(scene.layers[by].name));
+                    break;
+                }
+            }
+        }
         if (!(m_dragPose == m_poseStart) && !m_animate)
             m_document->shiftPoses(m_layer, m_frame, m_poseStart, m_dragPose,
                                    drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")

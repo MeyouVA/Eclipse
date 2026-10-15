@@ -141,11 +141,26 @@ QRect Timeline::parameterValueRect(int layer, Parameter which) const
     return QRect(kHeaderWidth - kParamWidth + 3, row.y() + 1, kParamWidth - 7, kRowHeight - 3);
 }
 
+int Timeline::drivenBy(int layer, Parameter which) const
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size() || int(which) < 0 || int(which) >= ParameterCount)
+        return -1;
+    // (The rows of the pose are numbered as the values a driver sets.)
+    int by = -1;
+    for (Driver const& d : scene.layers[layer].drivers)
+        if (d.value == int(which))
+            by = scene.layerIndex(d.source);
+    return by;
+}
+
 double Timeline::parameter(int layer, Parameter which) const
 {
     Scene const& scene = m_document->scene();
     if (layer < 0 || layer >= scene.layers.size())
         return 0.0;
+    if (drivenBy(layer, which) >= 0)
+        return Driver::read(scene.poseOf(layer, m_frame), int(which));
     if (which == Fov)
         return scene.layers[layer].fovAt(m_frame);     // the angle it has, whether a keyframe says or the camera does
     Pose pose = scene.layers[layer].poseAt(m_frame);
@@ -266,6 +281,8 @@ void Timeline::setParameter(int layer, Parameter which, double value)
 void Timeline::editParameter(int layer, Parameter which)
 {
     closeEntry(true);
+    if (drivenBy(layer, which) >= 0)
+        return;     // it follows another layer: nothing to type in (Layer Properties > Attribute Controls)
     QRect const box = parameterValueRect(layer, which);
     if (box.isNull())
         return;

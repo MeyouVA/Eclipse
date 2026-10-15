@@ -179,7 +179,8 @@ QJSValue ScriptLayers::pose(int layer, int frame) const
     QJSValue out = m_engine->newObject();
     if (!has(layer))
         return out;
-    Pose const p = m_document->scene().layers[layer].poseAt(frame - 1);
+    // (As the scene has it: values that follow other layers' too.)
+    Pose const p = m_document->scene().poseOf(layer, frame - 1);
     out.setProperty(QStringLiteral("x"), p.x);
     out.setProperty(QStringLiteral("y"), p.y);
     out.setProperty(QStringLiteral("z"), p.z);
@@ -189,6 +190,60 @@ QJSValue ScriptLayers::pose(int layer, int frame) const
     out.setProperty(QStringLiteral("skew"), p.skew);
     out.setProperty(QStringLiteral("opacity"), p.opacity);
     return out;
+}
+
+static char const* const kDriverValues[Driver::ValueCount] = {"x", "y", "scaleX", "scaleY", "angle", "opacity", "z", "skew", "fov"};
+
+static int driverValue(QString const& name)
+{
+    for (int v = 0; v < Driver::ValueCount; ++v)
+        if (name == QLatin1String(kDriverValues[v]))
+            return v;
+    return -1;
+}
+
+bool ScriptLayers::addDriver(int layer, QString const& value, int source, QString const& sourceValue, double factor, double offset)
+{
+    int const v = driverValue(value), sv = driverValue(sourceValue);
+    if (!has(layer) || !has(source) || source == layer || v < 0 || sv < 0)
+        return false;
+    Driver d;
+    d.value = v;
+    d.source = m_document->scene().layers[source].id;
+    d.sourceValue = sv;
+    d.factor = factor;
+    d.offset = offset;
+    m_document->editLayers({layer}, tr("Attribute Controls"), [d](Layer& l) {
+        // One driver to a value: a new one takes the place of the one there was.
+        l.drivers.removeIf([&d](Driver const& old) { return old.value == d.value; });
+        l.drivers.push_back(d);
+    });
+    return true;
+}
+
+int ScriptLayers::driverCount(int layer) const
+{
+    return has(layer) ? int(m_document->scene().layers[layer].drivers.size()) : 0;
+}
+
+QJSValue ScriptLayers::driver(int layer, int index) const
+{
+    QJSValue out = m_engine->newObject();
+    if (!has(layer) || index < 0 || index >= m_document->scene().layers[layer].drivers.size())
+        return out;
+    Driver const& d = m_document->scene().layers[layer].drivers[index];
+    out.setProperty(QStringLiteral("value"), QString::fromLatin1(kDriverValues[std::clamp(d.value, 0, int(Driver::ValueCount) - 1)]));
+    out.setProperty(QStringLiteral("source"), m_document->scene().layerIndex(d.source));
+    out.setProperty(QStringLiteral("sourceValue"), QString::fromLatin1(kDriverValues[std::clamp(d.sourceValue, 0, int(Driver::ValueCount) - 1)]));
+    out.setProperty(QStringLiteral("factor"), d.factor);
+    out.setProperty(QStringLiteral("offset"), d.offset);
+    return out;
+}
+
+void ScriptLayers::clearDrivers(int layer)
+{
+    if (has(layer) && !m_document->scene().layers[layer].drivers.isEmpty())
+        m_document->editLayers({layer}, tr("Attribute Controls"), [](Layer& l) { l.drivers.clear(); });
 }
 
 void ScriptLayers::setKeyframe(int layer, int frame, QJSValue const& values)

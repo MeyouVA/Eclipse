@@ -72,6 +72,8 @@ public:
     QRect parameterValueRect(int layer, Parameter which) const;
     // The value on the current frame, as it is shown; and set there, which makes a keyframe.
     double parameter(int layer, Parameter which) const;
+    // The layer a parameter row follows (an attribute control of the layer), or -1 when it goes by its own keyframes.
+    int drivenBy(int layer, Parameter which) const;
     QString parameterText(int layer, Parameter which) const;
     void setParameter(int layer, Parameter which, double value);
     // Opens the box of a value for typing in (Enter takes it, Escape leaves it).

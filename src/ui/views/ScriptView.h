@@ -106,6 +106,12 @@ public:
     Q_INVOKABLE void hold(int layer, int frame, int length);
     Q_INVOKABLE void clear(int layer, int first, int last);
     Q_INVOKABLE bool renameDrawing(int layer, int frame, QString const& name);
+    // Attribute controls: a value of a layer's pose ("x", "y", "scaleX", "scaleY", "angle", "opacity", "z", "skew", "fov")
+    // made to follow a value of another layer's, so many times it and so much more.
+    Q_INVOKABLE bool addDriver(int layer, QString const& value, int source, QString const& sourceValue, double factor = 1.0, double offset = 0.0);
+    Q_INVOKABLE int driverCount(int layer) const;
+    Q_INVOKABLE QJSValue driver(int layer, int index) const;
+    Q_INVOKABLE void clearDrivers(int layer);
 
 private:
     bool has(int layer) const;

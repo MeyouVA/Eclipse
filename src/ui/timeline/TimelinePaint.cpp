@@ -406,8 +406,15 @@ void Timeline::paintEvent(QPaintEvent*)
             QRect const box = parameterValueRect(layerIndex, which);
             p.setRenderHint(QPainter::Antialiasing, false);
             p.fillRect(box, QColor(46, 46, 46));
-            p.setPen(layer.keyIndex(m_frame) >= 0 ? QColor(255, 190, 70) : text);
-            p.drawText(box.adjusted(4, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft, parameterText(layerIndex, which));
+            if (int const by = drivenBy(layerIndex, which); by >= 0) {
+                // Following another layer: its value, and whose it is.
+                p.setPen(QColor(120, 190, 255));
+                p.drawText(box.adjusted(4, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft,
+                           parameterText(layerIndex, which) + QStringLiteral("  \u2190 ") + scene.layers[by].name);
+            } else {
+                p.setPen(layer.keyIndex(m_frame) >= 0 ? QColor(255, 190, 70) : text);
+                p.drawText(box.adjusted(4, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft, parameterText(layerIndex, which));
+            }
             p.setPen(line);
             p.drawLine(0, y + kRowHeight - 1, kHeaderWidth, y + kRowHeight - 1);
             p.setRenderHint(QPainter::Antialiasing, true);
