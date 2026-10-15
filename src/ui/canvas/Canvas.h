@@ -577,12 +577,27 @@ public slots:
     void onActionResetRotation() { rotateView(-m_viewRotation); }
     void onActionResetZoom() { zoomBy(1.0 / m_zoom); }
     void onActionResetPan();
+    // Smooth Fast: a lighter smoothing of what is selected.  Pump / Deflate Selection Thickness: the lines selected a quarter
+    // thicker or thinner; Set Selection Thickness: so thick.  Delete Non Selection: all of the drawing but what is selected
+    // goes.
+    void onActionSmoothFast();
+    void onActionPumpThickness();
+    void onActionDeflateThickness();
+    void onActionSetThickness();
+    void onActionDeleteNonSelection();
+    // Preferences: where Paste puts what it pastes - where it was cut or copied from (0), always in the middle of the view
+    // (1), or in the middle when it would land out of sight (2).
+    void setPasteBehaviour(int how) { m_pasteBehaviour = std::clamp(how, 0, 2); }
+    int pasteBehaviour() const { return m_pasteBehaviour; }
     // The view moved so that what is under the pointer is in the middle of it.
     void onActionRecentre();
     // Quick Close-up: a close-up of what is under the pointer (four times as near, in the middle); again, back to the view
     // as it was.
     void onActionQuickCloseup();
     bool inQuickCloseup() const { return m_closeup; }
+    // The same, about a place of the view rather than the pointer.
+    void recentreOn(QPointF widgetPos);
+    void quickCloseupAt(QPointF widgetPos);
     // Preferences: the middle mouse button pans the view (on), or does nothing here; and the time each picture of the
     // view takes to draw, shown in its corner (the Camera View performance report).
     void setMiddleButtonPans(bool on) { m_middlePans = on; }
@@ -956,6 +971,11 @@ private:
     QPointF m_pan;          // widget-space offset of the centre of the scene from that of the widget
     // Quick Close-up: on, and the view to go back to.
     bool m_closeup = false;
+    double m_smoothWeight = 0.5;
+    int m_pasteBehaviour = 0;
+    void scaleSelectionThickness(double factor, double set, QString const& text);
+    // The Contour Editor's copied points (in the drawing's coordinates), for Paste to add after the picked one.
+    static QVector<StrokePoint> s_pointClipboard;
     bool m_middlePans = true;
     bool m_performanceReport = false;
     double m_lastDrawMs = 0.0;

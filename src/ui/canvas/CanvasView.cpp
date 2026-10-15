@@ -79,14 +79,26 @@ void Canvas::onActionResetPan()
 void Canvas::onActionRecentre()
 {
     QPointF const pointer = mapFromGlobal(QCursor::pos());
-    if (!rect().contains(pointer.toPoint()))
-        return;     // (the pointer is not over the view: nothing to put in the middle)
-    m_pan += QPointF(width() / 2.0, height() / 2.0) - pointer;
+    if (rect().contains(pointer.toPoint()))
+        recentreOn(pointer);    // (the pointer not over the view: nothing to put in the middle)
+}
+
+void Canvas::recentreOn(QPointF widgetPos)
+{
+    m_pan += QPointF(width() / 2.0, height() / 2.0) - widgetPos;
     m_fitted = false;
     update();
 }
 
 void Canvas::onActionQuickCloseup()
+{
+    QPointF pointer = mapFromGlobal(QCursor::pos());
+    if (!rect().contains(pointer.toPoint()))
+        pointer = QPointF(width() / 2.0, height() / 2.0);
+    quickCloseupAt(pointer);
+}
+
+void Canvas::quickCloseupAt(QPointF pointer)
 {
     if (m_closeup) {
         m_closeup = false;
@@ -99,9 +111,6 @@ void Canvas::onActionQuickCloseup()
     m_closeup = true;
     m_closeupZoom = m_zoom;
     m_closeupPan = m_pan;
-    QPointF pointer = mapFromGlobal(QCursor::pos());
-    if (!rect().contains(pointer.toPoint()))
-        pointer = QPointF(width() / 2.0, height() / 2.0);
     zoomAt(pointer, 4.0);
     m_pan += QPointF(width() / 2.0, height() / 2.0) - pointer;
     update();

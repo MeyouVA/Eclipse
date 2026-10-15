@@ -244,6 +244,30 @@ void MainWindow::onActionSelectChild()
     }
 }
 
+void MainWindow::onActionHideSelection()
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty())
+        layers = {layer()};
+    m_document->beginMacro(tr("Hide Selection"));
+    for (int l : std::as_const(layers))
+        if (l >= 0 && l < m_document->scene().layers.size())
+            m_document->setLayerVisible(l, false);
+    m_document->endMacro();
+}
+
+void MainWindow::onActionShowSelectionHideOthers()
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty())
+        layers = {layer()};
+    m_document->beginMacro(tr("Show Selection And Hide All Others"));
+    for (int l = 0; l < m_document->scene().layers.size(); ++l)
+        if (m_document->scene().layers[l].visible != layers.contains(l))
+            m_document->setLayerVisible(l, layers.contains(l));
+    m_document->endMacro();
+}
+
 void MainWindow::onActionSelectChildren()
 {
     Scene const& scene = m_document->scene();

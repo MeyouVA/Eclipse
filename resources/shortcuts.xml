@@ -47,6 +47,13 @@
   <shortcut id="shortcut.resetRotation" text="Reset Rotation" value="Shift+X"/>
   <shortcut id="shortcut.resetPan" text="Reset Pan" value="Shift+N"/>
   <shortcut id="shortcut.recentre" text="Recentre" value=""/>
+  <shortcut id="shortcut.hideSelection" text="Hide Selection" value=""/>
+  <shortcut id="shortcut.showSelectionHideOthers" text="Show Selection And Hide All Others" value=""/>
+  <shortcut id="shortcut.smoothFast" text="Smooth Fast" value=""/>
+  <shortcut id="shortcut.pumpThickness" text="Pump Selection Thickness" value=""/>
+  <shortcut id="shortcut.deflateThickness" text="Deflate Selection Thickness" value=""/>
+  <shortcut id="shortcut.setThickness" text="Set Selection Thickness" value=""/>
+  <shortcut id="shortcut.deleteNonSelection" text="Delete Non Selection" value=""/>
   <shortcut id="shortcut.quickCloseup" text="Quick Close-up" value=""/>
   <shortcut id="shortcut.prevColumn" text="Go to Previous Column" value=""/>
   <shortcut id="shortcut.nextColumn" text="Go to Next Column" value=""/>

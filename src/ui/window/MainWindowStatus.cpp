@@ -1,6 +1,8 @@
 // Eclipse - the main window: title and status, which commands are on, undo and redo, choosing a tool.
 #include "ui/window/MainWindow.h"
 
+#include <QDataStream>
+#include <QUndoStack>
 #include <QApplication>
 #include <QFileInfo>
 #include <QDialog>
@@ -136,12 +138,83 @@ void MainWindow::updateStatus()
 
 void MainWindow::onActionUndo()
 {
-    m_document->undoStack()->undo();
+    stepUndo(false);
 }
 
 void MainWindow::onActionRedo()
 {
-    m_document->undoStack()->redo();
+    stepUndo(true);
+}
+
+namespace {
+// Enough of a drawing to tell whether it changed.
+QByteArray drawingPrint(Drawing const& d)
+{
+    QByteArray print;
+    QDataStream out(&print, QIODevice::WriteOnly);
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        out << qint32(d.strokesOf(sheet).size()) << qint32(d.fillsOf(sheet).size());
+        for (Stroke const& s : d.strokesOf(sheet)) {
+            out << s.width << s.color << qint32(s.points.size());
+            for (StrokePoint const& p : s.points)
+                out << p.pos << p.pressure;
+        }
+        for (Fill const& f : d.fillsOf(sheet)) {
+            out << f.color << qint32(f.swatch) << qint32(f.outlines.size());
+            for (QPolygonF const& o : f.outlines)
+                out << o;
+        }
+    }
+    out << qint32(d.pictures.size());
+    for (Picture const& p : d.pictures)
+        out << p.placement;
+    return print;
+}
+}
+
+void MainWindow::stepUndo(bool redo)
+{
+    QUndoStack* const stack = m_document->undoStack();
+    if (!m_restoreDrawingOnUndo) {
+        redo ? stack->redo() : stack->undo();
+        return;
+    }
+    // The drawings before, to find the one the step changes.
+    Scene const before = m_document->scene();
+    redo ? stack->redo() : stack->undo();
+    Scene const& after = m_document->scene();
+    for (int l = 0; l < after.layers.size(); ++l) {
+        Layer const& layer = after.layers[l];
+        int const was = before.layerIndex(layer.id);
+        if (was < 0 || !layer.holdsDrawings())
+            continue;
+        Layer const& old = before.layers[was];
+        // What a frame shows changed (a drawing put on it, or taken off): the nearest such frame.
+        int nearest = -1;
+        for (int f = 0; f < std::max(layer.cells.size(), old.cells.size()); ++f)
+            if (layer.cells.value(f, Layer::kNoDrawing) != old.cells.value(f, Layer::kNoDrawing)
+                && (nearest < 0 || std::abs(f - frame()) < std::abs(nearest - frame())))
+                nearest = f;
+        if (nearest >= 0) {
+            if (l != this->layer() || nearest != frame())
+                m_timeline->setCurrentCell(l, std::min(nearest, std::max(0, m_document->scene().frameCount() - 1)));
+            return;
+        }
+        for (int d = 0; d < layer.drawings.size(); ++d) {
+            if (d < old.drawings.size() && drawingPrint(old.drawings[d]) == drawingPrint(layer.drawings[d]))
+                continue;
+            // This drawing changed: go to the frame nearest the current one that shows it (unless it is shown here).
+            if (l == this->layer() && layer.drawingAt(frame()) == d)
+                return;
+            int best = -1;
+            for (int f = 0; f < layer.cells.size(); ++f)
+                if (layer.cells[f] == d && (best < 0 || std::abs(f - frame()) < std::abs(best - frame())))
+                    best = f;
+            if (best >= 0)
+                m_timeline->setCurrentCell(l, best);
+            return;
+        }
+    }
 }
 
 void MainWindow::onActionEditShortcuts()

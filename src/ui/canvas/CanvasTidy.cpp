@@ -12,8 +12,17 @@
 #include "ui/panels/Effects.h"
 #include "ui/window/MainWindowPrivate.h"
 
+void Canvas::onActionSmoothFast()
+{
+    // Each point a quarter of the way towards the middle of its neighbours, instead of half.
+    m_smoothWeight = 0.25;
+    onActionSmooth();
+    m_smoothWeight = 0.5;
+}
+
 void Canvas::onActionSmooth()
 {
+    double const w = m_smoothWeight, keep = 1.0 - w, side = w / 2.0;
     Drawing const* const d = currentDrawing();
     if (!selecting() || !d || (m_selStrokes.isEmpty() && m_selFills.isEmpty())) {
         emit message(tr("Select lines or painted areas with the Select tool to smooth them."));
@@ -34,7 +43,7 @@ void Canvas::onActionSmooth()
                 for (int k = 0; n >= 4 && k < n; ++k) {
                     if (before[k].corner)
                         continue;
-                    contour.points[k].pos = before[k].pos * 0.5 + (before[(k + n - 1) % n].pos + before[(k + 1) % n].pos) * 0.25;
+                    contour.points[k].pos = before[k].pos * keep + (before[(k + n - 1) % n].pos + before[(k + 1) % n].pos) * side;
                     moved = moved || contour.points[k].pos != before[k].pos;
                 }
             }
@@ -51,7 +60,7 @@ void Canvas::onActionSmooth()
             if (n < 4)
                 continue;
             for (int k = 0; k < n; ++k) {
-                outline[k] = before[k] * 0.5 + (before[(k + n - 1) % n] + before[(k + 1) % n]) * 0.25;
+                outline[k] = before[k] * keep + (before[(k + n - 1) % n] + before[(k + 1) % n]) * side;
                 changed = changed || outline[k] != before[k];
             }
             if (n < before.size())
@@ -72,8 +81,8 @@ void Canvas::onActionSmooth()
                 continue;
             StrokePoint const& a = before[(k + n - 1) % n];
             StrokePoint const& b = before[(k + 1) % n];
-            points[k].pos = before[k].pos * 0.5 + (a.pos + b.pos) * 0.25;
-            points[k].pressure = before[k].pressure * 0.5f + (a.pressure + b.pressure) * 0.25f;
+            points[k].pos = before[k].pos * keep + (a.pos + b.pos) * side;
+            points[k].pressure = before[k].pressure * float(keep) + (a.pressure + b.pressure) * float(side);
             changed = changed || points[k].pos != before[k].pos;
             // A point with handles: they are put in one line, so the curve passes through it without a kink.
             if (before[k].handles) {
@@ -90,8 +99,51 @@ void Canvas::onActionSmooth()
         }
     }
     if (changed)
-        commitDrawing(edited, tr("Smooth"));
+        commitDrawing(edited, w < 0.5 ? tr("Smooth Fast") : tr("Smooth"));
     update();
+}
+
+void Canvas::scaleSelectionThickness(double factor, double set, QString const& text)
+{
+    // The lines selected (or the line in the Contour Editor) made thicker, thinner, or so thick.
+    Drawing const* const d = currentDrawing();
+    QVector<int> lines = selecting() ? m_selStrokes : QVector<int>();
+    if (m_tool == ContourEditor && m_ceStroke >= 0)
+        lines = {m_ceStroke};
+    if (!d || lines.isEmpty()) {
+        emit message(tr("Select lines first (the Select tool, or one in the Contour Editor)."));
+        return;
+    }
+    Drawing edited = *d;
+    for (int i : std::as_const(lines))
+        if (i >= 0 && i < edited.strokes.size())
+            edited.strokes[i].width = float(std::clamp(set > 0.0 ? set : edited.strokes[i].width * factor, 0.05, 2000.0));
+    commitDrawing(edited, text);
+    update();
+}
+
+void Canvas::onActionPumpThickness()
+{
+    scaleSelectionThickness(1.25, 0.0, tr("Pump Selection Thickness"));
+}
+
+void Canvas::onActionDeflateThickness()
+{
+    scaleSelectionThickness(0.8, 0.0, tr("Deflate Selection Thickness"));
+}
+
+void Canvas::onActionSetThickness()
+{
+    Drawing const* const d = currentDrawing();
+    int const first = m_tool == ContourEditor && m_ceStroke >= 0 ? m_ceStroke : (!m_selStrokes.isEmpty() ? m_selStrokes.first() : -1);
+    if (!d || first < 0 || first >= d->strokes.size()) {
+        emit message(tr("Select lines first (the Select tool, or one in the Contour Editor)."));
+        return;
+    }
+    bool ok = false;
+    double const width = QInputDialog::getDouble(this, tr("Set Selection Thickness"), tr("Thickness:"), d->strokes[first].width, 0.05, 2000.0, 2, &ok);
+    if (ok)
+        scaleSelectionThickness(1.0, width, tr("Set Selection Thickness"));
 }
 
 // The points of a line that it needs: the others lie within `tolerance` of the line through

@@ -83,6 +83,8 @@ public:
     void setWorkspaceInToolbar(QString const& name, bool shown);
     // Preferences: the arrangement kept as it is left (on), or only when saved (off: asked on quitting if it changed).
     bool autoSavesWorkspace() const { return m_autoSaveWorkspace; }
+    // Preferences: an undo (or redo) of a change to another drawing goes to that drawing.
+    bool restoresDrawingOnUndo() const { return m_restoreDrawingOnUndo; }
     // Preferences: a red border round the view in use.
     void setCurrentViewBorder(bool on);
     bool currentViewBorder() const;
@@ -435,6 +437,9 @@ public slots:
     void onActionSelectChild();
     // Every layer attached to the current one, and those attached to them: all picked together.
     void onActionSelectChildren();
+    // The layers selected hidden; or shown, and every other one hidden - one step of undo each.
+    void onActionHideSelection();
+    void onActionShowSelectionHideOthers();
     // Morphing between the key drawing of the current cell and the next one of the layer.
     void onActionCreateMorphing();
     void onActionAutoLipSync();
@@ -526,6 +531,9 @@ private:
     void markWorkspaceClean();
     QByteArray m_cleanWorkspace;
     bool m_autoSaveWorkspace = true;
+    bool m_restoreDrawingOnUndo = false;
+    // Undo / Redo, and with that preference, to the drawing it changed.
+    void stepUndo(bool redo);
     void refreshWorkspaceBox();
     QDockWidget* dockOf(char const* objectName) const;
     // Brings the tabs across the top of every panel up to date with where the views are.

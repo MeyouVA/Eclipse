@@ -27,6 +27,7 @@
 #include "ui/views/PerspectiveView.h"
 
 #include "ui/window/MainWindowPrivate.h"
+#include <QUndoView>
 #include <QDockWidget>
 #include <QFile>
 #include <QMenu>
@@ -91,6 +92,13 @@ void MainWindow::createWindowsMenuViews()
         addView(tr("Script Editor"), QStringLiteral("ScriptDock"), view, Qt::BottomDockWidgetArea)->hide();
         connect(view, &ScriptView::scriptsChanged, this, &MainWindow::refreshScriptCommands);
         refreshScriptCommands();
+    }
+    // Undo List: every step that can be undone (and done again), the current one picked; picking another goes there.
+    {
+        QUndoView* const view = new QUndoView(m_document->undoStack(), this);
+        view->setObjectName(QStringLiteral("UndoList"));
+        view->setEmptyLabel(tr("<the scene as it was opened>"));
+        addView(tr("Undo List"), QStringLiteral("UndoListDock"), view, Qt::RightDockWidgetArea)->hide();
     }
     // Python Console: lines of Python run on the scene, by the Python installed on the computer.
     {

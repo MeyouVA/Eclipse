@@ -1387,6 +1387,19 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     buttons->addStretch();
     buttons->addWidget(addButton);
     buttons->addWidget(removeButton);
+    // The effect picked (none picked: all of them) copied, and pasted onto another layer after its own.
+    QToolButton* const copyButton = new QToolButton(this);
+    copyButton->setObjectName(QStringLiteral("EffectsCopy"));
+    copyButton->setText(tr("Copy"));
+    copyButton->setToolTip(tr("Copy the selected effect (or all of them, with none selected)"));
+    QToolButton* const pasteButton = new QToolButton(this);
+    pasteButton->setObjectName(QStringLiteral("EffectsPaste"));
+    pasteButton->setText(tr("Paste"));
+    pasteButton->setToolTip(tr("Paste the effects copied onto this layer"));
+    buttons->addWidget(copyButton);
+    buttons->addWidget(pasteButton);
+    connect(copyButton, &QToolButton::clicked, this, [this] { copyEffects(); });
+    connect(pasteButton, &QToolButton::clicked, this, [this] { pasteEffects(); });
     QHBoxLayout* const amountRow = new QHBoxLayout;
     amountRow->addWidget(m_amountLabel);
     amountRow->addWidget(m_amount, 1);
@@ -1740,6 +1753,29 @@ void EffectsPanel::add(Effect::Type type)
     QVector<Effect> effects = scene.layers[m_layer].effects;
     effects.push_back(e);
     m_document->setEffects(m_layer, effects, tr("Add Effect"));
+    m_list->setCurrentRow(int(effects.size()) - 1);
+}
+
+QVector<Effect> EffectsPanel::s_copied;
+
+void EffectsPanel::copyEffects()
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return;
+    QVector<Effect> const& all = scene.layers[m_layer].effects;
+    int const row = m_list->currentRow();
+    s_copied = row >= 0 && row < all.size() ? QVector<Effect>{all[row]} : all;
+}
+
+void EffectsPanel::pasteEffects()
+{
+    Scene const& scene = m_document->scene();
+    if (s_copied.isEmpty() || m_layer < 0 || m_layer >= scene.layers.size() || !scene.layers[m_layer].holdsDrawings())
+        return;
+    QVector<Effect> effects = scene.layers[m_layer].effects;
+    effects += s_copied;
+    m_document->setEffects(m_layer, effects, tr("Paste Effects"));
     m_list->setCurrentRow(int(effects.size()) - 1);
 }
 

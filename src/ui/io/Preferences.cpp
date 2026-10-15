@@ -314,6 +314,8 @@ void MainWindow::applyPreferences()
     setCurrentViewBorder(s.value(QStringLiteral("prefs/viewBorder"), true).toBool());
     m_canvas->setMiddleButtonPans(s.value(QStringLiteral("prefs/middlePans"), true).toBool());
     m_canvas->setPerformanceReport(s.value(QStringLiteral("prefs/performanceReport"), false).toBool());
+    m_canvas->setPasteBehaviour(s.value(QStringLiteral("prefs/pasteBehaviour"), 0).toInt());
+    m_restoreDrawingOnUndo = s.value(QStringLiteral("prefs/restoreDrawingOnUndo"), false).toBool();
     {
         int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
         if (m_library)
@@ -429,6 +431,11 @@ void MainWindow::onActionPreferences()
     performance->setToolTip(tr("Shows in a corner of the Camera view how long each picture of it takes to draw."));
     performance->setChecked(s.value(QStringLiteral("prefs/performanceReport"), false).toBool());
     generalLayout->addRow(performance);
+    QCheckBox* const restoreDrawing = new QCheckBox(tr("Restore current selected drawing on undo"), general);
+    restoreDrawing->setObjectName(QStringLiteral("PrefRestoreDrawingOnUndo"));
+    restoreDrawing->setToolTip(tr("Undo (and Redo) of a change to another drawing goes to that drawing, to show what was undone."));
+    restoreDrawing->setChecked(s.value(QStringLiteral("prefs/restoreDrawingOnUndo"), false).toBool());
+    generalLayout->addRow(restoreDrawing);
     generalLayout->addRow(tr("3D models come in at"), modelScale);
     QCheckBox* const askAutoSave = new QCheckBox(tr("Ask before saving by itself"), general);
     askAutoSave->setObjectName(QStringLiteral("PrefAskAutoSave"));
@@ -746,6 +753,12 @@ void MainWindow::onActionPreferences()
     lineArtBitmap->setToolTip(tr("Add Drawing Layer starts with the line art painted in pixels rather than drawn in vectors."));
     lineArtBitmap->setChecked(s.value(QStringLiteral("prefs/lineArtBitmap"), false).toBool());
     drawingLayout->addRow(lineArtBitmap);
+    QComboBox* const pasteBehaviour = new QComboBox(drawing);
+    pasteBehaviour->setObjectName(QStringLiteral("PrefPasteBehaviour"));
+    pasteBehaviour->addItems({tr("Normal Paste"), tr("Always Paste in Centre"), tr("Paste in Centre if Outside")});
+    pasteBehaviour->setToolTip(tr("Where Paste puts what is pasted in a drawing: where it was, or in the middle of the view."));
+    pasteBehaviour->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/pasteBehaviour"), 0).toInt(), 0, 2));
+    drawingLayout->addRow(tr("Paste behaviour"), pasteBehaviour);
     QCheckBox* const selectLasso = new QCheckBox(tr("Select tool is lasso when Eclipse starts"), drawing);
     selectLasso->setObjectName(QStringLiteral("PrefSelectLasso"));
     selectLasso->setChecked(s.value(QStringLiteral("prefs/selectLasso"), true).toBool());
@@ -924,6 +937,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/focusOnEnter"), focusOnEnter->isChecked());
     s.setValue(QStringLiteral("prefs/autoSaveWorkspace"), autoWorkspace->isChecked());
     s.setValue(QStringLiteral("prefs/viewBorder"), viewBorder->isChecked());
+    s.setValue(QStringLiteral("prefs/restoreDrawingOnUndo"), restoreDrawing->isChecked());
+    s.setValue(QStringLiteral("prefs/pasteBehaviour"), pasteBehaviour->currentIndex());
     s.setValue(QStringLiteral("prefs/middlePans"), middlePans->isChecked());
     s.setValue(QStringLiteral("prefs/performanceReport"), performance->isChecked());
     s.setValue(QStringLiteral("prefs/modelScale"), modelScale->value());

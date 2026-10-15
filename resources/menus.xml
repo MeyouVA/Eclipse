@@ -272,10 +272,17 @@
     <item id="RemoveArtInsideAll" icon="anim/removeinside" text="Remove Art Inside Selection on All Drawings" shortcut="shortcut.removeArtInsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="removeAll"/>
     <item id="RemoveArtOutside" icon="anim/removeoutside" text="Remove Art &amp;Outside Selection" shortcut="shortcut.removeArtOutside" responder="camera" slot="onActionRemoveArtOutside()"/>
     <item id="RemoveArtOutsideAll" icon="anim/removeoutside" text="Remove Art Outside Selection on All Drawings" shortcut="shortcut.removeArtOutsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="removeOutsideAll"/>
+    <item id="DeleteNonSelection" icon="anim/removeoutside" text="&amp;Delete Non Selection" shortcut="shortcut.deleteNonSelection" responder="camera" slot="onActionDeleteNonSelection()"/>
    </menu>
    <menu id="DrawingOptimize" text="&amp;Optimize">
     <item id="Flatten"/>
     <item id="Smooth" icon="anim/smooth" text="&amp;Smooth" shortcut="shortcut.smooth" responder="camera" slot="onActionSmooth()"/>
+    <item id="SmoothFast" icon="anim/smooth" text="Smooth &amp;Fast" shortcut="shortcut.smoothFast" responder="camera" slot="onActionSmoothFast()"/>
+    <separator/>
+    <item id="PumpThickness" icon="anim/smooth" text="&amp;Pump Selection Thickness" shortcut="shortcut.pumpThickness" responder="camera" slot="onActionPumpThickness()"/>
+    <item id="DeflateThickness" icon="anim/smooth" text="&amp;Deflate Selection Thickness" shortcut="shortcut.deflateThickness" responder="camera" slot="onActionDeflateThickness()"/>
+    <item id="SetThickness" icon="anim/smooth" text="Set Selection &amp;Thickness..." shortcut="shortcut.setThickness" responder="camera" slot="onActionSetThickness()"/>
+    <separator/>
     <item id="ReducePoints" icon="anim/reducepoints" text="&amp;Reduce Points" responder="camera" slot="onActionReducePoints()"/>
     <item id="CreateContourStrokes" icon="anim/contourcreate" text="&amp;Create Contour Strokes" shortcut="shortcut.createContourStrokes" responder="camera" slot="onActionCreateContourStrokes()"/>
     <item id="RemoveContourStrokes" icon="anim/contourremove" text="Re&amp;move Contour Strokes" shortcut="shortcut.removeContourStrokes" responder="camera" slot="onActionRemoveContourStrokes()"/>
@@ -647,6 +654,8 @@
    <item id="UntagLayers" icon="timeline/untag" text="Untag Selected Layers" shortcut="shortcut.untagLayers" responder="window" slot="onActionTagLayers(QString)" itemParameter="untag"/>
    <item id="UntagAllLayers" icon="timeline/untag" text="Untag All Layers" responder="window" slot="onActionTagLayers(QString)" itemParameter="untagAll"/>
   </menu>
+  <item id="HideSelection" icon="timeline/viewselected" text="&amp;Hide Selection" shortcut="shortcut.hideSelection" responder="window" slot="onActionHideSelection()"/>
+  <item id="ShowSelectionHideOthers" icon="timeline/viewselected" text="Show Selection And Hide All &amp;Others" shortcut="shortcut.showSelectionHideOthers" responder="window" slot="onActionShowSelectionHideOthers()"/>
   <menu id="TimelineViewModes" text="View Modes">
    <item id="TimelineViewAll" icon="timeline/viewall" text="Normal View Mode" checkable="true" checked="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="all"/>
    <item id="TimelineViewSelected" icon="timeline/viewselected" text="View Selection Only" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="selected"/>

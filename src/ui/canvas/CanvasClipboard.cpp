@@ -114,8 +114,55 @@ void Canvas::deleteSelection()
     setSelection({}, {});
 }
 
+void Canvas::onActionDeleteNonSelection()
+{
+    Drawing const* const d = currentDrawing();
+    if (!selecting() || !d || !hasSelection()) {
+        emit message(tr("Select what is to stay first: the rest of the drawing goes."));
+        return;
+    }
+    Drawing kept;
+    for (int i = 0; i < d->strokes.size(); ++i)
+        if (m_selStrokes.contains(i))
+            kept.strokes.push_back(d->strokes[i]);
+    for (int i = 0; i < d->fills.size(); ++i)
+        if (m_selFills.contains(i))
+            kept.fills.push_back(d->fills[i]);
+    bool const pictures = picturesHere();
+    if (pictures)
+        for (int i = 0; i < d->pictures.size(); ++i)
+            if (m_selPictures.contains(i))
+                kept.pictures.push_back(d->pictures[i]);
+    m_keepNoPictures = pictures;
+    commitDrawing(kept, tr("Delete Non Selection"));
+    m_keepNoPictures = false;
+    // What was selected is all there is now, in the same order: all of it selected.
+    QVector<int> strokes, fills, kept_pictures;
+    for (int i = 0; i < kept.strokes.size(); ++i)
+        strokes << i;
+    for (int i = 0; i < kept.fills.size(); ++i)
+        fills << i;
+    for (int i = 0; pictures && i < kept.pictures.size(); ++i)
+        kept_pictures << i;
+    setSelection(strokes, fills, kept_pictures);
+}
+
 void Canvas::copySelection()
 {
+    if (m_tool == ContourEditor) {
+        // The points picked on the curve.
+        Drawing const* const d = currentDrawing();
+        Stroke const* const line = d && contourValid() ? contourLine(*d) : nullptr;
+        if (!line)
+            return;
+        QVector<int> picked = contourPointsPicked();
+        picked << m_cePoint;
+        std::sort(picked.begin(), picked.end());
+        s_pointClipboard.clear();
+        for (int i : std::as_const(picked))
+            s_pointClipboard << line->points[i];
+        return;
+    }
     Drawing const* const d = currentDrawing();
     if (!d || !hasSelection())
         return;
@@ -161,6 +208,29 @@ bool Canvas::canPaste()
 
 void Canvas::paste()
 {
+    if (m_tool == ContourEditor && !s_pointClipboard.isEmpty() && !m_playing) {
+        // Points copied in the Contour Editor: added after the picked point of the curve, a little way along.
+        Drawing const* const d = currentDrawing();
+        if (!d || !contourValid() || m_ceFill >= 0)
+            return;
+        Drawing edited = *d;
+        Stroke* const line = contourLine(edited);
+        if (!line)
+            return;
+        QPointF const shift(8.0 / std::max(m_zoom, 1e-6), 8.0 / std::max(m_zoom, 1e-6));
+        int at = m_cePoint + 1;
+        QVector<int> added;
+        for (StrokePoint p : std::as_const(s_pointClipboard)) {
+            p.pos += shift;
+            line->points.insert(at, p);
+            added << at++;
+        }
+        commitDrawing(edited, tr("Paste Point(s)"));
+        m_cePoint = added.last();
+        m_ceExtra = added.mid(0, added.size() - 1);
+        update();
+        return;
+    }
     if (s_clipboard.isEmpty() || m_playing)
         return;
     Scene const& scene = m_document->scene();
@@ -169,18 +239,38 @@ void Canvas::paste()
     Drawing const* const d = currentDrawing();
     Drawing merged = d ? *d : Drawing();
     QVector<int> strokes, fills;
-    for (Fill const& f : s_clipboard.fills) {
+    // Where it goes (Preferences: Paste Behaviour): where it was, or in the middle of the view - always, or when where it was
+    // is out of sight.
+    Drawing placed = s_clipboard;
+    if (m_pasteBehaviour != 0) {
+        QRectF const box = placed.bounds();
+        QTransform const toView = layerViewTransform();
+        QRectF const seen = toView.mapRect(box);
+        bool const outside = !rect().intersects(seen.toAlignedRect());
+        if (!box.isEmpty() && toView.isInvertible() && (m_pasteBehaviour == 1 || outside)) {
+            QPointF const middle = toView.inverted().map(QPointF(width() / 2.0, height() / 2.0));
+            QPointF const by = middle - box.center();
+            QTransform const move = QTransform::fromTranslate(by.x(), by.y());
+            for (Fill& f : placed.fills)
+                f.transform(move);
+            for (Stroke& s : placed.strokes)
+                s.transform(move);
+            for (Picture& p : placed.pictures)
+                p.transform(move);
+        }
+    }
+    for (Fill const& f : placed.fills) {
         fills.push_back(int(merged.fills.size()));
         merged.fills.push_back(f);
     }
-    for (Stroke const& s : s_clipboard.strokes) {
+    for (Stroke const& s : placed.strokes) {
         strokes.push_back(int(merged.strokes.size()));
         merged.strokes.push_back(s);
     }
     // Pictures go where pictures are: with the line art.
     QVector<int> pictures;
     if (picturesHere()) {
-        for (Picture const& picture : s_clipboard.pictures) {
+        for (Picture const& picture : placed.pictures) {
             pictures.push_back(int(merged.pictures.size()));
             merged.pictures.push_back(picture);
         }
@@ -189,3 +279,5 @@ void Canvas::paste()
     if (selecting())
         setSelection(strokes, fills, pictures);
 }
+
+QVector<StrokePoint> Canvas::s_pointClipboard;

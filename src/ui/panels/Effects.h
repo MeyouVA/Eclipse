@@ -158,6 +158,14 @@ private:
     void showEditors();
     void add(Effect::Type type);
     void removeCurrent();
+    // The effect picked (none picked: all of them) copied; the effects copied added to the layer, after its own.
+public:
+    void copyEffects();
+    void pasteEffects();
+    static bool hasCopiedEffects() { return !s_copied.isEmpty(); }
+
+private:
+    static QVector<Effect> s_copied;
     // Replaces effect `row` by what `change` makes of it.
     template <class Change> void edit(Change change);
 
