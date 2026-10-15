@@ -200,6 +200,12 @@ public slots:
     void onShowWindows(QMenu* menu);
     void onShowCameras(QMenu* menu);
     void onActionResetAllExceptZ();
+    // The 3D submenu: the models of the current layer played from a frame, so many frames each; the model on this frame
+    // made a flat picture on a layer of its own; the model files read again and the models put back in the frame's middle.
+    void onActionSet3DAnimationTiming();
+    void onActionSnapshot3D();
+    void onActionUpdate3DModelPosition();
+    void set3DAnimationTiming(int layer, int first, int hold);
 
     // ---- Play ----
     void onActionTogglePlayback();
@@ -568,6 +574,8 @@ private:
     void onExposure(QString const& text, std::function<void(int layer, int frame)> const& command);
     int layer() const;
     int frame() const;
+    // Says so and is true when the current layer shows no 3D model.
+    bool refuseUnlessModel(QString const& what);
     Q_INVOKABLE void shuttleStep();     // one tick of the shuttle
 
     bool saveTo(QString const& path);

@@ -58,5 +58,7 @@ QImage render(Mesh const& mesh, double rotX, double rotY, int pixels, QTransform
 
 // What a drawing that is the model in `file` shows, turned so: one picture (none if the model could not be read).
 bool picture(QString const& file, double rotX, double rotY, Picture& out);
+// The models read and the pictures made of them let go: the files are read again when next shown.
+void forget();
 
 }

@@ -410,6 +410,11 @@
    <item id="ResetTransformation" icon="anim/reset" text="&amp;Reset" shortcut="shortcut.resetTransformation" responder="window" slot="onActionResetTransformation()"/>
    <item id="ResetAll" icon="anim/resetall" text="Reset A&amp;ll" shortcut="shortcut.resetAll" responder="window" slot="onActionResetAll()"/>
    <item id="ResetAllExceptZ" icon="anim/resetallz" text="Reset All Except &amp;Z" responder="window" slot="onActionResetAllExceptZ()"/>
+   <menu id="Menu3D" text="&amp;3D">
+    <item id="Set3DAnimationTiming" icon="tool/turn3d" text="Set 3D &amp;Animation Timing..." responder="window" slot="onActionSet3DAnimationTiming()"/>
+    <item id="Snapshot3D" icon="file/importimages" text="&amp;Snapshot 3D" responder="window" slot="onActionSnapshot3D()"/>
+    <item id="Update3DModelPosition" icon="anim/reset" text="&amp;Update 3D Model Position" responder="window" slot="onActionUpdate3DModelPosition()"/>
+   </menu>
    <separator/>
    <item id="LayerProperties" icon="timeline/layerprops" text="Layer Proper&amp;ties..." responder="window" slot="onActionShowLayerProperties()"/>
   </menu>

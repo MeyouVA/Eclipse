@@ -16,6 +16,22 @@
 
 namespace {
 
+struct Kept {
+    QDateTime changed;
+    std::shared_ptr<Model3D::Mesh const> mesh;
+};
+// The pictures made lately, kept: a model held still is not drawn again each time it is shown.
+struct Made {
+    std::shared_ptr<Model3D::Mesh const> mesh;
+    double rotX = 0.0, rotY = 0.0;
+    QImage image;
+    QTransform placement;
+};
+QMutex keptMutex;
+QHash<QString, Kept> kept;
+QMutex madeMutex;
+QVector<Made> made;
+
 QList<QByteArray> wordsOf(QByteArray const& line)
 {
     return line.simplified().split(' ');
@@ -124,15 +140,9 @@ std::shared_ptr<Model3D::Mesh const> Model3D::parseObj(QByteArray const& text, Q
 
 std::shared_ptr<Model3D::Mesh const> Model3D::load(QString const& file, QString* error)
 {
-    struct Kept {
-        QDateTime changed;
-        std::shared_ptr<Mesh const> mesh;
-    };
-    static QMutex mutex;
-    static QHash<QString, Kept> kept;
     QFileInfo const info(file);
     {
-        QMutexLocker lock(&mutex);
+        QMutexLocker lock(&keptMutex);
         auto const it = kept.constFind(file);
         if (it != kept.constEnd() && it->changed == info.lastModified())
             return it->mesh;
@@ -145,7 +155,7 @@ std::shared_ptr<Model3D::Mesh const> Model3D::load(QString const& file, QString*
     }
     std::shared_ptr<Mesh const> mesh = parseObj(f.readAll(), info.path(), error);
     if (mesh) {
-        QMutexLocker lock(&mutex);
+        QMutexLocker lock(&keptMutex);
         kept.insert(file, {info.lastModified(), mesh});
     }
     return mesh;
@@ -230,17 +240,8 @@ bool Model3D::picture(QString const& file, double rotX, double rotY, Picture& ou
     std::shared_ptr<Mesh const> const mesh = load(file);
     if (!mesh)
         return false;
-    // The pictures made lately, kept: a model held still is not drawn again each time it is shown.
-    struct Made {
-        std::shared_ptr<Mesh const> mesh;
-        double rotX = 0.0, rotY = 0.0;
-        QImage image;
-        QTransform placement;
-    };
-    static QMutex mutex;
-    static QVector<Made> made;
     {
-        QMutexLocker lock(&mutex);
+        QMutexLocker lock(&madeMutex);
         for (Made const& m : made)
             if (m.mesh == mesh && m.rotX == rotX && m.rotY == rotY) {
                 out = Picture();
@@ -256,7 +257,7 @@ bool Model3D::picture(QString const& file, double rotX, double rotY, Picture& ou
     m.rotY = rotY;
     m.image = render(*mesh, rotX, rotY, 1024, &m.placement);
     {
-        QMutexLocker lock(&mutex);
+        QMutexLocker lock(&madeMutex);
         made.push_back(m);
         if (made.size() > 48)
             made.removeFirst();
@@ -266,4 +267,14 @@ bool Model3D::picture(QString const& file, double rotX, double rotY, Picture& ou
     out.size = m.image.size();
     out.placement = m.placement;
     return true;
+}
+
+void Model3D::forget()
+{
+    {
+        QMutexLocker lock(&keptMutex);
+        kept.clear();
+    }
+    QMutexLocker lock(&madeMutex);
+    made.clear();
 }
