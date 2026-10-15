@@ -334,6 +334,27 @@ void MainWindow::createCameraView()
         connect(mode, &QComboBox::currentIndexChanged, m_canvas, [this](int index) { m_canvas->setViewMode(Canvas::ViewMode(index)); });
         row->addSpacing(6);
         row->addWidget(mode);
+        // Snapshots: the frame as rendered, kept; shown in place of the frame while the button is down, to compare.
+        QToolButton* const take = new QToolButton(status);
+        take->setObjectName(QStringLiteral("TakeSnapshot"));
+        take->setText(tr("Snapshot"));
+        take->setAutoRaise(true);
+        take->setToolTip(tr("Take Snapshot: keep the current frame as it is rendered, to compare later work with."));
+        QToolButton* const show = new QToolButton(status);
+        show->setObjectName(QStringLiteral("ShowSnapshot"));
+        show->setText(tr("Show"));
+        show->setAutoRaise(true);
+        show->setCheckable(true);
+        show->setEnabled(false);
+        show->setToolTip(tr("Show Snapshot: the snapshot in place of the frame (again to hide it)."));
+        connect(take, &QToolButton::clicked, m_canvas, [this, show] {
+            m_canvas->takeSnapshot();
+            show->setEnabled(true);
+            statusBar()->showMessage(tr("Snapshot taken of frame %1. Show it to compare.").arg(frame() + 1), 5000);
+        });
+        connect(show, &QToolButton::toggled, m_canvas, [this](bool on) { m_canvas->setShowSnapshot(on); });
+        row->addWidget(take);
+        row->addWidget(show);
     }
     row->addSpacing(8);
     row->addWidget(m_zoomLabel);

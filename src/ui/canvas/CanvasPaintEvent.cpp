@@ -42,6 +42,12 @@ void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& dr
     painter.restore();
 }
 
+void Canvas::takeSnapshot()
+{
+    m_snapshot = modeImage(m_document->scene(), m_frame, ViewRender);
+    update();
+}
+
 QImage Canvas::modeImage(Scene const& scene, int frame, ViewMode mode)
 {
     QSize const size(std::max(1, scene.width), std::max(1, scene.height));
@@ -138,10 +144,10 @@ void Canvas::paintEvent(QPaintEvent*)
         return;
     }
 
-    // Render, Matte or Depth View: the frame as that mode shows it, and nothing else.
-    if (m_viewMode != ViewNormal && !m_drawingView && m_frame >= 0) {
+    // A snapshot shown, or Render, Matte or Depth View: that picture of the frame, and nothing else.
+    if (((m_showSnapshot && !m_snapshot.isNull()) || m_viewMode != ViewNormal) && !m_drawingView && m_frame >= 0) {
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-        painter.drawImage(frameRect, modeImage(scene, m_frame, m_viewMode));
+        painter.drawImage(frameRect, m_showSnapshot && !m_snapshot.isNull() ? m_snapshot : modeImage(scene, m_frame, m_viewMode));
         QPen border(QColor(70, 70, 70));
         border.setCosmetic(true);
         painter.setPen(border);

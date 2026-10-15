@@ -362,6 +362,12 @@ public:
     void setViewMode(ViewMode mode) { m_viewMode = mode; update(); }
     // The frame as that mode shows it, the size of the scene's frame.
     static QImage modeImage(Scene const& scene, int frame, ViewMode mode);
+    // Snapshots: the frame as rendered, kept to compare later work with - shown in the view in place of the frame.
+    void takeSnapshot();
+    bool hasSnapshot() const { return !m_snapshot.isNull(); }
+    QImage snapshot() const { return m_snapshot; }
+    bool showsSnapshot() const { return m_showSnapshot; }
+    void setShowSnapshot(bool on) { m_showSnapshot = on && hasSnapshot(); update(); }
     bool snapsToGrid() const { return m_snapGrid; }
     bool animates() const { return m_animate; }
     // The first time the Transform tool moves a layer that has no keyframes, on a frame after the
@@ -1022,6 +1028,8 @@ private:
     QVector<QImage> m_preview;
     bool m_usePreview = true;
     ViewMode m_viewMode = ViewNormal;
+    QImage m_snapshot;
+    bool m_showSnapshot = false;
     bool m_snapGrid = false;
     bool m_animate = true;
     bool m_keyFrameOne = false;
