@@ -219,6 +219,12 @@ QPointF FunctionGraph::pointAt(Timeline::Parameter which, int frame) const
     return QPointF(xOfFrame(frame), yOfValue(valueAt(which, frame)));
 }
 
+void FunctionGraph::setGridShown(bool on)
+{
+    m_grid = on;
+    update();
+}
+
 void FunctionGraph::paintEvent(QPaintEvent*)
 {
     Scene const& scene = m_document->scene();
@@ -239,7 +245,8 @@ void FunctionGraph::paintEvent(QPaintEvent*)
     for (double v = std::ceil(m_low / step) * step; v <= m_high; v += step) {
         double const y = yOfValue(v);
         p.setPen(std::abs(v) < step / 2.0 ? QColor(110, 110, 110) : QColor(64, 64, 64));
-        p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y));
+        if (m_grid || std::abs(v) < step / 2.0)
+            p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y));
         p.setPen(QColor(160, 160, 160));
         p.drawText(QRectF(0, y - 7, r.left() - 4, 14), Qt::AlignRight | Qt::AlignVCenter, QString::number(std::abs(v) < step / 2.0 ? 0.0 : v, 'g', 6));
     }
@@ -249,7 +256,8 @@ void FunctionGraph::paintEvent(QPaintEvent*)
     for (int f = every - 1; f < frames; f += every) {
         double const x = xOfFrame(f);
         p.setPen(QColor(64, 64, 64));
-        p.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()));
+        if (m_grid)
+            p.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()));
         p.setPen(QColor(160, 160, 160));
         p.drawText(QRectF(x - 20, r.bottom() + 2, 40, 14), Qt::AlignHCenter | Qt::AlignTop, QString::number(f + 1));
     }

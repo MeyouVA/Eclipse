@@ -50,13 +50,13 @@ void Xsheet::setCurrentCell(int layer, int frame)
         v->setValue(y);
     else if (y + kRowHeight > v->value() + viewHeight)
         v->setValue(y + kRowHeight - viewHeight);
-    int const x = columnOfLayer(layer) * kColumnWidth;
+    int const x = columnOfLayer(layer) * m_columnWidth;
     int const viewWidth = viewport()->width() - kRowHeaderWidth;
     QScrollBar* const h = horizontalScrollBar();
     if (x < h->value())
         h->setValue(x);
-    else if (x + kColumnWidth > h->value() + viewWidth)
-        h->setValue(x + kColumnWidth - viewWidth);
+    else if (x + m_columnWidth > h->value() + viewWidth)
+        h->setValue(x + m_columnWidth - viewWidth);
 
     viewport()->update();
 }
@@ -69,16 +69,23 @@ void Xsheet::deleteSelection()
         m_document->clearCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame(), tr("Clear Cells"));
 }
 
+void Xsheet::setColumnWidth(int pixels)
+{
+    m_columnWidth = std::clamp(pixels, 40, 240);
+    updateScrollBars();
+    viewport()->update();
+}
+
 void Xsheet::updateScrollBars()
 {
     Scene const& scene = m_document->scene();
-    int const contentWidth = int(scene.layers.size()) * kColumnWidth;
+    int const contentWidth = int(scene.layers.size()) * m_columnWidth;
     int const contentHeight = scene.frameCount() * kRowHeight;
     int const viewWidth = viewport()->width() - kRowHeaderWidth;
     int const viewHeight = viewport()->height() - kHeaderHeight;
     horizontalScrollBar()->setRange(0, std::max(0, contentWidth - viewWidth));
     horizontalScrollBar()->setPageStep(std::max(1, viewWidth));
-    horizontalScrollBar()->setSingleStep(kColumnWidth);
+    horizontalScrollBar()->setSingleStep(m_columnWidth);
     verticalScrollBar()->setRange(0, std::max(0, contentHeight - viewHeight));
     verticalScrollBar()->setPageStep(std::max(1, viewHeight));
     verticalScrollBar()->setSingleStep(kRowHeight);
@@ -110,14 +117,14 @@ void Xsheet::paintEvent(QPaintEvent*)
     p.save();
     p.setClipRect(kRowHeaderWidth, kHeaderHeight, w - kRowHeaderWidth, h - kHeaderHeight);
     for (int column = 0; column < scene.layers.size(); ++column) {
-        int const x = kRowHeaderWidth + column * kColumnWidth - sx;
-        if (x + kColumnWidth < kRowHeaderWidth || x > w)
+        int const x = kRowHeaderWidth + column * m_columnWidth - sx;
+        if (x + m_columnWidth < kRowHeaderWidth || x > w)
             continue;
         int const layerIndex = layerOfColumn(column);
         Layer const& layer = scene.layers[layerIndex];
         for (int f = firstRow; f <= lastRow; ++f) {
             int const y = kHeaderHeight + f * kRowHeight - sy;
-            QRect const cell(x, y, kColumnWidth, kRowHeight);
+            QRect const cell(x, y, m_columnWidth, kRowHeight);
             int const drawing = layer.drawingAt(f);
             QColor fill = !layer.holdsDrawings() ? pegColumn : (f % 2 ? paperAlt : paper);
             if (f == m_frame)
@@ -150,7 +157,7 @@ void Xsheet::paintEvent(QPaintEvent*)
                 }
             }
             if (layer.keyIndex(f) >= 0) {
-                double const kx = x + kColumnWidth - 9.0, ky = y + kRowHeight / 2.0;
+                double const kx = x + m_columnWidth - 9.0, ky = y + kRowHeight / 2.0;
                 QPolygonF diamond;
                 diamond << QPointF(kx, ky - 4) << QPointF(kx + 4, ky) << QPointF(kx, ky + 4) << QPointF(kx - 4, ky);
                 p.setRenderHint(QPainter::Antialiasing, true);
@@ -166,17 +173,17 @@ void Xsheet::paintEvent(QPaintEvent*)
                 p.drawText(cell, Qt::AlignCenter, QString(shape));
             }
             p.setPen(line);
-            p.drawLine(x, y + kRowHeight - 1, x + kColumnWidth - 1, y + kRowHeight - 1);
+            p.drawLine(x, y + kRowHeight - 1, x + m_columnWidth - 1, y + kRowHeight - 1);
         }
         p.setPen(line);
-        p.drawLine(x + kColumnWidth - 1, kHeaderHeight, x + kColumnWidth - 1, h);
+        p.drawLine(x + m_columnWidth - 1, kHeaderHeight, x + m_columnWidth - 1, h);
     }
     // the frames selected
     if (hasSelection()) {
         QVector<int> const across = selectedLayers();
         int const left = std::min(columnOfLayer(across.first()), columnOfLayer(across.last()));
-        QRect const block(kRowHeaderWidth + left * kColumnWidth - sx, kHeaderHeight + selectionFirstFrame() * kRowHeight - sy,
-                          int(across.size()) * kColumnWidth, (selectionLastFrame() - selectionFirstFrame() + 1) * kRowHeight);
+        QRect const block(kRowHeaderWidth + left * m_columnWidth - sx, kHeaderHeight + selectionFirstFrame() * kRowHeight - sy,
+                          int(across.size()) * m_columnWidth, (selectionLastFrame() - selectionFirstFrame() + 1) * kRowHeight);
         p.fillRect(block, QColor(42, 155, 176, 95));
         p.setPen(QPen(QColor(120, 220, 235), 1));
         p.setBrush(Qt::NoBrush);
@@ -184,11 +191,11 @@ void Xsheet::paintEvent(QPaintEvent*)
     }
     // the current cell
     {
-        int const x = kRowHeaderWidth + columnOfLayer(m_layer) * kColumnWidth - sx;
+        int const x = kRowHeaderWidth + columnOfLayer(m_layer) * m_columnWidth - sx;
         int const y = kHeaderHeight + m_frame * kRowHeight - sy;
         p.setPen(QPen(Qt::white, 1));
         p.setBrush(Qt::NoBrush);
-        p.drawRect(x, y, kColumnWidth - 2, kRowHeight - 2);
+        p.drawRect(x, y, m_columnWidth - 2, kRowHeight - 2);
     }
     p.restore();
 
@@ -212,17 +219,17 @@ void Xsheet::paintEvent(QPaintEvent*)
     p.save();
     p.setClipRect(kRowHeaderWidth, 0, w - kRowHeaderWidth, kHeaderHeight);
     for (int column = 0; column < scene.layers.size(); ++column) {
-        int const x = kRowHeaderWidth + column * kColumnWidth - sx;
+        int const x = kRowHeaderWidth + column * m_columnWidth - sx;
         int const layerIndex = layerOfColumn(column);
         Layer const& layer = scene.layers[layerIndex];
         if (layerIndex == m_layer)
-            p.fillRect(x, 0, kColumnWidth, kHeaderHeight, currentRow);
+            p.fillRect(x, 0, m_columnWidth, kHeaderHeight, currentRow);
         p.setPen(layer.kind == Layer::Peg ? keyColor : layer.kind == Layer::Camera ? QColor(111, 168, 232)
                                                  : (layer.visible ? text : QColor(130, 130, 130)));
-        p.drawText(QRect(x + 4, 0, kColumnWidth - 8, kHeaderHeight), Qt::AlignVCenter | Qt::AlignLeft,
-                   p.fontMetrics().elidedText(layer.name, Qt::ElideRight, kColumnWidth - 8));
+        p.drawText(QRect(x + 4, 0, m_columnWidth - 8, kHeaderHeight), Qt::AlignVCenter | Qt::AlignLeft,
+                   p.fontMetrics().elidedText(layer.name, Qt::ElideRight, m_columnWidth - 8));
         p.setPen(line);
-        p.drawLine(x + kColumnWidth - 1, 0, x + kColumnWidth - 1, kHeaderHeight);
+        p.drawLine(x + m_columnWidth - 1, 0, x + m_columnWidth - 1, kHeaderHeight);
     }
     p.restore();
     p.fillRect(0, 0, kRowHeaderWidth, kHeaderHeight, header);
@@ -234,7 +241,7 @@ void Xsheet::paintEvent(QPaintEvent*)
 void Xsheet::pick(QPoint pos)
 {
     Scene const& scene = m_document->scene();
-    int const column = (pos.x() - kRowHeaderWidth + horizontalScrollBar()->value()) / kColumnWidth;
+    int const column = (pos.x() - kRowHeaderWidth + horizontalScrollBar()->value()) / m_columnWidth;
     int const row = (pos.y() - kHeaderHeight + verticalScrollBar()->value()) / kRowHeight;
     bool const inColumns = pos.x() >= kRowHeaderWidth && column >= 0 && column < scene.layers.size();
     bool const inRows = pos.y() >= kHeaderHeight && row >= 0 && row < scene.frameCount();
@@ -247,8 +254,8 @@ void Xsheet::pick(QPoint pos)
 
 QRect Xsheet::cellRect(int layer, int frame) const
 {
-    return QRect(kRowHeaderWidth + columnOfLayer(layer) * kColumnWidth - horizontalScrollBar()->value(),
-                 kHeaderHeight + frame * kRowHeight - verticalScrollBar()->value(), kColumnWidth, kRowHeight);
+    return QRect(kRowHeaderWidth + columnOfLayer(layer) * m_columnWidth - horizontalScrollBar()->value(),
+                 kHeaderHeight + frame * kRowHeight - verticalScrollBar()->value(), m_columnWidth, kRowHeight);
 }
 
 void Xsheet::extendSelection(int frame, int layer)
@@ -277,7 +284,7 @@ void Xsheet::mousePressEvent(QMouseEvent* event)
 {
     int const row = (event->pos().y() - kHeaderHeight + verticalScrollBar()->value()) / kRowHeight;
     if (event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier) && event->pos().y() >= kHeaderHeight) {
-        int const column = (event->pos().x() - kRowHeaderWidth + horizontalScrollBar()->value()) / kColumnWidth;
+        int const column = (event->pos().x() - kRowHeaderWidth + horizontalScrollBar()->value()) / m_columnWidth;
         bool const inColumns = event->pos().x() >= kRowHeaderWidth && column >= 0 && column < m_document->scene().layers.size();
         extendSelection(row, inColumns ? layerOfColumn(column) : -1);       // Shift: from the current cell to this one
         return;
@@ -297,7 +304,7 @@ void Xsheet::mouseMoveEvent(QMouseEvent* event)
         return;
     if (m_selecting) {              // down the column, and across to other columns: a block of cells
         int const count = int(m_document->scene().layers.size());
-        int const column = std::clamp((std::max(event->pos().x(), int(kRowHeaderWidth)) - kRowHeaderWidth + horizontalScrollBar()->value()) / kColumnWidth, 0, count - 1);
+        int const column = std::clamp((std::max(event->pos().x(), int(kRowHeaderWidth)) - kRowHeaderWidth + horizontalScrollBar()->value()) / m_columnWidth, 0, count - 1);
         extendSelection((std::max(event->pos().y(), int(kHeaderHeight)) - kHeaderHeight + verticalScrollBar()->value()) / kRowHeight, layerOfColumn(column));
     }
     else

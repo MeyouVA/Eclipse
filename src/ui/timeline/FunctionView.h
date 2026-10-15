@@ -23,6 +23,9 @@ public:
 
     void setCurrentCell(int layer, int frame);
     void setShown(Timeline::Parameter which, bool shown);
+    // Preferences: the lines across at round values and down every so many frames (the numbers stay).
+    void setGridShown(bool on);
+    bool gridShown() const { return m_grid; }
     // The other layers selected in the Timeline: their curves are shown too, faint and dashed,
     // to compare with (the squares to drag are the current layer's).
     void setOtherLayers(QVector<int> const& layers);
@@ -81,6 +84,7 @@ private:
     bool m_sliding = false;
     QPointF m_slideLast;
     double m_low = -1.0, m_high = 1.0;
+    bool m_grid = true;
     // The keyframe being dragged: which curve, which of the layer's keyframes, and the
     // value it would have.
     int m_dragParam = -1;

@@ -29,6 +29,8 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "ui/canvas/Canvas.h"
+#include "ui/timeline/Xsheet.h"
+#include "ui/timeline/FunctionView.h"
 #include "ui/views/PreviewManagerView.h"
 #include "ui/views/CoordView.h"
 #include "actions/manager/ActionManager.h"
@@ -297,6 +299,28 @@ void MainWindow::applyPreferences()
     m_timeline->setKindShown(Layer::Group, s.value(QStringLiteral("prefs/timelineGroups"), true).toBool());
     m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
+    if (FunctionView* const function = findChild<FunctionView*>())
+        function->graph()->setGridShown(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
+    if (Xsheet* const xsheet = findChild<Xsheet*>())
+        xsheet->setColumnWidth(s.value(QStringLiteral("prefs/xsheetColumnWidth"), 78).toInt());
+    // (These two set how things start: the toggles in the menus change them afterwards.)
+    if (!m_preferencesApplied) {
+        bool const loop = s.value(QStringLiteral("prefs/loop"), true).toBool();
+        m_actions->setChecked(QStringLiteral("PlayLoop"), loop);
+        onActionToggleLoop(loop);
+        bool const onTop = s.value(QStringLiteral("prefs/drawingOnTop"), false).toBool();
+        m_actions->setChecked(QStringLiteral("CurrentDrawingOnTop"), onTop);
+        m_canvas->onActionCurrentDrawingOnTop(onTop);
+    }
+    m_preferencesApplied = true;
+    // Onion skins that fade with distance: the nearest drawings so strong, the furthest so faint, those between in step.
+    if (s.value(QStringLiteral("prefs/onionFade"), false).toBool()) {
+        int const nearest = std::clamp(s.value(QStringLiteral("prefs/onionNearest"), 100).toInt(), 0, 100);
+        int const furthest = std::clamp(s.value(QStringLiteral("prefs/onionFurthest"), 30).toInt(), 0, 100);
+        for (bool after : {false, true})
+            for (int step = 0; step < Canvas::kOnionSteps; ++step)
+                m_canvas->setOnionStrength(after, step, nearest + (furthest - nearest) * step / std::max(1, Canvas::kOnionSteps - 1));
+    }
     if (NodeView* const view = findChild<NodeView*>())
         view->setDoubleClickOpensEditor(s.value(QStringLiteral("prefs/nodeDoubleClick"), 0).toInt() == 1);
 }
@@ -410,6 +434,12 @@ void MainWindow::onActionPreferences()
     byFrame->setToolTip(tr("A drawing made on a frame is named after that frame; off, it goes by its number in the layer."));
     byFrame->setChecked(m_document->namesDrawingsByFrame());
     sheetLayout->addRow(byFrame);
+    QSpinBox* const columnWidth = new QSpinBox(sheet);
+    columnWidth->setObjectName(QStringLiteral("PrefXsheetColumnWidth"));
+    columnWidth->setRange(40, 240);
+    columnWidth->setSuffix(tr(" pixels"));
+    columnWidth->setValue(std::clamp(s.value(QStringLiteral("prefs/xsheetColumnWidth"), 78).toInt(), 40, 240));
+    sheetLayout->addRow(tr("Column width"), columnWidth);
 
     QGroupBox* const advanced = new QGroupBox(tr("Advanced"), &dialog);
     QCheckBox* const moreArt = new QCheckBox(tr("Support Overlay and Underlay Arts"), advanced);
@@ -464,6 +494,14 @@ void MainWindow::onActionPreferences()
     preroll->setToolTip(tr("Play starts so many frames before the current frame, to see what leads up to it."));
     preroll->setValue(m_preroll);
     timelineLayout->addRow(tr("Preroll"), preroll);
+    QCheckBox* const loopAtStart = new QCheckBox(tr("Play in a loop when Eclipse starts"), timelinePage);
+    loopAtStart->setObjectName(QStringLiteral("PrefLoop"));
+    loopAtStart->setChecked(s.value(QStringLiteral("prefs/loop"), true).toBool());
+    timelineLayout->addRow(loopAtStart);
+    QCheckBox* const functionGrid = new QCheckBox(tr("Show the grid in the Function view"), timelinePage);
+    functionGrid->setObjectName(QStringLiteral("PrefFunctionGrid"));
+    functionGrid->setChecked(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
+    timelineLayout->addRow(functionGrid);
 
     // Render: the preview.
     QGroupBox* const renderPage = new QGroupBox(tr("Render"), &dialog);
@@ -553,6 +591,23 @@ void MainWindow::onActionPreferences()
     onionLayout->addRow(tr("Drawings before"), onionCountBefore);
     onionLayout->addRow(tr("Drawings after"), onionCountAfter);
     onionLayout->addRow(tr("Opacity"), onionStrength);
+    QCheckBox* const onionFade = new QCheckBox(tr("Fade with distance"), onionPage);
+    onionFade->setObjectName(QStringLiteral("PrefOnionFade"));
+    onionFade->setToolTip(tr("The drawings nearest the current one show the most, those furthest the least."));
+    onionFade->setChecked(s.value(QStringLiteral("prefs/onionFade"), false).toBool());
+    onionLayout->addRow(onionFade);
+    QSpinBox* const onionNearest = new QSpinBox(onionPage);
+    onionNearest->setObjectName(QStringLiteral("PrefOnionNearest"));
+    onionNearest->setRange(0, 100);
+    onionNearest->setSuffix(tr(" %"));
+    onionNearest->setValue(std::clamp(s.value(QStringLiteral("prefs/onionNearest"), 100).toInt(), 0, 100));
+    onionLayout->addRow(tr("Nearest"), onionNearest);
+    QSpinBox* const onionFurthest = new QSpinBox(onionPage);
+    onionFurthest->setObjectName(QStringLiteral("PrefOnionFurthest"));
+    onionFurthest->setRange(0, 100);
+    onionFurthest->setSuffix(tr(" %"));
+    onionFurthest->setValue(std::clamp(s.value(QStringLiteral("prefs/onionFurthest"), 30).toInt(), 0, 100));
+    onionLayout->addRow(tr("Furthest"), onionFurthest);
 
     // Sound: when it is heard.
     QGroupBox* const soundPage = new QGroupBox(tr("Sound"), &dialog);
@@ -576,6 +631,11 @@ void MainWindow::onActionPreferences()
     wash->setValue(m_canvas->lightTableWash());
     QFormLayout* const drawingLayout = new QFormLayout(drawing);
     drawingLayout->addRow(tr("Light table: other layers show at"), wash);
+    QCheckBox* const onTop = new QCheckBox(tr("Current drawing on top when Eclipse starts"), drawing);
+    onTop->setObjectName(QStringLiteral("PrefDrawingOnTop"));
+    onTop->setToolTip(tr("The layer being drawn on is shown over the others in the Camera view (View > Current Drawing on Top)."));
+    onTop->setChecked(s.value(QStringLiteral("prefs/drawingOnTop"), false).toBool());
+    drawingLayout->addRow(onTop);
 
     // Colours: of the view round the frame, and of the onion skin.
     QGroupBox* const colours = new QGroupBox(tr("Colours"), &dialog);
@@ -677,6 +737,13 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/preroll"), preroll->value());
     s.setValue(QStringLiteral("prefs/nodeDoubleClick"), nodeDoubleClick->currentIndex());
     s.setValue(QStringLiteral("prefs/brushOutline"), brushOutline->isChecked());
+    s.setValue(QStringLiteral("prefs/loop"), loopAtStart->isChecked());
+    s.setValue(QStringLiteral("prefs/functionGrid"), functionGrid->isChecked());
+    s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), columnWidth->value());
+    s.setValue(QStringLiteral("prefs/drawingOnTop"), onTop->isChecked());
+    s.setValue(QStringLiteral("prefs/onionFade"), onionFade->isChecked());
+    s.setValue(QStringLiteral("prefs/onionNearest"), onionNearest->value());
+    s.setValue(QStringLiteral("prefs/onionFurthest"), onionFurthest->value());
     s.sync();
     applyPreferences();
 }

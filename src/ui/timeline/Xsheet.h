@@ -16,6 +16,9 @@ class ECLIPSE_UI_API Xsheet : public QAbstractScrollArea {
     Q_OBJECT
 
 public:
+    // Preferences: how wide a column is (pixels).
+    void setColumnWidth(int pixels);
+    int columnWidth() const { return m_columnWidth; }
     explicit Xsheet(Document* document, QWidget* parent = nullptr);
 
 public slots:
@@ -71,6 +74,7 @@ private:
     static constexpr int kRowHeaderWidth = 44;
     static constexpr int kHeaderHeight = 26;
     static constexpr int kColumnWidth = 78;
+    int m_columnWidth = kColumnWidth;
     static constexpr int kRowHeight = 18;
 
     Document* m_document;

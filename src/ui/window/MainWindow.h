@@ -629,6 +629,7 @@ private:
     bool m_keepBackup = true;       // the file as it was kept beside it when a scene is saved over
     bool m_askAutoSave = false;     // saving by itself asks first
     int m_preroll = 0;              // play starts so many frames before the current one
+    bool m_preferencesApplied = false;  // (what only sets how things start is set the first time only)
     QTimer m_autoSave;
     int m_playSpeed = 100;
     int m_loopPause = 0;        // ms the last frame is held before a loop plays again (Preferences)
