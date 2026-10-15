@@ -251,9 +251,22 @@ QRectF Stroke::bounds() const
         t = std::min(t, p.pos.y());
         b = std::max(b, p.pos.y());
     }
-    // A mitre reaches further out than half the thickness.
-    double const m = width / 2.0 * (join == MitreJoin ? kMitreLimit : 1.0);
-    return QRectF(l - m, t - m, r - l + 2 * m, b - t + 2 * m);
+    double const half = width / 2.0;
+    QRectF box(l - half, t - half, r - l + 2 * half, b - t + 2 * half);
+    // A mitre reaches further out than half the thickness, at its corners: where its points are.
+    if (join == MitreJoin)
+        for (int i = 1; i + 1 < line.size(); ++i) {
+            QPointF const a = line[i].pos - line[i - 1].pos, c = line[i + 1].pos - line[i].pos;
+            double const la = std::hypot(a.x(), a.y()), lc = std::hypot(c.x(), c.y());
+            if (la < 1e-9 || lc < 1e-9)
+                continue;
+            double const cosine = (a.x() * c.x() + a.y() * c.y()) / (la * lc);
+            double const along = std::sqrt(std::max(0.0, (1.0 + cosine) / 2.0));     // the cosine of half the turn
+            double const reach = std::min(half / std::max(along, 1e-9), kMitreLimit * half);
+            if (reach > half)
+                box = box.united(QRectF(line[i].pos - QPointF(reach, reach), QSizeF(2 * reach, 2 * reach)));
+        }
+    return box;
 }
 
 double distanceToSegment(QPointF p, QPointF a, QPointF b)

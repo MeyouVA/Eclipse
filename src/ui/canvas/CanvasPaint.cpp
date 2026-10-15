@@ -341,10 +341,10 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
             path.closeSubpath();
         pen.setWidthF(widthAt(0));
         pen.setCapStyle(stroke.capStart == Stroke::FlatCap ? Qt::FlatCap : Qt::RoundCap);
-        // The kind of mitre that gives up and cuts flat past the limit, rather than one
-        // that is merely shortened.
-        pen.setJoinStyle(stroke.join == Stroke::MitreJoin ? Qt::SvgMiterJoin : stroke.join == Stroke::BevelJoin ? Qt::BevelJoin : Qt::RoundJoin);
-        pen.setMiterLimit(Stroke::kMitreLimit);
+        // A mitre past the limit is shortened (its tip trimmed) rather than cut flat: it still comes to a point.  (Qt counts
+        // the limit in whole widths, Eclipse in half widths.)
+        pen.setJoinStyle(stroke.join == Stroke::MitreJoin ? Qt::MiterJoin : stroke.join == Stroke::BevelJoin ? Qt::BevelJoin : Qt::RoundJoin);
+        pen.setMiterLimit(Stroke::kMitreLimit / 2.0);
         if (stroke.closed || stroke.capStart == stroke.capEnd) {
             painter.setPen(pen);
             painter.drawPath(path);
@@ -405,6 +405,18 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
             double const reach = half[i] / std::max(along, 1e-3);
             left.push_back(pos[i] + mid * reach);
             right.push_back(pos[i] - mid * reach);
+        } else if (stroke.join == Stroke::MitreJoin) {
+            // A mitre that would reach too far: still a point, its very tip trimmed square across at the limit.
+            double const reach = half[i] / std::max(along, 1e-6), limit = Stroke::kMitreLimit * half[i];
+            double const from = half[i] * along;      // how far out along the middle the edges' ends are
+            double const f = (limit - from) / std::max(reach - from, 1e-9);
+            for (int side : {1, -1}) {
+                QPointF const a = pos[i] + n0 * (side * half[i]), b = pos[i] + n1 * (side * half[i]);
+                QPointF const tip = pos[i] + mid * (side * reach);
+                QPolygonF& edge = side > 0 ? left : right;
+                edge.push_back(a + (tip - a) * f);
+                edge.push_back(b + (tip - b) * f);
+            }
         } else {
             // A corner cut flat: the end of the one edge, then the start of the other.
             left.push_back(pos[i] + n0 * half[i]);

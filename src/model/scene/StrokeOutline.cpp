@@ -150,7 +150,8 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
             turned = 0.0;
         }
         // The sharp turns, finished as the line asks: rounded by a disc; or, on a line of one thickness, carried on to a
-        // point (mitre - cut flat across when that point would be too far out) or cut flat across (bevel).
+        // point (mitre - its very tip trimmed where it would reach too far out, so that it still comes to a point) or cut
+        // flat across (bevel).
         bool const shaped = join != RoundJoin && uniform();
         for (int i = 0; i < n; ++i) {
             if (!sharp[i])
@@ -168,8 +169,16 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
                     double const d = 1.0 + n0.x() * n1.x() + n0.y() * n1.y();
                     if (d > 1e-6) {
                         QPointF const tip = pos[i] + (n0 + n1) * (half[i] / d);
-                        if (QLineF(pos[i], tip).length() <= kMitreLimit * width)
+                        double const reach = QLineF(pos[i], tip).length(), limit = kMitreLimit * half[i];
+                        if (reach <= limit) {
                             piece << tip;
+                        } else {
+                            // Trimmed square across at the limit: the two edges carried on as far as that.
+                            QPointF const m = (tip - pos[i]) / reach;
+                            double const edge = (a.x() - pos[i].x()) * m.x() + (a.y() - pos[i].y()) * m.y();
+                            double const f = (limit - edge) / std::max(reach - edge, 1e-9);
+                            piece << a + (tip - a) * f << b + (tip - b) * f;
+                        }
                     }
                 }
                 piece << b;

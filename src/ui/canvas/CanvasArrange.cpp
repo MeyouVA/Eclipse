@@ -275,8 +275,8 @@ void Canvas::onActionConvertPencilToBrush()
             centre.closeSubpath();
         QPainterPathStroker stroker;
         stroker.setWidth(std::max(0.1, double(stroke.width) * stroke.points.first().pressure));
-        stroker.setJoinStyle(stroke.join == Stroke::MitreJoin ? Qt::SvgMiterJoin : stroke.join == Stroke::BevelJoin ? Qt::BevelJoin : Qt::RoundJoin);
-        stroker.setMiterLimit(Stroke::kMitreLimit);
+        stroker.setJoinStyle(stroke.join == Stroke::MitreJoin ? Qt::MiterJoin : stroke.join == Stroke::BevelJoin ? Qt::BevelJoin : Qt::RoundJoin);
+        stroker.setMiterLimit(Stroke::kMitreLimit / 2.0);
         stroker.setCapStyle(stroke.capStart == Stroke::FlatCap && stroke.capEnd == Stroke::FlatCap ? Qt::FlatCap : Qt::RoundCap);
         Fill shape;
         // (Its corners and ends as the line had them; the outline then gets points and handles,

@@ -59,9 +59,9 @@ struct Stroke {
     Join join = RoundJoin;
     Cap capStart = RoundCap;  // at the first point
     Cap capEnd = RoundCap;    // at the last
-    // A mitre longer than this many line widths is cut off flat, so that a very tight
-    // corner does not grow a spike.
-    static constexpr double kMitreLimit = 8.0;
+    // How far out (in half widths) a mitre reaches at most: as Harmony draws them, even a tight corner comes to a long sharp
+    // point; only one that all but turns back on itself, whose point would run off for ever, has its very tip trimmed here.
+    static constexpr double kMitreLimit = 50.0;
     // True when the line is as thick at every point (so that joins and caps apply).
     bool uniform() const;
     // The palette swatch the stroke is painted with, or -1 to use `color` as it is.
