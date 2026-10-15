@@ -303,6 +303,7 @@ void MainWindow::applyPreferences()
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
     m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
     m_canvas->setIkIterations(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
+    m_document->setSubstitutionCycles(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
     Canvas::setBlursEnabled(s.value(QStringLiteral("prefs/renderBlurs"), true).toBool());
     Canvas::setFocusEnabled(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
     m_canvas->update();
@@ -330,6 +331,10 @@ void MainWindow::applyPreferences()
         onActionToggleLoop(loop);
         // The Select tool's lasso, and the gaps the paint bucket closes, as Eclipse starts (their tool properties change them after).
         m_canvas->setLasso(s.value(QStringLiteral("prefs/selectLasso"), true).toBool());
+        if (s.value(QStringLiteral("prefs/showStrokes"), false).toBool()) {
+            m_actions->setChecked(QStringLiteral("ShowStrokes"), true);
+            m_canvas->onActionShowStrokes(true);
+        }
         m_canvas->setCloseGapSize(std::clamp(s.value(QStringLiteral("prefs/closeGap"), 2.0).toDouble(), 0.0, 50.0));
         bool const onTop = s.value(QStringLiteral("prefs/drawingOnTop"), false).toBool();
         m_actions->setChecked(QStringLiteral("CurrentDrawingOnTop"), onTop);
@@ -720,6 +725,15 @@ void MainWindow::onActionPreferences()
     selectLasso->setObjectName(QStringLiteral("PrefSelectLasso"));
     selectLasso->setChecked(s.value(QStringLiteral("prefs/selectLasso"), true).toBool());
     drawingLayout->addRow(selectLasso);
+    QCheckBox* const showStrokes = new QCheckBox(tr("Show strokes when Eclipse starts"), drawing);
+    showStrokes->setObjectName(QStringLiteral("PrefShowStrokes"));
+    showStrokes->setChecked(s.value(QStringLiteral("prefs/showStrokes"), false).toBool());
+    drawingLayout->addRow(showStrokes);
+    QCheckBox* const drawingCycle = new QCheckBox(tr("Drawing substitution goes round (cycle)"), drawing);
+    drawingCycle->setObjectName(QStringLiteral("PrefDrawingCycle"));
+    drawingCycle->setToolTip(tr("Substitute Drawing Next on the last drawing goes back to the first (and Previous on the first, to the last); off: it stops."));
+    drawingCycle->setChecked(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
+    drawingLayout->addRow(drawingCycle);
     QDoubleSpinBox* const closeGap = new QDoubleSpinBox(drawing);
     closeGap->setObjectName(QStringLiteral("PrefCloseGap"));
     closeGap->setRange(0.0, 50.0);
@@ -856,6 +870,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
     s.setValue(QStringLiteral("prefs/onionOver"), onionOver->isChecked());
     s.setValue(QStringLiteral("prefs/selectLasso"), selectLasso->isChecked());
+    s.setValue(QStringLiteral("prefs/showStrokes"), showStrokes->isChecked());
+    s.setValue(QStringLiteral("prefs/drawingCycle"), drawingCycle->isChecked());
     s.setValue(QStringLiteral("prefs/closeGap"), closeGap->value());
     s.setValue(QStringLiteral("prefs/ikIterations"), ikIterations->value());
     s.setValue(QStringLiteral("prefs/ikError"), ikError->value());

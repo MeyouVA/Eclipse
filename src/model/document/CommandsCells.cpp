@@ -255,6 +255,8 @@ void Document::stepSubstitution(int layer, int frame, int direction)
     if (count == 0)
         return;
     int const shown = l.cells[frame];
+    if (!m_substitutionCycles && shown != Layer::kNoDrawing && (shown + direction < 0 || shown + direction >= count))
+        return;     // (at an end, and not going round)
     int const next = shown == Layer::kNoDrawing ? (direction > 0 ? 0 : count - 1) : ((shown + direction) % count + count) % count;
     substituteDrawing(layer, frame, next);
 }
@@ -271,6 +273,8 @@ void Document::stepSubstitutionInSet(int layer, int frame, int direction)
     }
     int const count = int(l.drawings.size());
     for (int step = 1; step < count; ++step) {
+        if (!m_substitutionCycles && (shown + direction * step < 0 || shown + direction * step >= count))
+            return;
         int const next = ((shown + direction * step) % count + count) % count;
         if (l.drawings[next].set == l.drawings[shown].set) {
             substituteDrawing(layer, frame, next);

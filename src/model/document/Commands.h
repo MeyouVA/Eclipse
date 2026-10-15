@@ -54,6 +54,10 @@ public:
     bool namesDrawingsByFrame() const { return m_nameByFrame; }
     void setNameDrawingsByFrame(bool on) { m_nameByFrame = on; }
     int undoLevels() const { return m_undoLevels; }
+    // Preferences: whether stepping through the drawings (Substitute Drawing Next / Previous) goes round from the last to
+    // the first, or stops at the ends.
+    void setSubstitutionCycles(bool on) { m_substitutionCycles = on; }
+    bool substitutionCycles() const { return m_substitutionCycles; }
     void setUndoLevels(int levels);
     QUndoStack* undoStack() { return &m_undo; }
 
@@ -460,5 +464,6 @@ private:
     void keyOn(Layer& layer, int frame, Pose const& pose) const;
     bool m_nameByFrame = false;
     int m_undoLevels = 0;
+    bool m_substitutionCycles = true;
     QUndoStack m_undo;
 };
