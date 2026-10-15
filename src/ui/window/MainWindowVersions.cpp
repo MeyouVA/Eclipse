@@ -170,3 +170,32 @@ void MainWindow::onActionMarkCurrentFrame()
     int const f = frame();
     m_document->addMarker(f, 1, tr("Frame %1").arg(f + 1), QColor(240, 200, 60));
 }
+
+QStringList MainWindow::backupFiles() const
+{
+    // The copies kept beside the scene: name.ecl~ (as it was before the last save) and name_backup_<date>.ecl (Backup Scene).
+    QStringList found;
+    if (m_path.isEmpty())
+        return found;
+    QFileInfo const info(m_path);
+    if (QFileInfo::exists(m_path + QLatin1Char('~')))
+        found << m_path + QLatin1Char('~');
+    for (QFileInfo const& f : info.dir().entryInfoList({info.completeBaseName() + QStringLiteral("_backup_*.") + info.suffix()}, QDir::Files))
+        found << f.absoluteFilePath();
+    return found;
+}
+
+void MainWindow::onActionDeleteBackupFiles()
+{
+    QStringList const backups = backupFiles();
+    if (backups.isEmpty()) {
+        QMessageBox::information(this, tr("Delete Backup Files"), tr("This scene has no backup files."));
+        return;
+    }
+    if (QMessageBox::question(this, tr("Delete Backup Files"),
+                              tr("Move the %n backup file(s) of this scene to the Recycle Bin?", nullptr, int(backups.size())))
+        != QMessageBox::Yes)
+        return;
+    for (QString const& file : backups)
+        QFile::moveToTrash(file);
+}

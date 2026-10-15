@@ -93,6 +93,9 @@ public:
     QStringList sceneVersions() const;
     // Scene Markers: a marker of one frame on the current frame.
     void onActionMarkCurrentFrame();
+    // File > Delete Backup Files: the scene's backup copies (name.ecl~, name_backup_*) to the Recycle Bin.
+    void onActionDeleteBackupFiles();
+    QStringList backupFiles() const;
     // Preferences: a red border round the view in use.
     void setCurrentViewBorder(bool on);
     bool currentViewBorder() const;

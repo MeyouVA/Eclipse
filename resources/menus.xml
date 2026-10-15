@@ -23,6 +23,7 @@
    <item id="SaveNewVersion" icon="file/saveversion" text="Save as New &amp;Version" responder="window" slot="onActionSaveNewVersion()"/>
    <item id="ManageVersions" icon="file/saveversion" text="&amp;Manage Versions..." responder="window" slot="onActionManageVersions()"/>
    <item id="BackupScene" icon="file/backup" text="&amp;Backup Scene" responder="window" slot="onActionBackupScene()"/>
+   <item id="DeleteBackupFiles" icon="file/backup" text="Delete Backup &amp;Files..." responder="window" slot="onActionDeleteBackupFiles()"/>
    <separator/>
    <menu id="Import" text="&amp;Import">
     <item id="ImportImages" icon="file/importimages" text="&amp;Images..." responder="window" slot="onActionImportImages()"/>
