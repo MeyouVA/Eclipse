@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The camera sizes offered when a scene is made.  Add the ones you use often; sizes
      made in the program itself are kept with the user's settings, not here.  A size may
-     give its camera's angle of view (fov, degrees top to bottom); 41.112 when it does not. -->
+     give its camera's angle of view (fov, degrees top to bottom - or side to side with fit="horizontal");
+     41.112 when it does not; projection="orthographic" makes the scene orthographic. -->
 <resolutions default="HDTV_1080p24">
  <resolution name="HDTV_1080p24" width="1920" height="1080" fps="24"/>
  <resolution name="HDTV_1080p25" width="1920" height="1080" fps="25"/>
@@ -15,14 +16,21 @@
  <resolution name="film-4K" width="4096" height="3112" fps="24"/>
  <resolution name="film-1.33" width="2048" height="1536" fps="24"/>
  <resolution name="film-1.66" width="2048" height="1234" fps="24"/>
+ <resolution name="film-1.66_H" width="2048" height="1234" fps="24" fit="horizontal"/>
+ <resolution name="film-1.33_H" width="2048" height="1536" fps="24" fit="horizontal"/>
  <resolution name="Cineon" width="3656" height="2664" fps="24"/>
  <resolution name="NTSC" width="720" height="540" fps="24"/>
  <resolution name="PAL" width="768" height="576" fps="25"/>
+ <resolution name="2160p" width="3840" height="2160" fps="24"/>
  <resolution name="1440p" width="2560" height="1440" fps="24"/>
+ <resolution name="720p" width="1280" height="720" fps="24"/>
  <resolution name="480p" width="854" height="480" fps="24"/>
  <resolution name="360p" width="640" height="360" fps="24"/>
  <resolution name="240p" width="426" height="240" fps="24"/>
  <resolution name="low" width="360" height="270" fps="24"/>
  <resolution name="Web_Video" width="320" height="240" fps="15"/>
  <resolution name="Game_512" width="512" height="512" fps="30"/>
+ <resolution name="Game_512_Ortho" width="512" height="512" fps="30" projection="orthographic"/>
+ <resolution name="HDTV" width="1920" height="1080" fps="24" fit="horizontal"/>
+ <resolution name="HDTV_Vertical" width="1920" height="1080" fps="24"/>
 </resolutions>

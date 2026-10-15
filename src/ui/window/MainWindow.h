@@ -85,6 +85,14 @@ public:
     bool autoSavesWorkspace() const { return m_autoSaveWorkspace; }
     // Preferences: an undo (or redo) of a change to another drawing goes to that drawing.
     bool restoresDrawingOnUndo() const { return m_restoreDrawingOnUndo; }
+    // Scene > Remove Unused Files: the files of the scene's media folder that the scene no longer uses (to the Recycle Bin).
+    void onActionRemoveUnusedFiles();
+    QStringList unusedFiles() const;
+    // File > Manage Versions: the scene's versions (name, name_v2, name_v3 ...) - opened, or deleted.
+    void onActionManageVersions();
+    QStringList sceneVersions() const;
+    // Scene Markers: a marker of one frame on the current frame.
+    void onActionMarkCurrentFrame();
     // Preferences: a red border round the view in use.
     void setCurrentViewBorder(bool on);
     bool currentViewBorder() const;
@@ -532,6 +540,9 @@ private:
     QByteArray m_cleanWorkspace;
     bool m_autoSaveWorkspace = true;
     bool m_restoreDrawingOnUndo = false;
+    int m_autoSaveQuiet = 1;            // seconds without input before saving by itself
+    QElapsedTimer m_lastInput;
+    void autoSaveNow();
     // Undo / Redo, and with that preference, to the drawing it changed.
     void stepUndo(bool redo);
     void refreshWorkspaceBox();

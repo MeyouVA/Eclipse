@@ -1,6 +1,7 @@
 // Eclipse - the main window: collapse arrows, which view is in use, toolbars, the Windows menu.
 #include "ui/window/MainWindow.h"
 
+#include <QMouseEvent>
 #include <QComboBox>
 #include <QDockWidget>
 #include <QToolButton>
@@ -559,6 +560,23 @@ void MainWindow::setActiveView(QWidget* frame)
 
 bool MainWindow::eventFilter(QObject* object, QEvent* event)
 {
+    // (When the user last did anything: saving by itself waits for a pause.)
+    switch (event->type()) {
+    case QEvent::MouseButtonPress:
+    case QEvent::MouseButtonRelease:
+    case QEvent::KeyPress:
+    case QEvent::TabletPress:
+    case QEvent::TabletMove:
+    case QEvent::Wheel:
+        m_lastInput.start();
+        break;
+    case QEvent::MouseMove:
+        if (static_cast<QMouseEvent*>(event)->buttons() != Qt::NoButton)
+            m_lastInput.start();
+        break;
+    default:
+        break;
+    }
     // Preferences: Focus On Mouse Enter - a view takes the keyboard as the pointer comes over it.
     // (The pointer comes over the view, or a part of it - a scrolled view's inside.)
     if (m_focusOnEnter && event->type() == QEvent::Enter && !QApplication::activePopupWidget() && !QApplication::activeModalWidget())

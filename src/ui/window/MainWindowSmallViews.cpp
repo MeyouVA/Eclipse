@@ -401,6 +401,7 @@ QWidget* MainWindow::createSceneMarkersView()
             row->addWidget(b);
         };
         button(tr("Add..."), "MarkerAdd", &MainWindow::onActionCreateSceneMarker);
+        button(tr("Mark Current Frame"), "MarkerCurrentFrame", &MainWindow::onActionMarkCurrentFrame);
         button(tr("Edit..."), "MarkerEdit", &MainWindow::onActionEditSceneMarker);
         button(tr("Note..."), "MarkerNote", &MainWindow::onActionSceneMarkerNote);
         button(tr("Delete"), "MarkerDelete", &MainWindow::onActionDeleteSceneMarker);

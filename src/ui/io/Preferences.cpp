@@ -25,6 +25,10 @@
 #include <QSettings>
 #include <QSpinBox>
 #include <QVBoxLayout>
+#include <QDirIterator>
+#include <QMessageBox>
+#include <QSet>
+#include <QStatusBar>
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
@@ -55,12 +59,65 @@ QStringList MainWindow::sceneFiles(bool missingOnly) const
     for (Layer const& layer : m_document->scene().layers) {
         if (layer.kind == Layer::Sound)
             add(layer.soundFile);
-        for (Drawing const& drawing : layer.drawings)
+        for (Drawing const& drawing : layer.drawings) {
             for (Picture const& picture : drawing.pictures)
                 if (picture.linked)
                     add(picture.file);
+            add(drawing.model);
+        }
     }
+    for (QString const& reference : m_document->scene().references)
+        add(reference);
     return files;
+}
+
+void MainWindow::onActionRemoveUnusedFiles()
+{
+    // The files in the scene's media folder (its-name-media, beside it) that nothing in the scene uses any more.
+    if (m_path.isEmpty()) {
+        QMessageBox::information(this, tr("Remove Unused Files"), tr("Save the scene first: its files are kept beside its file."));
+        return;
+    }
+    QStringList const unused = unusedFiles();
+    if (unused.isEmpty()) {
+        QMessageBox::information(this, tr("Remove Unused Files"), tr("Every file in the scene's media folder is used."));
+        return;
+    }
+    if (QMessageBox::question(this, tr("Remove Unused Files"),
+                              tr("%n file(s) in the scene's media folder are not used by the scene any more. Move them to the Recycle Bin?", nullptr,
+                                 int(unused.size())))
+        != QMessageBox::Yes)
+        return;
+    int moved = 0;
+    for (QString const& file : unused)
+        moved += QFile::moveToTrash(file) ? 1 : 0;
+    statusBar()->showMessage(tr("%n unused file(s) moved to the Recycle Bin.", nullptr, moved), 6000);
+}
+
+QStringList MainWindow::unusedFiles() const
+{
+    QStringList unused;
+    if (m_path.isEmpty())
+        return unused;
+    QFileInfo const scene(m_path);
+    QDir const media(scene.dir().filePath(scene.completeBaseName() + QStringLiteral("-media")));
+    if (!media.exists())
+        return unused;
+    QSet<QString> used;
+    // (Compared as the files really are: one path may be written another way than the other.)
+    auto real = [](QString const& file) {
+        QString const canonical = QFileInfo(file).canonicalFilePath();
+        return (canonical.isEmpty() ? QDir::cleanPath(QFileInfo(file).absoluteFilePath()) : canonical).toLower();
+    };
+    for (QString const& file : sceneFiles(false))
+        used.insert(real(file));
+    QDirIterator it(media.absolutePath(), QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString const file = QDir::cleanPath(it.next());
+        if (!used.contains(real(file)))
+            unused << file;
+    }
+    return unused;
 }
 
 void MainWindow::onActionCheckFiles()
@@ -316,6 +373,8 @@ void MainWindow::applyPreferences()
     m_canvas->setPerformanceReport(s.value(QStringLiteral("prefs/performanceReport"), false).toBool());
     m_canvas->setPasteBehaviour(s.value(QStringLiteral("prefs/pasteBehaviour"), 0).toInt());
     m_restoreDrawingOnUndo = s.value(QStringLiteral("prefs/restoreDrawingOnUndo"), false).toBool();
+    Scene::setCompressFiles(s.value(QStringLiteral("prefs/compressScenes"), false).toBool());
+    m_autoSaveQuiet = std::clamp(s.value(QStringLiteral("prefs/autosaveQuietSeconds"), 1).toInt(), 0, 600);
     {
         int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
         if (m_library)
@@ -410,6 +469,18 @@ void MainWindow::onActionPreferences()
     keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));
     keepBackup->setChecked(s.value(QStringLiteral("prefs/keepBackup"), true).toBool());
     generalLayout->addRow(keepBackup);
+    QCheckBox* const compress = new QCheckBox(tr("Compress scene files on save"), general);
+    compress->setObjectName(QStringLiteral("PrefCompressScenes"));
+    compress->setToolTip(tr("Scene files are written packed: smaller, and read just the same."));
+    compress->setChecked(s.value(QStringLiteral("prefs/compressScenes"), false).toBool());
+    generalLayout->addRow(compress);
+    QSpinBox* const quiet = new QSpinBox(general);
+    quiet->setObjectName(QStringLiteral("PrefAutosaveQuiet"));
+    quiet->setRange(0, 600);
+    quiet->setSuffix(tr(" seconds"));
+    quiet->setToolTip(tr("Saving by itself waits until you have stopped working for this long, so as not to interrupt a stroke."));
+    quiet->setValue(s.value(QStringLiteral("prefs/autosaveQuietSeconds"), 1).toInt());
+    generalLayout->addRow(tr("Auto-save waits for a pause of"), quiet);
     generalLayout->addRow(focusOnEnter);
     QCheckBox* const autoWorkspace = new QCheckBox(tr("Automatically save workspace"), general);
     autoWorkspace->setObjectName(QStringLiteral("PrefAutoSaveWorkspace"));
@@ -938,6 +1009,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/autoSaveWorkspace"), autoWorkspace->isChecked());
     s.setValue(QStringLiteral("prefs/viewBorder"), viewBorder->isChecked());
     s.setValue(QStringLiteral("prefs/restoreDrawingOnUndo"), restoreDrawing->isChecked());
+    s.setValue(QStringLiteral("prefs/compressScenes"), compress->isChecked());
+    s.setValue(QStringLiteral("prefs/autosaveQuietSeconds"), quiet->value());
     s.setValue(QStringLiteral("prefs/pasteBehaviour"), pasteBehaviour->currentIndex());
     s.setValue(QStringLiteral("prefs/middlePans"), middlePans->isChecked());
     s.setValue(QStringLiteral("prefs/performanceReport"), performance->isChecked());

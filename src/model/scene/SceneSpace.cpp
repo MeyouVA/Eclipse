@@ -211,7 +211,7 @@ double Scene::focalDistance(int frame) const
 {
     int const camera = cameraIndex();
     double const angle = camera >= 0 ? layers[camera].fovAt(frame) : fov;
-    return height / 2.0 / std::tan(angle * 3.14159265358979323846 / 360.0);
+    return (fovAcross ? width : height) / 2.0 / std::tan(angle * 3.14159265358979323846 / 360.0);
 }
 
 double Scene::depthScale(double z, int frame) const

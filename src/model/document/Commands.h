@@ -99,6 +99,8 @@ public:
     bool setSwatchProtected(int id, bool on);
     // How depth is seen: in perspective, or (orthographic) with nothing bigger or smaller for it.
     bool setOrthographic(bool on);
+    // The angle of view measured side to side (horizontal fit) or top to bottom.
+    bool setFovAcross(bool on);
     // A palette linked to a file (an empty path: linked no longer); and its colours brought up to
     // those the file has now.
     bool setPaletteLink(int palette, QString const& path);

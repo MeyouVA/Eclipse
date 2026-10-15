@@ -218,6 +218,14 @@ bool Document::setOrthographic(bool on)
     return true;
 }
 
+bool Document::setFovAcross(bool on)
+{
+    if (m_scene.fovAcross == on)
+        return false;
+    apply(on ? tr("Horizontal Fit") : tr("Vertical Fit"), [&](Scene& s) { s.fovAcross = on; });
+    return true;
+}
+
 bool Document::setSwatchProtected(int id, bool on)
 {
     Swatch const* const found = m_scene.findSwatch(id);

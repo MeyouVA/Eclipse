@@ -21,7 +21,9 @@ struct Resolution {
     int height = 1080;
     double fps = 24.0;
     bool custom = false;  // made by the user, kept with the settings
-    double fov = 41.112;  // the angle of view of the camera (degrees, top to bottom)
+    double fov = 41.112;  // the angle of view of the camera (degrees, top to bottom - or, `across`, side to side)
+    bool across = false;  // horizontal fit
+    bool orthographic = false;
 };
 
 class ECLIPSE_UI_API WelcomeDialog : public QDialog {

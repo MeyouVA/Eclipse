@@ -1007,6 +1007,11 @@ public:
     // Orthographic: depth puts layers in front of and behind one another, but nothing looks bigger
     // or smaller for being nearer or further (off: in perspective, as a camera sees).
     bool orthographic = false;
+    // The camera's angle of view is measured from side to side (horizontal fit) rather than from top to bottom.
+    bool fovAcross = false;
+    // Saving: scene files written packed (zlib), smaller; they are read either way.  (Set from Preferences.)
+    static void setCompressFiles(bool on);
+    static bool compressFiles();
     // The angle of view (degrees, top to bottom) of the camera size: what a camera added starts with, and what the scene
     // is seen with when it has no camera.
     double fov = Layer::kDefaultFov;

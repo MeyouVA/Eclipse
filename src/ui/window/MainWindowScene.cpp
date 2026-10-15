@@ -166,6 +166,19 @@ void MainWindow::onActionSceneSettings()
     projection->setToolTip(tr("Perspective: nearer layers look bigger, as a camera sees.  Orthographic: depth only puts layers in front of and behind one another."));
     projection->setCurrentIndex(scene.orthographic ? 1 : 0);
     form->addRow(tr("Projection"), projection);
+    QComboBox* const fit = new QComboBox(&dialog);
+    fit->setObjectName(QStringLiteral("SceneFit"));
+    fit->addItems({tr("Vertical Fit"), tr("Horizontal Fit")});
+    fit->setToolTip(tr("Whether the field of view is measured from the top of the frame to the bottom, or from side to side."));
+    fit->setCurrentIndex(scene.fovAcross ? 1 : 0);
+    form->addRow(tr("Field of view fit"), fit);
+    connect(presets, &QComboBox::activated, &dialog, [known, fit, projection](int index) {
+        if (index <= 0 || index - 1 >= known.size())
+            return;
+        fit->setCurrentIndex(known[index - 1].across ? 1 : 0);
+        if (known[index - 1].orthographic)
+            projection->setCurrentIndex(1);
+    });
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -174,6 +187,7 @@ void MainWindow::onActionSceneSettings()
         m_document->beginMacro(tr("Scene Settings"));
         m_document->setSceneSettings(width->value(), height->value(), fps->value(), fov->value());
         m_document->setOrthographic(projection->currentIndex() == 1);
+        m_document->setFovAcross(fit->currentIndex() == 1);
         m_document->endMacro();
         m_canvas->fitToWindow();
     }

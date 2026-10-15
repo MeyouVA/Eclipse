@@ -212,15 +212,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     });
     connect(&m_playTimer, &QTimer::timeout, this, &MainWindow::advanceFrame);
     // Saving by itself (Edit > Preferences): a scene that has a file, has changed, and is not playing.
-    connect(&m_autoSave, &QTimer::timeout, this, [this] {
-        if (m_path.isEmpty() || !m_document->unsaved() || m_playTimer.isActive())
-            return;
-        // (Asking first, when the preferences say so.)
-        if (m_askAutoSave
-            && QMessageBox::question(this, tr("Save"), tr("Save %1 now?").arg(QFileInfo(m_path).fileName()), QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
-            return;
-        saveTo(m_path);
-    });
+    connect(&m_autoSave, &QTimer::timeout, this, &MainWindow::autoSaveNow);
     m_playTimer.setTimerType(Qt::PreciseTimer);
 
     // What would go to a status bar shows under the Camera view instead; a message stands
@@ -265,4 +257,23 @@ int MainWindow::layer() const
 int MainWindow::frame() const
 {
     return m_timeline->currentFrame();
+}
+
+void MainWindow::autoSaveNow()
+{
+    if (m_path.isEmpty() || !m_document->unsaved() || m_playTimer.isActive())
+        return;
+    // Not in the middle of a stroke: once nothing has been done for a moment (Preferences); until then, tried again.
+    if (m_lastInput.isValid() && m_lastInput.elapsed() < m_autoSaveQuiet * 1000) {
+        QTimer::singleShot(m_autoSaveQuiet * 1000 - int(m_lastInput.elapsed()) + 50, this, [this] {
+            if (m_autoSave.isActive())
+                autoSaveNow();
+        });
+        return;
+    }
+    // (Asking first, when the preferences say so.)
+    if (m_askAutoSave
+        && QMessageBox::question(this, tr("Save"), tr("Save %1 now?").arg(QFileInfo(m_path).fileName()), QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
+        return;
+    saveTo(m_path);
 }

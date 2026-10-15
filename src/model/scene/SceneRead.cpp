@@ -300,6 +300,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.height = std::max(1, json["height"].toInt(1080));
     scene.fps = std::clamp(json["fps"].toDouble(24.0), 1.0, 240.0);
     scene.orthographic = json["orthographic"].toBool(false);
+    scene.fovAcross = json["fovAcross"].toBool(false);
     scene.fov = std::clamp(json["fov"].toDouble(Layer::kDefaultFov), 1.0, 170.0);
     scene.activeCamera = json["camera"].toInt(0);
     scene.display = json["display"].toInt(0);
@@ -805,8 +806,18 @@ bool Scene::load(QString const& path, Scene& out, QString* error)
             *error = file.errorString();
         return false;
     }
+    QByteArray bytes = file.readAll();
+    // A packed scene file (see Scene::s_compressFiles).
+    if (bytes.startsWith("ECLZ")) {
+        bytes = qUncompress(bytes.mid(4));
+        if (bytes.isEmpty()) {
+            if (error)
+                *error = QObject::tr("The packed scene file is damaged.");
+            return false;
+        }
+    }
     QJsonParseError parse;
-    QJsonDocument const doc = QJsonDocument::fromJson(file.readAll(), &parse);
+    QJsonDocument const doc = QJsonDocument::fromJson(bytes, &parse);
     if (doc.isNull()) {
         if (error)
             *error = parse.errorString();

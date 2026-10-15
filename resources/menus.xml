@@ -21,6 +21,7 @@
    <item id="Save" icon="file/save" text="&amp;Save" shortcut="shortcut.save" responder="window" slot="onActionSave()"/>
    <item id="SaveAs" icon="file/saveas" text="Save &amp;As..." shortcut="shortcut.saveAs" responder="window" slot="onActionSaveAs()"/>
    <item id="SaveNewVersion" icon="file/saveversion" text="Save as New &amp;Version" responder="window" slot="onActionSaveNewVersion()"/>
+   <item id="ManageVersions" icon="file/saveversion" text="&amp;Manage Versions..." responder="window" slot="onActionManageVersions()"/>
    <item id="BackupScene" icon="file/backup" text="&amp;Backup Scene" responder="window" slot="onActionBackupScene()"/>
    <separator/>
    <menu id="Import" text="&amp;Import">
@@ -201,6 +202,7 @@
    <item id="SceneSettings" icon="misc/scenesettings" text="Scene &amp;Settings..." responder="window" slot="onActionSceneSettings()"/>
    <separator/>
    <item id="CheckFiles" icon="misc/checkfiles" text="&amp;Check Files..." responder="window" slot="onActionCheckFiles()"/>
+   <item id="RemoveUnusedFiles" icon="misc/checkfiles" text="Remove &amp;Unused Files..." responder="window" slot="onActionRemoveUnusedFiles()"/>
    <menu id="SceneRender" text="&amp;Render">
     <item id="RenderPreview" icon="misc/renderpreview" text="Render &amp;Preview" responder="window" slot="onActionRenderPreview()"/>
     <item id="AutoRender" icon="misc/autorender" text="&amp;Auto Render" checkable="true" responder="window" slot="onActionAutoRender(bool)"/>

@@ -100,6 +100,8 @@ QVector<Resolution> WelcomeDialog::resolutions(QString const& resourceDirectory,
             r.fps = a.value(QLatin1String("fps")).toDouble();
             if (a.hasAttribute(QLatin1String("fov")))
                 r.fov = std::clamp(a.value(QLatin1String("fov")).toDouble(), 1.0, 170.0);
+            r.across = a.value(QLatin1String("fit")) == QLatin1String("horizontal");
+            r.orthographic = a.value(QLatin1String("projection")) == QLatin1String("orthographic");
             if (!r.name.isEmpty() && r.width > 0 && r.height > 0 && r.fps > 0.0)
                 all.push_back(r);
         }

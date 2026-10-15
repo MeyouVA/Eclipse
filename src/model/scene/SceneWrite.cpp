@@ -685,6 +685,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"height", height},
                        {"fps", fps},
                        {"orthographic", orthographic},
+                       {"fovAcross", fovAcross},
                        {"fov", fov},
                        {"camera", activeCamera},
                        {"display", display},
@@ -734,7 +735,10 @@ bool Scene::save(QString const& path, QString* error) const
             *error = file.errorString();
         return false;
     }
-    QByteArray const bytes = QJsonDocument(toJson(QFileInfo(path).absolutePath())).toJson(QJsonDocument::Compact);
+    QByteArray bytes = QJsonDocument(toJson(QFileInfo(path).absolutePath())).toJson(QJsonDocument::Compact);
+    // Packed (Preferences): a mark, then the scene zlib-packed.
+    if (compressFiles())
+        bytes = QByteArray("ECLZ") + qCompress(bytes, 9);
     if (file.write(bytes) != bytes.size()) {
         if (error)
             *error = file.errorString();
@@ -745,4 +749,18 @@ bool Scene::save(QString const& path, QString* error) const
         if (!paletteLinks[i].isEmpty())
             writePaletteFile(i, paletteLinks[i]);
     return true;
+}
+
+namespace {
+bool gCompressFiles = false;
+}
+
+void Scene::setCompressFiles(bool on)
+{
+    gCompressFiles = on;
+}
+
+bool Scene::compressFiles()
+{
+    return gCompressFiles;
 }
