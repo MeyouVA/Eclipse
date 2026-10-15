@@ -852,8 +852,12 @@ void NodeView::graphDoubleClick(QMouseEvent* event)
     } else if (n->kind == GraphNode::EffectNode) {
         editGraphNode(hit);
     } else if (n->kind == GraphNode::LayerNode) {
-        if (int const l = m_document->scene().layerIndex(n->layer); l >= 0)
-            emit renameRequested(l);
+        if (int const l = m_document->scene().layerIndex(n->layer); l >= 0) {
+            if (m_doubleClickEdits)
+                emit editRequested(l);
+            else
+                emit renameRequested(l);
+        }
     } else if (n->kind == GraphNode::Composite || n->kind == GraphNode::Display) {
         bool ok = false;
         QString const name = QInputDialog::getText(this, tr("Rename Node"), tr("Name:"), QLineEdit::Normal, graphNodeName(*n), &ok);

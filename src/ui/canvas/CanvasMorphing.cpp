@@ -28,6 +28,12 @@ int Canvas::morphHere() const
     return here.isEmpty() ? -1 : here.first().first;
 }
 
+void Canvas::setBrushOutline(bool on)
+{
+    m_brushOutline = on;
+    update();
+}
+
 void Canvas::setMorphGroup(int group)
 {
     m_morphGroup = group;

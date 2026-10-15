@@ -719,6 +719,8 @@ void NodeView::mouseDoubleClickEvent(QMouseEvent* event)
     // A group is gone into; any other node is renamed.
     if (hit >= 0 && m_document->scene().layers[hit].kind == Layer::Group)
         enterGroup(hit);
+    else if (hit >= 0 && m_doubleClickEdits)
+        emit editRequested(hit);
     else if (hit >= 0)
         emit renameRequested(hit);
 }

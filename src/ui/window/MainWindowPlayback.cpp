@@ -58,6 +58,9 @@ void MainWindow::onActionTogglePlayback()
     // frames playing runs between, begin at their start.
     if (frame() >= playStop() || frame() < m_playStart)
         m_timeline->setCurrentFrame(m_playStart);
+    // Preroll: from so many frames before (not before where playing begins).
+    if (m_preroll > 0)
+        m_timeline->setCurrentFrame(std::max(m_playStart, frame() - m_preroll));
     m_canvas->setPlaying(true);
     m_actions->setChecked(QStringLiteral("PlayToggle"), true);
     // Playing from the Preview Manager's frames: the sound kept with them; otherwise the scene's, mixed now.

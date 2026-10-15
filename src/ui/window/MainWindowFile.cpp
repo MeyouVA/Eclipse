@@ -67,7 +67,7 @@ void MainWindow::onActionCloseScene()
     m_path.clear();
     m_document->reset(Scene());
     m_timeline->setCurrentCell(0, 0);
-    m_canvas->fitToWindow();
+    placeCameraView();
     updateTitle();
     onActionShowWelcome();
 }
@@ -87,7 +87,7 @@ bool MainWindow::createScene(QString const& path, int width, int height, double 
     m_path.clear();
     m_document->reset(scene);
     m_timeline->setCurrentCell(0, 0);
-    m_canvas->fitToWindow();
+    placeCameraView();
     updateTitle();
     return saveTo(path);
 }
@@ -126,7 +126,7 @@ bool MainWindow::openFile(QString const& path)
     m_document->reset(scene);
     m_timeline->setCurrentCell(int(scene.layers.size()) - 1, 0);
     m_canvas->setCurrentCell(layer(), frame());
-    m_canvas->fitToWindow();
+    placeCameraView();
     updateTitle();
     addRecent(path);
     return true;
@@ -173,6 +173,11 @@ void MainWindow::onShowRecent(QMenu* menu)
 
 bool MainWindow::saveTo(QString const& path)
 {
+    // The file as it was, kept beside it (with ~ after its name) before it is saved over.
+    if (m_keepBackup && QFileInfo::exists(path)) {
+        QFile::remove(path + QLatin1Char('~'));
+        QFile::copy(path, path + QLatin1Char('~'));
+    }
     QString error;
     if (!m_document->wholeScene().save(path, &error)) {
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not save %1:\n%2").arg(QDir::toNativeSeparators(path), error));

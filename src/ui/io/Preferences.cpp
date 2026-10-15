@@ -290,6 +290,23 @@ void MainWindow::applyPreferences()
     m_autoSave.stop();
     if (m_autoSaveMinutes > 0)
         m_autoSave.start(m_autoSaveMinutes * 60 * 1000);
+    m_keepBackup = s.value(QStringLiteral("prefs/keepBackup"), true).toBool();
+    m_askAutoSave = s.value(QStringLiteral("prefs/askAutoSave"), false).toBool();
+    m_preroll = std::max(0, s.value(QStringLiteral("prefs/preroll"), 0).toInt());
+    m_timeline->setKindShown(Layer::Sound, s.value(QStringLiteral("prefs/timelineSound"), true).toBool());
+    m_timeline->setKindShown(Layer::Group, s.value(QStringLiteral("prefs/timelineGroups"), true).toBool());
+    m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
+    m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
+    if (NodeView* const view = findChild<NodeView*>())
+        view->setDoubleClickOpensEditor(s.value(QStringLiteral("prefs/nodeDoubleClick"), 0).toInt() == 1);
+}
+
+void MainWindow::placeCameraView()
+{
+    // As the preferences say: the whole frame in the view, or at its own size.
+    m_canvas->fitToWindow();
+    if (preferences().value(QStringLiteral("prefs/cameraZoom"), 0).toInt() == 1)
+        m_canvas->onActionResetZoom();
 }
 
 void MainWindow::onActionPreferences()
@@ -318,6 +335,15 @@ void MainWindow::onActionPreferences()
     undoLevels->setToolTip(tr("How many steps can be undone. It takes hold with the next scene made or opened."));
     undoLevels->setValue(m_document->undoLevels());
     generalLayout->addRow(tr("Levels of undo"), undoLevels);
+    QCheckBox* const keepBackup = new QCheckBox(tr("Keep a backup of the scene file when saving"), general);
+    keepBackup->setObjectName(QStringLiteral("PrefKeepBackup"));
+    keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));
+    keepBackup->setChecked(s.value(QStringLiteral("prefs/keepBackup"), true).toBool());
+    generalLayout->addRow(keepBackup);
+    QCheckBox* const askAutoSave = new QCheckBox(tr("Ask before saving by itself"), general);
+    askAutoSave->setObjectName(QStringLiteral("PrefAskAutoSave"));
+    askAutoSave->setChecked(s.value(QStringLiteral("prefs/askAutoSave"), false).toBool());
+    generalLayout->addRow(askAutoSave);
 
     QGroupBox* const camera = new QGroupBox(tr("Camera"), &dialog);
     QComboBox* const selectMode = new QComboBox(camera);
@@ -325,6 +351,12 @@ void MainWindow::onActionPreferences()
     selectMode->setCurrentIndex(s.value(QStringLiteral("prefs/lasso"), true).toBool() ? 0 : 1);
     QFormLayout* const cameraLayout = new QFormLayout(camera);
     cameraLayout->addRow(tr("The Select tool starts with"), selectMode);
+    QComboBox* const cameraZoom = new QComboBox(camera);
+    cameraZoom->setObjectName(QStringLiteral("PrefCameraZoom"));
+    cameraZoom->addItems({tr("Fit to View"), tr("100%")});
+    cameraZoom->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/cameraZoom"), 0).toInt(), 0, 1));
+    cameraZoom->setToolTip(tr("How the Camera view shows a scene made or opened: the whole frame in the view, or at its own size."));
+    cameraLayout->addRow(tr("A scene opens"), cameraZoom);
     QSpinBox* const nudge = new QSpinBox(camera);
     nudge->setObjectName(QStringLiteral("PrefNudge"));
     nudge->setRange(1, 100);
@@ -412,6 +444,26 @@ void MainWindow::onActionPreferences()
     loopPause->setToolTip(tr("Playing in a loop: how long the last frame is held before the loop plays again."));
     loopPause->setValue(m_loopPause);
     timelineLayout->addRow(tr("Pause at the end of a loop"), loopPause);
+    QCheckBox* const showSound = new QCheckBox(tr("Show sound layers"), timelinePage);
+    showSound->setObjectName(QStringLiteral("PrefShowSound"));
+    showSound->setChecked(s.value(QStringLiteral("prefs/timelineSound"), true).toBool());
+    timelineLayout->addRow(showSound);
+    QCheckBox* const waveforms = new QCheckBox(tr("Show sound waveforms"), timelinePage);
+    waveforms->setObjectName(QStringLiteral("PrefWaveforms"));
+    waveforms->setChecked(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
+    timelineLayout->addRow(waveforms);
+    QCheckBox* const showGroups = new QCheckBox(tr("Show group layers"), timelinePage);
+    showGroups->setObjectName(QStringLiteral("PrefShowGroups"));
+    showGroups->setChecked(s.value(QStringLiteral("prefs/timelineGroups"), true).toBool());
+    timelineLayout->addRow(showGroups);
+    QSpinBox* const preroll = new QSpinBox(timelinePage);
+    preroll->setObjectName(QStringLiteral("PrefPreroll"));
+    preroll->setRange(0, 1000);
+    preroll->setSpecialValueText(tr("None"));
+    preroll->setSuffix(tr(" frames"));
+    preroll->setToolTip(tr("Play starts so many frames before the current frame, to see what leads up to it."));
+    preroll->setValue(m_preroll);
+    timelineLayout->addRow(tr("Preroll"), preroll);
 
     // Render: the preview.
     QGroupBox* const renderPage = new QGroupBox(tr("Render"), &dialog);
@@ -439,6 +491,11 @@ void MainWindow::onActionPreferences()
     toolSize->setToolTip(tr("The size of the brush, the eraser and the other drawing tools when Eclipse starts."));
     QFormLayout* const toolsLayout = new QFormLayout(toolsPage);
     toolsLayout->addRow(tr("Size of the drawing tools"), toolSize);
+    QCheckBox* const brushOutline = new QCheckBox(tr("Show the brush's size round the pointer"), toolsPage);
+    brushOutline->setObjectName(QStringLiteral("PrefBrushOutline"));
+    brushOutline->setToolTip(tr("The Brush, the Eraser and the Pencil show a circle as big as what they draw, where the pointer is."));
+    brushOutline->setChecked(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
+    toolsLayout->addRow(brushOutline);
     QComboBox* const units = new QComboBox(toolsPage);
     units->setObjectName(QStringLiteral("PrefUnits"));
     units->addItems({tr("Fields"), tr("Pixels")});
@@ -471,6 +528,11 @@ void MainWindow::onActionPreferences()
     QFormLayout* const nodeLayout = new QFormLayout(nodePage);
     nodeLayout->addRow(navigator);
     nodeLayout->addRow(straight);
+    QComboBox* const nodeDoubleClick = new QComboBox(nodePage);
+    nodeDoubleClick->setObjectName(QStringLiteral("PrefNodeDoubleClick"));
+    nodeDoubleClick->addItems({tr("Renames the layer"), tr("Opens Layer Properties")});
+    nodeDoubleClick->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/nodeDoubleClick"), 0).toInt(), 0, 1));
+    nodeLayout->addRow(tr("A double-click on a layer's node"), nodeDoubleClick);
 
     // Onion Skin: how many drawings either side it shows, and how strongly, when Eclipse starts.
     QGroupBox* const onionPage = new QGroupBox(tr("Onion Skin"), &dialog);
@@ -606,6 +668,15 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
     s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());
     s.setValue(QStringLiteral("prefs/safeMargin"), safe->value());
+    s.setValue(QStringLiteral("prefs/keepBackup"), keepBackup->isChecked());
+    s.setValue(QStringLiteral("prefs/askAutoSave"), askAutoSave->isChecked());
+    s.setValue(QStringLiteral("prefs/cameraZoom"), cameraZoom->currentIndex());
+    s.setValue(QStringLiteral("prefs/timelineSound"), showSound->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineWaveforms"), waveforms->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineGroups"), showGroups->isChecked());
+    s.setValue(QStringLiteral("prefs/preroll"), preroll->value());
+    s.setValue(QStringLiteral("prefs/nodeDoubleClick"), nodeDoubleClick->currentIndex());
+    s.setValue(QStringLiteral("prefs/brushOutline"), brushOutline->isChecked());
     s.sync();
     applyPreferences();
 }

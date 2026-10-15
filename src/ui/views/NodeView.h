@@ -61,6 +61,9 @@ public:
     bool navigatorShown() const { return m_navigator; }
     void setStraightCables(bool on);
     bool straightCables() const { return m_straight; }
+    // Preferences: a double-click on a layer's node opens its properties (editRequested) instead of renaming it.
+    void setDoubleClickOpensEditor(bool on) { m_doubleClickEdits = on; }
+    bool doubleClickOpensEditor() const { return m_doubleClickEdits; }
 
     // ---- the node graph, wired by hand (see NodeGraph) ----
     // Whether the scene's graph is wired by hand: the view then shows it and edits it (otherwise it shows the layers as
@@ -120,6 +123,8 @@ public slots:
 signals:
     void layerPicked(int layer);
     void renameRequested(int layer);
+    // A double-click on a layer's node, when it is to open the layer's properties (setDoubleClickOpensEditor).
+    void editRequested(int layer);
     void contextMenuRequested(QPoint const& globalPos);
     // Something of the Node Library was dropped here: what (as NodeLibraryView::add takes it), and where its
     // node is to stand in the graph.
@@ -155,6 +160,7 @@ private:
     QVector<QPointF> cablePoints(QPointF from, QPointF to) const;
     bool m_navigator = true;
     bool m_straight = false;
+    bool m_doubleClickEdits = false;
 
     Document* m_document;
     QLineEdit* m_search = nullptr;     // along the bottom: type a name, Enter goes to the next node of it

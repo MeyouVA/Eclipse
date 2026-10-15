@@ -118,6 +118,8 @@ public:
     // Takes up what Edit > Preferences keeps: how the Select tool takes things, how often
     // the scene is saved by itself (0: never).
     void applyPreferences();
+    // The Camera view made to show a scene just made or opened, as the preferences say (fitted, or at its own size).
+    void placeCameraView();
     // A drawing layer over the current one, called `name` (when that is not empty); with
     // `wholeScene`, an empty drawing in it held from the first frame to the last.  Its place.
     int addDrawingLayer(QString const& name, bool wholeScene);
@@ -624,6 +626,9 @@ private:
     double m_shuttleAt = 0.0;
     int m_playStart = 0;
     int m_autoSaveMinutes = 0;
+    bool m_keepBackup = true;       // the file as it was kept beside it when a scene is saved over
+    bool m_askAutoSave = false;     // saving by itself asks first
+    int m_preroll = 0;              // play starts so many frames before the current one
     QTimer m_autoSave;
     int m_playSpeed = 100;
     int m_loopPause = 0;        // ms the last frame is held before a loop plays again (Preferences)

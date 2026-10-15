@@ -330,6 +330,21 @@ void Canvas::paintEvent(QPaintEvent*)
                 centre << p.pos;
             painter.drawPolyline(centre);
         }
+        if (l == m_layer && m_brushOutline && (m_tool == Brush || m_tool == Eraser || m_tool == Pencil) && m_hoverKnown && !m_playing
+            && layer.holdsDrawings()) {
+            // The size of what the tool draws, round the pointer (as big as the layer is shown).
+            QTransform const where = layerViewTransform();
+            double const radius = m_brushWidth / 2.0 * std::sqrt(std::abs(where.determinant()));
+            painter.save();
+            painter.resetTransform();
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(QPen(QColor(255, 255, 255, 200), 2.0));
+            painter.drawEllipse(m_hoverWidget, radius, radius);
+            painter.setPen(QPen(QColor(20, 20, 20, 220), 1.0));
+            painter.drawEllipse(m_hoverWidget, radius, radius);
+            painter.restore();
+        }
         if (l == m_layer && m_tool == Stamp && m_hoverKnown && !m_playing && m_drag == DragNone && layer.holdsDrawings()) {
             // The stamp, faint, where a click would put it.
             double const k = m_stampScale / 100.0;

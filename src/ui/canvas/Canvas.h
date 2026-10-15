@@ -98,6 +98,9 @@ public:
     }
     int swatch() const { return m_swatch; }
     void setBrushWidth(double width) { m_brushWidth = width; }
+    // Preferences: the Brush, the Eraser and the Pencil show a circle as big as what they draw round the pointer.
+    void setBrushOutline(bool on);
+    bool brushOutline() const { return m_brushOutline; }
     double brushWidth() const { return m_brushWidth; }
     // How much a drawn line is smoothed when the pen lifts: 0 keeps every wobble, 100
     // irons out a lot.
@@ -870,6 +873,7 @@ private:
     Tool m_tool = Brush;
     int m_swatch = Scene::kNoSwatch;
     double m_brushWidth = 6.0;
+    bool m_brushOutline = false;
     int m_smoothing = 25;
     int m_cornerAngle = 50;
     Stroke::Join m_join = Stroke::RoundJoin;

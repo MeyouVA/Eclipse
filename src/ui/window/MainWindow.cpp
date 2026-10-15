@@ -3,6 +3,7 @@
 #include "model/geometry/Deform.h"
 
 #include <QApplication>
+#include <QFileInfo>
 #include <QMenu>
 #include <QMessageBox>
 #include <QStatusBar>
@@ -96,6 +97,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(m_timeline, &Timeline::currentCellChanged, m_nodeView, &NodeView::setCurrentCell);
     connect(m_nodeView, &NodeView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
     connect(m_nodeView, &NodeView::renameRequested, this, &MainWindow::renameLayer);
+    connect(m_nodeView, &NodeView::editRequested, this, [this](int layer) {
+        m_timeline->setCurrentCell(layer, frame());
+        onActionShowLayerProperties();
+    });
     connect(m_nodeView, &NodeView::contextMenuRequested, this, [this](QPoint const& globalPos) {
         if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.nodeView"), this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
@@ -208,8 +213,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(&m_playTimer, &QTimer::timeout, this, &MainWindow::advanceFrame);
     // Saving by itself (Edit > Preferences): a scene that has a file, has changed, and is not playing.
     connect(&m_autoSave, &QTimer::timeout, this, [this] {
-        if (!m_path.isEmpty() && m_document->unsaved() && !m_playTimer.isActive())
-            saveTo(m_path);
+        if (m_path.isEmpty() || !m_document->unsaved() || m_playTimer.isActive())
+            return;
+        // (Asking first, when the preferences say so.)
+        if (m_askAutoSave
+            && QMessageBox::question(this, tr("Save"), tr("Save %1 now?").arg(QFileInfo(m_path).fileName()), QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
+            return;
+        saveTo(m_path);
     });
     m_playTimer.setTimerType(Qt::PreciseTimer);
 
