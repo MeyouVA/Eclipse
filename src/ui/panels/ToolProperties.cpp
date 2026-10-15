@@ -16,6 +16,7 @@
 #include <QSpinBox>
 
 #include "actions/manager/ActionManager.h"
+#include "model/document/Commands.h"
 #include "ui/canvas/Canvas.h"
 #include "ui/window/MainWindowPrivate.h"
 #include <QCheckBox>
@@ -83,6 +84,123 @@ private:
     bool m_taper = true;
 };
 
+void ToolProperties::addMorphRows()
+{
+    m_morphLayers = new QListWidget(this);
+    m_morphLayers->setObjectName(QStringLiteral("MorphLayers"));
+    m_morphLayers->setMaximumHeight(120);
+    m_morphLayers->setToolTip(tr("The morphing layers of the morphing here: shapes put in one change only into shapes of the same one. "
+                                 "Choose one, then Ctrl+click shapes on the first and the last drawing to put them in it (or take them out). "
+                                 "Double-click to rename."));
+    m_form->addRow(tr("Morphing Layers"), m_morphLayers);
+    m_morphButtons = new QWidget(this);
+    QHBoxLayout* const row = new QHBoxLayout(m_morphButtons);
+    row->setContentsMargins(0, 0, 0, 0);
+    // A change to the morphing layers of the morphing here, as one step.
+    auto change = [this](QString const& text, std::function<void(QVector<Morph::Group>&, int&)> edit) {
+        int const morph = m_canvas->morphHere();
+        int const layer = m_canvas->currentLayer();
+        Scene const& scene = m_document->scene();
+        if (morph < 0 || layer < 0 || layer >= scene.layers.size())
+            return;
+        QVector<Morph::Group> groups = scene.layers[layer].morphs[morph].groups;
+        int current = m_morphLayers->currentRow();
+        edit(groups, current);
+        m_document->setMorphGroups(layer, morph, groups, text);
+        m_canvas->setMorphGroup(current);
+        refreshMorphLayers();
+    };
+    auto button = [&](QString const& text, QString const& name, QString const& tip) {
+        QPushButton* const b = new QPushButton(text, m_morphButtons);
+        b->setObjectName(name);
+        b->setToolTip(tip);
+        row->addWidget(b);
+        return b;
+    };
+    connect(button(tr("Add"), QStringLiteral("MorphLayerAdd"), tr("A new morphing layer")), &QPushButton::clicked, this, [change] {
+        change(QObject::tr("Add Morphing Layer"), [](QVector<Morph::Group>& groups, int& current) {
+            groups.push_back({QObject::tr("Morphing Layer %1").arg(groups.size() + 1), {}, {}});
+            current = int(groups.size()) - 1;
+        });
+    });
+    connect(button(tr("Remove"), QStringLiteral("MorphLayerRemove"), tr("Take the chosen morphing layer away (its shapes pair up with the rest)")),
+            &QPushButton::clicked, this, [change] {
+                change(QObject::tr("Remove Morphing Layer"), [](QVector<Morph::Group>& groups, int& current) {
+                    if (current < 0 || current >= groups.size())
+                        return;
+                    groups.removeAt(current);
+                    current = std::min(current, int(groups.size()) - 1);
+                });
+            });
+    connect(button(QStringLiteral("\u2191"), QStringLiteral("MorphLayerUp"), tr("Move the chosen morphing layer up")), &QPushButton::clicked, this, [change] {
+        change(QObject::tr("Move Morphing Layer Up"), [](QVector<Morph::Group>& groups, int& current) {
+            if (current > 0 && current < groups.size()) {
+                groups.swapItemsAt(current, current - 1);
+                --current;
+            }
+        });
+    });
+    connect(button(QStringLiteral("\u2193"), QStringLiteral("MorphLayerDown"), tr("Move the chosen morphing layer down")), &QPushButton::clicked, this, [change] {
+        change(QObject::tr("Move Morphing Layer Down"), [](QVector<Morph::Group>& groups, int& current) {
+            if (current >= 0 && current + 1 < groups.size()) {
+                groups.swapItemsAt(current, current + 1);
+                ++current;
+            }
+        });
+    });
+    m_form->addRow(QString(), m_morphButtons);
+    connect(m_morphLayers, &QListWidget::currentRowChanged, this, [this](int row) {
+        if (!m_fillingMorphs)
+            m_canvas->setMorphGroup(row);
+    });
+    connect(m_morphLayers, &QListWidget::itemChanged, this, [this, change](QListWidgetItem* item) {
+        if (m_fillingMorphs)
+            return;
+        int const row = m_morphLayers->row(item);
+        QString const name = item->text().trimmed();
+        change(QObject::tr("Rename Morphing Layer"), [row, name](QVector<Morph::Group>& groups, int& current) {
+            if (row >= 0 && row < groups.size() && !name.isEmpty())
+                groups[row].name = name;
+            current = row;
+        });
+    });
+    connect(m_document, &Document::changed, this, [this] {
+        if (m_canvas->tool() == Canvas::Morphing)
+            refreshMorphLayers();
+    });
+    connect(m_canvas, &Canvas::morphHereChanged, this, [this] {
+        if (m_canvas->tool() == Canvas::Morphing)
+            refreshMorphLayers();
+    });
+}
+
+void ToolProperties::refreshMorphLayers()
+{
+    if (!m_morphLayers)
+        return;
+    m_fillingMorphs = true;
+    int const keep = m_canvas->morphGroup();
+    m_morphLayers->clear();
+    int const morph = m_canvas->morphHere();
+    int const layer = m_canvas->currentLayer();
+    Scene const& scene = m_document->scene();
+    bool const here = morph >= 0 && layer >= 0 && layer < scene.layers.size() && morph < scene.layers[layer].morphs.size();
+    if (here)
+        for (Morph::Group const& g : scene.layers[layer].morphs[morph].groups) {
+            QListWidgetItem* const item = new QListWidgetItem(tr("%1  (%2 / %3)").arg(g.name).arg(g.first.size()).arg(g.second.size()));
+            item->setData(Qt::EditRole, g.name);
+            item->setFlags(item->flags() | Qt::ItemIsEditable);
+            m_morphLayers->addItem(item);
+        }
+    m_morphLayers->setEnabled(here);
+    m_morphButtons->setEnabled(here);
+    int const row = std::min(keep, m_morphLayers->count() - 1);
+    m_morphLayers->setCurrentRow(row);
+    m_fillingMorphs = false;
+    if (row != keep)
+        m_canvas->setMorphGroup(row);
+}
+
 ToolProperties::ToolProperties(Document* document, Canvas* canvas, ActionManager* actions, int envelopePoints, QWidget* parent)
     : QWidget(parent), m_document(document), m_canvas(canvas), m_actions(actions), m_envelopeCount(envelopePoints)
 {
@@ -109,6 +227,7 @@ ToolProperties::ToolProperties(Document* document, Canvas* canvas, ActionManager
     addThicknessRow();
     addTextRows();
     addSelectionRows();
+    addMorphRows();
     addPresetRows();
 
     connect(m_canvas, &Canvas::toolChanged, this, [this](int tool) { showFor(tool); });
@@ -184,8 +303,12 @@ void ToolProperties::showFor(int tool)
                                       "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
-    bool const any = draws || lines || text || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
+    bool const any = draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
+    m_form->setRowVisible(m_morphLayers, tool == T::Morphing);
+    m_form->setRowVisible(m_morphButtons, tool == T::Morphing);
+    if (tool == T::Morphing)
+        refreshMorphLayers();
     for (QWidget* const row : {static_cast<QWidget*>(m_weightBone), static_cast<QWidget*>(m_weightSize), static_cast<QWidget*>(m_weightClear)})
         m_form->setRowVisible(row, tool == T::Rigging && m_rigMode->currentIndex() == Canvas::RigWeights);
     m_form->setRowVisible(m_envelopePoints, tool == T::Rigging);

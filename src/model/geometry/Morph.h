@@ -14,5 +14,9 @@ namespace Morphing {
 // The drawing `t` of the way (0..1) from `a` to `b`.  At 0 it is `a` itself and at 1 `b`.
 // `hints` (Morph::hints) say what is to go to what, where the order of drawing does not.
 Drawing between(Drawing const& a, Drawing const& b, double t, QVector<QLineF> const& hints = {});
+// The same with morphing layers (Morph::groups): each one's shapes of `a` into its shapes of `b`, then the rest into the rest.
+Drawing between(Drawing const& a, Drawing const& b, double t, QVector<QLineF> const& hints, QVector<Morph::Group> const& groups);
+// How a morphing layer names a shape of a drawing: its sheet, whether it is a line (or a painted area), and its place there.
+int shapeKey(int sheet, bool stroke, int index);
 
 }  // namespace Morphing

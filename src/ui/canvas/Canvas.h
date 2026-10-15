@@ -88,7 +88,6 @@ public:
     // `leader` each time the pen goes down here.
     void setLeader(Canvas* leader);
     void followSettings(Canvas const& leader);
-    int currentFrame() const { return m_frame; }
     Tool tool() const { return m_tool; }
     // The palette swatch new strokes and fills are linked to.
     void setSwatch(int id)
@@ -509,6 +508,16 @@ public:
 
 public slots:
     void setCurrentCell(int layer, int frame);
+    // The Morphing tool: the morphing it works on here (its place among the current layer's; -1 when the frame is not the
+    // first or the last drawing of one), and the morphing layer of it that Ctrl+click puts shapes in or takes them out of
+    // (-1: none).  A shape of the drawing under a place of it (Morphing::shapeKey), or -1.
+    int morphHere() const;
+    // The layer and the frame the view works on.
+    int currentLayer() const { return m_layer; }
+    int currentFrame() const { return m_frame; }
+    int morphGroup() const { return m_morphGroup; }
+    void setMorphGroup(int group);
+    int morphShapeAt(QPointF drawingPos) const;
 
     // ---- what the menus call (this view is the "camera" responder) -------------------
     void cut() { cutSelection(); }
@@ -723,6 +732,8 @@ signals:
     void animateChanged(bool on);
     // Onion skin is on or off, or shows more or fewer drawings, or fainter ones.
     void onionChanged();
+    // Another layer or frame: the morphing the Morphing tool works on may be another.
+    void morphHereChanged();
     // Something the user should know (shown in the status bar).
     void message(QString const& text);
     void stampsChanged();
@@ -1110,6 +1121,7 @@ private:
     void hintDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers);
     void hintUp();
     void paintMorphHints(QPainter& painter);
+    int m_morphGroup = -1;
     int m_hintMorph = -1;       // the morphing whose hint is being dragged, and which of its hints
     int m_hintIndex = -1;
     bool m_hintFar = false;     // on the second drawing: where it goes to

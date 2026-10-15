@@ -631,6 +631,16 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 if (point.size() == 2 && time > 0.0 && time < 1.0 && (morph.velocity.isEmpty() || time > morph.velocity.last().x()))
                     morph.velocity.push_back(QPointF(time, std::clamp(point.at(1).toDouble(), -0.5, 1.5)));
             }
+            for (QJsonValue const& gv : values.at(5).toArray()) {
+                QJsonArray const group = gv.toArray();
+                Morph::Group g;
+                g.name = group.at(0).toString();
+                for (QJsonValue const& k : group.at(1).toArray())
+                    g.first.push_back(k.toInt());
+                for (QJsonValue const& k : group.at(2).toArray())
+                    g.second.push_back(k.toInt());
+                morph.groups.push_back(g);
+            }
             if (morph.from >= 0)
                 layer.morphs.push_back(morph);
         }

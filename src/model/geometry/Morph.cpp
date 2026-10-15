@@ -1,5 +1,6 @@
 #include "model/geometry/Morph.h"
 
+#include <QSet>
 #include <algorithm>
 #include <cmath>
 
@@ -530,6 +531,50 @@ Fill fillShrunk(Fill const& fill, double size)
 }
 
 }  // namespace
+
+int Morphing::shapeKey(int sheet, bool stroke, int index)
+{
+    return ((sheet * 2 + (stroke ? 1 : 0)) << 24) | (index & 0xffffff);
+}
+
+Drawing Morphing::between(Drawing const& a, Drawing const& b, double t, QVector<QLineF> const& hints, QVector<Morph::Group> const& groups)
+{
+    if (groups.isEmpty())
+        return between(a, b, t, hints);
+    // The shapes of a drawing that a set of keys names (or, `rest`, that none of the morphing layers names).
+    auto part = [](Drawing const& d, QSet<int> const& keys, bool rest) {
+        Drawing out;
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            QVector<Fill> const& fills = d.fillsOf(sheet);
+            for (int i = 0; i < fills.size(); ++i)
+                if (keys.contains(shapeKey(sheet, false, i)) != rest)
+                    out.fillsOf(sheet).push_back(fills[i]);
+            QVector<Stroke> const& strokes = d.strokesOf(sheet);
+            for (int i = 0; i < strokes.size(); ++i)
+                if (keys.contains(shapeKey(sheet, true, i)) != rest)
+                    out.strokesOf(sheet).push_back(strokes[i]);
+        }
+        return out;
+    };
+    Drawing out;
+    auto add = [&](Drawing const& d) {
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            out.fillsOf(sheet) += d.fillsOf(sheet);
+            out.strokesOf(sheet) += d.strokesOf(sheet);
+        }
+    };
+    QSet<int> allFirst, allSecond;
+    for (Morph::Group const& g : groups) {
+        QSet<int> const first(g.first.cbegin(), g.first.cend()), second(g.second.cbegin(), g.second.cend());
+        allFirst += first;
+        allSecond += second;
+        add(between(part(a, first, false), part(b, second, false), t, hints));
+    }
+    Drawing const rest = between(part(a, allFirst, true), part(b, allSecond, true), t, hints);
+    add(rest);
+    out.pictures = t < 0.5 ? a.pictures : b.pictures;
+    return out;
+}
 
 Drawing Morphing::between(Drawing const& a, Drawing const& b, double t, QVector<QLineF> const& hints)
 {

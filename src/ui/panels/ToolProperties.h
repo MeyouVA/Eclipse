@@ -57,6 +57,10 @@ private:
     void addTextRows();
     void addSelectionRows();
     void addPresetRows();
+    // The Morphing tool: the morphing layers of the morphing here - added, taken away, renamed, moved up and down; the one
+    // chosen is where Ctrl+click puts shapes.
+    void addMorphRows();
+    void refreshMorphLayers();
     // A slider with a box beside it, under a label.
     QLayout* addSetting(QString const& label, QString const& tip, int min, int max, int value, QString const& suffix, std::function<void(int)> apply);
     // A box of small pictures: how a line starts (kind 0), ends (1), or turns a corner (2).
@@ -120,4 +124,7 @@ private:
     QWidget* m_selection = nullptr;
     QLabel* m_presetsTitle = nullptr;
     QListWidget* m_presets = nullptr;
+    QListWidget* m_morphLayers = nullptr;
+    QWidget* m_morphButtons = nullptr;
+    bool m_fillingMorphs = false;
 };

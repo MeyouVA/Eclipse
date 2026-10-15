@@ -166,6 +166,15 @@ bool Document::setMorphHints(int layer, int index, QVector<QLineF> const& hints,
     return true;
 }
 
+bool Document::setMorphGroups(int layer, int index, QVector<Morph::Group> const& groups, QString const& text)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || index < 0 || index >= m_scene.layers[layer].morphs.size()
+        || m_scene.layers[layer].morphs[index].groups == groups)
+        return false;
+    apply(text, [&](Scene& s) { s.layers[layer].morphs[index].groups = groups; });
+    return true;
+}
+
 bool Document::convertMorph(int layer, int frame)
 {
     if (!validCell(m_scene, layer, frame))

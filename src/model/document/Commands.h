@@ -175,6 +175,8 @@ public:
     bool setMorphVelocity(int layer, int frame, QVector<QPointF> const& points);
     // The hints of a morphing of the layer (by its number among them): what is to go to what.
     bool setMorphHints(int layer, int index, QVector<QLineF> const& hints, QString const& text);
+    // The morphing layers of a morphing of the layer (Morph::groups), in place of what it had.
+    bool setMorphGroups(int layer, int index, QVector<Morph::Group> const& groups, QString const& text);
     // The drawings in between made real drawings of the layer, one a frame; the morphing goes.
     bool convertMorph(int layer, int frame);
     // Motion (tween to the next keyframe) or stop-motion (hold).  Applies to the keyframe

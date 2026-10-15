@@ -551,6 +551,15 @@ struct Morph {
     // Hints: a place on the first drawing (p1) and the place on the second it is to go to (p2).  The shape
     // nearest the one goes to the shape nearest the other, that point of it to that point.
     QVector<QLineF> hints;
+    // Morphing layers: shapes of the two drawings set apart under names - a shape of one changes only into a shape of the
+    // same morphing layer of the other.  The shapes no morphing layer has pair up among themselves, as ever.  A shape goes
+    // by its sheet, whether it is a line, and its place (Morphing::shapeKey).
+    struct Group {
+        QString name;
+        QVector<int> first, second;
+        bool operator==(Group const&) const = default;
+    };
+    QVector<Group> groups;
 };
 
 // A dab of painted weight (skinning): near `at` (within `radius`, in the layer's own coordinates at rest), bone `bone` of

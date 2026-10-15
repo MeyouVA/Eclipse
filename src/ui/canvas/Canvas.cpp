@@ -94,6 +94,11 @@ void Canvas::setPlaying(bool playing)
 
 void Canvas::setCurrentCell(int layer, int frame)
 {
+    // (However it goes, the Morphing tool's panel is told when it is done.)
+    struct Told {
+        Canvas* canvas;
+        ~Told() { emit canvas->morphHereChanged(); }
+    } const told{this};
     // Permanent Selection: what lies in the place of the selection on the frame gone to is selected there.
     QRectF const held = m_permanentSelection && m_tool == Select && hasSelection() && layer == m_layer && frame != m_frame
                         ? selectionBounds().adjusted(-1.5, -1.5, 1.5, 1.5) : QRectF();

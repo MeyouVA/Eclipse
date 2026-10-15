@@ -295,17 +295,30 @@ QJsonObject Scene::toJson(QString const& folder) const
         QJsonArray morphs;
         for (Morph const& morph : layer.morphs) {
             QJsonArray entry{morph.from, morph.easeIn, morph.easeOut};
-            if (!morph.hints.isEmpty() || !morph.velocity.isEmpty()) {
+            if (!morph.hints.isEmpty() || !morph.velocity.isEmpty() || !morph.groups.isEmpty()) {
                 QJsonArray hints;
                 for (QLineF const& hint : morph.hints)
                     hints.append(QJsonArray{hint.x1(), hint.y1(), hint.x2(), hint.y2()});
                 entry.append(hints);
             }
-            if (!morph.velocity.isEmpty()) {
+            if (!morph.velocity.isEmpty() || !morph.groups.isEmpty()) {
                 QJsonArray curve;
                 for (QPointF const& v : morph.velocity)
                     curve.append(QJsonArray{v.x(), v.y()});
                 entry.append(curve);
+            }
+            if (!morph.groups.isEmpty()) {
+                // Its morphing layers: a name, the shapes of the first drawing, the shapes of the second.
+                QJsonArray groups;
+                for (Morph::Group const& g : morph.groups) {
+                    QJsonArray first, second;
+                    for (int k : g.first)
+                        first.append(k);
+                    for (int k : g.second)
+                        second.append(k);
+                    groups.append(QJsonArray{g.name, first, second});
+                }
+                entry.append(groups);
             }
             morphs.append(entry);
         }
