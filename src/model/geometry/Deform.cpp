@@ -1,5 +1,7 @@
 #include "model/geometry/Deform.h"
 
+#include "model/geometry/Model3D.h"
+
 #include <QPainterPath>
 #include <QPainterPathStroker>
 #include <QTransform>
@@ -767,6 +769,16 @@ Drawing ridden(Scene const& scene, int layer, int frame, Drawing const& drawing)
 
 Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose)
 {
+    if (!drawing.model.isEmpty()) {
+        // A 3D model: a picture of it, turned as the layer is, under whatever is drawn over it.
+        Drawing out = drawing;
+        out.model.clear();
+        if (Picture picture; Model3D::picture(drawing.model, pose.rotX, pose.rotY, picture)) {
+            picture.transform(QTransform::fromTranslate(drawing.modelCentre.x(), drawing.modelCentre.y()));
+            out.pictures.prepend(picture);
+        }
+        return shown(out, layer, pose);
+    }
     bool const warped = isWarped(layer.warp, layer.warpClosed, pose.warp), bent = isBent(layer.bones, pose.bend);
     if (!warped && !bent)
         return drawing;

@@ -272,6 +272,10 @@ public slots:
     void onActionLinkImages() { askImportImages(true); }
     // Pages scanned (the system's scanning dialog), then imported as images are.
     void onActionImportScanner();
+    // A 3D model (Wavefront OBJ) on a layer of its own - several files: one a frame, a 3D animation.
+    void onActionImport3DModel();
+    // `files`: the models, one after the other; returns the layer, or -1 (`error` says why).
+    int import3DModels(QStringList const& files, QString* error = nullptr);
     void onActionImportMovie();
     void onActionImportReference();
     void onActionExportGif();

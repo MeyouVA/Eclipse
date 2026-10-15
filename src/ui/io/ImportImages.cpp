@@ -34,6 +34,7 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "ui/io/Scanner.h"
+#include "model/geometry/Model3D.h"
 #include "model/geometry/Vectorize.h"
 #include "ui/canvas/Canvas.h"
 #include "ui/panels/LibraryView.h"
@@ -469,6 +470,48 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
     m_timeline->clearRange();
     m_timeline->setCurrentCell(at, options.newLayer ? 0 : frame());
     return at;
+}
+
+void MainWindow::onActionImport3DModel()
+{
+    QStringList files = QFileDialog::getOpenFileNames(this, tr("Import 3D Models"), QString(), tr("3D Models (*.obj)"));
+    if (files.isEmpty())
+        return;
+    files.sort(Qt::CaseInsensitive);    // a numbered run of them, in its order
+    QString error;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    int const at = import3DModels(files, &error);
+    QApplication::restoreOverrideCursor();
+    if (at < 0) {
+        QMessageBox::warning(this, tr("Import 3D Models"), error);
+        return;
+    }
+    m_timeline->setCurrentCell(at, frame());
+    statusBar()->showMessage(tr("%1: a 3D model layer - turn it in space with the Rotate tool's X and Y angles (or the Timeline's).")
+                                 .arg(QFileInfo(files.first()).fileName()),
+                             10000);
+}
+
+int MainWindow::import3DModels(QStringList const& files, QString* error)
+{
+    QVector<Drawing> drawings;
+    for (QString const& file : files) {
+        QString why;
+        if (!Model3D::load(file, &why)) {
+            if (error)
+                *error = tr("%1: %2").arg(QFileInfo(file).fileName(), why);
+            return -1;
+        }
+        Drawing d;
+        d.model = QFileInfo(file).absoluteFilePath();
+        d.name = QFileInfo(file).completeBaseName();
+        // (In the middle of the frame.)
+        d.modelCentre = QPointF(m_document->scene().width / 2.0, m_document->scene().height / 2.0);
+        drawings.push_back(d);
+    }
+    // One model: shown the length of the scene.  Several: one a frame, from the start.
+    int const hold = drawings.size() == 1 ? std::max(1, m_document->scene().frameCount()) : 1;
+    return m_document->importDrawings(-1, QFileInfo(files.first()).completeBaseName(), 0, drawings, hold);
 }
 
 void MainWindow::onActionImportScanner()

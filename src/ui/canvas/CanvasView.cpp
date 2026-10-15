@@ -254,7 +254,7 @@ Drawing Canvas::shown(int layer, int frame, Drawing const& drawing) const
 {
     Scene const& scene = m_document->scene();
     Layer const& l = scene.layers[layer];
-    bool const plain = (l.bones.size() < 2 && !l.hasWarp()) || showsRest(layer);
+    bool const plain = ((l.bones.size() < 2 && !l.hasWarp()) || showsRest(layer)) && drawing.model.isEmpty();
     // (And on the curve of a deformer of a layer it is attached to.)
     bool const rides = !showsRest(layer) && l.parent != 0;      // (and bends on bones it hangs from)
     if (!m_highlightColour || m_playing) {

@@ -274,6 +274,10 @@ struct Drawing {
     // drawings of one drawing layer cannot go by one name; drawings of different ones can - drawing "3" of the front and
     // drawing "3" of the side - and Substitute Layer Next swaps the one for the other, keeping the timing.
     QString set;
+    // A 3D model (its file, a Wavefront OBJ): the drawing shows a picture of it, turned in space as the layer is turned on
+    // the frame (see model/geometry/Model3D.h).  Empty: none.
+    QString model;
+    QPointF modelCentre;    // where the middle of the model is, in the drawing
     // What the drawing is in the animation, when the animator has said: a key drawing, a
     // breakdown between keys, or an in-between.  Shown in the Timeline and the Xsheet.
     enum Mark { NoMark, KeyMark, BreakdownMark, InBetweenMark };
@@ -303,7 +307,7 @@ struct Drawing {
         for (int sheet = 0; sheet < SheetCount; ++sheet)
             if (!fillsOf(sheet).isEmpty() || !strokesOf(sheet).isEmpty())
                 return false;
-        return pictures.isEmpty();
+        return pictures.isEmpty() && model.isEmpty();
     }
     QRectF bounds() const;
     // The places in the order of a sheet (see Stroke::order): the highest there is (a line given it is on top of
@@ -779,6 +783,12 @@ struct Layer {
     QVector<int> cells;  // one per frame: index into drawings, or kNoDrawing
 
     int drawingAt(int frame) const { return frame >= 0 && frame < cells.size() ? cells[frame] : kNoDrawing; }
+    // Whether what the layer shows on a frame is a 3D model (which turns in space itself, rather than as a flat sheet).
+    bool modelAt(int frame) const
+    {
+        int const index = drawingAt(frame);
+        return index >= 0 && index < drawings.size() && !drawings[index].model.isEmpty();
+    }
     // What a drawing is called: its name, or its number (from one).
     QString drawingLabel(int index) const
     {

@@ -308,6 +308,12 @@ QJsonObject Scene::toJson(QString const& folder) const
                 drawing["pinned"] = true;
             if (!d.name.isEmpty())
                 drawing["name"] = d.name;
+            if (!d.model.isEmpty()) {
+                drawing["model"] = d.model;
+                drawing["modelCentre"] = QJsonArray{d.modelCentre.x(), d.modelCentre.y()};
+                if (QString const relative = pathFrom(folder, d.model); !relative.isEmpty())
+                    drawing["modelRelative"] = relative;
+            }
             if (!d.set.isEmpty())
                 drawing["set"] = d.set;
             if (d.mark != Drawing::NoMark)

@@ -124,7 +124,8 @@ Mat4 spaceOf(Scene const& scene, int layer, int frame, PoseOverride const* over)
         Layer const& l = scene.layers[layer];
         Pose const pose = poseFor(scene, layer, frame, over);
         t = t * Mat4::flat(localFor(scene, layer, frame, over));
-        if (pose.rotX != 0.0 || pose.rotY != 0.0) {
+        // (A 3D model turns in its own picture: the sheet of it stays flat.)
+        if ((pose.rotX != 0.0 || pose.rotY != 0.0) && !l.modelAt(frame)) {
             // About the pivot, where the layer has put it.
             QPointF const pivot(l.pivot.x() + pose.x, l.pivot.y() + pose.y);
             t = t * Mat4::move(-pivot.x(), -pivot.y(), 0) * Mat4::aboutY(pose.rotY) * Mat4::aboutX(pose.rotX) * Mat4::move(pivot.x(), pivot.y(), 0);
@@ -150,7 +151,7 @@ bool Scene::turned(int layer, int frame, PoseOverride const* over) const
 {
     for (int guard = 0; layer >= 0 && layer < layers.size() && guard < 256; ++guard, layer = parentIndex(layer)) {
         Pose const pose = poseFor(*this, layer, frame, over);
-        if (pose.rotX != 0.0 || pose.rotY != 0.0)
+        if ((pose.rotX != 0.0 || pose.rotY != 0.0) && !layers[layer].modelAt(frame))
             return true;
     }
     return false;
