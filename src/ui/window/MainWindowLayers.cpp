@@ -70,7 +70,10 @@ void MainWindow::onActionAddDrawingLayer()
         row->setObjectName(QLatin1String(objectName));
         QRadioButton* const vector = new QRadioButton(tr("Vector"), row);
         QRadioButton* const bitmap = new QRadioButton(tr("Bitmap"), row);
-        vector->setChecked(true);
+        // (Preferences: the line art of a new layer in pixels to begin with.)
+        bool const pixels = canBitmap && QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/lineArtBitmap"), false).toBool();
+        vector->setChecked(!pixels);
+        bitmap->setChecked(pixels);
         bitmap->setObjectName(QLatin1String(objectName) + QStringLiteral("Bitmap"));
         bitmap->setEnabled(canBitmap);
         bitmap->setToolTip(canBitmap ? tr("A bitmap layer: what is drawn is painted in pixels, and the eraser rubs pixels out.")

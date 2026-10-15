@@ -13,6 +13,27 @@
 // A drawing of the onion skin: whole, in its colour - or only its outlines.
 void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const
 {
+    if (!m_onionOutlines && m_onionBrightnessAlpha) {
+        // The lighter a colour, the fainter: its own colour (from its swatch) given an opacity as dark as it is.
+        Drawing faded = drawing;
+        auto fade = [&scene](QColor colour) {
+            float const light = (0.299f * colour.redF() + 0.587f * colour.greenF() + 0.114f * colour.blueF());
+            colour.setAlphaF(colour.alphaF() * std::clamp(1.0f - light, 0.0f, 1.0f));
+            return colour;
+        };
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            for (Fill& f : faded.fillsOf(sheet)) {
+                f.color = fade(scene.resolve(f.swatch, f.color));
+                f.swatch = -1;
+            }
+            for (Stroke& s : faded.strokesOf(sheet)) {
+                s.color = fade(scene.resolve(s.swatch, s.color));
+                s.swatch = -1;
+            }
+        }
+        paintDrawing(painter, scene, faded, opacity, &tint);
+        return;
+    }
     if (!m_onionOutlines) {
         paintDrawing(painter, scene, drawing, opacity, &tint);
         return;

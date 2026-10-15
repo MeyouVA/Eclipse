@@ -459,6 +459,14 @@ public:
     void setOnionMark(int mark);
     int onionMark() const { return m_onionMark; }
     bool onionOutlines() const { return m_onionOutlines; }
+    // Preferences: onion skins in which the lighter a colour is, the more see-through it is (light fills fade away, the
+    // dark lines stay).
+    void setOnionBrightnessAlpha(bool on)
+    {
+        m_onionBrightnessAlpha = on;
+        update();
+    }
+    bool onionBrightnessAlpha() const { return m_onionBrightnessAlpha; }
     bool onionByFrame() const { return m_onionByFrame; }
     void setOnionColours(QColor const& before, QColor const& after);
     QColor onionBefore() const { return m_onionBefore; }
@@ -954,6 +962,7 @@ private:
     bool m_applyAll = false;
     bool m_onionByFrame = false;
     bool m_onionOutlines = false;
+    bool m_onionBrightnessAlpha = false;
     int m_onionMark = 0;
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     // What a symbol shows on one of its frames, painted where the painter stands (the sheet of the layer that shows it).

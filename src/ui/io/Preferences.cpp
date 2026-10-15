@@ -299,6 +299,7 @@ void MainWindow::applyPreferences()
     m_timeline->setKindShown(Layer::Group, s.value(QStringLiteral("prefs/timelineGroups"), true).toBool());
     m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
+    m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
     if (FunctionView* const function = findChild<FunctionView*>())
         function->graph()->setGridShown(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
     if (Xsheet* const xsheet = findChild<Xsheet*>())
@@ -608,6 +609,11 @@ void MainWindow::onActionPreferences()
     onionFurthest->setSuffix(tr(" %"));
     onionFurthest->setValue(std::clamp(s.value(QStringLiteral("prefs/onionFurthest"), 30).toInt(), 0, 100));
     onionLayout->addRow(tr("Furthest"), onionFurthest);
+    QCheckBox* const onionBrightness = new QCheckBox(tr("Lighter colours more see-through"), onionPage);
+    onionBrightness->setObjectName(QStringLiteral("PrefOnionBrightness"));
+    onionBrightness->setToolTip(tr("In the onion skins, the lighter a colour is the fainter it shows: the painted areas fade, the dark lines stay."));
+    onionBrightness->setChecked(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
+    onionLayout->addRow(onionBrightness);
 
     // Sound: when it is heard.
     QGroupBox* const soundPage = new QGroupBox(tr("Sound"), &dialog);
@@ -643,6 +649,11 @@ void MainWindow::onActionPreferences()
     onTop->setToolTip(tr("The layer being drawn on is shown over the others in the Camera view (View > Current Drawing on Top)."));
     onTop->setChecked(s.value(QStringLiteral("prefs/drawingOnTop"), false).toBool());
     drawingLayout->addRow(onTop);
+    QCheckBox* const lineArtBitmap = new QCheckBox(tr("New drawing layers: line art in bitmap"), drawing);
+    lineArtBitmap->setObjectName(QStringLiteral("PrefLineArtBitmap"));
+    lineArtBitmap->setToolTip(tr("Add Drawing Layer starts with the line art painted in pixels rather than drawn in vectors."));
+    lineArtBitmap->setChecked(s.value(QStringLiteral("prefs/lineArtBitmap"), false).toBool());
+    drawingLayout->addRow(lineArtBitmap);
 
     // Colours: of the view round the frame, and of the onion skin.
     QGroupBox* const colours = new QGroupBox(tr("Colours"), &dialog);
@@ -746,6 +757,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/brushOutline"), brushOutline->isChecked());
     s.setValue(QStringLiteral("prefs/loop"), loopAtStart->isChecked());
     s.setValue(QStringLiteral("prefs/lipSyncLead"), lipLead->value());
+    s.setValue(QStringLiteral("prefs/onionBrightnessAlpha"), onionBrightness->isChecked());
+    s.setValue(QStringLiteral("prefs/lineArtBitmap"), lineArtBitmap->isChecked());
     s.setValue(QStringLiteral("prefs/functionGrid"), functionGrid->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), columnWidth->value());
     s.setValue(QStringLiteral("prefs/drawingOnTop"), onTop->isChecked());
