@@ -12,8 +12,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
+#include <memory>
 
 #include "model/scene/Scene.h"
+#include "ui/io/FlashCut.h"
 #include "ui/io/FlashVideo.h"
 #include "ui/io/Zip.h"
 
@@ -253,21 +256,26 @@ void styles(QByteArray const& b, int& p, int version, QVector<FillStyle>& fills,
     }
 }
 
-// The shape records from `p`: edges with the fill on their left (fill 0) and right (fill 1); joined into rings, fill by fill.
-Shape records(QByteArray const& b, int p, int version, QVector<FillStyle> fills, QVector<LineStyle> lineStyles)
+// One shape record: a change of style (a move, the fills on each side, the line; new styles from here), or an edge (a
+// straight one to `anchor`, or a curve through `control` to it - each from where the last one ended).
+struct Rec {
+    bool edge = false;
+    bool move = false;
+    QPointF to;
+    int fill0 = -1, fill1 = -1, line = -1;      // (-1: as before)
+    int fillBase = -1, lineBase = -1;           // new styles: where they start among all of them (-1: no new ones)
+    bool curve = false;
+    QPointF control, anchor;
+};
+
+// The shape records from `p`, as they are; new styles met on the way added to `fills` and `lineStyles`.
+QVector<Rec> parseRecords(QByteArray const& b, int p, int version, QVector<FillStyle>& fills, QVector<LineStyle>& lineStyles)
 {
+    QVector<Rec> out;
     Bits bits(b, p);
     int fillBits = int(bits.ub(4)), lineBits = int(bits.ub(4));
-    struct Edge {
-        QPolygonF points;
-        int fill0, fill1;
-    };
-    QVector<Edge> edges;
-    Shape out;
-    int fill0 = 0, fill1 = 0, line = 0, base = 0, lineBase = 0;
-    QPointF at;
-    int currentLine = -1;
     for (int guard = 0; guard < 2000000 && bits.ok(); ++guard) {
+        Rec r;
         if (bits.ub(1) == 0) {
             int const flags = int(bits.ub(5));
             if (flags == 0)
@@ -275,29 +283,30 @@ Shape records(QByteArray const& b, int p, int version, QVector<FillStyle> fills,
             if (flags & 1) {
                 int const n = int(bits.ub(5));
                 double const x = bits.sb(n);
-                at = QPointF(x, bits.sb(n));
+                r.move = true;
+                r.to = QPointF(x, bits.sb(n));
             }
             if (flags & 2)
-                fill0 = int(bits.ub(fillBits));
+                r.fill0 = int(bits.ub(fillBits));
             if (flags & 4)
-                fill1 = int(bits.ub(fillBits));
+                r.fill1 = int(bits.ub(fillBits));
             if (flags & 8)
-                line = int(bits.ub(lineBits));
-            currentLine = -1;
+                r.line = int(bits.ub(lineBits));
             if (flags & 16) {
                 // New styles: those that follow count from here.
                 bits.align();
                 int q = bits.byte();
-                base = int(fills.size());
-                lineBase = int(lineStyles.size());
+                r.fillBase = int(fills.size());
+                r.lineBase = int(lineStyles.size());
                 styles(b, q, version, fills, lineStyles);
                 bits = Bits(b, q);
                 fillBits = int(bits.ub(4));
                 lineBits = int(bits.ub(4));
             }
+            out.push_back(r);
             continue;
         }
-        QPolygonF piece{at};
+        r.edge = true;
         if (bits.ub(1)) {
             int const n = int(bits.ub(4)) + 2;
             double dx = 0.0, dy = 0.0;
@@ -309,12 +318,55 @@ Shape records(QByteArray const& b, int p, int version, QVector<FillStyle> fills,
             } else {
                 dx = bits.sb(n);
             }
-            at += QPointF(dx, dy);
-            piece << at;
+            r.anchor = QPointF(dx, dy);
         } else {
             int const n = int(bits.ub(4)) + 2;
             double const cx = bits.sb(n), cy = bits.sb(n), ax = bits.sb(n), ay = bits.sb(n);
-            QPointF const control = at + QPointF(cx, cy), end = control + QPointF(ax, ay), from = at;
+            r.curve = true;
+            r.control = QPointF(cx, cy);
+            r.anchor = QPointF(ax, ay);
+        }
+        out.push_back(r);
+    }
+    return out;
+}
+
+// A shape made of its records: edges with the fill on their left (fill 0) and right (fill 1), joined into rings fill by
+// fill; runs of edges with a line style, lines.
+Shape build(QVector<Rec> const& records, QVector<FillStyle> const& fills, QVector<LineStyle> const& lineStyles)
+{
+    struct Edge {
+        QPolygonF points;
+        int fill0, fill1;
+    };
+    QVector<Edge> edges;
+    Shape out;
+    int fill0 = 0, fill1 = 0, line = 0, base = 0, lineBase = 0;
+    QPointF at;
+    int currentLine = -1;
+    for (Rec const& r : records) {
+        if (!r.edge) {
+            if (r.move)
+                at = r.to;
+            if (r.fillBase >= 0) {
+                base = r.fillBase;
+                lineBase = r.lineBase;
+            }
+            if (r.fill0 >= 0)
+                fill0 = r.fill0;
+            if (r.fill1 >= 0)
+                fill1 = r.fill1;
+            if (r.line >= 0)
+                line = r.line;
+            currentLine = -1;
+            continue;
+        }
+        QPolygonF piece{at};
+        if (!r.curve) {
+            at += r.anchor;
+            piece << at;
+        } else {
+            QPointF const control = at + r.control, end = control + r.anchor, from = at;
             for (int s = 1; s <= 8; ++s) {
                 double const t = s / 8.0;
                 piece << from * ((1 - t) * (1 - t)) + control * (2 * t * (1 - t)) + end * (t * t);
@@ -391,27 +443,231 @@ Shape records(QByteArray const& b, int p, int version, QVector<FillStyle> fills,
     return out;
 }
 
+Shape records(QByteArray const& b, int p, int version, QVector<FillStyle> fills, QVector<LineStyle> lineStyles)
+{
+    QVector<Rec> const recs = parseRecords(b, p, version, fills, lineStyles);
+    return build(recs, fills, lineStyles);
+}
+
+// The bounds rectangle at `p`, passed over.
+int skipRect(QByteArray const& b, int p)
+{
+    Bits r(b, p);
+    int const n = int(r.ub(5));
+    for (int i = 0; i < 4; ++i)
+        r.sb(n);
+    r.align();
+    return r.byte();
+}
+
 Shape shape(QByteArray const& b, int version)
 {
-    int p = 2;
-    Bits head(b, p);
-    int const nb = int(head.ub(5));
-    for (int i = 0; i < 4; ++i)
-        head.sb(nb);
-    head.align();
-    p = head.byte();
-    if (version == 4) {
-        Bits edge(b, p);
-        int const n = int(edge.ub(5));
-        for (int i = 0; i < 4; ++i)
-            edge.sb(n);
-        edge.align();
-        p = edge.byte() + 1;    // and its flags
-    }
+    int p = skipRect(b, 2);
+    if (version == 4)
+        p = skipRect(b, p) + 1;     // the edge bounds, and its flags
     QVector<FillStyle> fills;
     QVector<LineStyle> lineStyles;
     styles(b, p, version, fills, lineStyles);
     return records(b, p, version, fills, lineStyles);
+}
+
+// A morph shape: two shapes with the same edges (the same styles, the colours, places and widths apart), drawn some
+// way from the one to the other.
+struct MorphShape {
+    QVector<FillStyle> fills0, fills1;
+    QVector<LineStyle> lines0, lines1;
+    QVector<Rec> start, end;
+};
+
+// A morph fill style: the style at the start and at the end.
+void morphFill(QByteArray const& b, int& p, FillStyle& a, FillStyle& z)
+{
+    int const type = u8(b, p++);
+    if (type == 0x00) {
+        a.colour = colourAt(b, p, true);
+        z.colour = colourAt(b, p, true);
+        return;
+    }
+    if (type == 0x10 || type == 0x12 || type == 0x13) {
+        Bits m0(b, p);
+        a.matrix = matrix(m0);
+        Bits m1(b, m0.byte());
+        z.matrix = matrix(m1);
+        p = m1.byte();
+        int const count = u8(b, p++) & 0x0f;
+        a.gradient.kind = z.gradient.kind = type == 0x10 ? Swatch::Linear : Swatch::Radial;
+        for (int i = 0; i < count; ++i) {
+            double const at0 = u8(b, p++) / 255.0;
+            QColor const c0 = colourAt(b, p, true);
+            double const at1 = u8(b, p++) / 255.0;
+            QColor const c1 = colourAt(b, p, true);
+            a.gradient.stops.push_back({at0, c0});
+            z.gradient.stops.push_back({at1, c1});
+        }
+        if (type == 0x13)
+            p += 4;     // focal points
+        for (FillStyle* s : {&a, &z}) {
+            s->colour = s->gradient.stops.isEmpty() ? QColor(Qt::gray) : s->gradient.stops.first().color;
+            s->gradient.color = s->colour;
+            s->gradient.name = tr("Flash gradient");
+            if (s->gradient.stops.size() < 2)
+                s->gradient.kind = Swatch::Solid;
+        }
+        return;
+    }
+    int const id = u16(b, p);
+    p += 2;
+    Bits m0(b, p);
+    a.matrix = matrix(m0);
+    Bits m1(b, m0.byte());
+    z.matrix = matrix(m1);
+    p = m1.byte();
+    a.colour = z.colour = QColor(128, 128, 128);
+    a.bitmap = z.bitmap = id == 0xffff ? -1 : id;
+}
+
+// DefineMorphShape (`version` 1) or DefineMorphShape2.
+MorphShape morph(QByteArray const& b, int version)
+{
+    MorphShape out;
+    int p = skipRect(b, 2);
+    p = skipRect(b, p);
+    if (version == 2) {
+        p = skipRect(b, p);
+        p = skipRect(b, p) + 1;
+    }
+    int const endAt = p + 4 + int(u32(b, p));
+    p += 4;
+    int count = u8(b, p++);
+    if (count == 0xff) {
+        count = u16(b, p);
+        p += 2;
+    }
+    for (int i = 0; i < count && p < b.size(); ++i) {
+        FillStyle a, z;
+        morphFill(b, p, a, z);
+        out.fills0.push_back(a);
+        out.fills1.push_back(z);
+    }
+    count = u8(b, p++);
+    if (count == 0xff) {
+        count = u16(b, p);
+        p += 2;
+    }
+    for (int i = 0; i < count && p < b.size(); ++i) {
+        LineStyle a, z;
+        a.width = u16(b, p);
+        z.width = u16(b, p + 2);
+        p += 4;
+        if (version == 2) {
+            quint16 const flags = u16(b, p);
+            p += 2;
+            a.startCap = z.startCap = (flags >> 6) & 3;
+            a.join = z.join = (flags >> 4) & 3;
+            a.endCap = z.endCap = (flags >> 8) & 3;
+            if (a.join == 2)
+                p += 2;
+            a.keepWidth = z.keepWidth = (flags & 0x0004) && (flags & 0x0002);
+            if (flags & 0x0008) {
+                FillStyle fa, fz;
+                morphFill(b, p, fa, fz);
+                a.colour = fa.colour;
+                z.colour = fz.colour;
+            } else {
+                a.colour = colourAt(b, p, true);
+                z.colour = colourAt(b, p, true);
+            }
+        } else {
+            a.colour = colourAt(b, p, true);
+            z.colour = colourAt(b, p, true);
+        }
+        out.lines0.push_back(a);
+        out.lines1.push_back(z);
+    }
+    QVector<FillStyle> fills = out.fills0;
+    QVector<LineStyle> lines = out.lines0;
+    out.start = parseRecords(b, p, 3, fills, lines);
+    QVector<FillStyle> none;
+    QVector<LineStyle> noLines;
+    out.end = parseRecords(b, endAt, 3, none, noLines);
+    return out;
+}
+
+QColor mixed(QColor a, QColor b, double t)
+{
+    return QColor::fromRgbF(float(a.redF() + (b.redF() - a.redF()) * t), float(a.greenF() + (b.greenF() - a.greenF()) * t),
+                            float(a.blueF() + (b.blueF() - a.blueF()) * t), float(a.alphaF() + (b.alphaF() - a.alphaF()) * t));
+}
+
+QTransform mixed(QTransform const& a, QTransform const& b, double t)
+{
+    auto at = [&](double x, double y) { return x + (y - x) * t; };
+    return QTransform(at(a.m11(), b.m11()), at(a.m12(), b.m12()), at(a.m21(), b.m21()), at(a.m22(), b.m22()), at(a.dx(), b.dx()), at(a.dy(), b.dy()));
+}
+
+// The morph `t` of the way (0..1) from its start to its end: its edges paired one with the other (a straight edge with a
+// curve as a curve with its control in its middle), its styles mixed.
+Shape morphAt(MorphShape const& m, double t)
+{
+    QVector<FillStyle> fills;
+    for (int i = 0; i < m.fills0.size(); ++i) {
+        FillStyle f = m.fills0[i];
+        FillStyle const& z = m.fills1.value(i, f);
+        f.colour = mixed(f.colour, z.colour, t);
+        f.matrix = mixed(f.matrix, z.matrix, t);
+        for (int k = 0; k < f.gradient.stops.size() && k < z.gradient.stops.size(); ++k) {
+            f.gradient.stops[k].at = f.gradient.stops[k].at + (z.gradient.stops[k].at - f.gradient.stops[k].at) * t;
+            f.gradient.stops[k].color = mixed(f.gradient.stops[k].color, z.gradient.stops[k].color, t);
+        }
+        if (!f.gradient.stops.isEmpty())
+            f.gradient.color = f.gradient.stops.first().color;
+        fills.push_back(f);
+    }
+    QVector<LineStyle> lines;
+    for (int i = 0; i < m.lines0.size(); ++i) {
+        LineStyle l = m.lines0[i];
+        LineStyle const& z = m.lines1.value(i, l);
+        l.width = l.width + (z.width - l.width) * t;
+        l.colour = mixed(l.colour, z.colour, t);
+        lines.push_back(l);
+    }
+    QVector<Rec> recs;
+    int j = 0;
+    auto asCurve = [](Rec r) {
+        if (!r.curve) {
+            r.curve = true;
+            r.control = r.anchor / 2.0;
+            r.anchor = r.anchor / 2.0;
+        }
+        return r;
+    };
+    for (Rec r : m.start) {
+        if (!r.edge) {
+            // A move: to where the end has it, if the end moves here too.
+            if (j < m.end.size() && !m.end[j].edge) {
+                if (r.move && m.end[j].move)
+                    r.to = r.to + (m.end[j].to - r.to) * t;
+                ++j;
+            }
+            recs.push_back(r);
+            continue;
+        }
+        while (j < m.end.size() && !m.end[j].edge)
+            ++j;
+        if (j >= m.end.size()) {
+            recs.push_back(r);
+            continue;
+        }
+        Rec e = m.end[j++];
+        if (r.curve != e.curve) {
+            r = asCurve(r);
+            e = asCurve(e);
+        }
+        r.control = r.control + (e.control - r.control) * t;
+        r.anchor = r.anchor + (e.anchor - r.anchor) * t;
+        recs.push_back(r);
+    }
+    return build(recs, fills, lines);
 }
 
 // A font of the movie: the outline of each of its letters, in units of which `em` make the letter height.
@@ -575,28 +831,6 @@ QImage lossless(QByteArray const& b, bool alpha)
     return image;
 }
 
-// The part of a picture that shows (its clip, in its own pixels; empty: all of it), cut to an area of the drawing.
-QVector<QPolygonF> clipTo(Picture const& picture, QVector<QPolygonF> const& area)
-{
-    QTransform const back = picture.placement.inverted();
-    QPainterPath cut;
-    cut.setFillRule(Qt::WindingFill);
-    for (QPolygonF const& ring : area)
-        cut.addPolygon(back.map(ring));
-    cut = cut.simplified();
-    if (!picture.clip.isEmpty()) {
-        QPainterPath own;
-        for (QPolygonF const& ring : picture.clip)
-            own.addPolygon(ring);
-        cut = own.intersected(cut);
-    }
-    QVector<QPolygonF> out;
-    for (QPolygonF const& ring : cut.toSubpathPolygons())
-        if (ring.size() >= 3)
-            out.push_back(ring);
-    return out;
-}
-
 // A sound of the movie in the form of a file: an MP3 as it is, uncompressed samples as a WAV; or nothing when it is in a
 // form Eclipse does not read.
 bool soundFile(int format, QByteArray const& data, SwfImport::Sound& out)
@@ -614,6 +848,136 @@ bool soundFile(int format, QByteArray const& data, SwfImport::Sound& out)
         return true;
     }
     return false;
+}
+
+// A thing placed on a timeline's display list.
+struct Placed {
+    int character = 0;
+    QTransform matrix;
+    // A mask: what it covers (the depths above it up to this one) shows only where it is; it is not seen itself.
+    int clipDepth = 0;
+    // A colour effect: each colour times so much (in 256ths), and so much more - red, green, blue, opacity.
+    int mult[4] = {256, 256, 256, 256};
+    int add[4] = {0, 0, 0, 0};
+    int ratio = 0;          // a video: the frame of it shown; a morph shape: how far it is from its start (of 65535)
+    int since = 0;          // the frame of its timeline it was put there on (a movie clip plays from there)
+};
+using DisplayList = QMap<int, Placed>;
+
+// A colour effect, as a whole: each colour times so much (of 256), and so much more.
+struct ColourFx {
+    int mult[4] = {256, 256, 256, 256};
+    int add[4] = {0, 0, 0, 0};
+    bool plain() const
+    {
+        for (int k = 0; k < 4; ++k)
+            if (mult[k] != 256 || add[k] != 0)
+                return false;
+        return true;
+    }
+    QColor apply(QColor c) const
+    {
+        int v[4] = {c.red(), c.green(), c.blue(), c.alpha()};
+        for (int k = 0; k < 4; ++k)
+            v[k] = std::clamp(v[k] * mult[k] / 256 + add[k], 0, 255);
+        return QColor(v[0], v[1], v[2], v[3]);
+    }
+    // This after `inner`.
+    ColourFx after(ColourFx const& inner) const
+    {
+        ColourFx f;
+        for (int k = 0; k < 4; ++k) {
+            f.mult[k] = inner.mult[k] * mult[k] / 256;
+            f.add[k] = inner.add[k] * mult[k] / 256 + add[k];
+        }
+        return f;
+    }
+    static ColourFx of(Placed const& p)
+    {
+        ColourFx f;
+        for (int k = 0; k < 4; ++k) {
+            f.mult[k] = p.mult[k];
+            f.add[k] = p.add[k];
+        }
+        return f;
+    }
+    QByteArray key() const
+    {
+        QByteArray k;
+        for (int i = 0; i < 4; ++i)
+            k += QByteArray::number(mult[i]) + ',' + QByteArray::number(add[i]) + ';';
+        return k;
+    }
+};
+
+// A control tag of a timeline (the main one, or a movie clip's) applied to its display list, on frame `frame` of it.
+void control(int code, QByteArray const& body, DisplayList& list, int frame)
+{
+    if (code == 26 || code == 70) {
+        int q = 0;
+        int const flags = u8(body, q++);
+        int flags2 = 0;
+        if (code == 70)
+            flags2 = u8(body, q++);
+        int const depth = u16(body, q);
+        q += 2;
+        if (code == 70 && ((flags2 & 0x08) || ((flags2 & 0x10) && (flags & 0x02))))
+            while (q < body.size() && body[q++] != 0) {}       // a class name
+        Placed& at = list[depth];
+        if (flags & 0x02) {
+            int const character = u16(body, q);
+            q += 2;
+            if (!(flags & 0x01)) {
+                at = Placed();
+                at.since = frame;
+            } else if (character != at.character) {
+                at.since = frame;
+            }
+            at.character = character;
+        }
+        if (flags & 0x04) {
+            Bits bits(body, q);
+            at.matrix = matrix(bits);
+            q = bits.byte();
+        }
+        if (flags & 0x08) {
+            // A colour effect (with opacity).
+            Bits bits(body, q);
+            bool const adds = bits.ub(1), mults = bits.ub(1);
+            int const termBits = int(bits.ub(4));
+            for (int c = 0; c < 4; ++c) {
+                at.mult[c] = 256;
+                at.add[c] = 0;
+            }
+            if (mults)
+                for (int c = 0; c < 4; ++c)
+                    at.mult[c] = bits.sb(termBits);
+            if (adds)
+                for (int c = 0; c < 4; ++c)
+                    at.add[c] = bits.sb(termBits);
+            bits.align();
+            q = bits.byte();
+        }
+        if (flags & 0x10) {
+            at.ratio = u16(body, q);
+            q += 2;
+        }
+        if (flags & 0x20)
+            while (q < body.size() && body[q++] != 0) {}       // a name
+        if (flags & 0x40)
+            at.clipDepth = u16(body, q);
+    } else if (code == 4) {
+        Placed placed;
+        placed.character = u16(body, 0);
+        Bits bits(body, 4);
+        placed.matrix = matrix(bits);
+        placed.since = frame;
+        list[u16(body, 2)] = placed;
+    } else if (code == 28) {
+        list.remove(u16(body, 0));
+    } else if (code == 5) {
+        list.remove(u16(body, 2));
+    }
 }
 
 }  // namespace
@@ -650,7 +1014,7 @@ QByteArray wav(QByteArray const& samples, int rate, int bits, int channels)
     return out;
 }
 
-bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& mediaFolder)
+bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& mediaFolder, Progress const& progress)
 {
     auto fail = [&](QString const& why) {
         if (error)
@@ -688,34 +1052,21 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
     out.fps = std::max(1.0, u16(data, p) / 256.0);
     p += 4;
     out = Movie{out.size, out.fps, {}, {}, {}, {}, 0, 0, QString(), 0};
-    // Video: each stream's frames as they come, and the pictures that are to show them (filled in once the frames are
-    // decoded, at the end).
+    // (Of a thousand: the first fifth reading, the next decoding video, the rest drawing the frames.)
+    auto told = [&](qint64 done) { return !progress || progress(done, 1000); };
+
+    // ---- 1. What the movie defines, and each timeline as its display list stands on each of its frames.
     struct Stream {
         int codec = 0;
         QSize size;
         QVector<QByteArray> frames;
     };
     QHash<int, Stream> streams;
-    struct Showing {
-        int frame, picture, stream, at;
-    };
-    QVector<Showing> showings;
     QHash<int, Shape> shapes;
+    QHash<int, MorphShape> morphs;
     QHash<int, Font> fonts;
-    QHash<QByteArray, int> gradientKeys;    // a gradient of `out.gradients`, by what it is
-    auto gradientOf = [&](Swatch const& s) {
-        QByteArray key;
-        key += char(s.kind);
-        for (GradientStop const& stop : s.stops)
-            key += QByteArray::number(stop.at, 'f', 4) + ':' + QByteArray::number(stop.color.rgba()) + ';';
-        auto found = gradientKeys.constFind(key);
-        if (found != gradientKeys.cend())
-            return *found;
-        out.gradients.push_back(s);
-        gradientKeys.insert(key, int(out.gradients.size()) - 1);
-        return int(out.gradients.size()) - 1;
-    };
     QHash<int, QImage> bitmaps;
+    QHash<int, QVector<DisplayList>> sprites;       // movie clips: their frames
     QByteArray jpegTables;
     QHash<int, Sound> sounds;           // event sounds, by their ids
     QHash<QString, int> classes;        // ids by the names ActionScript knows them by
@@ -723,25 +1074,27 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
     Sound stream;
     stream.frame = -1;
     QByteArray streamed;
-    struct Placed {
-        int character = 0;
-        QTransform matrix;
-        // A mask: what it covers (the depths above it up to this one) shows only where it is; it is not seen itself.
-        int clipDepth = 0;
-        // A colour effect: each colour times so much (in 256ths), and so much more - red, green, blue, opacity.
-        int mult[4] = {256, 256, 256, 256};
-        int add[4] = {0, 0, 0, 0};
-        int ratio = 0;          // (for a video: the frame of it shown)
-    };
-    QMap<int, Placed> list;     // the display list, by depth
-    QTransform const toPixels = QTransform::fromTranslate(-xmin, -ymin) * QTransform::fromScale(1.0 / 20.0, 1.0 / 20.0);
+    QVector<DisplayList> mainFrames;
+    DisplayList list;
     auto label = [&](int frame, QString const& name) {
         for (Label const& l : std::as_const(out.labels))
             if (l.frame == frame && l.name == name)
                 return;
         out.labels.push_back({frame, name});
     };
+    // A video frame (the main timeline's, or a movie clip's).
+    auto videoFrame = [&](QByteArray const& body) {
+        auto found = streams.find(u16(body, 0));
+        int const number = u16(body, 2);
+        if (found != streams.end()) {
+            if (number >= found->frames.size())
+                found->frames.resize(number + 1);
+            found->frames[number] = body.mid(4);
+        }
+    };
     while (p + 2 <= data.size()) {
+        if (!told(qint64(p) * 200 / std::max<qsizetype>(1, data.size())))
+            return fail(tr("The import was stopped."));
         quint16 const tagHead = u16(data, p);
         p += 2;
         int const code = tagHead >> 6;
@@ -759,6 +1112,8 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
         if (code == 2 || code == 22 || code == 32 || code == 83) {
             int const version = code == 2 ? 1 : code == 22 ? 2 : code == 32 ? 3 : 4;
             shapes.insert(u16(body, 0), shape(body, version));
+        } else if (code == 46 || code == 84) {
+            morphs.insert(u16(body, 0), morph(body, code == 46 ? 1 : 2));
         } else if (code == 10 || code == 48 || code == 75) {
             fonts.insert(u16(body, 0), font(body, code == 10 ? 1 : code == 48 ? 2 : 3));
         } else if (code == 11 || code == 33) {
@@ -796,9 +1151,41 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             bitmaps.insert(u16(body, 0), image.convertToFormat(QImage::Format_ARGB32_Premultiplied));
         } else if (code == 20 || code == 36) {
             bitmaps.insert(u16(body, 0), lossless(body, code == 36));
+        } else if (code == 39) {
+            // A movie clip: its own timeline, its tags inside.
+            QVector<DisplayList> frames;
+            DisplayList own;
+            int q = 4;
+            while (q + 2 <= body.size()) {
+                quint16 const innerHead = u16(body, q);
+                q += 2;
+                int const innerCode = innerHead >> 6;
+                int innerSize = innerHead & 0x3f;
+                if (innerSize == 0x3f) {
+                    innerSize = int(u32(body, q));
+                    q += 4;
+                }
+                if (innerSize < 0 || q + innerSize > body.size() || innerCode == 0)
+                    break;
+                QByteArray const inner = body.mid(q, innerSize);
+                q += innerSize;
+                if (innerCode == 1)
+                    frames.push_back(own);
+                else if (innerCode == 61)
+                    videoFrame(inner);
+                else if (innerCode == 12 || innerCode == 59)
+                    ++out.scripts;
+                else if (innerCode == 18 || innerCode == 45)
+                    ++out.skippedSounds;       // (a movie clip's own soundtrack)
+                else
+                    control(innerCode, inner, own, int(frames.size()));
+            }
+            if (frames.isEmpty())
+                frames.push_back(own);
+            sprites.insert(u16(body, 0), frames);
         } else if (code == 43) {
             int q = 0;
-            label(int(out.frames.size()), text(body, q));
+            label(int(mainFrames.size()), text(body, q));
         } else if (code == 86) {
             // Scenes (passed over), then the labels of frames.
             int q = 0;
@@ -840,7 +1227,7 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             bool const stop = u8(body, q) & 0x20;
             if (!stop && sounds.contains(id)) {
                 Sound sound = sounds.value(id);
-                sound.frame = int(out.frames.size());
+                sound.frame = int(mainFrames.size());
                 out.sounds.push_back(sound);
             }
         } else if (code == 18 || code == 45) {
@@ -848,7 +1235,7 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
         } else if (code == 19) {
             if (streamFormat >= 0) {
                 if (stream.frame < 0)
-                    stream.frame = int(out.frames.size());
+                    stream.frame = int(mainFrames.size());
                 // (Each block of an MP3 stream starts with a count of samples and a count to skip.)
                 streamed += (streamFormat >> 4) == 2 ? body.mid(4) : body;
             }
@@ -860,232 +1247,13 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             video.codec = u8(body, 9);
             streams.insert(u16(body, 0), video);
         } else if (code == 61) {
-            auto found = streams.find(u16(body, 0));
-            int const number = u16(body, 2);
-            if (found != streams.end()) {
-                if (number >= found->frames.size())
-                    found->frames.resize(number + 1);
-                found->frames[number] = body.mid(4);
-            }
+            videoFrame(body);
         } else if (code == 12 || code == 59 || code == 82) {
             ++out.scripts;
-        } else if (code == 26 || code == 70) {
-            int q = 0;
-            int const flags = u8(body, q++);
-            int flags2 = 0;
-            if (code == 70)
-                flags2 = u8(body, q++);
-            int const depth = u16(body, q);
-            q += 2;
-            if (code == 70 && ((flags2 & 0x08) || ((flags2 & 0x10) && (flags & 0x02))))
-                while (q < body.size() && body[q++] != 0) {}       // a class name
-            Placed& at = list[depth];
-            if (flags & 0x02) {
-                at.character = u16(body, q);
-                q += 2;
-                if (!(flags & 0x01))
-                    at.matrix = QTransform();
-            }
-            if (flags & 0x04) {
-                Bits bits(body, q);
-                at.matrix = matrix(bits);
-                q = bits.byte();
-            }
-            if (flags & 0x08) {
-                // A colour effect (with opacity).
-                Bits bits(body, q);
-                bool const adds = bits.ub(1), mults = bits.ub(1);
-                int const termBits = int(bits.ub(4));
-                for (int c = 0; c < 4; ++c) {
-                    at.mult[c] = 256;
-                    at.add[c] = 0;
-                }
-                if (mults)
-                    for (int c = 0; c < 4; ++c)
-                        at.mult[c] = bits.sb(termBits);
-                if (adds)
-                    for (int c = 0; c < 4; ++c)
-                        at.add[c] = bits.sb(termBits);
-                bits.align();
-                q = bits.byte();
-            }
-            if (flags & 0x10) {
-                at.ratio = u16(body, q);
-                q += 2;
-            }
-            if (flags & 0x20)
-                while (q < body.size() && body[q++] != 0) {}       // a name
-            if (flags & 0x40)
-                at.clipDepth = u16(body, q);
-        } else if (code == 4) {
-            Placed placed;
-            placed.character = u16(body, 0);
-            Bits bits(body, 4);
-            placed.matrix = matrix(bits);
-            list[u16(body, 2)] = placed;
-        } else if (code == 28) {
-            list.remove(u16(body, 0));
-        } else if (code == 5) {
-            list.remove(u16(body, 2));
         } else if (code == 1) {
-            // The frame as the display list has it: from the deepest up, each on top of the one before - what lies under a
-            // mask cut to it, the mask itself not seen.
-            Drawing drawing;
-            int order = 0;
-            struct Mask {
-                int upTo;
-                QVector<QPolygonF> area;
-            };
-            QVector<Mask> masks;
-            // A picture placed among what is drawn, cut to the masks over it (or left out, where they let none of it through).
-            auto placePicture = [&](Picture p) {
-                for (Mask const& m : std::as_const(masks)) {
-                    p.clip = clipTo(p, m.area);
-                    if (p.clip.isEmpty())
-                        return -1;
-                }
-                drawing.pictures.push_back(p);
-                return int(drawing.pictures.size()) - 1;
-            };
-            for (auto it = list.cbegin(); it != list.cend(); ++it) {
-                masks.removeIf([&](Mask const& m) { return it.key() > m.upTo; });
-                if (auto const video = streams.constFind(it->character); video != streams.cend() && it->clipDepth == 0) {
-                    // A frame of a video: as big as the stream says (in pixels), where it is placed.
-                    Picture frame;
-                    frame.size = video->size;
-                    frame.order = ++order;
-                    frame.placement = QTransform::fromScale(20.0, 20.0) * it->matrix * toPixels;
-                    int const index = placePicture(frame);
-                    if (index >= 0)
-                        showings.push_back({int(out.frames.size()), index, it->character, it->ratio});
-                    continue;
-                }
-                auto const found = shapes.constFind(it->character);
-                if (found == shapes.cend())
-                    continue;
-                QTransform const place = it->matrix * toPixels;
-                if (it->clipDepth > 0) {
-                    Mask mask;
-                    mask.upTo = it->clipDepth;
-                    for (Shape::Area const& area : found->areas)
-                        for (QPolygonF const& ring : area.rings)
-                            mask.area.push_back(place.map(ring));
-                    masks.push_back(mask);
-                    continue;
-                }
-                ++order;
-                bool const tinted = it->mult[0] != 256 || it->mult[1] != 256 || it->mult[2] != 256 || it->mult[3] != 256 || it->add[0] != 0 || it->add[1] != 0
-                                    || it->add[2] != 0 || it->add[3] != 0;
-                auto colour = [&](QColor c) {
-                    int v[4] = {c.red(), c.green(), c.blue(), c.alpha()};
-                    for (int k = 0; k < 4; ++k)
-                        v[k] = std::clamp(v[k] * it->mult[k] / 256 + it->add[k], 0, 255);
-                    return QColor(v[0], v[1], v[2], v[3]);
-                };
-                // Kept, or cut to each mask it lies under.
-                auto masked = [&](Fill const& fill) {
-                    QVector<Fill> pieces{fill};
-                    for (Mask const& m : std::as_const(masks)) {
-                        QVector<Fill> cut;
-                        for (Fill const& piece : std::as_const(pieces))
-                            cut += piece.within(m.area, 0.25);
-                        pieces = cut;
-                    }
-                    for (Fill& piece : pieces) {
-                        piece.color = fill.color;
-                        piece.order = order;
-                        drawing.fills.push_back(piece);
-                    }
-                };
-                for (Shape::Area const& area : found->areas) {
-                    if (area.style.bitmap >= 0) {
-                        // Filled with a bitmap: the picture, where the fill's matrix puts it (under the paint of the drawing).
-                        QImage const image = bitmaps.value(area.style.bitmap);
-                        if (!image.isNull()) {
-                            Picture picture;
-                            picture.image = image;
-                            if (tinted) {
-                                picture.image = image.convertToFormat(QImage::Format_ARGB32);
-                                for (int y = 0; y < picture.image.height(); ++y) {
-                                    QRgb* const line = reinterpret_cast<QRgb*>(picture.image.scanLine(y));
-                                    for (int x = 0; x < picture.image.width(); ++x) {
-                                        QColor const c = colour(QColor::fromRgba(line[x]));
-                                        line[x] = c.rgba();
-                                    }
-                                }
-                                picture.image = picture.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-                            }
-                            picture.size = image.size();
-                            picture.placement = area.style.matrix * place;
-                            picture.order = order;
-                            // (Only where the shape it fills is.)
-                            QTransform const back = area.style.matrix.inverted();
-                            for (QPolygonF const& ring : area.rings)
-                                picture.clip.push_back(back.map(ring));
-                            placePicture(picture);
-                            continue;
-                        }
-                    }
-                    Fill fill;
-                    fill.color = colour(area.style.colour);
-                    fill.order = order;
-                    for (QPolygonF const& ring : area.rings)
-                        fill.outlines.push_back(place.map(ring));
-                    if (area.style.gradient.isGradient()) {
-                        // A gradient: as the colour effect leaves it, from one side of its square to the other (a round one
-                        // from its middle to its rim).
-                        Swatch s = area.style.gradient;
-                        for (GradientStop& stop : s.stops)
-                            stop.color = colour(stop.color);
-                        s.color = s.stops.first().color;
-                        QTransform const at = area.style.matrix * place;
-                        fill.swatch = gradientOf(s);
-                        fill.gradPlaced = true;
-                        fill.gradFrom = at.map(s.kind == Swatch::Linear ? QPointF(-16384.0, 0.0) : QPointF(0.0, 0.0));
-                        fill.gradTo = at.map(QPointF(16384.0, 0.0));
-                    }
-                    if (masks.isEmpty())
-                        drawing.fills.push_back(fill);
-                    else
-                        masked(fill);
-                }
-                for (Shape::Line const& line : found->lines) {
-                    Stroke stroke;
-                    stroke.color = colour(line.colour);
-                    stroke.order = order;
-                    stroke.width = float(std::max(0.5, line.width / 20.0 * (line.keepWidth ? 1.0 : std::sqrt(std::abs(it->matrix.determinant())))));
-                    stroke.capStart = line.startCap == 0 ? Stroke::RoundCap : Stroke::FlatCap;
-                    stroke.capEnd = line.endCap == 0 ? Stroke::RoundCap : Stroke::FlatCap;
-                    stroke.join = line.join == 1 ? Stroke::BevelJoin : line.join == 2 ? Stroke::MitreJoin : Stroke::RoundJoin;
-                    QPolygonF points = place.map(line.points);
-                    // A square cap: flat, half the thickness beyond the end.
-                    auto reach = [&](int end, int towards) {
-                        QPointF const d = points[end] - points[towards];
-                        double const length = std::hypot(d.x(), d.y());
-                        if (length > 1e-9)
-                            points[end] += d * (stroke.width / 2.0 / length);
-                    };
-                    if (points.size() >= 2 && points.first() != points.last()) {
-                        if (line.startCap == 2)
-                            reach(0, 1);
-                        if (line.endCap == 2)
-                            reach(int(points.size()) - 1, int(points.size()) - 2);
-                    }
-                    for (QPointF const& point : std::as_const(points))
-                        stroke.points.push_back({point, 1.0f});
-                    if (stroke.points.size() < 2)
-                        continue;
-                    if (masks.isEmpty()) {
-                        drawing.strokes.push_back(stroke);
-                    } else {
-                        // (A line under a mask is cut as the area it covers.)
-                        Fill asArea = Fill::fromStroke(stroke, 0.25);
-                        asArea.color = stroke.color;
-                        masked(asArea);
-                    }
-                }
-            }
-            out.frames.push_back(drawing);
+            mainFrames.push_back(list);
+        } else {
+            control(code, body, list, int(mainFrames.size()));
         }
     }
     if (!streamed.isEmpty()) {
@@ -1094,67 +1262,278 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
         else
             ++out.skippedSounds;
     }
-    // The video: each stream that is shown decoded (into the media folder, or in passing), its frames put in the pictures
-    // that show them (the nearest frame before, where one is missing).
+
+    // ---- 2. The video, each stream decoded (into the media folder, or in passing).
+    QTemporaryDir passing;
+    QHash<int, QStringList> decoded;
     {
-        QTemporaryDir passing;
-        QHash<int, QStringList> decoded;
-        QHash<QString, QImage> loaded;
-        QHash<int, QVector<int>> dropped;     // pictures to take out again, frame by frame
-        for (Showing const& s : std::as_const(showings)) {
-            if (!decoded.contains(s.stream)) {
-                Stream const& video = streams[s.stream];
-                QVector<QByteArray> frames;
-                for (QByteArray const& f : video.frames)
-                    frames.push_back(f);
-                while (!frames.isEmpty() && frames.last().isEmpty())
-                    frames.removeLast();
-                QString why;
-                QStringList const files = FlashVideo::decode(video.codec, frames, out.fps, mediaFolder.isEmpty() ? passing.path() : mediaFolder,
-                                                             QStringLiteral("video %1").arg(s.stream), {}, &why);
-                if (files.isEmpty()) {
-                    ++out.skippedVideo;
-                    out.videoProblem = why;
-                }
-                decoded.insert(s.stream, files);
-            }
-            QStringList const& files = decoded[s.stream];
+        int done = 0;
+        for (auto it = streams.begin(); it != streams.end(); ++it) {
+            if (!told(200 + 200 * done++ / std::max<qsizetype>(1, streams.size())))
+                return fail(tr("The import was stopped."));
+            QVector<QByteArray> frames = it->frames;
+            while (!frames.isEmpty() && frames.last().isEmpty())
+                frames.removeLast();
+            if (frames.isEmpty())
+                continue;
+            QString why;
+            QStringList const files = FlashVideo::decode(it->codec, frames, out.fps, mediaFolder.isEmpty() ? passing.path() : mediaFolder,
+                                                         QStringLiteral("video %1").arg(it.key()), {}, &why);
             if (files.isEmpty()) {
-                dropped[s.frame].push_back(s.picture);
+                ++out.skippedVideo;
+                out.videoProblem = why;
+            }
+            decoded.insert(it.key(), files);
+        }
+    }
+
+    // ---- 3. Each frame drawn: each timeline from its deepest up, each thing on top of the one before; what lies under a
+    // mask cut to it, the mask itself not seen.  A movie clip's frames are drawn once each, in its own coordinates, and
+    // placed where they are used.
+    QHash<QByteArray, int> gradientKeys;    // a gradient of `out.gradients`, by what it is
+    auto gradientOf = [&](Swatch const& s) {
+        QByteArray key;
+        key += char(s.kind);
+        for (GradientStop const& stop : s.stops)
+            key += QByteArray::number(stop.at, 'f', 4) + ':' + QByteArray::number(stop.color.rgba()) + ';';
+        auto found = gradientKeys.constFind(key);
+        if (found != gradientKeys.cend())
+            return *found;
+        out.gradients.push_back(s);
+        gradientKeys.insert(key, int(out.gradients.size()) - 1);
+        return int(out.gradients.size()) - 1;
+    };
+    QHash<QString, QImage> videoImages;
+    QHash<QByteArray, QImage> tintedImages;
+    auto tintedImage = [&](QImage const& image, ColourFx const& fx) {
+        if (fx.plain())
+            return image;
+        QByteArray const key = QByteArray::number(image.cacheKey()) + '/' + fx.key();
+        auto found = tintedImages.constFind(key);
+        if (found != tintedImages.cend())
+            return *found;
+        QImage made = image.convertToFormat(QImage::Format_ARGB32);
+        // (Each part through a table: the same sum for every pixel, worked out once for each of the 256 values.)
+        quint8 table[4][256];
+        for (int k = 0; k < 4; ++k)
+            for (int v = 0; v < 256; ++v)
+                table[k][v] = quint8(std::clamp(v * fx.mult[k] / 256 + fx.add[k], 0, 255));
+        for (int y = 0; y < made.height(); ++y) {
+            QRgb* const line = reinterpret_cast<QRgb*>(made.scanLine(y));
+            for (int x = 0; x < made.width(); ++x) {
+                QRgb const c = line[x];
+                line[x] = qRgba(table[0][qRed(c)], table[1][qGreen(c)], table[2][qBlue(c)], table[3][qAlpha(c)]);
+            }
+        }
+        made = made.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        tintedImages.insert(key, made);
+        return made;
+    };
+    // A shape drawn into `d`, placed by `place`, coloured by `fx`, at `order` among what is drawn.
+    auto shapeInto = [&](Shape const& s, QTransform const& place, ColourFx const& fx, Drawing& d, int order) {
+        for (Shape::Area const& area : s.areas) {
+            if (area.style.bitmap >= 0) {
+                // Filled with a bitmap: the picture where the fill's matrix puts it, only where the shape is.
+                QImage const image = bitmaps.value(area.style.bitmap);
+                if (!image.isNull()) {
+                    Picture picture;
+                    picture.image = tintedImage(image, fx);
+                    picture.size = image.size();
+                    picture.placement = area.style.matrix * place;
+                    picture.order = order;
+                    QTransform const back = area.style.matrix.inverted();
+                    for (QPolygonF const& ring : area.rings)
+                        picture.clip.push_back(back.map(ring));
+                    d.pictures.push_back(picture);
+                    continue;
+                }
+            }
+            Fill fill;
+            fill.color = fx.apply(area.style.colour);
+            fill.order = order;
+            for (QPolygonF const& ring : area.rings)
+                fill.outlines.push_back(place.map(ring));
+            if (area.style.gradient.isGradient()) {
+                // A gradient: as the colour effect leaves it, from one side of its square to the other (a round one from its
+                // middle to its rim).
+                Swatch g = area.style.gradient;
+                for (GradientStop& stop : g.stops)
+                    stop.color = fx.apply(stop.color);
+                g.color = g.stops.first().color;
+                QTransform const at = area.style.matrix * place;
+                fill.swatch = gradientOf(g);
+                fill.gradPlaced = true;
+                fill.gradFrom = at.map(g.kind == Swatch::Linear ? QPointF(-16384.0, 0.0) : QPointF(0.0, 0.0));
+                fill.gradTo = at.map(QPointF(16384.0, 0.0));
+            }
+            d.fills.push_back(fill);
+        }
+        for (Shape::Line const& line : s.lines) {
+            Stroke stroke;
+            stroke.color = fx.apply(line.colour);
+            stroke.order = order;
+            stroke.width = float(line.width * std::sqrt(std::abs(place.determinant())));
+            stroke.capStart = line.startCap == 0 ? Stroke::RoundCap : Stroke::FlatCap;
+            stroke.capEnd = line.endCap == 0 ? Stroke::RoundCap : Stroke::FlatCap;
+            stroke.join = line.join == 1 ? Stroke::BevelJoin : line.join == 2 ? Stroke::MitreJoin : Stroke::RoundJoin;
+            QPolygonF points = place.map(line.points);
+            // A square cap: flat, half the thickness beyond the end.
+            auto reach = [&](int end, int towards) {
+                QPointF const dd = points[end] - points[towards];
+                double const length = std::hypot(dd.x(), dd.y());
+                if (length > 1e-9)
+                    points[end] += dd * (stroke.width / 2.0 / length);
+            };
+            if (points.size() >= 2 && points.first() != points.last()) {
+                if (line.startCap == 2)
+                    reach(0, 1);
+                if (line.endCap == 2)
+                    reach(int(points.size()) - 1, int(points.size()) - 2);
+            }
+            for (QPointF const& point : std::as_const(points))
+                stroke.points.push_back({point, 1.0f});
+            if (stroke.points.size() >= 2)
+                d.strokes.push_back(stroke);
+        }
+    };
+    // A drawing put into another: placed, coloured, over what is there.
+    auto placeInto = [&](Drawing const& inner, QTransform const& place, ColourFx const& fx, Drawing& d, int& order) {
+        int const base = order;
+        int top = order;
+        for (Fill fill : inner.fills) {
+            fill.transform(place);
+            fill.color = fx.apply(fill.color);
+            if (fill.swatch >= 0 && !fx.plain() && fill.swatch < out.gradients.size()) {
+                Swatch g = out.gradients[fill.swatch];
+                for (GradientStop& stop : g.stops)
+                    stop.color = fx.apply(stop.color);
+                g.color = g.stops.first().color;
+                fill.swatch = gradientOf(g);
+            }
+            fill.order += base;
+            top = std::max(top, fill.order);
+            d.fills.push_back(fill);
+        }
+        for (Stroke stroke : inner.strokes) {
+            stroke.transform(place);
+            stroke.color = fx.apply(stroke.color);
+            stroke.order += base;
+            top = std::max(top, stroke.order);
+            d.strokes.push_back(stroke);
+        }
+        for (Picture picture : inner.pictures) {
+            picture.transform(place);
+            picture.image = tintedImage(picture.image, fx);
+            if (picture.order >= 0) {
+                picture.order += base;
+                top = std::max(top, picture.order);
+            }
+            d.pictures.push_back(picture);
+        }
+        order = top;
+    };
+    QHash<QPair<int, int>, Drawing> spriteFrames;
+    QHash<QPair<int, int>, Shape> morphShapes;
+    std::function<void(DisplayList const&, int, Drawing&, int&, int)> drawList;
+    // What a character looks like where it is placed (in the coordinates of the timeline it is on), on frame `frame` of it.
+    std::function<void(Placed const&, int, Drawing&, int&, int)> drawPlaced = [&](Placed const& placed, int frame, Drawing& d, int& order, int depth) {
+        ColourFx const fx = ColourFx::of(placed);
+        if (auto const found = shapes.constFind(placed.character); found != shapes.cend()) {
+            shapeInto(*found, placed.matrix, fx, d, ++order);
+        } else if (auto const m = morphs.constFind(placed.character); m != morphs.cend()) {
+            QPair<int, int> const key(placed.character, placed.ratio);
+            auto made = morphShapes.constFind(key);
+            if (made == morphShapes.cend())
+                made = morphShapes.insert(key, morphAt(*m, placed.ratio / 65535.0));
+            shapeInto(*made, placed.matrix, fx, d, ++order);
+        } else if (auto const sprite = sprites.constFind(placed.character); sprite != sprites.cend()) {
+            if (depth > 24 || sprite->isEmpty())
+                return;
+            // A movie clip plays on from when it was put there, round and round.
+            int const local = ((frame - placed.since) % int(sprite->size()) + int(sprite->size())) % int(sprite->size());
+            QPair<int, int> const key(placed.character, local);
+            auto inner = spriteFrames.constFind(key);
+            if (inner == spriteFrames.cend()) {
+                Drawing made;
+                int innerOrder = 0;
+                drawList((*sprite)[local], local, made, innerOrder, depth + 1);
+                inner = spriteFrames.insert(key, made);
+            }
+            placeInto(*inner, placed.matrix, fx, d, order);
+        } else if (auto const video = streams.constFind(placed.character); video != streams.cend()) {
+            // A frame of a video: as big as the stream says (in pixels), where it is placed.
+            QStringList const files = decoded.value(placed.character);
+            if (files.isEmpty())
+                return;
+            QString const file = files[std::clamp(placed.ratio, 0, int(files.size()) - 1)];
+            auto image = videoImages.find(file);
+            if (image == videoImages.end())
+                image = videoImages.insert(file, QImage(file).convertToFormat(QImage::Format_ARGB32_Premultiplied));
+            if (image->isNull())
+                return;
+            Picture picture;
+            picture.image = tintedImage(*image, fx);
+            picture.size = image->size();
+            picture.order = ++order;
+            picture.placement = QTransform::fromScale(20.0 * video->size.width() / image->width(), 20.0 * video->size.height() / image->height()) * placed.matrix;
+            if (!mediaFolder.isEmpty() && fx.plain()) {
+                picture.file = file;
+                picture.linked = true;
+            }
+            d.pictures.push_back(picture);
+        }
+    };
+    drawList = [&](DisplayList const& shown, int frame, Drawing& d, int& order, int depth) {
+        struct Mask {
+            int upTo;
+            std::shared_ptr<FlashCut::Cutter> cutter;
+        };
+        QVector<Mask> masks;
+        for (auto it = shown.cbegin(); it != shown.cend(); ++it) {
+            masks.removeIf([&](Mask const& m) { return it.key() > m.upTo; });
+            if (it->clipDepth > 0) {
+                Drawing shape;
+                int maskOrder = 0;
+                drawPlaced(*it, frame, shape, maskOrder, depth);
+                masks.push_back({it->clipDepth, std::make_shared<FlashCut::Cutter>(FlashCut::areaOf(shape))});
                 continue;
             }
-            QString const file = files[std::clamp(s.at, 0, int(files.size()) - 1)];
-            auto image = loaded.find(file);
-            if (image == loaded.end())
-                image = loaded.insert(file, QImage(file).convertToFormat(QImage::Format_ARGB32_Premultiplied));
-            Picture& shown = out.frames[s.frame].pictures[s.picture];
-            shown.image = *image;
-            if (!image->isNull() && image->size() != shown.size) {
-                // (Decoded at another size than the stream gave: the same place, in the picture's own pixels.)
-                QTransform const to = QTransform::fromScale(double(image->width()) / shown.size.width(), double(image->height()) / shown.size.height());
-                for (QPolygonF& ring : shown.clip)
-                    ring = to.map(ring);
-                shown.placement = to.inverted() * shown.placement;
+            if (masks.isEmpty()) {
+                drawPlaced(*it, frame, d, order, depth);
+                continue;
             }
-            if (!image->isNull())
-                shown.size = image->size();
-            if (!mediaFolder.isEmpty()) {
-                shown.file = file;
-                shown.linked = true;
+            // Under masks: drawn apart, then cut to each of them in turn.
+            Drawing piece;
+            drawPlaced(*it, frame, piece, order, depth);
+            for (Mask const& m : std::as_const(masks)) {
+                Drawing cut;
+                m.cutter->cut(piece, cut);
+                piece = cut;
             }
+            d.fills += piece.fills;
+            d.strokes += piece.strokes;
+            d.pictures += piece.pictures;
         }
-        for (auto it = dropped.begin(); it != dropped.end(); ++it) {
-            QVector<int> gone = it.value();
-            std::sort(gone.begin(), gone.end(), std::greater<int>());
-            for (int index : std::as_const(gone))
-                out.frames[it.key()].pictures.removeAt(index);
-        }
+    };
+    QTransform const toPixels = QTransform::fromTranslate(-xmin, -ymin) * QTransform::fromScale(1.0 / 20.0, 1.0 / 20.0);
+    for (int f = 0; f < mainFrames.size(); ++f) {
+        if (!told(400 + qint64(600) * f / std::max<qsizetype>(1, mainFrames.size())))
+            return fail(tr("The import was stopped."));
+        Drawing frame;
+        int order = 0;
+        drawList(mainFrames[f], f, frame, order, 0);
+        Drawing placed;
+        int placedOrder = 0;
+        placeInto(frame, toPixels, ColourFx(), placed, placedOrder);
+        for (Stroke& s : placed.strokes)
+            s.width = std::max(0.5f, s.width);
+        out.frames.push_back(placed);
     }
     bool any = false;
     for (Drawing const& d : out.frames)
         any = any || !d.fills.isEmpty() || !d.strokes.isEmpty() || !d.pictures.isEmpty();
     if (!any)
-        return fail(tr("The movie has nothing on its main timeline that Eclipse can read (only code, movie clips or video)."));
+        return fail(tr("The movie has nothing on its main timeline that Eclipse can read (only code)."));
     return true;
 }
 

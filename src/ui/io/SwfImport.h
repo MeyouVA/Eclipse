@@ -15,6 +15,8 @@
 #include <QString>
 #include <QVector>
 
+#include <functional>
+
 struct Drawing;
 struct Swatch;
 
@@ -51,6 +53,10 @@ ECLIPSE_UI_API QByteArray wav(QByteArray const& samples, int rate, int bits, int
 
 // False (and why) when the bytes are not a movie that can be read.  The frames of its video are decoded into
 // `mediaFolder` and shown from there (linked pictures); without one, they are decoded in passing and kept in the drawings.
-ECLIPSE_UI_API bool read(QByteArray const& bytes, Movie& out, QString* error = nullptr, QString const& mediaFolder = QString());
+// `progress`, when given, is told how far the reading has come (so much done of so much in all) now and then; false from
+// it stops the reading (and it fails, as stopped).
+using Progress = std::function<bool(qint64 done, qint64 all)>;
+ECLIPSE_UI_API bool read(QByteArray const& bytes, Movie& out, QString* error = nullptr, QString const& mediaFolder = QString(),
+                         Progress const& progress = {});
 
 }

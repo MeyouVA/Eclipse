@@ -26,6 +26,13 @@ ECLIPSE_UI_API QByteArray flv(int codec, QVector<QByteArray> const& frames, doub
 ECLIPSE_UI_API QStringList decode(int codec, QVector<QByteArray> const& frames, double fps, QString const& folder, QString const& name,
                                   QVector<bool> const& keyframes = {}, QString* error = nullptr);
 
+// A video file (any ffmpeg reads) decoded into `folder` in the same way, frame by frame.
+ECLIPSE_UI_API QStringList decodeFile(QString const& input, QString const& folder, QString const& name, bool alpha = false, QString* error = nullptr);
+
+// The MP4 a video item of a .fla holds when it was embedded as H.264 (its file in bin/: 03 08, then the MP4 whole); empty
+// when it is not one.
+ECLIPSE_UI_API QByteArray flaMovie(QByteArray const& data);
+
 // The frames of a video item of a .fla (its file in bin/: Flash's own form - a table of where each frame lies, then the
 // frames one after another): their data, which stand on their own, and the codec.  False when it is not that form.
 ECLIPSE_UI_API bool flaFrames(QByteArray const& data, int& codec, QVector<QByteArray>& frames, QVector<bool>& keyframes);

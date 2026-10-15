@@ -14,6 +14,8 @@
 #include <QToolButton>
 #include <QXmlStreamReader>
 
+#include <QMouseEvent>
+
 #include "actions/dialogs/ToolbarDialog.h"
 #include "actions/theme/Theme.h"
 
@@ -457,6 +459,26 @@ void ActionManager::customizeToolbar(QString const& toolbarId, QWidget* parent)
     dialog.exec();
 }
 
+// The button of a group of tools: a click picks the tool it shows; a click on it while that tool is already in use (or
+// holding it down, or a click on its arrow) offers the others.
+namespace {
+class GroupButton : public QToolButton {
+public:
+    using QToolButton::QToolButton;
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && menu() && defaultAction() && defaultAction()->isChecked()) {
+            setDown(false);
+            showMenu();
+            return;
+        }
+        QToolButton::mousePressEvent(event);
+    }
+};
+}  // namespace
+
 // Puts the entries of a toolbar on it, in place of the ones this function put there
 // before.  Anything else on the bar (widgets the window added) stays, after them.
 void ActionManager::populateToolbar(QToolBar* bar)
@@ -508,9 +530,9 @@ void ActionManager::populateToolbar(QToolBar* bar)
             bar->insertAction(before, tools.first());
             continue;
         }
-        // One button for several tools: it shows the one used last, and holding it
-        // (or its arrow) offers the others.
-        QToolButton* const button = new QToolButton(bar);
+        // One button for several tools: it shows the one used last; clicking it again, or holding it, offers the others.
+        QToolButton* const button = new GroupButton(bar);
+        button->setObjectName(QStringLiteral("toolGroup:") + child->value("id"));
         QMenu* const menu = new QMenu(button);
         menu->addActions(tools);
         button->setMenu(menu);

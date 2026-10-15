@@ -5,12 +5,15 @@
 #include <QCryptographicHash>
 #include <QDataStream>
 #include <QHash>
+#include <QMap>
 #include <QPolygonF>
 #include <QTransform>
+#include <QFile>
 #include <QFont>
 #include <QFontDatabase>
 #include <QFontMetricsF>
 #include <QImage>
+#include <QPainter>
 #include <QPainterPath>
 #include <QRegularExpression>
 #include <QTemporaryDir>
@@ -24,6 +27,7 @@
 
 #include "model/geometry/Morph.h"
 #include "model/scene/Scene.h"
+#include "ui/io/FlashCut.h"
 #include "ui/io/FlashVideo.h"
 #include "ui/io/SwfImport.h"
 #include "ui/io/Zip.h"
@@ -226,27 +230,6 @@ struct Paint {
     QTransform bitmapPlace;
 };
 
-// The part of a picture that shows (its clip, in its own pixels; empty: all of it), cut to an area of the drawing.
-QVector<QPolygonF> clipTo(Picture const& picture, QVector<QPolygonF> const& area)
-{
-    QTransform const back = picture.placement.inverted();
-    QPainterPath cut;
-    cut.setFillRule(Qt::WindingFill);
-    for (QPolygonF const& ring : area)
-        cut.addPolygon(back.map(ring));
-    cut = cut.simplified();
-    if (!picture.clip.isEmpty()) {
-        QPainterPath own;
-        for (QPolygonF const& ring : picture.clip)
-            own.addPolygon(ring);
-        cut = own.intersected(cut);
-    }
-    QVector<QPolygonF> out;
-    for (QPolygonF const& ring : cut.toSubpathPolygons())
-        if (ring.size() >= 3)
-            out.push_back(ring);
-    return out;
-}
 
 // How a line is drawn: its colour and thickness, how its thickness goes with scaling (0: with it, 1: not at all, 2: only
 // with the scaling across, 3: only with that down), its ends (round, flat, or square - flat, half the thickness beyond the
@@ -258,6 +241,9 @@ struct LineStyle {
     Stroke::Cap cap = Stroke::RoundCap;
     bool square = false;
     Stroke::Join join = Stroke::RoundJoin;
+    // A line of varying width: so wide (as a share of its weight) so far along it (0..1), from its start to its end;
+    // empty: as wide all along.
+    QVector<QPointF> profile;
 };
 
 LineStyle lineStyleOf(Node const& kind)
@@ -272,7 +258,31 @@ LineStyle lineStyleOf(Node const& kind)
     QString const joints = kind.attr(QStringLiteral("joints"));
     st.join = joints == QLatin1String("bevel") ? Stroke::BevelJoin : joints == QLatin1String("miter") ? Stroke::MitreJoin : Stroke::RoundJoin;
     st.colour = kind.child(QStringLiteral("fill")) ? colourOf(*kind.child(QStringLiteral("fill"))) : QColor(Qt::black);
+    // Its width markers: where along it, and how far it reaches to each side (as shares of the weight).
+    if (Node const* widths = kind.child(QStringLiteral("VariablePointWidth"))) {
+        for (Node const& marker : widths->children)
+            if (marker.name == QLatin1String("WidthMarker"))
+                st.profile.push_back(QPointF(std::clamp(marker.number(QStringLiteral("position"), 0.0), 0.0, 1.0),
+                                             std::max(0.0, marker.number(QStringLiteral("left"), 0.5) + marker.number(QStringLiteral("right"), 0.5))));
+        std::stable_sort(st.profile.begin(), st.profile.end(), [](QPointF a, QPointF b) { return a.x() < b.x(); });
+    }
     return st;
+}
+
+// How wide a line of that profile is (as a share of its weight) so far along it.
+double widthAlong(QVector<QPointF> const& profile, double at)
+{
+    if (profile.isEmpty())
+        return 1.0;
+    if (at <= profile.first().x())
+        return profile.first().y();
+    for (int i = 1; i < profile.size(); ++i)
+        if (at <= profile[i].x()) {
+            double const span = profile[i].x() - profile[i - 1].x();
+            double const t = span > 1e-12 ? (at - profile[i - 1].x()) / span : 1.0;
+            return profile[i - 1].y() + (profile[i].y() - profile[i - 1].y()) * t;
+        }
+    return profile.last().y();
 }
 
 // A line of so many points, drawn in a style where `place` puts it.
@@ -298,8 +308,26 @@ Stroke strokeOf(QPolygonF const& points, LineStyle const& st, QTransform const& 
         reach(0, 1);
         reach(int(at.size()) - 1, int(at.size()) - 2);
     }
-    for (QPointF const& p : std::as_const(at))
-        stroke.points.push_back({p, 1.0f});
+    if (st.profile.isEmpty()) {
+        for (QPointF const& p : std::as_const(at))
+            stroke.points.push_back({p, 1.0f});
+        return stroke;
+    }
+    // Of varying width: as wide as its widest at full pressure, each point's pressure what its place along it asks.
+    double widest = 0.0;
+    for (QPointF const& m : st.profile)
+        widest = std::max(widest, m.y());
+    if (widest <= 0.0)
+        widest = 1.0;
+    stroke.width = float(std::max(0.25, st.weight * grow * widest));
+    QVector<double> along(at.size(), 0.0);
+    for (int i = 1; i < at.size(); ++i)
+        along[i] = along[i - 1] + QLineF(at[i - 1], at[i]).length();
+    double const length = along.isEmpty() ? 0.0 : along.last();
+    for (int i = 0; i < at.size(); ++i) {
+        double const share = widthAlong(st.profile, length > 1e-9 ? along[i] / length : 0.0) / widest;
+        stroke.points.push_back({at[i], float(std::clamp(share, 0.0, 1.0))});
+    }
     return stroke;
 }
 
@@ -610,6 +638,131 @@ public:
         fill.gradTo = place.map(paint.to);
     }
 
+    // The gradient as a colour effect leaves it (the same one when it changes nothing).
+    int tinted(int gradientIndex, Tint const& tint)
+    {
+        bool plain = true;
+        for (int k = 0; k < 4; ++k)
+            plain = plain && tint.mult[k] == 1.0 && tint.add[k] == 0.0;
+        if (plain || gradientIndex < 0 || gradientIndex >= out->gradients.size())
+            return gradientIndex;
+        Swatch s = out->gradients[gradientIndex];
+        for (GradientStop& stop : s.stops)
+            stop.color = tint.apply(stop.color);
+        s.color = s.stops.first().color;
+        return gradient(s);
+    }
+
+    // What a symbol's timeline shows on a frame, in the symbol's own coordinates and colours: drawn (its masks cut) once,
+    // however many times and places it is used.
+    // (With what in it was drawn with a blend mode or filters, apart: by what the effect is.)
+    struct Built {
+        Drawing main;
+        QMap<QString, Drawing> sides;
+    };
+    QHash<QPair<Node const*, int>, Built> symbolFrames;
+    Built const& symbolFrame(Node const& t, int frame, int depth)
+    {
+        QPair<Node const*, int> const key(&t, frame);
+        auto found = symbolFrames.constFind(key);
+        if (found != symbolFrames.cend())
+            return *found;
+        Built made;
+        int order = 0;
+        QMap<QString, Drawing>* const outer = sides;
+        sides = &made.sides;
+        timeline(t, frame, QTransform(), Tint(), made.main, order, depth);
+        sides = outer;
+        return *symbolFrames.insert(key, made);
+    }
+
+    // Where what is drawn with an effect goes while a frame is drawn (by what the effect is); none: it is drawn in place.
+    QMap<QString, Drawing>* sides = nullptr;
+    // The effects met, by the names they are kept under.
+    struct Lift {
+        QString blend;
+        QVector<FlaImport::Filter> filters;
+    };
+    QHash<QString, Lift> effects;
+
+    // The blend mode and filters a symbol is drawn with, under a name that says what they are (empty: none).
+    QString effectOf(Node const& element)
+    {
+        Lift effect;
+        QString const blend = element.attr(QStringLiteral("blendMode"));
+        if (!blend.isEmpty() && blend != QLatin1String("normal") && blend != QLatin1String("layer"))
+            effect.blend = blend;
+        if (Node const* list = element.child(QStringLiteral("filters")))
+            for (Node const& f : list->children) {
+                if (f.attr(QStringLiteral("isEnabled")) == QLatin1String("false"))
+                    continue;
+                FlaImport::Filter filter;
+                filter.kind = f.name;
+                filter.blurX = f.number(QStringLiteral("blurX"), 5.0);
+                filter.blurY = f.number(QStringLiteral("blurY"), 5.0);
+                filter.colour = QColor(f.attr(QStringLiteral("color"), f.name == QLatin1String("GlowFilter") ? QStringLiteral("#FF0000") : QStringLiteral("#000000")));
+                filter.colour.setAlphaF(float(f.number(QStringLiteral("alpha"), 1.0)));
+                filter.strength = f.number(QStringLiteral("strength"), 1.0);
+                filter.distance = f.number(QStringLiteral("distance"), f.name == QLatin1String("DropShadowFilter") ? 5.0 : 0.0);
+                filter.angle = f.number(QStringLiteral("angle"), 45.0);
+                filter.inner = f.attr(QStringLiteral("inner")) == QLatin1String("true");
+                if (filter.kind == QLatin1String("GlowFilter") || filter.kind == QLatin1String("BlurFilter") || filter.kind == QLatin1String("DropShadowFilter"))
+                    effect.filters.push_back(filter);
+            }
+        if (effect.blend.isEmpty() && effect.filters.isEmpty())
+            return QString();
+        QStringList parts;
+        if (!effect.blend.isEmpty())
+            parts << effect.blend;
+        for (FlaImport::Filter const& f : std::as_const(effect.filters))
+            parts << QStringLiteral("%1 %2x%3 %4 %5 %6@%7").arg(QString(f.kind).remove(QStringLiteral("Filter")).toLower()).arg(f.blurX).arg(f.blurY)
+                         .arg(f.colour.name(QColor::HexArgb)).arg(f.strength).arg(f.distance).arg(f.angle);
+        QString const name = parts.join(QStringLiteral(", "));
+        effects.insert(name, effect);
+        return name;
+    }
+
+    // A symbol's frame put into a drawing, what of it has an effect into the drawings of those effects.
+    void placeBuilt(Built const& built, QTransform const& place, Tint const& tint, Drawing& drawing, int& order)
+    {
+        placeInto(built.main, place, tint, drawing, order);
+        for (auto it = built.sides.cbegin(); it != built.sides.cend(); ++it)
+            placeInto(it.value(), place, tint, sides ? (*sides)[it.key()] : drawing, order);
+    }
+
+    // A drawing put into another: placed, coloured by the effect, over what is there.
+    void placeInto(Drawing const& inner, QTransform const& place, Tint const& tint, Drawing& drawing, int& order)
+    {
+        int const base = order;
+        int top = order;
+        for (Fill fill : inner.fills) {
+            fill.transform(place);
+            fill.color = tint.apply(fill.color);
+            fill.swatch = tinted(fill.swatch, tint);
+            fill.order += base;
+            top = std::max(top, fill.order);
+            if (fill.color.alpha() > 0 || fill.swatch >= 0)
+                drawing.fills.push_back(fill);
+        }
+        for (Stroke stroke : inner.strokes) {
+            stroke.transform(place);
+            stroke.color = tint.apply(stroke.color);
+            stroke.order += base;
+            top = std::max(top, stroke.order);
+            if (stroke.color.alpha() > 0)
+                drawing.strokes.push_back(stroke);
+        }
+        for (Picture picture : inner.pictures) {
+            picture.transform(place);
+            if (picture.order >= 0) {
+                picture.order += base;
+                top = std::max(top, picture.order);
+            }
+            drawing.pictures.push_back(picture);
+        }
+        order = top;
+    }
+
     // How many frames a timeline runs.
     int length(Node const& timeline)
     {
@@ -702,8 +855,68 @@ public:
 
     // How far along a tween is when `t` (0..1) of its time has passed: by its custom ease (a curve of cubic pieces through
     // points, from (0, 0) to (1, 1)), or its ease out (above 0) or in (below), -100 to 100.
+    // The eases Animate names (quadIn, circInOut, bounceOut...): how far along when `t` of the time has passed; -1 for
+    // a name it does not know.
+    static double named(QString const& name, double t)
+    {
+        double const pi = 3.14159265358979323846;
+        auto in = [&](QString const& kind, double x) -> double {
+            if (kind == QLatin1String("quad"))
+                return x * x;
+            if (kind == QLatin1String("cubic"))
+                return x * x * x;
+            if (kind == QLatin1String("quart"))
+                return x * x * x * x;
+            if (kind == QLatin1String("quint"))
+                return x * x * x * x * x;
+            if (kind == QLatin1String("sine"))
+                return 1.0 - std::cos(x * pi / 2.0);
+            if (kind == QLatin1String("expo") || kind == QLatin1String("exponential"))
+                return x <= 0.0 ? 0.0 : std::pow(2.0, 10.0 * (x - 1.0));
+            if (kind == QLatin1String("circ"))
+                return 1.0 - std::sqrt(std::max(0.0, 1.0 - x * x));
+            if (kind == QLatin1String("back"))
+                return x * x * (2.70158 * x - 1.70158);
+            if (kind == QLatin1String("elastic"))
+                return x <= 0.0 || x >= 1.0 ? x : -std::pow(2.0, 10.0 * (x - 1.0)) * std::sin((x - 1.075) * 2.0 * pi / 0.3);
+            if (kind == QLatin1String("bounce")) {
+                double const y = 1.0 - x;
+                double out;
+                if (y < 1.0 / 2.75)
+                    out = 7.5625 * y * y;
+                else if (y < 2.0 / 2.75)
+                    out = 7.5625 * (y - 1.5 / 2.75) * (y - 1.5 / 2.75) + 0.75;
+                else if (y < 2.5 / 2.75)
+                    out = 7.5625 * (y - 2.25 / 2.75) * (y - 2.25 / 2.75) + 0.9375;
+                else
+                    out = 7.5625 * (y - 2.625 / 2.75) * (y - 2.625 / 2.75) + 0.984375;
+                return 1.0 - out;
+            }
+            return -1.0;
+        };
+        for (QString const& way : {QStringLiteral("InOut"), QStringLiteral("In"), QStringLiteral("Out")}) {
+            if (!name.endsWith(way))
+                continue;
+            QString const kind = name.left(name.size() - way.size());
+            if (in(kind, 0.5) < 0.0)
+                return -1.0;
+            if (way == QLatin1String("In"))
+                return in(kind, t);
+            if (way == QLatin1String("Out"))
+                return 1.0 - in(kind, 1.0 - t);
+            return t < 0.5 ? in(kind, 2.0 * t) / 2.0 : 1.0 - in(kind, 2.0 - 2.0 * t) / 2.0;
+        }
+        return -1.0;
+    }
+
     static double eased(Node const& frame, double t)
     {
+        QString const method = frame.attr(QStringLiteral("easeMethodName"));
+        if (!method.isEmpty() && method != QLatin1String("none") && method != QLatin1String("classicEase")) {
+            double const v = named(method, t);
+            if (v >= -0.5)
+                return v;
+        }
         double ease = frame.number(QStringLiteral("acceleration"), 0.0) / 100.0;
         if (Node const* tweens = frame.child(QStringLiteral("tweens"))) {
             for (Node const& e : tweens->children) {
@@ -799,46 +1012,7 @@ public:
             int maskOrder = 0;
             layer(layerNode, frame, place, tint, masked, order, depth);
             layer(*mask, frame, place, Tint(), shape, maskOrder, depth);
-            QVector<QPolygonF> area;
-            for (Fill const& f : std::as_const(shape.fills))
-                area += f.outlines;
-            for (Stroke const& s : std::as_const(shape.strokes))
-                area += Fill::fromStroke(s, 0.25).outlines;
-            for (Picture const& p : std::as_const(shape.pictures))
-                area.push_back(p.placement.map(QPolygonF(QRectF(QPointF(0, 0), QSizeF(p.size)))));
-            if (area.isEmpty())
-                continue;   // (an empty mask lets nothing through)
-            QRectF reach;
-            for (QPolygonF const& ring : std::as_const(area))
-                reach = reach.united(ring.boundingRect());
-            auto cut = [&](Fill const& whole) {
-                if (!whole.bounds().intersects(reach))
-                    return;
-                for (Fill piece : whole.within(area, 0.25)) {
-                    piece.color = whole.color;
-                    piece.order = whole.order;
-                    piece.swatch = whole.swatch;
-                    piece.gradPlaced = whole.gradPlaced;
-                    piece.gradFrom = whole.gradFrom;
-                    piece.gradTo = whole.gradTo;
-                    drawing.fills.push_back(piece);
-                }
-            };
-            for (Fill const& f : std::as_const(masked.fills))
-                cut(f);
-            for (Stroke const& s : std::as_const(masked.strokes)) {
-                Fill asArea = Fill::fromStroke(s, 0.25);
-                asArea.color = s.color;
-                asArea.order = s.order;
-                cut(asArea);
-            }
-            for (Picture p : std::as_const(masked.pictures)) {
-                if (!p.bounds().intersects(reach))
-                    continue;
-                p.clip = clipTo(p, area);
-                if (!p.clip.isEmpty())
-                    drawing.pictures.push_back(p);
-            }
+            FlashCut::cutInto(masked, FlashCut::areaOf(shape), drawing);
         }
     }
 
@@ -1032,12 +1206,21 @@ public:
         QVector<QByteArray> frames;
         QVector<bool> keys;
         QString why = tr("The video's data is in a form Eclipse does not know.");
-        if (files && FlashVideo::flaFrames(files->value(QStringLiteral("bin/") + item.attr(QStringLiteral("videoDataHRef"))), codec, frames, keys)) {
-            QString folder = mediaFolder;
-            if (folder.isEmpty() && passing && passing->isValid())
-                folder = passing->path();
-            QString title = name;
-            title.replace(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")), QStringLiteral("_"));
+        QByteArray const data = files ? files->value(QStringLiteral("bin/") + item.attr(QStringLiteral("videoDataHRef"))) : QByteArray();
+        QString folder = mediaFolder;
+        if (folder.isEmpty() && passing && passing->isValid())
+            folder = passing->path();
+        QString title = name;
+        title.replace(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")), QStringLiteral("_"));
+        if (QByteArray const movie = FlashVideo::flaMovie(data); !movie.isEmpty()) {
+            // H.264, embedded as the MP4 it came as.
+            QTemporaryDir work;
+            QFile file(work.filePath(QStringLiteral("video.mp4")));
+            if (work.isValid() && file.open(QIODevice::WriteOnly) && file.write(movie) == movie.size()) {
+                file.close();
+                made.files = FlashVideo::decodeFile(file.fileName(), folder, title, false, &why);
+            }
+        } else if (FlashVideo::flaFrames(data, codec, frames, keys)) {
             made.files = FlashVideo::decode(codec, frames, item.number(QStringLiteral("fps"), out->fps), folder, title, keys, &why);
         }
         if (made.files.isEmpty()) {
@@ -1077,7 +1260,10 @@ public:
                 local = std::min(first + offset, total - 1);
             else
                 local = (first + offset) % total;
-            timeline(*t, std::clamp(local, 0, total - 1), place, tint.then(tintOf(element)), drawing, order, depth + 1);
+            Built const& built = symbolFrame(*t, std::clamp(local, 0, total - 1), depth + 1);
+            // (With a blend mode or filters, it goes to the drawing of that effect, when there is one to go to.)
+            QString const effect = sides ? effectOf(element) : QString();
+            placeBuilt(built, place, tint.then(tintOf(element)), effect.isEmpty() ? drawing : (*sides)[effect], order);
         } else if (kind == QLatin1String("DOMRectangleObject") || kind == QLatin1String("DOMOvalObject")) {
             QRectF const box(element.number(QStringLiteral("x"), 0.0), element.number(QStringLiteral("y"), 0.0),
                              element.number(QStringLiteral("objectWidth"), 0.0), element.number(QStringLiteral("objectHeight"), 0.0));
@@ -1199,7 +1385,7 @@ QByteArray fingerprint(Drawing const& d)
 
 namespace FlaImport {
 
-bool read(QByteArray const& bytes, Document& out, QString* error, QString const& mediaFolder)
+bool read(QByteArray const& bytes, Document& out, QString* error, QString const& mediaFolder, Progress const& progress)
 {
     auto fail = [&](QString const& why) {
         if (error)
@@ -1273,8 +1459,13 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
     out.frames = reader.length(*main);
     // Each layer of the main timeline, from the bottom up.
     QHash<int, int> made;       // the index of a layer in the document: its index in `out.layers`
+    QHash<int, int> liftedFrom; // a layer of what had an effect: the layer it came from (in `out.layers`)
+    qint64 const all = qint64(layers->children.size()) * std::max(1, out.frames);
     for (int l = int(layers->children.size()) - 1; l >= 0; --l) {
         Node const& layerNode = layers->children[l];
+        qint64 const before = qint64(layers->children.size() - 1 - l) * std::max(1, out.frames);
+        if (progress && !progress(before, all))
+            return fail(tr("The import was stopped."));
         QString const type = layerNode.attr(QStringLiteral("layerType"));
         if (type == QLatin1String("guide") || type == QLatin1String("folder"))
             continue;
@@ -1286,6 +1477,9 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
         layer.mask = type == QLatin1String("mask");
         layer.cells.fill(-1, out.frames);
         QHash<QByteArray, int> known;
+        // What on this layer has an effect: a layer for each effect, filled in frame by frame as the layer is.
+        QMap<QString, Layer> lifted;
+        QHash<QString, QHash<QByteArray, int>> liftedKnown;
         Node const* frames = layerNode.child(QStringLiteral("frames"));
         for (int k = 0; frames && k < frames->children.size(); ++k) {
             Node const& f = frames->children[k];
@@ -1314,9 +1508,37 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
             if (!elements || elements->children.isEmpty())
                 continue;
             for (int frame = index; frame < std::min(index + duration, out.frames); ++frame) {
+                if (progress && !progress(before + frame, all))
+                    return fail(tr("The import was stopped."));
                 Drawing drawing;
                 int order = 0;
+                QMap<QString, Drawing> frameSides;
+                reader.sides = &frameSides;
                 reader.layer(layerNode, frame, QTransform(), Tint(), drawing, order, 0);
+                reader.sides = nullptr;
+                for (auto it = frameSides.cbegin(); it != frameSides.cend(); ++it) {
+                    Drawing const& side = it.value();
+                    if (side.fills.isEmpty() && side.strokes.isEmpty() && side.pictures.isEmpty())
+                        continue;
+                    Layer& extra = lifted[it.key()];
+                    if (extra.cells.isEmpty()) {
+                        extra.name = QStringLiteral("%1 (%2)").arg(layer.name, it.key());
+                        extra.visible = layer.visible;
+                        extra.locked = layer.locked;
+                        extra.colour = layer.colour;
+                        extra.cells.fill(-1, out.frames);
+                        extra.blend = reader.effects.value(it.key()).blend;
+                        extra.filters = reader.effects.value(it.key()).filters;
+                    }
+                    QHash<QByteArray, int>& seen = liftedKnown[it.key()];
+                    QByteArray const print = fingerprint(side);
+                    auto at = seen.constFind(print);
+                    if (at == seen.cend()) {
+                        at = seen.insert(print, int(extra.drawings.size()));
+                        extra.drawings.push_back(side);
+                    }
+                    extra.cells[frame] = *at;
+                }
                 if (drawing.fills.isEmpty() && drawing.strokes.isEmpty() && drawing.pictures.isEmpty())
                     continue;
                 QByteArray const print = fingerprint(drawing);
@@ -1330,6 +1552,10 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
         }
         made.insert(l, int(out.layers.size()));
         out.layers.push_back(layer);
+        for (Layer const& extra : std::as_const(lifted)) {
+            liftedFrom.insert(int(out.layers.size()), made[l]);
+            out.layers.push_back(extra);
+        }
     }
     // Which layer masks which (a masked layer names the mask layer above it).
     for (int l = int(layers->children.size()) - 1; l >= 0; --l) {
@@ -1340,6 +1566,9 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
         if (made.contains(parent) && out.layers[made[parent]].mask)
             out.layers[made[l]].maskedBy = made[parent];
     }
+    // (What had an effect is masked as the layer it came from.)
+    for (auto it = liftedFrom.cbegin(); it != liftedFrom.cend(); ++it)
+        out.layers[it.key()].maskedBy = out.layers[it.value()].maskedBy;
     bool any = false;
     for (Layer const& layer : std::as_const(out.layers))
         any = any || !layer.drawings.isEmpty();
@@ -1351,6 +1580,26 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
         for (Node const& list : lists->children)
             if (Node const* swatches = list.child(QStringLiteral("swatches")))
                 for (Node const& s : swatches->children) {
+                    if (s.name == QLatin1String("LinearGradientSwatchItem") || s.name == QLatin1String("RadialGradientSwatchItem")) {
+                        Swatch g;
+                        g.kind = s.name.startsWith(QLatin1String("Linear")) ? Swatch::Linear : Swatch::Radial;
+                        for (Node const& entry : s.children)
+                            if (entry.name == QLatin1String("GradientEntry")) {
+                                QColor c(entry.attr(QStringLiteral("color"), QStringLiteral("#000000")));
+                                c.setAlphaF(float(entry.number(QStringLiteral("alpha"), 1.0)));
+                                g.stops.push_back({std::clamp(entry.number(QStringLiteral("ratio"), 0.0), 0.0, 1.0), c});
+                            }
+                        if (g.stops.size() >= 2) {
+                            g.color = g.stops.first().color;
+                            g.name = tr("Flash gradient");
+                            bool again = false;
+                            for (Swatch const& known : std::as_const(out.swatchGradients))
+                                again = again || (known.kind == g.kind && known.stops == g.stops);
+                            if (!again)
+                                out.swatchGradients.push_back(g);
+                        }
+                        continue;
+                    }
                     if (s.name != QLatin1String("SolidSwatchItem"))
                         continue;
                     QColor c(s.attr(QStringLiteral("color"), QStringLiteral("#000000")));

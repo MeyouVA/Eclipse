@@ -23,6 +23,8 @@
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QElapsedTimer>
+#include <QProgressDialog>
 #include <QRadioButton>
 #include <QRegularExpression>
 #include <QSpinBox>
@@ -44,6 +46,38 @@
 // A sound (or other media) that came inside an imported file, written out as a file of its own: into the folder kept
 // beside the scene (<scene>-media/<what it came from>/), or, for a scene not saved yet, into Eclipse's own folder of
 // imported media.  Empty when it could not be written.
+// While a long import is read: how far it has come, and a button to stop it.  (Shown only once the reading has taken a
+// moment, and kept alive meanwhile, so that the window never seems to hang.)
+class ImportProgress {
+public:
+    ImportProgress(QWidget* parent, QString const& label) : m_dialog(label, QCoreApplication::translate("MainWindow", "Cancel"), 0, 1000, parent)
+    {
+        m_dialog.setWindowModality(Qt::WindowModal);
+        m_dialog.setMinimumDuration(600);
+        m_dialog.setAutoClose(false);
+        m_dialog.setAutoReset(false);
+        m_clock.start();
+    }
+    SwfImport::Progress callback()
+    {
+        return [this](qint64 done, qint64 all) {
+            // (Not more often than a few times a second: the reading is what matters.)
+            if (m_clock.elapsed() - m_last >= 50) {
+                m_last = m_clock.elapsed();
+                m_dialog.setValue(all > 0 ? int(std::clamp<qint64>(done * 1000 / all, 0, 999)) : 0);
+                QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+                QCoreApplication::processEvents();
+            }
+            return !m_dialog.wasCanceled();
+        };
+    }
+
+private:
+    QProgressDialog m_dialog;
+    QElapsedTimer m_clock;
+    qint64 m_last = -1000;
+};
+
 static QString importedMediaFolder(QString const& scenePath, QString const& source)
 {
     QString base;
@@ -76,8 +110,11 @@ int MainWindow::importSwf(QString const& path, QString* error)
         return -1;
     }
     SwfImport::Movie movie;
-    if (!SwfImport::read(file.readAll(), movie, error, importedMediaFolder(m_path, path)))
-        return -1;
+    {
+        ImportProgress shown(this, tr("Reading %1...").arg(QFileInfo(path).fileName()));
+        if (!SwfImport::read(file.readAll(), movie, error, importedMediaFolder(m_path, path), shown.callback()))
+            return -1;
+    }
     // Made to fit the frame of the scene, in the middle of it.
     Scene const& scene = m_document->scene();
     double const scale = std::min(double(scene.width) / movie.size.width(), double(scene.height) / movie.size.height());
@@ -146,8 +183,11 @@ int MainWindow::importFla(QString const& path, QString* error)
         return -1;
     }
     FlaImport::Document fla;
-    if (!FlaImport::read(file.readAll(), fla, error, importedMediaFolder(m_path, path)))
-        return -1;
+    {
+        ImportProgress shown(this, tr("Reading %1...").arg(QFileInfo(path).fileName()));
+        if (!FlaImport::read(file.readAll(), fla, error, importedMediaFolder(m_path, path), shown.callback()))
+            return -1;
+    }
     Scene const& scene = m_document->scene();
     double const scale = std::min(double(scene.width) / std::max(1, fla.size.width()), double(scene.height) / std::max(1, fla.size.height()));
     QTransform const place = QTransform::fromScale(scale, scale)
@@ -191,6 +231,8 @@ int MainWindow::importFla(QString const& path, QString* error)
         bool const shown = in.visible && !in.mask;
         bool const locked = in.locked;
         QColor const colour = in.colour;
+        QString const blend = in.blend;
+        QVector<FlaImport::Filter> const filters = in.filters;
         QVector<int> cells = in.cells;
         m_document->editLayers({at}, tr("Import FLA"), [&](Layer& layer) {
             layer.name = name;
@@ -200,6 +242,38 @@ int MainWindow::importFla(QString const& path, QString* error)
                 layer.cells[f] = cells[f];
             layer.visible = shown;
             layer.locked = locked;
+            // What had a blend mode or filters in Flash: the layer mixed and softened as they say (a blend mode Eclipse
+            // has; a glow, a blur or a drop shadow, at the size the import scales to).
+            static QHash<QString, int> const blends{{QStringLiteral("add"), Layer::BlendAdd},
+                                                    {QStringLiteral("multiply"), Layer::BlendMultiply},
+                                                    {QStringLiteral("screen"), Layer::BlendScreen},
+                                                    {QStringLiteral("overlay"), Layer::BlendOverlay},
+                                                    {QStringLiteral("darken"), Layer::BlendDarken},
+                                                    {QStringLiteral("lighten"), Layer::BlendLighten},
+                                                    {QStringLiteral("hardlight"), Layer::BlendHardLight},
+                                                    {QStringLiteral("difference"), Layer::BlendDifference}};
+            if (!blend.isEmpty())
+                layer.blend = blends.value(blend, Layer::BlendNormal);
+            for (FlaImport::Filter const& f : filters) {
+                double const soft = (f.blurX + f.blurY) / 4.0 * scale;
+                if (f.kind == QLatin1String("BlurFilter")) {
+                    Effect blur = Effect::made(Effect::Blur);
+                    blur.amount = soft;
+                    layer.effects.push_back(blur);
+                } else if (f.kind == QLatin1String("GlowFilter") && !f.inner) {
+                    Effect glow = Effect::made(Effect::Glow);
+                    glow.amount = soft;
+                    glow.color = f.colour;
+                    layer.effects.push_back(glow);
+                } else if (f.kind == QLatin1String("DropShadowFilter") && !f.inner) {
+                    Effect shadow = Effect::made(Effect::Shadow);
+                    shadow.amount = soft;
+                    shadow.color = f.colour;
+                    double const a = f.angle * 3.14159265358979323846 / 180.0;
+                    shadow.offset = QPointF(std::cos(a), std::sin(a)) * f.distance * scale;
+                    layer.effects.push_back(shadow);
+                }
+            }
             if (colour.isValid())
                 layer.trackColor = colour;
             for (Drawing& d : layer.drawings)
@@ -239,6 +313,10 @@ int MainWindow::importFla(QString const& path, QString* error)
                     m_document->editSwatch(first, name, fla.swatches[i]);
                 else
                     m_document->addSwatch(name, fla.swatches[i], palette);
+            }
+            for (Swatch const& gradient : std::as_const(fla.swatchGradients)) {
+                int const id = m_document->addSwatch(gradient.name, gradient.color, palette);
+                m_document->setSwatchGradient(id, gradient.kind, gradient.stops);
             }
         }
     }

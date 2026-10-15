@@ -78,12 +78,6 @@ QStringList decode(int codec, QVector<QByteArray> const& frames, double fps, QSt
     };
     if (frames.isEmpty())
         return fail(tr("The video has no frames."));
-    QString const ffmpeg = Sound::findFfmpeg();
-    if (ffmpeg.isEmpty())
-        return fail(tr("Video is decoded by ffmpeg, which is not installed on this computer. Install it (ffmpeg.org) to bring the video in."));
-    QDir const out(folder);
-    if (!out.mkpath(QStringLiteral(".")))
-        return fail(tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(folder)));
     QTemporaryDir work;
     if (!work.isValid())
         return fail(tr("Could not make a folder to decode the video in."));
@@ -94,9 +88,30 @@ QStringList decode(int codec, QVector<QByteArray> const& frames, double fps, QSt
         if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size())
             return fail(tr("Could not write the video out to decode it."));
     }
-    bool const alpha = codec == VP6Alpha;
+    QStringList made = decodeFile(stream, folder, name, codec == VP6Alpha, error);
+    while (made.size() > frames.size())
+        made.removeLast();
+    return made;
+}
+
+QStringList decodeFile(QString const& input, QString const& folder, QString const& name, bool alpha, QString* error)
+{
+    auto fail = [&](QString const& why) {
+        if (error)
+            *error = why;
+        return QStringList();
+    };
+    QString const ffmpeg = Sound::findFfmpeg();
+    if (ffmpeg.isEmpty())
+        return fail(tr("Video is decoded by ffmpeg, which is not installed on this computer. Install it (ffmpeg.org) to bring the video in."));
+    QDir const out(folder);
+    if (!out.mkpath(QStringLiteral(".")))
+        return fail(tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(folder)));
+    QTemporaryDir work;
+    if (!work.isValid())
+        return fail(tr("Could not make a folder to decode the video in."));
     QString const suffix = alpha ? QStringLiteral("png") : QStringLiteral("jpg");
-    QStringList args{QStringLiteral("-v"), QStringLiteral("error"), QStringLiteral("-y"), QStringLiteral("-i"), stream, QStringLiteral("-fps_mode"),
+    QStringList args{QStringLiteral("-v"), QStringLiteral("error"), QStringLiteral("-y"), QStringLiteral("-i"), input, QStringLiteral("-fps_mode"),
                      QStringLiteral("passthrough"), QStringLiteral("-start_number"), QStringLiteral("1")};
     if (alpha)
         args << QStringLiteral("-pix_fmt") << QStringLiteral("rgba");
@@ -110,7 +125,7 @@ QStringList decode(int codec, QVector<QByteArray> const& frames, double fps, QSt
     while (!process.waitForFinished(100))
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     QStringList made;
-    for (int i = 1; i <= frames.size(); ++i) {
+    for (int i = 1;; ++i) {
         QString const from = work.filePath(QStringLiteral("frame %1.").arg(i, 5, 10, QLatin1Char('0')) + suffix);
         if (!QFileInfo::exists(from))
             break;
@@ -123,6 +138,15 @@ QStringList decode(int codec, QVector<QByteArray> const& frames, double fps, QSt
     if (made.isEmpty())
         return fail(tr("ffmpeg could not decode the video: %1").arg(QString::fromLocal8Bit(process.readAllStandardError()).trimmed()));
     return made;
+}
+
+QByteArray flaMovie(QByteArray const& data)
+{
+    // (The MP4 starts with its 'ftyp' box: four bytes of length, then the name.)
+    if (data.size() < 16 || quint8(data[0]) != 0x03 || quint8(data[1]) != 0x08)
+        return QByteArray();
+    qsizetype const at = data.indexOf("ftyp");
+    return at >= 4 && at < 64 ? data.mid(at - 4) : QByteArray();
 }
 
 bool flaFrames(QByteArray const& data, int& codec, QVector<QByteArray>& frames, QVector<bool>& keyframes)
