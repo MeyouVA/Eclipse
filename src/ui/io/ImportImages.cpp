@@ -36,6 +36,56 @@
 #include "ui/panels/PalettePanel.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/io/ImportExportPrivate.h"
+#include "ui/io/SwfImport.h"
+
+int MainWindow::importSwf(QString const& path, QString* error)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (error)
+            *error = file.errorString();
+        return -1;
+    }
+    SwfImport::Movie movie;
+    if (!SwfImport::read(file.readAll(), movie, error))
+        return -1;
+    // Made to fit the frame of the scene, in the middle of it.
+    Scene const& scene = m_document->scene();
+    double const scale = std::min(double(scene.width) / movie.size.width(), double(scene.height) / movie.size.height());
+    QTransform const place = QTransform::fromScale(scale, scale)
+                             * QTransform::fromTranslate((scene.width - movie.size.width() * scale) / 2.0, (scene.height - movie.size.height() * scale) / 2.0);
+    QVector<Drawing> drawings = movie.frames;
+    for (Drawing& d : drawings) {
+        for (Fill& fill : d.fills)
+            fill.transform(place);
+        for (Stroke& stroke : d.strokes) {
+            stroke.transform(place);
+            stroke.width = float(stroke.width * scale);
+        }
+    }
+    int const at = m_document->importDrawings(-1, QFileInfo(path).completeBaseName(), 0, drawings, 1);
+    if (at < 0 && error)
+        *error = tr("The movie's frames could not be put on a layer.");
+    if (at >= 0)
+        m_timeline->setCurrentCell(at, 0);
+    return at;
+}
+
+void MainWindow::onActionImportSwf()
+{
+    QString const path = QFileDialog::getOpenFileName(this, tr("Import SWF"), QString(), tr("Flash Movie (*.swf)"));
+    if (path.isEmpty())
+        return;
+    QString error;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    int const at = importSwf(path, &error);
+    QApplication::restoreOverrideCursor();
+    if (at < 0) {
+        QMessageBox::warning(this, tr("Import SWF"), error);
+        return;
+    }
+    statusBar()->showMessage(tr("%1: a drawing for each frame of the movie, on the layer %2.").arg(QFileInfo(path).fileName(), m_document->scene().layers[at].name), 7000);
+}
 
 int MainWindow::importImages(ImageImport const& options, QString* error)
 {

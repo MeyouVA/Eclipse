@@ -326,6 +326,10 @@ public slots:
     void onActionTimelineViewMode(QString const& mode);
     // File > Export > SWF: the scene as a Flash movie of vector shapes.
     void onActionExportSwf();
+    // File > Import > SWF: the shapes of a Flash movie's frames, as the drawings of a new layer (one for each frame).
+    void onActionImportSwf();
+    // The same, from a file; the layer made, or -1 (and why).
+    int importSwf(QString const& path, QString* error = nullptr);
     // Drawing layers (sets of drawings within a layer): the next drawing of the same one; the drawing of the same name in
     // the next one; and the drawing on the current frame put in one.  `direction` is "1" or "-1".
     void onActionSubstituteSameSet(QString const& direction);
