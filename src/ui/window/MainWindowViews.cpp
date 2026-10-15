@@ -46,6 +46,9 @@
 
 // The frame round a view: its outline is lit while the view is the one in use.
 namespace {
+// Preferences: the view in use has a red border round it (on), or looks as the others do.
+bool gViewBorder = true;
+
 class ViewFrame : public QFrame {
 public:
     using QFrame::QFrame;
@@ -54,11 +57,23 @@ protected:
     void paintEvent(QPaintEvent*) override
     {
         QPainter painter(this);
-        painter.setPen(property("active").toBool() ? QColor(0xc8, 0x28, 0x1e) : QColor(0x2a, 0x2a, 0x2a));
+        painter.setPen(property("active").toBool() && gViewBorder ? QColor(0xc8, 0x28, 0x1e) : QColor(0x2a, 0x2a, 0x2a));
         painter.drawRect(rect().adjusted(0, 0, -1, -1));
     }
 };
 }  // namespace
+
+void MainWindow::setCurrentViewBorder(bool on)
+{
+    gViewBorder = on;
+    for (QFrame* const frame : findChildren<QFrame*>(QStringLiteral("ViewFrame")))
+        frame->update();
+}
+
+bool MainWindow::currentViewBorder() const
+{
+    return gViewBorder;
+}
 
 static QFrame* viewFrame(QWidget* content, QWidget* parent)
 {
@@ -103,6 +118,10 @@ QDockWidget* MainWindow::addView(QString const& title, QString const& name, QWid
     connect(d, &QDockWidget::dockLocationChanged, m_actions, stale);
     connect(d, &QDockWidget::topLevelChanged, m_actions, stale);
     connect(d, &QDockWidget::visibilityChanged, m_actions, stale);
+    connect(d, &QDockWidget::windowTitleChanged, m_actions, stale);
+    // A tab renamed (Rename Tab, in the view's menu) keeps its name.
+    if (QString const renamed = settings().value(QStringLiteral("viewNames/") + name).toString(); !renamed.isEmpty())
+        d->setWindowTitle(renamed);
     return d;
 }
 

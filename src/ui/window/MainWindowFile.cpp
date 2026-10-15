@@ -334,6 +334,17 @@ void MainWindow::closeEvent(QCloseEvent* event)
         event->ignore();
         return;
     }
+    if (!m_autoSaveWorkspace && m_persistWorkspaces && workspaceChanged()) {
+        QMessageBox::StandardButton const answer
+            = QMessageBox::question(this, tr("Eclipse"), tr("Some workspace have been changed. Do you wish to save them?"),
+                                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+        if (answer == QMessageBox::Cancel) {
+            event->ignore();
+            return;
+        }
+        if (answer == QMessageBox::Yes)
+            saveCurrentWorkspace(true);
+    }
     QSettings s = settings();
     s.setValue(QStringLiteral("window/geometry"), saveGeometry());
     s.setValue(QStringLiteral("window/workspace"), m_workspace);

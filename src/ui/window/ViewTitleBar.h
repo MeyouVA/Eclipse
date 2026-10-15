@@ -58,12 +58,15 @@ signals:
     // the panels there), or (Qt::NoDockWidgetArea) back into the middle.
     void dockRequested(int area, bool tabbed);
 
+public:
+    // The view's menu: its own commands, then floating, docking, renaming and closing.
+    void fillViewMenu(QMenu& menu);
+
 private:
     void build();
     QToolButton* tabButton(QString const& text, bool current);
     void showAddMenu();
     void showViewMenu();
-    void fillViewMenu(QMenu& menu);
     std::function<QMenu*()> m_makeMenu;
 
     QMainWindow* m_window = nullptr;

@@ -72,6 +72,22 @@ public:
     QString currentWorkspace() const { return m_workspace; }
     // Remembers the arrangement of the current workspace and shows that of `name`.
     void switchWorkspace(QString const& name);
+    // The Workspace Manager's work, as functions too: false (or empty) when it cannot be done - a built-in workspace is not
+    // renamed or deleted, a name is not used twice.
+    bool renameWorkspace(QString const& name, QString const& to);
+    QString duplicateWorkspace(QString const& name);
+    bool deleteWorkspace(QString const& name);
+    bool moveWorkspace(QString const& name, int by);
+    // Whether a workspace is in the toolbar's list (all of them are, to begin with).
+    bool workspaceInToolbar(QString const& name) const;
+    void setWorkspaceInToolbar(QString const& name, bool shown);
+    // Preferences: the arrangement kept as it is left (on), or only when saved (off: asked on quitting if it changed).
+    bool autoSavesWorkspace() const { return m_autoSaveWorkspace; }
+    // Preferences: a red border round the view in use.
+    void setCurrentViewBorder(bool on);
+    bool currentViewBorder() const;
+    // Whether the arrangement is not as the workspace was when it was opened or last saved.
+    bool workspaceChanged() const;
     // Puts the docks and toolbars back where the user left them last time.
     // While the window is not shown yet: its floating panels and toolbars hidden until it is.
     void holdBackFloating();
@@ -201,6 +217,8 @@ public slots:
     void onShowWorkspaces(QMenu* menu);
     void onActionSaveWorkspaceAs();
     void onActionDeleteWorkspace();
+    void onActionSaveWorkspace();
+    void onActionWorkspaceManager();
     void onShowToolbars(QMenu* menu);
     void onShowWindows(QMenu* menu);
     void onShowCameras(QMenu* menu);
@@ -317,6 +335,10 @@ public slots:
     void onActionRemoveSelectedFrames();
     void onActionPreviousLayer() { stepLayer(-1); }
     void onActionNextLayer() { stepLayer(+1); }
+    // Go to Previous / Next Column: the column of the Xsheet to the left or right of the current one.
+    void onActionPreviousColumn() { stepColumn(-1); }
+    void onActionNextColumn() { stepColumn(+1); }
+    void stepColumn(int direction);
     void onActionPreviousColour() { stepColour(-1); }
     void onActionNextColour() { stepColour(+1); }
     void onActionPlaybackStopFrame();
@@ -498,7 +520,12 @@ private:
     // Arranges the views the way a workspace that comes with the program has them.
     void applyBuiltinWorkspace(QString const& name);
     void loadWorkspace(QString const& name);
-    void saveCurrentWorkspace();
+    // (`force`: even when workspaces are not saved by themselves - Save Workspace.)
+    void saveCurrentWorkspace(bool force = false);
+    // The arrangement as it was opened or last saved, to tell whether it has changed since.
+    void markWorkspaceClean();
+    QByteArray m_cleanWorkspace;
+    bool m_autoSaveWorkspace = true;
     void refreshWorkspaceBox();
     QDockWidget* dockOf(char const* objectName) const;
     // Brings the tabs across the top of every panel up to date with where the views are.

@@ -310,6 +310,10 @@ void MainWindow::applyPreferences()
     m_canvas->update();
     m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
+    m_autoSaveWorkspace = s.value(QStringLiteral("prefs/autoSaveWorkspace"), true).toBool();
+    setCurrentViewBorder(s.value(QStringLiteral("prefs/viewBorder"), true).toBool());
+    m_canvas->setMiddleButtonPans(s.value(QStringLiteral("prefs/middlePans"), true).toBool());
+    m_canvas->setPerformanceReport(s.value(QStringLiteral("prefs/performanceReport"), false).toBool());
     {
         int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
         if (m_library)
@@ -405,6 +409,26 @@ void MainWindow::onActionPreferences()
     keepBackup->setChecked(s.value(QStringLiteral("prefs/keepBackup"), true).toBool());
     generalLayout->addRow(keepBackup);
     generalLayout->addRow(focusOnEnter);
+    QCheckBox* const autoWorkspace = new QCheckBox(tr("Automatically save workspace"), general);
+    autoWorkspace->setObjectName(QStringLiteral("PrefAutoSaveWorkspace"));
+    autoWorkspace->setToolTip(tr("On: the views stay as you leave them. Off: a workspace changes only when saved (Windows > Workspace > Save Workspace);\n"
+                                 "on quitting you are asked if it changed."));
+    autoWorkspace->setChecked(s.value(QStringLiteral("prefs/autoSaveWorkspace"), true).toBool());
+    generalLayout->addRow(autoWorkspace);
+    QCheckBox* const viewBorder = new QCheckBox(tr("Current view border"), general);
+    viewBorder->setObjectName(QStringLiteral("PrefViewBorder"));
+    viewBorder->setToolTip(tr("A red border round the view in use."));
+    viewBorder->setChecked(s.value(QStringLiteral("prefs/viewBorder"), true).toBool());
+    generalLayout->addRow(viewBorder);
+    QCheckBox* const middlePans = new QCheckBox(tr("Middle mouse button pans the view"), general);
+    middlePans->setObjectName(QStringLiteral("PrefMiddlePans"));
+    middlePans->setChecked(s.value(QStringLiteral("prefs/middlePans"), true).toBool());
+    generalLayout->addRow(middlePans);
+    QCheckBox* const performance = new QCheckBox(tr("Camera view performance report"), general);
+    performance->setObjectName(QStringLiteral("PrefPerformanceReport"));
+    performance->setToolTip(tr("Shows in a corner of the Camera view how long each picture of it takes to draw."));
+    performance->setChecked(s.value(QStringLiteral("prefs/performanceReport"), false).toBool());
+    generalLayout->addRow(performance);
     generalLayout->addRow(tr("3D models come in at"), modelScale);
     QCheckBox* const askAutoSave = new QCheckBox(tr("Ask before saving by itself"), general);
     askAutoSave->setObjectName(QStringLiteral("PrefAskAutoSave"));
@@ -898,6 +922,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/xsheetCentre"), xsheetCentre->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetHold"), xsheetHold->value());
     s.setValue(QStringLiteral("prefs/focusOnEnter"), focusOnEnter->isChecked());
+    s.setValue(QStringLiteral("prefs/autoSaveWorkspace"), autoWorkspace->isChecked());
+    s.setValue(QStringLiteral("prefs/viewBorder"), viewBorder->isChecked());
+    s.setValue(QStringLiteral("prefs/middlePans"), middlePans->isChecked());
+    s.setValue(QStringLiteral("prefs/performanceReport"), performance->isChecked());
     s.setValue(QStringLiteral("prefs/modelScale"), modelScale->value());
     s.setValue(QStringLiteral("prefs/functionGrid"), functionGrid->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), columnWidth->value());

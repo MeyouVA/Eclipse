@@ -638,6 +638,19 @@ void MainWindow::stepLayer(int direction)
         m_timeline->setCurrentCell(rows[row], frame());
 }
 
+void MainWindow::stepColumn(int direction)
+{
+    // Across the columns of the Xsheet, in its order (left to right).
+    if (!m_xsheet) {
+        stepLayer(direction);
+        return;
+    }
+    int const column = m_xsheet->columnOfLayer(layer()) + direction;
+    int const to = column >= 0 ? m_xsheet->layerOfColumn(column) : -1;
+    if (to >= 0)
+        m_timeline->setCurrentCell(to, frame());
+}
+
 // `as` is "key", "breakdown", "inbetween" or "none".
 void MainWindow::onActionMarkDrawing(QString const& as)
 {

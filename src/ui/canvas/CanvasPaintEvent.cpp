@@ -1,6 +1,7 @@
 // Eclipse - the Camera view: what is painted in the view - the layers, the onion skin, and the aids over them.
 #include "ui/canvas/Canvas.h"
 
+#include <QElapsedTimer>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -142,6 +143,25 @@ QImage Canvas::modeImage(Scene const& scene, int frame, ViewMode mode)
 }
 
 void Canvas::paintEvent(QPaintEvent*)
+{
+    QElapsedTimer drawing;
+    drawing.start();
+    paintView();
+    m_lastDrawMs = drawing.nsecsElapsed() / 1.0e6;
+    m_averageDrawMs = m_averageDrawMs <= 0.0 ? m_lastDrawMs : m_averageDrawMs * 0.9 + m_lastDrawMs * 0.1;
+    if (m_performanceReport) {
+        // The Camera View performance report: how long this picture took, and how many such a second that makes.
+        QPainter painter(this);
+        QString const text = tr("%1 ms  (average %2 ms, %3 a second)").arg(m_lastDrawMs, 0, 'f', 1).arg(m_averageDrawMs, 0, 'f', 1)
+                                 .arg(m_averageDrawMs > 0.0 ? 1000.0 / m_averageDrawMs : 0.0, 0, 'f', 0);
+        QRectF const box(8, 8, painter.fontMetrics().horizontalAdvance(text) + 12, painter.fontMetrics().height() + 6);
+        painter.fillRect(box, QColor(0, 0, 0, 160));
+        painter.setPen(QColor(120, 230, 140));
+        painter.drawText(box, Qt::AlignCenter, text);
+    }
+}
+
+void Canvas::paintView()
 {
     Scene const& scene = m_document->scene();
     QPainter painter(this);

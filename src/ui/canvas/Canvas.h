@@ -577,6 +577,24 @@ public slots:
     void onActionResetRotation() { rotateView(-m_viewRotation); }
     void onActionResetZoom() { zoomBy(1.0 / m_zoom); }
     void onActionResetPan();
+    // The view moved so that what is under the pointer is in the middle of it.
+    void onActionRecentre();
+    // Quick Close-up: a close-up of what is under the pointer (four times as near, in the middle); again, back to the view
+    // as it was.
+    void onActionQuickCloseup();
+    bool inQuickCloseup() const { return m_closeup; }
+    // Preferences: the middle mouse button pans the view (on), or does nothing here; and the time each picture of the
+    // view takes to draw, shown in its corner (the Camera View performance report).
+    void setMiddleButtonPans(bool on) { m_middlePans = on; }
+    bool middleButtonPans() const { return m_middlePans; }
+    void setPerformanceReport(bool on)
+    {
+        m_performanceReport = on;
+        update();
+    }
+    bool performanceReport() const { return m_performanceReport; }
+    // How long the last picture of the view took to draw (milliseconds).
+    double lastDrawTime() const { return m_lastDrawMs; }
     // Aids drawn over the picture: a field grid, the safe areas; and the layers that are
     // not being drawn on shown faintly.
     void onActionShowGrid(bool on);
@@ -845,6 +863,7 @@ private:
     void contourDown(QPointF p, Qt::KeyboardModifiers modifiers);
     void paintContourAids(QPainter& painter);
     void paintMarquee(QPainter& painter);
+    void paintView();
     bool contourValid() const;
     void paintTransformAids(QPainter& painter);
     void penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);
@@ -935,6 +954,14 @@ private:
     // view
     double m_zoom = 1.0;
     QPointF m_pan;          // widget-space offset of the centre of the scene from that of the widget
+    // Quick Close-up: on, and the view to go back to.
+    bool m_closeup = false;
+    bool m_middlePans = true;
+    bool m_performanceReport = false;
+    double m_lastDrawMs = 0.0;
+    double m_averageDrawMs = 0.0;
+    double m_closeupZoom = 1.0;
+    QPointF m_closeupPan;
     bool m_fitted = true;   // keep fitting on resize until the user zooms or pans
     double m_viewRotation = 0.0;   // degrees, clockwise on the screen
     // The Camera view and the Drawing view are each looked at in their own way: how close, where,

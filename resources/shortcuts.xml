@@ -46,6 +46,10 @@
   <shortcut id="shortcut.resetZoom" text="Reset Zoom" value="Shift+Z"/>
   <shortcut id="shortcut.resetRotation" text="Reset Rotation" value="Shift+X"/>
   <shortcut id="shortcut.resetPan" text="Reset Pan" value="Shift+N"/>
+  <shortcut id="shortcut.recentre" text="Recentre" value=""/>
+  <shortcut id="shortcut.quickCloseup" text="Quick Close-up" value=""/>
+  <shortcut id="shortcut.prevColumn" text="Go to Previous Column" value=""/>
+  <shortcut id="shortcut.nextColumn" text="Go to Next Column" value=""/>
   <shortcut id="shortcut.showGrid" text="Show Grid" value="Ctrl+'"/>
   <shortcut id="shortcut.safeArea" text="Safe Area" value=""/>
   <shortcut id="shortcut.lightTable" text="Light Table" value="Shift+L"/>

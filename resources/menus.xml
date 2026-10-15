@@ -110,6 +110,8 @@
    <item id="ResetRotation" icon="view/resetrotation" text="Reset Ro&amp;tation" shortcut="shortcut.resetRotation" responder="camera" slot="onActionResetRotation()"/>
    <item id="ResetPan" icon="view/resetpan" text="Reset &amp;Pan" shortcut="shortcut.resetPan" responder="focus,camera" slot="onActionResetPan()"/>
    <item id="ResetView" icon="view/resetview" text="&amp;Reset View" shortcut="shortcut.resetView" responder="focus,camera" slot="onActionResetView()"/>
+   <item id="Recentre" icon="view/resetpan" text="Re&amp;centre" shortcut="shortcut.recentre" responder="camera" slot="onActionRecentre()"/>
+   <item id="QuickCloseup" icon="view/zoomin" text="&amp;Quick Close-up" shortcut="shortcut.quickCloseup" checkable="true" responder="camera" slot="onActionQuickCloseup()"/>
    <separator/>
    <item id="NextColour" icon="misc/nextcolour" text="Next C&amp;olour" shortcut="shortcut.nextColour" responder="window" slot="onActionNextColour()"/>
    <item id="PreviousColour" icon="misc/prevcolour" text="Previous Colo&amp;ur" shortcut="shortcut.prevColour" responder="window" slot="onActionPreviousColour()"/>
@@ -771,6 +773,8 @@
 
  <menu id="menu.xsheet" text="Xsheet Menu">
   <item id="ColumnProperties"/>
+  <item id="PreviousColumn" icon="timeline/prevlayer" text="Go to Pre&amp;vious Column" shortcut="shortcut.prevColumn" responder="window" slot="onActionPreviousColumn()"/>
+  <item id="NextColumn" icon="timeline/nextlayer" text="Go to Ne&amp;xt Column" shortcut="shortcut.nextColumn" responder="window" slot="onActionNextColumn()"/>
   <menu id="XsheetDrawings" text="Drawings">
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>

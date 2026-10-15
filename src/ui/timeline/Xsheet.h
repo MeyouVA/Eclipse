@@ -16,6 +16,9 @@ class ECLIPSE_UI_API Xsheet : public QAbstractScrollArea {
     Q_OBJECT
 
 public:
+    // The column a layer is shown in (left to right), and the layer of a column; -1: none.
+    int columnOfLayer(int layer) const;
+    int layerOfColumn(int column) const;
     // Preferences: how wide a column is (pixels).
     void setColumnWidth(int pixels);
     // Preferences: the current frame kept in the middle of the sheet; and how many frames a drawing typed into a cell fills
@@ -73,8 +76,6 @@ protected:
 
 private:
     void updateScrollBars();
-    int columnOfLayer(int layer) const;
-    int layerOfColumn(int column) const;
     void pick(QPoint pos);
 
     static constexpr int kRowHeaderWidth = 44;

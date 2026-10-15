@@ -55,6 +55,8 @@ void Canvas::mousePressEvent(QMouseEvent* event)
 {
     if (m_tabletActive)
         return;
+    if (event->button() == Qt::MiddleButton && !m_middlePans)
+        return;     // (Preferences: the middle button does not pan)
     if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton)
         penDown(event->position(), 1.0f, event->button() == Qt::MiddleButton, event->modifiers());
 }

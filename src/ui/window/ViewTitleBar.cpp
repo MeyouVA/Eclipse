@@ -5,7 +5,9 @@
 #include <QDockWidget>
 #include <QHBoxLayout>
 #include <QMainWindow>
+#include <QInputDialog>
 #include <QMenu>
+#include <QSettings>
 
 #include <tuple>
 #include <QToolButton>
@@ -188,7 +190,30 @@ void ViewTitleBar::fillViewMenu(QMenu& menu)
         floating->setCheckable(true);
         floating->setChecked(m_dock->isFloating());
         connect(floating, &QAction::triggered, m_dock, &QDockWidget::setFloating);
+        // Its tab's name, as you like it (kept for next time).
+        QAction* const rename = menu.addAction(tr("Rename Tab..."));
+        rename->setObjectName(QStringLiteral("ViewRenameTab"));
+        connect(rename, &QAction::triggered, this, [this] {
+            bool ok = false;
+            QString const name = QInputDialog::getText(this, tr("Rename Tab"), tr("Enter new tab name:"), QLineEdit::Normal, m_dock->windowTitle(), &ok)
+                                     .trimmed();
+            if (!ok || name.isEmpty())
+                return;
+            m_dock->setWindowTitle(name);
+            QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("viewNames/") + m_dock->objectName(), name);
+        });
         connect(menu.addAction(tr("Close View")), &QAction::triggered, m_dock, &QDockWidget::close);
+        // Every view in this panel: this one and those tabbed with it.
+        QAction* const closeAll = menu.addAction(tr("Close All"));
+        closeAll->setObjectName(QStringLiteral("ViewCloseAll"));
+        connect(closeAll, &QAction::triggered, this, [this] {
+            QList<QDockWidget*> together;
+            if (QMainWindow* const window = qobject_cast<QMainWindow*>(m_dock->parentWidget()))
+                together = window->tabifiedDockWidgets(m_dock);
+            for (QDockWidget* const d : std::as_const(together))
+                d->close();
+            m_dock->close();
+        });
     } else {
         QAction* const floating = menu.addAction(tr("Float"));
         floating->setCheckable(true);
