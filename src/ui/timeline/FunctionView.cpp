@@ -298,6 +298,21 @@ void FunctionGraph::paintEvent(QPaintEvent*)
                 (m_easeDrag == 1 ? preview.keys[m_easeKey].liftOut : preview.keys[m_easeKey].liftIn) = m_liftValue;
                 source = &preview;
             }
+            bool driven = false;
+            for (Driver const& d : layer.drivers)
+                driven = driven || (d.value == int(param) && scene.layerIndex(d.source) >= 0);
+            if (driven) {
+                // It follows another layer (an attribute control): the curve it takes from that one, dashed, no keyframes on it.
+                QPolygonF curve;
+                for (int f = 0; f < frames; ++f) {
+                    double const v = Timeline::parameterOf(scene.poseOf(m_layer, f), param);
+                    curve << QPointF(xOfFrame(f), yOfValue(param == Timeline::Opacity ? v * 100.0 : v));
+                }
+                p.setPen(QPen(colour, 1.6, Qt::DashLine));
+                p.setBrush(Qt::NoBrush);
+                p.drawPolyline(curve);
+                continue;
+            }
             auto value = [&](int f) {
                 double const v = Timeline::parameterOf(source->poseAt(f), param);
                 return param == Timeline::Opacity ? v * 100.0 : v;
