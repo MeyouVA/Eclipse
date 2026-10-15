@@ -479,6 +479,12 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.type = Effect::Turbulence;
             else if (type == QLatin1String("matteGenerator"))
                 e.type = Effect::MatteGenerator;
+            else if (type == QLatin1String("blackWhite"))
+                e.type = Effect::BlackWhite;
+            else if (type == QLatin1String("matteResize"))
+                e.type = Effect::MatteResize;
+            else if (type == QLatin1String("matteBlur"))
+                e.type = Effect::MatteBlur;
             else
                 continue;  // an effect of a newer version: left out rather than guessed at
             e.enabled = eo["enabled"].toBool(true);

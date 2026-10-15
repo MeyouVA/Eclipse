@@ -500,6 +500,58 @@ void turbulence(QImage& image, double strength, double size, int frame)
     }
 }
 
+void blackWhite(QImage& image, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const k = int(std::lround(amount * 256.0));
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const r = qRed(row[x]), g = qGreen(row[x]), b = qBlue(row[x]);
+            int const grey = (r * 30 + g * 59 + b * 11) / 100;
+            auto one = [&](int v) { return v + ((grey - v) * k) / 256; };
+            row[x] = qRgba(one(r), one(g), one(b), qAlpha(row[x]));
+        }
+    }
+}
+
+void matteResize(QImage& image, double radius, bool shrink)
+{
+    int const r = std::clamp(int(std::lround(radius)), 0, 100);
+    if (r == 0)
+        return;
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    // Across, then down: each point the strongest (or weakest) of those so far either side - a square grown (or shrunk).
+    auto pass = [&](bool across) {
+        QImage const source = image;
+        int const length = across ? w : h, lines = across ? h : w;
+        for (int line = 0; line < lines; ++line)
+            for (int i = 0; i < length; ++i) {
+                int best[4] = {shrink ? 255 : 0, shrink ? 255 : 0, shrink ? 255 : 0, shrink ? 255 : 0};
+                for (int k = std::max(0, i - r); k <= std::min(length - 1, i + r); ++k) {
+                    QRgb const p = across ? reinterpret_cast<QRgb const*>(source.constScanLine(line))[k]
+                                          : reinterpret_cast<QRgb const*>(source.constScanLine(k))[line];
+                    int const v[4] = {qRed(p), qGreen(p), qBlue(p), qAlpha(p)};
+                    for (int c = 0; c < 4; ++c)
+                        best[c] = shrink ? std::min(best[c], v[c]) : std::max(best[c], v[c]);
+                }
+                // (Beyond the picture is clear: a shrink takes the edge away.)
+                if (shrink && (i - r < 0 || i + r > length - 1))
+                    best[0] = best[1] = best[2] = best[3] = 0;
+                QRgb& out = across ? reinterpret_cast<QRgb*>(image.scanLine(line))[i] : reinterpret_cast<QRgb*>(image.scanLine(i))[line];
+                out = qRgba(std::min(best[0], best[3]), std::min(best[1], best[3]), std::min(best[2], best[3]), best[3]);
+            }
+    };
+    pass(true);
+    pass(false);
+}
+
 void matteGenerator(QImage& image, double inner, double outer, QColor const& colour)
 {
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
@@ -617,6 +669,15 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Pixelate  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Turbulence:
         return QObject::tr("Turbulence  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::BlackWhite:
+        return QObject::tr("Black & White  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::MatteResize:
+        return QObject::tr("Matte Resize  %1%2").arg(effect.invert ? QStringLiteral("-") : QStringLiteral("+")).arg(effect.amount, 0, 'f', 1);
+    case Effect::MatteBlur: {
+        int const matte = scene.layerIndex(effect.matte);
+        return QObject::tr("Matte Blur  %1  %2%3").arg(effect.amount, 0, 'f', 1)
+            .arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"), effect.invert ? QObject::tr("  inverted") : QString());
+    }
     case Effect::MatteGenerator:
         return QObject::tr("Matte Generator  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Tone:
@@ -669,6 +730,9 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Pixelate")), &QAction::triggered, this, [this] { add(Effect::Pixelate); });
     connect(menu->addAction(tr("Turbulence")), &QAction::triggered, this, [this] { add(Effect::Turbulence); });
     connect(menu->addAction(tr("Matte Generator")), &QAction::triggered, this, [this] { add(Effect::MatteGenerator); });
+    connect(menu->addAction(tr("Black & White")), &QAction::triggered, this, [this] { add(Effect::BlackWhite); });
+    connect(menu->addAction(tr("Matte Resize")), &QAction::triggered, this, [this] { add(Effect::MatteResize); });
+    connect(menu->addAction(tr("Matte Blur")), &QAction::triggered, this, [this] { add(Effect::MatteBlur); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -894,7 +958,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         Effect const& effect = scene.layers[m_layer].effects[row];
         bool const percent = effect.type == Effect::Tint || effect.type == Effect::Transparency || effect.type == Effect::HueSaturation
                              || effect.type == Effect::BrightnessContrast || effect.type == Effect::Grain || effect.type == Effect::RadialBlur
-                             || effect.type == Effect::ColourScale || effect.type == Effect::Negate;
+                             || effect.type == Effect::ColourScale || effect.type == Effect::Negate || effect.type == Effect::BlackWhite;
         double const amount = percent ? v / 100.0 : v;
         if (effect.animated) {
             // On this frame only: a keyframe.
@@ -1008,9 +1072,10 @@ void EffectsPanel::showEditors()
     bool const valid = m_layer >= 0 && m_layer < scene.layers.size() && row >= 0 && row < scene.layers[m_layer].effects.size();
     Effect const e = valid ? scene.layers[m_layer].effects[row] : Effect();
     bool const cutter = valid && e.type == Effect::Cutter;
-    bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight);
+    bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight || e.type == Effect::MatteBlur);
+    bool const resizing = valid && e.type == Effect::MatteResize;
     bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading
-                                    || e.type == Effect::MatteGenerator);
+                                    || e.type == Effect::MatteGenerator) && e.type != Effect::MatteBlur;
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
@@ -1057,8 +1122,10 @@ void EffectsPanel::showEditors()
     m_matte->setToolTip(particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
                         : shading ? tr("The layer whose drawing says where the shade (or the light) falls on this one.")
                                   : tr("The layer whose drawing cuts this one: only what lies inside it stays."));
-    m_invert->setVisible(cutter || shading);
-    if (cutter || shading)
+    m_invert->setVisible(cutter || shading || resizing);
+    m_invert->setText(resizing ? tr("Shrink") : tr("Inverted"));
+    m_invert->setToolTip(resizing ? tr("Make what is painted smaller instead of bigger.") : tr("Keep what lies outside the matte instead."));
+    if (cutter || shading || resizing)
         m_invert->setChecked(e.invert);
     if (cutter || particles || shading) {
         m_matte->clear();
@@ -1092,14 +1159,16 @@ void EffectsPanel::showEditors()
         m_amount->setSuffix(QString());
         m_amount->setValue(amount);
     } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
-                         || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate)) {
+                         || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate
+                         || e.type == Effect::BlackWhite)) {
         m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);
         m_amount->setSuffix(QStringLiteral(" %"));
         m_amount->setValue(amount * 100.0);
     } else if (valid && !cutter) {
-        m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : shading ? tr("Softness") : e.type == Effect::Pixelate ? tr("Block Size")
+        m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : e.type == Effect::MatteBlur ? tr("Radius") : shading ? tr("Softness")
+                               : resizing ? tr("By") : e.type == Effect::Pixelate ? tr("Block Size")
                                : e.type == Effect::Turbulence ? tr("Strength") : e.type == Effect::MatteGenerator ? tr("Outer Radius") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);

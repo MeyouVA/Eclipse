@@ -105,7 +105,8 @@ QRect Timeline::parameterRowRect(int layer, Parameter which) const
 static bool inPercent(Effect const& e)
 {
     return e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
-           || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate;
+           || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate
+           || e.type == Effect::BlackWhite;
 }
 
 QString Timeline::rowName(int layer, Parameter which) const
@@ -128,7 +129,8 @@ QString Timeline::rowName(int layer, Parameter which) const
                                                           QT_TR_NOOP("Grain"), QT_TR_NOOP("Radial Blur"), QT_TR_NOOP("Colour-Scale"),
                                                           QT_TR_NOOP("Negate"), QT_TR_NOOP("Median"), QT_TR_NOOP("Ripple"), QT_TR_NOOP("Tone"),
                                                           QT_TR_NOOP("Highlight"), QT_TR_NOOP("Bloom"), QT_TR_NOOP("Pixelate"), QT_TR_NOOP("Turbulence"),
-                                                          QT_TR_NOOP("Matte Generator")};
+                                                          QT_TR_NOOP("Matte Generator"), QT_TR_NOOP("Black & White"), QT_TR_NOOP("Matte Resize"),
+                                                          QT_TR_NOOP("Matte Blur")};
     Effect const& effect = scene.layers[layer].effects[e];
     return tr("Effect: %1").arg(tr(kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)]));
 }

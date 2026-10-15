@@ -86,6 +86,9 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Pixelate"), "effect:19", QT_TR_NOOP("Turns the layer into blocks of colour"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Turbulence"), "effect:20", QT_TR_NOOP("Pushes the layer about with a moving noise, as heat haze or smoke"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Matte Generator"), "effect:21", QT_TR_NOOP("Makes the layer a soft matte round its drawing, for a cutter or a tone to take"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Black & White"), "effect:22", QT_TR_NOOP("Turns the layer's colours grey, as light as they were"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Matte Resize"), "effect:23", QT_TR_NOOP("Grows or shrinks what is painted on the layer, all round"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Matte Blur"), "effect:24", QT_TR_NOOP("Blurs the layer only where the drawing of a matte layer lies over it"), QT_TR_NOOP("Filter")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);

@@ -329,7 +329,7 @@ bool ScriptLayers::renameDrawing(int layer, int frame, QString const& name)
 
 static char const* const kEffectNames[] = {"blur", "tint", "cutter", "glow", "shadow", "particles", "transparency", "directionalBlur", "hueSaturation", "brightnessContrast",
                                            "grain", "radialBlur", "colourScale", "negate", "median", "ripple", "tone", "highlight", "bloom",
-                                           "pixelate", "turbulence", "matteGenerator"};
+                                           "pixelate", "turbulence", "matteGenerator", "blackWhite", "matteResize", "matteBlur"};
 
 bool ScriptEffects::has(int layer, int effect) const
 {

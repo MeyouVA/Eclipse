@@ -854,6 +854,41 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::pixelate(image, amount * pixelsPerUnit);
         } else if (e.type == Effect::Turbulence) {
             Effects::turbulence(image, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
+        } else if (e.type == Effect::BlackWhite) {
+            Effects::blackWhite(image, amount);
+        } else if (e.type == Effect::MatteResize) {
+            Effects::matteResize(image, amount * pixelsPerUnit, e.invert);
+        } else if (e.type == Effect::MatteBlur) {
+            int const m = scene.layerIndex(e.matte);
+            if (m < 0)
+                continue;  // no matte: nowhere to blur
+            QImage where(size, QImage::Format_ARGB32_Premultiplied);
+            where.setDevicePixelRatio(dpr);
+            where.fill(e.invert ? Qt::black : Qt::transparent);
+            if (int const index = scene.layers[m].drawingAt(frame); index != Layer::kNoDrawing) {
+                QPainter mp(&where);
+                mp.setRenderHints(painter.renderHints());
+                if (e.invert)
+                    mp.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+                mp.setTransform(scene.worldTransform(m, frame) * sceneToDevice);
+                paintMatte(mp, m, index);
+            }
+            // The change from sharp to blurred soft-edged as well.
+            Effects::blur(where, std::max(1.0, amount * pixelsPerUnit / 3.0));
+            QImage blurred = image;
+            Effects::blur(blurred, amount * pixelsPerUnit);
+            {
+                QPainter bp(&blurred);
+                bp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                bp.drawImage(0, 0, where);
+            }
+            {
+                QPainter ip(&image);
+                ip.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+                ip.drawImage(0, 0, where);
+                ip.setCompositionMode(QPainter::CompositionMode_Plus);
+                ip.drawImage(0, 0, blurred);
+            }
         } else if (e.type == Effect::Tone || e.type == Effect::Highlight) {
             int const m = scene.layerIndex(e.matte);
             if (m < 0)

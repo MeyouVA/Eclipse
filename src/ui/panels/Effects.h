@@ -58,6 +58,10 @@ void turbulence(QImage& image, double strength, double size, int frame);
 // The picture made a soft matte of `colour`: solid where it is painted and as far as `inner` pixels out from it, fading to
 // nothing at `outer` pixels.
 void matteGenerator(QImage& image, double inner, double outer, QColor const& colour);
+// The colours made grey (as light as they were), `amount` of the way (0..1).
+void blackWhite(QImage& image, double amount);
+// What is painted grown by `radius` pixels all round (shrunk, with `shrink`): each point the strongest (weakest) of those round it.
+void matteResize(QImage& image, double radius, bool shrink);
 
 QString name(Effect const& effect, Scene const& scene);
 

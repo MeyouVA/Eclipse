@@ -356,6 +356,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                                          : e.type == Effect::Tone ? "tone" : e.type == Effect::Highlight ? "highlight"
                                          : e.type == Effect::Bloom ? "bloom" : e.type == Effect::Pixelate ? "pixelate" : e.type == Effect::Turbulence ? "turbulence"
                                          : e.type == Effect::MatteGenerator ? "matteGenerator"
+                                         : e.type == Effect::BlackWhite ? "blackWhite" : e.type == Effect::MatteResize ? "matteResize"
+                                         : e.type == Effect::MatteBlur ? "matteBlur"
                                          : "cutter"},
                                 {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                                 {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
