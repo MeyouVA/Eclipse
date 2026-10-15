@@ -25,15 +25,40 @@ Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_documen
 void Canvas::onDocumentChanged()
 {
     m_modeCache = QImage();
-    // An edit that did not come from the selection itself (undo, another tool) may have
-    // changed what the indices refer to.
-    if (!m_committing) {
+    // An edit that did not come from the selection itself (undo, another tool) may have changed what the indices refer
+    // to - unless the drawing still has as many lines, areas and pictures as it had (an undone point move, a reshape, a
+    // recolour): then they are the same things, and stay picked.
+    QVector<int> const shape = drawingShape();
+    bool const same = !shape.isEmpty() && shape == m_seenShape;
+    m_seenShape = shape;
+    if (!m_committing && same) {
+        // (A point picked on a line that now has fewer points goes to its last.)
+        Drawing const* const d = currentDrawing();
+        Stroke const* const line = d ? contourLine(*d) : nullptr;
+        if (line && m_cePoint >= line->points.size())
+            m_cePoint = int(line->points.size()) - 1;
+        if (line)
+            m_ceExtra.removeIf([&](int i) { return i < 0 || i >= line->points.size() || i == m_cePoint; });
+        emit pointPicked(contourValid() ? pointThickness() : -1);
+    } else if (!m_committing) {
         setSelection({}, {});
         m_ceStroke = m_cePoint = m_ceFill = -1;
+        m_ceExtra.clear();
         if (m_tool == Reposition)
             selectAll();        // that tool has all of the drawing in hand, always
     }
     update();
+}
+
+QVector<int> Canvas::drawingShape() const
+{
+    Drawing const* const d = currentDrawing();
+    if (!d)
+        return {};
+    QVector<int> shape{m_layer, m_frame, int(d->pictures.size())};
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+        shape << int(d->strokesOf(sheet).size()) << int(d->fillsOf(sheet).size());
+    return shape;
 }
 
 void Canvas::setTool(Tool tool)

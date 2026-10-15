@@ -1032,6 +1032,10 @@ private:
     QVector<int> m_selPictures;
     bool m_keepNoPictures = false;      // the drawing being committed has had its last picture taken away
     bool m_committing = false;    // our own edit is going through: keep the selection
+    // The shape of the current drawing when the document last changed (its layer, frame, and how many lines, areas and
+    // pictures each art layer had): an undo that leaves it so keeps what is selected and the Contour Editor's point.
+    QVector<int> m_seenShape;
+    QVector<int> drawingShape() const;
     QPointF m_dragStart;          // scene position where the drag began
     QPointF m_dragNow;
     QRectF m_dragBounds;          // selection bounds when the drag began
