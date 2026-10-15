@@ -24,6 +24,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QRegularExpression>
 #include <QSpinBox>
 #include <QStandardPaths>
 #include <QVBoxLayout>
@@ -77,16 +78,25 @@ int MainWindow::importSwf(QString const& path, QString* error)
     double const scale = std::min(double(scene.width) / movie.size.width(), double(scene.height) / movie.size.height());
     QTransform const place = QTransform::fromScale(scale, scale)
                              * QTransform::fromTranslate((scene.width - movie.size.width() * scale) / 2.0, (scene.height - movie.size.height() * scale) / 2.0);
+    m_document->beginMacro(tr("Import SWF"));
+    // Its gradients as swatches of the palette.
+    QVector<int> swatches;
+    for (Swatch const& gradient : std::as_const(movie.gradients)) {
+        int const id = m_document->addSwatch(gradient.name, gradient.color);
+        m_document->setSwatchGradient(id, gradient.kind, gradient.stops);
+        swatches.push_back(id);
+    }
     QVector<Drawing> drawings = movie.frames;
     for (Drawing& d : drawings) {
-        for (Fill& fill : d.fills)
+        for (Fill& fill : d.fills) {
             fill.transform(place);
+            fill.swatch = fill.swatch >= 0 && fill.swatch < swatches.size() ? swatches[fill.swatch] : -1;
+        }
         for (Stroke& stroke : d.strokes)
             stroke.transform(place);        // (which scales the line's thickness with it)
         for (Picture& picture : d.pictures)
             picture.transform(place);
     }
-    m_document->beginMacro(tr("Import SWF"));
     int const at = m_document->importDrawings(-1, QFileInfo(path).completeBaseName(), 0, drawings, 1);
     int const id = at < 0 ? 0 : m_document->scene().layers[at].id;
     if (at >= 0) {
@@ -138,6 +148,14 @@ int MainWindow::importFla(QString const& path, QString* error)
     m_document->beginMacro(tr("Import FLA"));
     if (scene.frameCount() < fla.frames)
         m_document->setFrameCount(fla.frames);
+    // Its gradients as swatches of the palette.
+    QVector<int> swatches;
+    for (Swatch const& gradient : std::as_const(fla.gradients)) {
+        int const id = m_document->addSwatch(gradient.name, gradient.color);
+        m_document->setSwatchGradient(id, gradient.kind, gradient.stops);
+        swatches.push_back(id);
+    }
+    auto swatchOf = [&](int index) { return index >= 0 && index < swatches.size() ? swatches[index] : -1; };
     // Each layer, from the back up; then the masks are given to the layers they cut.
     QVector<int> ids;
     int above = int(m_document->scene().layers.size()) - 1;
@@ -150,16 +168,22 @@ int MainWindow::importFla(QString const& path, QString* error)
         above = at;
         QVector<Drawing> drawings = in.drawings;
         for (Drawing& d : drawings) {
-            for (Fill& fill : d.fills)
+            for (Fill& fill : d.fills) {
                 fill.transform(place);
-            for (Stroke& stroke : d.strokes)
+                fill.swatch = swatchOf(fill.swatch);
+            }
+            for (Stroke& stroke : d.strokes) {
                 stroke.transform(place);
+                stroke.swatch = swatchOf(stroke.swatch);
+            }
             for (Picture& picture : d.pictures)
                 picture.transform(place);
         }
         int const frames = m_document->scene().frameCount();
         QString const name = in.name;
         bool const shown = in.visible && !in.mask;
+        bool const locked = in.locked;
+        QColor const colour = in.colour;
         QVector<int> cells = in.cells;
         m_document->editLayers({at}, tr("Import FLA"), [&](Layer& layer) {
             layer.name = name;
@@ -168,6 +192,9 @@ int MainWindow::importFla(QString const& path, QString* error)
             for (int f = 0; f < std::min(int(cells.size()), frames); ++f)
                 layer.cells[f] = cells[f];
             layer.visible = shown;
+            layer.locked = locked;
+            if (colour.isValid())
+                layer.trackColor = colour;
             for (Drawing& d : layer.drawings)
                 d.pinned = true;
         });
@@ -182,12 +209,45 @@ int MainWindow::importFla(QString const& path, QString* error)
         cut.matte = ids[by];
         m_document->editLayers({at}, tr("Import FLA"), [&](Layer& layer) { layer.effects.push_back(cut); });
     }
+    // Its frame labels as markers of the scene (a comment as a marker's note); its sounds on sound layers of their own,
+    // each sound written out once.
+    for (FlaImport::Label const& label : std::as_const(fla.labels)) {
+        if (m_document->scene().markerAt(label.frame) >= 0)
+            continue;
+        int const marker = m_document->addMarker(label.frame, label.length, label.name, label.comment ? QColor(150, 150, 150) : QColor(60, 190, 205));
+        if (marker >= 0 && label.comment)
+            m_document->setMarkerNote(marker, label.name);
+    }
+    QHash<QString, QString> written;
+    int lost = fla.skippedSounds;
+    for (FlaImport::Sound const& sound : std::as_const(fla.sounds)) {
+        QString saved = written.value(sound.name);
+        if (saved.isEmpty()) {
+            QString name = sound.name;
+            name.replace(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")), QStringLiteral("_"));
+            if (!name.endsWith(QLatin1Char('.') + sound.suffix, Qt::CaseInsensitive))
+                name += QLatin1Char('.') + sound.suffix;
+            saved = saveImportedMedia(m_path, path, name, sound.bytes);
+            written.insert(sound.name, saved);
+        }
+        if (saved.isEmpty())
+            ++lost;
+        else
+            m_document->addSound(saved, sound.frame);
+    }
     m_document->endMacro();
     int const top = m_document->scene().layerIndex(ids.isEmpty() ? 0 : ids.last());
     if (top >= 0)
         m_timeline->setCurrentCell(top, 0);
-    if (error && (fla.skippedText > 0 || fla.skippedPictures > 0))
-        *error = tr("Left out: text and bitmaps (not read).");
+    QStringList left;
+    if (fla.skippedVideo > 0)
+        left << tr("%n video(s)", nullptr, fla.skippedVideo);
+    if (lost > 0)
+        left << tr("%n sound(s)", nullptr, lost);
+    if (fla.skippedPictures > 0)
+        left << tr("%n bitmap(s) that could not be read", nullptr, fla.skippedPictures);
+    if (error && !left.isEmpty())
+        *error = tr("Left out: %1.").arg(left.join(QStringLiteral(", ")));
     return int(fla.layers.size());
 }
 

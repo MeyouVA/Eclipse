@@ -8,6 +8,7 @@
 #include <QPolygonF>
 #include <QTransform>
 #include <QFont>
+#include <QFontDatabase>
 #include <QFontMetricsF>
 #include <QImage>
 #include <QPainterPath>
@@ -16,9 +17,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cctype>
+#include <functional>
 #include <memory>
 
+#include "model/geometry/Morph.h"
 #include "model/scene/Scene.h"
+#include "ui/io/SwfImport.h"
 #include "ui/io/Zip.h"
 
 namespace {
@@ -208,48 +212,96 @@ void skipSpaces(QString const& s, int& i)
         ++i;
 }
 
+// How an area is painted: a colour; or one of the document's gradients (`gradient`, its colour then the first), lying
+// from `from` to `to` (for a round one, from its middle to its rim) in the area's own coordinates.
+struct Paint {
+    QColor colour;
+    int gradient = -1;
+    QPointF from, to;
+};
+
+// How a line is drawn: its colour and thickness, how its thickness goes with scaling (0: with it, 1: not at all, 2: only
+// with the scaling across, 3: only with that down), its ends (round, flat, or square - flat, half the thickness beyond the
+// end) and its corners.
+struct LineStyle {
+    QColor colour = Qt::black;
+    double weight = 1.0;
+    int scaling = 0;
+    Stroke::Cap cap = Stroke::RoundCap;
+    bool square = false;
+    Stroke::Join join = Stroke::RoundJoin;
+};
+
+LineStyle lineStyleOf(Node const& kind)
+{
+    LineStyle st;
+    st.weight = kind.number(QStringLiteral("weight"), 1.0);
+    QString const scale = kind.attr(QStringLiteral("scaleMode"));
+    st.scaling = scale == QLatin1String("none") ? 1 : scale == QLatin1String("horizontal") ? 2 : scale == QLatin1String("vertical") ? 3 : 0;
+    QString const caps = kind.attr(QStringLiteral("caps"));
+    st.cap = caps == QLatin1String("none") || caps == QLatin1String("square") ? Stroke::FlatCap : Stroke::RoundCap;
+    st.square = caps == QLatin1String("square");
+    QString const joints = kind.attr(QStringLiteral("joints"));
+    st.join = joints == QLatin1String("bevel") ? Stroke::BevelJoin : joints == QLatin1String("miter") ? Stroke::MitreJoin : Stroke::RoundJoin;
+    st.colour = kind.child(QStringLiteral("fill")) ? colourOf(*kind.child(QStringLiteral("fill"))) : QColor(Qt::black);
+    return st;
+}
+
+// A line of so many points, drawn in a style where `place` puts it.
+Stroke strokeOf(QPolygonF const& points, LineStyle const& st, QTransform const& place)
+{
+    Stroke stroke;
+    double const grow = st.scaling == 1 ? 1.0
+                        : st.scaling == 2 ? std::hypot(place.m11(), place.m12())
+                        : st.scaling == 3 ? std::hypot(place.m21(), place.m22())
+                                          : std::sqrt(std::abs(place.determinant()));
+    stroke.width = float(std::max(0.25, st.weight * grow));
+    stroke.capStart = stroke.capEnd = st.cap;
+    stroke.join = st.join;
+    QPolygonF at = place.map(points);
+    if (st.square && at.size() >= 2 && at.first() != at.last()) {
+        // (A square end: half the thickness beyond the point.)
+        auto reach = [&](int end, int towards) {
+            QPointF const d = at[end] - at[towards];
+            double const length = std::hypot(d.x(), d.y());
+            if (length > 1e-9)
+                at[end] += d * (stroke.width / 2.0 / length);
+        };
+        reach(0, 1);
+        reach(int(at.size()) - 1, int(at.size()) - 2);
+    }
+    for (QPointF const& p : std::as_const(at))
+        stroke.points.push_back({p, 1.0f});
+    return stroke;
+}
+
 // A shape as read: its fills as rings, and its lines, in the shape's own pixels.
 struct Shape {
     struct Area {
-        QColor colour;
+        Paint paint;
         QVector<QPolygonF> rings;
     };
     struct Line {
-        QColor colour;
-        double weight = 1.0;
-        bool keepWidth = false;
+        LineStyle style;
         QPolygonF points;
     };
     QVector<Area> areas;
     QVector<Line> lines;
 };
 
-Shape readShape(Node const& shape)
+Shape readShape(Node const& shape, std::function<Paint(Node const&)> const& paintOf)
 {
     Shape out;
-    QHash<int, QColor> fills;
-    struct StrokeStyle {
-        QColor colour;
-        double weight = 1.0;
-        bool keepWidth = false;
-    };
-    QHash<int, StrokeStyle> strokes;
+    QHash<int, Paint> fills;
+    QHash<int, LineStyle> strokes;
     if (Node const* f = shape.child(QStringLiteral("fills")))
         for (Node const& style : f->children)
-            fills.insert(int(style.number(QStringLiteral("index"), 0)), colourOf(style));
+            fills.insert(int(style.number(QStringLiteral("index"), 0)), paintOf(style));
     if (Node const* s = shape.child(QStringLiteral("strokes")))
         for (Node const& style : s->children) {
             if (style.children.isEmpty())
                 continue;
-            Node const& kind = style.children.first();
-            StrokeStyle st;
-            st.weight = kind.number(QStringLiteral("weight"), 1.0);
-            st.keepWidth = kind.attr(QStringLiteral("scaleMode")) == QLatin1String("none");
-            if (Node const* fill = kind.child(QStringLiteral("fill")))
-                st.colour = colourOf(*fill);
-            else
-                st.colour = Qt::black;
-            strokes.insert(int(style.number(QStringLiteral("index"), 0)), st);
+            strokes.insert(int(style.number(QStringLiteral("index"), 0)), lineStyleOf(style.children.first()));
         }
     struct Piece {
         QPolygonF points;
@@ -346,7 +398,7 @@ Shape readShape(Node const& shape)
             starting.insert(key(parts[i].first()), i);
         QVector<bool> used(parts.size(), false);
         Shape::Area area;
-        area.colour = it.value();
+        area.paint = it.value();
         for (int i = 0; i < parts.size(); ++i) {
             if (used[i])
                 continue;
@@ -376,13 +428,13 @@ Shape readShape(Node const& shape)
     for (Piece const& p : std::as_const(pieces)) {
         if (p.stroke == 0 || !strokes.contains(p.stroke))
             continue;
-        StrokeStyle const& st = strokes[p.stroke];
-        if (!out.lines.isEmpty() && out.lines.last().colour == st.colour && out.lines.last().weight == st.weight
+        LineStyle const& st = strokes[p.stroke];
+        if (!out.lines.isEmpty() && out.lines.last().style.colour == st.colour && out.lines.last().style.weight == st.weight
             && key(out.lines.last().points.last()) == key(p.points.first())) {
             out.lines.last().points += p.points.mid(1);
             continue;
         }
-        out.lines.push_back({st.colour, st.weight, st.keepWidth, p.points});
+        out.lines.push_back({st, p.points});
     }
     return out;
 }
@@ -452,7 +504,76 @@ public:
     QHash<QString, Node> symbols;           // library symbols, by their names: their timelines
     QHash<Node const*, std::shared_ptr<Shape>> shapes;
     QHash<Node const*, int> lengths;
+    QHash<QByteArray, int> gradientKeys;    // a gradient of `out->gradients`, by what it is
     FlaImport::Document* out = nullptr;
+
+    // The gradient, among the document's (the one already there that is the same, or added).
+    int gradient(Swatch const& s)
+    {
+        QByteArray key;
+        key += char(s.kind);
+        for (GradientStop const& stop : s.stops)
+            key += QByteArray::number(stop.at, 'f', 4) + ':' + QByteArray::number(stop.color.rgba()) + ';';
+        auto found = gradientKeys.constFind(key);
+        if (found != gradientKeys.cend())
+            return *found;
+        out->gradients.push_back(s);
+        gradientKeys.insert(key, int(out->gradients.size()) - 1);
+        return int(out->gradients.size()) - 1;
+    }
+
+    // How a fill style paints: a solid colour; a gradient (its box, -819.2 to 819.2 each way, placed by its matrix);
+    // grey for a bitmap.
+    Paint paintOf(Node const& fill)
+    {
+        Paint paint;
+        paint.colour = colourOf(fill);
+        for (Node const& g : fill.children) {
+            bool const linear = g.name == QLatin1String("LinearGradient"), radial = g.name == QLatin1String("RadialGradient");
+            if (!linear && !radial)
+                continue;
+            Swatch s;
+            s.name = tr("Flash gradient");
+            s.kind = linear ? Swatch::Linear : Swatch::Radial;
+            for (Node const& entry : g.children) {
+                if (entry.name != QLatin1String("GradientEntry"))
+                    continue;
+                QColor c(entry.attr(QStringLiteral("color"), QStringLiteral("#000000")));
+                c.setAlphaF(float(entry.number(QStringLiteral("alpha"), 1.0)));
+                s.stops.push_back({std::clamp(entry.number(QStringLiteral("ratio"), 0.0), 0.0, 1.0), c});
+            }
+            if (s.stops.size() < 2)
+                break;
+            s.color = s.stops.first().color;
+            QTransform const m = matrixOf(g);
+            paint.from = linear ? m.map(QPointF(-819.2, 0.0)) : m.map(QPointF(0.0, 0.0));
+            paint.to = m.map(QPointF(819.2, 0.0));
+            paint.gradient = gradient(s);
+            break;
+        }
+        return paint;
+    }
+
+    // A fill painted as `paint` says, coloured by `tint`, placed by `place`.
+    void paintFill(Fill& fill, Paint const& paint, Tint const& tint, QTransform const& place)
+    {
+        fill.color = tint.apply(paint.colour);
+        if (paint.gradient < 0 || paint.gradient >= out->gradients.size())
+            return;
+        Swatch s = out->gradients[paint.gradient];
+        bool plain = true;
+        for (int k = 0; k < 4; ++k)
+            plain = plain && tint.mult[k] == 1.0 && tint.add[k] == 0.0;
+        if (!plain) {
+            for (GradientStop& stop : s.stops)
+                stop.color = tint.apply(stop.color);
+            s.color = s.stops.first().color;
+        }
+        fill.swatch = plain ? paint.gradient : gradient(s);
+        fill.gradPlaced = true;
+        fill.gradFrom = place.map(paint.from);
+        fill.gradTo = place.map(paint.to);
+    }
 
     // How many frames a timeline runs.
     int length(Node const& timeline)
@@ -492,14 +613,35 @@ public:
             Node const* elements = f.child(QStringLiteral("elements"));
             if (!elements)
                 return;
-            // A classic motion tween: each placed thing on its way to where it is on the next keyframe.
+            // A classic motion tween: each placed thing on its way to where it is on the next keyframe.  A shape tween: the
+            // drawing itself on its way to the next keyframe's.
             Node const* next = k + 1 < frames->children.size() ? &frames->children[k + 1] : nullptr;
             Node const* nextElements = next ? next->child(QStringLiteral("elements")) : nullptr;
             bool const tween = f.attr(QStringLiteral("tweenType")) == QLatin1String("motion") && nextElements && duration > 0;
-            double t = tween ? double(frame - index) / double(duration) : 0.0;
-            if (tween) {
-                double const ease = f.number(QStringLiteral("acceleration"), 0.0) / 100.0;
-                t = std::clamp(t + ease * t * (1.0 - t), 0.0, 1.0);
+            bool const morph = (f.child(QStringLiteral("MorphShape")) || f.attr(QStringLiteral("tweenType")) == QLatin1String("shape")) && nextElements
+                               && !nextElements->children.isEmpty() && duration > 0;
+            double const t = tween || morph ? eased(f, double(frame - index) / double(duration)) : 0.0;
+            if (morph && t > 0.0) {
+                Drawing from, to;
+                int fromOrder = 0, toOrder = 0;
+                for (Node const& element : elements->children)
+                    draw(element, frame - index, matrixOf(element) * place, tint, from, fromOrder, depth);
+                for (Node const& element : nextElements->children)
+                    draw(element, 0, matrixOf(element) * place, tint, to, toOrder, depth);
+                Drawing const mid = Morphing::between(from, to, t);
+                int const base = order;
+                for (Fill fill : mid.fills) {
+                    fill.order += base;
+                    order = std::max(order, fill.order);
+                    drawing.fills.push_back(fill);
+                }
+                for (Stroke stroke : mid.strokes) {
+                    stroke.order += base;
+                    order = std::max(order, stroke.order);
+                    drawing.strokes.push_back(stroke);
+                }
+                drawing.pictures += from.pictures;
+                return;
             }
             for (int e = 0; e < elements->children.size(); ++e) {
                 Node const& element = elements->children[e];
@@ -507,7 +649,7 @@ public:
                 if (tween && e < nextElements->children.size()) {
                     Node const& to = nextElements->children[e];
                     if (to.name == element.name && to.attr(QStringLiteral("libraryItemName")) == element.attr(QStringLiteral("libraryItemName")))
-                        own = between(own, matrixOf(to), t);
+                        own = between(own, matrixOf(to), t, pivotOf(element));
                 }
                 draw(element, frame - index, own * place, tint, drawing, order, depth);
             }
@@ -515,7 +657,55 @@ public:
         }
     }
 
-    static QTransform between(QTransform const& a, QTransform const& b, double t)
+    // Where a placed thing turns and scales about, in its own coordinates.
+    static QPointF pivotOf(Node const& element)
+    {
+        Node const* holder = element.child(QStringLiteral("transformationPoint"));
+        Node const* point = holder ? holder->child(QStringLiteral("Point")) : nullptr;
+        return point ? QPointF(point->number(QStringLiteral("x"), 0.0), point->number(QStringLiteral("y"), 0.0)) : QPointF();
+    }
+
+    // How far along a tween is when `t` (0..1) of its time has passed: by its custom ease (a curve of cubic pieces through
+    // points, from (0, 0) to (1, 1)), or its ease out (above 0) or in (below), -100 to 100.
+    static double eased(Node const& frame, double t)
+    {
+        double ease = frame.number(QStringLiteral("acceleration"), 0.0) / 100.0;
+        if (Node const* tweens = frame.child(QStringLiteral("tweens"))) {
+            for (Node const& e : tweens->children) {
+                QString const target = e.attr(QStringLiteral("target"), QStringLiteral("all"));
+                if (target != QLatin1String("all") && target != QLatin1String("position"))
+                    continue;
+                if (e.name == QLatin1String("CustomEase") && frame.attr(QStringLiteral("hasCustomEase")) == QLatin1String("true")) {
+                    QVector<QPointF> points;
+                    for (Node const& p : e.children)
+                        if (p.name == QLatin1String("Point"))
+                            points.push_back(QPointF(p.number(QStringLiteral("x"), 0.0), p.number(QStringLiteral("y"), 0.0)));
+                    if (points.size() < 4 || (points.size() - 1) % 3 != 0)
+                        continue;
+                    int s = 0;
+                    while (s + 6 < points.size() && t > points[s + 3].x())
+                        s += 3;
+                    auto at = [&](double u) {
+                        double const v = 1.0 - u;
+                        return points[s] * (v * v * v) + points[s + 1] * (3 * v * v * u) + points[s + 2] * (3 * v * u * u) + points[s + 3] * (u * u * u);
+                    };
+                    double lo = 0.0, hi = 1.0;
+                    for (int i = 0; i < 40; ++i) {
+                        double const mid = (lo + hi) / 2.0;
+                        (at(mid).x() < t ? lo : hi) = mid;
+                    }
+                    return at((lo + hi) / 2.0).y();
+                }
+                if (e.name == QLatin1String("Ease"))
+                    ease = e.number(QStringLiteral("intensity"), 0.0) / 100.0;
+            }
+        }
+        return std::clamp(t + ease * t * (1.0 - t), 0.0, 1.0);
+    }
+
+    // `t` of the way from one placing to another: turned, scaled and leaned part by part about `pivot` (a straight blend
+    // of the numbers would shrink what turns), the pivot itself going straight from where it was to where it goes.
+    static QTransform between(QTransform const& a, QTransform const& b, double t, QPointF pivot = QPointF())
     {
         // Turned, scaled and moved part by part (a straight blend of the numbers would shrink what turns).
         auto parts = [](QTransform const& m, double* v) {
@@ -529,13 +719,22 @@ public:
         double pa[6], pb[6], v[6];
         parts(a, pa);
         parts(b, pb);
+        // (The second angle as a lean from the first: so that half a turn, whose two angles may come out as a half turn
+        // one way and the other, blends as a turn and not as a lean.)
+        double const turn = 2.0 * 3.14159265358979323846;
+        pa[1] = std::remainder(pa[1] - pa[0], turn);
+        pb[1] = std::remainder(pb[1] - pb[0], turn);
         for (int k = 0; k < 6; ++k) {
             double d = pb[k] - pa[k];
-            if (k < 2)
-                d = std::remainder(d, 2.0 * 3.14159265358979323846);
+            if (k == 0)
+                d = std::remainder(d, turn);
             v[k] = pa[k] + d * t;
         }
-        return QTransform(v[2] * std::cos(v[0]), v[2] * std::sin(v[0]), -v[3] * std::sin(v[1]), v[3] * std::cos(v[1]), v[4], v[5]);
+        v[1] += v[0];
+        QTransform const linear(v[2] * std::cos(v[0]), v[2] * std::sin(v[0]), -v[3] * std::sin(v[1]), v[3] * std::cos(v[1]), 0.0, 0.0);
+        QPointF const from = a.map(pivot), to = b.map(pivot);
+        QPointF const centre = from + (to - from) * t - linear.map(pivot);
+        return QTransform(linear.m11(), linear.m12(), linear.m21(), linear.m22(), centre.x(), centre.y());
     }
 
     void timeline(Node const& t, int frame, QTransform const& place, Tint const& tint, Drawing& drawing, int& order, int depth)
@@ -543,7 +742,8 @@ public:
         Node const* layers = t.child(QStringLiteral("layers"));
         if (!layers)
             return;
-        // From the bottom layer up (the list goes from the top); guides, folders and masks not drawn.
+        // From the bottom layer up (the list goes from the top); guides, folders and masks not drawn - what a mask covers
+        // cut to it.
         for (int l = int(layers->children.size()) - 1; l >= 0; --l) {
             Node const& layerNode = layers->children[l];
             QString const type = layerNode.attr(QStringLiteral("layerType"));
@@ -551,7 +751,55 @@ public:
                 continue;
             if (layerNode.attr(QStringLiteral("visible")) == QLatin1String("false"))
                 continue;
-            layer(layerNode, frame, place, tint, drawing, order, depth);
+            int const parent = int(layerNode.number(QStringLiteral("parentLayerIndex"), -1));
+            Node const* mask = parent >= 0 && parent < layers->children.size()
+                                       && layers->children[parent].attr(QStringLiteral("layerType")) == QLatin1String("mask")
+                                   ? &layers->children[parent]
+                                   : nullptr;
+            if (!mask) {
+                layer(layerNode, frame, place, tint, drawing, order, depth);
+                continue;
+            }
+            Drawing masked, shape;
+            int maskOrder = 0;
+            layer(layerNode, frame, place, tint, masked, order, depth);
+            layer(*mask, frame, place, Tint(), shape, maskOrder, depth);
+            QVector<QPolygonF> area;
+            for (Fill const& f : std::as_const(shape.fills))
+                area += f.outlines;
+            for (Stroke const& s : std::as_const(shape.strokes))
+                area += Fill::fromStroke(s, 0.25).outlines;
+            for (Picture const& p : std::as_const(shape.pictures))
+                area.push_back(p.placement.map(QPolygonF(QRectF(QPointF(0, 0), QSizeF(p.size)))));
+            if (area.isEmpty())
+                continue;   // (an empty mask lets nothing through)
+            QRectF reach;
+            for (QPolygonF const& ring : std::as_const(area))
+                reach = reach.united(ring.boundingRect());
+            auto cut = [&](Fill const& whole) {
+                if (!whole.bounds().intersects(reach))
+                    return;
+                for (Fill piece : whole.within(area, 0.25)) {
+                    piece.color = whole.color;
+                    piece.order = whole.order;
+                    piece.swatch = whole.swatch;
+                    piece.gradPlaced = whole.gradPlaced;
+                    piece.gradFrom = whole.gradFrom;
+                    piece.gradTo = whole.gradTo;
+                    drawing.fills.push_back(piece);
+                }
+            };
+            for (Fill const& f : std::as_const(masked.fills))
+                cut(f);
+            for (Stroke const& s : std::as_const(masked.strokes)) {
+                Fill asArea = Fill::fromStroke(s, 0.25);
+                asArea.color = s.color;
+                asArea.order = s.order;
+                cut(asArea);
+            }
+            for (Picture const& p : std::as_const(masked.pictures))
+                if (p.bounds().intersects(reach))
+                    drawing.pictures.push_back(p);
         }
     }
 
@@ -559,70 +807,135 @@ public:
     {
         std::shared_ptr<Shape>& cached = shapes[&element];
         if (!cached)
-            cached = std::make_shared<Shape>(readShape(element));
+            cached = std::make_shared<Shape>(readShape(element, [this](Node const& fill) { return paintOf(fill); }));
         ++order;
         for (Shape::Area const& area : cached->areas) {
             Fill fill;
-            fill.color = tint.apply(area.colour);
+            paintFill(fill, area.paint, tint, place);
             fill.order = order;
             for (QPolygonF const& ring : area.rings)
                 fill.outlines.push_back(place.map(ring));
-            if (fill.color.alpha() > 0)
+            if (fill.color.alpha() > 0 || fill.swatch >= 0)
                 drawing.fills.push_back(fill);
         }
-        double const grow = std::sqrt(std::abs(place.determinant()));
         for (Shape::Line const& line : cached->lines) {
-            Stroke stroke;
-            stroke.color = tint.apply(line.colour);
+            Stroke stroke = strokeOf(line.points, line.style, place);
+            stroke.color = tint.apply(line.style.colour);
             stroke.order = order;
-            stroke.width = float(std::max(0.25, line.weight * (line.keepWidth ? 1.0 : grow)));
-            for (QPointF const& p : place.map(line.points))
-                stroke.points.push_back({p, 1.0f});
             if (stroke.points.size() >= 2 && stroke.color.alpha() > 0)
                 drawing.strokes.push_back(stroke);
         }
     }
 
-    // Words: each run in its font, size and colour, one line under the other, as the shapes of their letters.
+    // The font a run of text names: Flash names a font as PostScript does ("Arial-BoldMT", "ComicSansMS-Bold"), so the
+    // family is looked for as it is, then without its style and maker's mark, then with its words spaced out.
+    static QFont fontOf(Node const* attrs)
+    {
+        QString const face = attrs ? attrs->attr(QStringLiteral("face"), QStringLiteral("Arial")) : QStringLiteral("Arial");
+        QString const style = face.section(QLatin1Char('-'), 1).toLower();
+        QString family = face.section(QLatin1Char('-'), 0, 0);
+        for (QString const& mark : {QStringLiteral("PSMT"), QStringLiteral("MT"), QStringLiteral("PS")})
+            if (family.endsWith(mark) && family.size() > mark.size() && !QFontDatabase::hasFamily(family))
+                family.chop(mark.size());
+        if (!QFontDatabase::hasFamily(face) && !QFontDatabase::hasFamily(family)) {
+            QString spaced;
+            for (int i = 0; i < family.size(); ++i) {
+                if (i > 0 && family[i].isUpper() && (family[i - 1].isLower() || (i + 1 < family.size() && family[i + 1].isLower())))
+                    spaced += QLatin1Char(' ');
+                spaced += family[i];
+            }
+            if (QFontDatabase::hasFamily(spaced))
+                family = spaced;
+        }
+        QFont font(QFontDatabase::hasFamily(face) ? face : family);
+        double const size = attrs ? attrs->number(QStringLiteral("size"), 12.0) : 12.0;
+        font.setPixelSize(std::max(1, int(std::lround(size))));
+        font.setBold((attrs && attrs->attr(QStringLiteral("bold")) == QLatin1String("true")) || style.contains(QLatin1String("bold")));
+        font.setItalic((attrs && attrs->attr(QStringLiteral("italic")) == QLatin1String("true")) || style.contains(QLatin1String("italic"))
+                       || style.contains(QLatin1String("oblique")));
+        font.setKerning(!attrs || attrs->attr(QStringLiteral("autoKern")) != QLatin1String("false"));
+        if (attrs && attrs->attributes.contains(QStringLiteral("letterSpacing")))
+            font.setLetterSpacing(QFont::AbsoluteSpacing, attrs->number(QStringLiteral("letterSpacing"), 0.0));
+        return font;
+    }
+
+    // Words: each run in its font, size and colour, line under line (each aligned in the width of the text box), as the
+    // shapes of their letters.
     void text(Node const& element, QTransform const& place, Tint const& tint, Drawing& drawing, int& order)
     {
         Node const* runs = element.child(QStringLiteral("textRuns"));
         if (!runs)
             return;
-        double const left = element.number(QStringLiteral("left"), 0.0), top = element.number(QStringLiteral("top"), 0.0);
-        QPointF pen(left, top);
-        double lineHeight = 0.0;
-        ++order;
+        struct Piece {
+            QString words;
+            QFont font;
+            QColor colour;
+        };
+        struct Line {
+            QVector<Piece> pieces;
+            QString alignment;
+            double height = -1.0;       // as the text says (or -1: as its fonts are)
+            double spacing = 2.0;       // and the room under it
+        };
+        QVector<Line> lines(1);
         for (Node const& run : runs->children) {
             Node const* characters = run.child(QStringLiteral("characters"));
             Node const* attrsHolder = run.child(QStringLiteral("textAttrs"));
             Node const* attrs = attrsHolder ? attrsHolder->child(QStringLiteral("DOMTextAttrs")) : nullptr;
             QString const words = characters ? characters->attr(QStringLiteral("#text")) : QString();
-            double const size = attrs ? attrs->number(QStringLiteral("size"), 12.0) : 12.0;
-            QFont font(attrs ? attrs->attr(QStringLiteral("face"), QStringLiteral("Arial")) : QStringLiteral("Arial"));
-            font.setPixelSize(std::max(1, int(std::lround(size))));
             QColor colour(attrs ? attrs->attr(QStringLiteral("fillColor"), QStringLiteral("#000000")) : QStringLiteral("#000000"));
             colour.setAlphaF(float(attrs ? attrs->number(QStringLiteral("alpha"), 1.0) : 1.0));
-            lineHeight = std::max(lineHeight, size * 1.2);
-            QStringList const lines = QString(words).replace(QLatin1Char('\n'), QLatin1Char('\r')).split(QLatin1Char('\r'));
-            for (int l = 0; l < lines.size(); ++l) {
-                if (l > 0) {
-                    pen = QPointF(left, pen.y() + lineHeight);
+            QFont const font = fontOf(attrs);
+            QStringList const parts = QString(words).replace(QLatin1Char('\n'), QLatin1Char('\r')).split(QLatin1Char('\r'));
+            for (int l = 0; l < parts.size(); ++l) {
+                if (l > 0)
+                    lines.push_back(Line());
+                Line& line = lines.last();
+                if (line.pieces.isEmpty() && attrs) {
+                    line.alignment = attrs->attr(QStringLiteral("alignment"), QStringLiteral("left"));
+                    line.height = attrs->number(QStringLiteral("lineHeight"), -1.0);
+                    line.spacing = attrs->number(QStringLiteral("lineSpacing"), 2.0);
                 }
-                if (lines[l].isEmpty())
-                    continue;
-                QPainterPath path;
-                path.addText(pen + QPointF(0.0, size), font, lines[l]);
-                Fill fill;
-                fill.color = tint.apply(colour);
-                fill.order = order;
-                for (QPolygonF const& outline : path.toSubpathPolygons())
-                    if (outline.size() >= 3)
-                        fill.outlines.push_back(place.map(outline));
-                if (!fill.outlines.isEmpty())
-                    drawing.fills.push_back(fill);
-                pen.rx() += QFontMetricsF(font).horizontalAdvance(lines[l]);
+                line.pieces.push_back({parts[l], font, colour});
             }
+        }
+        // (A text box has a gutter of 2 pixels all round.)
+        double const left = element.number(QStringLiteral("left"), 0.0) + 2.0;
+        double const width = std::max(0.0, element.number(QStringLiteral("width"), 0.0));
+        double y = element.number(QStringLiteral("top"), 0.0) + 2.0;
+        ++order;
+        for (Line const& line : std::as_const(lines)) {
+            double ascent = 0.0, descent = 0.0, across = 0.0;
+            for (Piece const& piece : line.pieces) {
+                QFontMetricsF const metrics(piece.font);
+                ascent = std::max(ascent, metrics.ascent());
+                descent = std::max(descent, metrics.descent());
+                across += metrics.horizontalAdvance(piece.words);
+            }
+            if (line.pieces.isEmpty())
+                ascent = 12.0;
+            double x = left;
+            if (line.alignment == QLatin1String("center"))
+                x += (width - across) / 2.0;
+            else if (line.alignment == QLatin1String("right"))
+                x += width - across;
+            double const baseline = y + ascent;
+            for (Piece const& piece : line.pieces) {
+                if (!piece.words.isEmpty()) {
+                    QPainterPath path;
+                    path.addText(QPointF(x, baseline), piece.font, piece.words);
+                    Fill fill;
+                    fill.color = tint.apply(piece.colour);
+                    fill.order = order;
+                    for (QPolygonF const& outline : path.toSubpathPolygons())
+                        if (outline.size() >= 3)
+                            fill.outlines.push_back(place.map(outline));
+                    if (!fill.outlines.isEmpty())
+                        drawing.fills.push_back(fill);
+                }
+                x += QFontMetricsF(piece.font).horizontalAdvance(piece.words);
+            }
+            y += (line.height > 0.0 ? line.height : ascent + descent) + line.spacing;
         }
     }
 
@@ -667,26 +980,50 @@ public:
                     outline << box.center() + QPointF(box.width() / 2.0 * std::cos(a), box.height() / 2.0 * std::sin(a));
                 }
             } else {
-                outline = QPolygonF(box);
-                outline.removeLast();
+                // Its corners rounded so far each (top left, top right, bottom right, bottom left), or square.
+                double r[4] = {element.number(QStringLiteral("topLeftRadius"), 0.0), element.number(QStringLiteral("topRightRadius"), 0.0),
+                               element.number(QStringLiteral("bottomRightRadius"), 0.0), element.number(QStringLiteral("bottomLeftRadius"), 0.0)};
+                double const most = std::min(std::abs(box.width()), std::abs(box.height())) / 2.0;
+                bool round = false;
+                for (double& v : r) {
+                    v = std::min(std::abs(v), most);
+                    round = round || v > 1e-6;
+                }
+                if (round) {
+                    QPainterPath path;
+                    double const x = box.left(), y = box.top(), w = box.width(), h = box.height();
+                    path.moveTo(x + r[0], y);
+                    path.lineTo(x + w - r[1], y);
+                    path.arcTo(QRectF(x + w - 2 * r[1], y, 2 * r[1], 2 * r[1]), 90, -90);
+                    path.lineTo(x + w, y + h - r[2]);
+                    path.arcTo(QRectF(x + w - 2 * r[2], y + h - 2 * r[2], 2 * r[2], 2 * r[2]), 0, -90);
+                    path.lineTo(x + r[3], y + h);
+                    path.arcTo(QRectF(x, y + h - 2 * r[3], 2 * r[3], 2 * r[3]), 270, -90);
+                    path.lineTo(x, y + r[0]);
+                    path.arcTo(QRectF(x, y, 2 * r[0], 2 * r[0]), 180, -90);
+                    path.closeSubpath();
+                    outline = path.toFillPolygon();
+                    if (outline.size() > 1 && outline.first() == outline.last())
+                        outline.removeLast();
+                } else {
+                    outline = QPolygonF(box);
+                    outline.removeLast();
+                }
             }
             ++order;
             if (Node const* fill = element.child(QStringLiteral("fill"))) {
                 Fill f;
-                f.color = tint.apply(colourOf(*fill));
+                paintFill(f, paintOf(*fill), tint, place);
                 f.order = order;
                 f.outlines = {place.map(outline)};
                 drawing.fills.push_back(f);
             }
             if (Node const* stroke = element.child(QStringLiteral("stroke")); stroke && !stroke->children.isEmpty()) {
-                Node const& st = stroke->children.first();
-                Stroke s;
-                s.color = tint.apply(st.child(QStringLiteral("fill")) ? colourOf(*st.child(QStringLiteral("fill"))) : QColor(Qt::black));
+                LineStyle const style = lineStyleOf(stroke->children.first());
+                Stroke s = strokeOf(outline, style, place);
+                s.color = tint.apply(style.colour);
                 s.order = order;
                 s.closed = true;
-                s.width = float(std::max(0.25, st.number(QStringLiteral("weight"), 1.0) * std::sqrt(std::abs(place.determinant()))));
-                for (QPointF const& p : place.map(outline))
-                    s.points.push_back({p, 1.0f});
                 drawing.strokes.push_back(s);
             }
         } else if (kind == QLatin1String("DOMStaticText") || kind == QLatin1String("DOMDynamicText") || kind == QLatin1String("DOMInputText")) {
@@ -710,7 +1047,7 @@ public:
             picture.placement = QTransform::fromScale(found->shown.width() / found->image.width(), found->shown.height() / found->image.height()) * place;
             drawing.pictures.push_back(picture);
         } else if (kind == QLatin1String("DOMVideoInstance")) {
-            ++out->skippedPictures;
+            ++out->skippedVideo;
         }
     }
 };
@@ -762,11 +1099,37 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
     Reader reader;
     reader.out = &out;
     reader.files = &files;
-    // The bitmaps of the library: each by its name, with the file in bin/ that holds it.
+    // The bitmaps of the library: each by its name, with the file in bin/ that holds it.  And its sounds: Flash keeps
+    // them as plain samples ("44kHz 16bit Mono"), or as the MP3 they came as.
+    QHash<QString, Sound> sounds;
     if (Node const* media = document.child(QStringLiteral("media")))
-        for (Node const& item : media->children)
-            if (item.name == QLatin1String("DOMBitmapItem"))
+        for (Node const& item : media->children) {
+            if (item.name == QLatin1String("DOMBitmapItem")) {
                 reader.bitmapFiles.insert(item.attr(QStringLiteral("name")), item.attr(QStringLiteral("bitmapDataHRef")));
+            } else if (item.name == QLatin1String("DOMSoundItem")) {
+                QByteArray const data = files.value(QStringLiteral("bin/") + item.attr(QStringLiteral("soundDataHRef")));
+                QString const format = item.attr(QStringLiteral("format"));
+                int const rate = format.startsWith(QLatin1String("5kHz")) ? 5512
+                                 : format.startsWith(QLatin1String("11kHz")) ? 11025
+                                 : format.startsWith(QLatin1String("22kHz")) ? 22050
+                                                                              : 44100;
+                int const bits = format.contains(QLatin1String("8bit")) ? 8 : 16;
+                int const channels = format.contains(QLatin1String("Stereo")) ? 2 : 1;
+                qint64 const samples = qint64(item.number(QStringLiteral("sampleCount"), 0.0));
+                Sound sound;
+                sound.name = item.attr(QStringLiteral("name"));
+                if (data.startsWith("ID3") || (data.size() > 2 && quint8(data[0]) == 0xff && (quint8(data[1]) & 0xe0) == 0xe0
+                                               && data.size() != samples * channels * bits / 8)) {
+                    sound.bytes = data;
+                    sound.suffix = QStringLiteral("mp3");
+                } else if (!data.isEmpty()) {
+                    sound.bytes = SwfImport::wav(data, rate, bits, channels);
+                    sound.suffix = QStringLiteral("wav");
+                }
+                if (!sound.bytes.isEmpty())
+                    sounds.insert(sound.name, sound);
+            }
+        }
     for (auto it = files.cbegin(); it != files.cend(); ++it) {
         if (!it.key().startsWith(QLatin1String("LIBRARY/")) || !it.key().endsWith(QLatin1String(".xml")))
             continue;
@@ -790,6 +1153,8 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
         Layer layer;
         layer.name = layerNode.attr(QStringLiteral("name"), QStringLiteral("Layer"));
         layer.visible = layerNode.attr(QStringLiteral("visible")) != QLatin1String("false");
+        layer.locked = layerNode.attr(QStringLiteral("locked")) == QLatin1String("true");
+        layer.colour = QColor(layerNode.attr(QStringLiteral("color")));
         layer.mask = type == QLatin1String("mask");
         layer.cells.fill(-1, out.frames);
         QHash<QByteArray, int> known;
@@ -797,6 +1162,19 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
         for (int k = 0; frames && k < frames->children.size(); ++k) {
             Node const& f = frames->children[k];
             int const index = int(f.number(QStringLiteral("index"), 0)), duration = int(f.number(QStringLiteral("duration"), 1));
+            // Its label; its sound.
+            if (f.attributes.contains(QStringLiteral("name")) && type != QLatin1String("guide"))
+                out.labels.push_back({index, std::max(1, duration), f.attr(QStringLiteral("name")), f.attr(QStringLiteral("labelType")) == QLatin1String("comment")});
+            if (f.attributes.contains(QStringLiteral("soundName")) && f.attr(QStringLiteral("soundSync")) != QLatin1String("stop")) {
+                QString const name = f.attr(QStringLiteral("soundName"));
+                if (sounds.contains(name)) {
+                    Sound sound = sounds.value(name);
+                    sound.frame = index;
+                    out.sounds.push_back(sound);
+                } else {
+                    ++out.skippedSounds;
+                }
+            }
             Node const* elements = f.child(QStringLiteral("elements"));
             if (!elements || elements->children.isEmpty())
                 continue;
@@ -832,6 +1210,7 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
         any = any || !layer.drawings.isEmpty();
     if (!any)
         return fail(tr("Nothing Eclipse can read is drawn in this .fla (only video)."));
+    std::sort(out.labels.begin(), out.labels.end(), [](Label const& a, Label const& b) { return a.frame < b.frame; });
     return true;
 }
 

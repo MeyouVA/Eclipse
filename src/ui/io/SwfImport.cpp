@@ -129,10 +129,11 @@ QByteArray unzlib(QByteArray const& data)
     return ok ? out : QByteArray();
 }
 
-// How a fill style paints: a colour (a solid one, a gradient's first, grey for a bitmap); or a bitmap, placed by a matrix
-// from its pixels to the shape.
+// How a fill style paints: a colour (a solid one, a gradient's first, grey for a bitmap); a gradient (its square, -16384
+// to 16384 twips each way, placed in the shape by a matrix); or a bitmap, placed by a matrix from its pixels to the shape.
 struct FillStyle {
     QColor colour;
+    Swatch gradient;            // (Swatch::Solid: none)
     int bitmap = -1;
     QTransform matrix;
 };
@@ -173,15 +174,21 @@ FillStyle fillStyle(QByteArray const& b, int& p, int version)
     }
     if (type == 0x10 || type == 0x12 || type == 0x13) {
         Bits bits(b, p);
-        matrix(bits);
+        style.matrix = matrix(bits);
         p = bits.byte();
         int const count = u8(b, p++) & 0x0f;
+        style.gradient.kind = type == 0x10 ? Swatch::Linear : Swatch::Radial;
         for (int i = 0; i < count; ++i) {
-            ++p;    // ratio
+            double const at = u8(b, p++) / 255.0;
             QColor const c = colourAt(b, p, alpha);
             if (i == 0)
                 style.colour = c;
+            style.gradient.stops.push_back({at, c});
         }
+        style.gradient.color = style.colour;
+        style.gradient.name = tr("Flash gradient");
+        if (style.gradient.stops.size() < 2)
+            style.gradient.kind = Swatch::Solid;
         if (type == 0x13)
             p += 2;     // focal point
         if (!style.colour.isValid())
@@ -655,9 +662,22 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
     out.size = QSize(std::max(1, int(std::lround((xmax - xmin) / 20.0))), std::max(1, int(std::lround((ymax - ymin) / 20.0))));
     out.fps = std::max(1.0, u16(data, p) / 256.0);
     p += 4;
-    out = Movie{out.size, out.fps, {}, {}, {}, 0, 0};
+    out = Movie{out.size, out.fps, {}, {}, {}, {}, 0, 0};
     QHash<int, Shape> shapes;
     QHash<int, Font> fonts;
+    QHash<QByteArray, int> gradientKeys;    // a gradient of `out.gradients`, by what it is
+    auto gradientOf = [&](Swatch const& s) {
+        QByteArray key;
+        key += char(s.kind);
+        for (GradientStop const& stop : s.stops)
+            key += QByteArray::number(stop.at, 'f', 4) + ':' + QByteArray::number(stop.color.rgba()) + ';';
+        auto found = gradientKeys.constFind(key);
+        if (found != gradientKeys.cend())
+            return *found;
+        out.gradients.push_back(s);
+        gradientKeys.insert(key, int(out.gradients.size()) - 1);
+        return int(out.gradients.size()) - 1;
+    };
     QHash<int, QImage> bitmaps;
     QByteArray jpegTables;
     QHash<int, Sound> sounds;           // event sounds, by their ids
@@ -930,6 +950,19 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
                     fill.order = order;
                     for (QPolygonF const& ring : area.rings)
                         fill.outlines.push_back(place.map(ring));
+                    if (area.style.gradient.isGradient()) {
+                        // A gradient: as the colour effect leaves it, from one side of its square to the other (a round one
+                        // from its middle to its rim).
+                        Swatch s = area.style.gradient;
+                        for (GradientStop& stop : s.stops)
+                            stop.color = colour(stop.color);
+                        s.color = s.stops.first().color;
+                        QTransform const at = area.style.matrix * place;
+                        fill.swatch = gradientOf(s);
+                        fill.gradPlaced = true;
+                        fill.gradFrom = at.map(s.kind == Swatch::Linear ? QPointF(-16384.0, 0.0) : QPointF(0.0, 0.0));
+                        fill.gradTo = at.map(QPointF(16384.0, 0.0));
+                    }
                     if (masks.isEmpty())
                         drawing.fills.push_back(fill);
                     else

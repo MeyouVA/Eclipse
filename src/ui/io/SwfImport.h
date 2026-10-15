@@ -1,6 +1,6 @@
 // Eclipse - reads a Flash movie (.swf): what its main timeline shows, frame by frame, as drawings.
 //
-// The fills of a shape (solid, or the first colour of a gradient) become painted areas, its line styles lines (with
+// The fills of a shape (solid colours and gradients) become painted areas, its line styles lines (with
 // their caps and joins); bitmaps (JPEG, with or without an alpha channel, and lossless ones) come as pictures where a
 // shape is filled with them; static text as the shapes of its letters, from the movie's own fonts.  Where each thing is
 // placed (moved, scaled, turned) on each frame is kept, as are masks and colour effects.  Frame labels and sounds (MP3 or
@@ -16,6 +16,7 @@
 #include <QVector>
 
 struct Drawing;
+struct Swatch;
 
 namespace SwfImport {
 
@@ -35,6 +36,8 @@ struct Movie {
     QSize size;                 // the frame, in pixels
     double fps = 24.0;
     QVector<Drawing> frames;    // one drawing for each frame of the main timeline
+    // The gradients the drawings are painted with: a fill whose swatch is not -1 is painted with gradients[swatch].
+    QVector<Swatch> gradients;
     QVector<Label> labels;
     QVector<Sound> sounds;
     int skippedSounds = 0;      // sounds in a form Eclipse does not read (ADPCM, Nellymoser, Speex)
