@@ -244,11 +244,39 @@ struct LineStyle {
     // A line of varying width: so wide (as a share of its weight) so far along it (0..1), from its start to its end;
     // empty: as wide all along.
     QVector<QPointF> profile;
+    // A ragged line (Flash's RaggedStroke): how far it wobbles (0 flat, 1 wavy, 2 very wavy, 3 wild) and how long its
+    // waves are (0 very short .. 3 long); and the pattern it is broken into (0 solid, 1 simple, 2 random, 3 dotted,
+    // 4 random dotted, 5 triple dotted, 6 random triple dotted).
+    bool ragged = false;
+    int waveHeight = 0;
+    int waveLength = 2;
+    int pattern = 0;
+    // A dashed line (DashedStroke): so long on, so long off (pixels, as Flash has them); a dotted one (DottedStroke): dots
+    // so far apart.  Nought: solid.
+    double dashOn = 0.0;
+    double dashOff = 0.0;
 };
 
 LineStyle lineStyleOf(Node const& kind)
 {
     LineStyle st;
+    if (kind.name == QLatin1String("RaggedStroke")) {
+        st.ragged = true;
+        static QStringList const heights{QStringLiteral("flat"), QStringLiteral("wavy"), QStringLiteral("veryWavy"), QStringLiteral("wild")};
+        static QStringList const lengths{QStringLiteral("veryShort"), QStringLiteral("short"), QStringLiteral("medium"), QStringLiteral("long")};
+        static QStringList const patterns{QStringLiteral("solid"), QStringLiteral("simple"), QStringLiteral("random"), QStringLiteral("dotted"),
+                                          QStringLiteral("randomDotted"), QStringLiteral("tripleDotted"), QStringLiteral("randomTripleDotted")};
+        st.waveHeight = std::max(0, int(heights.indexOf(kind.attr(QStringLiteral("waveHeight"), QStringLiteral("wavy")))));
+        int const length = int(lengths.indexOf(kind.attr(QStringLiteral("waveLength"), QStringLiteral("medium"))));
+        st.waveLength = length < 0 ? 2 : length;
+        st.pattern = std::max(0, int(patterns.indexOf(kind.attr(QStringLiteral("pattern"), QStringLiteral("solid")))));
+    } else if (kind.name == QLatin1String("DashedStroke")) {
+        st.dashOn = std::max(0.25, kind.number(QStringLiteral("dash1"), 6.0));
+        st.dashOff = std::max(0.25, kind.number(QStringLiteral("dash2"), 6.0));
+    } else if (kind.name == QLatin1String("DottedStroke")) {
+        st.dashOn = 0.01;
+        st.dashOff = std::max(1.0, kind.number(QStringLiteral("dotSpace"), 3.0));
+    }
     st.weight = kind.number(QStringLiteral("weight"), 1.0);
     QString const scale = kind.attr(QStringLiteral("scaleMode"));
     st.scaling = scale == QLatin1String("none") ? 1 : scale == QLatin1String("horizontal") ? 2 : scale == QLatin1String("vertical") ? 3 : 0;
@@ -329,6 +357,121 @@ Stroke strokeOf(QPolygonF const& points, LineStyle const& st, QTransform const& 
         stroke.points.push_back({at[i], float(std::clamp(share, 0.0, 1.0))});
     }
     return stroke;
+}
+
+// A line as its style draws it: ragged (its points nudged off the line, by the same "random" every time it is read), broken
+// into dashes or dots - so maybe several lines.  (Lengths in the line's own pixels, as wide as it is.)
+QVector<Stroke> styled(Stroke stroke, LineStyle const& st)
+{
+    bool const dashed = st.dashOff > 0.0;
+    bool const broken = st.ragged && st.pattern >= 3;
+    if ((!st.ragged && !dashed) || stroke.points.size() < 2)
+        return {stroke};
+    if (stroke.closed && stroke.points.first().pos != stroke.points.last().pos)
+        stroke.points.push_back(stroke.points.first());
+    // The same line always comes out the same: its "random" is seeded from where it is.
+    quint32 seed = 2166136261u;
+    for (StrokePoint const& p : std::as_const(stroke.points))
+        seed = (seed ^ quint32(qint64(p.pos.x() * 16.0) * 73856093 ^ qint64(p.pos.y() * 16.0) * 19349663)) * 16777619u;
+    auto random = [&seed] {
+        seed = seed * 1664525u + 1013904223u;
+        return double(seed >> 8) / double(1u << 24);       // 0..1
+    };
+    double const w = std::max(1.0, double(stroke.width));
+    if (st.ragged && st.waveHeight > 0) {
+        // Points every so often along it, each pushed off the line to one side or the other.
+        static double const lengths[4] = {1.5, 3.0, 6.0, 12.0};
+        static double const heights[4] = {0.0, 0.35, 0.75, 1.6};
+        double const step = lengths[std::clamp(st.waveLength, 0, 3)] * w;
+        double const height = heights[std::clamp(st.waveHeight, 0, 3)] * w;
+        QVector<StrokePoint> out;
+        out.push_back(stroke.points.first());
+        double carried = 0.0;
+        for (int i = 1; i < stroke.points.size(); ++i) {
+            StrokePoint const a = stroke.points[i - 1], b = stroke.points[i];
+            QLineF const seg(a.pos, b.pos);
+            double const len = seg.length();
+            if (len < 1e-9)
+                continue;
+            QPointF const across(-(b.pos.y() - a.pos.y()) / len, (b.pos.x() - a.pos.x()) / len);
+            double at = step - carried;
+            for (; at < len; at += step) {
+                double const t = at / len;
+                StrokePoint p;
+                p.pos = seg.pointAt(t) + across * ((random() * 2.0 - 1.0) * height);
+                p.pressure = a.pressure + (b.pressure - a.pressure) * float(t);
+                out.push_back(p);
+            }
+            carried = len - (at - step);
+            out.push_back(b);
+        }
+        stroke.points = out;
+    }
+    if (!dashed && !broken)
+        return {stroke};
+    // Broken into pieces: so long drawn, so long left out, along it.
+    auto onOff = [&](int k, double& on, double& off) {
+        if (dashed) {
+            on = st.dashOn;
+            off = st.dashOff;
+            return;
+        }
+        // Ragged dots: short pieces, regularly or at random, or in threes.
+        bool const randomly = st.pattern == 4 || st.pattern == 6;
+        on = 0.5 * w * (randomly ? 0.5 + random() : 1.0);
+        off = (st.pattern >= 5 ? (k % 3 == 2 ? 3.0 : 0.6) : 1.6) * w * (randomly ? 0.5 + random() : 1.0);
+    };
+    QVector<Stroke> pieces;
+    Stroke piece = stroke;
+    piece.points.clear();
+    piece.closed = false;
+    int k = 0;
+    double on = 0.0, off = 0.0;
+    onOff(k, on, off);
+    bool drawing = true;
+    double left = on;
+    auto finish = [&] {
+        if (piece.points.size() == 1) {
+            // (A dot: a point and a hair beyond it.)
+            StrokePoint p = piece.points.first();
+            p.pos += QPointF(0.01, 0.0);
+            piece.points.push_back(p);
+        }
+        if (piece.points.size() >= 2)
+            pieces.push_back(piece);
+        piece.points.clear();
+    };
+    piece.points.push_back(stroke.points.first());
+    for (int i = 1; i < stroke.points.size(); ++i) {
+        StrokePoint a = stroke.points[i - 1];
+        StrokePoint const b = stroke.points[i];
+        double len = QLineF(a.pos, b.pos).length();
+        while (len > left) {
+            double const t = left / len;
+            StrokePoint cut;
+            cut.pos = a.pos + (b.pos - a.pos) * t;
+            cut.pressure = a.pressure + (b.pressure - a.pressure) * float(t);
+            if (drawing) {
+                piece.points.push_back(cut);
+                finish();
+                left = off;
+            } else {
+                piece.points.push_back(cut);
+                ++k;
+                onOff(k, on, off);
+                left = on;
+            }
+            drawing = !drawing;
+            a = cut;
+            len = QLineF(a.pos, b.pos).length();
+        }
+        left -= len;
+        if (drawing)
+            piece.points.push_back(b);
+    }
+    if (drawing)
+        finish();
+    return pieces;
 }
 
 // A shape as read: its fills as rings, and its lines, in the shape's own pixels.
@@ -486,6 +629,7 @@ Shape readShape(Node const& shape, std::function<Paint(Node const&)> const& pain
             continue;
         LineStyle const& st = strokes[p.stroke];
         if (!out.lines.isEmpty() && out.lines.last().style.colour == st.colour && out.lines.last().style.weight == st.weight
+            && out.lines.last().style.ragged == st.ragged && out.lines.last().style.dashOn == st.dashOn
             && key(out.lines.last().points.last()) == key(p.points.first())) {
             out.lines.last().points += p.points.mid(1);
             continue;
@@ -1054,7 +1198,8 @@ public:
             stroke.color = tint.apply(line.style.colour);
             stroke.order = order;
             if (stroke.points.size() >= 2 && stroke.color.alpha() > 0)
-                drawing.strokes.push_back(stroke);
+                for (Stroke const& piece : styled(stroke, line.style))
+                    drawing.strokes.push_back(piece);
         }
     }
 
@@ -1318,7 +1463,8 @@ public:
                 s.color = tint.apply(style.colour);
                 s.order = order;
                 s.closed = true;
-                drawing.strokes.push_back(s);
+                for (Stroke const& piece : styled(s, style))
+                    drawing.strokes.push_back(piece);
             }
         } else if (kind == QLatin1String("DOMStaticText") || kind == QLatin1String("DOMDynamicText") || kind == QLatin1String("DOMInputText")) {
             text(element, place, tint, drawing, order);
