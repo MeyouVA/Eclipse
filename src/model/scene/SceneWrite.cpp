@@ -152,6 +152,7 @@ static QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::RemoveTransparency ? "removeTransparency" : e.type == Effect::MatteComposite ? "matteComposite"
                              : e.type == Effect::Blending ? "blending" : e.type == Effect::VariableBlur ? "variableBlur"
                              : e.type == Effect::MotionBlur ? "motionBlur" : e.type == Effect::FieldChart ? "fieldChart"
+                             : e.type == Effect::ColourCurves ? "colourCurves"
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
@@ -164,6 +165,16 @@ static QJsonObject effectToJson(Effect const& e)
         one["area"] = QJsonArray{e.area.x(), e.area.y(), e.area.width(), e.area.height()};
     if (e.type == Effect::Blending)
         one["blendMode"] = e.blendMode;
+    if (e.type == Effect::ColourCurves) {
+        QJsonArray curves;
+        for (QVector<QPointF> const& curve : e.curves) {
+            QJsonArray points;
+            for (QPointF const& p : curve)
+                points.append(QJsonArray{p.x(), p.y()});
+            curves.append(points);
+        }
+        one["curves"] = curves;
+    }
     if (e.type == Effect::DirectionalBlur || e.type == Effect::Ripple || e.type == Effect::Turbulence || e.type == Effect::MatteGenerator
         || e.type == Effect::Gradient)
         one["direction"] = e.direction;

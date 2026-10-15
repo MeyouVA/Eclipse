@@ -909,6 +909,8 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                 tp.drawImage(0, 0, image);
             }
             image = trail;
+        } else if (e.type == Effect::ColourCurves) {
+            Effects::colourCurves(image, e.curves, amount);
         } else if (e.type == Effect::ChannelSelector) {
             Effects::channelSelect(image, e.channel);
         } else if (e.type == Effect::Crop) {
@@ -1387,6 +1389,8 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
             } else if (e.type == Effect::FieldChart) {
                 Effects::fieldChart(out, QTransform::fromScale(dpr, dpr).mapRect((camera * base).mapRect(QRectF(0, 0, scene.width, scene.height))), e.color,
                                     amount * dpr);
+            } else if (e.type == Effect::ColourCurves) {
+                Effects::colourCurves(out, e.curves, amount);
             } else if (e.type == Effect::ChannelSelector) {
                 Effects::channelSelect(out, e.channel);
             } else if (e.type == Effect::Crop) {

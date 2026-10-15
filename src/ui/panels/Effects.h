@@ -83,8 +83,46 @@ void variableBlur(QImage& image, QImage const& matte, double radius);
 // A 12-field chart of a frame (where it lies in the image, in its pixels) drawn over the image: its edge, the field lines
 // either side of the middle, the cross and the diagonals.
 void fieldChart(QImage& image, QRectF const& frame, QColor const& colour, double width);
+// What each of the 256 levels turns into on a curve through `points` (in, out; 0..1, in order of `in`): smooth, and never
+// turning back between two points (flat before the first and after the last).  No points: each level as it is.
+QVector<int> curveLevels(QVector<QPointF> const& points);
+// Each colour level changed as the curves say (the three together, then red, green and blue), `amount` of the way (0..1).
+void colourCurves(QImage& image, QVector<QPointF> const (&curves)[4], double amount);
 
 }
+
+// A curve to drag the points of: what each level (0..1, across) turns into (up).  A click away from the points adds one; a
+// double click on one (not either end) takes it away.
+class ECLIPSE_UI_API ColourCurveEdit : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit ColourCurveEdit(QWidget* parent = nullptr);
+    void setPoints(QVector<QPointF> const& points);
+    // The points, both ends included.
+    QVector<QPointF> points() const { return m_points; }
+    QSize sizeHint() const override { return QSize(160, 160); }
+
+signals:
+    // The curve has been changed (once, when the mouse lets go).
+    void edited(QVector<QPointF> const& points);
+
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
+
+private:
+    QRectF box() const;
+    QPointF toWidget(QPointF const& level) const;
+    QPointF toLevel(QPointF const& at) const;
+    int pointAt(QPointF const& at) const;
+
+    QVector<QPointF> m_points;
+    int m_dragged = -1;
+};
 
 // The effects of the current layer, in the order they are applied: tick to switch one on
 // or off, pick one to change it.
@@ -138,4 +176,7 @@ private:
     class QFormLayout* m_moreForm = nullptr;
     QComboBox* m_channel = nullptr;
     QDoubleSpinBox* m_cropBox[4] = {};
+    // Colour Curves: which curve (all three colours, red, green, blue) and the curve.
+    QComboBox* m_curveWhich = nullptr;
+    ColourCurveEdit* m_curve = nullptr;
 };

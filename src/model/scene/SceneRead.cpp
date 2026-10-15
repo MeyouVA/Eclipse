@@ -207,6 +207,8 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::MotionBlur;
     else if (type == QLatin1String("fieldChart"))
         e.type = Effect::FieldChart;
+    else if (type == QLatin1String("colourCurves"))
+        e.type = Effect::ColourCurves;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);
@@ -258,6 +260,11 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
     if (QJsonArray const area = eo["area"].toArray(); area.size() == 4)
         e.area = QRectF(area[0].toDouble(), area[1].toDouble(), std::max(0.0, area[2].toDouble()), std::max(0.0, area[3].toDouble()));
     e.blendMode = std::clamp(eo["blendMode"].toInt(1), 0, int(Layer::BlendCount) - 1);
+    QJsonArray const curves = eo["curves"].toArray();
+    for (int c = 0; c < 4 && c < curves.size(); ++c)
+        for (QJsonValue const& v : curves[c].toArray())
+            if (QJsonArray const p = v.toArray(); p.size() == 2)
+                e.curves[c].push_back(QPointF(std::clamp(p[0].toDouble(), 0.0, 1.0), std::clamp(p[1].toDouble(), 0.0, 1.0)));
     return true;
 }
 

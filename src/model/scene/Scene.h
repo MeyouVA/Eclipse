@@ -456,7 +456,7 @@ struct Swatch {
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
-                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, TypeCount };
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -486,7 +486,8 @@ struct Effect {
     // input as `blendMode` says (a Layer::Blend).  Variable Blur: blurred `amount` scene units where the `matte` is white, less
     // where it is darker, not at all where it is not.  Motion Blur (a layer's): the layer as it was on the `amount` frames
     // before, fainter and fainter, trailing behind it.  Field Chart: a 12-field chart of the camera frame drawn over the
-    // picture in `color`, its lines `amount` thick.
+    // picture in `color`, its lines `amount` thick.  Colour Curves: each colour level changed as `curves` say, `amount` of
+    // the way (0..1).
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;
@@ -505,6 +506,9 @@ struct Effect {
     int channel = 0;            // channel selector: 0 red, 1 green, 2 blue, 3 opacity
     QRectF area;                // crop: what is kept, in scene units
     int blendMode = 1;          // blending: a Layer::Blend (Multiply to begin with)
+    // Colour curves: what each level (0..1) turns into - for the three colours together, then for red, green and blue
+    // alone - as points (in, out) in order of `in`, the curve going smoothly through them; none: left as it is.
+    QVector<QPointF> curves[4];
     // Particles: the layer's drawing is thrown out again and again.  `amount` is how many are let go each
     // frame; each lives `life` frames, fading; it leaves at about `speed` units a frame, within `spread`
     // degrees of `direction` (0: to the right, 90: straight up), and falls by `gravity` units a frame, each frame.

@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
@@ -744,6 +745,8 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Motion Blur  %1 frames").arg(int(std::lround(effect.amount)));
     case Effect::FieldChart:
         return QObject::tr("Field Chart");
+    case Effect::ColourCurves:
+        return QObject::tr("Colour Curves");
     case Effect::Blending:
         return QObject::tr("Blending");
     case Effect::VariableBlur: {
@@ -886,6 +889,224 @@ void Effects::fieldChart(QImage& image, QRectF const& frame, QColor const& colou
     p.drawLine(frame.topRight(), frame.bottomLeft());
 }
 
+QVector<int> Effects::curveLevels(QVector<QPointF> const& points)
+{
+    QVector<int> levels(256);
+    int const n = int(points.size());
+    if (n == 0) {
+        for (int i = 0; i < 256; ++i)
+            levels[i] = i;
+        return levels;
+    }
+    // A smooth curve that does not overshoot (Fritsch-Carlson): the slope at each point between those either side of it, cut
+    // back where it would turn the curve back.
+    QVector<double> slope(n, 0.0);
+    QVector<double> step(std::max(0, n - 1), 0.0);
+    for (int k = 0; k + 1 < n; ++k) {
+        double const dx = points[k + 1].x() - points[k].x();
+        step[k] = dx > 1e-9 ? (points[k + 1].y() - points[k].y()) / dx : 0.0;
+    }
+    for (int k = 0; k < n; ++k) {
+        if (k == 0)
+            slope[k] = n > 1 ? step[0] : 0.0;
+        else if (k == n - 1)
+            slope[k] = step[k - 1];
+        else
+            slope[k] = step[k - 1] * step[k] <= 0.0 ? 0.0 : (step[k - 1] + step[k]) / 2.0;
+    }
+    for (int k = 0; k + 1 < n; ++k) {
+        if (std::abs(step[k]) < 1e-12) {
+            slope[k] = slope[k + 1] = 0.0;
+            continue;
+        }
+        double const a = slope[k] / step[k], b = slope[k + 1] / step[k];
+        if (a * a + b * b > 9.0) {
+            double const t = 3.0 / std::sqrt(a * a + b * b);
+            slope[k] = t * a * step[k];
+            slope[k + 1] = t * b * step[k];
+        }
+    }
+    for (int i = 0; i < 256; ++i) {
+        double const x = i / 255.0;
+        double y = 0.0;
+        if (x <= points.front().x()) {
+            y = points.front().y();
+        } else if (x >= points.back().x()) {
+            y = points.back().y();
+        } else {
+            int k = 0;
+            while (k + 1 < n - 1 && x > points[k + 1].x())
+                ++k;
+            double const h = points[k + 1].x() - points[k].x();
+            double const t = h > 1e-9 ? (x - points[k].x()) / h : 0.0;
+            double const t2 = t * t, t3 = t2 * t;
+            y = (2 * t3 - 3 * t2 + 1) * points[k].y() + (t3 - 2 * t2 + t) * h * slope[k] + (-2 * t3 + 3 * t2) * points[k + 1].y()
+                + (t3 - t2) * h * slope[k + 1];
+        }
+        levels[i] = std::clamp(int(std::lround(y * 255.0)), 0, 255);
+    }
+    return levels;
+}
+
+void Effects::colourCurves(QImage& image, QVector<QPointF> const (&curves)[4], double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    if (amount <= 0.0)
+        return;
+    // A table for each colour: the curve of the three together, then its own.
+    QVector<int> const all = curveLevels(curves[0]);
+    int table[3][256];
+    for (int c = 0; c < 3; ++c) {
+        QVector<int> const own = curveLevels(curves[c + 1]);
+        for (int i = 0; i < 256; ++i) {
+            int const to = own[all[i]];
+            table[c][i] = std::clamp(int(std::lround(i + (to - i) * amount)), 0, 255);
+        }
+    }
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            QRgb const px = line[x];
+            int const a = qAlpha(px);
+            if (a == 0)
+                continue;
+            // (On the colours as they are, not as they are multiplied by how opaque.)
+            QRgb const plain = qUnpremultiply(px);
+            line[x] = qPremultiply(qRgba(table[0][qRed(plain)], table[1][qGreen(plain)], table[2][qBlue(plain)], a));
+        }
+    }
+}
+
+// ---- the curve to drag --------------------------------------------------------------------
+
+ColourCurveEdit::ColourCurveEdit(QWidget* parent)
+    : QWidget(parent)
+{
+    setObjectName(QStringLiteral("ColourCurveEdit"));
+    setMinimumSize(120, 120);
+    setPoints({});
+}
+
+void ColourCurveEdit::setPoints(QVector<QPointF> const& points)
+{
+    m_points = points;
+    if (m_points.size() < 2)
+        m_points = {QPointF(0.0, 0.0), QPointF(1.0, 1.0)};
+    update();
+}
+
+QRectF ColourCurveEdit::box() const
+{
+    return QRectF(rect()).adjusted(6, 6, -6, -6);
+}
+
+QPointF ColourCurveEdit::toWidget(QPointF const& level) const
+{
+    QRectF const b = box();
+    return QPointF(b.left() + level.x() * b.width(), b.bottom() - level.y() * b.height());
+}
+
+QPointF ColourCurveEdit::toLevel(QPointF const& at) const
+{
+    QRectF const b = box();
+    return QPointF(std::clamp((at.x() - b.left()) / std::max(1.0, b.width()), 0.0, 1.0),
+                   std::clamp((b.bottom() - at.y()) / std::max(1.0, b.height()), 0.0, 1.0));
+}
+
+int ColourCurveEdit::pointAt(QPointF const& at) const
+{
+    for (int k = 0; k < m_points.size(); ++k)
+        if (QLineF(toWidget(m_points[k]), at).length() <= 6.0)
+            return k;
+    return -1;
+}
+
+void ColourCurveEdit::paintEvent(QPaintEvent*)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    QRectF const b = box();
+    p.fillRect(b, QColor(36, 36, 36));
+    p.setPen(QColor(64, 64, 64));
+    for (int k = 1; k < 4; ++k) {
+        p.drawLine(QPointF(b.left() + b.width() * k / 4.0, b.top()), QPointF(b.left() + b.width() * k / 4.0, b.bottom()));
+        p.drawLine(QPointF(b.left(), b.top() + b.height() * k / 4.0), QPointF(b.right(), b.top() + b.height() * k / 4.0));
+    }
+    p.setPen(QPen(QColor(90, 90, 90), 1.0, Qt::DashLine));
+    p.drawLine(b.bottomLeft(), b.topRight());
+    QVector<int> const levels = Effects::curveLevels(m_points);
+    QPainterPath curve;
+    for (int i = 0; i < 256; ++i) {
+        QPointF const at = toWidget(QPointF(i / 255.0, levels[i] / 255.0));
+        if (i == 0)
+            curve.moveTo(at);
+        else
+            curve.lineTo(at);
+    }
+    p.setPen(QPen(QColor(230, 230, 230), 1.5));
+    p.drawPath(curve);
+    p.setBrush(QColor(255, 200, 80));
+    p.setPen(Qt::black);
+    for (QPointF const& point : m_points)
+        p.drawEllipse(toWidget(point), 4.0, 4.0);
+}
+
+void ColourCurveEdit::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() != Qt::LeftButton)
+        return;
+    m_dragged = pointAt(event->position());
+    if (m_dragged < 0) {
+        // A new point, where the click is (between the ends).
+        QPointF const level = toLevel(event->position());
+        int at = 0;
+        while (at < m_points.size() && m_points[at].x() < level.x())
+            ++at;
+        if (at == 0 || at == m_points.size())
+            return;
+        m_points.insert(at, level);
+        m_dragged = at;
+    }
+    update();
+}
+
+void ColourCurveEdit::mouseMoveEvent(QMouseEvent* event)
+{
+    if (m_dragged < 0)
+        return;
+    QPointF level = toLevel(event->position());
+    // A point stays between the ones either side of it; the ends stay at the ends.
+    if (m_dragged == 0)
+        level.setX(0.0);
+    else if (m_dragged == m_points.size() - 1)
+        level.setX(1.0);
+    else
+        level.setX(std::clamp(level.x(), m_points[m_dragged - 1].x() + 0.01, m_points[m_dragged + 1].x() - 0.01));
+    m_points[m_dragged] = level;
+    update();
+}
+
+void ColourCurveEdit::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button() != Qt::LeftButton || m_dragged < 0)
+        return;
+    m_dragged = -1;
+    emit edited(m_points);
+}
+
+void ColourCurveEdit::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    int const k = pointAt(event->position());
+    if (k <= 0 || k >= m_points.size() - 1)
+        return;
+    m_points.removeAt(k);
+    m_dragged = -1;
+    update();
+    emit edited(m_points);
+}
+
 // ---- the panel ----------------------------------------------------------------------------
 
 EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
@@ -931,6 +1152,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Variable Blur")), &QAction::triggered, this, [this] { add(Effect::VariableBlur); });
     connect(menu->addAction(tr("Motion Blur")), &QAction::triggered, this, [this] { add(Effect::MotionBlur); });
     connect(menu->addAction(tr("Field Chart")), &QAction::triggered, this, [this] { add(Effect::FieldChart); });
+    connect(menu->addAction(tr("Colour Curves")), &QAction::triggered, this, [this] { add(Effect::ColourCurves); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -1050,6 +1272,20 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
                 edit([area](Effect& e) { e.area = area; });
             });
         }
+        // Colour Curves: the curve picked, to drag.
+        m_curveWhich = new QComboBox(m_more);
+        m_curveWhich->setObjectName(QStringLiteral("EffectCurveWhich"));
+        m_curveWhich->addItems({tr("RGB"), tr("Red"), tr("Green"), tr("Blue")});
+        m_moreForm->addRow(tr("Curve"), m_curveWhich);
+        m_curve = new ColourCurveEdit(m_more);
+        m_moreForm->addRow(m_curve);
+        connect(m_curveWhich, &QComboBox::currentIndexChanged, this, [this] { showEditors(); });
+        connect(m_curve, &ColourCurveEdit::edited, this, [this](QVector<QPointF> const& points) {
+            int const which = std::clamp(m_curveWhich->currentIndex(), 0, 3);
+            // (A straight line from corner to corner is no curve at all.)
+            bool const straight = points.size() == 2 && points[0] == QPointF(0, 0) && points[1] == QPointF(1, 1);
+            edit([which, points, straight](Effect& e) { e.curves[which] = straight ? QVector<QPointF>() : points; });
+        });
         layout->addWidget(m_more);
     }
     {
@@ -1326,12 +1562,16 @@ void EffectsPanel::showEditors()
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
     bool const plain = valid && (e.type == Effect::ChannelSelector || e.type == Effect::Crop || e.type == Effect::MatteComposite || e.type == Effect::Blending);
+    bool const curving = valid && e.type == Effect::ColourCurves;
     m_amountLabel->setVisible(valid && !cutter && !plain);
     m_amount->setVisible(valid && !cutter && !plain);
     m_animated->setVisible(valid && !cutter && !plain);
     {
         bool const channel = valid && e.type == Effect::ChannelSelector, cropping = valid && e.type == Effect::Crop;
-        m_more->setVisible(channel || cropping);
+        m_more->setVisible(channel || cropping || curving);
+        m_moreForm->setRowVisible(m_curveWhich, curving);
+        m_moreForm->setRowVisible(m_curve, curving);
+        m_curve->setPoints(e.curves[std::clamp(m_curveWhich->currentIndex(), 0, 3)]);
         m_moreForm->setRowVisible(m_channel, channel);
         m_channel->setCurrentIndex(std::clamp(e.channel, 0, 3));
         double const area[4] = {e.area.x(), e.area.y(), e.area.width(), e.area.height()};

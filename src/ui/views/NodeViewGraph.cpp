@@ -531,6 +531,23 @@ void NodeView::editGraphNode(int id)
         mode->setCurrentIndex(std::clamp(e.blendMode, 0, int(Layer::BlendCount) - 1));
         form->addRow(tr("Over the second input"), mode);
     }
+    // Colour Curves: the four curves, each to drag.
+    QVector<QPointF> curves[4];
+    for (int c = 0; c < 4; ++c)
+        curves[c] = e.curves[c];
+    if (e.type == Effect::ColourCurves) {
+        QComboBox* const which = new QComboBox(&dialog);
+        which->addItems({tr("RGB"), tr("Red"), tr("Green"), tr("Blue")});
+        form->addRow(tr("Curve"), which);
+        ColourCurveEdit* const curve = new ColourCurveEdit(&dialog);
+        curve->setPoints(curves[0]);
+        form->addRow(curve);
+        connect(which, &QComboBox::currentIndexChanged, curve, [curve, &curves](int c) { curve->setPoints(curves[std::clamp(c, 0, 3)]); });
+        connect(curve, &ColourCurveEdit::edited, which, [which, &curves](QVector<QPointF> const& points) {
+            bool const straight = points.size() == 2 && points[0] == QPointF(0, 0) && points[1] == QPointF(1, 1);
+            curves[std::clamp(which->currentIndex(), 0, 3)] = straight ? QVector<QPointF>() : points;
+        });
+    }
     QDoubleSpinBox* area[4] = {};
     if (e.type == Effect::Crop) {
         double const now[4] = {e.area.x(), e.area.y(), e.area.width(), e.area.height()};
@@ -554,6 +571,8 @@ void NodeView::editGraphNode(int id)
         e.blendMode = mode->currentIndex();
     if (area[0])
         e.area = QRectF(area[0]->value(), area[1]->value(), area[2]->value(), area[3]->value());
+    for (int c = 0; c < 4; ++c)
+        e.curves[c] = curves[c];
     e.enabled = on->isChecked();
     if (keyed->isChecked()) {
         g.nodes[i].amountKeys.insert(m_frame, amount->value());
