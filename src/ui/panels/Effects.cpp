@@ -10,6 +10,7 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -728,6 +729,23 @@ QString name(Effect const& effect, Scene const& scene)
     }
     case Effect::MatteGenerator:
         return QObject::tr("Matte Generator  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::ChannelSelector: {
+        static char const* const channels[4] = {QT_TR_NOOP("Red"), QT_TR_NOOP("Green"), QT_TR_NOOP("Blue"), QT_TR_NOOP("Opacity")};
+        return QObject::tr("Channel Selector  %1").arg(QObject::tr(channels[std::clamp(effect.channel, 0, 3)]));
+    }
+    case Effect::Crop:
+        return effect.area.isEmpty() ? QObject::tr("Crop  (all)")
+                                     : QObject::tr("Crop  %1 x %2").arg(effect.area.width(), 0, 'f', 0).arg(effect.area.height(), 0, 'f', 0);
+    case Effect::RemoveTransparency:
+        return QObject::tr("Remove Transparency  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::MatteComposite:
+        return QObject::tr("Matte Composite");
+    case Effect::Blending:
+        return QObject::tr("Blending");
+    case Effect::VariableBlur: {
+        int const matte = scene.layerIndex(effect.matte);
+        return QObject::tr("Variable Blur  %1  %2").arg(effect.amount, 0, 'f', 1).arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"));
+    }
     case Effect::Tone:
     case Effect::Highlight: {
         int const matte = scene.layerIndex(effect.matte);
@@ -742,6 +760,99 @@ QString name(Effect const& effect, Scene const& scene)
     }
 }
 
+}
+
+void Effects::channelSelect(QImage& image, int channel)
+{
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            QRgb const c = line[x];
+            int const a = qAlpha(c);
+            if (channel == 3) {
+                line[x] = qRgba(a, a, a, 255);
+                continue;
+            }
+            // (Premultiplied: the channel as it would be with the picture opaque, then as see-through as it was.)
+            int const v = a > 0 ? std::min(255, (channel == 0 ? qRed(c) : channel == 1 ? qGreen(c) : qBlue(c)) * 255 / a) : 0;
+            int const p = v * a / 255;
+            line[x] = qRgba(p, p, p, a);
+        }
+    }
+}
+
+void Effects::crop(QImage& image, QRectF const& keep)
+{
+    QPainter p(&image);
+    p.resetTransform();
+    p.setCompositionMode(QPainter::CompositionMode_Clear);
+    QPainterPath outside;
+    outside.addRect(QRectF(0, 0, image.width(), image.height()));
+    QPainterPath inside;
+    inside.addRect(keep);
+    p.fillPath(outside.subtracted(inside), Qt::black);
+}
+
+void Effects::removeTransparency(QImage& image, double threshold)
+{
+    int const edge = std::clamp(int(std::lround(threshold * 255.0)), 0, 255);
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            QRgb const c = line[x];
+            int const a = qAlpha(c);
+            if (a == 0 || a < edge) {
+                line[x] = 0;
+                continue;
+            }
+            line[x] = qRgba(std::min(255, qRed(c) * 255 / a), std::min(255, qGreen(c) * 255 / a), std::min(255, qBlue(c) * 255 / a), 255);
+        }
+    }
+}
+
+void Effects::matteComposite(QImage& image)
+{
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const a = qAlpha(line[x]);
+            line[x] = qRgba(a, a, a, a);
+        }
+    }
+}
+
+void Effects::blendOnto(QImage& under, QImage const& top, int mode)
+{
+    static QPainter::CompositionMode const kModes[Layer::BlendCount] = {
+        QPainter::CompositionMode_SourceOver, QPainter::CompositionMode_Multiply, QPainter::CompositionMode_Screen,
+        QPainter::CompositionMode_Overlay, QPainter::CompositionMode_Darken, QPainter::CompositionMode_Lighten,
+        QPainter::CompositionMode_ColorDodge, QPainter::CompositionMode_ColorBurn, QPainter::CompositionMode_HardLight,
+        QPainter::CompositionMode_SoftLight, QPainter::CompositionMode_Difference, QPainter::CompositionMode_Exclusion,
+        QPainter::CompositionMode_Plus};
+    QPainter p(&under);
+    p.resetTransform();
+    p.setCompositionMode(kModes[std::clamp(mode, 0, int(Layer::BlendCount) - 1)]);
+    p.drawImage(0, 0, top);
+}
+
+void Effects::variableBlur(QImage& image, QImage const& matte, double radius)
+{
+    QImage blurred = image;
+    blur(blurred, radius);
+    for (int y = 0; y < image.height() && y < matte.height(); ++y) {
+        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
+        QRgb const* const soft = reinterpret_cast<QRgb const*>(blurred.constScanLine(y));
+        QRgb const* const by = reinterpret_cast<QRgb const*>(matte.constScanLine(y));
+        for (int x = 0; x < image.width() && x < matte.width(); ++x) {
+            // How much: the matte's brightness, where it is (premultiplied: its grey is already as faint as it is).
+            int const k = (qRed(by[x]) * 299 + qGreen(by[x]) * 587 + qBlue(by[x]) * 114) / 1000;
+            if (k == 0)
+                continue;
+            QRgb const a = line[x], b = soft[x];
+            auto mix = [k](int p, int q) { return p + (q - p) * k / 255; };
+            line[x] = qRgba(mix(qRed(a), qRed(b)), mix(qGreen(a), qGreen(b)), mix(qBlue(a), qBlue(b)), mix(qAlpha(a), qAlpha(b)));
+        }
+    }
 }
 
 // ---- the panel ----------------------------------------------------------------------------
@@ -782,6 +893,11 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Matte Resize")), &QAction::triggered, this, [this] { add(Effect::MatteResize); });
     connect(menu->addAction(tr("Matte Blur")), &QAction::triggered, this, [this] { add(Effect::MatteBlur); });
     connect(menu->addAction(tr("Gradient")), &QAction::triggered, this, [this] { add(Effect::Gradient); });
+    connect(menu->addAction(tr("Channel Selector")), &QAction::triggered, this, [this] { add(Effect::ChannelSelector); });
+    connect(menu->addAction(tr("Crop")), &QAction::triggered, this, [this] { add(Effect::Crop); });
+    connect(menu->addAction(tr("Remove Transparency")), &QAction::triggered, this, [this] { add(Effect::RemoveTransparency); });
+    connect(menu->addAction(tr("Matte Composite")), &QAction::triggered, this, [this] { add(Effect::MatteComposite); });
+    connect(menu->addAction(tr("Variable Blur")), &QAction::triggered, this, [this] { add(Effect::VariableBlur); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -871,6 +987,37 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
             });
         }
         layout->addWidget(m_adjust);
+    }
+    {
+        // Channel Selector: which channel; Crop: the area kept.
+        m_more = new QWidget(this);
+        m_more->setObjectName(QStringLiteral("MoreEffectSettings"));
+        m_moreForm = new QFormLayout(m_more);
+        m_moreForm->setContentsMargins(0, 0, 0, 0);
+        m_channel = new QComboBox(m_more);
+        m_channel->setObjectName(QStringLiteral("EffectChannel"));
+        m_channel->addItems({tr("Red"), tr("Green"), tr("Blue"), tr("Opacity")});
+        m_moreForm->addRow(tr("Channel"), m_channel);
+        connect(m_channel, &QComboBox::currentIndexChanged, this, [this](int channel) {
+            if (!m_rebuilding)
+                edit([channel](Effect& e) { e.channel = channel; });
+        });
+        static char const* const cropNames[4] = {QT_TR_NOOP("Left"), QT_TR_NOOP("Top"), QT_TR_NOOP("Width"), QT_TR_NOOP("Height")};
+        for (int i = 0; i < 4; ++i) {
+            m_cropBox[i] = new QDoubleSpinBox(m_more);
+            m_cropBox[i]->setObjectName(QStringLiteral("EffectCrop%1").arg(i));
+            m_cropBox[i]->setRange(i < 2 ? -10000.0 : 0.0, 10000.0);
+            m_cropBox[i]->setDecimals(1);
+            m_cropBox[i]->setKeyboardTracking(false);
+            m_moreForm->addRow(tr(cropNames[i]), m_cropBox[i]);
+            connect(m_cropBox[i], &QDoubleSpinBox::valueChanged, this, [this] {
+                if (m_rebuilding)
+                    return;
+                QRectF const area(m_cropBox[0]->value(), m_cropBox[1]->value(), m_cropBox[2]->value(), m_cropBox[3]->value());
+                edit([area](Effect& e) { e.area = area; });
+            });
+        }
+        layout->addWidget(m_more);
     }
     {
         // Particles: how long each lives, how fast and which way it leaves, how it falls.
@@ -1136,7 +1283,7 @@ void EffectsPanel::showEditors()
     bool const valid = m_layer >= 0 && m_layer < scene.layers.size() && row >= 0 && row < scene.layers[m_layer].effects.size();
     Effect const e = valid ? scene.layers[m_layer].effects[row] : Effect();
     bool const cutter = valid && e.type == Effect::Cutter;
-    bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight || e.type == Effect::MatteBlur);
+    bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight || e.type == Effect::MatteBlur || e.type == Effect::VariableBlur);
     bool const resizing = valid && e.type == Effect::MatteResize;
     bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading
                                     || e.type == Effect::MatteGenerator || e.type == Effect::Gradient) && e.type != Effect::MatteBlur;
@@ -1144,9 +1291,21 @@ void EffectsPanel::showEditors()
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
-    m_amountLabel->setVisible(valid && !cutter);
-    m_amount->setVisible(valid && !cutter);
-    m_animated->setVisible(valid && !cutter);
+    bool const plain = valid && (e.type == Effect::ChannelSelector || e.type == Effect::Crop || e.type == Effect::MatteComposite || e.type == Effect::Blending);
+    m_amountLabel->setVisible(valid && !cutter && !plain);
+    m_amount->setVisible(valid && !cutter && !plain);
+    m_animated->setVisible(valid && !cutter && !plain);
+    {
+        bool const channel = valid && e.type == Effect::ChannelSelector, cropping = valid && e.type == Effect::Crop;
+        m_more->setVisible(channel || cropping);
+        m_moreForm->setRowVisible(m_channel, channel);
+        m_channel->setCurrentIndex(std::clamp(e.channel, 0, 3));
+        double const area[4] = {e.area.x(), e.area.y(), e.area.width(), e.area.height()};
+        for (int i = 0; i < 4; ++i) {
+            m_moreForm->setRowVisible(m_cropBox[i], cropping);
+            m_cropBox[i]->setValue(area[i]);
+        }
+    }
     m_animated->setChecked(valid && e.animated);
     m_color->setVisible(coloured);
     m_endColor->setVisible(graded);
@@ -1229,13 +1388,13 @@ void EffectsPanel::showEditors()
         m_amount->setValue(amount);
     } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
                          || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate
-                         || e.type == Effect::BlackWhite || e.type == Effect::Gradient)) {
-        m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : tr("Amount"));
+                         || e.type == Effect::BlackWhite || e.type == Effect::Gradient || e.type == Effect::RemoveTransparency)) {
+        m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : e.type == Effect::RemoveTransparency ? tr("Threshold") : tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);
         m_amount->setSuffix(QStringLiteral(" %"));
         m_amount->setValue(amount * 100.0);
-    } else if (valid && !cutter) {
+    } else if (valid && !cutter && !plain) {
         m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : e.type == Effect::MatteBlur ? tr("Radius") : shading ? tr("Softness")
                                : resizing ? tr("By") : e.type == Effect::Pixelate ? tr("Block Size")
                                : e.type == Effect::Turbulence ? tr("Strength") : e.type == Effect::MatteGenerator ? tr("Outer Radius") : tr("Radius"));

@@ -3,6 +3,7 @@
 
 #include <QCheckBox>
 #include <QColorDialog>
+#include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
@@ -501,12 +502,45 @@ void NodeView::editGraphNode(int id)
         invert->setChecked(e.invert);
         form->addRow(GraphNode::takesMatte(e.type) ? tr("Outside the matte") : tr("Inverted"), invert);
     }
+    QComboBox* channel = nullptr;
+    if (e.type == Effect::ChannelSelector) {
+        channel = new QComboBox(&dialog);
+        channel->addItems({tr("Red"), tr("Green"), tr("Blue"), tr("Opacity")});
+        channel->setCurrentIndex(std::clamp(e.channel, 0, 3));
+        form->addRow(tr("Channel"), channel);
+    }
+    QComboBox* mode = nullptr;
+    if (e.type == Effect::Blending) {
+        mode = new QComboBox(&dialog);
+        mode->setObjectName(QStringLiteral("GraphEffectBlend"));
+        mode->addItems({tr("Normal"), tr("Multiply"), tr("Screen"), tr("Overlay"), tr("Darken"), tr("Lighten"), tr("Colour Dodge"), tr("Colour Burn"),
+                        tr("Hard Light"), tr("Soft Light"), tr("Difference"), tr("Exclusion"), tr("Add")});
+        mode->setCurrentIndex(std::clamp(e.blendMode, 0, int(Layer::BlendCount) - 1));
+        form->addRow(tr("Over the second input"), mode);
+    }
+    QDoubleSpinBox* area[4] = {};
+    if (e.type == Effect::Crop) {
+        double const now[4] = {e.area.x(), e.area.y(), e.area.width(), e.area.height()};
+        QString const names[4] = {tr("Left"), tr("Top"), tr("Width"), tr("Height")};
+        for (int k = 0; k < 4; ++k) {
+            area[k] = new QDoubleSpinBox(&dialog);
+            area[k]->setRange(k < 2 ? -10000.0 : 0.0, 10000.0);
+            area[k]->setValue(now[k]);
+            form->addRow(names[k], area[k]);
+        }
+    }
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted)
         return;
+    if (channel)
+        e.channel = channel->currentIndex();
+    if (mode)
+        e.blendMode = mode->currentIndex();
+    if (area[0])
+        e.area = QRectF(area[0]->value(), area[1]->value(), area[2]->value(), area[3]->value());
     e.enabled = on->isChecked();
     if (keyed->isChecked()) {
         g.nodes[i].amountKeys.insert(m_frame, amount->value());

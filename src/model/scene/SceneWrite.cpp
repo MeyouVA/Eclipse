@@ -148,12 +148,21 @@ static QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::MatteGenerator ? "matteGenerator"
                              : e.type == Effect::BlackWhite ? "blackWhite" : e.type == Effect::MatteResize ? "matteResize"
                              : e.type == Effect::MatteBlur ? "matteBlur" : e.type == Effect::Gradient ? "gradient"
+                             : e.type == Effect::ChannelSelector ? "channelSelector" : e.type == Effect::Crop ? "crop"
+                             : e.type == Effect::RemoveTransparency ? "removeTransparency" : e.type == Effect::MatteComposite ? "matteComposite"
+                             : e.type == Effect::Blending ? "blending" : e.type == Effect::VariableBlur ? "variableBlur"
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
                     {"matte", e.matte}, {"invert", e.invert}};
     if (e.type == Effect::Gradient)
         one["endColor"] = e.endColor.name(QColor::HexArgb);
+    if (e.type == Effect::ChannelSelector)
+        one["channel"] = e.channel;
+    if (e.type == Effect::Crop)
+        one["area"] = QJsonArray{e.area.x(), e.area.y(), e.area.width(), e.area.height()};
+    if (e.type == Effect::Blending)
+        one["blendMode"] = e.blendMode;
     if (e.type == Effect::DirectionalBlur || e.type == Effect::Ripple || e.type == Effect::Turbulence || e.type == Effect::MatteGenerator
         || e.type == Effect::Gradient)
         one["direction"] = e.direction;

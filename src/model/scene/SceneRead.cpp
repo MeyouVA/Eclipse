@@ -191,6 +191,18 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::MatteBlur;
     else if (type == QLatin1String("gradient"))
         e.type = Effect::Gradient;
+    else if (type == QLatin1String("channelSelector"))
+        e.type = Effect::ChannelSelector;
+    else if (type == QLatin1String("crop"))
+        e.type = Effect::Crop;
+    else if (type == QLatin1String("removeTransparency"))
+        e.type = Effect::RemoveTransparency;
+    else if (type == QLatin1String("matteComposite"))
+        e.type = Effect::MatteComposite;
+    else if (type == QLatin1String("blending"))
+        e.type = Effect::Blending;
+    else if (type == QLatin1String("variableBlur"))
+        e.type = Effect::VariableBlur;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);
@@ -238,6 +250,10 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
     e.color = QColor(eo["color"].toString("#ff000000"));
     e.matte = eo["matte"].toInt(0);
     e.invert = eo["invert"].toBool(false);
+    e.channel = std::clamp(eo["channel"].toInt(0), 0, 3);
+    if (QJsonArray const area = eo["area"].toArray(); area.size() == 4)
+        e.area = QRectF(area[0].toDouble(), area[1].toDouble(), std::max(0.0, area[2].toDouble()), std::max(0.0, area[3].toDouble()));
+    e.blendMode = std::clamp(eo["blendMode"].toInt(1), 0, int(Layer::BlendCount) - 1);
     return true;
 }
 

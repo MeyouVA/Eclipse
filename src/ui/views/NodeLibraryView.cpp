@@ -90,6 +90,11 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Matte Resize"), "effect:23", QT_TR_NOOP("Grows or shrinks what is painted on the layer, all round"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Matte Blur"), "effect:24", QT_TR_NOOP("Blurs the layer only where the drawing of a matte layer lies over it"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Gradient"), "effect:25", QT_TR_NOOP("Colours the layer from one colour to another, across it or from its middle out"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Channel Selector"), "effect:26", QT_TR_NOOP("One of the layer's channels (red, green, blue or opacity) as grey"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Crop"), "effect:27", QT_TR_NOOP("Keeps only what lies inside a rectangle"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Remove Transparency"), "effect:28", QT_TR_NOOP("Makes what is mostly opaque wholly so, and takes the rest away"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Matte Composite"), "effect:29", QT_TR_NOOP("Turns the layer into a white matte of itself"), QT_TR_NOOP("Filter")},
+        {QT_TR_NOOP("Variable Blur"), "effect:31", QT_TR_NOOP("Blurs the layer as much as the drawing of a matte layer is light"), QT_TR_NOOP("Filter")},
     };
     auto heading = [this](QString const& text) {
         QListWidgetItem* const item = new QListWidgetItem(text, m_list);

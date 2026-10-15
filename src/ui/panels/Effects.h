@@ -67,6 +67,19 @@ void matteResize(QImage& image, double radius, bool shrink);
 void gradient(QImage& image, QColor const& from, QColor const& to, double degrees, bool radial, double amount);
 
 QString name(Effect const& effect, Scene const& scene);
+// One channel of the picture (0 red, 1 green, 2 blue, 3 opacity) as grey: the colour channels where the picture is, the
+// opacity over the whole of it.
+void channelSelect(QImage& image, int channel);
+// Only what lies inside a rectangle of the image (in its pixels) is kept.
+void crop(QImage& image, QRectF const& keep);
+// What is more opaque than `threshold` (0..1) made wholly opaque, the rest taken away.
+void removeTransparency(QImage& image, double threshold);
+// The picture made a white matte of itself, as opaque as it is.
+void matteComposite(QImage& image);
+// `top` laid over `under` as a blend mode says (a Layer::Blend): the two together, in `under`.
+void blendOnto(QImage& under, QImage const& top, int mode);
+// Blurred `radius` where the matte is white, less where it is darker, not at all where there is none.
+void variableBlur(QImage& image, QImage const& matte, double radius);
 
 }
 
@@ -117,4 +130,9 @@ private:
     QLabel* m_offsetLabel;
     QDoubleSpinBox* m_offsetX;
     QDoubleSpinBox* m_offsetY;
+    // Channel Selector's channel; Crop's area (left, top, width, height).
+    QWidget* m_more = nullptr;
+    class QFormLayout* m_moreForm = nullptr;
+    QComboBox* m_channel = nullptr;
+    QDoubleSpinBox* m_cropBox[4] = {};
 };

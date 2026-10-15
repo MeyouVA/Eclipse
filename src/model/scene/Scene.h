@@ -455,7 +455,8 @@ struct Swatch {
 // a layer are applied in order.
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
-                ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient, TypeCount };
+                ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -478,7 +479,12 @@ struct Effect {
     // what is painted grown by `amount` scene units all round (`invert`: shrunk).  Matte Blur: the layer blurred `amount`
     // scene units where the drawing of the `matte` layer lies over it (`invert`: where it does not), the change soft-edged.
     // Gradient: what is painted coloured from `color` to `endColor` across it, along `direction` (degrees, 0: left to right;
-    // `invert`: from its middle out), `amount` of the way (0..1).
+    // `invert`: from its middle out), `amount` of the way (0..1).  Channel Selector: one of the picture's channels (`channel`:
+    // red, green, blue, opacity) shown as grey.  Crop: only what lies inside `area` (scene units; empty: all of it).  Remove
+    // Transparency: what is more opaque than `amount` (0..1) made wholly so, the rest taken away.  Matte Composite: the
+    // picture made a white matte of itself.  Blending (a node of the node graph): its picture laid over the one at its second
+    // input as `blendMode` says (a Layer::Blend).  Variable Blur: blurred `amount` scene units where the `matte` is white, less
+    // where it is darker, not at all where it is not.
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;
@@ -494,6 +500,9 @@ struct Effect {
     int matte = 0;              // cutter: the id of the layer whose drawing cuts this one; particles: the layer whose drawing
                                 // they bounce off (0: none)
     bool invert = false;        // cutter: keep what lies outside the matte instead of inside
+    int channel = 0;            // channel selector: 0 red, 1 green, 2 blue, 3 opacity
+    QRectF area;                // crop: what is kept, in scene units
+    int blendMode = 1;          // blending: a Layer::Blend (Multiply to begin with)
     // Particles: the layer's drawing is thrown out again and again.  `amount` is how many are let go each
     // frame; each lives `life` frames, fading; it leaves at about `speed` units a frame, within `spread`
     // degrees of `direction` (0: to the right, 90: straight up), and falls by `gravity` units a frame, each frame.

@@ -881,6 +881,30 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::blackWhite(image, amount);
         } else if (e.type == Effect::MatteResize) {
             Effects::matteResize(image, amount * pixelsPerUnit, e.invert);
+        } else if (e.type == Effect::ChannelSelector) {
+            Effects::channelSelect(image, e.channel);
+        } else if (e.type == Effect::Crop) {
+            // (The area is in scene units: where it is in the picture.)
+            if (!e.area.isEmpty())
+                Effects::crop(image, QTransform::fromScale(dpr, dpr).mapRect(sceneToDevice.mapRect(e.area)));
+        } else if (e.type == Effect::RemoveTransparency) {
+            Effects::removeTransparency(image, amount);
+        } else if (e.type == Effect::MatteComposite) {
+            Effects::matteComposite(image);
+        } else if (e.type == Effect::VariableBlur) {
+            int const m = scene.layerIndex(e.matte);
+            if (m < 0)
+                continue;  // no matte: nothing blurred
+            QImage where(size, QImage::Format_ARGB32_Premultiplied);
+            where.setDevicePixelRatio(dpr);
+            where.fill(Qt::transparent);
+            if (int const index = scene.layers[m].drawingAt(frame); index != Layer::kNoDrawing) {
+                QPainter mp(&where);
+                mp.setRenderHints(painter.renderHints());
+                mp.setTransform(scene.worldTransform(m, frame) * sceneToDevice);
+                paintMatte(mp, m, index);
+            }
+            Effects::variableBlur(image, where, amount * pixelsPerUnit);
         } else if (e.type == Effect::MatteBlur) {
             int const m = scene.layerIndex(e.matte);
             if (m < 0)
@@ -1324,6 +1348,22 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 Effects::blackWhite(out, amount);
             } else if (e.type == Effect::MatteResize) {
                 Effects::matteResize(out, amount * pixelsPerUnit, e.invert);
+            } else if (e.type == Effect::ChannelSelector) {
+                Effects::channelSelect(out, e.channel);
+            } else if (e.type == Effect::Crop) {
+                if (!e.area.isEmpty())
+                    Effects::crop(out, QTransform::fromScale(dpr, dpr).mapRect((camera * base).mapRect(e.area)));
+            } else if (e.type == Effect::RemoveTransparency) {
+                Effects::removeTransparency(out, amount);
+            } else if (e.type == Effect::MatteComposite) {
+                Effects::matteComposite(out);
+            } else if (e.type == Effect::Blending) {
+                // Over what comes in at the second input, as the blend mode says.
+                QImage under = input(id, 1);
+                Effects::blendOnto(under, out, e.blendMode);
+                out = under;
+            } else if (e.type == Effect::VariableBlur) {
+                Effects::variableBlur(out, input(id, 1), amount * pixelsPerUnit);
             } else if (GraphNode::takesMatte(e.type) && graph.into(id, 1)) {
                 // The matte comes in at the second input: what is painted there (or, inverted, what is not).
                 QImage where = input(id, 1);
