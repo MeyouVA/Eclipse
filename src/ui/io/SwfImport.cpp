@@ -145,6 +145,9 @@ struct FillStyle {
 };
 
 // A shape as read: its fills (rings of points, in twips) and lines.
+// A line that keeps its thickness however it is scaled, marked so while a frame is put together (see where lines are made).
+constexpr int kKeepWidthMark = -77;
+
 struct Shape {
     struct Area {
         FillStyle style;
@@ -1373,6 +1376,12 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             stroke.color = fx.apply(line.colour);
             stroke.order = order;
             stroke.width = float(line.width * std::sqrt(std::abs(place.determinant())));
+            if (line.keepWidth) {
+                // As thick as it says, however the movie clips it is in are scaled: its width in pixels now, and marked to be
+                // left so as it is placed (the mark goes before the frame leaves here).
+                stroke.width = float(line.width / 20.0);
+                stroke.texture = kKeepWidthMark;
+            }
             stroke.capStart = line.startCap == 0 ? Stroke::RoundCap : Stroke::FlatCap;
             stroke.capEnd = line.endCap == 0 ? Stroke::RoundCap : Stroke::FlatCap;
             stroke.join = line.join == 1 ? Stroke::BevelJoin : line.join == 2 ? Stroke::MitreJoin : Stroke::RoundJoin;
@@ -1415,7 +1424,10 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             d.fills.push_back(fill);
         }
         for (Stroke stroke : inner.strokes) {
+            float const width = stroke.width;
             stroke.transform(place);
+            if (stroke.texture == kKeepWidthMark)
+                stroke.width = width;
             stroke.color = fx.apply(stroke.color);
             stroke.order += base;
             top = std::max(top, stroke.order);
@@ -1525,8 +1537,11 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
         Drawing placed;
         int placedOrder = 0;
         placeInto(frame, toPixels, ColourFx(), placed, placedOrder);
-        for (Stroke& s : placed.strokes)
+        for (Stroke& s : placed.strokes) {
             s.width = std::max(0.5f, s.width);
+            if (s.texture == kKeepWidthMark)
+                s.texture = 0;
+        }
         out.frames.push_back(placed);
     }
     bool any = false;
