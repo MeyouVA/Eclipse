@@ -58,10 +58,8 @@ int MainWindow::importSwf(QString const& path, QString* error)
     for (Drawing& d : drawings) {
         for (Fill& fill : d.fills)
             fill.transform(place);
-        for (Stroke& stroke : d.strokes) {
-            stroke.transform(place);
-            stroke.width = float(stroke.width * scale);
-        }
+        for (Stroke& stroke : d.strokes)
+            stroke.transform(place);        // (which scales the line's thickness with it)
     }
     int const at = m_document->importDrawings(-1, QFileInfo(path).completeBaseName(), 0, drawings, 1);
     if (at < 0 && error)
