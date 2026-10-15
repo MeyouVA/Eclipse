@@ -365,8 +365,21 @@ void LayerPanel::refresh()
     if (!valid)
         return;
     Layer const& layer = scene.layers[m_layer];
-    Pose const pose = layer.poseAt(m_frame);
+    // As the scene has it: a value that follows another layer's (an attribute control) shows what it follows, and cannot
+    // be typed in.
+    Pose const pose = scene.poseOf(m_layer, m_frame);
     m_refreshing = true;
+    {
+        QDoubleSpinBox* const boxes[Driver::ValueCount] = {m_x, m_y, m_scaleX, m_scaleY, m_angle, m_opacity, m_z, m_skew, m_fov};
+        bool driven[Driver::ValueCount] = {};
+        for (Driver const& d : layer.drivers)
+            if (d.value >= 0 && d.value < Driver::ValueCount && scene.layerIndex(d.source) >= 0)
+                driven[d.value] = true;
+        for (int v = 0; v < Driver::ValueCount; ++v) {
+            boxes[v]->setEnabled(!driven[v]);
+            boxes[v]->setProperty("driven", driven[v]);
+        }
+    }
     if (!m_name->hasFocus() || m_name->text().isEmpty())
         m_name->setText(layer.name);
     static char const* const kKinds[] = {QT_TR_NOOP("Drawing"), QT_TR_NOOP("Peg"), QT_TR_NOOP("Camera"), QT_TR_NOOP("Sound"),
@@ -375,7 +388,7 @@ void LayerPanel::refresh()
     m_form->setRowVisible(m_card, layer.kind == Layer::ColourCard);
     m_form->setRowVisible(m_length, layer.kind == Layer::Bone);
     m_form->setRowVisible(m_fov, layer.kind == Layer::Camera);
-    m_fov->setValue(layer.fovAt(m_frame));
+    m_fov->setValue(m_fov->property("driven").toBool() ? pose.fov : layer.fovAt(m_frame));
     // A camera is not turned in space (it looks straight at the scene).
     m_form->setRowVisible(m_turnRow, layer.kind != Layer::Camera);
     m_card->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px;").arg(layer.cardColor.name()));
@@ -446,21 +459,23 @@ void LayerPanel::applyPose()
     // Only the numbers that were changed are taken from the boxes: they round what they
     // show, and the others must not pick that rounding up.
     Pose const now = scene.layers[m_layer].poseAt(m_frame);
+    // (Compared with what the boxes were showing - the pose as the scene has it, values that follow other layers' too.)
+    Pose const seen = scene.poseOf(m_layer, m_frame);
     Pose pose = now;
-    auto take = [](double& field, double shown, double step) {
-        if (std::abs(shown - field) > step)
+    auto take = [](double& field, double was, double shown, double step) {
+        if (std::abs(shown - was) > step)
             field = shown;
     };
-    take(pose.x, m_x->value(), 0.006);
-    take(pose.y, m_y->value(), 0.006);
-    take(pose.z, m_z->value(), 0.006);
-    take(pose.rotX, m_rotX->value(), 0.006);
-    take(pose.rotY, m_rotY->value(), 0.006);
-    take(pose.scaleX, keep(m_scaleX->value()), 0.0006);
-    take(pose.scaleY, keep(m_scaleY->value()), 0.0006);
-    take(pose.rotation, m_angle->value(), 0.006);
-    take(pose.skew, m_skew->value(), 0.006);
-    take(pose.opacity, m_opacity->value() / 100.0, 0.006);
+    take(pose.x, seen.x, m_x->value(), 0.006);
+    take(pose.y, seen.y, m_y->value(), 0.006);
+    take(pose.z, seen.z, m_z->value(), 0.006);
+    take(pose.rotX, seen.rotX, m_rotX->value(), 0.006);
+    take(pose.rotY, seen.rotY, m_rotY->value(), 0.006);
+    take(pose.scaleX, seen.scaleX, keep(m_scaleX->value()), 0.0006);
+    take(pose.scaleY, seen.scaleY, keep(m_scaleY->value()), 0.0006);
+    take(pose.rotation, seen.rotation, m_angle->value(), 0.006);
+    take(pose.skew, seen.skew, m_skew->value(), 0.006);
+    take(pose.opacity, seen.opacity, m_opacity->value() / 100.0, 0.006);
     if (pose == now)
         return;
     if (m_animate)
