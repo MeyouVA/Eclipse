@@ -331,6 +331,8 @@ public slots:
     void onActionSetDrawingLayer();
     // Skins: a drawing layer applied to the whole scene or the layers selected, on all frames or those of a scene marker.
     void onActionSkins();
+    // The layers selected (or the current one) that follow others: their driven poses made keyframes, the drivers gone.
+    void onActionBakeDrivers();
     // Lock Timeline Ruler (on or off; kept with the preferences).
     void onActionLockTimelineRuler();
     void onActionTimelineShowKind(QString const& which);

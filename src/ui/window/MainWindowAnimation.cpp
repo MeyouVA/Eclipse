@@ -154,6 +154,17 @@ void MainWindow::onActionSetDrawingLayer()
         statusBar()->showMessage(tr("The drawing layer %1 has a drawing called %2 already.").arg(set.trimmed(), l.drawingLabel(shown)), 6000);
 }
 
+void MainWindow::onActionBakeDrivers()
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty())
+        layers = {layer()};
+    int const baked = m_document->bakeDrivers(layers);
+    statusBar()->showMessage(baked > 0 ? tr("%n layer(s) baked: a keyframe on every frame of what they followed; they follow no more.", nullptr, baked)
+                                       : tr("No layer selected follows another (Layer Properties > Attribute Controls)."),
+                             6000);
+}
+
 void MainWindow::onActionSkins()
 {
     Scene const& scene = m_document->scene();

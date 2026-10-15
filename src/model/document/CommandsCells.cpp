@@ -301,6 +301,30 @@ bool Document::stepDrawingSet(int layer, int frame, int direction)
     return false;
 }
 
+int Document::bakeDrivers(QVector<int> const& layers)
+{
+    QVector<QPair<int, QVector<Pose>>> baked;
+    for (int l : layers) {
+        if (l < 0 || l >= m_scene.layers.size() || m_scene.layers[l].drivers.isEmpty())
+            continue;
+        QVector<Pose> poses;
+        for (int f = 0; f < m_scene.frameCount(); ++f)
+            poses.push_back(m_scene.poseOf(l, f));
+        baked.push_back({l, poses});
+    }
+    if (baked.isEmpty())
+        return 0;
+    apply(tr("Bake Attribute Controls"), [&](Scene& s) {
+        for (auto const& b : baked) {
+            Layer& layer = s.layers[b.first];
+            layer.drivers.clear();
+            for (int f = 0; f < b.second.size(); ++f)
+                layer.setKey(f, b.second[f]);
+        }
+    });
+    return int(baked.size());
+}
+
 int Document::applySkin(QVector<int> const& layers, QString const& set, int first, int last)
 {
     // Worked out first, so that a skin that changes nothing leaves nothing to undo.
