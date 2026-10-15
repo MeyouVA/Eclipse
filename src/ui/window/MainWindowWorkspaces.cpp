@@ -3,6 +3,9 @@
 #include "model/geometry/Deform.h"
 
 #include <QDockWidget>
+#include <QShowEvent>
+
+#include <utility>
 #include <QInputDialog>
 #include <QMenu>
 #include <QSettings>
@@ -243,6 +246,35 @@ void MainWindow::restoreWorkspace()
     m_workspace = workspaces().contains(name) ? name : QStringLiteral("Default");
     loadWorkspace(m_workspace);
     refreshWorkspaceBox();
+    holdBackFloating();
+}
+
+void MainWindow::holdBackFloating()
+{
+    // Before the window itself is shown (while the Welcome window asks what to open), the panels and toolbars that float
+    // as windows of their own wait for it, instead of standing about the screen alone.
+    if (!isVisible()) {
+        for (QDockWidget* const dock : findChildren<QDockWidget*>())
+            if (dock->isFloating() && dock->isVisible()) {
+                dock->hide();
+                m_heldBack.push_back(dock);
+            }
+        for (QToolBar* const bar : findChildren<QToolBar*>())
+            if (bar->isFloating() && bar->isVisible()) {
+                bar->hide();
+                m_heldBack.push_back(bar);
+            }
+    }
+}
+
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+    // The floating panels held back until now come out with it.
+    QVector<QPointer<QWidget>> const held = std::exchange(m_heldBack, {});
+    for (QPointer<QWidget> const& w : held)
+        if (w)
+            w->show();
 }
 
 void MainWindow::onActionRestoreDefaultWorkspace()

@@ -5,6 +5,7 @@
 
 #include "EclipseExport.h"
 
+#include <QPointer>
 #include <QElapsedTimer>
 #include <functional>
 #include <QMainWindow>
@@ -72,6 +73,8 @@ public:
     // Remembers the arrangement of the current workspace and shows that of `name`.
     void switchWorkspace(QString const& name);
     // Puts the docks and toolbars back where the user left them last time.
+    // While the window is not shown yet: its floating panels and toolbars hidden until it is.
+    void holdBackFloating();
     void restoreWorkspace();
 
     // The file a new version of `path` is saved as: name_v2, name_v3 ...
@@ -477,6 +480,7 @@ public slots:
 protected:
     void closeEvent(QCloseEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
+    void showEvent(QShowEvent* event) override;
 
 private:
     void createViews();
@@ -578,6 +582,8 @@ private:
     int frame() const;
     // Says so and is true when the current layer shows no 3D model.
     bool refuseUnlessModel(QString const& what);
+    // Floating panels and toolbars kept hidden until the window is first shown (see restoreWorkspace).
+    QVector<QPointer<QWidget>> m_heldBack;
     // Preferences: the Camera view, the Timeline, the Xsheet and the Node View take the keyboard when the pointer comes over
     // them.
     bool m_focusOnEnter = false;
