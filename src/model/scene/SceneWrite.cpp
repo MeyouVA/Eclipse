@@ -154,6 +154,7 @@ static QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::MotionBlur ? "motionBlur" : e.type == Effect::FieldChart ? "fieldChart"
                              : e.type == Effect::ColourCurves ? "colourCurves" : e.type == Effect::Focus ? "focus"
                              : e.type == Effect::ApplyPeg ? "applyPeg" : e.type == Effect::ScaleOutput ? "scaleOutput" : e.type == Effect::Glue ? "glue"
+                             : e.type == Effect::Script ? "script" : e.type == Effect::External ? "external"
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
@@ -166,6 +167,8 @@ static QJsonObject effectToJson(Effect const& e)
         one["area"] = QJsonArray{e.area.x(), e.area.y(), e.area.width(), e.area.height()};
     if (e.type == Effect::Blending)
         one["blendMode"] = e.blendMode;
+    if (e.type == Effect::Script || e.type == Effect::External)
+        one["text"] = e.text;
     if (e.type == Effect::ColourCurves) {
         QJsonArray curves;
         for (QVector<QPointF> const& curve : e.curves) {

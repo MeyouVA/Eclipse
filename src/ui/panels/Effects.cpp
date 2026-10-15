@@ -9,7 +9,12 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QDir>
+#include <QJSEngine>
 #include <QMouseEvent>
+#include <QPlainTextEdit>
+#include <QProcess>
+#include <QTemporaryDir>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
@@ -759,6 +764,12 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Blending");
     case Effect::Glue:
         return QObject::tr("Glue  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::Script:
+        return QObject::tr("Script");
+    case Effect::External: {
+        QString const program = effect.text.section(QLatin1Char(' '), 0, 0, QString::SectionSkipEmpty);
+        return program.isEmpty() ? QObject::tr("External") : QObject::tr("External  %1").arg(program);
+    }
     case Effect::VariableBlur: {
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Variable Blur  %1  %2").arg(effect.amount, 0, 'f', 1).arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"));
@@ -1065,6 +1076,102 @@ void Effects::glue(QImage& under, QImage const& top, double radius)
     under = out;
 }
 
+namespace {
+
+// What a script calls `image`.
+class ScriptImage : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(int width READ width)
+    Q_PROPERTY(int height READ height)
+
+public:
+    ScriptImage(QImage& image, double unit) : m_image(image), m_unit(unit) {}
+    int width() const { return m_image.width(); }
+    int height() const { return m_image.height(); }
+    Q_INVOKABLE QString pixel(int x, int y) const
+    {
+        return m_image.valid(x, y) ? m_image.pixelColor(x, y).name(QColor::HexArgb) : QString();
+    }
+    Q_INVOKABLE void setPixel(int x, int y, QString const& colour)
+    {
+        if (m_image.valid(x, y))
+            m_image.setPixelColor(x, y, QColor(colour));
+    }
+    Q_INVOKABLE void blur(double radius) { Effects::blur(m_image, radius * m_unit); }
+    Q_INVOKABLE void tint(QString const& colour, double amount) { Effects::tint(m_image, QColor(colour), amount); }
+    Q_INVOKABLE void transparency(double amount) { Effects::transparency(m_image, amount); }
+    Q_INVOKABLE void negate(double amount) { Effects::negate(m_image, amount); }
+    Q_INVOKABLE void blackWhite(double amount) { Effects::blackWhite(m_image, amount); }
+    Q_INVOKABLE void hueSaturation(double hue, double saturation, double lightness)
+    {
+        Effects::hueSaturation(m_image, hue, saturation, lightness, 1.0);
+    }
+    Q_INVOKABLE void brightnessContrast(double brightness, double contrast) { Effects::brightnessContrast(m_image, brightness, contrast, 1.0); }
+    Q_INVOKABLE void pixelate(double size) { Effects::pixelate(m_image, size * m_unit); }
+    Q_INVOKABLE void median(double radius) { Effects::median(m_image, radius * m_unit); }
+    Q_INVOKABLE void bloom(double radius) { Effects::bloom(m_image, radius * m_unit); }
+    Q_INVOKABLE void grain(double amount) { Effects::grain(m_image, amount, 1); }
+    Q_INVOKABLE void directionalBlur(double length, double degrees) { Effects::directionalBlur(m_image, length * m_unit, degrees); }
+    Q_INVOKABLE void colourScale(QString const& colour, double amount) { Effects::colourScale(m_image, QColor(colour), amount); }
+
+private:
+    QImage& m_image;
+    double m_unit;
+};
+
+}
+
+QString Effects::runScript(QImage& image, QString const& script, int frame, double amount, double unit)
+{
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QJSEngine engine;
+    engine.setInterrupted(false);
+    ScriptImage picture(image, unit);
+    engine.globalObject().setProperty(QStringLiteral("image"), engine.newQObject(&picture));
+    QJSEngine::setObjectOwnership(&picture, QJSEngine::CppOwnership);
+    engine.globalObject().setProperty(QStringLiteral("frame"), frame + 1);
+    engine.globalObject().setProperty(QStringLiteral("amount"), amount);
+    QJSValue const result = engine.evaluate(script);
+    if (result.isError())
+        return QObject::tr("Line %1: %2").arg(result.property(QStringLiteral("lineNumber")).toInt()).arg(result.toString());
+    return QString();
+}
+
+QString Effects::runExternal(QImage& image, QString const& command, int frame, int seconds)
+{
+    QStringList words = QProcess::splitCommand(command);
+    if (words.isEmpty())
+        return QObject::tr("No command line.");
+    QTemporaryDir dir;
+    if (!dir.isValid())
+        return QObject::tr("No room for the pictures.");
+    QString const in = QDir::toNativeSeparators(dir.filePath(QStringLiteral("in.png")));
+    QString const out = QDir::toNativeSeparators(dir.filePath(QStringLiteral("out.png")));
+    double const dpr = image.devicePixelRatio();
+    if (!image.save(in, "PNG"))
+        return QObject::tr("The picture could not be written.");
+    for (QString& w : words)
+        w.replace(QStringLiteral("{in}"), in).replace(QStringLiteral("{out}"), out).replace(QStringLiteral("{frame}"), QString::number(frame + 1));
+    QProcess process;
+    process.setWorkingDirectory(dir.path());
+    process.start(words.takeFirst(), words);
+    if (!process.waitForStarted(10000))
+        return QObject::tr("The program could not be started.");
+    if (!process.waitForFinished(std::max(1, seconds) * 1000)) {
+        process.kill();
+        process.waitForFinished(2000);
+        return QObject::tr("The program took too long.");
+    }
+    QImage made(out);
+    if (made.isNull())
+        return QObject::tr("The program made no picture at {out}.");
+    made = made.scaled(image.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    made.setDevicePixelRatio(dpr);
+    image = made;
+    return QString();
+}
+
 // ---- the curve to drag --------------------------------------------------------------------
 
 ColourCurveEdit::ColourCurveEdit(QWidget* parent)
@@ -1242,6 +1349,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Focus")), &QAction::triggered, this, [this] { add(Effect::Focus); });
     connect(menu->addAction(tr("Apply Peg Transformation")), &QAction::triggered, this, [this] { add(Effect::ApplyPeg); });
     connect(menu->addAction(tr("Scale Output")), &QAction::triggered, this, [this] { add(Effect::ScaleOutput); });
+    connect(menu->addAction(tr("Script")), &QAction::triggered, this, [this] { add(Effect::Script); });
+    connect(menu->addAction(tr("External")), &QAction::triggered, this, [this] { add(Effect::External); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -1369,6 +1478,35 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         m_curve = new ColourCurveEdit(m_more);
         m_moreForm->addRow(m_curve);
         connect(m_curveWhich, &QComboBox::currentIndexChanged, this, [this] { showEditors(); });
+        // Script and External: the script or the command line, and Apply to use it.
+        m_text = new QPlainTextEdit(m_more);
+        m_text->setObjectName(QStringLiteral("EffectText"));
+        m_text->setMinimumHeight(90);
+        m_text->setLineWrapMode(QPlainTextEdit::NoWrap);
+        m_moreForm->addRow(m_text);
+        m_textApply = new QPushButton(tr("Apply"), m_more);
+        m_textApply->setObjectName(QStringLiteral("EffectTextApply"));
+        m_moreForm->addRow(m_textApply);
+        m_textSays = new QLabel(m_more);
+        m_textSays->setObjectName(QStringLiteral("EffectTextSays"));
+        m_textSays->setWordWrap(true);
+        m_moreForm->addRow(m_textSays);
+        connect(m_textApply, &QPushButton::clicked, this, [this] {
+            QString const text = m_text->toPlainText();
+            Scene const& scene = m_document->scene();
+            int const row = m_list->currentRow();
+            bool const script = m_layer >= 0 && m_layer < scene.layers.size() && row >= 0 && row < scene.layers[m_layer].effects.size()
+                                && scene.layers[m_layer].effects[row].type == Effect::Script;
+            // A script tried out first on a small picture: what is wrong with it, said here.
+            QString says;
+            if (script) {
+                QImage trial(8, 8, QImage::Format_ARGB32_Premultiplied);
+                trial.fill(Qt::white);
+                says = Effects::runScript(trial, text, m_frame, 1.0, 1.0);
+            }
+            edit([text](Effect& e) { e.text = text; });
+            m_textSays->setText(says);
+        });
         connect(m_curve, &ColourCurveEdit::edited, this, [this](QVector<QPointF> const& points) {
             int const which = std::clamp(m_curveWhich->currentIndex(), 0, 3);
             // (A straight line from corner to corner is no curve at all.)
@@ -1663,6 +1801,20 @@ void EffectsPanel::showEditors()
         m_more->setVisible(channel || cropping || curving);
         m_moreForm->setRowVisible(m_curveWhich, curving);
         m_moreForm->setRowVisible(m_curve, curving);
+        bool const texted = valid && (e.type == Effect::Script || e.type == Effect::External);
+        m_more->setVisible(m_more->isVisibleTo(this) || texted);
+        m_moreForm->setRowVisible(m_text, texted);
+        m_moreForm->setRowVisible(m_textApply, texted);
+        m_moreForm->setRowVisible(m_textSays, texted);
+        if (texted && m_text->toPlainText() != e.text)
+            m_text->setPlainText(e.text);
+        if (texted)
+            m_text->setToolTip(e.type == Effect::Script
+                                   ? tr("JavaScript run on the picture each frame: frame, amount, and image - blur(r), tint(\"#rrggbb\", a), "
+                                        "transparency(a), negate(a), blackWhite(a), hueSaturation(h, s, l), brightnessContrast(b, c), pixelate(s), "
+                                        "median(r), bloom(r), grain(a), directionalBlur(length, degrees), colourScale(\"#rrggbb\", a), "
+                                        "pixel(x, y), setPixel(x, y, \"#rrggbb\"), width, height.")
+                                   : tr("A command line run on the picture each frame: it reads {in} and writes {out} (PNG files); {frame} is the frame."));
         m_curve->setPoints(e.curves[std::clamp(m_curveWhich->currentIndex(), 0, 3)]);
         m_moreForm->setRowVisible(m_channel, channel);
         m_channel->setCurrentIndex(std::clamp(e.channel, 0, 3));
@@ -1778,3 +1930,5 @@ void EffectsPanel::showEditors()
     }
     m_rebuilding = false;
 }
+
+#include "Effects.moc"

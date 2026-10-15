@@ -13,6 +13,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSet>
 
@@ -522,6 +523,15 @@ void NodeView::editGraphNode(int id)
         channel->setCurrentIndex(std::clamp(e.channel, 0, 3));
         form->addRow(tr("Channel"), channel);
     }
+    QPlainTextEdit* text = nullptr;
+    if (e.type == Effect::Script || e.type == Effect::External) {
+        text = new QPlainTextEdit(&dialog);
+        text->setObjectName(QStringLiteral("GraphEffectText"));
+        text->setLineWrapMode(QPlainTextEdit::NoWrap);
+        text->setPlainText(e.text);
+        text->setMinimumSize(360, 120);
+        form->addRow(e.type == Effect::Script ? tr("Script") : tr("Command Line"), text);
+    }
     QComboBox* peg = nullptr;
     if (e.type == Effect::ApplyPeg) {
         // The layer whose motion moves the picture.
@@ -583,6 +593,8 @@ void NodeView::editGraphNode(int id)
         e.blendMode = mode->currentIndex();
     if (peg)
         e.matte = peg->currentData().toInt();
+    if (text)
+        e.text = text->toPlainText();
     if (area[0])
         e.area = QRectF(area[0]->value(), area[1]->value(), area[2]->value(), area[3]->value());
     for (int c = 0; c < 4; ++c)

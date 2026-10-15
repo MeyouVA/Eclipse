@@ -140,7 +140,7 @@ QString Timeline::rowName(int layer, Parameter which) const
                                                           QT_TR_NOOP("Blending"), QT_TR_NOOP("Variable Blur"), QT_TR_NOOP("Motion Blur"),
                                                           QT_TR_NOOP("Field Chart"), QT_TR_NOOP("Colour Curves"), QT_TR_NOOP("Focus"),
                                                           QT_TR_NOOP("Apply Peg Transformation"), QT_TR_NOOP("Scale Output"),
-                                                          QT_TR_NOOP("Glue")};
+                                                          QT_TR_NOOP("Glue"), QT_TR_NOOP("Script"), QT_TR_NOOP("External")};
     Effect const& effect = scene.layers[layer].effects[e];
     return tr("Effect: %1").arg(tr(kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)]));
 }

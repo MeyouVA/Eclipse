@@ -10,6 +10,7 @@
 #include "model/scene/Scene.h"
 
 class Document;
+class QPlainTextEdit;
 class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
@@ -95,6 +96,16 @@ void scaleOutput(QImage& image, double scale);
 // `top` and `under` joined in `under`: the two together, and the gaps between them up to `radius` pixels across filled in
 // the colours of what is round them.
 void glue(QImage& under, QImage const& top, double radius);
+// A Script effect: `script` (JavaScript) run on the picture.  It sees `frame` (from 1), `amount`, and `image`: width and
+// height (pixels), pixel(x, y) -> "#aarrggbb", setPixel(x, y, "#rrggbb" or "#aarrggbb"), and blur(radius), tint(colour,
+// amount), transparency(amount), negate(amount), blackWhite(amount), hueSaturation(hue, saturation, lightness),
+// brightnessContrast(brightness, contrast), pixelate(size), median(radius), bloom(radius), grain(amount),
+// directionalBlur(length, degrees), colourScale(colour, amount) - distances in scene units (`unit` pixels each).
+// What went wrong, or empty.
+QString runScript(QImage& image, QString const& script, int frame, double amount, double unit);
+// An External effect: the command line run on the picture ({in}, {out}, {frame} filled in); waits up to `seconds` for it.
+// What went wrong, or empty.
+QString runExternal(QImage& image, QString const& command, int frame, int seconds = 60);
 
 }
 
@@ -186,4 +197,8 @@ private:
     // Colour Curves: which curve (all three colours, red, green, blue) and the curve.
     QComboBox* m_curveWhich = nullptr;
     ColourCurveEdit* m_curve = nullptr;
+    // Script and External: the script (or the command line), put to use by Apply.
+    QPlainTextEdit* m_text = nullptr;
+    QPushButton* m_textApply = nullptr;
+    QLabel* m_textSays = nullptr;
 };

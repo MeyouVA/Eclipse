@@ -217,6 +217,10 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::ScaleOutput;
     else if (type == QLatin1String("glue"))
         e.type = Effect::Glue;
+    else if (type == QLatin1String("script"))
+        e.type = Effect::Script;
+    else if (type == QLatin1String("external"))
+        e.type = Effect::External;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);
@@ -268,6 +272,8 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
     if (QJsonArray const area = eo["area"].toArray(); area.size() == 4)
         e.area = QRectF(area[0].toDouble(), area[1].toDouble(), std::max(0.0, area[2].toDouble()), std::max(0.0, area[3].toDouble()));
     e.blendMode = std::clamp(eo["blendMode"].toInt(1), 0, int(Layer::BlendCount) - 1);
+    if (e.type == Effect::Script || e.type == Effect::External)
+        e.text = eo["text"].toString();
     QJsonArray const curves = eo["curves"].toArray();
     for (int c = 0; c < 4 && c < curves.size(); ++c)
         for (QJsonValue const& v : curves[c].toArray())

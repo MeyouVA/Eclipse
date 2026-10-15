@@ -922,6 +922,10 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             }
         } else if (e.type == Effect::ScaleOutput) {
             Effects::scaleOutput(image, amount);
+        } else if (e.type == Effect::Script) {
+            Effects::runScript(image, e.text, frame, amount, pixelsPerUnit);
+        } else if (e.type == Effect::External) {
+            Effects::runExternal(image, e.text, frame);
         } else if (e.type == Effect::ChannelSelector) {
             Effects::channelSelect(image, e.channel);
         } else if (e.type == Effect::Crop) {
@@ -1409,6 +1413,10 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 }
             } else if (e.type == Effect::ScaleOutput) {
                 Effects::scaleOutput(out, amount);
+            } else if (e.type == Effect::Script) {
+                Effects::runScript(out, e.text, frame, amount, pixelsPerUnit);
+            } else if (e.type == Effect::External) {
+                Effects::runExternal(out, e.text, frame);
             } else if (e.type == Effect::ChannelSelector) {
                 Effects::channelSelect(out, e.channel);
             } else if (e.type == Effect::Crop) {

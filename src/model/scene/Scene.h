@@ -456,7 +456,7 @@ struct Swatch {
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
-                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, TypeCount };
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, Script, External, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -492,7 +492,9 @@ struct Effect {
     // Apply Peg Transformation: the picture moved, turned and sized as the `matte` layer (a peg, mostly) is on the frame.
     // Scale Output: the picture made at `amount` (0..1) of the resolution, and so the softer.  Glue (a node of the graph):
     // its picture and the one at its second input joined - the gaps between them up to `amount` scene units across filled,
-    // smoothly, in the colours either side (an elbow between an upper and a lower arm).
+    // smoothly, in the colours either side (an elbow between an upper and a lower arm).  Script: `text`, JavaScript, run on
+    // the picture each frame (see Effects::runScript).  External: `text`, a command line run on the picture each frame - it
+    // reads the picture from {in} and writes what it makes of it to {out} (PNG files), {frame} the frame (from 1).
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;
@@ -514,6 +516,7 @@ struct Effect {
     // Colour curves: what each level (0..1) turns into - for the three colours together, then for red, green and blue
     // alone - as points (in, out) in order of `in`, the curve going smoothly through them; none: left as it is.
     QVector<QPointF> curves[4];
+    QString text;               // script: the script; external: the command line
     // Particles: the layer's drawing is thrown out again and again.  `amount` is how many are let go each
     // frame; each lives `life` frames, fading; it leaves at about `speed` units a frame, within `spread`
     // degrees of `direction` (0: to the right, 90: straight up), and falls by `gravity` units a frame, each frame.
