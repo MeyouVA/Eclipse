@@ -12,6 +12,8 @@
 #include <QFontMetricsF>
 #include <QImage>
 #include <QPainterPath>
+#include <QRegularExpression>
+#include <QTemporaryDir>
 #include <QXmlStreamReader>
 
 #include <algorithm>
@@ -22,6 +24,7 @@
 
 #include "model/geometry/Morph.h"
 #include "model/scene/Scene.h"
+#include "ui/io/FlashVideo.h"
 #include "ui/io/SwfImport.h"
 #include "ui/io/Zip.h"
 
@@ -218,7 +221,32 @@ struct Paint {
     QColor colour;
     int gradient = -1;
     QPointF from, to;
+    // A bitmap of the library, and where it lies (from its pixels to the area's coordinates).
+    QString bitmap;
+    QTransform bitmapPlace;
 };
+
+// The part of a picture that shows (its clip, in its own pixels; empty: all of it), cut to an area of the drawing.
+QVector<QPolygonF> clipTo(Picture const& picture, QVector<QPolygonF> const& area)
+{
+    QTransform const back = picture.placement.inverted();
+    QPainterPath cut;
+    cut.setFillRule(Qt::WindingFill);
+    for (QPolygonF const& ring : area)
+        cut.addPolygon(back.map(ring));
+    cut = cut.simplified();
+    if (!picture.clip.isEmpty()) {
+        QPainterPath own;
+        for (QPolygonF const& ring : picture.clip)
+            own.addPolygon(ring);
+        cut = own.intersected(cut);
+    }
+    QVector<QPolygonF> out;
+    for (QPolygonF const& ring : cut.toSubpathPolygons())
+        if (ring.size() >= 3)
+            out.push_back(ring);
+    return out;
+}
 
 // How a line is drawn: its colour and thickness, how its thickness goes with scaling (0: with it, 1: not at all, 2: only
 // with the scaling across, 3: only with that down), its ends (round, flat, or square - flat, half the thickness beyond the
@@ -528,6 +556,13 @@ public:
     {
         Paint paint;
         paint.colour = colourOf(fill);
+        if (Node const* b = fill.child(QStringLiteral("BitmapFill"))) {
+            // (Its matrix, as a movie's: twentieths of the bitmap's pixels.)
+            QTransform const m = matrixOf(*b);
+            paint.bitmap = b->attr(QStringLiteral("bitmapPath"));
+            paint.bitmapPlace = QTransform(m.m11() / 20.0, m.m12() / 20.0, m.m21() / 20.0, m.m22() / 20.0, m.dx(), m.dy());
+            return paint;
+        }
         for (Node const& g : fill.children) {
             bool const linear = g.name == QLatin1String("LinearGradient"), radial = g.name == QLatin1String("RadialGradient");
             if (!linear && !radial)
@@ -797,9 +832,13 @@ public:
                 asArea.order = s.order;
                 cut(asArea);
             }
-            for (Picture const& p : std::as_const(masked.pictures))
-                if (p.bounds().intersects(reach))
+            for (Picture p : std::as_const(masked.pictures)) {
+                if (!p.bounds().intersects(reach))
+                    continue;
+                p.clip = clipTo(p, area);
+                if (!p.clip.isEmpty())
                     drawing.pictures.push_back(p);
+            }
         }
     }
 
@@ -810,6 +849,24 @@ public:
             cached = std::make_shared<Shape>(readShape(element, [this](Node const& fill) { return paintOf(fill); }));
         ++order;
         for (Shape::Area const& area : cached->areas) {
+            if (!area.paint.bitmap.isEmpty()) {
+                // Filled with a bitmap: the bitmap where the fill puts it, only where the area is.
+                Bitmap const& found = bitmap(area.paint.bitmap);
+                if (!found.image.isNull()) {
+                    Picture picture;
+                    picture.image = found.image;
+                    picture.size = found.image.size();
+                    picture.order = order;
+                    // (The fill's matrix starts from the bitmap's own pixels, whatever size the bitmap is shown at elsewhere.)
+                    QTransform const own = area.paint.bitmapPlace;
+                    picture.placement = own * place;
+                    QTransform const back = own.inverted();
+                    for (QPolygonF const& ring : area.rings)
+                        picture.clip.push_back(back.map(ring));
+                    drawing.pictures.push_back(picture);
+                    continue;
+                }
+            }
             Fill fill;
             paintFill(fill, area.paint, tint, place);
             fill.order = order;
@@ -939,6 +996,57 @@ public:
         }
     }
 
+    // A bitmap of the library, read once.
+    Bitmap const& bitmap(QString const& name)
+    {
+        auto found = bitmaps.find(name);
+        if (found == bitmaps.end()) {
+            Bitmap made;
+            if (files && bitmapFiles.contains(name))
+                made.image = bitmapOf(files->value(QStringLiteral("bin/") + bitmapFiles.value(name)), &made.shown);
+            found = bitmaps.insert(name, made);
+        }
+        return *found;
+    }
+
+    // A video of the library: its frames, decoded once (none, when they could not be).
+    struct Video {
+        QStringList files;
+        QSize size;
+    };
+    QHash<QString, Node> videoItems;        // the videos of the library, by their names
+    QHash<QString, Video> videos;
+    QHash<QString, QImage> videoFrames;     // the frames, by their files
+    QString mediaFolder;
+    QTemporaryDir* passing = nullptr;
+
+    Video const& video(QString const& name)
+    {
+        auto found = videos.find(name);
+        if (found != videos.end())
+            return *found;
+        Video made;
+        Node const item = videoItems.value(name);
+        made.size = QSize(int(item.number(QStringLiteral("width"), 0)), int(item.number(QStringLiteral("height"), 0)));
+        int codec = 0;
+        QVector<QByteArray> frames;
+        QVector<bool> keys;
+        QString why = tr("The video's data is in a form Eclipse does not know.");
+        if (files && FlashVideo::flaFrames(files->value(QStringLiteral("bin/") + item.attr(QStringLiteral("videoDataHRef"))), codec, frames, keys)) {
+            QString folder = mediaFolder;
+            if (folder.isEmpty() && passing && passing->isValid())
+                folder = passing->path();
+            QString title = name;
+            title.replace(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")), QStringLiteral("_"));
+            made.files = FlashVideo::decode(codec, frames, item.number(QStringLiteral("fps"), out->fps), folder, title, keys, &why);
+        }
+        if (made.files.isEmpty()) {
+            ++out->skippedVideo;
+            out->videoProblem = why;
+        }
+        return *videos.insert(name, made);
+    }
+
     void draw(Node const& element, int offset, QTransform const& place, Tint const& tint, Drawing& drawing, int& order, int depth)
     {
         if (depth > 24)
@@ -1029,25 +1137,40 @@ public:
         } else if (kind == QLatin1String("DOMStaticText") || kind == QLatin1String("DOMDynamicText") || kind == QLatin1String("DOMInputText")) {
             text(element, place, tint, drawing, order);
         } else if (kind == QLatin1String("DOMBitmapInstance")) {
-            QString const name = element.attr(QStringLiteral("libraryItemName"));
-            auto found = bitmaps.find(name);
-            if (found == bitmaps.end()) {
-                Bitmap made;
-                if (files && bitmapFiles.contains(name))
-                    made.image = bitmapOf(files->value(QStringLiteral("bin/") + bitmapFiles.value(name)), &made.shown);
-                found = bitmaps.insert(name, made);
-            }
-            if (found->image.isNull()) {
+            Bitmap const& found = bitmap(element.attr(QStringLiteral("libraryItemName")));
+            if (found.image.isNull()) {
                 ++out->skippedPictures;
                 return;
             }
             Picture picture;
-            picture.image = found->image;
-            picture.size = found->image.size();
-            picture.placement = QTransform::fromScale(found->shown.width() / found->image.width(), found->shown.height() / found->image.height()) * place;
+            picture.image = found.image;
+            picture.size = found.image.size();
+            picture.placement = QTransform::fromScale(found.shown.width() / found.image.width(), found.shown.height() / found.image.height()) * place;
+            picture.order = ++order;
             drawing.pictures.push_back(picture);
         } else if (kind == QLatin1String("DOMVideoInstance")) {
-            ++out->skippedVideo;
+            // A frame of the video a timeline frame (the last one held), at the size of its frame.
+            Video const& v = video(element.attr(QStringLiteral("libraryItemName")));
+            if (v.files.isEmpty())
+                return;
+            QString const file = v.files[std::clamp(offset, 0, int(v.files.size()) - 1)];
+            auto image = videoFrames.find(file);
+            if (image == videoFrames.end())
+                image = videoFrames.insert(file, QImage(file).convertToFormat(QImage::Format_ARGB32_Premultiplied));
+            if (image->isNull())
+                return;
+            double const width = element.number(QStringLiteral("frameRight"), v.size.width() * 20.0) / 20.0;
+            double const height = element.number(QStringLiteral("frameBottom"), v.size.height() * 20.0) / 20.0;
+            Picture picture;
+            picture.image = *image;
+            picture.size = image->size();
+            picture.placement = QTransform::fromScale(width / image->width(), height / image->height()) * place;
+            picture.order = ++order;
+            if (!mediaFolder.isEmpty()) {
+                picture.file = file;
+                picture.linked = true;
+            }
+            drawing.pictures.push_back(picture);
         }
     }
 };
@@ -1076,7 +1199,7 @@ QByteArray fingerprint(Drawing const& d)
 
 namespace FlaImport {
 
-bool read(QByteArray const& bytes, Document& out, QString* error)
+bool read(QByteArray const& bytes, Document& out, QString* error, QString const& mediaFolder)
 {
     auto fail = [&](QString const& why) {
         if (error)
@@ -1099,6 +1222,9 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
     Reader reader;
     reader.out = &out;
     reader.files = &files;
+    reader.mediaFolder = mediaFolder;
+    QTemporaryDir passing;
+    reader.passing = &passing;
     // The bitmaps of the library: each by its name, with the file in bin/ that holds it.  And its sounds: Flash keeps
     // them as plain samples ("44kHz 16bit Mono"), or as the MP3 they came as.
     QHash<QString, Sound> sounds;
@@ -1106,6 +1232,8 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
         for (Node const& item : media->children) {
             if (item.name == QLatin1String("DOMBitmapItem")) {
                 reader.bitmapFiles.insert(item.attr(QStringLiteral("name")), item.attr(QStringLiteral("bitmapDataHRef")));
+            } else if (item.name == QLatin1String("DOMVideoItem")) {
+                reader.videoItems.insert(item.attr(QStringLiteral("name")), item);
             } else if (item.name == QLatin1String("DOMSoundItem")) {
                 QByteArray const data = files.value(QStringLiteral("bin/") + item.attr(QStringLiteral("soundDataHRef")));
                 QString const format = item.attr(QStringLiteral("format"));
@@ -1162,9 +1290,16 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
         for (int k = 0; frames && k < frames->children.size(); ++k) {
             Node const& f = frames->children[k];
             int const index = int(f.number(QStringLiteral("index"), 0)), duration = int(f.number(QStringLiteral("duration"), 1));
-            // Its label; its sound.
+            // Its label; its script (kept as a note: it is not run); its sound.
             if (f.attributes.contains(QStringLiteral("name")) && type != QLatin1String("guide"))
-                out.labels.push_back({index, std::max(1, duration), f.attr(QStringLiteral("name")), f.attr(QStringLiteral("labelType")) == QLatin1String("comment")});
+                out.labels.push_back({index, std::max(1, duration), f.attr(QStringLiteral("name")), f.attr(QStringLiteral("labelType")) == QLatin1String("comment"),
+                                      QString()});
+            if (Node const* actions = f.child(QStringLiteral("Actionscript"))) {
+                Node const* script = actions->child(QStringLiteral("script"));
+                QString const code = script ? script->attr(QStringLiteral("#text")).trimmed() : QString();
+                if (!code.isEmpty())
+                    out.labels.push_back({index, 1, tr("Script"), true, code});
+            }
             if (f.attributes.contains(QStringLiteral("soundName")) && f.attr(QStringLiteral("soundSync")) != QLatin1String("stop")) {
                 QString const name = f.attr(QStringLiteral("soundName"));
                 if (sounds.contains(name)) {
@@ -1210,7 +1345,19 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
         any = any || !layer.drawings.isEmpty();
     if (!any)
         return fail(tr("Nothing Eclipse can read is drawn in this .fla (only video)."));
-    std::sort(out.labels.begin(), out.labels.end(), [](Label const& a, Label const& b) { return a.frame < b.frame; });
+    std::stable_sort(out.labels.begin(), out.labels.end(), [](Label const& a, Label const& b) { return a.frame < b.frame; });
+    // The document's swatches: its solid colours, each once.
+    if (Node const* lists = document.child(QStringLiteral("swatchLists")))
+        for (Node const& list : lists->children)
+            if (Node const* swatches = list.child(QStringLiteral("swatches")))
+                for (Node const& s : swatches->children) {
+                    if (s.name != QLatin1String("SolidSwatchItem"))
+                        continue;
+                    QColor c(s.attr(QStringLiteral("color"), QStringLiteral("#000000")));
+                    c.setAlphaF(float(s.number(QStringLiteral("alpha"), 1.0)));
+                    if (c.isValid() && !out.swatches.contains(c))
+                        out.swatches.push_back(c);
+                }
     return true;
 }
 

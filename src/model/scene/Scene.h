@@ -247,6 +247,12 @@ struct Picture {
     int sheet = 2;
     // From the pixels of the image to the coordinates of the drawing.
     QTransform placement;
+    // Where it lies among the lines and painted areas of the line art, as their `order` does (over those lower, under
+    // those of the same place and higher); -1: under them all, as a picture usually is.
+    int order = -1;
+    // The part of it that shows, in its own pixels: inside these outlines (as what a mask lets through, or the shape a
+    // bitmap fills).  Empty: all of it.
+    QVector<QPolygonF> clip;
     // The size the picture had when it came in (kept so that a linked picture whose file
     // has gone still has its place).
     QSize size;

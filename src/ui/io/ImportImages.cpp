@@ -44,7 +44,7 @@
 // A sound (or other media) that came inside an imported file, written out as a file of its own: into the folder kept
 // beside the scene (<scene>-media/<what it came from>/), or, for a scene not saved yet, into Eclipse's own folder of
 // imported media.  Empty when it could not be written.
-static QString saveImportedMedia(QString const& scenePath, QString const& source, QString const& name, QByteArray const& bytes)
+static QString importedMediaFolder(QString const& scenePath, QString const& source)
 {
     QString base;
     if (!scenePath.isEmpty()) {
@@ -53,7 +53,12 @@ static QString saveImportedMedia(QString const& scenePath, QString const& source
     } else {
         base = QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(QStringLiteral("Imported Media"));
     }
-    QDir folder(QDir(base).filePath(QFileInfo(source).completeBaseName()));
+    return QDir(base).filePath(QFileInfo(source).completeBaseName());
+}
+
+static QString saveImportedMedia(QString const& scenePath, QString const& source, QString const& name, QByteArray const& bytes)
+{
+    QDir folder(importedMediaFolder(scenePath, source));
     if (!folder.mkpath(QStringLiteral(".")))
         return QString();
     QFile file(folder.filePath(name));
@@ -71,7 +76,7 @@ int MainWindow::importSwf(QString const& path, QString* error)
         return -1;
     }
     SwfImport::Movie movie;
-    if (!SwfImport::read(file.readAll(), movie, error))
+    if (!SwfImport::read(file.readAll(), movie, error, importedMediaFolder(m_path, path)))
         return -1;
     // Made to fit the frame of the scene, in the middle of it.
     Scene const& scene = m_document->scene();
@@ -117,7 +122,9 @@ int MainWindow::importSwf(QString const& path, QString* error)
         if (lost > 0)
             left << tr("%n sound(s)", nullptr, lost);
         if (movie.skippedVideo > 0)
-            left << tr("%n video(s)", nullptr, movie.skippedVideo);
+            left << tr("%n video(s) (%1)", nullptr, movie.skippedVideo).arg(movie.videoProblem);
+        if (movie.scripts > 0)
+            left << tr("%n piece(s) of ActionScript (not run)", nullptr, movie.scripts);
         if (error && !left.isEmpty())
             *error = tr("Left out: %1.").arg(left.join(QStringLiteral(", ")));
     }
@@ -139,7 +146,7 @@ int MainWindow::importFla(QString const& path, QString* error)
         return -1;
     }
     FlaImport::Document fla;
-    if (!FlaImport::read(file.readAll(), fla, error))
+    if (!FlaImport::read(file.readAll(), fla, error, importedMediaFolder(m_path, path)))
         return -1;
     Scene const& scene = m_document->scene();
     double const scale = std::min(double(scene.width) / std::max(1, fla.size.width()), double(scene.height) / std::max(1, fla.size.height()));
@@ -216,7 +223,24 @@ int MainWindow::importFla(QString const& path, QString* error)
             continue;
         int const marker = m_document->addMarker(label.frame, label.length, label.name, label.comment ? QColor(150, 150, 150) : QColor(60, 190, 205));
         if (marker >= 0 && label.comment)
-            m_document->setMarkerNote(marker, label.name);
+            m_document->setMarkerNote(marker, label.note.isEmpty() ? label.name : label.note);
+    }
+    // Its swatches as a palette of their own (the palette starts with a colour: that becomes the first of them).
+    if (!fla.swatches.isEmpty()) {
+        int const palette = m_document->addPalette(tr("%1 (Flash swatches)").arg(QFileInfo(path).completeBaseName()));
+        if (palette >= 0) {
+            int first = -1;
+            for (Swatch const& s : m_document->scene().palette)
+                if (s.palette == palette && first < 0)
+                    first = s.id;
+            for (int i = 0; i < fla.swatches.size(); ++i) {
+                QString const name = fla.swatches[i].name(fla.swatches[i].alpha() < 255 ? QColor::HexArgb : QColor::HexRgb);
+                if (i == 0 && first >= 0)
+                    m_document->editSwatch(first, name, fla.swatches[i]);
+                else
+                    m_document->addSwatch(name, fla.swatches[i], palette);
+            }
+        }
     }
     QHash<QString, QString> written;
     int lost = fla.skippedSounds;
@@ -241,7 +265,7 @@ int MainWindow::importFla(QString const& path, QString* error)
         m_timeline->setCurrentCell(top, 0);
     QStringList left;
     if (fla.skippedVideo > 0)
-        left << tr("%n video(s)", nullptr, fla.skippedVideo);
+        left << tr("%n video(s) (%1)", nullptr, fla.skippedVideo).arg(fla.videoProblem);
     if (lost > 0)
         left << tr("%n sound(s)", nullptr, lost);
     if (fla.skippedPictures > 0)

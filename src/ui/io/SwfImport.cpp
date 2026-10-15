@@ -4,6 +4,8 @@
 #include <QCoreApplication>
 #include <QHash>
 #include <QImage>
+#include <QPainterPath>
+#include <QTemporaryDir>
 #include <QMap>
 #include <QPolygonF>
 #include <QTransform>
@@ -12,6 +14,7 @@
 #include <cmath>
 
 #include "model/scene/Scene.h"
+#include "ui/io/FlashVideo.h"
 #include "ui/io/Zip.h"
 
 namespace {
@@ -572,6 +575,28 @@ QImage lossless(QByteArray const& b, bool alpha)
     return image;
 }
 
+// The part of a picture that shows (its clip, in its own pixels; empty: all of it), cut to an area of the drawing.
+QVector<QPolygonF> clipTo(Picture const& picture, QVector<QPolygonF> const& area)
+{
+    QTransform const back = picture.placement.inverted();
+    QPainterPath cut;
+    cut.setFillRule(Qt::WindingFill);
+    for (QPolygonF const& ring : area)
+        cut.addPolygon(back.map(ring));
+    cut = cut.simplified();
+    if (!picture.clip.isEmpty()) {
+        QPainterPath own;
+        for (QPolygonF const& ring : picture.clip)
+            own.addPolygon(ring);
+        cut = own.intersected(cut);
+    }
+    QVector<QPolygonF> out;
+    for (QPolygonF const& ring : cut.toSubpathPolygons())
+        if (ring.size() >= 3)
+            out.push_back(ring);
+    return out;
+}
+
 // A sound of the movie in the form of a file: an MP3 as it is, uncompressed samples as a WAV; or nothing when it is in a
 // form Eclipse does not read.
 bool soundFile(int format, QByteArray const& data, SwfImport::Sound& out)
@@ -625,7 +650,7 @@ QByteArray wav(QByteArray const& samples, int rate, int bits, int channels)
     return out;
 }
 
-bool read(QByteArray const& bytes, Movie& out, QString* error)
+bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& mediaFolder)
 {
     auto fail = [&](QString const& why) {
         if (error)
@@ -662,7 +687,19 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
     out.size = QSize(std::max(1, int(std::lround((xmax - xmin) / 20.0))), std::max(1, int(std::lround((ymax - ymin) / 20.0))));
     out.fps = std::max(1.0, u16(data, p) / 256.0);
     p += 4;
-    out = Movie{out.size, out.fps, {}, {}, {}, {}, 0, 0};
+    out = Movie{out.size, out.fps, {}, {}, {}, {}, 0, 0, QString(), 0};
+    // Video: each stream's frames as they come, and the pictures that are to show them (filled in once the frames are
+    // decoded, at the end).
+    struct Stream {
+        int codec = 0;
+        QSize size;
+        QVector<QByteArray> frames;
+    };
+    QHash<int, Stream> streams;
+    struct Showing {
+        int frame, picture, stream, at;
+    };
+    QVector<Showing> showings;
     QHash<int, Shape> shapes;
     QHash<int, Font> fonts;
     QHash<QByteArray, int> gradientKeys;    // a gradient of `out.gradients`, by what it is
@@ -694,6 +731,7 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
         // A colour effect: each colour times so much (in 256ths), and so much more - red, green, blue, opacity.
         int mult[4] = {256, 256, 256, 256};
         int add[4] = {0, 0, 0, 0};
+        int ratio = 0;          // (for a video: the frame of it shown)
     };
     QMap<int, Placed> list;     // the display list, by depth
     QTransform const toPixels = QTransform::fromTranslate(-xmin, -ymin) * QTransform::fromScale(1.0 / 20.0, 1.0 / 20.0);
@@ -815,7 +853,22 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
                 streamed += (streamFormat >> 4) == 2 ? body.mid(4) : body;
             }
         } else if (code == 60) {
-            ++out.skippedVideo;
+            // A video stream: so many frames, so big, in a codec.
+            Stream video;
+            video.frames.resize(u16(body, 2));
+            video.size = QSize(u16(body, 4), u16(body, 6));
+            video.codec = u8(body, 9);
+            streams.insert(u16(body, 0), video);
+        } else if (code == 61) {
+            auto found = streams.find(u16(body, 0));
+            int const number = u16(body, 2);
+            if (found != streams.end()) {
+                if (number >= found->frames.size())
+                    found->frames.resize(number + 1);
+                found->frames[number] = body.mid(4);
+            }
+        } else if (code == 12 || code == 59 || code == 82) {
+            ++out.scripts;
         } else if (code == 26 || code == 70) {
             int q = 0;
             int const flags = u8(body, q++);
@@ -856,8 +909,10 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
                 bits.align();
                 q = bits.byte();
             }
-            if (flags & 0x10)
-                q += 2;     // a ratio
+            if (flags & 0x10) {
+                at.ratio = u16(body, q);
+                q += 2;
+            }
             if (flags & 0x20)
                 while (q < body.size() && body[q++] != 0) {}       // a name
             if (flags & 0x40)
@@ -882,8 +937,29 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
                 QVector<QPolygonF> area;
             };
             QVector<Mask> masks;
+            // A picture placed among what is drawn, cut to the masks over it (or left out, where they let none of it through).
+            auto placePicture = [&](Picture p) {
+                for (Mask const& m : std::as_const(masks)) {
+                    p.clip = clipTo(p, m.area);
+                    if (p.clip.isEmpty())
+                        return -1;
+                }
+                drawing.pictures.push_back(p);
+                return int(drawing.pictures.size()) - 1;
+            };
             for (auto it = list.cbegin(); it != list.cend(); ++it) {
                 masks.removeIf([&](Mask const& m) { return it.key() > m.upTo; });
+                if (auto const video = streams.constFind(it->character); video != streams.cend() && it->clipDepth == 0) {
+                    // A frame of a video: as big as the stream says (in pixels), where it is placed.
+                    Picture frame;
+                    frame.size = video->size;
+                    frame.order = ++order;
+                    frame.placement = QTransform::fromScale(20.0, 20.0) * it->matrix * toPixels;
+                    int const index = placePicture(frame);
+                    if (index >= 0)
+                        showings.push_back({int(out.frames.size()), index, it->character, it->ratio});
+                    continue;
+                }
                 auto const found = shapes.constFind(it->character);
                 if (found == shapes.cend())
                     continue;
@@ -941,7 +1017,12 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
                             }
                             picture.size = image.size();
                             picture.placement = area.style.matrix * place;
-                            drawing.pictures.push_back(picture);
+                            picture.order = order;
+                            // (Only where the shape it fills is.)
+                            QTransform const back = area.style.matrix.inverted();
+                            for (QPolygonF const& ring : area.rings)
+                                picture.clip.push_back(back.map(ring));
+                            placePicture(picture);
                             continue;
                         }
                     }
@@ -1012,6 +1093,62 @@ bool read(QByteArray const& bytes, Movie& out, QString* error)
             out.sounds.push_back(stream);
         else
             ++out.skippedSounds;
+    }
+    // The video: each stream that is shown decoded (into the media folder, or in passing), its frames put in the pictures
+    // that show them (the nearest frame before, where one is missing).
+    {
+        QTemporaryDir passing;
+        QHash<int, QStringList> decoded;
+        QHash<QString, QImage> loaded;
+        QHash<int, QVector<int>> dropped;     // pictures to take out again, frame by frame
+        for (Showing const& s : std::as_const(showings)) {
+            if (!decoded.contains(s.stream)) {
+                Stream const& video = streams[s.stream];
+                QVector<QByteArray> frames;
+                for (QByteArray const& f : video.frames)
+                    frames.push_back(f);
+                while (!frames.isEmpty() && frames.last().isEmpty())
+                    frames.removeLast();
+                QString why;
+                QStringList const files = FlashVideo::decode(video.codec, frames, out.fps, mediaFolder.isEmpty() ? passing.path() : mediaFolder,
+                                                             QStringLiteral("video %1").arg(s.stream), {}, &why);
+                if (files.isEmpty()) {
+                    ++out.skippedVideo;
+                    out.videoProblem = why;
+                }
+                decoded.insert(s.stream, files);
+            }
+            QStringList const& files = decoded[s.stream];
+            if (files.isEmpty()) {
+                dropped[s.frame].push_back(s.picture);
+                continue;
+            }
+            QString const file = files[std::clamp(s.at, 0, int(files.size()) - 1)];
+            auto image = loaded.find(file);
+            if (image == loaded.end())
+                image = loaded.insert(file, QImage(file).convertToFormat(QImage::Format_ARGB32_Premultiplied));
+            Picture& shown = out.frames[s.frame].pictures[s.picture];
+            shown.image = *image;
+            if (!image->isNull() && image->size() != shown.size) {
+                // (Decoded at another size than the stream gave: the same place, in the picture's own pixels.)
+                QTransform const to = QTransform::fromScale(double(image->width()) / shown.size.width(), double(image->height()) / shown.size.height());
+                for (QPolygonF& ring : shown.clip)
+                    ring = to.map(ring);
+                shown.placement = to.inverted() * shown.placement;
+            }
+            if (!image->isNull())
+                shown.size = image->size();
+            if (!mediaFolder.isEmpty()) {
+                shown.file = file;
+                shown.linked = true;
+            }
+        }
+        for (auto it = dropped.begin(); it != dropped.end(); ++it) {
+            QVector<int> gone = it.value();
+            std::sort(gone.begin(), gone.end(), std::greater<int>());
+            for (int index : std::as_const(gone))
+                out.frames[it.key()].pictures.removeAt(index);
+        }
     }
     bool any = false;
     for (Drawing const& d : out.frames)

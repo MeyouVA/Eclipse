@@ -4,8 +4,8 @@
 // their caps and joins); bitmaps (JPEG, with or without an alpha channel, and lossless ones) come as pictures where a
 // shape is filled with them; static text as the shapes of its letters, from the movie's own fonts.  Where each thing is
 // placed (moved, scaled, turned) on each frame is kept, as are masks and colour effects.  Frame labels and sounds (MP3 or
-// uncompressed, streamed or started on a frame) are read too.  Movie clips inside the movie, video and ActionScript are
-// not.  Compressed movies (CWS) are read; LZMA ones (ZWS) are not.
+// uncompressed, streamed or started on a frame) are read too, and video (decoded by ffmpeg, when it is installed).
+// Movie clips inside the movie and ActionScript are not run.  Compressed movies (CWS) are read; LZMA ones (ZWS) are not.
 #pragma once
 
 #include "EclipseExport.h"
@@ -41,13 +41,16 @@ struct Movie {
     QVector<Label> labels;
     QVector<Sound> sounds;
     int skippedSounds = 0;      // sounds in a form Eclipse does not read (ADPCM, Nellymoser, Speex)
-    int skippedVideo = 0;       // video streams
+    int skippedVideo = 0;       // video streams that could not be decoded
+    QString videoProblem;       // and why
+    int scripts = 0;            // pieces of ActionScript (not run)
 };
 
 // A WAV file of so many channels of samples (8-bit unsigned or 16-bit little-endian, as `bits` says).
 ECLIPSE_UI_API QByteArray wav(QByteArray const& samples, int rate, int bits, int channels);
 
-// False (and why) when the bytes are not a movie that can be read.
-ECLIPSE_UI_API bool read(QByteArray const& bytes, Movie& out, QString* error = nullptr);
+// False (and why) when the bytes are not a movie that can be read.  The frames of its video are decoded into
+// `mediaFolder` and shown from there (linked pictures); without one, they are decoded in passing and kept in the drawings.
+ECLIPSE_UI_API bool read(QByteArray const& bytes, Movie& out, QString* error = nullptr, QString const& mediaFolder = QString());
 
 }

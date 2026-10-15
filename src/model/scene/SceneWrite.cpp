@@ -136,6 +136,9 @@ static QJsonArray pairsJson(QVector<QPair<QString, QString>> const& pairs)
 
 QJsonObject Scene::toJson(QString const& folder) const
 {
+    // Pictures kept in the file itself: each image once, as a PNG under a key the pictures that show it name.
+    QJsonObject images;
+    QHash<qint64, QString> imageKeys;
     QJsonArray layerArray;
     for (Layer const& layer : layers) {
         QJsonArray drawings;
@@ -183,17 +186,37 @@ QJsonObject Scene::toJson(QString const& folder) const
                         picture["painted"] = true;
                     if (p.painted && p.sheet != Drawing::LineSheet)
                         picture["sheet"] = p.sheet;
+                    if (p.order >= 0)
+                        picture["order"] = p.order;
+                    if (!p.clip.isEmpty()) {
+                        QJsonArray clip;
+                        for (QPolygonF const& ring : p.clip) {
+                            QJsonArray points;
+                            for (QPointF const& at : ring) {
+                                points.append(at.x());
+                                points.append(at.y());
+                            }
+                            clip.append(points);
+                        }
+                        picture["clip"] = clip;
+                    }
                     if (p.linked) {
                         picture["linked"] = true;
                         if (QString const relative = pathFrom(folder, p.file); !relative.isEmpty())
                             picture["relative"] = relative;
                     } else {
-                        // Kept in the scene file itself, as a PNG.
-                        QByteArray bytes;
-                        QBuffer buffer(&bytes);
-                        buffer.open(QIODevice::WriteOnly);
-                        p.image.save(&buffer, "PNG");
-                        picture["png"] = QString::fromLatin1(bytes.toBase64());
+                        // Kept in the scene file itself, as a PNG (once, however many pictures show it).
+                        QString key = imageKeys.value(p.image.cacheKey());
+                        if (key.isEmpty()) {
+                            key = QString::number(imageKeys.size() + 1);
+                            imageKeys.insert(p.image.cacheKey(), key);
+                            QByteArray bytes;
+                            QBuffer buffer(&bytes);
+                            buffer.open(QIODevice::WriteOnly);
+                            p.image.save(&buffer, "PNG");
+                            images[key] = QString::fromLatin1(bytes.toBase64());
+                        }
+                        picture["image"] = key;
                     }
                     pictures.append(picture);
                 }
@@ -609,6 +632,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"layers", layerArray}};
     if (!textureArray.isEmpty())
         whole["textures"] = textureArray;
+    if (!images.isEmpty())
+        whole["images"] = images;
     return whole;
 }
 

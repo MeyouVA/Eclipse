@@ -7,8 +7,9 @@
 // ones and their masks too), where they are placed, with their colour effects; classic motion tweens (with their eases,
 // custom ones too, about the transformation point) and shape tweens are followed between keyframes.  Guide layers and
 // folders are left out; a mask layer comes as a hidden layer the layers under it are cut by.  Bitmaps (JPEG, or Flash's
-// own) come as pictures, text as the shapes of its letters (in its font, bold or italic, aligned).  Frame labels, the
-// colour and lock of each layer and the sounds on the main timeline are read too.  Video is not.
+// own; bitmap fills too) come as pictures in their place among what is drawn, text as the shapes of its letters (in its
+// font, bold or italic, aligned), video (decoded by ffmpeg, when it is installed) as a picture a frame.  Frame labels and
+// scripts, the colour and lock of each layer, the sounds on the main timeline and the document's swatches are read too.
 #pragma once
 
 #include "EclipseExport.h"
@@ -41,6 +42,7 @@ struct Label {
     int length = 1;
     QString name;
     bool comment = false;       // a comment rather than a name
+    QString note;               // what there is to say about it (a frame's script)
 };
 
 // A sound of the main timeline, as a file of its own would hold it.
@@ -61,12 +63,16 @@ struct Document {
     QVector<Swatch> gradients;
     QVector<Label> labels;
     QVector<Sound> sounds;
+    // The colours of the document's swatches panel (its solid swatches, each once).
+    QVector<QColor> swatches;
     int skippedPictures = 0;    // bitmaps that could not be read
-    int skippedVideo = 0;       // video, left out (how many times one was met)
+    int skippedVideo = 0;       // videos that could not be decoded
+    QString videoProblem;       // and why
     int skippedSounds = 0;      // sounds in a form Eclipse does not read
 };
 
-// False (and why) when the bytes are not a Flash document that can be read.
-ECLIPSE_UI_API bool read(QByteArray const& bytes, Document& out, QString* error = nullptr);
+// False (and why) when the bytes are not a Flash document that can be read.  The frames of its video are decoded into
+// `mediaFolder` and shown from there (linked pictures); without one, they are decoded in passing and kept in the drawings.
+ECLIPSE_UI_API bool read(QByteArray const& bytes, Document& out, QString* error = nullptr, QString const& mediaFolder = QString());
 
 }

@@ -285,6 +285,16 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         QJsonObject const to = tv.toObject();
         TextureBank::add(to["name"].toString(), TextureBank::grainFromText(to["png"].toString()), to["edge"].toDouble(0.5));
     }
+    // The pictures kept in the file itself, each image once (by the key the pictures name it by).
+    QHash<QString, QImage> images;
+    {
+        QJsonObject const stored = json["images"].toObject();
+        for (auto it = stored.begin(); it != stored.end(); ++it) {
+            QImage image;
+            image.loadFromData(QByteArray::fromBase64(it.value().toString().toLatin1()), "PNG");
+            images.insert(it.key(), image);
+        }
+    }
     for (QJsonValue const& lv : json["layers"].toArray()) {
         QJsonObject const lo = lv.toObject();
         Layer layer;
@@ -369,6 +379,15 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 p.linked = po["linked"].toBool(false);
                 p.painted = po["painted"].toBool(false);
                 p.sheet = std::clamp(po["sheet"].toInt(Drawing::LineSheet), 0, Drawing::SheetCount - 1);
+                p.order = po["order"].toInt(-1);
+                for (QJsonValue const& rv : po["clip"].toArray()) {
+                    QJsonArray const points = rv.toArray();
+                    QPolygonF ring;
+                    for (int i = 0; i + 1 < points.size(); i += 2)
+                        ring << QPointF(points[i].toDouble(), points[i + 1].toDouble());
+                    if (ring.size() >= 3)
+                        p.clip.push_back(ring);
+                }
                 p.size = QSize(po["width"].toInt(), po["height"].toInt());
                 QJsonArray const m = po["placement"].toArray();
                 if (m.size() == 9)
@@ -376,6 +395,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                                              m[6].toDouble(), m[7].toDouble(), m[8].toDouble());
                 if (p.linked)
                     p.image = QImage(p.file);       // null when the file has gone: the place is kept
+                else if (po.contains("image"))
+                    p.image = images.value(po["image"].toString());
                 else
                     p.image.loadFromData(QByteArray::fromBase64(po["png"].toString().toLatin1()), "PNG");
                 if (!p.image.isNull() && p.size.isEmpty())
