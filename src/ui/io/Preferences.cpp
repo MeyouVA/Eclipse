@@ -301,6 +301,7 @@ void MainWindow::applyPreferences()
     m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
+    m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
     {
         int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
@@ -322,6 +323,9 @@ void MainWindow::applyPreferences()
         bool const loop = s.value(QStringLiteral("prefs/loop"), true).toBool();
         m_actions->setChecked(QStringLiteral("PlayLoop"), loop);
         onActionToggleLoop(loop);
+        // The Select tool's lasso, and the gaps the paint bucket closes, as Eclipse starts (their tool properties change them after).
+        m_canvas->setLasso(s.value(QStringLiteral("prefs/selectLasso"), true).toBool());
+        m_canvas->setCloseGapSize(std::clamp(s.value(QStringLiteral("prefs/closeGap"), 2.0).toDouble(), 0.0, 50.0));
         bool const onTop = s.value(QStringLiteral("prefs/drawingOnTop"), false).toBool();
         m_actions->setChecked(QStringLiteral("CurrentDrawingOnTop"), onTop);
         m_canvas->onActionCurrentDrawingOnTop(onTop);
@@ -652,6 +656,11 @@ void MainWindow::onActionPreferences()
     onionBrightness->setToolTip(tr("In the onion skins, the lighter a colour is the fainter it shows: the painted areas fade, the dark lines stay."));
     onionBrightness->setChecked(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
     onionLayout->addRow(onionBrightness);
+    QCheckBox* const onionOver = new QCheckBox(tr("Over the drawings, not under them"), onionPage);
+    onionOver->setObjectName(QStringLiteral("PrefOnionOver"));
+    onionOver->setToolTip(tr("The onion skins are shown on top of everything, rather than underneath the drawing being worked on."));
+    onionOver->setChecked(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
+    onionLayout->addRow(onionOver);
 
     // Sound: when it is heard.
     QGroupBox* const soundPage = new QGroupBox(tr("Sound"), &dialog);
@@ -692,6 +701,18 @@ void MainWindow::onActionPreferences()
     lineArtBitmap->setToolTip(tr("Add Drawing Layer starts with the line art painted in pixels rather than drawn in vectors."));
     lineArtBitmap->setChecked(s.value(QStringLiteral("prefs/lineArtBitmap"), false).toBool());
     drawingLayout->addRow(lineArtBitmap);
+    QCheckBox* const selectLasso = new QCheckBox(tr("Select tool is lasso when Eclipse starts"), drawing);
+    selectLasso->setObjectName(QStringLiteral("PrefSelectLasso"));
+    selectLasso->setChecked(s.value(QStringLiteral("prefs/selectLasso"), true).toBool());
+    drawingLayout->addRow(selectLasso);
+    QDoubleSpinBox* const closeGap = new QDoubleSpinBox(drawing);
+    closeGap->setObjectName(QStringLiteral("PrefCloseGap"));
+    closeGap->setRange(0.0, 50.0);
+    closeGap->setDecimals(1);
+    closeGap->setSuffix(tr(" pixels"));
+    closeGap->setToolTip(tr("The gaps the paint bucket closes by itself, as Eclipse starts (0: none)."));
+    closeGap->setValue(s.value(QStringLiteral("prefs/closeGap"), 2.0).toDouble());
+    drawingLayout->addRow(tr("Auto gap closing on startup"), closeGap);
     QSpinBox* const thumbnails = new QSpinBox(drawing);
     thumbnails->setObjectName(QStringLiteral("PrefThumbnailSize"));
     thumbnails->setRange(50, 200);
@@ -805,6 +826,9 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionBrightnessAlpha"), onionBrightness->isChecked());
     s.setValue(QStringLiteral("prefs/lineArtBitmap"), lineArtBitmap->isChecked());
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
+    s.setValue(QStringLiteral("prefs/onionOver"), onionOver->isChecked());
+    s.setValue(QStringLiteral("prefs/selectLasso"), selectLasso->isChecked());
+    s.setValue(QStringLiteral("prefs/closeGap"), closeGap->value());
     s.setValue(QStringLiteral("prefs/xsheetCentre"), xsheetCentre->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetHold"), xsheetHold->value());
     s.setValue(QStringLiteral("prefs/focusOnEnter"), focusOnEnter->isChecked());

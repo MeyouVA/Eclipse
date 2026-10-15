@@ -467,6 +467,13 @@ public:
         update();
     }
     bool onionBrightnessAlpha() const { return m_onionBrightnessAlpha; }
+    // Preferences: the onion skins over everything rather than under the drawing they are of.
+    void setOnionOver(bool on)
+    {
+        m_onionOver = on;
+        update();
+    }
+    bool onionOver() const { return m_onionOver; }
     bool onionByFrame() const { return m_onionByFrame; }
     void setOnionColours(QColor const& before, QColor const& after);
     QColor onionBefore() const { return m_onionBefore; }
@@ -963,6 +970,7 @@ private:
     bool m_onionByFrame = false;
     bool m_onionOutlines = false;
     bool m_onionBrightnessAlpha = false;
+    bool m_onionOver = false;
     int m_onionMark = 0;
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     // What a symbol shows on one of its frames, painted where the painter stands (the sheet of the layer that shows it).

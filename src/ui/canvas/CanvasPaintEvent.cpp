@@ -212,6 +212,44 @@ void Canvas::paintEvent(QPaintEvent*)
         painter.setTransform(cameraViewTransform());
         painter.fillRect(frameRect, Qt::white);
     }
+    // Onion skin: the neighbouring drawings of the layer being edited, tinted - underneath it, or (Preferences) over everything.
+    auto onionsOf = [&](int l) {
+        Layer const& layer = scene.layers[l];
+        if (!m_onionSkin || m_playing || (l != m_layer && !layer.onion))
+            return;
+        // Each is shown where the layer is on its own frame; the further off, the fainter.
+        double const strength = m_onionOpacity / 100.0;
+        for (int i = 0, prev = m_frame; i < m_onionPrev; ++i) {
+            prev = m_onionByFrame ? prev - 1 : layer.previousDrawingFrame(prev);
+            if (prev < 0)
+                break;
+            if (layer.drawingAt(prev) == Layer::kNoDrawing)
+                continue;       // an empty frame: nothing of it to show
+            if (m_onionMark != Drawing::NoMark && layer.drawings[layer.cells[prev]].mark != m_onionMark) {
+                --i;            // not one of the drawings asked for: the next one back is looked at instead
+                continue;
+            }
+            painter.setTransform(worldOf(l, prev) * view);
+            if (m_onionStrength[0][i] > 0)
+                paintOnion(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
+                           strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, onionStepColour(false, i));
+        }
+        for (int i = 0, next = m_frame; i < m_onionNext; ++i) {
+            next = m_onionByFrame ? next + 1 : layer.nextDrawingFrame(next);
+            if (next < 0 || next >= scene.frameCount())
+                break;
+            if (layer.drawingAt(next) == Layer::kNoDrawing)
+                continue;
+            if (m_onionMark != Drawing::NoMark && layer.drawings[layer.cells[next]].mark != m_onionMark) {
+                --i;
+                continue;
+            }
+            painter.setTransform(worldOf(l, next) * view);
+            if (m_onionStrength[1][i] > 0)
+                paintOnion(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
+                           strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, onionStepColour(true, i));
+        }
+    };
     for (int l : std::as_const(order)) {
         Layer const& layer = scene.layers[l];
         // In the Drawing view: the current layer; and the others only on the light table.
@@ -227,42 +265,9 @@ void Canvas::paintEvent(QPaintEvent*)
         if (!scene.shows(l) || !layer.holdsDrawings())
             continue;
         painter.setTransform(worldOf(l, m_frame) * view);
-        // Onion skin: the neighbouring drawings of the layer being edited, tinted, underneath it.
-        if (m_onionSkin && !m_playing && (l == m_layer || layer.onion)) {
-            // Each is shown where the layer is on its own frame; the further off, the fainter.
-            double const strength = m_onionOpacity / 100.0;
-            for (int i = 0, prev = m_frame; i < m_onionPrev; ++i) {
-                prev = m_onionByFrame ? prev - 1 : layer.previousDrawingFrame(prev);
-                if (prev < 0)
-                    break;
-                if (layer.drawingAt(prev) == Layer::kNoDrawing)
-                    continue;       // an empty frame: nothing of it to show
-                if (m_onionMark != Drawing::NoMark && layer.drawings[layer.cells[prev]].mark != m_onionMark) {
-                    --i;            // not one of the drawings asked for: the next one back is looked at instead
-                    continue;
-                }
-                painter.setTransform(worldOf(l, prev) * view);
-                if (m_onionStrength[0][i] > 0)
-                    paintOnion(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
-                               strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, onionStepColour(false, i));
-            }
-            for (int i = 0, next = m_frame; i < m_onionNext; ++i) {
-                next = m_onionByFrame ? next + 1 : layer.nextDrawingFrame(next);
-                if (next < 0 || next >= scene.frameCount())
-                    break;
-                if (layer.drawingAt(next) == Layer::kNoDrawing)
-                    continue;
-                if (m_onionMark != Drawing::NoMark && layer.drawings[layer.cells[next]].mark != m_onionMark) {
-                    --i;
-                    continue;
-                }
-                painter.setTransform(worldOf(l, next) * view);
-                if (m_onionStrength[1][i] > 0)
-                    paintOnion(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
-                               strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, onionStepColour(true, i));
-            }
-            painter.setTransform(worldOf(l, m_frame) * view);
-        }
+        if (!m_onionOver)
+            onionsOf(l);
+        painter.setTransform(worldOf(l, m_frame) * view);
         int const index = layer.drawingAt(m_frame);
         // The light table: while drawing, the layers that are not being drawn on are faint.
         double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? m_lightWash / 100.0 : 1.0;
@@ -438,6 +443,10 @@ void Canvas::paintEvent(QPaintEvent*)
             paintStroke(painter, preview, scene.brushFor(preview));
         }
     }
+    if (m_onionOver)
+        for (int l : std::as_const(order))
+            if (scene.shows(l) && scene.layers[l].holdsDrawings() && (!m_drawingView || l == m_layer || m_lightTable))
+                onionsOf(l);
 
     painter.setTransform(cameraViewTransform());
     painter.setClipping(false);
