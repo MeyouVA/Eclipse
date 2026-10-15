@@ -330,6 +330,10 @@ public slots:
     void onActionImportSwf();
     // The same, from a file; the layer made, or -1 (and why).
     int importSwf(QString const& path, QString* error = nullptr);
+    // File > Import > FLA: each layer of a Flash document's main timeline as a layer, frame by frame.
+    void onActionImportFla();
+    // The same, from a file; how many layers were made, or -1 (and why).
+    int importFla(QString const& path, QString* error = nullptr);
     // Drawing layers (sets of drawings within a layer): the next drawing of the same one; the drawing of the same name in
     // the next one; and the drawing on the current frame put in one.  `direction` is "1" or "-1".
     void onActionSubstituteSameSet(QString const& direction);

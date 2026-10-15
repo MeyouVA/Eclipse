@@ -29,6 +29,7 @@
     <item id="ImportMovie" icon="file/importmovie" text="&amp;Movie..." shortcut="shortcut.importMovie" responder="window" slot="onActionImportMovie()"/>
     <item id="ImportSound" icon="timeline/addsound" text="&amp;Sound..." responder="window" slot="onActionImportSound()"/>
     <item id="ImportSwf" icon="file/importmovie" text="S&amp;WF..." responder="window" slot="onActionImportSwf()"/>
+    <item id="ImportFla" icon="file/importmovie" text="&amp;FLA (Flash Document)..." responder="window" slot="onActionImportFla()"/>
     <item id="ImportReference" icon="file/importreference" text="To &amp;Reference View..." responder="window" slot="onActionImportReference()"/>
    </menu>
    <menu id="Export" text="&amp;Export">

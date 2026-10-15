@@ -37,6 +37,7 @@
 #include "ui/timeline/Timeline.h"
 #include "ui/io/ImportExportPrivate.h"
 #include "ui/io/SwfImport.h"
+#include "ui/io/FlaImport.h"
 
 int MainWindow::importSwf(QString const& path, QString* error)
 {
@@ -67,6 +68,91 @@ int MainWindow::importSwf(QString const& path, QString* error)
     if (at >= 0)
         m_timeline->setCurrentCell(at, 0);
     return at;
+}
+
+int MainWindow::importFla(QString const& path, QString* error)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (error)
+            *error = file.errorString();
+        return -1;
+    }
+    FlaImport::Document fla;
+    if (!FlaImport::read(file.readAll(), fla, error))
+        return -1;
+    Scene const& scene = m_document->scene();
+    double const scale = std::min(double(scene.width) / std::max(1, fla.size.width()), double(scene.height) / std::max(1, fla.size.height()));
+    QTransform const place = QTransform::fromScale(scale, scale)
+                             * QTransform::fromTranslate((scene.width - fla.size.width() * scale) / 2.0, (scene.height - fla.size.height() * scale) / 2.0);
+    m_document->beginMacro(tr("Import FLA"));
+    if (scene.frameCount() < fla.frames)
+        m_document->setFrameCount(fla.frames);
+    // Each layer, from the back up; then the masks are given to the layers they cut.
+    QVector<int> ids;
+    int above = int(m_document->scene().layers.size()) - 1;
+    for (FlaImport::Layer const& in : std::as_const(fla.layers)) {
+        int const at = m_document->addLayer(above);
+        if (at < 0) {
+            ids.push_back(0);
+            continue;
+        }
+        above = at;
+        QVector<Drawing> drawings = in.drawings;
+        for (Drawing& d : drawings) {
+            for (Fill& fill : d.fills)
+                fill.transform(place);
+            for (Stroke& stroke : d.strokes)
+                stroke.transform(place);
+        }
+        int const frames = m_document->scene().frameCount();
+        QString const name = in.name;
+        bool const shown = in.visible && !in.mask;
+        QVector<int> cells = in.cells;
+        m_document->editLayers({at}, tr("Import FLA"), [&](Layer& layer) {
+            layer.name = name;
+            layer.drawings = drawings;
+            layer.cells.fill(Layer::kNoDrawing, frames);
+            for (int f = 0; f < std::min(int(cells.size()), frames); ++f)
+                layer.cells[f] = cells[f];
+            layer.visible = shown;
+            for (Drawing& d : layer.drawings)
+                d.pinned = true;
+        });
+        ids.push_back(m_document->scene().layers[at].id);
+    }
+    for (int i = 0; i < fla.layers.size(); ++i) {
+        int const by = fla.layers[i].maskedBy;
+        int const at = m_document->scene().layerIndex(ids[i]);
+        if (by < 0 || at < 0)
+            continue;
+        Effect cut = Effect::made(Effect::Cutter);
+        cut.matte = ids[by];
+        m_document->editLayers({at}, tr("Import FLA"), [&](Layer& layer) { layer.effects.push_back(cut); });
+    }
+    m_document->endMacro();
+    int const top = m_document->scene().layerIndex(ids.isEmpty() ? 0 : ids.last());
+    if (top >= 0)
+        m_timeline->setCurrentCell(top, 0);
+    if (error && (fla.skippedText > 0 || fla.skippedPictures > 0))
+        *error = tr("Left out: text and bitmaps (not read).");
+    return int(fla.layers.size());
+}
+
+void MainWindow::onActionImportFla()
+{
+    QString const path = QFileDialog::getOpenFileName(this, tr("Import FLA"), QString(), tr("Flash Document (*.fla)"));
+    if (path.isEmpty())
+        return;
+    QString note;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    int const made = importFla(path, &note);
+    QApplication::restoreOverrideCursor();
+    if (made < 0) {
+        QMessageBox::warning(this, tr("Import FLA"), note);
+        return;
+    }
+    statusBar()->showMessage(tr("%1: %n layer(s), frame by frame.", nullptr, made).arg(QFileInfo(path).fileName()) + (note.isEmpty() ? QString() : QLatin1Char(' ') + note), 10000);
 }
 
 void MainWindow::onActionImportSwf()
