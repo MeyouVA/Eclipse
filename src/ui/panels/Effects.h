@@ -55,6 +55,9 @@ void pixelate(QImage& image, double size);
 // Each point taken from up to `strength` pixels away, by a smooth noise whose swirls are about `size` pixels across; it moves
 // on with `frame`.
 void turbulence(QImage& image, double strength, double size, int frame);
+// The picture made a soft matte of `colour`: solid where it is painted and as far as `inner` pixels out from it, fading to
+// nothing at `outer` pixels.
+void matteGenerator(QImage& image, double inner, double outer, QColor const& colour);
 
 QString name(Effect const& effect, Scene const& scene);
 

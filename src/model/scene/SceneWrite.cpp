@@ -353,11 +353,12 @@ QJsonObject Scene::toJson(QString const& folder) const
                                          : e.type == Effect::Negate ? "negate" : e.type == Effect::Median ? "median" : e.type == Effect::Ripple ? "ripple"
                                          : e.type == Effect::Tone ? "tone" : e.type == Effect::Highlight ? "highlight"
                                          : e.type == Effect::Bloom ? "bloom" : e.type == Effect::Pixelate ? "pixelate" : e.type == Effect::Turbulence ? "turbulence"
+                                         : e.type == Effect::MatteGenerator ? "matteGenerator"
                                          : "cutter"},
                                 {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                                 {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
                                 {"matte", e.matte}, {"invert", e.invert}};
-                if (e.type == Effect::DirectionalBlur || e.type == Effect::Ripple || e.type == Effect::Turbulence)
+                if (e.type == Effect::DirectionalBlur || e.type == Effect::Ripple || e.type == Effect::Turbulence || e.type == Effect::MatteGenerator)
                     one["direction"] = e.direction;
                 if (e.type == Effect::Grain)
                     one["seed"] = e.seed;

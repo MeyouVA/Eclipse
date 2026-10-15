@@ -465,6 +465,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.type = Effect::Pixelate;
             else if (type == QLatin1String("turbulence"))
                 e.type = Effect::Turbulence;
+            else if (type == QLatin1String("matteGenerator"))
+                e.type = Effect::MatteGenerator;
             else
                 continue;  // an effect of a newer version: left out rather than guessed at
             e.enabled = eo["enabled"].toBool(true);
@@ -495,6 +497,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 e.direction = std::max(2.0, eo["direction"].toDouble(60.0));
             if (e.type == Effect::Turbulence)
                 e.direction = std::max(2.0, eo["direction"].toDouble(40.0));
+            if (e.type == Effect::MatteGenerator)
+                e.direction = std::max(0.0, eo["direction"].toDouble(0.0));
             if (e.type == Effect::Grain)
                 e.seed = eo["seed"].toInt(1);
             e.hue = std::clamp(eo["hue"].toDouble(0.0), -180.0, 180.0);

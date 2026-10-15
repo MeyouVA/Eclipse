@@ -500,6 +500,57 @@ void turbulence(QImage& image, double strength, double size, int frame)
     }
 }
 
+void matteGenerator(QImage& image, double inner, double outer, QColor const& colour)
+{
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int const w = image.width(), h = image.height();
+    if (w == 0 || h == 0)
+        return;
+    inner = std::max(0.0, inner);
+    outer = std::max(inner, outer);
+    // How far each point is from what is painted (a chamfer distance: 3 a step across or down, 4 one aslant).
+    constexpr int kFar = 1 << 28;
+    std::vector<int> d(size_t(w) * h, kFar);
+    for (int y = 0; y < h; ++y) {
+        QRgb const* const row = reinterpret_cast<QRgb const*>(image.constScanLine(y));
+        for (int x = 0; x < w; ++x)
+            if (qAlpha(row[x]) >= 128)
+                d[size_t(y) * w + x] = 0;
+    }
+    auto at = [&](int x, int y) -> int& { return d[size_t(y) * w + x]; };
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x) {
+            int& v = at(x, y);
+            if (x > 0) v = std::min(v, at(x - 1, y) + 3);
+            if (y > 0) {
+                v = std::min(v, at(x, y - 1) + 3);
+                if (x > 0) v = std::min(v, at(x - 1, y - 1) + 4);
+                if (x + 1 < w) v = std::min(v, at(x + 1, y - 1) + 4);
+            }
+        }
+    for (int y = h - 1; y >= 0; --y)
+        for (int x = w - 1; x >= 0; --x) {
+            int& v = at(x, y);
+            if (x + 1 < w) v = std::min(v, at(x + 1, y) + 3);
+            if (y + 1 < h) {
+                v = std::min(v, at(x, y + 1) + 3);
+                if (x + 1 < w) v = std::min(v, at(x + 1, y + 1) + 4);
+                if (x > 0) v = std::min(v, at(x - 1, y + 1) + 4);
+            }
+        }
+    for (int y = 0; y < h; ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            double const away = at(x, y) >= kFar ? 1e9 : at(x, y) / 3.0;
+            double share = away <= inner ? 1.0 : away >= outer ? 0.0 : (outer - away) / (outer - inner);
+            share = share * share * (3.0 - 2.0 * share);        // eased at both ends
+            int const a = int(std::lround(share * colour.alpha()));
+            row[x] = qRgba(colour.red() * a / 255, colour.green() * a / 255, colour.blue() * a / 255, a);
+        }
+    }
+}
+
 void halo(QImage& image, QColor const& color, double radius, QPointF offset)
 {
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
@@ -566,6 +617,8 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Pixelate  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Turbulence:
         return QObject::tr("Turbulence  %1").arg(effect.amount, 0, 'f', 1);
+    case Effect::MatteGenerator:
+        return QObject::tr("Matte Generator  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::Tone:
     case Effect::Highlight: {
         int const matte = scene.layerIndex(effect.matte);
@@ -615,6 +668,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Bloom")), &QAction::triggered, this, [this] { add(Effect::Bloom); });
     connect(menu->addAction(tr("Pixelate")), &QAction::triggered, this, [this] { add(Effect::Pixelate); });
     connect(menu->addAction(tr("Turbulence")), &QAction::triggered, this, [this] { add(Effect::Turbulence); });
+    connect(menu->addAction(tr("Matte Generator")), &QAction::triggered, this, [this] { add(Effect::MatteGenerator); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -955,7 +1009,8 @@ void EffectsPanel::showEditors()
     Effect const e = valid ? scene.layers[m_layer].effects[row] : Effect();
     bool const cutter = valid && e.type == Effect::Cutter;
     bool const shading = valid && (e.type == Effect::Tone || e.type == Effect::Highlight);
-    bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading);
+    bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading
+                                    || e.type == Effect::MatteGenerator);
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
@@ -977,16 +1032,18 @@ void EffectsPanel::showEditors()
     bool const particles = valid && e.type == Effect::Particles;
     {
         bool const hs = valid && e.type == Effect::HueSaturation, bc = valid && e.type == Effect::BrightnessContrast;
-        bool const swirls = valid && e.type == Effect::Turbulence;
-        bool const waves = (valid && e.type == Effect::Ripple) || swirls, along = (valid && e.type == Effect::DirectionalBlur) || waves;
+        bool const swirls = valid && e.type == Effect::Turbulence, generator = valid && e.type == Effect::MatteGenerator;
+        bool const waves = (valid && e.type == Effect::Ripple) || swirls;
+        bool const along = (valid && e.type == Effect::DirectionalBlur) || waves || generator;
         m_adjust->setVisible(hs || bc || along);
         // The last box: the way a Directional Blur smears, or how far apart a Ripple's waves are.
         if (QLabel* const label = qobject_cast<QLabel*>(m_adjustForm->labelForField(m_adjustBox[5])))
-            label->setText(swirls ? tr("Swirl Size") : waves ? tr("Wave Length") : tr("Direction"));
-        m_adjustBox[5]->setRange(waves ? 2.0 : -360.0, waves ? 2000.0 : 360.0);
-        m_adjustBox[5]->setSingleStep(waves ? 10.0 : 15.0);
-        m_adjustBox[5]->setToolTip(waves ? tr("How far apart the waves are, in scene units.")
-                                         : tr("Which way the picture is smeared (degrees: 0 across, 90 up and down)."));
+            label->setText(generator ? tr("Inner Radius") : swirls ? tr("Swirl Size") : waves ? tr("Wave Length") : tr("Direction"));
+        m_adjustBox[5]->setRange(generator ? 0.0 : waves ? 2.0 : -360.0, waves || generator ? 2000.0 : 360.0);
+        m_adjustBox[5]->setSingleStep(waves || generator ? 10.0 : 15.0);
+        m_adjustBox[5]->setToolTip(generator ? tr("How far out from the drawing the matte stays solid, in scene units.")
+                                   : waves   ? tr("How far apart the waves are, in scene units.")
+                                             : tr("Which way the picture is smeared (degrees: 0 across, 90 up and down)."));
         bool const shownFor[6] = {hs, hs, hs, bc, bc, along};
         double const values[6] = {e.hue, e.saturation, e.lightness, e.brightness, e.contrast, e.direction};
         for (int i = 0; i < 6; ++i) {
@@ -1043,7 +1100,7 @@ void EffectsPanel::showEditors()
         m_amount->setValue(amount * 100.0);
     } else if (valid && !cutter) {
         m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : shading ? tr("Softness") : e.type == Effect::Pixelate ? tr("Block Size")
-                               : e.type == Effect::Turbulence ? tr("Strength") : tr("Radius"));
+                               : e.type == Effect::Turbulence ? tr("Strength") : e.type == Effect::MatteGenerator ? tr("Outer Radius") : tr("Radius"));
         m_amount->setRange(0.0, 500.0);
         m_amount->setDecimals(1);
         m_amount->setSuffix(QString());

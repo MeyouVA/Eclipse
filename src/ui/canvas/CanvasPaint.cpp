@@ -794,6 +794,23 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     }
     // A blur is so many scene units wide: on screen that depends on the zoom.
     double const pixelsPerUnit = std::sqrt(std::abs(sceneToDevice.determinant())) * dpr;
+    // The matte a cutter, a tone or a highlight takes: the drawing of that layer - or, when that layer makes a matte of its
+    // drawing (Matte Generator), that matte.  (A matte that takes this layer as its own matte in turn goes no deeper.)
+    static thread_local int tMatteDepth = 0;
+    auto paintMatte = [&](QPainter& mp, int m, int index) {
+        Layer const& matteLayer = scene.layers[m];
+        bool generated = false;
+        for (Effect const& me : matteLayer.effects)
+            generated = generated || (me.enabled && me.type == Effect::MatteGenerator);
+        Drawing const shownMatte = Deform::shown(matteLayer.drawings[index], matteLayer, matteLayer.poseAt(frame));
+        if (!generated || tMatteDepth >= 2) {
+            paintDrawingOpaque(mp, scene, shownMatte, nullptr);
+            return;
+        }
+        ++tMatteDepth;
+        paintLayerDrawing(mp, scene, m, frame, shownMatte, 1.0, sceneToDevice);
+        --tMatteDepth;
+    };
     Pose const pose = layer.poseAt(frame);
     for (int i = 0; i < layer.effects.size(); ++i) {
         Effect const& e = layer.effects[i];
@@ -829,6 +846,8 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         } else if (e.type == Effect::Glow || e.type == Effect::Shadow) {
             // The offset is a direction on the picture: it does not turn with the layer.
             Effects::halo(image, e.color, amount * pixelsPerUnit, e.type == Effect::Shadow ? e.offset * (pixelsPerUnit / dpr) : QPointF());
+        } else if (e.type == Effect::MatteGenerator) {
+            Effects::matteGenerator(image, e.direction * pixelsPerUnit, amount * pixelsPerUnit, e.color);
         } else if (e.type == Effect::Bloom) {
             Effects::bloom(image, amount * pixelsPerUnit);
         } else if (e.type == Effect::Pixelate) {
@@ -846,7 +865,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                 QPainter mp(&where);
                 mp.setRenderHints(painter.renderHints());
                 mp.setTransform(scene.worldTransform(m, frame) * sceneToDevice);
-                paintDrawingOpaque(mp, scene, Deform::shown(scene.layers[m].drawings[index], scene.layers[m], scene.layers[m].poseAt(frame)), nullptr);
+                paintMatte(mp, m, index);
             }
             if (e.invert) {
                 // Outside the matte: the rest of the picture.
@@ -885,7 +904,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                 QPainter mp(&matte);
                 mp.setRenderHints(painter.renderHints());
                 mp.setTransform(scene.worldTransform(m, frame) * sceneToDevice);
-                paintDrawingOpaque(mp, scene, Deform::shown(scene.layers[m].drawings[index], scene.layers[m], scene.layers[m].poseAt(frame)), nullptr);
+                paintMatte(mp, m, index);
             }
             QPainter cut(&image);
             cut.setCompositionMode(e.invert ? QPainter::CompositionMode_DestinationOut : QPainter::CompositionMode_DestinationIn);

@@ -127,7 +127,8 @@ QString Timeline::rowName(int layer, Parameter which) const
                                                           QT_TR_NOOP("Directional Blur"), QT_TR_NOOP("Hue-Saturation"), QT_TR_NOOP("Brightness-Contrast"),
                                                           QT_TR_NOOP("Grain"), QT_TR_NOOP("Radial Blur"), QT_TR_NOOP("Colour-Scale"),
                                                           QT_TR_NOOP("Negate"), QT_TR_NOOP("Median"), QT_TR_NOOP("Ripple"), QT_TR_NOOP("Tone"),
-                                                          QT_TR_NOOP("Highlight"), QT_TR_NOOP("Bloom"), QT_TR_NOOP("Pixelate"), QT_TR_NOOP("Turbulence")};
+                                                          QT_TR_NOOP("Highlight"), QT_TR_NOOP("Bloom"), QT_TR_NOOP("Pixelate"), QT_TR_NOOP("Turbulence"),
+                                                          QT_TR_NOOP("Matte Generator")};
     Effect const& effect = scene.layers[layer].effects[e];
     return tr("Effect: %1").arg(tr(kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)]));
 }
