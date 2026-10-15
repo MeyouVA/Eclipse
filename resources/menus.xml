@@ -34,6 +34,7 @@
     <item id="ExportFrames" icon="file/exportframes" text="&amp;Images..." shortcut="shortcut.exportFrames" responder="window" slot="onActionExportFrames()"/>
     <item id="ExportMovie" icon="file/exportmovie" text="&amp;Movie..." shortcut="shortcut.exportMovie" responder="window" slot="onActionExportMovie()"/>
     <item id="ExportGif" icon="file/exportgif" text="Animated &amp;GIF..." shortcut="shortcut.exportGif" responder="window" slot="onActionExportGif()"/>
+    <item id="ExportSwf" icon="file/exportmovie" text="&amp;SWF..." responder="window" slot="onActionExportSwf()"/>
     <item id="ExportOpenGLFrames" icon="file/exportopengl" text="&amp;OpenGL Frames..." responder="window" slot="onActionExportOpenGLFrames()"/>
     <separator/>
     <item id="ExportAudio" icon="file/exportaudio" text="&amp;Audio..." responder="window" slot="onActionExportAudio()"/>

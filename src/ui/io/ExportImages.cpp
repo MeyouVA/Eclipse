@@ -31,6 +31,7 @@
 #include "ui/canvas/Canvas.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
+#include "ui/io/SwfExport.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/io/ImportExportPrivate.h"
 
@@ -164,6 +165,33 @@ void MainWindow::askExportImages(bool preview)
 void MainWindow::onActionExportFrames()
 {
     askExportImages(false);
+}
+
+void MainWindow::onActionExportSwf()
+{
+    QString const start = m_path.isEmpty() ? QStringLiteral("scene.swf") : QFileInfo(m_path).path() + QLatin1Char('/') + QFileInfo(m_path).completeBaseName() + QStringLiteral(".swf");
+    QString path = QFileDialog::getSaveFileName(this, tr("Export SWF"), start, tr("Flash Movie (*.swf)"));
+    if (path.isEmpty())
+        return;
+    if (QFileInfo(path).suffix().toLower() != QLatin1String("swf"))
+        path += QStringLiteral(".swf");
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString error;
+    SwfExport::Report report;
+    bool const done = SwfExport::write(m_document->scene(), path, &error, &report);
+    QApplication::restoreOverrideCursor();
+    if (!done) {
+        QMessageBox::warning(this, tr("Export SWF"), tr("Could not write %1:\n%2").arg(QDir::toNativeSeparators(path), error));
+        return;
+    }
+    QStringList left;
+    if (report.skippedEffects)
+        left << tr("effects");
+    if (report.skippedPictures)
+        left << tr("bitmap pictures");
+    statusBar()->showMessage(tr("%1: %2 frames, %3 shapes.").arg(QFileInfo(path).fileName()).arg(report.frames).arg(report.shapes)
+                                 + (left.isEmpty() ? QString() : tr(" Left out (not vector shapes): %1.").arg(left.join(tr(" and ")))),
+                             10000);
 }
 
 void MainWindow::onActionExportGif()
