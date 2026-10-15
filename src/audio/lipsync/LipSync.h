@@ -38,5 +38,8 @@ QString wordShapes(QString const& word);
 // share of all the speech; within it each sound of a word takes as long as each other.  Frames between stay at rest.  With
 // no speech found, the words take the whole sound.
 QString fromText(QString const& text, QString const& detected);
+// The shapes shown `frames` earlier than they are heard (the mouth gets there a little before the sound is made, as animators
+// time it): the first ones go, the end is at rest.
+QString lead(QString const& shapes, int frames);
 
 }

@@ -170,6 +170,8 @@ public:
     // Lip-sync: listens to the sound of a sound layer and gives each of its frames a mouth
     // shape.  The number of frames lettered; -1 when the layer has no sound that can be read.
     int detectLipSync(int soundLayer);
+    // Preferences: the frames the detected mouth shapes are shown before they are heard.
+    int lipSyncLead() const;
     // The same, from the words said (see LipSync::fromText); the text is kept for the next time.
     int lipSyncFromWords(int soundLayer, QString const& words);
 

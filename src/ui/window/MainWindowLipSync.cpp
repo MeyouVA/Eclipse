@@ -28,7 +28,14 @@
 #include "audio/lipsync/LipSync.h"
 
 #include "ui/window/MainWindowPrivate.h"
+#include <QSettings>
 #include <QStatusBar>
+
+int MainWindow::lipSyncLead() const
+{
+    // (Preferences: how many frames early the mouth shapes are shown.)
+    return std::clamp(QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/lipSyncLead"), 0).toInt(), 0, 4);
+}
 
 int MainWindow::detectLipSync(int soundLayer)
 {
@@ -38,7 +45,7 @@ int MainWindow::detectLipSync(int soundLayer)
     std::shared_ptr<SoundData> const sound = Sound::load(scene.layers[soundLayer].soundFile);
     if (!sound)
         return -1;
-    QString shapes = LipSync::detect(sound->samples, SoundData::kRate, scene.fps);
+    QString shapes = LipSync::lead(LipSync::detect(sound->samples, SoundData::kRate, scene.fps), lipSyncLead());
     // No more of it than the scene has frames for.
     shapes.truncate(std::max(0, scene.frameCount() - scene.layers[soundLayer].soundStart));
     m_document->setLipSync(soundLayer, shapes, tr("Auto Lip-Sync Detection"));
@@ -54,7 +61,7 @@ int MainWindow::lipSyncFromWords(int soundLayer, QString const& words)
     if (!sound)
         return -1;
     // Where the speech is, from the sound; what is said there, from the words.
-    QString shapes = LipSync::fromText(words, LipSync::detect(sound->samples, SoundData::kRate, scene.fps));
+    QString shapes = LipSync::lead(LipSync::fromText(words, LipSync::detect(sound->samples, SoundData::kRate, scene.fps)), lipSyncLead());
     shapes.truncate(std::max(0, scene.frameCount() - scene.layers[soundLayer].soundStart));
     m_document->setLipSync(soundLayer, shapes, tr("Lip-Sync from Words"));
     return int(shapes.size());

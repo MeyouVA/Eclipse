@@ -620,6 +620,13 @@ void MainWindow::onActionPreferences()
     QFormLayout* const soundLayout = new QFormLayout(soundPage);
     soundLayout->addRow(soundOn);
     soundLayout->addRow(scrub);
+    QSpinBox* const lipLead = new QSpinBox(soundPage);
+    lipLead->setObjectName(QStringLiteral("PrefLipSyncLead"));
+    lipLead->setRange(0, 4);
+    lipLead->setSuffix(tr(" frames"));
+    lipLead->setToolTip(tr("Auto lip-sync: the mouth shapes shown so many frames before they are heard (the mouth gets there first)."));
+    lipLead->setValue(s.value(QStringLiteral("prefs/lipSyncLead"), 0).toInt());
+    soundLayout->addRow(tr("Lip-sync shapes early by"), lipLead);
 
     // Drawing: the light table.
     QGroupBox* const drawing = new QGroupBox(tr("Drawing"), &dialog);
@@ -738,6 +745,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/nodeDoubleClick"), nodeDoubleClick->currentIndex());
     s.setValue(QStringLiteral("prefs/brushOutline"), brushOutline->isChecked());
     s.setValue(QStringLiteral("prefs/loop"), loopAtStart->isChecked());
+    s.setValue(QStringLiteral("prefs/lipSyncLead"), lipLead->value());
     s.setValue(QStringLiteral("prefs/functionGrid"), functionGrid->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), columnWidth->value());
     s.setValue(QStringLiteral("prefs/drawingOnTop"), onTop->isChecked());

@@ -231,6 +231,7 @@ QString detect(QVector<qint16> const& stereo, int rate, double fps)
         double loud = 0.0;      // root mean square, 0..1
         double hiss = 0.0;      // how often the wave crosses nought, per sample
         double low = 0.0;       // the share of its strength below some 700 Hz
+        double burst = 0.0;     // the hiss of its first few milliseconds: the burst of a b or a p as the lips part
     };
     QVector<Heard> heard(frames);
     double const ease = 1.0 - std::exp(-2.0 * 3.14159265358979323846 * 700.0 / rate);
@@ -254,6 +255,21 @@ QString detect(QVector<qint16> const& stereo, int rate, double fps)
         heard[f].loud = std::sqrt(sum / n);
         heard[f].hiss = n > 1 ? double(crossings) / double(n - 1) : 0.0;
         heard[f].low = sum > 1e-12 ? lowSum / sum : 0.0;
+        {
+            // Its first five milliseconds: a short noisy burst there, louder than what it starts from, is a b or a p.
+            qint64 const end = std::min(last, first + std::max<qint64>(8, rate / 200));
+            int bursts = 0;
+            double burstSum = 0.0, prior = 0.0;
+            for (qint64 i = first; i < end; ++i) {
+                double const v = (double(stereo[i * 2]) + double(stereo[i * 2 + 1])) / 65536.0;
+                burstSum += v * v;
+                if (i > first && ((v >= 0.0) != (prior >= 0.0)))
+                    ++bursts;
+                prior = v;
+            }
+            double const burstLoud = std::sqrt(burstSum / double(end - first));
+            heard[f].burst = burstLoud > 0.004 && end - first > 1 ? double(bursts) / double(end - first - 1) : 0.0;
+        }
         loudest = std::max(loudest, heard[f].loud);
     }
     QString shapes(frames, QLatin1Char('X'));
@@ -303,7 +319,19 @@ QString detect(QVector<qint16> const& stereo, int rate, double fps)
         else if (raw[f - 1] == raw[f + 1] && raw[f] != raw[f - 1])
             shapes[f] = raw[f - 1];
     }
+    // A voiced sound that starts with a burst, after a frame of quiet: a b or a p - the lips were closed on the frame before.
+    for (int f = 1; f < frames; ++f) {
+        bool const quietBefore = heard[f - 1].loud < 0.25 * heard[f].loud;
+        if (voiced(shapes[f]) && heard[f].burst > 0.3 && quietBefore && (shapes[f - 1] == QLatin1Char('X') || shapes[f - 1] == QLatin1Char('A')))
+            shapes[f - 1] = QLatin1Char('A');
+    }
     return shapes;
+}
+
+QString lead(QString const& shapes, int frames)
+{
+    frames = std::clamp(frames, 0, int(shapes.size()));
+    return shapes.mid(frames) + QString(frames, QLatin1Char('X'));
 }
 
 }
