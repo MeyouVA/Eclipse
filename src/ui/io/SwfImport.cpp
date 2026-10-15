@@ -1070,6 +1070,13 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
     QHash<int, Font> fonts;
     QHash<int, QImage> bitmaps;
     QHash<int, QVector<DisplayList>> sprites;       // movie clips: their frames
+    // A movie clip's own sounds: an event sound (by its id) or its streamed soundtrack, and the frame of the clip it starts on.
+    struct ClipSound {
+        int soundId = -1;
+        Sound sound;
+        int frame = 0;
+    };
+    QHash<int, QVector<ClipSound>> spriteSounds;
     QByteArray jpegTables;
     QHash<int, Sound> sounds;           // event sounds, by their ids
     QHash<QString, int> classes;        // ids by the names ActionScript knows them by
@@ -1158,6 +1165,9 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             // A movie clip: its own timeline, its tags inside.
             QVector<DisplayList> frames;
             DisplayList own;
+            QVector<ClipSound> heard;
+            int ownStreamFormat = -1, ownStreamStart = -1;
+            QByteArray ownStreamed;
             int q = 4;
             while (q + 2 <= body.size()) {
                 quint16 const innerHead = u16(body, q);
@@ -1178,13 +1188,41 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
                     videoFrame(inner);
                 else if (innerCode == 12 || innerCode == 59)
                     ++out.scripts;
-                else if (innerCode == 18 || innerCode == 45)
-                    ++out.skippedSounds;       // (a movie clip's own soundtrack)
-                else
+                else if (innerCode == 15 || innerCode == 89) {
+                    // An event sound started on this frame of the clip.
+                    int r = 0;
+                    int id = -1;
+                    if (innerCode == 15) {
+                        id = u16(inner, 0);
+                        r = 2;
+                    } else {
+                        id = classes.value(text(inner, r), -1);
+                    }
+                    if (!(u8(inner, r) & 0x20))
+                        heard.push_back({id, Sound(), int(frames.size())});
+                } else if (innerCode == 18 || innerCode == 45) {
+                    ownStreamFormat = u8(inner, 1);     // the clip's own soundtrack, streamed with its frames
+                } else if (innerCode == 19) {
+                    if (ownStreamFormat >= 0) {
+                        if (ownStreamStart < 0)
+                            ownStreamStart = int(frames.size());
+                        ownStreamed += (ownStreamFormat >> 4) == 2 ? inner.mid(4) : inner;
+                    }
+                } else
                     control(innerCode, inner, own, int(frames.size()));
             }
             if (frames.isEmpty())
                 frames.push_back(own);
+            if (!ownStreamed.isEmpty()) {
+                ClipSound track;
+                track.frame = std::max(0, ownStreamStart);
+                if (soundFile(ownStreamFormat, ownStreamed, track.sound))
+                    heard.push_back(track);
+                else
+                    ++out.skippedSounds;
+            }
+            if (!heard.isEmpty())
+                spriteSounds.insert(u16(body, 0), heard);
             sprites.insert(u16(body, 0), frames);
         } else if (code == 43) {
             int q = 0;
@@ -1264,6 +1302,35 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             out.sounds.push_back(stream);
         else
             ++out.skippedSounds;
+    }
+    // The movie clips' own sounds, on the frames of the main timeline their clips get to them: each time round a clip that
+    // loops; once, when it is put there, for a clip of a single frame (which stands still).  Clips in clips too.
+    if (!spriteSounds.isEmpty()) {
+        std::function<void(DisplayList const&, int, int, int)> clipSounds = [&](DisplayList const& list, int age, int mainFrame, int depth) {
+            for (Placed const& placed : list) {
+                auto const sprite = sprites.constFind(placed.character);
+                if (sprite == sprites.cend() || sprite->isEmpty() || depth > 24)
+                    continue;
+                int const length = int(sprite->size());
+                int const own = age - placed.since;     // how long it has been there
+                if (own < 0)
+                    continue;
+                int const local = own % length;
+                if (length > 1 || own == 0)
+                    for (ClipSound const& cs : spriteSounds.value(placed.character)) {
+                        if (cs.frame != local)
+                            continue;
+                        Sound sound = cs.soundId >= 0 ? sounds.value(cs.soundId) : cs.sound;
+                        if (sound.bytes.isEmpty())
+                            continue;
+                        sound.frame = mainFrame;
+                        out.sounds.push_back(sound);
+                    }
+                clipSounds((*sprite)[local], length > 1 ? local : own, mainFrame, depth + 1);
+            }
+        };
+        for (int f = 0; f < mainFrames.size(); ++f)
+            clipSounds(mainFrames[f], f, f, 0);
     }
 
     // ---- 2. The video, each stream decoded (into the media folder, or in passing).
@@ -1547,6 +1614,7 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
     bool any = false;
     for (Drawing const& d : out.frames)
         any = any || !d.fills.isEmpty() || !d.strokes.isEmpty() || !d.pictures.isEmpty();
+    any = any || !out.sounds.isEmpty();     // (a movie of sound alone is read too)
     if (!any)
         return fail(tr("The movie has nothing on its main timeline that Eclipse can read (only code)."));
     return true;
