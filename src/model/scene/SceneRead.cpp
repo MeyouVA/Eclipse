@@ -215,6 +215,8 @@ static bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::ApplyPeg;
     else if (type == QLatin1String("scaleOutput"))
         e.type = Effect::ScaleOutput;
+    else if (type == QLatin1String("glue"))
+        e.type = Effect::Glue;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);

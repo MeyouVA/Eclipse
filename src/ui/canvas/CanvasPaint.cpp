@@ -1425,6 +1425,11 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 out = under;
             } else if (e.type == Effect::VariableBlur) {
                 Effects::variableBlur(out, input(id, 1), amount * pixelsPerUnit);
+            } else if (e.type == Effect::Glue) {
+                // Joined to what comes in at the second input.
+                QImage under = input(id, 1);
+                Effects::glue(under, out, amount * pixelsPerUnit);
+                out = under;
             } else if (GraphNode::takesMatte(e.type) && graph.into(id, 1)) {
                 // The matte comes in at the second input: what is painted there (or, inverted, what is not).
                 QImage where = input(id, 1);

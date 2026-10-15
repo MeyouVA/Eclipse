@@ -92,6 +92,9 @@ void colourCurves(QImage& image, QVector<QPointF> const (&curves)[4], double amo
 void transformImage(QImage& image, QTransform const& transform);
 // The image made at `scale` (0..1) of its resolution, then brought back to its size.
 void scaleOutput(QImage& image, double scale);
+// `top` and `under` joined in `under`: the two together, and the gaps between them up to `radius` pixels across filled in
+// the colours of what is round them.
+void glue(QImage& under, QImage const& top, double radius);
 
 }
 

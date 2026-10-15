@@ -153,7 +153,7 @@ static QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::Blending ? "blending" : e.type == Effect::VariableBlur ? "variableBlur"
                              : e.type == Effect::MotionBlur ? "motionBlur" : e.type == Effect::FieldChart ? "fieldChart"
                              : e.type == Effect::ColourCurves ? "colourCurves" : e.type == Effect::Focus ? "focus"
-                             : e.type == Effect::ApplyPeg ? "applyPeg" : e.type == Effect::ScaleOutput ? "scaleOutput"
+                             : e.type == Effect::ApplyPeg ? "applyPeg" : e.type == Effect::ScaleOutput ? "scaleOutput" : e.type == Effect::Glue ? "glue"
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},

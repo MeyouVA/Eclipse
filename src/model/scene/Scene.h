@@ -456,7 +456,7 @@ struct Swatch {
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
-                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, TypeCount };
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -490,7 +490,9 @@ struct Effect {
     // the way (0..1).  Focus: a layer the further from the depth in focus (`direction`, in scene units towards the camera)
     // the more blurred - `amount` scene units for every 100 it stands off it; as a node of the graph, blurred `amount`.
     // Apply Peg Transformation: the picture moved, turned and sized as the `matte` layer (a peg, mostly) is on the frame.
-    // Scale Output: the picture made at `amount` (0..1) of the resolution, and so the softer.
+    // Scale Output: the picture made at `amount` (0..1) of the resolution, and so the softer.  Glue (a node of the graph):
+    // its picture and the one at its second input joined - the gaps between them up to `amount` scene units across filled,
+    // smoothly, in the colours either side (an elbow between an upper and a lower arm).
     double hue = 0.0;
     double saturation = 0.0;
     double lightness = 0.0;

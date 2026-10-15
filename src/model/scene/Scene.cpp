@@ -312,7 +312,7 @@ int GraphNode::outputs() const
 bool GraphNode::takesMatte(Effect::Type type)
 {
     return type == Effect::Cutter || type == Effect::Tone || type == Effect::Highlight || type == Effect::MatteBlur || type == Effect::Blending
-           || type == Effect::VariableBlur;
+           || type == Effect::VariableBlur || type == Effect::Glue;
 }
 
 int NodeGraph::nodeIndex(int id) const
@@ -530,7 +530,7 @@ Effect Effect::made(Type type)
              : type == Grain ? 0.3 : type == RadialBlur ? 0.15 : type == Negate ? 1.0 : type == Median ? 2.0 : type == Tone || type == Highlight ? 2.0
              : type == Bloom ? 12.0 : type == Pixelate ? 10.0 : type == Turbulence ? 6.0 : type == MatteGenerator ? 30.0
              : type == BlackWhite || type == Gradient ? 1.0 : type == MatteResize ? 4.0 : type == RemoveTransparency ? 0.5
-             : type == VariableBlur ? 12.0 : type == MotionBlur ? 4.0 : type == FieldChart ? 1.0 : type == ColourCurves ? 1.0 : type == Focus ? 4.0 : type == ApplyPeg ? 1.0 : type == ScaleOutput ? 0.5 : 8.0;
+             : type == VariableBlur ? 12.0 : type == MotionBlur ? 4.0 : type == FieldChart ? 1.0 : type == ColourCurves ? 1.0 : type == Focus ? 4.0 : type == ApplyPeg ? 1.0 : type == ScaleOutput ? 0.5 : type == Glue ? 10.0 : 8.0;
     e.color = type == Shadow ? QColor(0, 0, 0, 150) : type == Glow ? QColor(255, 240, 160) : type == ColourScale ? QColor(255, 200, 150)
             : type == Tone ? QColor(120, 110, 170) : type == Highlight ? QColor(255, 245, 210) : type == MatteGenerator ? QColor(255, 255, 255)
             : type == FieldChart ? QColor(30, 30, 30)

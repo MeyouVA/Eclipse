@@ -757,6 +757,8 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Focus  %1 at %2").arg(effect.amount, 0, 'f', 1).arg(effect.direction, 0, 'f', 0);
     case Effect::Blending:
         return QObject::tr("Blending");
+    case Effect::Glue:
+        return QObject::tr("Glue  %1").arg(effect.amount, 0, 'f', 1);
     case Effect::VariableBlur: {
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Variable Blur  %1  %2").arg(effect.amount, 0, 'f', 1).arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"));
@@ -1018,6 +1020,49 @@ void Effects::scaleOutput(QImage& image, double scale)
                      .convertToFormat(QImage::Format_ARGB32_Premultiplied);
     out.setDevicePixelRatio(dpr);
     image = out;
+}
+
+void Effects::glue(QImage& under, QImage const& top, double radius)
+{
+    double const dpr = under.devicePixelRatio();
+    if (under.format() != QImage::Format_ARGB32_Premultiplied)
+        under = under.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QImage both = under;
+    both.setDevicePixelRatio(1.0);
+    {
+        QPainter p(&both);
+        QImage t = top;
+        t.setDevicePixelRatio(1.0);
+        p.drawImage(0, 0, t);
+    }
+    // Where the glue goes: what is painted grown and shrunk again by as much - the gaps narrower than that closed.
+    QImage closed = both;
+    matteResize(closed, radius / 2.0, false);
+    matteResize(closed, radius / 2.0, true);
+    // Its colours: those of what is painted nearby, spread out.
+    QImage spread = both;
+    blur(spread, radius);
+    QImage out(both.size(), QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < both.height(); ++y) {
+        QRgb const* const b = reinterpret_cast<QRgb const*>(both.constScanLine(y));
+        QRgb const* const c = reinterpret_cast<QRgb const*>(closed.constScanLine(y));
+        QRgb const* const s = reinterpret_cast<QRgb const*>(spread.constScanLine(y));
+        QRgb* const o = reinterpret_cast<QRgb*>(out.scanLine(y));
+        for (int x = 0; x < both.width(); ++x) {
+            int const glueAlpha = std::max(0, qAlpha(c[x]) - qAlpha(b[x]));
+            if (glueAlpha == 0 || qAlpha(s[x]) == 0) {
+                o[x] = b[x];
+                continue;
+            }
+            // The glue, under what is painted there.
+            QRgb const colour = qUnpremultiply(s[x]);
+            int const a = qAlpha(b[x]), ga = glueAlpha * (255 - a) / 255;
+            auto mix = [&](int painted, int glued) { return std::clamp(painted + glued * ga / 255, 0, 255); };
+            o[x] = qRgba(mix(qRed(b[x]), qRed(colour)), mix(qGreen(b[x]), qGreen(colour)), mix(qBlue(b[x]), qBlue(colour)), std::min(255, a + ga));
+        }
+    }
+    out.setDevicePixelRatio(dpr);
+    under = out;
 }
 
 // ---- the curve to drag --------------------------------------------------------------------
@@ -1607,6 +1652,7 @@ void EffectsPanel::showEditors()
     m_rebuilding = true;
     bool const pegged = valid && e.type == Effect::ApplyPeg;
     bool const plain = valid && (e.type == Effect::ChannelSelector || e.type == Effect::Crop || e.type == Effect::MatteComposite || e.type == Effect::Blending
+                                 || e.type == Effect::Glue
                                  || pegged);
     bool const curving = valid && e.type == Effect::ColourCurves;
     m_amountLabel->setVisible(valid && !cutter && !plain);
