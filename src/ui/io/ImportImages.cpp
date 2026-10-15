@@ -104,6 +104,8 @@ int MainWindow::importFla(QString const& path, QString* error)
                 fill.transform(place);
             for (Stroke& stroke : d.strokes)
                 stroke.transform(place);
+            for (Picture& picture : d.pictures)
+                picture.transform(place);
         }
         int const frames = m_document->scene().frameCount();
         QString const name = in.name;

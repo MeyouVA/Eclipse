@@ -5,7 +5,8 @@
 // a solid colour, a gradient's first - and lines), groups, rectangle and oval objects, and graphic symbols, movie clips
 // and buttons drawn as they look on that frame (their own timelines followed, nested ones too), where they are placed,
 // with their colour effects; classic motion tweens are followed between keyframes.  Guide layers and folders are left
-// out; a mask layer comes as a hidden layer the layers under it are cut by.  Text, bitmaps, video and sound are not read.
+// out; a mask layer comes as a hidden layer the layers under it are cut by.  Bitmaps (JPEG, or Flash's own) come as pictures,
+// static text as the shapes of its letters.  Video and sound are not read.
 #pragma once
 
 #include "EclipseExport.h"

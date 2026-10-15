@@ -7,6 +7,10 @@
 #include <QHash>
 #include <QPolygonF>
 #include <QTransform>
+#include <QFont>
+#include <QFontMetricsF>
+#include <QImage>
+#include <QPainterPath>
 #include <QXmlStreamReader>
 
 #include <algorithm>
@@ -67,6 +71,9 @@ bool parse(QByteArray const& text, Node& root)
             }
         } else if (xml.isEndElement() && !stack.isEmpty()) {
             stack.pop_back();
+        } else if (xml.isCharacters() && !stack.isEmpty() && !xml.isWhitespace()) {
+            // The words inside an element (as a text run's characters).
+            stack.last()->attributes[QStringLiteral("#text")] += xml.text().toString();
         }
     }
     return started && !xml.hasError();
@@ -380,8 +387,68 @@ Shape readShape(Node const& shape)
     return out;
 }
 
+// A bitmap of the document, from its file in the .fla: a JPEG as it is, or Flash's own (03 05: so many rows of A, R, G, B
+// bytes, zlib-packed in pieces); and the size it is shown at (its frame, in pixels).
+QImage bitmapOf(QByteArray const& b, QSizeF* shown)
+{
+    if (b.startsWith("\xff\xd8")) {
+        QImage const image = QImage::fromData(b, "JPG");
+        if (shown)
+            *shown = QSizeF(image.size());
+        return image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    }
+    if (b.size() < 26 || quint8(b[0]) != 0x03 || quint8(b[1]) != 0x05)
+        return QImage();
+    auto u16 = [&](int at) { return int(quint8(b[at]) | (quint8(b[at + 1]) << 8)); };
+    auto u32 = [&](int at) { return quint32(u16(at)) | (quint32(u16(at + 2)) << 16); };
+    int const stride = u16(2), width = u16(4), height = u16(6);
+    double const frameWidth = (double(u32(12)) - double(u32(8))) / 20.0, frameHeight = (double(u32(20)) - double(u32(16))) / 20.0;
+    bool const alpha = b[24] != 0;
+    if (width <= 0 || height <= 0 || stride < width * 4)
+        return QImage();
+    QByteArray packed;
+    int p = 26;
+    while (p + 2 <= b.size()) {
+        int const length = u16(p);
+        p += 2;
+        if (length == 0 || p + length > b.size())
+            break;
+        packed += b.mid(p, length);
+        p += length;
+    }
+    // (qUncompress wants the length first, big-endian, then the zlib stream as it is.)
+    quint32 const expected = quint32(stride) * quint32(height);
+    QByteArray prefixed;
+    prefixed.append(char(expected >> 24));
+    prefixed.append(char((expected >> 16) & 0xff));
+    prefixed.append(char((expected >> 8) & 0xff));
+    prefixed.append(char(expected & 0xff));
+    QByteArray const pixels = qUncompress(prefixed + packed);
+    if (pixels.size() < qsizetype(expected))
+        return QImage();
+    QImage image(width, height, QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < height; ++y) {
+        uchar const* in = reinterpret_cast<uchar const*>(pixels.constData()) + qsizetype(y) * stride;
+        QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < width; ++x) {
+            int const a = alpha ? in[4 * x] : 255;
+            out[x] = qRgba(std::min<int>(in[4 * x + 1], a), std::min<int>(in[4 * x + 2], a), std::min<int>(in[4 * x + 3], a), a);
+        }
+    }
+    if (shown)
+        *shown = frameWidth > 0.0 && frameHeight > 0.0 ? QSizeF(frameWidth, frameHeight) : QSizeF(width, height);
+    return image;
+}
+
 class Reader {
 public:
+    QHash<QString, QByteArray> const* files = nullptr;
+    QHash<QString, QString> bitmapFiles;    // a bitmap of the library, by its name: its file in bin/
+    struct Bitmap {
+        QImage image;
+        QSizeF shown;
+    };
+    QHash<QString, Bitmap> bitmaps;
     QHash<QString, Node> symbols;           // library symbols, by their names: their timelines
     QHash<Node const*, std::shared_ptr<Shape>> shapes;
     QHash<Node const*, int> lengths;
@@ -516,6 +583,49 @@ public:
         }
     }
 
+    // Words: each run in its font, size and colour, one line under the other, as the shapes of their letters.
+    void text(Node const& element, QTransform const& place, Tint const& tint, Drawing& drawing, int& order)
+    {
+        Node const* runs = element.child(QStringLiteral("textRuns"));
+        if (!runs)
+            return;
+        double const left = element.number(QStringLiteral("left"), 0.0), top = element.number(QStringLiteral("top"), 0.0);
+        QPointF pen(left, top);
+        double lineHeight = 0.0;
+        ++order;
+        for (Node const& run : runs->children) {
+            Node const* characters = run.child(QStringLiteral("characters"));
+            Node const* attrsHolder = run.child(QStringLiteral("textAttrs"));
+            Node const* attrs = attrsHolder ? attrsHolder->child(QStringLiteral("DOMTextAttrs")) : nullptr;
+            QString const words = characters ? characters->attr(QStringLiteral("#text")) : QString();
+            double const size = attrs ? attrs->number(QStringLiteral("size"), 12.0) : 12.0;
+            QFont font(attrs ? attrs->attr(QStringLiteral("face"), QStringLiteral("Arial")) : QStringLiteral("Arial"));
+            font.setPixelSize(std::max(1, int(std::lround(size))));
+            QColor colour(attrs ? attrs->attr(QStringLiteral("fillColor"), QStringLiteral("#000000")) : QStringLiteral("#000000"));
+            colour.setAlphaF(float(attrs ? attrs->number(QStringLiteral("alpha"), 1.0) : 1.0));
+            lineHeight = std::max(lineHeight, size * 1.2);
+            QStringList const lines = QString(words).replace(QLatin1Char('\n'), QLatin1Char('\r')).split(QLatin1Char('\r'));
+            for (int l = 0; l < lines.size(); ++l) {
+                if (l > 0) {
+                    pen = QPointF(left, pen.y() + lineHeight);
+                }
+                if (lines[l].isEmpty())
+                    continue;
+                QPainterPath path;
+                path.addText(pen + QPointF(0.0, size), font, lines[l]);
+                Fill fill;
+                fill.color = tint.apply(colour);
+                fill.order = order;
+                for (QPolygonF const& outline : path.toSubpathPolygons())
+                    if (outline.size() >= 3)
+                        fill.outlines.push_back(place.map(outline));
+                if (!fill.outlines.isEmpty())
+                    drawing.fills.push_back(fill);
+                pen.rx() += QFontMetricsF(font).horizontalAdvance(lines[l]);
+            }
+        }
+    }
+
     void draw(Node const& element, int offset, QTransform const& place, Tint const& tint, Drawing& drawing, int& order, int depth)
     {
         if (depth > 24)
@@ -579,9 +689,27 @@ public:
                     s.points.push_back({p, 1.0f});
                 drawing.strokes.push_back(s);
             }
-        } else if (kind.contains(QLatin1String("Text"))) {
-            ++out->skippedText;
-        } else if (kind == QLatin1String("DOMBitmapInstance") || kind == QLatin1String("DOMVideoInstance")) {
+        } else if (kind == QLatin1String("DOMStaticText") || kind == QLatin1String("DOMDynamicText") || kind == QLatin1String("DOMInputText")) {
+            text(element, place, tint, drawing, order);
+        } else if (kind == QLatin1String("DOMBitmapInstance")) {
+            QString const name = element.attr(QStringLiteral("libraryItemName"));
+            auto found = bitmaps.find(name);
+            if (found == bitmaps.end()) {
+                Bitmap made;
+                if (files && bitmapFiles.contains(name))
+                    made.image = bitmapOf(files->value(QStringLiteral("bin/") + bitmapFiles.value(name)), &made.shown);
+                found = bitmaps.insert(name, made);
+            }
+            if (found->image.isNull()) {
+                ++out->skippedPictures;
+                return;
+            }
+            Picture picture;
+            picture.image = found->image;
+            picture.size = found->image.size();
+            picture.placement = QTransform::fromScale(found->shown.width() / found->image.width(), found->shown.height() / found->image.height()) * place;
+            drawing.pictures.push_back(picture);
+        } else if (kind == QLatin1String("DOMVideoInstance")) {
             ++out->skippedPictures;
         }
     }
@@ -602,6 +730,8 @@ QByteArray fingerprint(Drawing const& d)
         for (StrokePoint const& p : st.points)
             s << p.pos;
     }
+    for (Picture const& p : d.pictures)
+        s << p.image.cacheKey() << p.placement;
     return QCryptographicHash::hash(bytes, QCryptographicHash::Md5);
 }
 
@@ -631,6 +761,12 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
     out.background = QColor(document.attr(QStringLiteral("backgroundColor"), QStringLiteral("#FFFFFF")));
     Reader reader;
     reader.out = &out;
+    reader.files = &files;
+    // The bitmaps of the library: each by its name, with the file in bin/ that holds it.
+    if (Node const* media = document.child(QStringLiteral("media")))
+        for (Node const& item : media->children)
+            if (item.name == QLatin1String("DOMBitmapItem"))
+                reader.bitmapFiles.insert(item.attr(QStringLiteral("name")), item.attr(QStringLiteral("bitmapDataHRef")));
     for (auto it = files.cbegin(); it != files.cend(); ++it) {
         if (!it.key().startsWith(QLatin1String("LIBRARY/")) || !it.key().endsWith(QLatin1String(".xml")))
             continue;
@@ -668,7 +804,7 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
                 Drawing drawing;
                 int order = 0;
                 reader.layer(layerNode, frame, QTransform(), Tint(), drawing, order, 0);
-                if (drawing.fills.isEmpty() && drawing.strokes.isEmpty())
+                if (drawing.fills.isEmpty() && drawing.strokes.isEmpty() && drawing.pictures.isEmpty())
                     continue;
                 QByteArray const print = fingerprint(drawing);
                 auto found = known.constFind(print);
@@ -695,7 +831,7 @@ bool read(QByteArray const& bytes, Document& out, QString* error)
     for (Layer const& layer : std::as_const(out.layers))
         any = any || !layer.drawings.isEmpty();
     if (!any)
-        return fail(tr("Nothing Eclipse can read is drawn in this .fla (only text, bitmaps or video)."));
+        return fail(tr("Nothing Eclipse can read is drawn in this .fla (only video)."));
     return true;
 }
 
