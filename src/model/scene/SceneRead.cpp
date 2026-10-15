@@ -562,6 +562,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 d.model = found(folder, model, dv.toObject()["modelRelative"].toString());
             if (QJsonArray const centre = dv.toObject()["modelCentre"].toArray(); centre.size() == 2)
                 d.modelCentre = QPointF(centre[0].toDouble(), centre[1].toDouble());
+            d.modelScale = std::clamp(dv.toObject()["modelScale"].toDouble(1.0), 0.01, 100.0);
             d.set = dv.toObject()["set"].toString();
             d.mark = std::clamp(dv.toObject()["mark"].toInt(0), 0, int(Drawing::InBetweenMark));
             for (QJsonValue const& pv : dv.toObject()["pictures"].toArray()) {

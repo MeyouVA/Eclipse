@@ -28,6 +28,7 @@
 #include <QRadioButton>
 #include <QRegularExpression>
 #include <QSpinBox>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QVBoxLayout>
 
@@ -507,6 +508,8 @@ int MainWindow::import3DModels(QStringList const& files, QString* error)
         d.name = QFileInfo(file).completeBaseName();
         // (In the middle of the frame.)
         d.modelCentre = QPointF(m_document->scene().width / 2.0, m_document->scene().height / 2.0);
+        // (Preferences: how big a model comes in.)
+        d.modelScale = std::clamp(QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/modelScale"), 1.0).toDouble(), 0.01, 100.0);
         drawings.push_back(d);
     }
     // One model: shown the length of the scene.  Several: one a frame, from the start.

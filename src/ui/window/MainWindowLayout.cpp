@@ -559,6 +559,17 @@ void MainWindow::setActiveView(QWidget* frame)
 
 bool MainWindow::eventFilter(QObject* object, QEvent* event)
 {
+    // Preferences: Focus On Mouse Enter - a view takes the keyboard as the pointer comes over it.
+    // (The pointer comes over the view, or a part of it - a scrolled view's inside.)
+    if (m_focusOnEnter && event->type() == QEvent::Enter && !QApplication::activePopupWidget() && !QApplication::activeModalWidget())
+        if (QWidget* const over = qobject_cast<QWidget*>(object))
+            for (QWidget* const view : {static_cast<QWidget*>(m_canvas), static_cast<QWidget*>(m_timeline), static_cast<QWidget*>(m_xsheet),
+                                        static_cast<QWidget*>(m_nodeView)})
+                if (view && view->isVisible() && (over == view || view->isAncestorOf(over)) && !view->hasFocus()
+                    && !view->isAncestorOf(QApplication::focusWidget())) {
+                    view->setFocus(Qt::MouseFocusReason);
+                    break;
+                }
     // The middle view moved or changed size: the collapse arrows go with its edges.
     // (And a panel: the arrows between two panels go with the line between them.)
     if ((event->type() == QEvent::Resize || event->type() == QEvent::Move) && !m_placePending

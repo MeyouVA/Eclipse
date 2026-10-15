@@ -301,6 +301,7 @@ void MainWindow::applyPreferences()
     m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
+    m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
     {
         int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
         if (m_library)
@@ -358,6 +359,17 @@ void MainWindow::onActionPreferences()
     autoSave->setSuffix(tr(" minutes"));
     autoSave->setValue(m_autoSaveMinutes);
     QFormLayout* const generalLayout = new QFormLayout(general);
+    QCheckBox* const focusOnEnter = new QCheckBox(tr("Focus on mouse enter"), general);
+    focusOnEnter->setObjectName(QStringLiteral("PrefFocusOnEnter"));
+    focusOnEnter->setToolTip(tr("The Camera view, the Timeline, the Xsheet and the Node View take the keyboard as soon as the pointer is over them."));
+    focusOnEnter->setChecked(s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool());
+    QDoubleSpinBox* const modelScale = new QDoubleSpinBox(general);
+    modelScale->setObjectName(QStringLiteral("PrefModelScale"));
+    modelScale->setRange(0.01, 100.0);
+    modelScale->setDecimals(2);
+    modelScale->setSingleStep(0.1);
+    modelScale->setToolTip(tr("How big a 3D model comes in: 1 is %1 scene units at its biggest.").arg(400));
+    modelScale->setValue(s.value(QStringLiteral("prefs/modelScale"), 1.0).toDouble());
     generalLayout->addRow(welcome);
     generalLayout->addRow(tr("Save the scene by itself every"), autoSave);
     generalLayout->addRow(new QLabel(tr("(Only a scene that has been saved once, and only when it has changed.)"), general));
@@ -373,6 +385,8 @@ void MainWindow::onActionPreferences()
     keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));
     keepBackup->setChecked(s.value(QStringLiteral("prefs/keepBackup"), true).toBool());
     generalLayout->addRow(keepBackup);
+    generalLayout->addRow(focusOnEnter);
+    generalLayout->addRow(tr("3D models come in at"), modelScale);
     QCheckBox* const askAutoSave = new QCheckBox(tr("Ask before saving by itself"), general);
     askAutoSave->setObjectName(QStringLiteral("PrefAskAutoSave"));
     askAutoSave->setChecked(s.value(QStringLiteral("prefs/askAutoSave"), false).toBool());
@@ -775,6 +789,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionBrightnessAlpha"), onionBrightness->isChecked());
     s.setValue(QStringLiteral("prefs/lineArtBitmap"), lineArtBitmap->isChecked());
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
+    s.setValue(QStringLiteral("prefs/focusOnEnter"), focusOnEnter->isChecked());
+    s.setValue(QStringLiteral("prefs/modelScale"), modelScale->value());
     s.setValue(QStringLiteral("prefs/functionGrid"), functionGrid->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), columnWidth->value());
     s.setValue(QStringLiteral("prefs/drawingOnTop"), onTop->isChecked());

@@ -311,6 +311,8 @@ QJsonObject Scene::toJson(QString const& folder) const
             if (!d.model.isEmpty()) {
                 drawing["model"] = d.model;
                 drawing["modelCentre"] = QJsonArray{d.modelCentre.x(), d.modelCentre.y()};
+                if (d.modelScale != 1.0)
+                    drawing["modelScale"] = d.modelScale;
                 if (QString const relative = pathFrom(folder, d.model); !relative.isEmpty())
                     drawing["modelRelative"] = relative;
             }

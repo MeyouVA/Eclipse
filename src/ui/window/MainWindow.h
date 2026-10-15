@@ -578,6 +578,9 @@ private:
     int frame() const;
     // Says so and is true when the current layer shows no 3D model.
     bool refuseUnlessModel(QString const& what);
+    // Preferences: the Camera view, the Timeline, the Xsheet and the Node View take the keyboard when the pointer comes over
+    // them.
+    bool m_focusOnEnter = false;
     Q_INVOKABLE void shuttleStep();     // one tick of the shuttle
 
     bool saveTo(QString const& path);

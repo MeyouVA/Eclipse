@@ -278,6 +278,7 @@ struct Drawing {
     // the frame (see model/geometry/Model3D.h).  Empty: none.
     QString model;
     QPointF modelCentre;    // where the middle of the model is, in the drawing
+    double modelScale = 1.0;    // how big, as a share of Model3D::kSize at its biggest
     // What the drawing is in the animation, when the animator has said: a key drawing, a
     // breakdown between keys, or an in-between.  Shown in the Timeline and the Xsheet.
     enum Mark { NoMark, KeyMark, BreakdownMark, InBetweenMark };

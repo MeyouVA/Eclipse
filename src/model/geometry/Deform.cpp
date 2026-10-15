@@ -774,7 +774,8 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose)
         Drawing out = drawing;
         out.model.clear();
         if (Picture picture; Model3D::picture(drawing.model, pose.rotX, pose.rotY, picture)) {
-            picture.transform(QTransform::fromTranslate(drawing.modelCentre.x(), drawing.modelCentre.y()));
+            picture.transform(QTransform::fromScale(drawing.modelScale, drawing.modelScale)
+                              * QTransform::fromTranslate(drawing.modelCentre.x(), drawing.modelCentre.y()));
             out.pictures.prepend(picture);
         }
         return shown(out, layer, pose);
