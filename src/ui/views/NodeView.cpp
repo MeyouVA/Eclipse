@@ -21,6 +21,13 @@ NodeView::NodeView(Document* document, QWidget* parent) : QWidget(parent), m_doc
     setAcceptDrops(true);       // from the Node Library
     connect(m_document, &Document::changed, this, [this] {
         m_cable = -1;
+        // (The graph changed: a cable picked by its place may be another now; a group gone into may be gone.)
+        m_graphCable = -1;
+        NodeGraph const& g = m_document->scene().graph;
+        if (m_graphGroup && !g.node(m_graphGroup))
+            m_graphGroup = 0;
+        if (m_graphNode && !g.node(m_graphNode))
+            m_graphNode = 0;
         update();
     });
     m_search = new QLineEdit(this);
@@ -372,6 +379,10 @@ QPointF NodeView::navigatorPoint(QPointF graph) const
 
 void NodeView::onActionResetView()
 {
+    if (graphMode()) {
+        resetGraphView();
+        return;
+    }
     // The whole graph, centred, at its natural size (smaller when it does not fit).
     QRectF const all = graphBounds();
     m_zoom = std::clamp(std::min((width() - 40.0) / all.width(), (height() - 40.0) / all.height()), 0.25, 1.0);
@@ -406,6 +417,10 @@ void NodeView::paintEvent(QPaintEvent*)
     QPainter p(this);
     p.fillRect(rect(), QColor(69, 69, 69));
     p.setRenderHint(QPainter::Antialiasing, true);
+    if (graphMode()) {
+        paintGraphMode(p);
+        return;
+    }
     QVector<QPointF> pos = positions();
     // A node being dragged is drawn where the pointer has it, cables and all.
     if (m_drag == DragNode && m_moved && m_dragLayer >= 0 && m_dragLayer < pos.size())
@@ -582,6 +597,10 @@ void NodeView::paintEvent(QPaintEvent*)
 
 void NodeView::mousePressEvent(QMouseEvent* event)
 {
+    if (graphMode()) {
+        graphPress(event);
+        return;
+    }
     if (event->button() == Qt::LeftButton && pathRect().contains(event->position())) {
         leaveGroup();
         return;
@@ -644,6 +663,10 @@ void NodeView::mousePressEvent(QMouseEvent* event)
 
 void NodeView::mouseMoveEvent(QMouseEvent* event)
 {
+    if (graphMode()) {
+        graphMove(event);
+        return;
+    }
     QPointF const now = event->position();
     if (m_drag == DragPan) {
         m_pan += now - m_dragNow;
@@ -657,6 +680,10 @@ void NodeView::mouseMoveEvent(QMouseEvent* event)
 
 void NodeView::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (graphMode()) {
+        graphRelease(event);
+        return;
+    }
     Drag const drag = m_drag;
     int const layer = m_dragLayer;
     m_drag = DragNone;
@@ -683,6 +710,10 @@ void NodeView::mouseReleaseEvent(QMouseEvent* event)
 
 void NodeView::mouseDoubleClickEvent(QMouseEvent* event)
 {
+    if (graphMode()) {
+        graphDoubleClick(event);
+        return;
+    }
     int const hit = nodeAt(event->position());
     // A group is gone into; any other node is renamed.
     if (hit >= 0 && m_document->scene().layers[hit].kind == Layer::Group)
@@ -703,11 +734,19 @@ void NodeView::wheelEvent(QWheelEvent* event)
 
 void NodeView::contextMenuEvent(QContextMenuEvent* event)
 {
+    if (graphMode()) {
+        graphContextMenu(event->globalPos(), event->pos());
+        return;
+    }
     emit contextMenuRequested(event->globalPos());
 }
 
 void NodeView::deleteSelection()
 {
+    if (graphMode()) {
+        deleteGraphSelection();
+        return;
+    }
     if (m_cable >= 0) {
         int const child = m_cable;
         m_cable = -1;

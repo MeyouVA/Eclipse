@@ -814,6 +814,8 @@
   <item id="NodeViewExitGroup" icon="view/groupexit" text="Exit Group" responder="nodeView" slot="onActionExitGroup()"/>
   <separator/>
   <item id="NodeViewResetView" icon="view/resetview" text="Reset View" responder="nodeView" slot="onActionResetView()"/>
+  <separator/>
+  <item id="NodeViewWireGraph" text="Wire the Graph by Hand" responder="nodeView" slot="onActionWireGraph()"/>
  </menu>
 
 </menus>

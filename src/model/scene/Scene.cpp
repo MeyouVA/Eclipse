@@ -366,8 +366,12 @@ bool NodeGraph::feeds(int to, int from) const
         if (n && n->kind == GraphNode::Group)
             if (int const out = groupOut(n->id))
                 todo.push_back(out);
-        if (n && n->kind == GraphNode::GroupIn)
-            todo.push_back(n->group);
+        if (n && n->kind == GraphNode::GroupIn) {
+            // (What comes into a group's input node is what comes into the group - not what leaves it.)
+            for (GraphCable const& c : cables)
+                if (c.to == n->group)
+                    todo.push_back(c.from);
+        }
     }
     return false;
 }

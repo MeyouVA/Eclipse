@@ -15,6 +15,7 @@
 
 class Document;
 class QLineEdit;
+struct GraphNode;
 
 class ECLIPSE_UI_API NodeView : public QWidget {
     Q_OBJECT
@@ -61,6 +62,33 @@ public:
     void setStraightCables(bool on);
     bool straightCables() const { return m_straight; }
 
+    // ---- the node graph, wired by hand (see NodeGraph) ----
+    // Whether the scene's graph is wired by hand: the view then shows it and edits it (otherwise it shows the layers as
+    // they stack).
+    bool graphMode() const;
+    // Where a node of the graph is (by its id) and its ports, in the widget; and the node under a place (0: none).
+    QRectF graphNodeRect(int id) const;
+    QPointF graphInPort(int id, int port) const;
+    QPointF graphOutPort(int id, int port) const;
+    int graphNodeAt(QPointF widgetPos) const;
+    // The group of the graph the view is inside (its id; 0 at the top), gone into and out of.
+    int graphGroup() const { return m_graphGroup; }
+    void enterGraphGroup(int id);
+    // The node and the cable picked (an id; a place among the cables), or 0 and -1.
+    int pickedGraphNode() const { return m_graphNode; }
+    int pickedGraphCable() const { return m_graphCable; }
+    void pickGraphNode(int id);
+    void pickGraphCable(int index);
+    // A node put in the graph at a place of it (inside the group the view is in): its id.  A group comes with its input
+    // and output nodes inside it.
+    int addGraphNode(GraphNode node, QPointF graphPos);
+    // A cable from an output to an input, in place of what went into that input; false when it would close a ring (the
+    // input already feeds the output) or a port is not there.
+    bool connectGraph(int from, int fromPort, int to, int toPort);
+    // A composite's or a group's inputs, or a group's outputs, one more (`by` 1) or one fewer (-1): a group's input and
+    // output nodes inside follow; a cable into a port taken away goes too.
+    void changeGraphPorts(int id, bool outputs, int by);
+
 public slots:
     void setCurrentCell(int layer, int frame);
     // Edit > Delete with this view in focus: the picked cable (detaches), else the
@@ -75,6 +103,9 @@ public slots:
     void onActionZoomOut() { zoomBy(0.8); }
     void onActionResetZoom() { zoomBy(1.0 / m_zoom); }
     void onActionResetPan();
+    // The graph made from the layers as they stack, to wire by hand from; and let go again (the layers stack as they are).
+    void onActionWireGraph();
+    void onActionStackLayers();
 
 signals:
     void layerPicked(int layer);
@@ -123,7 +154,33 @@ private:
     QPointF m_pan = QPointF(40, 150);
     bool m_centred = false;   // the graph is brought into view the first time it is shown
 
-    enum Drag { DragNone, DragNode, DragCable, DragPan } m_drag = DragNone;
+    enum Drag { DragNone, DragNode, DragCable, DragPan, DragWire, DragGraphNode } m_drag = DragNone;
+
+    // The graph, wired by hand: drawn and worked with in the widget.
+    int m_graphGroup = 0;
+    int m_graphNode = 0;
+    int m_graphCable = -1;
+    int m_wireFrom = 0, m_wireFromPort = 0;     // a cable being pulled out of this output
+    int m_unplugged = -1;                       // a cable taken off an input to be plugged in elsewhere (its place)
+    struct GraphPort {
+        int node = 0;
+        int port = -1;
+        bool out = false;
+    };
+    GraphPort graphPortAt(QPointF widgetPos) const;
+    int graphCableAt(QPointF widgetPos) const;
+    double graphNodeWidth(GraphNode const& node) const;
+    QString graphNodeName(GraphNode const& node) const;
+    QRectF graphPathRect() const;
+    void paintGraphMode(QPainter& p);
+    void graphPress(QMouseEvent* event);
+    void graphMove(QMouseEvent* event);
+    void graphRelease(QMouseEvent* event);
+    void graphDoubleClick(QMouseEvent* event);
+    void graphContextMenu(QPoint globalPos, QPointF widgetPos);
+    void deleteGraphSelection();
+    void editGraphNode(int id);
+    void resetGraphView();
     int m_dragLayer = -1;
     QPointF m_pressPos;       // widget
     QPointF m_dragNow;        // widget
