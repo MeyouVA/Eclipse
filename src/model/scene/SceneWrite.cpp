@@ -425,6 +425,12 @@ QJsonObject Scene::toJson(QString const& folder) const
             layerObject["bendOnBones"] = true;
         if (layer.jointSmoothness > 0.0)
             layerObject["jointSmooth"] = layer.jointSmoothness;
+        if (!layer.drivers.isEmpty()) {
+            QJsonArray drivers;
+            for (Driver const& d : layer.drivers)
+                drivers.append(QJsonObject{{"value", d.value}, {"source", d.source}, {"sourceValue", d.sourceValue}, {"factor", d.factor}, {"offset", d.offset}});
+            layerObject["drivers"] = drivers;
+        }
         if (!layer.skin.isEmpty()) {
             QJsonArray dabs;
             for (SkinDab const& d : layer.skin)

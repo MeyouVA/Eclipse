@@ -549,6 +549,22 @@ struct SkinDab {
     bool operator==(SkinDab const&) const = default;
 };
 
+// An attribute control (a driver): one value of a layer's pose that follows a value of another layer's pose instead of its
+// own keyframes - so many times it, and so much more.  A gear turning twice as fast as another; an eye that slides as a head
+// turns.  The values are numbered as the Timeline's rows: across, down, scale across and down, angle, opacity, depth, skew,
+// angle of view.
+struct Driver {
+    enum Value { X, Y, ScaleX, ScaleY, Angle, Opacity, Z, Skew, Fov, ValueCount };
+    int value = Angle;          // what of this layer's pose follows
+    int source = 0;             // the id of the layer it follows
+    int sourceValue = Angle;    // what of that layer's pose
+    double factor = 1.0;
+    double offset = 0.0;
+    bool operator==(Driver const&) const = default;
+    static double read(Pose const& pose, int value);
+    static void write(Pose& pose, int value, double v);
+};
+
 struct Layer {
     static constexpr int kNoDrawing = -1;
 
@@ -682,6 +698,8 @@ struct Layer {
     // Weights painted on the drawing for the bones of its bone deformer (the Rigging tool, Weights): where a bone is to pull
     // more, or less, than its nearness alone says.
     QVector<SkinDab> skin;
+    // Values of its pose that follow other layers' (attribute controls): these take the place of its keyframes for them.
+    QVector<Driver> drivers;
     // How the layer's picture goes onto what is under it: laid over it (Normal), or mixed with it - Multiply darkens
     // as ink does, Screen lightens as light does, and so on, as in a paint program.  The layer is mixed as a whole.
     enum Blend { BlendNormal, BlendMultiply, BlendScreen, BlendOverlay, BlendDarken, BlendLighten, BlendColourDodge, BlendColourBurn,
@@ -940,6 +958,8 @@ public:
     // the camera sees it: with what its depth does to it.
     // (A layer turned in space comes out in perspective.)
     QTransform worldTransform(int layer, int frame, PoseOverride const* over = nullptr) const;
+    // The pose of a layer on a frame as the scene has it: its keyframes', with the values its drivers set from other layers.
+    Pose poseOf(int layer, int frame, PoseOverride const* over = nullptr) const;
     // The same without depth: where the layer lies on its own plane.
     QTransform flatTransform(int layer, int frame, PoseOverride const* over = nullptr) const;
     // Attaches `layer` to `parent` (-1 to detach).  False when that would make a loop.

@@ -89,9 +89,23 @@ struct Mat4 {
 
 Pose poseFor(Scene const& scene, int layer, int frame, PoseOverride const* over)
 {
-    if (over && over->layer == layer && over->frame == frame && !over->hasMatrix)
-        return over->pose;
-    return scene.layers[layer].poseAt(frame);
+    Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : scene.layers[layer].poseAt(frame);
+    Layer const& l = scene.layers[layer];
+    if (l.drivers.isEmpty())
+        return pose;
+    // The values that follow other layers.  (A loop of layers following one another goes no deeper than a few rounds.)
+    static thread_local int depth = 0;
+    if (depth >= 8)
+        return pose;
+    ++depth;
+    for (Driver const& d : l.drivers) {
+        int const from = scene.layerIndex(d.source);
+        if (from < 0 || from == layer)
+            continue;
+        Driver::write(pose, d.value, Driver::read(poseFor(scene, from, frame, over), d.sourceValue) * d.factor + d.offset);
+    }
+    --depth;
+    return pose;
 }
 
 // From a layer to what it hangs under, on the flat sheet.
@@ -309,4 +323,43 @@ QTransform Scene::flatTransform(int layer, int frame, PoseOverride const* over) 
             t = t * Deform::boneTransform(layers[parent].bones, poseFor(*this, parent, frame, over).bend, layers[layer].parentBone);
     }
     return t;
+}
+
+double Driver::read(Pose const& pose, int value)
+{
+    switch (value) {
+    case X: return pose.x;
+    case Y: return pose.y;
+    case ScaleX: return pose.scaleX;
+    case ScaleY: return pose.scaleY;
+    case Angle: return pose.rotation;
+    case Opacity: return pose.opacity;
+    case Z: return pose.z;
+    case Skew: return pose.skew;
+    case Fov: return pose.fov;
+    default: return 0.0;
+    }
+}
+
+void Driver::write(Pose& pose, int value, double v)
+{
+    switch (value) {
+    case X: pose.x = v; break;
+    case Y: pose.y = v; break;
+    case ScaleX: pose.scaleX = v; break;
+    case ScaleY: pose.scaleY = v; break;
+    case Angle: pose.rotation = v; break;
+    case Opacity: pose.opacity = std::clamp(v, 0.0, 1.0); break;
+    case Z: pose.z = v; break;
+    case Skew: pose.skew = v; break;
+    case Fov: pose.fov = std::clamp(v, 1.0, 170.0); break;
+    default: break;
+    }
+}
+
+Pose Scene::poseOf(int layer, int frame, PoseOverride const* over) const
+{
+    if (layer < 0 || layer >= layers.size())
+        return Pose();
+    return poseFor(*this, layer, frame, over);
 }

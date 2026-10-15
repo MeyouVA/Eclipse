@@ -31,6 +31,10 @@ private:
     void applyPose();
     void applyPivot();
     void applyEase();
+public:
+    // Attribute Controls: a window to set which values of the current layer follow values of other layers.
+    void editDrivers();
+private:
     QDoubleSpinBox* number(double min, double max, double step, int decimals);
 
     Document* m_document;
@@ -68,6 +72,7 @@ private:
     QCheckBox* m_bend = nullptr;    // a drawing layer on Game Bones: bends along them
     QComboBox* m_blend = nullptr;   // how the layer's picture is mixed with what is under it
     QDoubleSpinBox* m_smooth = nullptr;     // how far round a joint of its bones the drawing bends
+    QPushButton* m_drivers = nullptr;       // Attribute Controls...
     QCheckBox* m_artShown[4] = {nullptr, nullptr, nullptr, nullptr};
     QCheckBox* m_ikExcluded = nullptr;
     QCheckBox* m_ikLimited = nullptr;

@@ -231,7 +231,7 @@ Pose Canvas::poseOf(int layer, int frame) const
 {
     if (layer == m_layer && frame == m_frame && posing())
         return m_dragPose;
-    return m_document->scene().layers[layer].poseAt(frame);
+    return m_document->scene().poseOf(layer, frame);
 }
 
 bool Canvas::showsRest(int layer) const

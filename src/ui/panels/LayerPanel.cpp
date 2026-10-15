@@ -11,6 +11,10 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QHeaderView>
+#include <QTableWidget>
 
 #include "model/document/Commands.h"
 #include "ui/panels/Effects.h"
@@ -156,6 +160,11 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         if (!m_refreshing)
             m_document->editLayers({m_layer}, tr("Joint Smoothness"), [v](Layer& layer) { layer.jointSmoothness = v; });
     });
+    m_drivers = new QPushButton(this);
+    m_drivers->setObjectName(QStringLiteral("LayerDrivers"));
+    m_drivers->setToolTip(tr("Values of this layer that follow values of other layers instead of its own keyframes:\n"
+                             "a gear that turns twice as fast as another, an eye that slides as the head turns."));
+    connect(m_drivers, &QPushButton::clicked, this, &LayerPanel::editDrivers);
     m_bend = new QCheckBox(tr("Bends on its bones"), this);
     m_bend->setObjectName(QStringLiteral("LayerBendOnBones"));
     m_bend->setToolTip(tr("Hanging from Game Bones, the drawing bends along them as they turn, instead of riding the last one whole.\n"
@@ -206,6 +215,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     ease->addWidget(m_easeOut, 1);
     form->addRow(tr("Opacity"), m_opacity);
     form->addRow(tr("Blend Mode"), m_blend);
+    form->addRow(tr("Attribute Controls"), m_drivers);
     form->addRow(tr("Ease"), ease);
     form->addRow(QString(), m_key);
     form->addRow(m_effects);
@@ -252,6 +262,101 @@ void LayerPanel::setCurrentCell(int layer, int frame)
     refresh();
 }
 
+void LayerPanel::editDrivers()
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return;
+    QStringList const values = {tr("Position X"), tr("Position Y"), tr("Scale X"), tr("Scale Y"), tr("Angle"), tr("Opacity"), tr("Depth (Z)"),
+                                tr("Skew"), tr("Field of View")};
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("DriversDialog"));
+    dialog.setWindowTitle(tr("Attribute Controls: %1").arg(scene.layers[m_layer].name));
+    QTableWidget* const table = new QTableWidget(0, 5, &dialog);
+    table->setObjectName(QStringLiteral("DriversTable"));
+    table->setHorizontalHeaderLabels({tr("This value"), tr("follows the layer"), tr("its value"), tr("times"), tr("plus")});
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    table->verticalHeader()->hide();
+    table->setMinimumWidth(620);
+    auto addRow = [&, table](Driver const& d) {
+        int const row = table->rowCount();
+        table->insertRow(row);
+        QComboBox* const value = new QComboBox(table);
+        value->addItems(values);
+        value->setCurrentIndex(std::clamp(d.value, 0, int(Driver::ValueCount) - 1));
+        QComboBox* const source = new QComboBox(table);
+        for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
+            if (l != m_layer)
+                source->addItem(scene.layers[l].name, scene.layers[l].id);
+        source->setCurrentIndex(std::max(0, source->findData(d.source)));
+        QComboBox* const sourceValue = new QComboBox(table);
+        sourceValue->addItems(values);
+        sourceValue->setCurrentIndex(std::clamp(d.sourceValue, 0, int(Driver::ValueCount) - 1));
+        QDoubleSpinBox* const factor = new QDoubleSpinBox(table);
+        factor->setRange(-1000.0, 1000.0);
+        factor->setDecimals(3);
+        factor->setValue(d.factor);
+        QDoubleSpinBox* const offset = new QDoubleSpinBox(table);
+        offset->setRange(-100000.0, 100000.0);
+        offset->setDecimals(2);
+        offset->setValue(d.offset);
+        table->setCellWidget(row, 0, value);
+        table->setCellWidget(row, 1, source);
+        table->setCellWidget(row, 2, sourceValue);
+        table->setCellWidget(row, 3, factor);
+        table->setCellWidget(row, 4, offset);
+    };
+    for (Driver const& d : scene.layers[m_layer].drivers)
+        addRow(d);
+    QPushButton* const add = new QPushButton(tr("Add"), &dialog);
+    add->setObjectName(QStringLiteral("DriversAdd"));
+    add->setEnabled(scene.layers.size() > 1);
+    QPushButton* const remove = new QPushButton(tr("Remove"), &dialog);
+    remove->setObjectName(QStringLiteral("DriversRemove"));
+    connect(add, &QPushButton::clicked, &dialog, [&] {
+        Driver d;
+        // The layer it hangs on, to begin with, when it hangs on one.
+        int const up = scene.parentIndex(m_layer);
+        d.source = up >= 0 ? scene.layers[up].id : 0;
+        addRow(d);
+        table->setCurrentCell(table->rowCount() - 1, 0);
+    });
+    connect(remove, &QPushButton::clicked, &dialog, [table] {
+        if (table->currentRow() >= 0)
+            table->removeRow(table->currentRow());
+    });
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QHBoxLayout* const row = new QHBoxLayout;
+    row->addWidget(add);
+    row->addWidget(remove);
+    row->addStretch(1);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("Each value listed follows the other layer's value on every frame, instead of this layer's keyframes."), &dialog));
+    layout->addWidget(table);
+    layout->addLayout(row);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    QVector<Driver> drivers;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        auto combo = [&](int c) { return qobject_cast<QComboBox*>(table->cellWidget(r, c)); };
+        auto spin = [&](int c) { return qobject_cast<QDoubleSpinBox*>(table->cellWidget(r, c)); };
+        if (!combo(0) || !combo(1) || !combo(2) || !spin(3) || !spin(4) || combo(1)->currentIndex() < 0)
+            continue;
+        Driver d;
+        d.value = combo(0)->currentIndex();
+        d.source = combo(1)->currentData().toInt();
+        d.sourceValue = combo(2)->currentIndex();
+        d.factor = spin(3)->value();
+        d.offset = spin(4)->value();
+        drivers.push_back(d);
+    }
+    if (drivers != m_document->scene().layers[m_layer].drivers)
+        m_document->editLayers({m_layer}, tr("Attribute Controls"), [drivers](Layer& layer) { layer.drivers = drivers; });
+}
+
 void LayerPanel::refresh()
 {
     Scene const& scene = m_document->scene();
@@ -289,6 +394,7 @@ void LayerPanel::refresh()
         m_smooth->setValue(layer.jointSmoothness);
     }
     m_form->setRowVisible(m_blend, layer.holdsDrawings());
+    m_drivers->setText(layer.drivers.isEmpty() ? tr("None...") : tr("%n value(s) follow other layers...", nullptr, int(layer.drivers.size())));
     m_blend->setCurrentIndex(std::clamp(layer.blend, 0, int(Layer::BlendCount) - 1));
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
         m_artShown[sheet]->setChecked(layer.sheetShown(sheet));

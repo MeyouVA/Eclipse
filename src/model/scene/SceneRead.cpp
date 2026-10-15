@@ -311,6 +311,17 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         layer.bitmapArt = lo["bitmapArt"].toInt(0) & 11;
         layer.bendOnBones = lo["bendOnBones"].toBool(false);
         layer.jointSmoothness = std::clamp(lo["jointSmooth"].toDouble(0.0), 0.0, 1000.0);
+        for (QJsonValue const& dv : lo["drivers"].toArray()) {
+            QJsonObject const d = dv.toObject();
+            Driver driver;
+            driver.value = d["value"].toInt(-1);
+            driver.source = d["source"].toInt(0);
+            driver.sourceValue = d["sourceValue"].toInt(-1);
+            driver.factor = d["factor"].toDouble(1.0);
+            driver.offset = d["offset"].toDouble(0.0);
+            if (driver.value >= 0 && driver.value < Driver::ValueCount && driver.sourceValue >= 0 && driver.sourceValue < Driver::ValueCount)
+                layer.drivers.push_back(driver);
+        }
         for (QJsonValue const& dv : lo["skin"].toArray()) {
             QJsonArray const d = dv.toArray();
             if (d.size() != 5 || d[0].toInt(-1) < 0 || d[3].toDouble() <= 0.0)
