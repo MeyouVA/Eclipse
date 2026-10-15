@@ -660,8 +660,15 @@ QJsonObject Scene::toJson(QString const& folder) const
                              {"group", n.group}, {"at", QJsonArray{n.at.x(), n.at.y()}}};
             if (n.kind == GraphNode::LayerNode)
                 node["layer"] = n.layer;
-            if (n.kind == GraphNode::EffectNode)
+            if (n.kind == GraphNode::EffectNode) {
                 node["effect"] = effectToJson(n.effect);
+                if (!n.amountKeys.isEmpty()) {
+                    QJsonArray keys;
+                    for (auto it = n.amountKeys.cbegin(); it != n.amountKeys.cend(); ++it)
+                        keys.append(QJsonArray{it.key(), it.value()});
+                    node["amountKeys"] = keys;
+                }
+            }
             nodes.append(node);
         }
         for (GraphCable const& c : graph.cables)

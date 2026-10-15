@@ -88,6 +88,16 @@ public:
     // A composite's or a group's inputs, or a group's outputs, one more (`by` 1) or one fewer (-1): a group's input and
     // output nodes inside follow; a cable into a port taken away goes too.
     void changeGraphPorts(int id, bool outputs, int by);
+    // A layer node's transformation ports: what it hangs from comes in on its left, what hangs from it leaves on its right
+    // (a peg's, a group's, any layer's) - the parenting of the layers, as cables.
+    QPointF graphTransformIn(int id) const;
+    QPointF graphTransformOut(int id) const;
+    // The nodes picked together (Ctrl+click adds one or takes it away).
+    QVector<int> pickedGraphNodes() const;
+    void addPickedGraphNode(int id);
+    // The nodes picked put in a new group (at the level the view is at): cables that came in from outside come in at the
+    // group's inputs, cables that went out leave by its outputs.  The group's id; 0 when none could be.
+    int groupGraphNodes(QVector<int> const& ids);
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -149,12 +159,13 @@ private:
     Document* m_document;
     QLineEdit* m_search = nullptr;     // along the bottom: type a name, Enter goes to the next node of it
     int m_layer = 0;
+    int m_frame = 0;
     int m_groupId = 0;      // the id of the group the view is inside; 0 at the top
     double m_zoom = 1.0;
     QPointF m_pan = QPointF(40, 150);
     bool m_centred = false;   // the graph is brought into view the first time it is shown
 
-    enum Drag { DragNone, DragNode, DragCable, DragPan, DragWire, DragGraphNode } m_drag = DragNone;
+    enum Drag { DragNone, DragNode, DragCable, DragPan, DragWire, DragGraphNode, DragPeg } m_drag = DragNone;
 
     // The graph, wired by hand: drawn and worked with in the widget.
     int m_graphGroup = 0;
@@ -162,6 +173,9 @@ private:
     int m_graphCable = -1;
     int m_wireFrom = 0, m_wireFromPort = 0;     // a cable being pulled out of this output
     int m_unplugged = -1;                       // a cable taken off an input to be plugged in elsewhere (its place)
+    QVector<int> m_graphPicked;                 // the nodes picked together
+    int m_pegFrom = 0, m_pegChild = 0;          // a parenting cable pulled out of this node (taken off this child)
+    QRectF graphLevelBounds() const;
     struct GraphPort {
         int node = 0;
         int port = -1;
@@ -170,6 +184,7 @@ private:
     GraphPort graphPortAt(QPointF widgetPos) const;
     int graphCableAt(QPointF widgetPos) const;
     double graphNodeWidth(GraphNode const& node) const;
+    bool pictureless(GraphNode const& node) const;
     QString graphNodeName(GraphNode const& node) const;
     QRectF graphPathRect() const;
     void paintGraphMode(QPainter& p);

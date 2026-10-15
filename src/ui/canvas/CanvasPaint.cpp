@@ -1281,7 +1281,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
         } else if (n && n->kind == GraphNode::EffectNode) {
             out = input(id, 0);
             Effect const& e = n->effect;
-            double const amount = e.amount;
+            double const amount = n->amountAt(frame);
             if (!e.enabled) {
                 // (Turned off: the picture goes through as it is.)
             } else if (e.type == Effect::Blur) {

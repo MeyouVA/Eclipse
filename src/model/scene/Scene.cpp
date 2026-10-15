@@ -194,13 +194,19 @@ void Scene::graphLayerAdded(int layer)
     if (graph.isEmpty() || layer < 0 || layer >= layers.size())
         return;
     Layer const& added = layers[layer];
-    if (added.kind == Layer::Peg || added.kind == Layer::Camera || added.kind == Layer::Sound || added.kind == Layer::Group || added.kind == Layer::Bone)
-        return;     // (no picture of its own)
+    if (added.kind == Layer::Camera || added.kind == Layer::Sound || added.kind == Layer::Bone)
+        return;     // (no picture of its own, nor anything to hang from it in the graph)
     GraphNode n;
     n.id = graph.nextId();
     n.kind = GraphNode::LayerNode;
     n.layer = added.id;
     n.name = added.name;
+    if (added.kind == Layer::Peg || added.kind == Layer::Group) {
+        // A peg or a group: a node, cabled to nothing (what hangs from it is shown by the parenting cables).
+        n.at = QPointF(0.0, -210.0);
+        graph.nodes.push_back(n);
+        return;
+    }
     // The composite the Display shows: the new node goes in among the layers there by where it stacks (the first input in
     // front), after those above it.
     GraphCable const* const shown = graph.display() ? graph.into(graph.display(), 0) : nullptr;
@@ -252,6 +258,11 @@ static T keyedAt(QMap<int, T> const& keys, int frame, T const& none)
         return before.value();
     double const t = double(frame - before.key()) / double(after.key() - before.key());
     return before.value() + (after.value() - before.value()) * t;
+}
+
+double GraphNode::amountAt(int frame) const
+{
+    return keyedAt(amountKeys, frame, effect.amount);
 }
 
 double Scene::Controller::valueAt(int frame) const
@@ -409,6 +420,20 @@ NodeGraph Scene::graphFromLayers() const
         if (layers[l].kind != Layer::Peg && layers[l].kind != Layer::Camera && layers[l].kind != Layer::Sound && layers[l].kind != Layer::Group
             && layers[l].kind != Layer::Bone)
             shown.push_back(l);
+    // (The pegs and groups above the rest, cabled to nothing.)
+    double px = 0.0;
+    for (int l = int(layers.size()) - 1; l >= 0; --l) {
+        if (layers[l].kind != Layer::Peg && layers[l].kind != Layer::Group)
+            continue;
+        GraphNode peg;
+        peg.id = g.nextId() + 2;
+        peg.kind = GraphNode::LayerNode;
+        peg.layer = layers[l].id;
+        peg.name = layers[l].name;
+        peg.at = QPointF(px, -120.0);
+        px += 140.0;
+        g.nodes.push_back(peg);
+    }
     double x = 0.0;
     for (int i = int(shown.size()) - 1; i >= 0; --i) {
         GraphNode n;

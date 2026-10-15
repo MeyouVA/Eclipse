@@ -11,6 +11,7 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPushButton>
 #include <QSet>
 
@@ -40,6 +41,16 @@ bool turnsInsideOut(Effect::Type t)
 bool NodeView::graphMode() const
 {
     return !m_document->scene().graph.isEmpty();
+}
+
+bool NodeView::pictureless(GraphNode const& node) const
+{
+    // A peg's or a group layer's node: no picture of its own to cable anywhere, only what hangs from it.
+    if (node.kind != GraphNode::LayerNode)
+        return false;
+    Scene const& scene = m_document->scene();
+    int const l = scene.layerIndex(node.layer);
+    return l >= 0 && (scene.layers[l].kind == Layer::Peg || scene.layers[l].kind == Layer::Group);
 }
 
 double NodeView::graphNodeWidth(GraphNode const& node) const
@@ -99,6 +110,118 @@ QPointF NodeView::graphOutPort(int id, int port) const
     return QPointF(r.left() + r.width() * (port + 1.0) / (n->outputs() + 1.0), r.bottom());
 }
 
+QPointF NodeView::graphTransformIn(int id) const
+{
+    GraphNode const* const n = m_document->scene().graph.node(id);
+    QRectF const r = graphNodeRect(id);
+    return n && n->kind == GraphNode::LayerNode && !r.isNull() ? QPointF(r.left(), r.center().y()) : QPointF();
+}
+
+QPointF NodeView::graphTransformOut(int id) const
+{
+    GraphNode const* const n = m_document->scene().graph.node(id);
+    QRectF const r = graphNodeRect(id);
+    return n && n->kind == GraphNode::LayerNode && !r.isNull() ? QPointF(r.right(), r.center().y()) : QPointF();
+}
+
+QVector<int> NodeView::pickedGraphNodes() const
+{
+    return m_graphPicked;
+}
+
+void NodeView::addPickedGraphNode(int id)
+{
+    if (!m_document->scene().graph.node(id))
+        return;
+    if (m_graphPicked.contains(id))
+        m_graphPicked.removeAll(id);
+    else
+        m_graphPicked.push_back(id);
+    m_graphNode = m_graphPicked.isEmpty() ? 0 : m_graphPicked.last();
+    m_graphCable = -1;
+    update();
+}
+
+QRectF NodeView::graphLevelBounds() const
+{
+    QRectF all;
+    for (GraphNode const& n : m_document->scene().graph.nodes)
+        if (n.group == m_graphGroup)
+            all = all.united(QRectF(n.at, QSizeF(graphNodeWidth(n), kNodeHeight)));
+    return all;
+}
+
+int NodeView::groupGraphNodes(QVector<int> const& ids)
+{
+    NodeGraph g = m_document->scene().graph;
+    QSet<int> inside;
+    for (int id : ids)
+        if (GraphNode const* const n = g.node(id); n && n->group == m_graphGroup && n->kind != GraphNode::GroupIn && n->kind != GraphNode::GroupOut
+                                                    && n->kind != GraphNode::Display)
+            inside.insert(id);
+    if (inside.isEmpty())
+        return 0;
+    int const group = g.nextId();
+    QPointF middle;
+    for (int id : std::as_const(inside))
+        middle += g.node(id)->at;
+    middle /= double(inside.size());
+    // Cables across the edge: those coming in become the group's inputs (one each), those going out its outputs.
+    QVector<GraphCable> incoming, outgoing, kept;
+    for (GraphCable const& c : std::as_const(g.cables)) {
+        bool const from = inside.contains(c.from), to = inside.contains(c.to);
+        if (from == to)
+            kept.push_back(c);
+        else if (to)
+            incoming.push_back(c);
+        else
+            outgoing.push_back(c);
+    }
+    GraphNode groupNode;
+    groupNode.id = group;
+    groupNode.kind = GraphNode::Group;
+    groupNode.group = m_graphGroup;
+    groupNode.at = middle;
+    groupNode.ports = std::max<int>(1, int(incoming.size()));
+    groupNode.outPorts = std::max<int>(1, int(outgoing.size()));
+    GraphNode in;
+    in.id = group + 1;
+    in.kind = GraphNode::GroupIn;
+    in.group = group;
+    in.outPorts = groupNode.ports;
+    GraphNode out;
+    out.id = group + 2;
+    out.kind = GraphNode::GroupOut;
+    out.group = group;
+    out.ports = groupNode.outPorts;
+    // (Inside, the input node above what was picked, the output node under it.)
+    QRectF reach;
+    for (int id : std::as_const(inside))
+        reach = reach.united(QRectF(g.node(id)->at, QSizeF(kNodeWidth, kNodeHeight)));
+    in.at = QPointF(reach.left(), reach.top() - 90.0);
+    out.at = QPointF(reach.left(), reach.bottom() + 60.0);
+    for (GraphNode& n : g.nodes)
+        if (inside.contains(n.id))
+            n.group = group;
+    g.nodes += {groupNode, in, out};
+    for (int k = 0; k < incoming.size(); ++k) {
+        GraphCable const& c = incoming[k];
+        kept.push_back({c.from, c.fromPort, group, k});
+        kept.push_back({in.id, k, c.to, c.toPort});
+    }
+    for (int k = 0; k < outgoing.size(); ++k) {
+        GraphCable const& c = outgoing[k];
+        kept.push_back({c.from, c.fromPort, out.id, k});
+        kept.push_back({group, k, c.to, c.toPort});
+    }
+    g.cables = kept;
+    m_document->setGraph(g, tr("Group Selected Nodes"));
+    m_graphPicked = {group};
+    m_graphNode = group;
+    update();
+    return group;
+}
+
 int NodeView::graphNodeAt(QPointF widgetPos) const
 {
     NodeGraph const& g = m_document->scene().graph;
@@ -122,7 +245,7 @@ NodeView::GraphPort NodeView::graphPortAt(QPointF widgetPos) const
                 nearest = d;
                 best = {n.id, i, false};
             }
-        for (int o = 0; o < n.outputs(); ++o)
+        for (int o = 0; o < n.outputs() && !pictureless(n); ++o)
             if (double const d = QLineF(graphOutPort(n.id, o), widgetPos).length(); d <= nearest) {
                 nearest = d;
                 best = {n.id, o, true};
@@ -171,6 +294,7 @@ void NodeView::pickGraphNode(int id)
 {
     m_graphNode = id;
     m_graphCable = -1;
+    m_graphPicked = id ? QVector<int>{id} : QVector<int>();
     GraphNode const* const n = m_document->scene().graph.node(id);
     if (n && n->kind == GraphNode::LayerNode)
         if (int const l = m_document->scene().layerIndex(n->layer); l >= 0)
@@ -182,6 +306,7 @@ void NodeView::pickGraphCable(int index)
 {
     m_graphCable = index;
     m_graphNode = 0;
+    m_graphPicked.clear();
     update();
 }
 
@@ -307,11 +432,16 @@ void NodeView::deleteGraphSelection()
         m_document->setGraph(g, tr("Disconnect"));
         return;
     }
-    GraphNode const* const n = g.node(m_graphNode);
-    if (!n || n->kind == GraphNode::GroupIn || n->kind == GraphNode::GroupOut)
-        return;     // (a group's input and output nodes go with the group)
-    // The node, what is in it (a group), and every cable of those.
-    QSet<int> gone{m_graphNode};
+    // The nodes picked (a group's input and output nodes go only with the group), what is in them, and every cable of those.
+    QSet<int> gone;
+    QVector<int> picked = m_graphPicked;
+    if (picked.isEmpty() && m_graphNode)
+        picked = {m_graphNode};
+    for (int id : std::as_const(picked))
+        if (GraphNode const* const n = g.node(id); n && n->kind != GraphNode::GroupIn && n->kind != GraphNode::GroupOut)
+            gone.insert(id);
+    if (gone.isEmpty())
+        return;
     for (bool more = true; more;) {
         more = false;
         for (GraphNode const& other : std::as_const(g.nodes))
@@ -324,6 +454,7 @@ void NodeView::deleteGraphSelection()
     g.cables.erase(std::remove_if(g.cables.begin(), g.cables.end(), [&](GraphCable const& c) { return gone.contains(c.from) || gone.contains(c.to); }),
                    g.cables.end());
     m_graphNode = 0;
+    m_graphPicked.clear();
     // (The last node gone, the graph is let go: the layers stack as they are.)
     m_document->setGraph(g, tr("Delete Node"));
 }
@@ -345,8 +476,13 @@ void NodeView::editGraphNode(int id)
     amount->setObjectName(QStringLiteral("GraphEffectAmount"));
     amount->setRange(0.0, 1000.0);
     amount->setDecimals(2);
-    amount->setValue(e.amount);
+    amount->setValue(g.nodes[i].amountAt(m_frame));
     form->addRow(tr("Amount"), amount);
+    // Animated: the amount a keyframe of this frame (the frames between go straight from one keyframe to the next).
+    QCheckBox* const keyed = new QCheckBox(tr("Keyframe on frame %1").arg(m_frame + 1), &dialog);
+    keyed->setObjectName(QStringLiteral("GraphEffectKeyed"));
+    keyed->setChecked(!g.nodes[i].amountKeys.isEmpty());
+    form->addRow(QString(), keyed);
     QPushButton* colour = nullptr;
     if (takesColour(e.type)) {
         colour = new QPushButton(e.color.name(), &dialog);
@@ -372,7 +508,12 @@ void NodeView::editGraphNode(int id)
     if (dialog.exec() != QDialog::Accepted)
         return;
     e.enabled = on->isChecked();
-    e.amount = amount->value();
+    if (keyed->isChecked()) {
+        g.nodes[i].amountKeys.insert(m_frame, amount->value());
+    } else {
+        g.nodes[i].amountKeys.clear();
+        e.amount = amount->value();
+    }
     if (invert)
         e.invert = invert->isChecked();
     g.nodes[i].effect = e;
@@ -394,7 +535,7 @@ void NodeView::paintGraphMode(QPainter& p)
     };
     // A node being dragged is drawn where the pointer has it, cables and all.
     QPointF const dragBy = m_drag == DragGraphNode && m_moved ? m_dragNow - m_pressPos : QPointF();
-    auto shift = [&](int id) { return id == m_graphNode ? dragBy : QPointF(); };
+    auto shift = [&](int id) { return id == m_graphNode || m_graphPicked.contains(id) ? dragBy : QPointF(); };
     // ---- cables ----
     for (int c = 0; c < g.cables.size(); ++c) {
         GraphCable const& k = g.cables[c];
@@ -405,6 +546,29 @@ void NodeView::paintGraphMode(QPainter& p)
     }
     if (m_drag == DragWire)
         cable(graphOutPort(m_wireFrom, m_wireFromPort), m_dragNow, picked, 1.8);
+    // ---- the parenting of the layers: from a node's right end to the left end of each node that hangs from it ----
+    {
+        QPen pegPen(QColor(230, 160, 60), 1.6, Qt::DashLine);
+        p.setPen(pegPen);
+        p.setBrush(Qt::NoBrush);
+        for (GraphNode const& n : g.nodes) {
+            if (n.kind != GraphNode::LayerNode || n.group != m_graphGroup || n.id == m_pegChild)
+                continue;
+            int const l = scene.layerIndex(n.layer);
+            int const parent = l >= 0 ? scene.parentIndex(l) : -1;
+            int const from = parent >= 0 ? g.layerNode(scene.layers[parent].id) : 0;
+            if (!from || graphNodeRect(from).isNull())
+                continue;
+            QPointF const a = graphTransformOut(from) + shift(from), b = graphTransformIn(n.id) + shift(n.id);
+            QPainterPath path(a);
+            double const bow = std::max(30.0 * m_zoom, std::abs(b.x() - a.x()) / 2.0);
+            path.cubicTo(a + QPointF(bow, 0), b - QPointF(bow, 0), b);
+            p.drawPath(path);
+        }
+        if (m_drag == DragPeg) {
+            p.drawLine(graphTransformOut(m_pegFrom), m_dragNow);
+        }
+    }
     // ---- nodes ----
     QFont font = this->font();
     font.setPointSizeF(std::max(5.0, font.pointSizeF() * m_zoom));
@@ -417,7 +581,8 @@ void NodeView::paintGraphMode(QPainter& p)
                              : n.kind == GraphNode::EffectNode ? QColor(128, 70, 110) : n.kind == GraphNode::Display ? QColor(70, 72, 78)
                                                                                                     : QColor(40, 118, 122);
         bool const off = n.kind == GraphNode::EffectNode && !n.effect.enabled;
-        p.setPen(QPen(n.id == m_graphNode ? QColor(255, 255, 255) : QColor(20, 21, 23), n.id == m_graphNode ? 2.0 : 1.0));
+        bool const chosen = n.id == m_graphNode || m_graphPicked.contains(n.id);
+        p.setPen(QPen(chosen ? QColor(255, 255, 255) : QColor(20, 21, 23), chosen ? 2.0 : 1.0));
         p.setBrush(off ? color.darker(190) : color);
         p.drawRoundedRect(r, 4 * m_zoom, 4 * m_zoom);
         p.setPen(off ? QColor(150, 150, 150) : QColor(245, 245, 245));
@@ -438,8 +603,38 @@ void NodeView::paintGraphMode(QPainter& p)
             p.drawEllipse(graphInPort(n.id, i) + shift(n.id), 3.5 * m_zoom, 3.5 * m_zoom);
         }
         p.setBrush(QColor(210, 212, 216));
-        for (int o = 0; o < n.outputs(); ++o)
+        for (int o = 0; o < n.outputs() && !pictureless(n); ++o)
             p.drawEllipse(graphOutPort(n.id, o) + shift(n.id), 4.5 * m_zoom, 4.5 * m_zoom);
+        if (n.kind == GraphNode::LayerNode) {
+            // Its transformation ports: small squares at its two ends.
+            double const s = 3.5 * m_zoom;
+            p.setBrush(QColor(230, 160, 60));
+            p.drawRect(QRectF(graphTransformIn(n.id) + shift(n.id) - QPointF(s, s), QSizeF(2 * s, 2 * s)));
+            p.drawRect(QRectF(graphTransformOut(n.id) + shift(n.id) - QPointF(s, s), QSizeF(2 * s, 2 * s)));
+        }
+    }
+    // The map in the corner: the nodes of this level as small blocks, and what the view shows as a frame.
+    if (m_navigator && width() > 320 && height() > 200) {
+        QRectF const map = navigatorRect();
+        p.setFont(this->font());
+        p.setPen(QPen(QColor(24, 24, 24), 1));
+        p.setBrush(QColor(44, 44, 46, 230));
+        p.drawRect(map);
+        p.setClipRect(map.adjusted(1, 1, -1, -1));
+        QRectF const all = graphLevelBounds().adjusted(-20, -20, 20, 20), inner = map.adjusted(5, 5, -5, -5);
+        double const k = std::min(inner.width() / std::max(all.width(), 1.0), inner.height() / std::max(all.height(), 1.0));
+        auto onMap = [&](QPointF graph) { return inner.center() + (graph - all.center()) * k; };
+        p.setPen(Qt::NoPen);
+        for (GraphNode const& n : g.nodes) {
+            if (n.group != m_graphGroup)
+                continue;
+            p.setBrush(n.id == m_graphNode ? QColor(72, 190, 200) : QColor(150, 152, 158));
+            p.drawRect(QRectF(onMap(n.at), QSizeF(std::max(3.0, graphNodeWidth(n) * k), std::max(2.0, kNodeHeight * k))));
+        }
+        p.setPen(QPen(QColor(235, 235, 235), 1));
+        p.setBrush(Qt::NoBrush);
+        p.drawRect(QRectF(onMap(toGraph(QPointF(0, 0))), onMap(toGraph(QPointF(width(), height())))));
+        p.setClipping(false);
     }
     // Inside a group: the way here along the top; a click on it goes out one level.
     if (QRectF const path = graphPathRect(); !path.isNull()) {
@@ -473,7 +668,42 @@ void NodeView::graphPress(QMouseEvent* event)
         enterGraphGroup(n ? n->group : 0);
         return;
     }
+    if (m_navigator && width() > 320 && height() > 200 && navigatorRect().contains(m_pressPos)) {
+        // On the map: that part of the graph comes to the middle of the view.
+        QRectF const all = graphLevelBounds().adjusted(-20, -20, 20, 20), inner = navigatorRect().adjusted(5, 5, -5, -5);
+        double const k = std::min(inner.width() / std::max(all.width(), 1.0), inner.height() / std::max(all.height(), 1.0));
+        QPointF const graph = all.center() + (m_pressPos - inner.center()) / k;
+        m_pan = QPointF(width() / 2.0, height() / 2.0) - graph * m_zoom;
+        update();
+        return;
+    }
     NodeGraph const& g = m_document->scene().graph;
+    {
+        // A transformation port: out of a node's right end, what is to hang from it; a cable taken off a node's left end,
+        // to hang it elsewhere (or from nothing).
+        Scene const& scene = m_document->scene();
+        double const reach = std::max(6.0, 8.0 * m_zoom);
+        for (GraphNode const& n : g.nodes) {
+            if (n.kind != GraphNode::LayerNode || n.group != m_graphGroup)
+                continue;
+            if (QLineF(graphTransformOut(n.id), m_pressPos).length() <= reach) {
+                m_drag = DragPeg;
+                m_pegFrom = n.id;
+                m_pegChild = 0;
+                return;
+            }
+            int const l = scene.layerIndex(n.layer);
+            int const parent = l >= 0 ? scene.parentIndex(l) : -1;
+            int const from = parent >= 0 ? g.layerNode(scene.layers[parent].id) : 0;
+            if (from && QLineF(graphTransformIn(n.id), m_pressPos).length() <= reach) {
+                m_drag = DragPeg;
+                m_pegFrom = from;
+                m_pegChild = n.id;
+                update();
+                return;
+            }
+        }
+    }
     GraphPort const port = graphPortAt(m_pressPos);
     if (port.node && port.out) {
         // Out of an output: a cable pulled to an input.
@@ -496,7 +726,14 @@ void NodeView::graphPress(QMouseEvent* event)
             }
     }
     if (int const hit = graphNodeAt(m_pressPos)) {
-        pickGraphNode(hit);
+        if (event->modifiers() & Qt::ControlModifier) {
+            addPickedGraphNode(hit);
+            return;
+        }
+        if (!m_graphPicked.contains(hit))
+            pickGraphNode(hit);
+        else
+            m_graphNode = hit;
         m_drag = DragGraphNode;
         return;
     }
@@ -506,6 +743,7 @@ void NodeView::graphPress(QMouseEvent* event)
     }
     m_graphNode = 0;
     m_graphCable = -1;
+    m_graphPicked.clear();
     m_drag = DragPan;     // empty space: move the view
     update();
 }
@@ -529,9 +767,32 @@ void NodeView::graphRelease(QMouseEvent* event)
     QPointF const at = event->position();
     if (drag == DragGraphNode && m_moved) {
         NodeGraph g = m_document->scene().graph;
-        if (int const i = g.nodeIndex(m_graphNode); i >= 0) {
-            g.nodes[i].at += (at - m_pressPos) / m_zoom;
-            m_document->setGraph(g, tr("Move Node"));
+        QVector<int> moving = m_graphPicked;
+        if (!moving.contains(m_graphNode))
+            moving.push_back(m_graphNode);
+        for (int id : std::as_const(moving))
+            if (int const i = g.nodeIndex(id); i >= 0)
+                g.nodes[i].at += (at - m_pressPos) / m_zoom;
+        m_document->setGraph(g, moving.size() > 1 ? tr("Move Nodes") : tr("Move Node"));
+    } else if (drag == DragPeg) {
+        // Onto a layer's node: that layer hangs from the one the cable came out of.  Taken off and let go of in the open: it
+        // hangs from nothing.
+        Scene const& scene = m_document->scene();
+        NodeGraph const& g = scene.graph;
+        GraphNode const* const from = g.node(m_pegFrom);
+        GraphNode const* const onto = g.node(graphNodeAt(at));
+        int const parent = from ? scene.layerIndex(from->layer) : -1;
+        int const was = m_pegChild ? scene.layerIndex(g.node(m_pegChild)->layer) : -1;
+        int const target = onto && onto->kind == GraphNode::LayerNode && onto->id != m_pegFrom ? scene.layerIndex(onto->layer) : -1;
+        m_pegChild = 0;
+        if (target >= 0 && parent >= 0) {
+            m_document->beginMacro(tr("Attach Layer"));
+            if (was >= 0 && was != target)
+                m_document->setParent(was, -1);
+            m_document->setParent(target, parent);
+            m_document->endMacro();
+        } else if (was >= 0 && !onto) {
+            m_document->setParent(was, -1);
         }
     } else if (drag == DragWire) {
         NodeGraph g = m_document->scene().graph;
@@ -667,6 +928,11 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
             connect(menu.addAction(tr("Edit Effect...")), &QAction::triggered, this, [this, hit] { editGraphNode(hit); });
         if (n->kind != GraphNode::GroupIn && n->kind != GraphNode::GroupOut)
             connect(menu.addAction(tr("Delete Node")), &QAction::triggered, this, [this] { deleteGraphSelection(); });
+    }
+    if (!m_graphPicked.isEmpty()) {
+        menu.addSeparator();
+        QVector<int> const picked = m_graphPicked;
+        connect(menu.addAction(tr("Group Selected Nodes")), &QAction::triggered, this, [this, picked] { groupGraphNodes(picked); });
     }
     menu.addSeparator();
     if (m_graphGroup)

@@ -93,8 +93,9 @@ void NodeView::dropEvent(QDropEvent* event)
                      toGraph(event->position()) - QPointF(kNodeWidth / 2.0, kNodeHeight / 2.0));
 }
 
-void NodeView::setCurrentCell(int layer, int)
+void NodeView::setCurrentCell(int layer, int frame)
 {
+    m_frame = frame;
     if (layer != m_layer) {
         m_layer = layer;
         // A layer chosen elsewhere that is not on show: the view goes to the level it is on.

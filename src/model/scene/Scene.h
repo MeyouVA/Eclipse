@@ -801,6 +801,9 @@ struct GraphNode {
     QString name;
     int layer = 0;              // a layer node: the layer's id
     Effect effect;              // an effect node: what it does (its input 0 the picture; input 1 the matte, for those that take one)
+    // An effect node's amount, keyframed: so much on these frames, straight from one to the next (none: `effect.amount`).
+    QMap<int, double> amountKeys;
+    double amountAt(int frame) const;
     // How many inputs it has (a composite, a group, a group's output node), and outputs (a group, a group's input node).
     int ports = 1;
     int outPorts = 1;
@@ -894,7 +897,8 @@ public:
     // The node graph, once wired by hand (empty: the layers stack as they are).
     NodeGraph graph;
     // The graph the layers make as they stand: each one's node (those seen in the frame), all into one composite in the
-    // order they stack, and that into the Display - the graph to start wiring from.
+    // order they stack, and that into the Display - the graph to start wiring from.  Pegs and groups have nodes too, cabled
+    // to nothing: what hangs from them is shown by the parenting cables of the Node View.
     NodeGraph graphFromLayers() const;
     // Keeping a wired graph up with the layers: a new layer (by its place) gets a node, into the composite the Display
     // shows, where it stacks among the layers already there; a layer gone takes its node and cables with it.

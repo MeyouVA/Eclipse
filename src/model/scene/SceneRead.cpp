@@ -419,6 +419,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 n.at = QPointF(at[0].toDouble(), at[1].toDouble());
             if (n.kind == GraphNode::EffectNode && !effectFromJson(no["effect"].toObject(), n.effect))
                 continue;
+            for (QJsonValue const& kv : no["amountKeys"].toArray())
+                if (QJsonArray const k = kv.toArray(); k.size() == 2)
+                    n.amountKeys.insert(k[0].toInt(), std::max(0.0, k[1].toDouble()));
             if (n.id > 0 && !scene.graph.node(n.id))
                 scene.graph.nodes.push_back(n);
         }
