@@ -1,6 +1,8 @@
 // Eclipse - the drawing view: shows the current frame and takes pen / mouse input.
 #pragma once
 
+#include <cmath>
+
 #include "EclipseExport.h"
 
 #include <QTransform>
@@ -102,6 +104,25 @@ public:
     void setBrushOutline(bool on);
     bool brushOutline() const { return m_brushOutline; }
     double brushWidth() const { return m_brushWidth; }
+    // The pen stabiliser of the Brush and the Pencil: the line follows the pen at a distance, smoothing out its shake.
+    // Catch Up: when the pen lifts, the line is carried on to where it was; No Catch Up: it ends where it had got to.
+    enum Stabiliser { StabiliserOff, StabiliserCatchUp, StabiliserNoCatchUp };
+    void setStabiliser(int mode) { m_stabiliser = std::clamp(mode, 0, 2); }
+    int stabiliser() const { return m_stabiliser; }
+    // 0 to 100: how far behind the pen the line keeps.
+    void setStabiliserStrength(int strength) { m_stabiliserStrength = std::clamp(strength, 0, 100); }
+    int stabiliserStrength() const { return m_stabiliserStrength; }
+    // Where the line goes next, from where it is towards the pen, at that strength.
+    static QPointF stabilised(QPointF line, QPointF pen, int strength);
+    // The Line tool: a straight line; or, once dragged, a curve - bent by moving the pointer, put down by a click - that
+    // bows one way (Curve) or both ways (S-Curve).
+    enum LineMode { LineStraight, LineCurve, LineSCurve };
+    void setLineMode(int mode) { m_lineMode = std::clamp(mode, 0, 2); }
+    int lineMode() const { return m_lineMode; }
+    bool bendingLine() const { return m_bending; }
+    // The Rectangle and the Ellipse: the inside is painted with the colour in hand as the shape is drawn.
+    void setShapeAutoFill(bool on) { m_shapeAutoFill = on; }
+    bool shapeAutoFill() const { return m_shapeAutoFill; }
     // How much a drawn line is smoothed when the pen lifts: 0 keeps every wobble, 100
     // irons out a lot.
     void setSmoothing(int percent) { m_smoothing = percent; }
@@ -123,7 +144,15 @@ public:
     float pressureFor(float raw) const
     {
         float const least = m_tool == Brush ? float(m_minSize) / 100.0f : 0.0f;
-        return least + (1.0f - least) * raw;
+        return least + (1.0f - least) * feltPressure(raw);
+    }
+    // Preferences: the feel of the pen - 50 as it presses, more for a light touch (a little pressure goes a long way),
+    // less for a heavy one.
+    void setPressureFeel(int feel) { m_pressureFeel = std::clamp(feel, 1, 100); }
+    int pressureFeel() const { return m_pressureFeel; }
+    float feltPressure(float raw) const
+    {
+        return std::pow(std::clamp(raw, 0.0f, 1.0f), std::pow(2.0f, (50.0f - float(m_pressureFeel)) / 25.0f));
     }
     // Turns sharper than this stay corners; gentler ones are rounded.
     void setCornerAngle(int degrees) { m_cornerAngle = degrees; }
@@ -954,6 +983,16 @@ private:
     int m_swatch = Scene::kNoSwatch;
     double m_brushWidth = 6.0;
     bool m_brushOutline = false;
+    int m_stabiliser = StabiliserOff;
+    int m_pressureFeel = 50;
+    int m_stabiliserStrength = 50;
+    QPointF m_stabiliserLine, m_stabiliserPen;
+    int m_lineMode = LineStraight;
+    bool m_bending = false;
+    QPointF m_bendFrom, m_bendTo;
+    bool m_shapeAutoFill = false;
+    void bendLine(QPointF at);
+    void keepShape();
     int m_smoothing = 25;
     int m_cornerAngle = 50;
     Stroke::Join m_join = Stroke::RoundJoin;

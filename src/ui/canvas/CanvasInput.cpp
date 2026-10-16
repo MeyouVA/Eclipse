@@ -41,6 +41,11 @@ bool Canvas::event(QEvent* event)
             return true;
         }
     }
+    // And while a curve of the Line tool is being bent, Escape lets it go (it is not Deselect All).
+    if (event->type() == QEvent::ShortcutOverride && m_bending && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
+        event->accept();
+        return true;
+    }
     return QWidget::event(event);
 }
 
@@ -162,6 +167,7 @@ void Canvas::keyPressEvent(QKeyEvent* event)
     if (event->key() == Qt::Key_Escape && m_drag != DragNone && m_drag != DragPan) {
         // Abandon what is being dragged.
         m_drag = DragNone;
+        m_bending = false;
         m_dragTransform = QTransform();
         m_stroke = Stroke();
         update();

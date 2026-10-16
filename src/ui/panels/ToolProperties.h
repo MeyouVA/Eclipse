@@ -80,6 +80,9 @@ private:
     QSlider* m_size = nullptr;
     QLayout* m_sizeRow = nullptr;
     QLayout* m_smoothingRow = nullptr;
+    QLayout* m_stabiliserRow = nullptr;
+    QLayout* m_lineModeRow = nullptr;
+    QCheckBox* m_shapeFill = nullptr;
     QLayout* m_cornersRow = nullptr;
     QLayout* m_minSizeRow = nullptr;
     QLayout* m_hardnessRow = nullptr;      // the Brush on a bitmap layer

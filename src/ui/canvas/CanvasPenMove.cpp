@@ -268,7 +268,10 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     }
     case DragShape:
-        updateShape(snapped(p), modifiers);
+        if (m_bending)
+            bendLine(p);
+        else
+            updateShape(snapped(p), modifiers);
         update();
         break;
     case DragPoint:
@@ -311,10 +314,17 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
             update();
             break;
         }
+        // With the stabiliser the line follows the pen at a distance.
+        QPointF at = p;
+        if (m_stabiliser != StabiliserOff && (m_tool == Brush || m_tool == Pencil)) {
+            m_stabiliserPen = p;
+            m_stabiliserLine = stabilised(m_stabiliserLine, p, m_stabiliserStrength);
+            at = m_stabiliserLine;
+        }
         // Skip samples that did not move: they add weight to the file and nothing to the line.
-        QPointF const d = p - m_stroke.points.last().pos;
+        QPointF const d = at - m_stroke.points.last().pos;
         if (std::hypot(d.x(), d.y()) * m_zoom >= 1.0) {
-            m_stroke.points.push_back({p, pressure});
+            m_stroke.points.push_back({at, pressure});
             update();
         }
         break;

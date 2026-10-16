@@ -293,6 +293,7 @@ void MainWindow::applyPreferences()
     for (QWidget* const w : findChildren<QWidget*>())
         w->update();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
+    m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
     // A drawing has four sheets; two of them - overlay and underlay - are out of the way
     // unless they are asked for.
     bool const moreArt = s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool();
@@ -715,6 +716,13 @@ void MainWindow::onActionPreferences()
     brushOutline->setToolTip(tr("The Brush, the Eraser and the Pencil show a circle as big as what they draw, where the pointer is."));
     brushOutline->setChecked(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
     toolsLayout->addRow(brushOutline);
+    QSpinBox* const pressureFeel = new QSpinBox(toolsPage);
+    pressureFeel->setObjectName(QStringLiteral("PrefPressureFeel"));
+    pressureFeel->setRange(1, 100);
+    pressureFeel->setToolTip(tr("The feel of the pen tablet: 50 as you press; more for a light touch (a little pressure gives a thick line),\n"
+                                "less for a heavy one (it takes pressing hard)."));
+    pressureFeel->setValue(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
+    toolsLayout->addRow(tr("Pen pressure feel"), pressureFeel);
     QComboBox* const units = new QComboBox(toolsPage);
     units->setObjectName(QStringLiteral("PrefUnits"));
     units->addItems({tr("Fields"), tr("Pixels")});
@@ -1110,6 +1118,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), loopPause->value());
     s.setValue(QStringLiteral("prefs/zoomOnMouse"), zoomOnMouse->isChecked());
+    s.setValue(QStringLiteral("prefs/pressureFeel"), pressureFeel->value());
     s.setValue(QStringLiteral("prefs/nameByFrame"), byFrame->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), gridAcross->value());
     s.setValue(QStringLiteral("prefs/proportionDown"), gridDown->value());

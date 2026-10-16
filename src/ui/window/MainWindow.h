@@ -520,6 +520,10 @@ public slots:
     // The size in hand, kept under a name among the presets of the tool.
     void onActionNewToolPreset();
     void onActionManagePresets();
+    // The size of the Brush, the Pencil or the Eraser, a step bigger ("up") or smaller ("down").
+    void onActionChangeBrushSize(QString const& way);
+    // The pen stabiliser off, or back on as it was.
+    void onActionToggleStabilizer();
     // How strongly the onion skin shows.
     void onActionTopLight();
 

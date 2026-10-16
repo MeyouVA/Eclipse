@@ -67,6 +67,11 @@ void Canvas::setTool(Tool tool)
     if (changed) {
         finishPolyline(true);
         endText(true);
+        if (m_bending) {        // a curve of the Line tool not put down yet: it goes
+            m_bending = false;
+            m_drag = DragNone;
+            m_stroke = Stroke();
+        }
     }
     bool const bothWas = bothArtsNow();
     if (bothWas && tool != Select && tool != Cutter)

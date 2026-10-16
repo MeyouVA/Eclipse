@@ -101,6 +101,72 @@ void ToolProperties::addSizeRows()
     // How drawn lines are tidied when the pen lifts.
     m_smoothingRow = addSetting(tr("Smoothing"), tr("How much a line drawn with the brush or pencil is smoothed when the pen lifts."), 0, 100, 25,
             QStringLiteral(" %"), [this](int v) { m_canvas->setSmoothing(v); });
+    // The pen stabiliser: its way, and how far behind the pen the line keeps.
+    {
+        QComboBox* const mode = new QComboBox(this);
+        mode->setObjectName(QStringLiteral("Stabiliser"));
+        mode->addItems({tr("Stabilizer Off"), tr("Catch Up"), tr("No Catch Up")});
+        mode->setToolTip(tr("The pen stabilizer: the line follows the pen at a distance, taking the shake out of it.\n"
+                            "Catch Up: when the pen lifts, the line goes on to where it lifted.\nNo Catch Up: the line ends where it had got to."));
+        QSpinBox* const strength = new QSpinBox(this);
+        strength->setObjectName(QStringLiteral("StabiliserStrength"));
+        strength->setRange(0, 100);
+        strength->setSuffix(QStringLiteral(" %"));
+        strength->setToolTip(tr("How far behind the pen the line keeps: the more, the steadier the line."));
+        int const keptMode = std::clamp(settings().value(QStringLiteral("tools/stabiliser"), 0).toInt(), 0, 2);
+        int const keptStrength = std::clamp(settings().value(QStringLiteral("tools/stabiliserStrength"), 50).toInt(), 0, 100);
+        mode->setCurrentIndex(keptMode);
+        strength->setValue(keptStrength);
+        strength->setEnabled(keptMode != 0);
+        m_canvas->setStabiliser(keptMode);
+        m_canvas->setStabiliserStrength(keptStrength);
+        connect(mode, &QComboBox::currentIndexChanged, this, [this, strength](int i) {
+            m_canvas->setStabiliser(i);
+            strength->setEnabled(i != 0);
+            settings().setValue(QStringLiteral("tools/stabiliser"), i);
+            if (i != 0)
+                settings().setValue(QStringLiteral("tools/stabiliserLast"), i);
+        });
+        connect(strength, &QSpinBox::valueChanged, this, [this](int v) {
+            m_canvas->setStabiliserStrength(v);
+            settings().setValue(QStringLiteral("tools/stabiliserStrength"), v);
+        });
+        QHBoxLayout* const row = new QHBoxLayout;
+        row->addWidget(mode, 1);
+        row->addWidget(strength);
+        m_form->addRow(tr("Stabilizer"), row);
+        m_stabiliserRow = row;
+    }
+    // The Line tool's way: straight, or bent into a curve after the drag.
+    {
+        QComboBox* const mode = new QComboBox(this);
+        mode->setObjectName(QStringLiteral("LineMode"));
+        mode->addItems({tr("Straight Line"), tr("Curve Line"), tr("S-Curve Line")});
+        mode->setToolTip(tr("Straight: drag from one end to the other.\nCurve: drag the line, then move the pointer to bend it and click to put it down.\n"
+                            "S-Curve: the same, bending the line one way at its start and the other way at its end."));
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/lineMode"), 0).toInt(), 0, 2);
+        mode->setCurrentIndex(kept);
+        m_canvas->setLineMode(kept);
+        connect(mode, &QComboBox::currentIndexChanged, this, [this](int i) {
+            m_canvas->setLineMode(i);
+            settings().setValue(QStringLiteral("tools/lineMode"), i);
+        });
+        QHBoxLayout* const row = new QHBoxLayout;
+        row->addWidget(mode, 1);
+        m_form->addRow(tr("Mode"), row);
+        m_lineModeRow = row;
+    }
+    // The Rectangle and the Ellipse: painted inside as they are drawn.
+    m_shapeFill = new QCheckBox(tr("Auto Fill"), this);
+    m_shapeFill->setObjectName(QStringLiteral("ShapeAutoFill"));
+    m_shapeFill->setToolTip(tr("Automatically fills your shape with the selected colour."));
+    m_shapeFill->setChecked(settings().value(QStringLiteral("tools/shapeAutoFill"), false).toBool());
+    m_canvas->setShapeAutoFill(m_shapeFill->isChecked());
+    connect(m_shapeFill, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setShapeAutoFill(on);
+        settings().setValue(QStringLiteral("tools/shapeAutoFill"), on);
+    });
+    m_form->addRow(m_shapeFill);
     m_cornersRow = addSetting(tr("Corners"), tr("A turn sharper than this many degrees stays a sharp corner; gentler turns are rounded. 180 rounds everything."),
             0, 180, 50, QStringLiteral(" deg"), [this](int v) { m_canvas->setCornerAngle(v); });
 }

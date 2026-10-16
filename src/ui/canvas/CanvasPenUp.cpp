@@ -167,6 +167,60 @@ void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
         m_document->endMacro();
 }
 
+QPointF Canvas::stabilised(QPointF line, QPointF pen, int strength)
+{
+    // At 0 the line is where the pen is; at 100 it goes a twelfth of the way there with each move of the pen.
+    double const follow = 1.0 - std::clamp(strength, 0, 100) / 100.0 * (11.0 / 12.0);
+    return line + (pen - line) * follow;
+}
+
+void Canvas::bendLine(QPointF at)
+{
+    StrokePoint a{m_bendFrom, 1.0f}, b{m_bendTo, 1.0f};
+    a.handles = b.handles = true;
+    a.corner = b.corner = false;
+    QPointF const middle = (m_bendFrom + m_bendTo) / 2.0;
+    if (m_lineMode == LineCurve) {
+        // One bow, through the pointer: the curve's middle is where the pointer is.
+        QPointF const control = at * 2.0 - middle;
+        a.out = (control - m_bendFrom) * (2.0 / 3.0);
+        b.in = (control - m_bendTo) * (2.0 / 3.0);
+    } else {
+        // Two bows, one each way: the first third of the line goes towards the pointer, the last away from it.
+        QPointF const along = (m_bendTo - m_bendFrom) / 3.0, off = (at - middle) * 1.5;
+        a.out = along + off;
+        b.in = -along - off;
+    }
+    a.in = -a.out;
+    b.out = -b.in;
+    m_stroke.curve = true;
+    m_stroke.points = {a, b};
+}
+
+void Canvas::keepShape()
+{
+    // Auto Fill: a rectangle or an ellipse is painted inside with the colour in hand, under its line.
+    bool const fill = m_shapeAutoFill && m_stroke.closed && (m_tool == Rectangle || m_tool == Ellipse) && !bitmapNow() && m_stroke.width > 0.0f;
+    if (!fill) {
+        keepStroke(m_stroke, false);
+        return;
+    }
+    m_document->beginMacro(tr("Draw Shape"));
+    Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
+    QPolygonF outline;
+    for (StrokePoint const& point : m_stroke.path())
+        outline << point.pos;
+    Fill area;
+    area.outlines = {outline};
+    area.swatch = m_stroke.swatch;
+    area.color = m_stroke.color;
+    area.order = Drawing::topOrder(art.fills, art.strokes);
+    art.fills.push_back(area);
+    commitDrawing(art, tr("Paint"));
+    keepStroke(m_stroke, false);
+    m_document->endMacro();
+}
+
 void Canvas::penUp()
 {
     Drag const drag = m_drag;
@@ -311,6 +365,15 @@ void Canvas::penUp()
     }
     if (drag == DragDraw) {
         m_drag = DragNone;
+        // The stabiliser's Catch Up: the line goes on to where the pen lifted.
+        if (m_stabiliser == StabiliserCatchUp && (m_tool == Brush || m_tool == Pencil) && !m_stroke.points.isEmpty()) {
+            QPointF const from = m_stroke.points.last().pos;
+            float const pressure = m_stroke.points.last().pressure;
+            double const length = QLineF(from, m_stabiliserPen).length() * m_zoom;
+            int const steps = int(std::ceil(length / 2.0));
+            for (int i = 1; i <= steps; ++i)
+                m_stroke.points.push_back({from + (m_stabiliserPen - from) * (double(i) / steps), pressure});
+        }
         // The pen samples become a curve through a few of them: about a pixel of the
         // screen is given up for it.
         // The smoothing setting is how far, in pixels of the screen, the line may stray
@@ -324,10 +387,19 @@ void Canvas::penUp()
         m_stroke.fit(tolerance, m_cornerAngle);
         keepStroke(m_stroke, true, tolerance);
     } else if (drag == DragShape) {
-        m_drag = DragNone;
         // A click without a drag draws nothing.
-        if (m_stroke.bounds().width() * m_zoom > m_stroke.width * m_zoom + 3 || m_stroke.bounds().height() * m_zoom > m_stroke.width * m_zoom + 3)
-            keepStroke(m_stroke, false);
+        bool const drawn = m_stroke.bounds().width() * m_zoom > m_stroke.width * m_zoom + 3 || m_stroke.bounds().height() * m_zoom > m_stroke.width * m_zoom + 3;
+        if (drawn && m_tool == Line && m_lineMode != LineStraight && m_stroke.points.size() == 2) {
+            // The Line tool's curves: now the pointer bends the line, and a click puts it down.
+            m_bending = true;
+            m_bendFrom = m_stroke.points[0].pos;
+            m_bendTo = m_stroke.points[1].pos;
+            update();
+            return;
+        }
+        m_drag = DragNone;
+        if (drawn)
+            keepShape();
     } else if (drag == DragPoint) {
         if (contourValid() && contourLine(*currentDrawing())->points[m_cePoint].pos != m_dragNow) {
             Drawing const edited = previewDrawing();

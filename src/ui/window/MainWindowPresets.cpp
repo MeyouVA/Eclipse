@@ -13,6 +13,8 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QSpinBox>
+#include <QComboBox>
+#include <cmath>
 #include <QVBoxLayout>
 
 #include "actions/manager/ActionManager.h"
@@ -201,4 +203,25 @@ void MainWindow::onActionImportPresets()
         return;
     int const count = importPresets(path);
     statusBar()->showMessage(count < 0 ? tr("That is not a file of Eclipse presets.") : tr("%n preset(s) taken in.", nullptr, count), 6000);
+}
+
+void MainWindow::onActionChangeBrushSize(QString const& way)
+{
+    // A step of a tenth of the size (at least 1), as the size box of Tool Properties takes it.
+    QSpinBox* const box = findChild<QSpinBox*>(QStringLiteral("ToolSize"));
+    if (!box)
+        return;
+    int const step = std::max(1, int(std::lround(box->value() * 0.1)));
+    box->setValue(box->value() + (way == QStringLiteral("down") ? -step : step));
+    statusBar()->showMessage(tr("Brush size: %1").arg(box->value()), 1500);
+}
+
+void MainWindow::onActionToggleStabilizer()
+{
+    QComboBox* const mode = findChild<QComboBox*>(QStringLiteral("Stabiliser"));
+    if (!mode)
+        return;
+    QSettings const s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    mode->setCurrentIndex(mode->currentIndex() != 0 ? 0 : std::clamp(s.value(QStringLiteral("tools/stabiliserLast"), 1).toInt(), 1, 2));
+    statusBar()->showMessage(mode->currentIndex() != 0 ? tr("Stabilizer on") : tr("Stabilizer off"), 1500);
 }

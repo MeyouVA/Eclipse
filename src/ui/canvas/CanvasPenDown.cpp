@@ -38,6 +38,14 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
     if (m_leader)
         followSettings(*m_leader);
     m_lastWidgetPos = widgetPos;
+    if (m_bending) {
+        // The Line tool's curve, bent where it should be: this click puts it down.
+        m_bending = false;
+        m_drag = DragNone;
+        keepShape();
+        update();
+        return;
+    }
     if (panning || m_spaceDown || m_tool == Hand) {
         m_drag = DragPan;
         updateCursor();
@@ -285,6 +293,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         m_stroke.capEnd = m_capEnd;
         textureNewLine(m_stroke);
         m_stroke.points.push_back({p, pressure});
+        m_stabiliserLine = m_stabiliserPen = p;
     } else if (m_tool == Eraser) {
         m_drag = DragErase;
         if (m_eraserCuts || bitmapNow()) {

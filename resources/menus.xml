@@ -238,6 +238,9 @@
    <item id="UngroupArtwork" icon="anim/ungroupart" text="&amp;Ungroup" responder="camera" slot="onActionUngroupArtwork()"/>
    <item id="CreateStamp" icon="anim/stampcreate" text="Create Stamp from Se&amp;lection" shortcut="shortcut.createStamp" responder="camera" slot="onActionCreateStamp()"/>
    <item id="CreateStampDrawings" icon="anim/stampcreate" text="Create Stamp from Selected &amp;Drawings" responder="window" slot="onActionCreateStampFromDrawings()"/>
+   <item id="IncrementBrushSize" icon="tool/sizeup" text="&amp;Increase Brush Size" shortcut="shortcut.incrementBrushSize" responder="window" slot="onActionChangeBrushSize(QString)" itemParameter="up"/>
+   <item id="DecrementBrushSize" icon="tool/sizedown" text="D&amp;ecrease Brush Size" shortcut="shortcut.decrementBrushSize" responder="window" slot="onActionChangeBrushSize(QString)" itemParameter="down"/>
+   <item id="ToggleStabilizer" icon="tool/stabilizer" text="Toggle S&amp;tabilizer On/Off" shortcut="shortcut.toggleStabilizer" responder="window" slot="onActionToggleStabilizer()"/>
    <item id="NewToolPreset" icon="tool/newpreset" text="New Tool Pre&amp;set..." shortcut="shortcut.newToolPreset" responder="window" slot="onActionNewToolPreset()"/>
    <item id="ManagePresets" icon="tool/managepresets" text="&amp;Manage Presets..." shortcut="shortcut.managePresets" responder="window" slot="onActionManagePresets()"/>
    <item id="ImportPresets" icon="tool/importpresets" text="&amp;Import Presets..." responder="window" slot="onActionImportPresets()"/>

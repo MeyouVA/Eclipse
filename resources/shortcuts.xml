@@ -70,6 +70,9 @@
   <shortcut id="shortcut.onionAddNext" text="Onion Skin Add One Next Drawing" value=""/>
   <shortcut id="shortcut.topLight" text="Top Light" value=""/>
   <shortcut id="shortcut.flatten" text="Flatten" value="Alt+Shift+F"/>
+  <shortcut id="shortcut.incrementBrushSize" text="Increase Brush Size" value=""/>
+  <shortcut id="shortcut.decrementBrushSize" text="Decrease Brush Size" value=""/>
+  <shortcut id="shortcut.toggleStabilizer" text="Toggle Stabilizer On/Off" value=""/>
   <shortcut id="shortcut.newToolPreset" text="New Tool Preset" value=""/>
   <shortcut id="shortcut.managePresets" text="Manage Presets" value=""/>
   <shortcut id="shortcut.flipHAnimation" text="Flip Horizontal (Animation)" value=""/>
