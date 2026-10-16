@@ -161,9 +161,45 @@ void Timeline::mouseReleaseEvent(QMouseEvent*)
     if (drop == DropOnto) {
         m_document->setParent(layer, target);
     } else if (drop == DropAbove || drop == DropBelow) {
-        int const to = m_document->moveLayerBeside(layer, target, drop == DropBelow);
-        setCurrentCell(to, m_frame);
+        dropLayer(layer, target, drop == DropBelow);
     }
+}
+
+void Timeline::dropLayer(int layer, int target, bool below)
+{
+    // Dropped beside a row, a layer goes to that row's level - attached to what it is attached to (or to nothing) - and
+    // there where it was let go; dropped just under an open parent (above the first layer attached to it), it is the first
+    // layer attached to that parent.
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size() || target < 0 || target >= scene.layers.size() || layer == target)
+        return;
+    int parent = scene.parentIndex(target);
+    int beside = target;
+    bool behind = below;
+    if (below && !scene.layers[target].collapsed) {
+        bool any = false;
+        int first = -1;
+        for (int l = 0; l < scene.layers.size(); ++l)
+            if (scene.parentIndex(l) == target) {
+                any = true;
+                if (l != layer && l > first)
+                    first = l;
+            }
+        if (any) {
+            parent = target;
+            beside = first >= 0 ? first : layer;      // (the only one attached to it: it stays)
+            behind = false;
+        }
+    }
+    int const id = scene.layers[layer].id;
+    m_document->beginMacro(tr("Move Layer"));
+    bool placed = true;
+    if (scene.parentIndex(layer) != parent)
+        placed = m_document->setParent(layer, parent);     // (not into what hangs from it)
+    if (placed && beside != layer)
+        m_document->moveLayerBeside(scene.layerIndex(id), beside, behind);
+    m_document->endMacro();
+    setCurrentCell(scene.layerIndex(id), m_frame);
 }
 
 void Timeline::mousePressEvent(QMouseEvent* event)

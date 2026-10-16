@@ -122,6 +122,8 @@ public:
     void moveSelection(int rows, int frames, bool copy);
     void clearRange();
     static bool canPasteCells();
+    // A layer dragged in the list and let go above (below) a row: it goes to that row's level, there (see TimelineInput).
+    void dropLayer(int layer, int target, bool below);
     // The row a layer is listed in (its own row, not one of its parameters'); -1 when it is not listed.
     int rowOfLayer(int layer) const;
     // Whether what was copied last is artwork (from a drawing view) rather than cells: then Paste in the Timeline or the
