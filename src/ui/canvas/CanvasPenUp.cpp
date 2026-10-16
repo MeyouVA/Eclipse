@@ -440,10 +440,13 @@ void Canvas::penUp()
             int const stroke = m_ceStroke, point = m_cePoint, fill = m_ceFill, contour = m_ceContour;
             QString name = tr("Pull Handles");
             if (!pulled) {
-                // Only clicked: a corner becomes smooth, a smooth point a corner.
-                Stroke& target = *contourLine(edited);
-                bool const corner = target.isCorner(point);
-                target.setCorner(point, !corner);
+                // Only clicked: a corner becomes smooth, a smooth point a corner (and the points lying on it with it).
+                QVector<QPair<int, int>> const stacked = stackedPoints(edited);
+                bool const corner = contourLine(edited)->isCorner(point);
+                for (auto const& [line, at] : stacked) {
+                    Stroke& target = line < 0 || m_ceFill >= 0 ? *contourLine(edited) : edited.strokes[line];
+                    target.setCorner(at, !corner);
+                }
                 contourEdited(edited);
                 name = corner ? tr("Smooth Point") : tr("Corner Point");
             }

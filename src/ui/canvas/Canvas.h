@@ -1027,6 +1027,14 @@ private:
     // lines that lie where it lay (they go with it, as one point); and two lines joined where an end was dropped on an end.
     QPointF pointMagnet(QPointF p) const;
     QVector<QPair<int, int>> sharedPoints(Drawing const& d) const;
+    // The picked point and the points lying on it, as (line, point): one point to the eye, so all their handles show and
+    // can be pulled (only for lines; a brush shape's contour has just the picked point).
+    QVector<QPair<int, int>> stackedPoints(Drawing const& d) const;
+    // Where a handle of one of them is in the view (null: it has none that way).
+    QPointF stackedHandleKnob(Drawing const& d, int stroke, int point, int handle) const;
+    // The line and point whose handle is in hand.
+    Stroke* handleLine(Drawing& d, int& point) const;
+    int m_ceHandleStroke = -1, m_ceHandlePoint = -1;     // -1: the picked point's own handle
     bool joinDroppedEnd(Drawing& edited);
     int m_stabiliserStrength = 50;
     QPointF m_stabiliserLine, m_stabiliserPen;

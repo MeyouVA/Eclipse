@@ -68,17 +68,23 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
     QPointF const press = toWidget.map(p);
     // A handle of the point picked?  (Before anything else: a handle may lie over another point.)
     if (d && contourValid()) {
-        for (int handle = 0; handle < 2; ++handle) {
-            QPointF const knob = contourHandlePos(handle);
-            if (knob.isNull() || std::abs(knob.x() - press.x()) > 6 || std::abs(knob.y() - press.y()) > 6)
-                continue;
-            m_ceHandle = handle;
-            m_ceBreak = modifiers & Qt::AltModifier;
-            m_dragStart = m_dragNow = toWidget.inverted().map(knob);
-            m_drag = DragHandle;
-            return;
-        }
+        // (The handles of the points lying on the picked one too: to the eye they are one point.)
+        for (auto const& [stroke, point] : stackedPoints(*d))
+            for (int handle = 0; handle < 2; ++handle) {
+                QPointF const knob = stackedHandleKnob(*d, stroke, point, handle);
+                if (knob.isNull() || std::abs(knob.x() - press.x()) > 6 || std::abs(knob.y() - press.y()) > 6)
+                    continue;
+                bool const own = m_ceFill >= 0 || (stroke == m_ceStroke && point == m_cePoint);
+                m_ceHandleStroke = own ? -1 : stroke;
+                m_ceHandlePoint = own ? -1 : point;
+                m_ceHandle = handle;
+                m_ceBreak = modifiers & Qt::AltModifier;
+                m_dragStart = m_dragNow = toWidget.inverted().map(knob);
+                m_drag = DragHandle;
+                return;
+            }
     }
+    m_ceHandleStroke = m_ceHandlePoint = -1;
     // The points picked so far: Shift adds to them or takes from them, and a press on one of them drags them all.
     QVector<int> picked = contourPointsPicked();
     if (m_cePoint >= 0)
@@ -216,21 +222,20 @@ void Canvas::paintContourAids(QPainter& painter)
     painter.setPen(QPen(accent, 1.2));
     painter.setBrush(Qt::NoBrush);
     painter.drawPolyline(line);
-    // The handles of the point picked: a line out to a round knob each.
+    // The handles of the point picked, and of the points lying on it: a line out to a round knob each.
     if (m_cePoint >= 0 && m_cePoint < stroke.points.size()) {
-        QPointF in, out;
-        stroke.handlesAt(m_cePoint, in, out);
-        QPointF const at = stroke.points[m_cePoint].pos;
-        for (QPointF const& reach : {in, out}) {
-            if (reach.isNull())
-                continue;
-            QPointF const from = toWidget.map(at), to = toWidget.map(at + reach);
-            painter.setPen(QPen(accent, 1.0));
-            painter.drawLine(from, to);
-            painter.setPen(QPen(QColor(20, 20, 20), 1));
-            painter.setBrush(QColor(255, 210, 70));
-            painter.drawEllipse(to, 3.5, 3.5);
-        }
+        for (auto const& [index, point] : stackedPoints(shown))
+            for (int handle = 0; handle < 2; ++handle) {
+                QPointF const to = stackedHandleKnob(shown, index, point, handle);
+                if (to.isNull())
+                    continue;
+                Stroke const& owner = index < 0 || m_ceFill >= 0 ? stroke : shown.strokes[index];
+                painter.setPen(QPen(accent, 1.0));
+                painter.drawLine(toWidget.map(owner.points[point].pos), to);
+                painter.setPen(QPen(QColor(20, 20, 20), 1));
+                painter.setBrush(QColor(255, 210, 70));
+                painter.drawEllipse(to, 3.5, 3.5);
+            }
     }
     for (int i = 0; i < stroke.points.size(); ++i) {
         QPointF const w = toWidget.map(stroke.points[i].pos);
@@ -379,4 +384,35 @@ bool Canvas::joinDroppedEnd(Drawing& edited)
         return true;
     }
     return false;
+}
+
+QVector<QPair<int, int>> Canvas::stackedPoints(Drawing const& d) const
+{
+    if (!contourLine(d) || m_cePoint < 0 || m_cePoint >= contourLine(d)->points.size())
+        return {};
+    if (m_ceFill >= 0)
+        return {{-1, m_cePoint}};
+    return QVector<QPair<int, int>>{{m_ceStroke, m_cePoint}} + sharedPoints(d);
+}
+
+QPointF Canvas::stackedHandleKnob(Drawing const& d, int stroke, int point, int handle) const
+{
+    Stroke const* const line = stroke < 0 || m_ceFill >= 0 ? contourLine(d) : (stroke < d.strokes.size() ? &d.strokes[stroke] : nullptr);
+    if (!line || point < 0 || point >= line->points.size())
+        return QPointF();
+    QPointF in, out;
+    line->handlesAt(point, in, out);
+    QPointF const reach = handle == 0 ? in : out;
+    return reach.isNull() ? QPointF() : layerViewTransform().map(line->points[point].pos + reach);
+}
+
+Stroke* Canvas::handleLine(Drawing& d, int& point) const
+{
+    if (m_ceHandleStroke >= 0 && m_ceFill < 0 && m_ceHandleStroke < d.strokes.size()
+        && m_ceHandlePoint >= 0 && m_ceHandlePoint < d.strokes[m_ceHandleStroke].points.size()) {
+        point = m_ceHandlePoint;
+        return &d.strokes[m_ceHandleStroke];
+    }
+    point = m_cePoint;
+    return contourLine(d);
 }

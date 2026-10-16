@@ -1270,18 +1270,23 @@ Drawing Canvas::previewDrawing() const
         contourEdited(shown);
     }
     if (m_drag == DragHandle && contourValid() && m_ceHandle == 2 && pulledHandles()) {
-        // Handles pulled out of the point: the one after it where the pen is, the one before it opposite.
-        Stroke& stroke = *contourLine(shown);
-        QPointF const reach = m_dragNow - stroke.points[m_cePoint].pos;
-        stroke.setHandles(m_cePoint, -reach, reach);
-        stroke.points[m_cePoint].corner = false;
+        // Handles pulled out of the point: the one after it where the pen is, the one before it opposite - on each of
+        // the points lying on it too.
+        QVector<QPair<int, int>> const stacked = stackedPoints(shown);
+        QPointF const reach = m_dragNow - contourLine(shown)->points[m_cePoint].pos;
+        for (auto const& [line, point] : stacked) {
+            Stroke& stroke = line < 0 || m_ceFill >= 0 ? *contourLine(shown) : shown.strokes[line];
+            stroke.setHandles(point, -reach, reach);
+            stroke.points[point].corner = false;
+        }
         contourEdited(shown);
     }
     if (m_drag == DragHandle && contourValid() && (m_ceHandle == 0 || m_ceHandle == 1)) {
-        Stroke& stroke = *contourLine(shown);
+        int handled = m_cePoint;
+        Stroke& stroke = *handleLine(shown, handled);
         QPointF in, out;
-        stroke.handlesAt(m_cePoint, in, out);
-        QPointF const reach = m_dragNow - stroke.points[m_cePoint].pos;
+        stroke.handlesAt(handled, in, out);
+        QPointF const reach = m_dragNow - stroke.points[handled].pos;
         QPointF& mine = m_ceHandle == 0 ? in : out;
         QPointF& other = m_ceHandle == 0 ? out : in;
         mine = reach;
@@ -1290,11 +1295,11 @@ Drawing Canvas::previewDrawing() const
         // curve goes smoothly through the point - unless the handle was pulled away on its own.
         if (!m_ceBreak && length > 1e-9 && otherLength > 1e-9)
             other = -reach / length * otherLength;
-        stroke.setHandles(m_cePoint, in, out);
+        stroke.setHandles(handled, in, out);
         // A point whose handles are not in line is a cusp, and is shown as a corner.
         double const cross = in.x() * out.y() - in.y() * out.x();
         double const lengths = std::hypot(in.x(), in.y()) * std::hypot(out.x(), out.y());
-        stroke.points[m_cePoint].corner = lengths > 1e-9 && (std::abs(cross) > lengths * 0.02 || in.x() * out.x() + in.y() * out.y() > 0);
+        stroke.points[handled].corner = lengths > 1e-9 && (std::abs(cross) > lengths * 0.02 || in.x() * out.x() + in.y() * out.y() > 0);
         contourEdited(shown);
     }
     if (m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate) {
