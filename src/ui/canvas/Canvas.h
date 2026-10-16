@@ -602,6 +602,15 @@ public slots:
     // view takes to draw, shown in its corner (the Camera View performance report).
     void setMiddleButtonPans(bool on) { m_middlePans = on; }
     bool middleButtonPans() const { return m_middlePans; }
+    // Preferences (Colours): of bones, and of the bone or joint picked.
+    void setBoneColours(QColor const& bone, QColor const& selected)
+    {
+        m_boneColour = bone;
+        m_boneSelectedColour = selected;
+        update();
+    }
+    QColor boneColour() const { return m_boneColour; }
+    QColor boneSelectedColour() const { return m_boneSelectedColour; }
     void setPerformanceReport(bool on)
     {
         m_performanceReport = on;
@@ -977,6 +986,8 @@ private:
     // The Contour Editor's copied points (in the drawing's coordinates), for Paste to add after the picked one.
     static QVector<StrokePoint> s_pointClipboard;
     bool m_middlePans = true;
+    QColor m_boneColour = QColor(90, 220, 140);
+    QColor m_boneSelectedColour = QColor(Qt::white);
     bool m_performanceReport = false;
     double m_lastDrawMs = 0.0;
     double m_averageDrawMs = 0.0;

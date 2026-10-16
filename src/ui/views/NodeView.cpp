@@ -1,4 +1,5 @@
 #include "ui/views/NodeView.h"
+#include "ui/window/InterfaceColours.h"
 
 #include <QContextMenuEvent>
 #include <QDragEnterEvent>
@@ -416,7 +417,7 @@ void NodeView::paintEvent(QPaintEvent*)
     }
     Scene const& scene = m_document->scene();
     QPainter p(this);
-    p.fillRect(rect(), QColor(69, 69, 69));
+    p.fillRect(rect(), InterfaceColours::get("nodeBackground"));
     p.setRenderHint(QPainter::Antialiasing, true);
     if (graphMode()) {
         paintGraphMode(p);
@@ -434,7 +435,7 @@ void NodeView::paintEvent(QPaintEvent*)
         p.drawPolyline(pts.constData(), int(pts.size()));
     };
 
-    QColor const pegCable(255, 190, 70), imageCable(111, 168, 232), picked(255, 255, 255);
+    QColor const pegCable = InterfaceColours::get("nodePegCable"), imageCable = InterfaceColours::get("nodeImageCable"), picked = InterfaceColours::get("nodeSelected");
     QRectF const composite = rectOf(compositePos(pos));
     QRectF const display(composite.left(), composite.bottom() + 40.0 * m_zoom, composite.width(), composite.height());
 
@@ -504,7 +505,7 @@ void NodeView::paintEvent(QPaintEvent*)
     font.setPointSizeF(std::max(5.0, font.pointSizeF() * m_zoom));
     p.setFont(font);
     auto node = [&](QRectF const& r, QString const& name, QColor const& color, bool current, bool dim) {
-        p.setPen(QPen(current ? QColor(255, 255, 255) : QColor(20, 21, 23), current ? 2.0 : 1.0));
+        p.setPen(QPen(current ? InterfaceColours::get("nodeSelected") : QColor(20, 21, 23), current ? 2.0 : 1.0));
         p.setBrush(dim ? color.darker(190) : color);
         p.drawRoundedRect(r, 4 * m_zoom, 4 * m_zoom);
         p.setPen(dim ? QColor(150, 150, 150) : QColor(245, 245, 245));
@@ -516,8 +517,8 @@ void NodeView::paintEvent(QPaintEvent*)
             continue;
         Layer const& layer = scene.layers[l];
         QRectF const r = rectOf(pos[l]);
-        QColor const color = layer.kind == Layer::Peg ? QColor(150, 108, 30) : layer.kind == Layer::Camera ? QColor(60, 96, 140)
-                             : layer.kind == Layer::Sound ? QColor(52, 120, 84) : layer.kind == Layer::Group ? QColor(40, 118, 122) : QColor(72, 92, 128);
+        QColor const color = layer.kind == Layer::Peg ? InterfaceColours::get("nodePeg") : layer.kind == Layer::Camera ? InterfaceColours::get("nodeCamera")
+                             : layer.kind == Layer::Sound ? InterfaceColours::get("nodeSound") : layer.kind == Layer::Group ? InterfaceColours::get("nodeGroup") : InterfaceColours::get("nodeDrawing");
         node(r, layer.name, color, l == m_layer, !layer.visible);
         if (layer.kind == Layer::Group) {
             // A group can be gone into: a small arrow at its right end says so.
@@ -544,20 +545,20 @@ void NodeView::paintEvent(QPaintEvent*)
         Layer const& layer = scene.layers[l];
         for (int e = 0; e < layer.effects.size(); ++e) {
             QString const text = Effects::name(layer.effects[e], scene).section(QStringLiteral("  "), 0, 0);
-            node(rectOf(pos[l] + QPointF(0, 40.0 * (e + 1))), text, QColor(128, 70, 110), false, !layer.effects[e].enabled || !layer.visible);
+            node(rectOf(pos[l] + QPointF(0, 40.0 * (e + 1))), text, InterfaceColours::get("nodeEffect"), false, !layer.effects[e].enabled || !layer.visible);
         }
     }
-    node(composite, tr("Composite"), QColor(96, 76, 128), false, false);
+    node(composite, tr("Composite"), InterfaceColours::get("nodeComposite"), false, false);
     if (enteredGroup() >= 0) {
         // In a group the composite goes out of the group, not to the display; and what comes in is a node of its own.
-        node(display, tr("Group Output"), QColor(40, 118, 122), false, false);
-        node(groupIn, tr("Group Input"), QColor(40, 118, 122), false, false);
+        node(display, tr("Group Output"), InterfaceColours::get("nodeGroup"), false, false);
+        node(groupIn, tr("Group Input"), InterfaceColours::get("nodeGroup"), false, false);
         p.setPen(QPen(QColor(20, 21, 23), 1));
         p.setBrush(QColor(210, 212, 216));
         p.drawEllipse(QPointF(groupIn.center().x(), groupIn.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
         p.drawEllipse(QPointF(display.center().x(), display.top()), 3.5 * m_zoom, 3.5 * m_zoom);
     } else {
-        node(display, tr("Display"), QColor(70, 72, 78), false, false);
+        node(display, tr("Display"), InterfaceColours::get("nodeDisplay"), false, false);
     }
     // Inside a group: the way here along the top; a click on it goes out one level.
     if (QRectF const path = pathRect(); !path.isNull()) {

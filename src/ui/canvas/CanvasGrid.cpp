@@ -7,6 +7,7 @@
 #include <numeric>
 
 #include "model/document/Commands.h"
+#include "ui/window/InterfaceColours.h"
 
 void Canvas::onActionShowGrid(bool on)
 {
@@ -34,9 +35,10 @@ void Canvas::onActionGridUnderlay(bool on)
 
 void Canvas::paintGrid(QPainter& painter, QRectF const& frameRect) const
 {
-    QPen thin(QColor(30, 30, 30, 90));
+    QColor const grid = InterfaceColours::get("canvasGrid");
+    QPen thin(QColor(grid.red(), grid.green(), grid.blue(), grid.alpha() * 90 / 190));
     thin.setCosmetic(true);
-    QPen strong(QColor(30, 30, 30, 190));
+    QPen strong(grid);
     strong.setCosmetic(true);
     double const w = frameRect.width(), h = frameRect.height();
     if (m_gridOutline) {

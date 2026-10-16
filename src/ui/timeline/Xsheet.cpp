@@ -1,4 +1,5 @@
 #include "ui/timeline/Xsheet.h"
+#include "ui/window/InterfaceColours.h"
 
 #include <QContextMenuEvent>
 #include <QKeyEvent>
@@ -107,9 +108,9 @@ void Xsheet::paintEvent(QPaintEvent*)
     int const sx = horizontalScrollBar()->value();
     int const sy = verticalScrollBar()->value();
 
-    QColor const bg(72, 72, 72), header(58, 58, 58), line(48, 48, 48), text(210, 210, 210);
-    QColor const paper(88, 88, 88), paperAlt(83, 83, 83), exposed(122, 122, 122), pegColumn(74, 74, 74);
-    QColor const currentRow(100, 100, 100), keyColor(255, 190, 70), accent(224, 36, 36);
+    QColor const bg = InterfaceColours::get("xsheetBackground"), header(58, 58, 58), line(48, 48, 48), text(210, 210, 210);
+    QColor const paper = InterfaceColours::get("xsheetPaper"), paperAlt = paper.darker(106), exposed = InterfaceColours::get("xsheetExposed"), pegColumn(74, 74, 74);
+    QColor const currentRow(100, 100, 100), keyColor = InterfaceColours::get("xsheetKeyframe"), accent = InterfaceColours::get("xsheetCurrentFrame");
     p.fillRect(0, 0, w, h, bg);
 
     int const firstRow = sy / kRowHeight;
@@ -186,7 +187,7 @@ void Xsheet::paintEvent(QPaintEvent*)
         int const left = std::min(columnOfLayer(across.first()), columnOfLayer(across.last()));
         QRect const block(kRowHeaderWidth + left * m_columnWidth - sx, kHeaderHeight + selectionFirstFrame() * kRowHeight - sy,
                           int(across.size()) * m_columnWidth, (selectionLastFrame() - selectionFirstFrame() + 1) * kRowHeight);
-        p.fillRect(block, QColor(42, 155, 176, 95));
+        p.fillRect(block, InterfaceColours::get("timelineSelection"));
         p.setPen(QPen(QColor(120, 220, 235), 1));
         p.setBrush(Qt::NoBrush);
         p.drawRect(block.adjusted(0, 0, -2, -1));

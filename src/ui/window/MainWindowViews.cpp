@@ -48,6 +48,7 @@
 namespace {
 // Preferences: the view in use has a red border round it (on), or looks as the others do.
 bool gViewBorder = true;
+QColor gViewBorderColour(0xc8, 0x28, 0x1e);
 
 class ViewFrame : public QFrame {
 public:
@@ -57,7 +58,7 @@ protected:
     void paintEvent(QPaintEvent*) override
     {
         QPainter painter(this);
-        painter.setPen(property("active").toBool() && gViewBorder ? QColor(0xc8, 0x28, 0x1e) : QColor(0x2a, 0x2a, 0x2a));
+        painter.setPen(property("active").toBool() && gViewBorder ? gViewBorderColour : QColor(0x2a, 0x2a, 0x2a));
         painter.drawRect(rect().adjusted(0, 0, -1, -1));
     }
 };
@@ -73,6 +74,18 @@ void MainWindow::setCurrentViewBorder(bool on)
 bool MainWindow::currentViewBorder() const
 {
     return gViewBorder;
+}
+
+void MainWindow::setCurrentViewBorderColour(QColor const& colour)
+{
+    gViewBorderColour = colour;
+    for (QFrame* const frame : findChildren<QFrame*>(QStringLiteral("ViewFrame")))
+        frame->update();
+}
+
+QColor MainWindow::currentViewBorderColour() const
+{
+    return gViewBorderColour;
 }
 
 static QFrame* viewFrame(QWidget* content, QWidget* parent)

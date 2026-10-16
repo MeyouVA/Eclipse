@@ -99,6 +99,18 @@ public:
     // Preferences: a red border round the view in use.
     void setCurrentViewBorder(bool on);
     bool currentViewBorder() const;
+    void setCurrentViewBorderColour(QColor const& colour);
+    QColor currentViewBorderColour() const;
+    // Preference sets: every preference saved to a file (an ini file), loaded back, or all put back as they were at first.
+    bool savePreferenceSet(QString const& path) const;
+    bool loadPreferenceSet(QString const& path);
+    // The languages the interface can be shown in ("en" and each resources/translations/eclipse_<code>.qm), and putting one in
+    // place (before the window is made: on the next start).
+    static QStringList languages();
+    static bool installLanguage(QString const& code);
+    void restoreDefaultPreferences();
+    // The Style Editor: the user's additions to the look.
+    void showStyleEditor();
     // Whether the arrangement is not as the workspace was when it was opened or last saved.
     bool workspaceChanged() const;
     // Puts the docks and toolbars back where the user left them last time.

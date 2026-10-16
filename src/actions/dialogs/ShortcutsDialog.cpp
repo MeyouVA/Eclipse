@@ -1,5 +1,11 @@
 #include "actions/dialogs/ShortcutsDialog.h"
 
+#include <QSettings>
+#include <QMessageBox>
+#include <QInputDialog>
+#include <QFileDialog>
+#include <QFile>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -60,7 +66,68 @@ ShortcutsDialog::ShortcutsDialog(ActionManager* manager, QWidget* parent) : QDia
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     QPushButton* const restore = buttons->addButton(tr("Restore All Defaults"), QDialogButtonBox::ResetRole);
 
+    // Keyboard shortcut sets: the keys kept under a name, or in a file, to go back to.
+    QHBoxLayout* const setRow = new QHBoxLayout;
+    m_sets = new QComboBox(this);
+    m_sets->setObjectName(QStringLiteral("ShortcutSets"));
+    m_sets->setMinimumWidth(160);
+    m_sets->addItem(tr("(as they are)"));
+    m_sets->addItems(setNames());
+    QPushButton* const newSet = new QPushButton(tr("New Set..."), this);
+    newSet->setObjectName(QStringLiteral("ShortcutSetNew"));
+    newSet->setToolTip(tr("Create a new set based on the current shortcut keys."));
+    QPushButton* const deleteSetButton = new QPushButton(tr("Delete Set"), this);
+    deleteSetButton->setObjectName(QStringLiteral("ShortcutSetDelete"));
+    deleteSetButton->setToolTip(tr("Delete the current keyboard shortcut set."));
+    QPushButton* const saveFile = new QPushButton(tr("Save..."), this);
+    saveFile->setToolTip(tr("Save the current keyboard shortcut set to a file."));
+    QPushButton* const loadFile = new QPushButton(tr("Load..."), this);
+    loadFile->setToolTip(tr("Load keyboard shortcut set from a file."));
+    setRow->addWidget(new QLabel(tr("Keyboard shortcut set:"), this));
+    setRow->addWidget(m_sets, 1);
+    setRow->addWidget(newSet);
+    setRow->addWidget(deleteSetButton);
+    setRow->addWidget(saveFile);
+    setRow->addWidget(loadFile);
+    connect(m_sets, &QComboBox::activated, this, [this](int index) {
+        if (index > 0)
+            useSet(m_sets->itemText(index));
+    });
+    connect(newSet, &QPushButton::clicked, this, [this] {
+        bool ok = false;
+        QString const name = QInputDialog::getText(this, tr("New Keyboard Shortcut Set"), tr("Keyboard Shortcut Set Name:"), QLineEdit::Normal, QString(), &ok).trimmed();
+        if (!ok || name.isEmpty())
+            return;
+        saveSet(name);
+        if (m_sets->findText(name) < 0)
+            m_sets->addItem(name);
+        m_sets->setCurrentText(name);
+    });
+    connect(deleteSetButton, &QPushButton::clicked, this, [this] {
+        int const index = m_sets->currentIndex();
+        if (index <= 0)
+            return;
+        QString const name = m_sets->itemText(index);
+        if (QMessageBox::question(this, tr("Delete Keyboard Shortcut Set"), tr("Are you sure you want to delete the keyboard shortcut set %1?").arg(name))
+            != QMessageBox::Yes)
+            return;
+        deleteSet(name);
+        m_sets->removeItem(index);
+        m_sets->setCurrentIndex(0);
+    });
+    connect(saveFile, &QPushButton::clicked, this, [this] {
+        QString const path = QFileDialog::getSaveFileName(this, tr("Save Keyboard Shortcut Set"), QStringLiteral("shortcuts.eclkeys"), tr("Shortcut Sets (*.eclkeys)"));
+        if (!path.isEmpty() && !saveSetFile(path))
+            QMessageBox::warning(this, tr("Save Keyboard Shortcut Set"), tr("Unable to write shortcuts in %1").arg(path));
+    });
+    connect(loadFile, &QPushButton::clicked, this, [this] {
+        QString const path = QFileDialog::getOpenFileName(this, tr("Load Keyboard Shortcut Set"), QString(), tr("Shortcut Sets (*.eclkeys)"));
+        if (!path.isEmpty() && !loadSetFile(path))
+            QMessageBox::warning(this, tr("Load Keyboard Shortcut Set"), tr("%1 is not a shortcut set.").arg(path));
+    });
+
     QVBoxLayout* const layout = new QVBoxLayout(this);
+    layout->addLayout(setRow);
     layout->addWidget(m_search);
     layout->addWidget(m_tree, 1);
     layout->addLayout(row);
@@ -144,6 +211,90 @@ void ShortcutsDialog::restoreAll()
         for (int i = 0; i < m_tree->topLevelItem(c)->childCount(); ++i)
             refreshItem(m_tree->topLevelItem(c)->child(i));
     currentChanged();
+}
+
+void ShortcutsDialog::refreshAll()
+{
+    for (int c = 0; c < m_tree->topLevelItemCount(); ++c)
+        for (int i = 0; i < m_tree->topLevelItem(c)->childCount(); ++i)
+            refreshItem(m_tree->topLevelItem(c)->child(i));
+    currentChanged();
+}
+
+QStringList ShortcutsDialog::setText() const
+{
+    QStringList lines;
+    for (ActionManager::Shortcut const& s : m_manager->shortcuts())
+        lines << s.id + QLatin1Char('=') + m_keys.value(s.id).toString(QKeySequence::PortableText);
+    return lines;
+}
+
+void ShortcutsDialog::applySetText(QStringList const& lines)
+{
+    for (QString const& line : lines) {
+        int const eq = int(line.indexOf(QLatin1Char('=')));
+        if (eq <= 0)
+            continue;
+        QString const id = line.left(eq).trimmed();
+        if (m_keys.contains(id))
+            m_keys[id] = QKeySequence::fromString(line.mid(eq + 1).trimmed(), QKeySequence::PortableText);
+    }
+    refreshAll();
+}
+
+bool ShortcutsDialog::saveSetFile(QString const& path) const
+{
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    file.write("# Eclipse keyboard shortcut set: a command's id = its key\n");
+    file.write(setText().join(QLatin1Char('\n')).toUtf8());
+    file.write("\n");
+    return true;
+}
+
+bool ShortcutsDialog::loadSetFile(QString const& path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+    QStringList lines;
+    for (QByteArray const& raw : file.readAll().split('\n'))
+        if (!raw.trimmed().isEmpty() && !raw.trimmed().startsWith('#'))
+            lines << QString::fromUtf8(raw);
+    bool known = false;
+    for (QString const& line : std::as_const(lines))
+        known = known || m_keys.contains(line.section(QLatin1Char('='), 0, 0).trimmed());
+    if (!known)
+        return false;
+    applySetText(lines);
+    return true;
+}
+
+QStringList ShortcutsDialog::setNames()
+{
+    QSettings settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    settings.beginGroup(QStringLiteral("shortcutSets"));
+    return settings.childKeys();
+}
+
+void ShortcutsDialog::saveSet(QString const& name)
+{
+    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("shortcutSets/") + name, setText());
+}
+
+bool ShortcutsDialog::useSet(QString const& name)
+{
+    QStringList const lines = QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("shortcutSets/") + name).toStringList();
+    if (lines.isEmpty())
+        return false;
+    applySetText(lines);
+    return true;
+}
+
+void ShortcutsDialog::deleteSet(QString const& name)
+{
+    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).remove(QStringLiteral("shortcutSets/") + name);
 }
 
 void ShortcutsDialog::accept()

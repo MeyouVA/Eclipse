@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QApplication>
+#include <QTimer>
+#include <QPlainTextEdit>
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QTabWidget>
@@ -46,6 +49,11 @@
 #include "ui/panels/PalettePanel.h"
 #include "ui/io/ImportExportPrivate.h"
 #include "ui/views/NodeView.h"
+#include "ui/window/InterfaceColours.h"
+#include <QHeaderView>
+#include <QTreeWidget>
+#include <QLibraryInfo>
+#include <QTranslator>
 
 #include <tuple>
 
@@ -280,6 +288,10 @@ static QSettings preferences()
 void MainWindow::applyPreferences()
 {
     QSettings const s = preferences();
+    // The colours the views paint with: read again, and every view painted with them.
+    InterfaceColours::reload();
+    for (QWidget* const w : findChildren<QWidget*>())
+        w->update();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
     // A drawing has four sheets; two of them - overlay and underlay - are out of the way
     // unless they are asked for.
@@ -372,6 +384,9 @@ void MainWindow::applyPreferences()
     m_canvas->setMiddleButtonPans(s.value(QStringLiteral("prefs/middlePans"), true).toBool());
     m_canvas->setPerformanceReport(s.value(QStringLiteral("prefs/performanceReport"), false).toBool());
     m_canvas->setPasteBehaviour(s.value(QStringLiteral("prefs/pasteBehaviour"), 0).toInt());
+    setCurrentViewBorderColour(QColor(s.value(QStringLiteral("prefs/viewBorderColour"), QStringLiteral("#c8281e")).toString()));
+    m_canvas->setBoneColours(QColor(s.value(QStringLiteral("prefs/boneColour"), QStringLiteral("#5adc8c")).toString()),
+                             QColor(s.value(QStringLiteral("prefs/boneSelectedColour"), QStringLiteral("#ffffff")).toString()));
     m_restoreDrawingOnUndo = s.value(QStringLiteral("prefs/restoreDrawingOnUndo"), false).toBool();
     Scene::setCompressFiles(s.value(QStringLiteral("prefs/compressScenes"), false).toBool());
     m_autoSaveQuiet = std::clamp(s.value(QStringLiteral("prefs/autosaveQuietSeconds"), 1).toInt(), 0, 600);
@@ -908,26 +923,141 @@ void MainWindow::onActionPreferences()
     QPushButton* const backdrop = colourButton("PrefBackdrop", m_canvas->backdrop(), tr("Around the Frame"));
     QPushButton* const onionBefore = colourButton("PrefOnionBefore", m_canvas->onionBefore(), tr("Onion Skin: Before"));
     QPushButton* const onionAfter = colourButton("PrefOnionAfter", m_canvas->onionAfter(), tr("Onion Skin: After"));
+    QPushButton* const borderColour = colourButton("PrefViewBorderColour", currentViewBorderColour(), tr("Current View Border"));
+    QPushButton* const boneColour = colourButton("PrefBoneColour", m_canvas->boneColour(), tr("Default Bone Colour"));
+    QPushButton* const boneSelected = colourButton("PrefBoneSelectedColour", m_canvas->boneSelectedColour(), tr("Selected Bone Colour"));
     coloursLayout->addRow(tr("Camera view, around the frame"), backdrop);
     coloursLayout->addRow(tr("Onion skin, drawings before"), onionBefore);
     coloursLayout->addRow(tr("Onion skin, drawings after"), onionAfter);
+    coloursLayout->addRow(tr("Current view border"), borderColour);
+    coloursLayout->addRow(tr("Bones"), boneColour);
+    coloursLayout->addRow(tr("Bone or joint picked"), boneSelected);
+    // And every colour the views paint with, grouped as the views are: double-click one to change it.
+    QTreeWidget* const viewColours = new QTreeWidget(colours);
+    viewColours->setObjectName(QStringLiteral("PrefInterfaceColours"));
+    viewColours->setHeaderLabels({tr("Colour"), QString()});
+    viewColours->setRootIsDecorated(true);
+    viewColours->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    viewColours->header()->setSectionResizeMode(1, QHeaderView::Fixed);
+    viewColours->header()->resizeSection(1, 60);
+    viewColours->setMinimumHeight(220);
+    auto showColour = [](QTreeWidgetItem* item, QColor const& colour) {
+        item->setData(1, Qt::UserRole, colour);
+        QPixmap swatch(40, 14);
+        swatch.fill(colour);
+        item->setIcon(1, QIcon(swatch));
+        item->setToolTip(1, colour.name(colour.alpha() < 255 ? QColor::HexArgb : QColor::HexRgb));
+    };
+    {
+        QHash<QString, QTreeWidgetItem*> groups;
+        for (InterfaceColours::Entry const& e : InterfaceColours::entries()) {
+            QString const group = tr(e.group);
+            QTreeWidgetItem*& parent = groups[group];
+            if (!parent) {
+                parent = new QTreeWidgetItem(viewColours, {group});
+                parent->setFlags(Qt::ItemIsEnabled);
+                parent->setExpanded(true);
+            }
+            QTreeWidgetItem* const item = new QTreeWidgetItem(parent, {tr(e.label)});
+            item->setData(0, Qt::UserRole, QString::fromLatin1(e.key));
+            item->setData(0, Qt::UserRole + 1, e.usual);
+            showColour(item, InterfaceColours::get(e.key));
+        }
+    }
+    connect(viewColours, &QTreeWidget::itemDoubleClicked, &dialog, [showColour, &dialog](QTreeWidgetItem* item) {
+        if (item->data(0, Qt::UserRole).toString().isEmpty())
+            return;
+        QColor const chosen = QColorDialog::getColor(item->data(1, Qt::UserRole).value<QColor>(), &dialog, item->text(0), QColorDialog::ShowAlphaChannel);
+        if (chosen.isValid())
+            showColour(item, chosen);
+    });
+    coloursLayout->addRow(viewColours);
     QPushButton* const usual = new QPushButton(tr("Restore the Usual Colours"), colours);
     usual->setObjectName(QStringLiteral("PrefColoursReset"));
     coloursLayout->addRow(usual);
-    connect(usual, &QPushButton::clicked, &dialog, [backdrop, onionBefore, onionAfter] {
+    connect(usual, &QPushButton::clicked, &dialog, [viewColours, showColour] {
+        for (int g = 0; g < viewColours->topLevelItemCount(); ++g)
+            for (int i = 0; i < viewColours->topLevelItem(g)->childCount(); ++i) {
+                QTreeWidgetItem* const item = viewColours->topLevelItem(g)->child(i);
+                showColour(item, item->data(0, Qt::UserRole + 1).value<QColor>());
+            }
+    });
+    connect(usual, &QPushButton::clicked, &dialog, [backdrop, onionBefore, onionAfter, borderColour, boneColour, boneSelected] {
         struct Usual {
             QPushButton* button;
             QColor colour;
         };
-        for (Usual const& one : {Usual{backdrop, QColor(127, 127, 127)}, Usual{onionBefore, QColor(220, 60, 60)}, Usual{onionAfter, QColor(50, 160, 80)}}) {
+        for (Usual const& one : {Usual{backdrop, QColor(127, 127, 127)}, Usual{onionBefore, QColor(220, 60, 60)}, Usual{onionAfter, QColor(50, 160, 80)},
+                                 Usual{borderColour, QColor(0xc8, 0x28, 0x1e)}, Usual{boneColour, QColor(90, 220, 140)}, Usual{boneSelected, QColor(Qt::white)}}) {
             one.button->setProperty("colour", one.colour);
             one.button->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px; min-width: 60px;").arg(one.colour.name()));
         }
     });
 
+    // The look: dark or light, the size of everything, and the user's own additions to the stylesheet (all on the next start,
+    // but the additions, which the Style Editor shows at once).
+    QCheckBox* const darkStyle = new QCheckBox(tr("Use dark style sheet (on the next start)"), general);
+    darkStyle->setObjectName(QStringLiteral("PrefDarkStyle"));
+    darkStyle->setChecked(s.value(QStringLiteral("prefs/darkStyle"), true).toBool());
+    generalLayout->addRow(darkStyle);
+    QSpinBox* const uiScale = new QSpinBox(general);
+    uiScale->setObjectName(QStringLiteral("PrefInterfaceScale"));
+    uiScale->setRange(50, 300);
+    uiScale->setSingleStep(25);
+    uiScale->setSuffix(tr(" %"));
+    uiScale->setToolTip(tr("How big the whole window is drawn: menus, panels, text (on the next start)."));
+    uiScale->setValue(s.value(QStringLiteral("prefs/interfaceScale"), 100).toInt());
+    generalLayout->addRow(tr("Interface scale (on the next start)"), uiScale);
+    QComboBox* const language = new QComboBox(general);
+    language->setObjectName(QStringLiteral("PrefLanguage"));
+    for (QString const& code : languages()) {
+        QString const name = QLocale(code).nativeLanguageName();
+        language->addItem(name.isEmpty() ? code : name.left(1).toUpper() + name.mid(1), code);
+    }
+    language->setCurrentIndex(std::max(0, language->findData(s.value(QStringLiteral("prefs/language"), QStringLiteral("en")).toString())));
+    language->setToolTip(tr("The language of menus, panels and messages (on the next start)."));
+    generalLayout->addRow(tr("Language (on the next start)"), language);
+    QPushButton* const styleEditor = new QPushButton(tr("Style Editor..."), general);
+    styleEditor->setObjectName(QStringLiteral("PrefStyleEditor"));
+    generalLayout->addRow(styleEditor);
+    connect(styleEditor, &QPushButton::clicked, &dialog, [this] { showStyleEditor(); });
+
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    // Preference sets: every preference saved to a file and loaded back; or all of them as they were to begin with.
+    QPushButton* const saveSet = buttons->addButton(tr("Save..."), QDialogButtonBox::ActionRole);
+    saveSet->setObjectName(QStringLiteral("PrefSaveSet"));
+    saveSet->setToolTip(tr("Save the current preferences to a file."));
+    QPushButton* const loadSet = buttons->addButton(tr("Load..."), QDialogButtonBox::ActionRole);
+    loadSet->setObjectName(QStringLiteral("PrefLoadSet"));
+    loadSet->setToolTip(tr("Load preferences from a file."));
+    QPushButton* const defaults = buttons->addButton(tr("Restore All Defaults"), QDialogButtonBox::ResetRole);
+    defaults->setObjectName(QStringLiteral("PrefRestoreDefaults"));
+    bool reopen = false;
+    connect(saveSet, &QPushButton::clicked, &dialog, [this, &dialog] {
+        QString const path = QFileDialog::getSaveFileName(&dialog, tr("Save Preferences"), QStringLiteral("preferences.eclprefs"), tr("Preferences (*.eclprefs)"));
+        if (!path.isEmpty() && !savePreferenceSet(path))
+            QMessageBox::warning(&dialog, tr("Save Preferences"), tr("Error while writing preference file: %1").arg(path));
+    });
+    connect(loadSet, &QPushButton::clicked, &dialog, [this, &dialog, &reopen] {
+        QString const path = QFileDialog::getOpenFileName(&dialog, tr("Load Preferences"), QString(), tr("Preferences (*.eclprefs)"));
+        if (path.isEmpty())
+            return;
+        if (!loadPreferenceSet(path)) {
+            QMessageBox::warning(&dialog, tr("Load Preferences"), tr("Unable to open preference file: %1").arg(path));
+            return;
+        }
+        reopen = true;
+        dialog.reject();
+    });
+    connect(defaults, &QPushButton::clicked, &dialog, [this, &dialog, &reopen] {
+        if (QMessageBox::question(&dialog, tr("Restore default preferences"), tr("Restore all default preferences?")) != QMessageBox::Yes)
+            return;
+        restoreDefaultPreferences();
+        reopen = true;
+        dialog.reject();
+    });
     // A tab for each kind of setting, as Harmony has them.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
@@ -943,6 +1073,12 @@ void MainWindow::onActionPreferences()
     layout->addWidget(buttons);
     int const result = dialog.exec();
     s.setValue(QStringLiteral("prefs/lastTab"), tabs->currentIndex());
+    if (reopen) {
+        // (Preferences loaded or put back: in effect now, and shown again.)
+        applyPreferences();
+        QTimer::singleShot(0, this, &MainWindow::onActionPreferences);
+        return;
+    }
     if (result != QDialog::Accepted)
         return;
     s.setValue(QStringLiteral("prefs/lightTableWash"), wash->value());
@@ -1009,6 +1145,18 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/autoSaveWorkspace"), autoWorkspace->isChecked());
     s.setValue(QStringLiteral("prefs/viewBorder"), viewBorder->isChecked());
     s.setValue(QStringLiteral("prefs/restoreDrawingOnUndo"), restoreDrawing->isChecked());
+    s.setValue(QStringLiteral("prefs/viewBorderColour"), borderColour->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/boneColour"), boneColour->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/boneSelectedColour"), boneSelected->property("colour").value<QColor>().name());
+    for (int g = 0; g < viewColours->topLevelItemCount(); ++g)
+        for (int i = 0; i < viewColours->topLevelItem(g)->childCount(); ++i) {
+            QTreeWidgetItem* const item = viewColours->topLevelItem(g)->child(i);
+            QColor const colour = item->data(1, Qt::UserRole).value<QColor>();
+            InterfaceColours::set(item->data(0, Qt::UserRole).toString(), colour == item->data(0, Qt::UserRole + 1).value<QColor>() ? QColor() : colour);
+        }
+    s.setValue(QStringLiteral("prefs/darkStyle"), darkStyle->isChecked());
+    s.setValue(QStringLiteral("prefs/interfaceScale"), uiScale->value());
+    s.setValue(QStringLiteral("prefs/language"), language->currentData().toString());
     s.setValue(QStringLiteral("prefs/compressScenes"), compress->isChecked());
     s.setValue(QStringLiteral("prefs/autosaveQuietSeconds"), quiet->value());
     s.setValue(QStringLiteral("prefs/pasteBehaviour"), pasteBehaviour->currentIndex());
@@ -1023,4 +1171,105 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionFurthest"), onionFurthest->value());
     s.sync();
     applyPreferences();
+}
+
+bool MainWindow::savePreferenceSet(QString const& path) const
+{
+    // Every preference, as an ini file.
+    QFile::remove(path);
+    QSettings out(path, QSettings::IniFormat);
+    QSettings const in(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    for (QString const& key : in.allKeys())
+        if (key.startsWith(QStringLiteral("prefs/")) && key != QStringLiteral("prefs/lastTab"))
+            out.setValue(key, in.value(key));
+    out.sync();
+    return out.status() == QSettings::NoError && QFileInfo::exists(path);
+}
+
+bool MainWindow::loadPreferenceSet(QString const& path)
+{
+    if (!QFileInfo::exists(path))
+        return false;
+    QSettings const in(path, QSettings::IniFormat);
+    QStringList const keys = in.allKeys();
+    bool any = false;
+    for (QString const& key : keys)
+        any = any || key.startsWith(QStringLiteral("prefs/"));
+    if (in.status() != QSettings::NoError || !any)
+        return false;
+    QSettings out(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    for (QString const& key : keys)
+        if (key.startsWith(QStringLiteral("prefs/")))
+            out.setValue(key, in.value(key));
+    return true;
+}
+
+QStringList MainWindow::languages()
+{
+    QStringList codes = {QStringLiteral("en")};
+    QDir const dir(ActionManager::defaultDirectory() + QStringLiteral("/translations"));
+    for (QString const& file : dir.entryList({QStringLiteral("eclipse_*.qm")}, QDir::Files, QDir::Name))
+        codes.append(file.mid(8, file.size() - 11));
+    return codes;
+}
+
+bool MainWindow::installLanguage(QString const& code)
+{
+    if (code.isEmpty() || code == QStringLiteral("en"))
+        return true;
+    QTranslator* const own = new QTranslator(qApp);
+    if (!own->load(QStringLiteral("eclipse_") + code, ActionManager::defaultDirectory() + QStringLiteral("/translations"))) {
+        delete own;
+        return false;
+    }
+    QCoreApplication::installTranslator(own);
+    // Qt's own words (the buttons of its dialogs), when Qt has them in that language.
+    QTranslator* const qt = new QTranslator(qApp);
+    if (qt->load(QStringLiteral("qtbase_") + code, QLibraryInfo::path(QLibraryInfo::TranslationsPath))
+        || qt->load(QStringLiteral("qtbase_") + code, QCoreApplication::applicationDirPath() + QStringLiteral("/translations")))
+        QCoreApplication::installTranslator(qt);
+    else
+        delete qt;
+    return true;
+}
+
+void MainWindow::restoreDefaultPreferences()
+{
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    int const tab = s.value(QStringLiteral("prefs/lastTab"), 0).toInt();
+    s.remove(QStringLiteral("prefs"));
+    s.setValue(QStringLiteral("prefs/lastTab"), tab);
+}
+
+void MainWindow::showStyleEditor()
+{
+    // Additions to the look, in Qt's style sheet language: shown as they are typed when Apply is pressed, kept by Save.
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("StyleEditor"));
+    dialog.setWindowTitle(tr("Style Editor"));
+    QPlainTextEdit* const text = new QPlainTextEdit(&dialog);
+    text->setObjectName(QStringLiteral("StyleEditorText"));
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    QString const kept = s.value(QStringLiteral("prefs/styleExtra")).toString();
+    text->setPlainText(kept);
+    text->setPlaceholderText(tr("For example:\nQMenu { font-size: 11pt; }"));
+    QString const base = qApp->property("eclipseBaseStyle").toString();
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Apply | QDialogButtonBox::Close, &dialog);
+    connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, &dialog, [text, base] { qApp->setStyleSheet(base + QLatin1Char('\n') + text->toPlainText()); });
+    connect(buttons->button(QDialogButtonBox::Save), &QPushButton::clicked, &dialog, [text, base, &dialog] {
+        QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("prefs/styleExtra"), text->toPlainText());
+        qApp->setStyleSheet(base + QLatin1Char('\n') + text->toPlainText());
+        dialog.accept();
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, [kept, base, &dialog] {
+        // (Closed without saving: as it was.)
+        qApp->setStyleSheet(base + QLatin1Char('\n') + kept);
+        dialog.reject();
+    });
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("Style Sheet: additions to Eclipse's look"), &dialog));
+    layout->addWidget(text, 1);
+    layout->addWidget(buttons);
+    dialog.resize(520, 380);
+    dialog.exec();
 }

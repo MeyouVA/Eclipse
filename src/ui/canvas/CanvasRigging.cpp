@@ -670,7 +670,7 @@ void Canvas::paintBones(QPainter& painter, QVector<QPointF> const& joints, int p
     if (joints.isEmpty())
         return;
     QTransform const toWidget = layerViewTransform();
-    QColor const bone(90, 220, 140), dark(20, 40, 28);
+    QColor const bone = m_boneColour, dark(20, 40, 28);
     painter.resetTransform();
     for (int i = 0; i + 1 < joints.size(); ++i) {
         // A bone is a long kite: wide near where it starts, a point where it ends.
@@ -688,7 +688,7 @@ void Canvas::paintBones(QPainter& painter, QVector<QPointF> const& joints, int p
     }
     for (int i = 0; i < joints.size(); ++i) {
         painter.setPen(QPen(dark, 1));
-        painter.setBrush(i == picked ? QColor(Qt::white) : bone);
+        painter.setBrush(i == picked ? m_boneSelectedColour : bone);
         painter.drawEllipse(toWidget.map(joints[i]), i == 0 ? 6.0 : 4.5, i == 0 ? 6.0 : 4.5);
     }
 }

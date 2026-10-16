@@ -1,5 +1,6 @@
 // Eclipse - the Timeline: painting.
 #include "ui/timeline/Timeline.h"
+#include "ui/window/InterfaceColours.h"
 
 #include <QPainter>
 
@@ -28,9 +29,9 @@ void Timeline::paintEvent(QPaintEvent*)
     int const frames = m_dragEnd ? m_endFrames : scene.frameCount();
     int const sceneEndX = kHeaderWidth + frames * cw - sx;
 
-    QColor const bg(62, 62, 62), rowA(83, 83, 83), rowB(78, 78, 78), line(52, 52, 52);
-    QColor const text(210, 210, 210), dim(130, 130, 130), exposed(122, 122, 122), exposedCurrent(150, 150, 150);
-    QColor const currentRow(96, 96, 96), playhead(224, 36, 36), headerBg(69, 69, 69);
+    QColor const bg = InterfaceColours::get("timelineBackground"), rowA(83, 83, 83), rowB(78, 78, 78), line(52, 52, 52);
+    QColor const text(210, 210, 210), dim(130, 130, 130), exposed = InterfaceColours::get("timelineExposed"), exposedCurrent = exposed.lighter(123);
+    QColor const currentRow = InterfaceColours::get("timelineCurrentLayer"), playhead = InterfaceColours::get("timelineCurrentFrame"), headerBg(69, 69, 69);
     p.fillRect(0, 0, w, h, bg);
 
     // ---- cells ----
@@ -152,7 +153,7 @@ void Timeline::paintEvent(QPaintEvent*)
             }
         }
         // Keyframes: a diamond on the frame, and a line from a motion keyframe to the next.
-        QColor const keyColor(255, 190, 70);
+        QColor const keyColor = InterfaceColours::get("timelineKeyframe");
         int const ky = layer.holdsDrawings() && !param ? y + kRowHeight - 6 : y + kRowHeight / 2;
         // On a parameter's row, the keyframes that set that parameter only.
         // (On an effect's row, the keyframes that carry its amount: only an animated effect has them.)
@@ -220,7 +221,7 @@ void Timeline::paintEvent(QPaintEvent*)
         int const r0 = std::min(row, m_extentRow), r1 = std::max(row, m_extentRow);
         QRect const block(kHeaderWidth + selectionFirstFrame() * cw - sx, kRulerHeight + r0 * kRowHeight - sy,
                           (selectionLastFrame() - selectionFirstFrame() + 1) * cw, (r1 - r0 + 1) * kRowHeight);
-        p.fillRect(block, QColor(42, 155, 176, 95));
+        p.fillRect(block, InterfaceColours::get("timelineSelection"));
         p.setPen(QPen(QColor(120, 220, 235), 1));
         p.setBrush(Qt::NoBrush);
         p.drawRect(block.adjusted(0, 0, -1, -1));
@@ -296,7 +297,7 @@ void Timeline::paintEvent(QPaintEvent*)
     }
     // The onion skin: a blue bar along the foot of the ruler over the frames it reaches, a handle at each end.
     if (m_onionOn) {
-        QColor const onion(70, 150, 235);
+        QColor const onion = InterfaceColours::get("timelineOnionSkin");
         QRect const before = onionHandleRect(true), after = onionHandleRect(false);
         p.save();
         p.setClipRect(QRect(kHeaderWidth, 0, w - kHeaderWidth, kRulerHeight));

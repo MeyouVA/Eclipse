@@ -10,6 +10,7 @@
 #include <cmath>
 
 #include "model/document/Commands.h"
+#include "ui/window/InterfaceColours.h"
 
 // ---- the graph -------------------------------------------------------------------------------
 
@@ -26,6 +27,13 @@ FunctionGraph::FunctionGraph(Document* document, QWidget* parent) : QWidget(pare
 
 QColor FunctionGraph::colourOf(Timeline::Parameter which)
 {
+    // Across, down and depth are the user's (the Colours page); the others are fixed.
+    if (which == Timeline::PosX)
+        return InterfaceColours::get("functionCurveX");
+    if (which == Timeline::PosY)
+        return InterfaceColours::get("functionCurveY");
+    if (which == Timeline::PosZ)
+        return InterfaceColours::get("functionCurveZ");
     static QColor const colours[Timeline::ParameterCount] = {QColor(232, 96, 84),  QColor(110, 200, 120), QColor(240, 170, 70),
                                                              QColor(100, 170, 240), QColor(200, 130, 230), QColor(210, 210, 210),
                                                              QColor(90, 210, 200), QColor(180, 190, 90), QColor(230, 120, 170)};
@@ -229,9 +237,9 @@ void FunctionGraph::paintEvent(QPaintEvent*)
 {
     Scene const& scene = m_document->scene();
     QPainter p(this);
-    p.fillRect(rect(), QColor(58, 58, 58));
+    p.fillRect(rect(), InterfaceColours::get("functionBackground"));
     QRectF const r = plot();
-    p.fillRect(r, QColor(46, 46, 46));
+    p.fillRect(r, InterfaceColours::get("functionPlot"));
     p.setClipRect(QRectF(0, 0, width(), height()));
     QFont small = font();
     small.setPointSizeF(std::max(6.5, small.pointSizeF() - 1.5));
@@ -244,7 +252,7 @@ void FunctionGraph::paintEvent(QPaintEvent*)
         step *= span / step > 25.0 ? 5.0 : 2.0;
     for (double v = std::ceil(m_low / step) * step; v <= m_high; v += step) {
         double const y = yOfValue(v);
-        p.setPen(std::abs(v) < step / 2.0 ? QColor(110, 110, 110) : QColor(64, 64, 64));
+        p.setPen(std::abs(v) < step / 2.0 ? InterfaceColours::get("functionAxis") : InterfaceColours::get("functionGrid"));
         if (m_grid || std::abs(v) < step / 2.0)
             p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y));
         p.setPen(QColor(160, 160, 160));
@@ -255,7 +263,7 @@ void FunctionGraph::paintEvent(QPaintEvent*)
     int const every = frames <= 30 ? 5 : frames <= 120 ? 10 : frames <= 600 ? 50 : 100;
     for (int f = every - 1; f < frames; f += every) {
         double const x = xOfFrame(f);
-        p.setPen(QColor(64, 64, 64));
+        p.setPen(InterfaceColours::get("functionGrid"));
         if (m_grid)
             p.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()));
         p.setPen(QColor(160, 160, 160));
@@ -356,7 +364,7 @@ void FunctionGraph::paintEvent(QPaintEvent*)
         p.setRenderHint(QPainter::Antialiasing, false);
     }
     // The current frame.
-    p.setPen(QColor(224, 36, 36));
+    p.setPen(InterfaceColours::get("functionCurrentFrame"));
     p.drawLine(QPointF(xOfFrame(m_frame), r.top()), QPointF(xOfFrame(m_frame), r.bottom()));
 }
 

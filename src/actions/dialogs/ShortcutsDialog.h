@@ -22,6 +22,17 @@ public:
     explicit ShortcutsDialog(ActionManager* manager, QWidget* parent = nullptr);
 
     void accept() override;
+    // Shortcut sets: every key as it is in the editor, kept under a name (in the settings) or in a file, and brought back.
+    // A set is lines of "id=key".
+    QStringList setText() const;
+    void applySetText(QStringList const& lines);
+    bool saveSetFile(QString const& path) const;
+    bool loadSetFile(QString const& path);
+    static QStringList setNames();
+    void saveSet(QString const& name);
+    bool useSet(QString const& name);
+    static void deleteSet(QString const& name);
+    QKeySequence editedKey(QString const& id) const { return m_keys.value(id); }
 
 private:
     void filter(QString const& text);
@@ -38,4 +49,6 @@ private:
     QKeySequenceEdit* m_edit;
     QLabel* m_warning;
     QHash<QString, QKeySequence> m_keys;  // the edited copy
+    class QComboBox* m_sets = nullptr;
+    void refreshAll();
 };
