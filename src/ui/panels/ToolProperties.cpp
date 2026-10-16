@@ -1,5 +1,6 @@
 // Eclipse - Tool Properties: how the form is put together, which rows a tool shows, and the sizes to pick from.
 #include "ui/panels/ToolProperties.h"
+#include "ui/window/InterfaceColours.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,12 +25,13 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QSettings>
+#include <QMenu>
 
 // A stroke of a given thickness on a light card: what the tool in hand will draw.
 QPixmap ToolProperties::strokePicture(QSize size, double thickness, bool taper)
 {
     QPixmap pixmap(size);
-    pixmap.fill(QColor(228, 228, 226));
+    pixmap.fill(InterfaceColours::get("brushPreview"));
     QPainter p(&pixmap);
     p.setRenderHint(QPainter::Antialiasing, true);
     // A lazy S across the card.
@@ -70,7 +72,7 @@ protected:
     {
         QPainter p(this);
         QRect const tip(0, 0, 56, height()), stroke(62, 0, width() - 62, height());
-        p.fillRect(tip, QColor(228, 228, 226));
+        p.fillRect(tip, InterfaceColours::get("brushPreview"));
         p.setRenderHint(QPainter::Antialiasing, true);
         p.setPen(Qt::NoPen);
         p.setBrush(QColor(20, 20, 20));
@@ -275,8 +277,38 @@ void ToolProperties::addPresetRows()
     m_presets->setMinimumHeight(150);
     m_form->addRow(m_presetsTitle);
     m_form->addRow(m_presets);
+    setPresetView(std::clamp(settings().value(QStringLiteral("tools/presetView"), 0).toInt(), 0, 2));
+    // Right-click: how the list is shown, and the user's own preset updated to the settings now in hand.
+    m_presets->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_presets, &QWidget::customContextMenuRequested, this, [this](QPoint const& at) {
+        QMenu menu(this);
+        QListWidgetItem* const item = m_presets->itemAt(at);
+        QAction* const update = menu.addAction(tr("Update Preset"));
+        update->setEnabled(item && item->data(Qt::UserRole + 4).isValid());
+        menu.addSeparator();
+        QAction* const views[3] = {menu.addAction(tr("Small Thumbnail")), menu.addAction(tr("Large Thumbnail")), menu.addAction(tr("Detail View"))};
+        int const now = settings().value(QStringLiteral("tools/presetView"), 0).toInt();
+        for (int v = 0; v < 3; ++v) {
+            views[v]->setCheckable(true);
+            views[v]->setChecked(v == now);
+        }
+        QAction* const chosen = menu.exec(m_presets->viewport()->mapToGlobal(at));
+        if (chosen == update && item)
+            updatePreset(item->data(Qt::UserRole + 4).toInt());
+        for (int v = 0; v < 3; ++v)
+            if (chosen == views[v])
+                setPresetView(v);
+    });
     connect(m_presets, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
         m_size->setValue(item->data(Qt::UserRole).toInt());
+        // A preset that sets more: the thinnest the line gets, its taper.
+        int const least = item->data(Qt::UserRole + 2).isValid() ? item->data(Qt::UserRole + 2).toInt() : -1;
+        int const taper = item->data(Qt::UserRole + 3).isValid() ? item->data(Qt::UserRole + 3).toInt() : -1;
+        if (QSpinBox* const box = findChild<QSpinBox*>(tr("Minimum Size")); box && least >= 0)
+            box->setValue(least);
+        for (QString const& name : {tr("Start Taper"), tr("End Taper")})
+            if (QSpinBox* const box = findChild<QSpinBox*>(name); box && taper >= 0)
+                box->setValue(taper);
         // A preset of your own keeps the smoothing as well.
         QVariant const smoothing = item->data(Qt::UserRole + 1);
         if (QSpinBox* const box = findChild<QSpinBox*>(tr("Smoothing")); box && smoothing.isValid())
@@ -379,6 +411,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_selectBothArts, tool == T::Select || tool == T::Cutter);
     m_form->setRowVisible(m_snapAlign, tool == T::Select);
     m_form->setRowVisible(m_stampScale, tool == T::Stamp);
+    m_form->setRowVisible(m_stampRandomSize, tool == T::Stamp);
     m_form->setRowVisible(m_stampRow, tool == T::Stamp);
     m_form->setRowVisible(m_stampRandom, tool == T::Stamp);
     m_form->setRowVisible(m_presetsTitle, draws);
@@ -390,11 +423,15 @@ void ToolProperties::showFor(int tool)
 void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
 {
     // The sizes of this tool.
-    struct Preset { char const* name; int size; };
+    // (A minimum size of -1, or a taper of -1: the preset leaves that setting as it is.)
+    struct Preset { char const* name; int size; int minSize = -1; int taper = -1; };
     static Preset const kBrush[] = {{QT_TR_NOOP("Solid Brush 1"), 5}, {QT_TR_NOOP("Solid Brush 2"), 10}, {QT_TR_NOOP("Solid Brush 3"), 15},
-                                    {QT_TR_NOOP("Solid Brush 4"), 20}, {QT_TR_NOOP("Solid Brush 5"), 30}, {QT_TR_NOOP("Solid Brush 6"), 45}};
+                                    {QT_TR_NOOP("Solid Brush 4"), 20}, {QT_TR_NOOP("Solid Brush 5"), 30}, {QT_TR_NOOP("Solid Brush 6"), 45},
+                                    {QT_TR_NOOP("Fixed Width 1"), 6, 100, 0}, {QT_TR_NOOP("Fixed Width 2"), 14, 100, 0},
+                                    {QT_TR_NOOP("Auto Taper"), 12, 0, 20}};
     static Preset const kPencil[] = {{QT_TR_NOOP("Pencil 1"), 3}, {QT_TR_NOOP("Pencil 2"), 6}, {QT_TR_NOOP("Pencil 3"), 10},
-                                     {QT_TR_NOOP("Pencil 4"), 16}, {QT_TR_NOOP("Pencil 5"), 24}};
+                                     {QT_TR_NOOP("Pencil 4"), 16}, {QT_TR_NOOP("Pencil 5"), 24},
+                                     {QT_TR_NOOP("Fixed Thickness 1"), 2}, {QT_TR_NOOP("Fixed Thickness 2"), 4}};
     static Preset const kEraser[] = {{QT_TR_NOOP("Small Eraser"), 20}, {QT_TR_NOOP("Medium Eraser"), 50}, {QT_TR_NOOP("Large Eraser"), 100},
                                      {QT_TR_NOOP("Very Large Eraser"), 160}};
     QSignalBlocker const block(m_presets);
@@ -408,6 +445,8 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
             icon.addPixmap(picture, QIcon::Selected);
             QListWidgetItem* const item = new QListWidgetItem(icon, tr("%1   (%2)").arg(tr(list[i].name)).arg(list[i].size), m_presets);
             item->setData(Qt::UserRole, list[i].size);
+            item->setData(Qt::UserRole + 2, list[i].minSize);
+            item->setData(Qt::UserRole + 3, list[i].taper);
             if (list[i].size == m_size->value())
                 m_presets->setCurrentItem(item);
         }
@@ -421,7 +460,8 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
     // Then the ones the user made for this kind of tool.
     if (draws) {
         QStringList const own = settings().value(QStringLiteral("presets/") + QLatin1String(brush ? "brush" : eraser ? "eraser" : "pencil")).toStringList();
-        for (QString const& entry : own) {
+        for (int index = 0; index < own.size(); ++index) {
+            QString const& entry = own[index];
             QStringList const parts = entry.split(QLatin1Char('|'));
             int const width = parts.value(1).toInt();
             if (parts.size() < 2 || parts.size() > 3 || width < 1)
@@ -434,6 +474,34 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
             item->setData(Qt::UserRole, width);
             if (parts.size() == 3)
                 item->setData(Qt::UserRole + 1, parts[2].toInt());
+            item->setData(Qt::UserRole + 4, index);       // one of the user's own: which
         }
     }
+}
+
+void ToolProperties::setPresetView(int view)
+{
+    // 0: small pictures of the stroke; 1: large ones; 2: the names alone.
+    view = std::clamp(view, 0, 2);
+    settings().setValue(QStringLiteral("tools/presetView"), view);
+    m_presets->setIconSize(view == 0 ? QSize(120, 26) : view == 1 ? QSize(180, 40) : QSize(0, 0));
+    m_presets->setProperty("presetView", view);
+}
+
+bool ToolProperties::updatePreset(int index)
+{
+    // One of the user's own presets of the tool in hand: its size and smoothing made those now in Tool Properties.
+    using T = Canvas::Tool;
+    int const tool = m_canvas->tool();
+    char const* const kind = tool == T::Brush ? "brush" : tool == T::Eraser ? "eraser" : "pencil";
+    QStringList own = settings().value(QStringLiteral("presets/") + QLatin1String(kind)).toStringList();
+    if (index < 0 || index >= own.size())
+        return false;
+    QString const name = own[index].section(QLatin1Char('|'), 0, 0);
+    QSpinBox const* const smoothing = findChild<QSpinBox*>(tr("Smoothing"));
+    own[index] = tool == T::Eraser || !smoothing ? QStringLiteral("%1|%2").arg(name).arg(m_size->value())
+                                                 : QStringLiteral("%1|%2|%3").arg(name).arg(m_size->value()).arg(smoothing->value());
+    settings().setValue(QStringLiteral("presets/") + QLatin1String(kind), own);
+    showFor(tool);
+    return true;
 }

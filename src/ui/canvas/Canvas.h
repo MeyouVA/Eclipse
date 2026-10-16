@@ -358,6 +358,9 @@ public:
         update();
     }
     bool hasOwnStamp() const { return m_stampOwn; }
+    // The Stamp tool: each stamp made smaller by up to this much at random (per cent; 0: all as big as the scale says).
+    void setStampRandomSize(int percent) { m_stampRandomSize = std::clamp(percent, 0, 90); }
+    int stampRandomSize() const { return m_stampRandomSize; }
     // A stamp may hold several drawings: each click puts down the next of them (or any one, at random).
     int stampDrawingCount() const { return m_stampOwn ? int(std::max<qsizetype>(m_stampSet.size(), 1)) : 1; }
     int stampTurn() const { return m_stampTurn; }
@@ -1330,6 +1333,7 @@ private:
     bool m_stampRandom = false;
     void keepStamp(QVector<Drawing> const& drawings);
     int m_stampScale = 100;
+    int m_stampRandomSize = 0;
     QPointF m_hoverWidget;       // where the pointer is (in the view)
     Drawing stampNow() const;
     void stampAt(QPointF p);

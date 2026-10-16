@@ -34,6 +34,10 @@ public:
     void showFor(int tool);
     // A thickness stencil of your own, by this name, from the pencil line selected (and chosen). False with none selected.
     bool makeStencil(QString const& name);
+    // One of the user's own presets of the tool in hand (by its place among them) made the size and smoothing now set.
+    bool updatePreset(int index);
+    // The presets list: shown with small or large pictures, or as names only (its right-click menu).
+    void setPresetView(int view);
     // The same for the tool in hand: the presets may have changed.
     void refresh();
     // A stroke of a given thickness on a light card: what a tool will draw.
@@ -86,6 +90,7 @@ private:
     QLayout* m_lineModeRow = nullptr;
     QLayout* m_stencilRow = nullptr;
     QLayout* m_retouchRow = nullptr;
+    QSpinBox* m_stampRandomSize = nullptr;
     void fillStencils(QComboBox* box);
     QCheckBox* m_lineFill = nullptr;
     // The line options: the rows of each (the Brush, the Pencil, the Stroke tool show those that are theirs).

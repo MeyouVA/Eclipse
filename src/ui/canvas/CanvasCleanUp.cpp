@@ -439,7 +439,7 @@ void Canvas::keepStamp(QVector<Drawing> const& drawings)
 void Canvas::stampAt(QPointF p)
 {
     Drawing const stamp = stampNow();
-    double const k = m_stampScale / 100.0;
+    double const k = m_stampScale / 100.0 * (1.0 - QRandomGenerator::global()->bounded(1.0) * m_stampRandomSize / 100.0);
     QTransform const place = QTransform::fromScale(k, k) * QTransform::fromTranslate(p.x(), p.y());
     Drawing edited = currentDrawing() ? *currentDrawing() : Drawing();
     // Stamped, its parts are one thing: picked together.

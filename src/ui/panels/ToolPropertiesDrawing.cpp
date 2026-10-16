@@ -535,6 +535,18 @@ void ToolProperties::addSelectRows()
     m_stampScale->setToolTip(tr("How big the stamp comes out. To stamp artwork of your own: select it, then Drawing > Create Stamp from Selection."));
     connect(m_stampScale, &QSpinBox::valueChanged, m_canvas, &Canvas::setStampScale);
     m_form->addRow(tr("Scale"), m_stampScale);
+    m_stampRandomSize = new QSpinBox(this);
+    m_stampRandomSize->setObjectName(QStringLiteral("StampRandomSize"));
+    m_stampRandomSize->setRange(0, 90);
+    m_stampRandomSize->setSuffix(QStringLiteral(" %"));
+    m_stampRandomSize->setToolTip(tr("Each stamp is made smaller by up to this much, at random: 0, all of them as big as the scale says."));
+    m_stampRandomSize->setValue(std::clamp(settings().value(QStringLiteral("tools/stampRandomSize"), 0).toInt(), 0, 90));
+    m_canvas->setStampRandomSize(m_stampRandomSize->value());
+    connect(m_stampRandomSize, &QSpinBox::valueChanged, this, [this](int v) {
+        m_canvas->setStampRandomSize(v);
+        settings().setValue(QStringLiteral("tools/stampRandomSize"), v);
+    });
+    m_form->addRow(tr("Random Size"), m_stampRandomSize);
     {
         // Which stamp: the star, or one of those made with Create Stamp from Selection.
         m_stampRow = new QWidget(this);
