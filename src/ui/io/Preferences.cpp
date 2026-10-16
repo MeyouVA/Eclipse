@@ -293,6 +293,7 @@ void MainWindow::applyPreferences()
     for (QWidget* const w : findChildren<QWidget*>())
         w->update();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
+    m_canvas->setPencilLinesOpacity(s.value(QStringLiteral("prefs/pencilLinesOpacity"), 100).toInt());
     m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
     // A drawing has four sheets; two of them - overlay and underlay - are out of the way
     // unless they are asked for.
@@ -909,6 +910,13 @@ void MainWindow::onActionPreferences()
     thumbnails->setToolTip(tr("How big the pictures are in the Library and in Drawing Substitution."));
     thumbnails->setValue(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt());
     drawingLayout->addRow(tr("Thumbnail size"), thumbnails);
+    QSpinBox* const lineOpacity = new QSpinBox(drawing);
+    lineOpacity->setObjectName(QStringLiteral("PrefPencilLinesOpacity"));
+    lineOpacity->setRange(0, 100);
+    lineOpacity->setSuffix(tr(" %"));
+    lineOpacity->setToolTip(tr("How strongly pencil lines show in the views (what is exported is not changed)."));
+    lineOpacity->setValue(s.value(QStringLiteral("prefs/pencilLinesOpacity"), 100).toInt());
+    drawingLayout->addRow(tr("Pencil lines opacity"), lineOpacity);
 
     // Colours: of the view round the frame, and of the onion skin.
     QGroupBox* const colours = new QGroupBox(tr("Colours"), &dialog);
@@ -1137,6 +1145,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionBrightnessAlpha"), onionBrightness->isChecked());
     s.setValue(QStringLiteral("prefs/lineArtBitmap"), lineArtBitmap->isChecked());
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
+    s.setValue(QStringLiteral("prefs/pencilLinesOpacity"), lineOpacity->value());
     s.setValue(QStringLiteral("prefs/onionOver"), onionOver->isChecked());
     s.setValue(QStringLiteral("prefs/selectLasso"), selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/showStrokes"), showStrokes->isChecked());

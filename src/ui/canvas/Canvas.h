@@ -71,6 +71,8 @@ public:
         // Dragged across, the current layer turns about the line up it; dragged up or down, about the line across it
         // (in space, as Layer Properties' turn across and up): keyframed on the current frame.
         Turn3D,
+        // Rubbed along pencil lines, it makes them thicker there (or thinner: its mode, or Alt), more the longer it is rubbed.
+        PencilRetouch,
     };
     // True for the paint bucket in any of its ways.
     static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
@@ -122,7 +124,20 @@ public:
     bool bendingLine() const { return m_bending; }
     // The thickness stencils of the Pencil: how thick a new pencil line is along its length.
     enum Stencil { StencilUniform, StencilTapered, StencilTaperedStart, StencilTaperedEnd, StencilMediumTapered, StencilPointy, StencilFatEnds, StencilCount };
-    void setThicknessStencil(int stencil) { m_stencil = std::clamp(int(stencil), 0, int(StencilCount) - 1); }
+    void setThicknessStencil(int stencil) { m_stencil = std::clamp(int(stencil), 0, int(StencilCount)); }
+    // A stencil of your own (StencilCount): the thickness at evenly spaced places from the start of the line to its end.
+    void setCustomStencil(QVector<float> const& profile) { m_customStencil = profile; }
+    static float profileThickness(QVector<float> const& profile, double along);
+    static void applyProfile(Stroke& stroke, QVector<float> const& profile);
+    // The thickness of the first line selected along its length (32 places), for a stencil of your own; empty with none.
+    QVector<float> selectedLineProfile() const;
+    // The Pencil Retouch tool: thicker (0) or thinner (1) where it is rubbed.
+    void setRetouchMode(int mode) { m_retouchMode = std::clamp(mode, 0, 1); }
+    int retouchMode() const { return m_retouchMode; }
+    // Preferences: how strongly pencil lines show in the views (per cent; what is exported is not changed).
+    void setPencilLinesOpacity(int percent) { m_pencilOpacity = std::clamp(percent, 0, 100); update(); }
+    // The lines selected made wiggly: bent this far to each side (scene units), every so far along; one step to undo.
+    void wiggleSelectedLines(double amount, double every, quint32 seed);
     int thicknessStencil() const { return m_stencil; }
     // A stencil's thickness at `along` (0: the start of the line, 1: its end), as a share of the full thickness.
     static float stencilThickness(int stencil, double along);
@@ -608,6 +623,8 @@ public:
     static void paintLayerDrawing(QPainter& painter, Scene const& scene, int layer, int frame, Drawing const& drawing,
                                   double opacity, QTransform const& sceneToDevice, bool everySheet = false);
     static void paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
+    // How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
+    static inline double s_lineOpacity = 1.0;
     static void paintFill(QPainter& painter, Fill const& fill, QBrush const& color);
 
 public slots:
@@ -653,6 +670,8 @@ public slots:
     void onActionJoinPencilLines();
     void onActionSplitPencilLine();
     void onActionReversePencilThickness();
+    // Drawing > Pencil Line Wiggle...: asks how much, then wiggles the lines selected.
+    void onActionPencilLineWiggle();
     void onActionDeflateThickness();
     void onActionSetThickness();
     void onActionDeleteNonSelection();
@@ -1033,6 +1052,10 @@ private:
     int m_stabiliser = StabiliserOff;
     int m_pressureFeel = 50;
     int m_stencil = StencilUniform;
+    QVector<float> m_customStencil;
+    int m_retouchMode = 0;
+    bool m_retouchThinner = false;
+    int m_pencilOpacity = 100;
     bool m_lineAutoFill = false;
     LineOptions m_lineOptions;
     // After a line is drawn: the invisible stroke that closes it, and its joining to a line it was built on.
@@ -1149,7 +1172,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -1326,6 +1349,7 @@ private:
     QPointF splineOffset() const;
     void repaintTo(QPointF p, double tolerance);
     void smoothAt(QPointF p);
+    void retouchAt(QPointF p, bool thinner);
     // The Envelope tool: the outline round what is selected as it was when a point of it was taken
     // hold of, as it is pulled to, and the point in hand.
     QVector<QPointF> m_envRest, m_envNow;

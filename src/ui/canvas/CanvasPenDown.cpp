@@ -180,6 +180,17 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         thicknessDown(p, modifiers);
         return;
     }
+    if (m_tool == PencilRetouch) {
+        if (Drawing const* const d = currentDrawing()) {
+            m_eraseArt = *d;
+            m_inked = false;
+            m_drag = DragRetouch;
+            m_dragNow = p;
+            m_retouchThinner = (m_retouchMode == 1) != bool(modifiers & Qt::AltModifier);
+            retouchAt(p, m_retouchThinner);
+        }
+        return;
+    }
     if (m_tool == SmoothEditor) {
         if (Drawing const* const d = currentDrawing()) {
             m_eraseArt = *d;

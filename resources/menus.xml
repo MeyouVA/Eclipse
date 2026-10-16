@@ -251,6 +251,7 @@
    <item id="DistributeToLayers" icon="anim/distribute" text="&amp;Distribute to Layers" responder="camera" slot="onActionDistributeToLayers()"/>
    <submenu id="menu.arrange" text="&amp;Arrange"/>
    <submenu id="menu.convert" text="&amp;Convert"/>
+   <item id="PencilLineWiggle" icon="anim/pencilprops" text="Pencil Line &amp;Wiggle..." shortcut="shortcut.pencilLineWiggle" responder="camera" slot="onActionPencilLineWiggle()"/>
    <item id="PencilLineProperties" icon="anim/pencilprops" text="Edit Pencil &amp;Lines Properties..." shortcut="shortcut.pencilLineProperties" responder="camera" slot="onActionPencilLineProperties()"/>
    <item id="ImportTexture" icon="anim/textureimport" text="&amp;Import Texture from Picture..." responder="camera" slot="onActionImportTexture()"/>
    <item id="NewTexture" icon="anim/texturenew" text="&amp;New Texture..." responder="camera" slot="onActionNewTexture()"/>
@@ -523,6 +524,7 @@
 <item id="ToolContourEditor" icon="tool/contour" text="&amp;Contour Editor" shortcut="shortcut.toolContour" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="contour"/>
   <item id="ToolSmoothEditor" icon="tool/smootheditor" text="Smoot&amp;h Editor" shortcut="shortcut.toolSmoothEditor" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="smootheditor"/>
   <item id="ToolPencilEditor" icon="tool/pencileditor" text="Pencil &amp;Editor" shortcut="shortcut.toolPencilEditor" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencileditor"/>
+  <item id="ToolPencilRetouch" icon="tool/pencilretouch" text="Pencil &amp;Retouch" shortcut="shortcut.toolPencilRetouch" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencilretouch"/>
   <item id="ToolBrush" icon="tool/brush" text="&amp;Brush" shortcut="shortcut.toolBrush" checkable="true" checked="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="brush"/>
   <item id="ToolStamp" icon="tool/stamp" text="Sta&amp;mp" shortcut="shortcut.toolStamp" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="stamp"/>
 <item id="ToolPencil" icon="tool/pencil" text="Pe&amp;ncil" shortcut="shortcut.toolPencil" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencil"/>

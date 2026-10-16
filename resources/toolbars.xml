@@ -41,6 +41,7 @@
   <multibutton id="selectTools2">
    <item id="ToolContourEditor"/>
    <item id="ToolPencilEditor"/>
+   <item id="ToolPencilRetouch"/>
    <item id="ToolSmoothEditor"/>
    <item id="ToolMorphing"/>
   </multibutton>

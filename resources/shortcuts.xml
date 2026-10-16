@@ -216,6 +216,8 @@
   <shortcut id="shortcut.markNone" text="Remove Drawing Mark" value=""/>
   <shortcut id="shortcut.toolPerspective" text="Perspective Tool" value="Alt+0"/>
   <shortcut id="shortcut.toolPencilEditor" text="Pencil Editor Tool" value=""/>
+  <shortcut id="shortcut.toolPencilRetouch" text="Pencil Retouch Tool" value=""/>
+  <shortcut id="shortcut.pencilLineWiggle" text="Pencil Line Wiggle" value=""/>
   <shortcut id="shortcut.renderAndPlay" text="Render and Play" value="Ctrl+Return"/>
   <shortcut id="shortcut.miniPlayback" text="Mini Playback" value="Shift+Return"/>
   <shortcut id="shortcut.tagLayers" text="Tag Selected Layers" value=""/>

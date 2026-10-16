@@ -6,6 +6,9 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QInputDialog>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
@@ -161,17 +164,77 @@ void ToolProperties::addSizeRows()
     {
         QComboBox* const stencil = new QComboBox(this);
         stencil->setObjectName(QStringLiteral("ThicknessStencil"));
-        stencil->addItems({tr("Uniform"), tr("Tapered"), tr("Tapered Beginning"), tr("Tapered End"), tr("Medium Tapered"), tr("Pointy"), tr("Fat Ends")});
         stencil->setToolTip(tr("The thickness stencil: how thick a new pencil line is from its start to its end."));
-        int const kept = std::clamp(settings().value(QStringLiteral("tools/thicknessStencil"), 0).toInt(), 0, int(Canvas::StencilCount) - 1);
-        stencil->setCurrentIndex(kept);
-        m_canvas->setThicknessStencil(kept);
-        connect(stencil, &QComboBox::currentIndexChanged, this, [this](int i) {
-            m_canvas->setThicknessStencil(i);
+        fillStencils(stencil);
+        // Which one: one of the usual ones by number, or one of your own by name.
+        auto choose = [this, stencil](int i) {
+            if (i < 0)
+                return;
+            QVariant const own = stencil->itemData(i);
+            if (own.isValid()) {
+                QVector<float> profile;
+                for (QString const& share : settings().value(QStringLiteral("tools/stencils/") + own.toString()).toString().split(QLatin1Char(','), Qt::SkipEmptyParts))
+                    profile.push_back(share.toFloat());
+                m_canvas->setCustomStencil(profile);
+                m_canvas->setThicknessStencil(Canvas::StencilCount);
+                settings().setValue(QStringLiteral("tools/thicknessStencilName"), own.toString());
+            } else {
+                m_canvas->setThicknessStencil(i);
+                settings().remove(QStringLiteral("tools/thicknessStencilName"));
+            }
             settings().setValue(QStringLiteral("tools/thicknessStencil"), i);
+        };
+        connect(stencil, &QComboBox::currentIndexChanged, this, choose);
+        QString const keptName = settings().value(QStringLiteral("tools/thicknessStencilName")).toString();
+        int const kept = keptName.isEmpty() ? std::clamp(settings().value(QStringLiteral("tools/thicknessStencil"), 0).toInt(), 0, int(Canvas::StencilCount) - 1)
+                                            : std::max(0, stencil->findData(keptName));
+        stencil->setCurrentIndex(kept);
+        choose(kept);
+        // Stencils of your own: made from the thickness of the line selected; renamed; deleted.
+        QToolButton* const more = new QToolButton(this);
+        more->setObjectName(QStringLiteral("StencilMenu"));
+        more->setText(QStringLiteral("..."));
+        more->setPopupMode(QToolButton::InstantPopup);
+        QMenu* const menu = new QMenu(more);
+        QAction* const create = menu->addAction(tr("New Thickness Stencil"));
+        create->setObjectName(QStringLiteral("NewThicknessStencil"));
+        create->setToolTip(tr("A stencil of your own, from the thickness of the pencil line selected (select it with the Select tool first)."));
+        QAction* const rename = menu->addAction(tr("Rename Thickness Stencil"));
+        QAction* const remove = menu->addAction(tr("Delete Thickness Stencil"));
+        more->setMenu(menu);
+        connect(create, &QAction::triggered, this, [this] {
+            if (m_canvas->selectedLineProfile().isEmpty()) {
+                QMessageBox::information(this, tr("New Thickness Stencil"), tr("Select a pencil line first (the Select tool): the stencil is made from its thickness."));
+                return;
+            }
+            QString const name = QInputDialog::getText(this, tr("New Thickness Stencil"), tr("Thickness Stencil Name:"), QLineEdit::Normal, tr("Thickness Stencil 1"));
+            if (!name.trimmed().isEmpty())
+                makeStencil(name.trimmed());
+        });
+        connect(rename, &QAction::triggered, this, [this, stencil] {
+            QVariant const own = stencil->currentData();
+            if (!own.isValid())
+                return;
+            QString const name = QInputDialog::getText(this, tr("Rename Thickness Stencil"), tr("Thickness Stencil Name:"), QLineEdit::Normal, own.toString());
+            if (name.trimmed().isEmpty() || name.trimmed() == own.toString())
+                return;
+            QVariant const shares = settings().value(QStringLiteral("tools/stencils/") + own.toString());
+            settings().remove(QStringLiteral("tools/stencils/") + own.toString());
+            settings().setValue(QStringLiteral("tools/stencils/") + name.trimmed(), shares);
+            fillStencils(stencil);
+            stencil->setCurrentIndex(std::max(0, stencil->findData(name.trimmed())));
+        });
+        connect(remove, &QAction::triggered, this, [this, stencil] {
+            QVariant const own = stencil->currentData();
+            if (!own.isValid())
+                return;
+            settings().remove(QStringLiteral("tools/stencils/") + own.toString());
+            fillStencils(stencil);
+            stencil->setCurrentIndex(0);
         });
         QHBoxLayout* const row = new QHBoxLayout;
         row->addWidget(stencil, 1);
+        row->addWidget(more);
         m_form->addRow(tr("Thickness Stencil"), row);
         m_stencilRow = row;
     }
@@ -200,6 +263,24 @@ void ToolProperties::addSizeRows()
     });
     m_form->addRow(m_scaleThickness);
     addLineOptionRows();
+    // The Pencil Retouch tool: thicker or thinner where it is rubbed.
+    {
+        QComboBox* const mode = new QComboBox(this);
+        mode->setObjectName(QStringLiteral("RetouchMode"));
+        mode->addItems({tr("Increase Thickness"), tr("Decrease Thickness")});
+        mode->setToolTip(tr("Rubbed along pencil lines, the Pencil Retouch tool makes them thicker or thinner there. Alt does the other."));
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/retouchMode"), 0).toInt(), 0, 1);
+        mode->setCurrentIndex(kept);
+        m_canvas->setRetouchMode(kept);
+        connect(mode, &QComboBox::currentIndexChanged, this, [this](int i) {
+            m_canvas->setRetouchMode(i);
+            settings().setValue(QStringLiteral("tools/retouchMode"), i);
+        });
+        QHBoxLayout* const row = new QHBoxLayout;
+        row->addWidget(mode, 1);
+        m_form->addRow(tr("Retouch"), row);
+        m_retouchRow = row;
+    }
     // The Rectangle and the Ellipse: painted inside as they are drawn.
     m_shapeFill = new QCheckBox(tr("Auto Fill"), this);
     m_shapeFill->setObjectName(QStringLiteral("ShapeAutoFill"));
@@ -765,4 +846,33 @@ void ToolProperties::addLineOptionRows()
     box(tr("Line Building Mode"), tr("In this mode, strokes drawn in small increments will be merged into a single line:\n"
                                      "a line begun or ended at the end of a line of its colour becomes one line with it."), "building");
     box(tr("Draw Stroke as Straight Lines"), tr("The Stroke tool draws straight pieces from point to point instead of curves."), "straight");
+}
+
+void ToolProperties::fillStencils(QComboBox* box)
+{
+    QSignalBlocker const quiet(box);
+    box->clear();
+    box->addItems({tr("Uniform"), tr("Tapered"), tr("Tapered Beginning"), tr("Tapered End"), tr("Medium Tapered"), tr("Pointy"), tr("Fat Ends")});
+    QSettings s = settings();
+    s.beginGroup(QStringLiteral("tools/stencils"));
+    QStringList names = s.childKeys();
+    s.endGroup();
+    names.sort(Qt::CaseInsensitive);
+    for (QString const& name : std::as_const(names))
+        box->addItem(name, name);
+}
+
+bool ToolProperties::makeStencil(QString const& name)
+{
+    QVector<float> const profile = m_canvas->selectedLineProfile();
+    QComboBox* const box = findChild<QComboBox*>(QStringLiteral("ThicknessStencil"));
+    if (profile.isEmpty() || name.isEmpty() || !box)
+        return false;
+    QStringList shares;
+    for (float share : profile)
+        shares << QString::number(share, 'g', 4);
+    settings().setValue(QStringLiteral("tools/stencils/") + name, shares.join(QLatin1Char(',')));
+    fillStencils(box);
+    box->setCurrentIndex(std::max(0, box->findData(name)));
+    return true;
 }

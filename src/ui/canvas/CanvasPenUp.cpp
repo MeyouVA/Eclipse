@@ -299,11 +299,11 @@ void Canvas::penUp()
         update();
         return;
     }
-    if (drag == DragInk || drag == DragSmooth) {
+    if (drag == DragInk || drag == DragSmooth || drag == DragRetouch) {
         m_drag = DragNone;
         if (m_inked) {
             Drawing const art = m_eraseArt;
-            commitDrawing(art, drag == DragInk ? tr("Ink") : tr("Smooth"));
+            commitDrawing(art, drag == DragInk ? tr("Ink") : drag == DragRetouch ? tr("Pencil Retouch") : tr("Smooth"));
         }
         m_eraseArt = Drawing();
         m_inked = false;
@@ -384,7 +384,9 @@ void Canvas::penUp()
         // The smoothing setting is how far, in pixels of the screen, the line may stray
         // from the samples: from a fifth of a pixel to four.
         double const tolerance = (0.2 + m_smoothing * 0.038) / m_zoom;
-        if (m_tool == Pencil && m_stencil != StencilUniform)
+        if (m_tool == Pencil && m_stencil == StencilCount && !m_customStencil.isEmpty())
+            applyProfile(m_stroke, m_customStencil);
+        else if (m_tool == Pencil && m_stencil != StencilUniform && m_stencil < StencilCount)
             applyStencil(m_stroke, m_stencil);
         // The line options (Tool Properties): taper and speed on the Brush; trimmed and carried on to the lines it meets.
         double const near = 12.0 / std::max(m_zoom, 1e-6);

@@ -293,14 +293,14 @@ void ToolProperties::showFor(int tool)
     using T = Canvas::Tool;
     bool const brush = tool == T::Brush, pencil = tool == T::Pencil, eraser = tool == T::Eraser;
     bool const shape = tool == T::Line || tool == T::Rectangle || tool == T::Ellipse || tool == T::Polyline;
-    bool const draws = brush || pencil || eraser || shape || tool == T::SmoothEditor || tool == T::RepaintBrush;   // (these have a size too)
+    bool const draws = brush || pencil || eraser || shape || tool == T::SmoothEditor || tool == T::RepaintBrush || tool == T::PencilRetouch;   // (these have a size too)
     bool const lines = pencil || shape || tool == T::Select || tool == T::ContourEditor;
     bool const text = tool == T::Text, contour = tool == T::ContourEditor;
     static char const* const ids[] = {"ToolSelect", "ToolTransform", "ToolBrush",  "ToolEraser",    "ToolPaint",  "ToolHand",
                                       "ToolPencil", "ToolLine",      "ToolRectangle", "ToolEllipse", "ToolContourEditor",
                                       "ToolRigging", "ToolIK", "ToolDropper", "ToolZoom", "ToolPolyline",
                                       "ToolPaintUnpainted", "ToolRepaint", "ToolUnpaint", "ToolText", "ToolRotateView", "ToolCutter", "ToolStroke", "ToolCloseGap",
-                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D"};
+                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D", "ToolPencilRetouch"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
     bool const any = draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
@@ -328,6 +328,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_stabiliserRow, brush || pencil);
     m_form->setRowVisible(m_lineModeRow, tool == T::Line);
     m_form->setRowVisible(m_stencilRow, pencil);
+    m_form->setRowVisible(m_retouchRow, tool == T::PencilRetouch);
     m_form->setRowVisible(m_lineFill, brush || pencil);
     // The line options: which tool has which.
     for (QLayout* const row : std::as_const(m_brushLineRows))

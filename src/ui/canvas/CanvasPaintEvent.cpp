@@ -146,7 +146,10 @@ void Canvas::paintEvent(QPaintEvent*)
 {
     QElapsedTimer drawing;
     drawing.start();
+    // Preferences: pencil lines shown fainter in the view (only here: what is exported keeps them as they are).
+    s_lineOpacity = m_pencilOpacity / 100.0;
     paintView();
+    s_lineOpacity = 1.0;
     m_lastDrawMs = drawing.nsecsElapsed() / 1.0e6;
     m_averageDrawMs = m_averageDrawMs <= 0.0 ? m_lastDrawMs : m_averageDrawMs * 0.9 + m_lastDrawMs * 0.1;
     if (m_performanceReport) {
@@ -206,7 +209,7 @@ void Canvas::paintView()
     bool const transforming = m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate || m_drag == DragPoint || m_drag == DragHandle;
     // The eraser cuts as it goes: the drawing is shown as it is so far, before it is in the scene.
     // (So is the gradient being placed: the area is shown with it where the pointer has it.)
-    bool const erasing = (m_drag == DragErase && (m_eraserCuts || bitmapNow()) && m_eraseAny) || m_drag == DragGradient || m_drag == DragThickness || ((m_drag == DragInk || m_drag == DragSmooth || m_drag == DragRepaint) && m_inked) || m_drag == DragEnvelope;
+    bool const erasing = (m_drag == DragErase && (m_eraserCuts || bitmapNow()) && m_eraseAny) || m_drag == DragGradient || m_drag == DragThickness || ((m_drag == DragInk || m_drag == DragSmooth || m_drag == DragRepaint || m_drag == DragRetouch) && m_inked) || m_drag == DragEnvelope;
     QTransform const view = viewTransform();
     // The grid, when it is to lie behind the drawings.
     if (m_grid && m_gridUnder && !m_playing)

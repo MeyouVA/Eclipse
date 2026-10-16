@@ -1,5 +1,6 @@
 // Eclipse - the Camera view: tidying what is drawn - smooth, reduce points, flatten, group, colour art from lines.
 #include "ui/canvas/Canvas.h"
+#include <QRandomGenerator>
 #include <QLineF>
 #include <algorithm>
 
@@ -1055,4 +1056,141 @@ void Canvas::finishDrawnLine(double reach)
     }
     if (changed)
         commitDrawing(edited, tr("Draw Stroke"));
+}
+
+// ---- thickness stencils of your own, the Pencil Retouch tool, Pencil Line Wiggle ---------------------------------------
+
+float Canvas::profileThickness(QVector<float> const& profile, double along)
+{
+    if (profile.isEmpty())
+        return 1.0f;
+    if (profile.size() == 1)
+        return profile.first();
+    double const at = std::clamp(along, 0.0, 1.0) * (profile.size() - 1);
+    int const k = std::min(int(at), int(profile.size()) - 2);
+    double const t = at - k;
+    return float(std::max(0.05, profile[k] + (profile[k + 1] - profile[k]) * t));
+}
+
+void Canvas::applyProfile(Stroke& stroke, QVector<float> const& profile)
+{
+    QVector<double> const along = distancesAlong(stroke.points);
+    double const total = along.isEmpty() ? 0.0 : along.last();
+    if (total <= 0.0)
+        return;
+    for (int i = 0; i < stroke.points.size(); ++i)
+        stroke.points[i].pressure *= profileThickness(profile, along[i] / total);
+}
+
+QVector<float> Canvas::selectedLineProfile() const
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || m_selStrokes.isEmpty() || m_selStrokes.first() < 0 || m_selStrokes.first() >= d->strokes.size())
+        return {};
+    // Along the line as drawn (its curve), the thickness at 32 evenly spaced places, as shares of the thickest.
+    QVector<StrokePoint> const run = d->strokes[m_selStrokes.first()].path();
+    QVector<double> const along = distancesAlong(run);
+    double const total = along.isEmpty() ? 0.0 : along.last();
+    if (run.size() < 2 || total <= 0.0)
+        return {};
+    QVector<float> profile;
+    int k = 0;
+    for (int i = 0; i < 32; ++i) {
+        double const at = total * i / 31.0;
+        while (k + 2 < run.size() && along[k + 1] < at)
+            ++k;
+        double const span = along[k + 1] - along[k];
+        double const t = span > 0.0 ? std::clamp((at - along[k]) / span, 0.0, 1.0) : 0.0;
+        profile.push_back(float(run[k].pressure + (run[k + 1].pressure - run[k].pressure) * t));
+    }
+    float const most = *std::max_element(profile.begin(), profile.end());
+    if (most <= 0.0f)
+        return {};
+    for (float& share : profile)
+        share /= most;
+    return profile;
+}
+
+void Canvas::retouchAt(QPointF p, bool thinner)
+{
+    // As far round the pen as the size in Tool Properties: the lines there get a point under the pen if they have none
+    // near it, then each point near is made thicker (or thinner), most at the middle of the pen.
+    double const reach = std::max(m_brushWidth / 2.0, 4.0 / std::max(m_zoom, 1e-6));
+    for (Stroke& line : m_eraseArt.strokes) {
+        if (line.width <= 0.0f || line.points.size() < 2 || !line.hit(p, reach))
+            continue;
+        bool pointNear = false;
+        for (StrokePoint const& point : std::as_const(line.points))
+            pointNear = pointNear || QLineF(point.pos, p).length() <= reach * 0.5;
+        if (!pointNear)
+            line.insertPoint(p);
+        for (StrokePoint& point : line.points) {
+            double const distance = QLineF(point.pos, p).length();
+            if (distance > reach)
+                continue;
+            double const fall = 1.0 - distance / reach;
+            double const step = 1.0 + 0.15 * fall * (thinner ? -1.0 : 1.0);
+            point.pressure = float(std::clamp(point.pressure * step, 0.05, 4.0));
+            m_inked = true;
+        }
+    }
+    update();
+}
+
+void Canvas::wiggleSelectedLines(double amount, double every, quint32 seed)
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || m_selStrokes.isEmpty() || amount <= 0.0 || every <= 0.0) {
+        emit message(tr("Select pencil lines first (the Select tool)."));
+        return;
+    }
+    QRandomGenerator random(seed);
+    Drawing edited = *d;
+    for (int index : std::as_const(m_selStrokes)) {
+        if (index < 0 || index >= edited.strokes.size())
+            continue;
+        Stroke& line = edited.strokes[index];
+        QVector<StrokePoint> const run = line.path();
+        QVector<double> const along = distancesAlong(run);
+        double const total = along.isEmpty() ? 0.0 : along.last();
+        if (run.size() < 2 || total <= 0.0)
+            continue;
+        // Places every so far along the line, each pushed to one side or the other of it (the ends stay put).
+        int const count = std::max(2, int(std::ceil(total / every)));
+        QVector<StrokePoint> wiggled;
+        int k = 0;
+        for (int i = 0; i <= count; ++i) {
+            double const at = total * i / count;
+            while (k + 2 < run.size() && along[k + 1] < at)
+                ++k;
+            double const span = along[k + 1] - along[k];
+            double const t = span > 0.0 ? std::clamp((at - along[k]) / span, 0.0, 1.0) : 0.0;
+            QPointF const pos = run[k].pos + (run[k + 1].pos - run[k].pos) * t;
+            QPointF const way = run[k + 1].pos - run[k].pos;
+            double const length = std::hypot(way.x(), way.y());
+            QPointF const side = length > 1e-9 ? QPointF(-way.y(), way.x()) / length : QPointF();
+            double const push = (i == 0 || i == count) ? 0.0 : (random.generateDouble() * 2.0 - 1.0) * amount;
+            wiggled.push_back({pos + side * push, float(run[k].pressure + (run[k + 1].pressure - run[k].pressure) * t)});
+        }
+        line.points = wiggled;
+        line.curve = false;
+        line.fit(std::max(amount * 0.05, 0.01), 180.0);
+    }
+    commitDrawing(edited, tr("Pencil Line Wiggle"));
+    update();
+}
+
+void Canvas::onActionPencilLineWiggle()
+{
+    if (m_selStrokes.isEmpty()) {
+        emit message(tr("Select pencil lines first (the Select tool)."));
+        return;
+    }
+    bool ok = false;
+    double const amount = QInputDialog::getDouble(this, tr("Pencil Line Wiggle"), tr("How far the line bends to each side:"), 4.0, 0.1, 500.0, 1, &ok);
+    if (!ok)
+        return;
+    double const every = QInputDialog::getDouble(this, tr("Pencil Line Wiggle"), tr("A bend every:"), 20.0, 1.0, 2000.0, 1, &ok);
+    if (ok)
+        wiggleSelectedLines(amount, every, QRandomGenerator::global()->generate());
 }

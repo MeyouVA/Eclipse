@@ -309,6 +309,16 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
 {
     if (stroke.points.isEmpty() || stroke.width <= 0.0f)
         return;     // nothing drawn; or a line with no thickness, which is not seen
+    if (s_lineOpacity < 1.0) {
+        double const was = painter.opacity();
+        painter.setOpacity(was * s_lineOpacity);
+        double const keep = s_lineOpacity;
+        s_lineOpacity = 1.0;
+        paintStroke(painter, stroke, color);
+        s_lineOpacity = keep;
+        painter.setOpacity(was);
+        return;
+    }
     if (stroke.texture != 0 && stroke.textureAmount > 0.0f && !PencilTexture::tile(stroke.texture).isNull()) {
         paintTexturedStroke(painter, stroke, color);
         return;
