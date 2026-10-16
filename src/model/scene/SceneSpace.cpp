@@ -258,9 +258,34 @@ QVector<int> Scene::drawOrder(int frame) const
         depth[i] = depthOf(i, frame);
         flat = flat && depth[i] == depth[0];
     }
-    for (int i = 0; i < layers.size(); ++i)
+    // In the order of the layers' tree, as Harmony draws them (and the Timeline lists them): a layer, then just behind it
+    // what hangs from it (the front one first), and so on down - from the back here.
+    int const n = int(layers.size());
+    QVector<QVector<int>> children(n);
+    QVector<int> tops;
+    for (int l = n - 1; l >= 0; --l) {
+        int const parent = parentIndex(l);
+        (parent >= 0 && parent < n && parent != l ? children[parent] : tops).push_back(l);
+    }
+    QVector<int> front;
+    QVector<bool> seen(n, false);
+    auto visit = [&](auto&& self, int l, int guard) -> void {
+        if (seen[l] || guard > 256)
+            return;
+        seen[l] = true;
+        front.push_back(l);
+        for (int child : std::as_const(children[l]))
+            self(self, child, guard + 1);
+    };
+    for (int l : std::as_const(tops))
+        visit(visit, l, 0);
+    for (int l = n - 1; l >= 0; --l)
+        visit(visit, l, 0);     // (a loop a damaged file left)
+    for (int k = n - 1; k >= 0; --k) {
+        int const i = front[k];
         if (flat || !behindCamera(i, frame))
             order.push_back(i);
+    }
     if (!flat)
         std::stable_sort(order.begin(), order.end(), [&depth](int a, int b) { return depth[a] < depth[b]; });
     return order;
