@@ -193,6 +193,14 @@ public:
         float const least = m_tool == Brush ? float(m_minSize) / 100.0f : 0.0f;
         return least + (1.0f - least) * feltPressure(raw);
     }
+    // The Brush with a pen that tells its tilt: the more the pen leans, the thicker the line (Tilt Sensitivity, per cent).
+    void setTiltSensitivity(int percent) { m_tiltSensitivity = std::clamp(percent, 0, 100); }
+    int tiltSensitivity() const { return m_tiltSensitivity; }
+    static float tiltedPressure(float pressure, double xTilt, double yTilt, int sensitivity)
+    {
+        double const lean = std::clamp(std::hypot(xTilt, yTilt) / 60.0, 0.0, 1.0);
+        return float(pressure * (1.0 + sensitivity / 100.0 * lean * 1.5));
+    }
     // Preferences: the feel of the pen - 50 as it presses, more for a light touch (a little pressure goes a long way),
     // less for a heavy one.
     void setPressureFeel(int feel) { m_pressureFeel = std::clamp(feel, 1, 100); }
@@ -1054,6 +1062,7 @@ private:
     bool m_brushOutline = false;
     int m_stabiliser = StabiliserOff;
     int m_pressureFeel = 50;
+    int m_tiltSensitivity = 0;
     int m_stencil = StencilUniform;
     QVector<float> m_customStencil;
     int m_retouchMode = 0;

@@ -109,7 +109,9 @@ void Canvas::mouseReleaseEvent(QMouseEvent*)
 
 void Canvas::tabletEvent(QTabletEvent* event)
 {
-    float const pressure = pressureFor(float(std::clamp(event->pressure(), 0.05, 1.0)));
+    float pressure = pressureFor(float(std::clamp(event->pressure(), 0.05, 1.0)));
+    if (m_tool == Brush && m_tiltSensitivity > 0)
+        pressure = tiltedPressure(pressure, event->xTilt(), event->yTilt(), m_tiltSensitivity);
     switch (event->type()) {
     case QEvent::TabletPress:
         m_tabletActive = true;

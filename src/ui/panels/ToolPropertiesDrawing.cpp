@@ -837,6 +837,15 @@ void ToolProperties::addLineOptionRows()
     };
     number(tr("Start Taper"), tr("The Brush's line thins to a point at its start, over this share of its length."), "startTaper", 50);
     number(tr("End Taper"), tr("The Brush's line thins to a point at its end, over this share of its length."), "endTaper", 50);
+    {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/tiltSensitivity"), 0).toInt(), 0, 100);
+        m_canvas->setTiltSensitivity(kept);
+        m_brushLineRows.push_back(addSetting(tr("Tilt Sensitivity"), tr("With a pen that tells its tilt: the more the pen leans, the thicker the Brush's line."), 0, 100, kept,
+                                             QStringLiteral(" %"), [this](int v) {
+                                                 m_canvas->setTiltSensitivity(v);
+                                                 settings().setValue(QStringLiteral("tools/tiltSensitivity"), v);
+                                             }));
+    }
     number(tr("Speed Sensitivity"), tr("The faster the pen moves, the thinner the Brush's line (with Invert: the thicker)."), "speed", 100);
     auto box = [&](QString const& label, QString const& tip, char const* key) {
         QCheckBox* const check = new QCheckBox(label, this);
