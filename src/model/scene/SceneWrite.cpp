@@ -57,6 +57,18 @@ static QJsonObject strokeToJson(Stroke const& s)
     }
     if (!handles.isEmpty())
         o["handles"] = handles;
+    // Leans and opacities where they are not the usual: index, value.
+    QJsonArray leans, opacities;
+    for (int i = 0; i < s.points.size(); ++i) {
+        if (std::abs(s.points[i].lean) > 0.0005f)
+            leans << i << std::round(double(s.points[i].lean) * 1000.0) / 1000.0;
+        if (s.points[i].opacity < 0.9995f)
+            opacities << i << std::round(double(s.points[i].opacity) * 1000.0) / 1000.0;
+    }
+    if (!leans.isEmpty())
+        o["lean"] = leans;
+    if (!opacities.isEmpty())
+        o["opacity"] = opacities;
     if (s.join != Stroke::RoundJoin)
         o["join"] = s.join == Stroke::MitreJoin ? "mitre" : "bevel";
     if (s.capStart != Stroke::RoundCap)

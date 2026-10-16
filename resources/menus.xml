@@ -291,6 +291,8 @@
     <item id="PumpThickness" icon="anim/smooth" text="&amp;Pump Selection Thickness" shortcut="shortcut.pumpThickness" responder="camera" slot="onActionPumpThickness()"/>
     <item id="DeflateThickness" icon="anim/smooth" text="&amp;Deflate Selection Thickness" shortcut="shortcut.deflateThickness" responder="camera" slot="onActionDeflateThickness()"/>
     <item id="SetThickness" icon="anim/smooth" text="Set Selection &amp;Thickness..." shortcut="shortcut.setThickness" responder="camera" slot="onActionSetThickness()"/>
+    <item id="SetPencilSoftTip" icon="anim/smooth" text="Set Pencil Opacity So&amp;ft Tip" shortcut="shortcut.setPencilSoftTip" responder="camera" slot="onActionSetPencilSoftTip()"/>
+    <item id="SetPencilSoftTipAll" icon="anim/smooth" text="Set Pencil Opacity Soft Tip On All Drawings" shortcut="shortcut.setPencilSoftTipAll" responder="camera" slot="onActionSetPencilSoftTipAllDrawings()"/>
     <item id="ReversePencilThickness" icon="anim/smooth" text="Re&amp;verse Pencil Thickness" shortcut="shortcut.reversePencilThickness" responder="camera" slot="onActionReversePencilThickness()"/>
     <separator/>
     <item id="JoinPencilLines" icon="anim/smooth" text="&amp;Join Pencil Lines" shortcut="shortcut.joinPencilLines" responder="camera" slot="onActionJoinPencilLines()"/>

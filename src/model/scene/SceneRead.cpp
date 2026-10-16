@@ -113,6 +113,13 @@ static Stroke strokeFromJson(QJsonObject const& o)
         s.points[index].in = QPointF(handles[i + 1].toDouble(), handles[i + 2].toDouble());
         s.points[index].out = QPointF(handles[i + 3].toDouble(), handles[i + 4].toDouble());
     }
+    QJsonArray const leans = o["lean"].toArray(), opacities = o["opacity"].toArray();
+    for (int i = 0; i + 1 < leans.size(); i += 2)
+        if (int const index = leans[i].toInt(-1); index >= 0 && index < s.points.size())
+            s.points[index].lean = float(std::clamp(leans[i + 1].toDouble(), -1.0, 1.0));
+    for (int i = 0; i + 1 < opacities.size(); i += 2)
+        if (int const index = opacities[i].toInt(-1); index >= 0 && index < s.points.size())
+            s.points[index].opacity = float(std::clamp(opacities[i + 1].toDouble(1.0), 0.0, 1.0));
     return s;
 }
 

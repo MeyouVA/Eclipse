@@ -123,7 +123,8 @@ public:
     int lineMode() const { return m_lineMode; }
     bool bendingLine() const { return m_bending; }
     // The thickness stencils of the Pencil: how thick a new pencil line is along its length.
-    enum Stencil { StencilUniform, StencilTapered, StencilTaperedStart, StencilTaperedEnd, StencilMediumTapered, StencilPointy, StencilFatEnds, StencilCount };
+    enum Stencil { StencilUniform, StencilTapered, StencilTaperedStart, StencilTaperedEnd, StencilMediumTapered, StencilPointy, StencilFatEnds,
+                   StencilCurvedAbove, StencilCurvedBelow, StencilCount };
     void setThicknessStencil(int stencil) { m_stencil = std::clamp(int(stencil), 0, int(StencilCount)); }
     // A stencil of your own (StencilCount): the thickness at evenly spaced places from the start of the line to its end.
     void setCustomStencil(QVector<float> const& profile) { m_customStencil = profile; }
@@ -131,8 +132,8 @@ public:
     static void applyProfile(Stroke& stroke, QVector<float> const& profile);
     // The thickness of the first line selected along its length (32 places), for a stencil of your own; empty with none.
     QVector<float> selectedLineProfile() const;
-    // The Pencil Retouch tool: thicker (0) or thinner (1) where it is rubbed.
-    void setRetouchMode(int mode) { m_retouchMode = std::clamp(mode, 0, 1); }
+    // The Pencil Retouch tool: thicker (0) or thinner (1) where it is rubbed; more solid (2) or fainter (3).
+    void setRetouchMode(int mode) { m_retouchMode = std::clamp(mode, 0, 3); }
     int retouchMode() const { return m_retouchMode; }
     // Preferences: how strongly pencil lines show in the views (per cent; what is exported is not changed).
     void setPencilLinesOpacity(int percent) { m_pencilOpacity = std::clamp(percent, 0, 100); update(); }
@@ -683,6 +684,15 @@ public slots:
     void onActionReversePencilThickness();
     // Drawing > Pencil Line Wiggle...: asks how much, then wiggles the lines selected.
     void onActionPencilLineWiggle();
+    // Soft tips: the lines selected (or every line of every drawing of the layer) fade in at their start and out at their end.
+    void onActionSetPencilSoftTip();
+    void onActionSetPencilSoftTipAllDrawings();
+    static void softenTips(Stroke& line, double share);
+    // The Eraser's tip: round, or square (a square swept along the eraser's path).
+    void setEraserSquare(bool square) { m_eraserSquare = square; update(); }
+    bool eraserSquare() const { return m_eraserSquare; }
+    // The area a stretch of the eraser's path covers, with the tip it has.
+    QVector<QPolygonF> eraserArea(Stroke const& path) const;
     void onActionDeflateThickness();
     void onActionSetThickness();
     void onActionDeleteNonSelection();
@@ -1062,11 +1072,14 @@ private:
     bool m_brushOutline = false;
     int m_stabiliser = StabiliserOff;
     int m_pressureFeel = 50;
+    bool m_eraserSquare = false;
+    // A line that fades along its length, painted: solid into a picture of its own, then made fainter there.
+    static void paintFadingStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
     int m_tiltSensitivity = 0;
     int m_stencil = StencilUniform;
     QVector<float> m_customStencil;
     int m_retouchMode = 0;
-    bool m_retouchThinner = false;
+    int m_retouchNow = 0;      // the mode of this rub (Alt turns it round)
     int m_pencilOpacity = 100;
     bool m_lineAutoFill = false;
     LineOptions m_lineOptions;
@@ -1362,7 +1375,7 @@ private:
     QPointF splineOffset() const;
     void repaintTo(QPointF p, double tolerance);
     void smoothAt(QPointF p);
-    void retouchAt(QPointF p, bool thinner);
+    void retouchAt(QPointF p, int mode);
     // The Envelope tool: the outline round what is selected as it was when a point of it was taken
     // hold of, as it is pulled to, and the point in hand.
     QVector<QPointF> m_envRest, m_envNow;

@@ -38,6 +38,11 @@ struct StrokePoint {
     bool handles = false;
     QPointF in;
     QPointF out;
+    // Where the thickness lies: 0 as much to each side of the line; towards 1 more of it to the left (as the line goes),
+    // at 1 all of it; towards -1 to the right.
+    float lean = 0.0f;
+    // How solid the line is here (0 to 1): a line can fade along its length.
+    float opacity = 1.0f;
 };
 
 // One pen stroke, in scene coordinates (pixels of the camera frame).
@@ -64,6 +69,9 @@ struct Stroke {
     static constexpr double kMitreLimit = 50.0;
     // True when the line is as thick at every point (so that joins and caps apply).
     bool uniform() const;
+    // Whether any of it leans to one side; whether any of it is less than solid.
+    bool leans() const;
+    bool fades() const;
     // The palette swatch the stroke is painted with, or -1 to use `color` as it is.
     // A stroke linked to a swatch changes colour when the swatch does.
     int swatch = -1;

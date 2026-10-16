@@ -90,6 +90,7 @@ private:
     QLayout* m_lineModeRow = nullptr;
     QLayout* m_stencilRow = nullptr;
     QLayout* m_retouchRow = nullptr;
+    QLayout* m_eraserTipRow = nullptr;
     QSpinBox* m_stampRandomSize = nullptr;
     void fillStencils(QComboBox* box);
     QCheckBox* m_lineFill = nullptr;

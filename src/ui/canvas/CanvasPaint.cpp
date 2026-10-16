@@ -1,5 +1,6 @@
 // Eclipse - the Camera view: painting a line, an area, a drawing, a layer with its effects, a whole frame.
 #include "ui/canvas/Canvas.h"
+#include "model/scene/StrokePrivate.h"
 
 #include <atomic>
 #include <QPainter>
@@ -319,6 +320,10 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
         painter.setOpacity(was);
         return;
     }
+    if (stroke.fades()) {
+        paintFadingStroke(painter, stroke, color);
+        return;
+    }
     if (stroke.texture != 0 && stroke.textureAmount > 0.0f && !PencilTexture::tile(stroke.texture).isNull()) {
         paintTexturedStroke(painter, stroke, color);
         return;
@@ -377,13 +382,16 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
     // The thickness changes along the line: its outline is built by stepping half the
     // thickness to either side of each point, and filled as one shape.
     QVector<QPointF> pos;
-    QVector<double> half;
+    QVector<double> half, lean;
     for (StrokePoint const& p : line) {
         if (!pos.isEmpty() && QLineF(pos.last(), p.pos).length() < 1e-6)
             continue;  // a doubled point has no direction
         pos.push_back(p.pos);
         half.push_back(std::max(0.0, double(stroke.width) * p.pressure / 2.0));
+        lean.push_back(std::clamp(double(p.lean), -1.0, 1.0));
     }
+    // (A line whose thickness lies to one side: its places moved that way first.)
+    leanAside(pos, half, lean, stroke.closed);
     int const n = int(pos.size());
     painter.setPen(Qt::NoPen);
     painter.setBrush(color);
@@ -456,6 +464,77 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
     } else {
         painter.drawPath(outline.united(discs));      // one shape, so that a translucent colour is not doubled
     }
+}
+
+void Canvas::paintFadingStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
+{
+    // Painted solid into a picture of its own (as big as it is where it is painted), then made as faint there as the line
+    // is along its length - a wide soft line along it, each stretch as solid as the line is there - and laid down.
+    QPaintDevice* const device = painter.device();
+    if (!device)
+        return;
+    QTransform const toDevice = painter.transform();
+    double const margin = double(stroke.width) * 2.5 + 2.0;
+    QRect const area = toDevice.mapRect(stroke.bounds().adjusted(-margin, -margin, margin, margin)).toAlignedRect()
+                           .intersected(QRect(0, 0, device->width(), device->height()));
+    if (area.isEmpty())
+        return;
+    qreal const ratio = device->devicePixelRatioF();
+    QImage solid(area.size() * ratio, QImage::Format_ARGB32_Premultiplied);
+    solid.setDevicePixelRatio(ratio);
+    solid.fill(Qt::transparent);
+    QImage fade = solid;
+    QTransform const toPiece = toDevice * QTransform::fromTranslate(-area.x(), -area.y());
+    Stroke whole = stroke;
+    for (StrokePoint& point : whole.points)
+        point.opacity = 1.0f;
+    {
+        QPainter onto(&solid);
+        onto.setRenderHints(painter.renderHints());
+        onto.setTransform(toPiece);
+        paintStroke(onto, whole, color);
+    }
+    {
+        QPainter onto(&fade);
+        onto.setRenderHint(QPainter::Antialiasing, true);
+        onto.setTransform(toPiece);
+        onto.setCompositionMode(QPainter::CompositionMode_Source);
+        QVector<StrokePoint> const run = stroke.path();
+        double most = 0.0;
+        for (StrokePoint const& point : run)
+            most = std::max(most, double(stroke.width) * point.pressure);
+        QPen pen(Qt::black, most * 1.6 + 2.0 / std::max(std::sqrt(std::abs(toDevice.determinant())), 1e-6), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+        // Each stretch in short steps (a couple of pixels where it is painted), each as solid as the line is there.
+        double const scale = std::sqrt(std::abs(toDevice.determinant()));
+        for (int k = 0; k + 1 < run.size(); ++k) {
+            double const length = QLineF(run[k].pos, run[k + 1].pos).length() * scale;
+            int const steps = std::clamp(int(std::ceil(length / 2.0)), 1, 2000);
+            for (int j = 0; j < steps; ++j) {
+                double const u0 = double(j) / steps, u1 = double(j + 1) / steps;
+                QColor shade(0, 0, 0);
+                shade.setAlphaF(std::clamp(run[k].opacity + (run[k + 1].opacity - run[k].opacity) * (u0 + u1) / 2.0, 0.0, 1.0));
+                pen.setColor(shade);
+                onto.setPen(pen);
+                onto.drawLine(run[k].pos + (run[k + 1].pos - run[k].pos) * u0, run[k].pos + (run[k + 1].pos - run[k].pos) * u1);
+            }
+        }
+        if (run.size() == 1) {
+            QColor shade(0, 0, 0);
+            shade.setAlphaF(std::clamp(double(run[0].opacity), 0.0, 1.0));
+            pen.setColor(shade);
+            onto.setPen(pen);
+            onto.drawPoint(run[0].pos);
+        }
+    }
+    {
+        QPainter onto(&solid);
+        onto.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+        onto.drawImage(QPointF(0, 0), fade);
+    }
+    painter.save();
+    painter.resetTransform();
+    painter.drawImage(QPointF(area.topLeft()), solid);
+    painter.restore();
 }
 
 void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)

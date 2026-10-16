@@ -1,5 +1,6 @@
 // Eclipse - the Camera view: tidying what is drawn - smooth, reduce points, flatten, group, colour art from lines.
 #include "ui/canvas/Canvas.h"
+#include <QSet>
 #include <QRandomGenerator>
 #include <QLineF>
 #include <algorithm>
@@ -645,6 +646,8 @@ float Canvas::stencilThickness(int stencil, double along)
     case StencilMediumTapered: share = 0.4 + 0.6 * taper(t) * taper(1.0 - t); break;
     case StencilPointy: share = 1.0 - std::abs(2.0 * t - 1.0); break;
     case StencilFatEnds: share = 0.35 + 0.65 * (2.0 * t - 1.0) * (2.0 * t - 1.0); break;
+    case StencilCurvedAbove:
+    case StencilCurvedBelow: share = std::pow(std::sin(3.14159265358979323846 * t), 0.7); break;     // a bow, to one side (applyStencil)
     default: break;
     }
     return float(std::max(0.05, share));
@@ -665,8 +668,12 @@ void Canvas::applyStencil(Stroke& stroke, int stencil)
     double const total = along.isEmpty() ? 0.0 : along.last();
     if (total <= 0.0)
         return;
-    for (int i = 0; i < stroke.points.size(); ++i)
+    for (int i = 0; i < stroke.points.size(); ++i) {
         stroke.points[i].pressure *= stencilThickness(stencil, along[i] / total);
+        // Curved Above / Below: all of the thickness on the one side of the line (left as it goes: above a line drawn to the right).
+        if (stencil == StencilCurvedAbove || stencil == StencilCurvedBelow)
+            stroke.points[i].lean = stencil == StencilCurvedAbove ? 1.0f : -1.0f;
+    }
 }
 
 void Canvas::onActionReversePencilThickness()
@@ -1111,8 +1118,9 @@ QVector<float> Canvas::selectedLineProfile() const
     return profile;
 }
 
-void Canvas::retouchAt(QPointF p, bool thinner)
+void Canvas::retouchAt(QPointF p, int mode)
 {
+    bool const thinner = mode == 1 || mode == 3, opacity = mode >= 2;
     // As far round the pen as the size in Tool Properties: the lines there get a point under the pen if they have none
     // near it, then each point near is made thicker (or thinner), most at the middle of the pen.
     double const reach = std::max(m_brushWidth / 2.0, 4.0 / std::max(m_zoom, 1e-6));
@@ -1130,7 +1138,10 @@ void Canvas::retouchAt(QPointF p, bool thinner)
                 continue;
             double const fall = 1.0 - distance / reach;
             double const step = 1.0 + 0.15 * fall * (thinner ? -1.0 : 1.0);
-            point.pressure = float(std::clamp(point.pressure * step, 0.05, 4.0));
+            if (opacity)
+                point.opacity = float(std::clamp(point.opacity * step, 0.02, 1.0));
+            else
+                point.pressure = float(std::clamp(point.pressure * step, 0.05, 4.0));
             m_inked = true;
         }
     }
@@ -1193,4 +1204,122 @@ void Canvas::onActionPencilLineWiggle()
     double const every = QInputDialog::getDouble(this, tr("Pencil Line Wiggle"), tr("A bend every:"), 20.0, 1.0, 2000.0, 1, &ok);
     if (ok)
         wiggleSelectedLines(amount, every, QRandomGenerator::global()->generate());
+}
+
+void Canvas::softenTips(Stroke& line, double share)
+{
+    // Points this share of the way in from each end (where the line has none near), then the ends made clear.
+    QVector<StrokePoint> const run = line.path();
+    QVector<double> const along = distancesAlong(run);
+    double const total = along.isEmpty() ? 0.0 : along.last();
+    if (line.points.size() < 2 || total <= 0.0)
+        return;
+    for (double at : {total * share, total * (1.0 - share)}) {
+        int k = 0;
+        while (k + 2 < run.size() && along[k + 1] < at)
+            ++k;
+        double const span = along[k + 1] - along[k];
+        QPointF const place = run[k].pos + (run[k + 1].pos - run[k].pos) * (span > 0.0 ? (at - along[k]) / span : 0.0);
+        bool near = false;
+        for (StrokePoint const& point : std::as_const(line.points))
+            near = near || QLineF(point.pos, place).length() < total * 0.02;
+        if (!near)
+            line.insertPoint(place);
+    }
+    // The opacity along the line: clear at the ends, solid from that share in.
+    QVector<double> const placed = distancesAlong(line.points);
+    double const length = placed.last();
+    for (int i = 0; i < line.points.size(); ++i) {
+        double const from = std::min(placed[i], length - placed[i]) / std::max(length * share, 1e-9);
+        line.points[i].opacity = float(std::clamp(from, 0.0, 1.0));
+    }
+}
+
+void Canvas::onActionSetPencilSoftTip()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || m_selStrokes.isEmpty()) {
+        emit message(tr("Select pencil lines first (the Select tool)."));
+        return;
+    }
+    Drawing edited = *d;
+    for (int index : std::as_const(m_selStrokes))
+        if (index >= 0 && index < edited.strokes.size() && edited.strokes[index].width > 0.0f && !edited.strokes[index].closed)
+            softenTips(edited.strokes[index], 0.15);
+    commitDrawing(edited, tr("Set Pencil Opacity Soft Tip"));
+    update();
+}
+
+void Canvas::onActionSetPencilSoftTipAllDrawings()
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return;
+    Layer const& layer = scene.layers[m_layer];
+    m_document->beginMacro(tr("Set Pencil Opacity Soft Tip On All Drawings"));
+    // Every drawing the layer shows, at the first frame that shows it.
+    QSet<int> done;
+    for (int frame = 0; frame < layer.cells.size(); ++frame) {
+        int const index = layer.cells[frame];
+        if (index < 0 || index >= layer.drawings.size() || done.contains(index))
+            continue;
+        done.insert(index);
+        Drawing edited = layer.drawings[index];
+        bool any = false;
+        for (Stroke& line : edited.strokes)
+            if (line.width > 0.0f && !line.closed && line.points.size() >= 2) {
+                softenTips(line, 0.15);
+                any = true;
+            }
+        if (any)
+            m_document->setDrawing(m_layer, frame, edited, tr("Set Pencil Opacity Soft Tip On All Drawings"));
+    }
+    m_document->endMacro();
+    update();
+}
+
+QVector<QPolygonF> Canvas::eraserArea(Stroke const& path) const
+{
+    if (!m_eraserSquare)
+        return path.outlinePolygons();
+    // A square tip: the square at each place, and the shape it sweeps from each place to the next (the outline round
+    // the two squares), all as one area.
+    double const r = std::max(path.width / 2.0, 0.25);
+    auto square = [r](QPointF c) { return QPolygonF({c + QPointF(-r, -r), c + QPointF(r, -r), c + QPointF(r, r), c + QPointF(-r, r)}); };
+    auto hull = [](QVector<QPointF> points) {
+        std::sort(points.begin(), points.end(), [](QPointF a, QPointF b) { return a.x() < b.x() || (a.x() == b.x() && a.y() < b.y()); });
+        auto cross = [](QPointF o, QPointF a, QPointF b) { return (a.x() - o.x()) * (b.y() - o.y()) - (a.y() - o.y()) * (b.x() - o.x()); };
+        QVector<QPointF> lower, upper;
+        for (QPointF const& p : points) {
+            while (lower.size() >= 2 && cross(lower[lower.size() - 2], lower.last(), p) <= 0)
+                lower.removeLast();
+            lower.push_back(p);
+        }
+        for (int i = int(points.size()) - 1; i >= 0; --i) {
+            while (upper.size() >= 2 && cross(upper[upper.size() - 2], upper.last(), points[i]) <= 0)
+                upper.removeLast();
+            upper.push_back(points[i]);
+        }
+        lower.removeLast();
+        upper.removeLast();
+        return QPolygonF(lower + upper);
+    };
+    QPainterPath area;
+    area.setFillRule(Qt::WindingFill);
+    if (path.points.size() == 1)
+        area.addPolygon(square(path.points[0].pos));
+    for (int i = 0; i + 1 < path.points.size(); ++i) {
+        QPolygonF const a = square(path.points[i].pos), b = square(path.points[i + 1].pos);
+        QPolygonF swept = hull(QVector<QPointF>(a.begin(), a.end()) + QVector<QPointF>(b.begin(), b.end()));
+        area.addPolygon(swept);
+        area.closeSubpath();
+    }
+    QVector<QPolygonF> polygons;
+    for (QPolygonF polygon : area.simplified().toSubpathPolygons()) {
+        if (polygon.size() > 1 && polygon.first() == polygon.last())
+            polygon.removeLast();
+        if (polygon.size() >= 3)
+            polygons.push_back(polygon);
+    }
+    return polygons;
 }

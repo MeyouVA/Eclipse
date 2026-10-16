@@ -21,15 +21,17 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
 {
     QVector<QPolygonF> result;
     QVector<QPointF> all;
-    QVector<double> allHalf;
+    QVector<double> allHalf, allLean;
     for (StrokePoint const& p : path()) {
         if (!all.isEmpty() && QLineF(all.last(), p.pos).length() < 1e-6)
             continue;  // a doubled point has no direction
         all.push_back(p.pos);
         allHalf.push_back(std::max(0.0, double(width) * p.pressure / 2.0));
+        allLean.push_back(std::clamp(double(p.lean), -1.0, 1.0));
     }
     if (all.isEmpty())
         return result;
+    leanAside(all, allHalf, allLean, closed);
 
     // Thinned: a place is dropped when the line and its thickness pass within a twentieth of
     // a unit of it anyway.

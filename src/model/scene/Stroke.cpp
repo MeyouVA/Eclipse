@@ -127,6 +127,8 @@ QVector<StrokePoint> Stroke::path(QVector<int>* segmentOf) const
             StrokePoint p;
             p.pos = steps == 1 ? a.pos : cubicAt(a.pos, c1, c2, b.pos, u);
             p.pressure = float(a.pressure + (b.pressure - a.pressure) * u);
+            p.lean = float(a.lean + (b.lean - a.lean) * u);
+            p.opacity = float(a.opacity + (b.opacity - a.opacity) * u);
             out.push_back(p);
             if (segmentOf)
                 segmentOf->push_back(s);
@@ -153,7 +155,10 @@ int Stroke::insertPoint(QPointF p)
         QPointF const ab = b.pos - a.pos;
         double const len2 = ab.x() * ab.x() + ab.y() * ab.y();
         double const t = len2 > 0 ? std::clamp(((p.x() - a.pos.x()) * ab.x() + (p.y() - a.pos.y()) * ab.y()) / len2, 0.0, 1.0) : 0.5;
-        points.insert(s + 1, {a.pos + ab * t, float(a.pressure + (b.pressure - a.pressure) * t)});
+        StrokePoint between{a.pos + ab * t, float(a.pressure + (b.pressure - a.pressure) * t)};
+        between.lean = float(a.lean + (b.lean - a.lean) * t);
+        between.opacity = float(a.opacity + (b.opacity - a.opacity) * t);
+        points.insert(s + 1, between);
         return s + 1;
     }
     // Where on the piece: the nearest of many places along it.
@@ -190,6 +195,8 @@ int Stroke::insertPoint(QPointF p)
     StrokePoint fresh;
     fresh.pos = on;
     fresh.pressure = float(a.pressure + (b.pressure - a.pressure) * t);
+    fresh.lean = float(a.lean + (b.lean - a.lean) * t);
+    fresh.opacity = float(a.opacity + (b.opacity - a.opacity) * t);
     fresh.handles = true;
     fresh.in = abc - on;
     fresh.out = bcd - on;
@@ -216,9 +223,25 @@ int Stroke::segmentAt(QPointF p) const
 bool Stroke::uniform() const
 {
     for (StrokePoint const& p : points)
-        if (std::abs(p.pressure - points[0].pressure) > 0.001f)
+        if (std::abs(p.pressure - points[0].pressure) > 0.001f || std::abs(p.lean) > 0.001f)
             return false;
     return true;
+}
+
+bool Stroke::leans() const
+{
+    for (StrokePoint const& p : points)
+        if (std::abs(p.lean) > 0.001f)
+            return true;
+    return false;
+}
+
+bool Stroke::fades() const
+{
+    for (StrokePoint const& p : points)
+        if (p.opacity < 0.999f)
+            return true;
+    return false;
 }
 
 bool Stroke::isCorner(int index) const

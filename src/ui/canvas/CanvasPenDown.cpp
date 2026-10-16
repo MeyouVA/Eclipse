@@ -186,8 +186,9 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             m_inked = false;
             m_drag = DragRetouch;
             m_dragNow = p;
-            m_retouchThinner = (m_retouchMode == 1) != bool(modifiers & Qt::AltModifier);
-            retouchAt(p, m_retouchThinner);
+            // Alt does the other of the pair: thinner for thicker, fainter for more solid, and back.
+            m_retouchNow = modifiers & Qt::AltModifier ? (m_retouchMode ^ 1) : m_retouchMode;
+            retouchAt(p, m_retouchNow);
         }
         return;
     }

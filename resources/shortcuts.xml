@@ -59,6 +59,8 @@
   <shortcut id="shortcut.deflateThickness" text="Deflate Selection Thickness" value=""/>
   <shortcut id="shortcut.setThickness" text="Set Selection Thickness" value=""/>
   <shortcut id="shortcut.reversePencilThickness" text="Reverse Pencil Thickness" value=""/>
+  <shortcut id="shortcut.setPencilSoftTip" text="Set Pencil Opacity Soft Tip" value=""/>
+  <shortcut id="shortcut.setPencilSoftTipAll" text="Set Pencil Opacity Soft Tip On All Drawings" value=""/>
   <shortcut id="shortcut.joinPencilLines" text="Join Pencil Lines" value="Alt+Shift+J"/>
   <shortcut id="shortcut.mergePencilLines" text="Merge Pencil Lines" value=""/>
   <shortcut id="shortcut.splitPencilLine" text="Split Pencil Line" value="Alt+Shift+K"/>

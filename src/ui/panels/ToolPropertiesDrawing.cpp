@@ -267,9 +267,9 @@ void ToolProperties::addSizeRows()
     {
         QComboBox* const mode = new QComboBox(this);
         mode->setObjectName(QStringLiteral("RetouchMode"));
-        mode->addItems({tr("Increase Thickness"), tr("Decrease Thickness")});
-        mode->setToolTip(tr("Rubbed along pencil lines, the Pencil Retouch tool makes them thicker or thinner there. Alt does the other."));
-        int const kept = std::clamp(settings().value(QStringLiteral("tools/retouchMode"), 0).toInt(), 0, 1);
+        mode->addItems({tr("Increase Thickness"), tr("Decrease Thickness"), tr("Increase Opacity"), tr("Decrease Opacity")});
+        mode->setToolTip(tr("Rubbed along pencil lines, the Pencil Retouch tool makes them thicker or thinner there - or more solid or fainter. Alt does the other of the pair."));
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/retouchMode"), 0).toInt(), 0, 3);
         mode->setCurrentIndex(kept);
         m_canvas->setRetouchMode(kept);
         connect(mode, &QComboBox::currentIndexChanged, this, [this](int i) {
@@ -280,6 +280,23 @@ void ToolProperties::addSizeRows()
         row->addWidget(mode, 1);
         m_form->addRow(tr("Retouch"), row);
         m_retouchRow = row;
+    }
+    // The Eraser's tip: round or square.
+    {
+        QComboBox* const tip = new QComboBox(this);
+        tip->setObjectName(QStringLiteral("EraserTip"));
+        tip->addItems({tr("Round Tip"), tr("Square Tip")});
+        tip->setToolTip(tr("The shape of the Eraser's tip."));
+        tip->setCurrentIndex(settings().value(QStringLiteral("tools/eraserSquare"), false).toBool() ? 1 : 0);
+        m_canvas->setEraserSquare(tip->currentIndex() == 1);
+        connect(tip, &QComboBox::currentIndexChanged, this, [this](int i) {
+            m_canvas->setEraserSquare(i == 1);
+            settings().setValue(QStringLiteral("tools/eraserSquare"), i == 1);
+        });
+        QHBoxLayout* const row = new QHBoxLayout;
+        row->addWidget(tip, 1);
+        m_form->addRow(tr("Tip"), row);
+        m_eraserTipRow = row;
     }
     // The Rectangle and the Ellipse: painted inside as they are drawn.
     m_shapeFill = new QCheckBox(tr("Auto Fill"), this);
@@ -873,7 +890,8 @@ void ToolProperties::fillStencils(QComboBox* box)
 {
     QSignalBlocker const quiet(box);
     box->clear();
-    box->addItems({tr("Uniform"), tr("Tapered"), tr("Tapered Beginning"), tr("Tapered End"), tr("Medium Tapered"), tr("Pointy"), tr("Fat Ends")});
+    box->addItems({tr("Uniform"), tr("Tapered"), tr("Tapered Beginning"), tr("Tapered End"), tr("Medium Tapered"), tr("Pointy"), tr("Fat Ends"),
+                   tr("Curved Above"), tr("Curved Below")});
     QSettings s = settings();
     s.beginGroup(QStringLiteral("tools/stencils"));
     QStringList names = s.childKeys();

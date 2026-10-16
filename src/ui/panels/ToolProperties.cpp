@@ -309,6 +309,10 @@ void ToolProperties::addPresetRows()
         for (QString const& name : {tr("Start Taper"), tr("End Taper")})
             if (QSpinBox* const box = findChild<QSpinBox*>(name); box && taper >= 0)
                 box->setValue(taper);
+        // An eraser preset: its tip too.
+        if (int const square = item->data(Qt::UserRole + 5).isValid() ? item->data(Qt::UserRole + 5).toInt() : -1; square >= 0)
+            if (QComboBox* const tip = findChild<QComboBox*>(QStringLiteral("EraserTip")))
+                tip->setCurrentIndex(square);
         // A preset of your own keeps the smoothing as well.
         QVariant const smoothing = item->data(Qt::UserRole + 1);
         if (QSpinBox* const box = findChild<QSpinBox*>(tr("Smoothing")); box && smoothing.isValid())
@@ -361,6 +365,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_lineModeRow, tool == T::Line);
     m_form->setRowVisible(m_stencilRow, pencil);
     m_form->setRowVisible(m_retouchRow, tool == T::PencilRetouch);
+    m_form->setRowVisible(m_eraserTipRow, eraser);
     m_form->setRowVisible(m_lineFill, brush || pencil);
     // The line options: which tool has which.
     for (QLayout* const row : std::as_const(m_brushLineRows))
@@ -424,7 +429,7 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
 {
     // The sizes of this tool.
     // (A minimum size of -1, or a taper of -1: the preset leaves that setting as it is.)
-    struct Preset { char const* name; int size; int minSize = -1; int taper = -1; };
+    struct Preset { char const* name; int size; int minSize = -1; int taper = -1; int square = -1; };
     static Preset const kBrush[] = {{QT_TR_NOOP("Solid Brush 1"), 5}, {QT_TR_NOOP("Solid Brush 2"), 10}, {QT_TR_NOOP("Solid Brush 3"), 15},
                                     {QT_TR_NOOP("Solid Brush 4"), 20}, {QT_TR_NOOP("Solid Brush 5"), 30}, {QT_TR_NOOP("Solid Brush 6"), 45},
                                     {QT_TR_NOOP("Fixed Width 1"), 6, 100, 0}, {QT_TR_NOOP("Fixed Width 2"), 14, 100, 0},
@@ -432,8 +437,8 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
     static Preset const kPencil[] = {{QT_TR_NOOP("Pencil 1"), 3}, {QT_TR_NOOP("Pencil 2"), 6}, {QT_TR_NOOP("Pencil 3"), 10},
                                      {QT_TR_NOOP("Pencil 4"), 16}, {QT_TR_NOOP("Pencil 5"), 24},
                                      {QT_TR_NOOP("Fixed Thickness 1"), 2}, {QT_TR_NOOP("Fixed Thickness 2"), 4}};
-    static Preset const kEraser[] = {{QT_TR_NOOP("Small Eraser"), 20}, {QT_TR_NOOP("Medium Eraser"), 50}, {QT_TR_NOOP("Large Eraser"), 100},
-                                     {QT_TR_NOOP("Very Large Eraser"), 160}};
+    static Preset const kEraser[] = {{QT_TR_NOOP("Small Eraser"), 20, -1, -1, 0}, {QT_TR_NOOP("Medium Eraser"), 50, -1, -1, 0}, {QT_TR_NOOP("Large Eraser"), 100, -1, -1, 0},
+                                     {QT_TR_NOOP("Very Large Eraser"), 160, -1, -1, 0}, {QT_TR_NOOP("Big Square Eraser"), 120, -1, -1, 1}};
     QSignalBlocker const block(m_presets);
     m_presets->clear();
     auto fill = [&](Preset const* list, int count) {
@@ -447,6 +452,7 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
             item->setData(Qt::UserRole, list[i].size);
             item->setData(Qt::UserRole + 2, list[i].minSize);
             item->setData(Qt::UserRole + 3, list[i].taper);
+            item->setData(Qt::UserRole + 5, list[i].square);
             if (list[i].size == m_size->value())
                 m_presets->setCurrentItem(item);
         }

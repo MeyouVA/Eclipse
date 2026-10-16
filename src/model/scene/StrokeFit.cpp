@@ -75,7 +75,11 @@ void Stroke::fit(double tolerance, double cornerDegrees)
             int index = -1;
             for (int i = first + 1; i < last; ++i) {
                 double const along = double(i - first) / (last - first);
-                double const off = std::abs(d[i].pressure - (d[first].pressure + (d[last].pressure - d[first].pressure) * along));
+                auto offOf = [&](auto member) {
+                    return std::abs(double(d[i].*member) - (double(d[first].*member) + (double(d[last].*member) - double(d[first].*member)) * along));
+                };
+                // (The lean and the opacity are kept the same way.)
+                double const off = std::max({offOf(&StrokePoint::pressure), offOf(&StrokePoint::opacity), offOf(&StrokePoint::lean) / 2.0});
                 if (off > far) {
                     far = off;
                     index = i;

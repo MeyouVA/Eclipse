@@ -1,5 +1,7 @@
 // Eclipse - what the parts of a line (Stroke*.cpp) have in common and nobody else needs.
 #pragma once
+#include <QPointF>
+#include <QVector>
 
 #include "model/scene/Scene.h"
 #include "model/geometry/Morph.h"
@@ -227,3 +229,29 @@ void fitRun(QVector<StrokePoint> const& d, int first, int last, QPointF t1, QPoi
 }
 
 }  // namespace
+
+// A line whose thickness leans to one side: each place moved that way by its lean times half the thickness (the
+// thickness then lies about the moved place as usual - so at a lean of 1 all of it is on the one side of the line as
+// drawn).  Done on the places of the line before its edges are found.
+inline void leanAside(QVector<QPointF>& pos, QVector<double> const& half, QVector<double> const& lean, bool closed)
+{
+    int const n = int(pos.size());
+    if (n < 2)
+        return;
+    bool any = false;
+    for (double l : lean)
+        any = any || std::abs(l) > 1e-6;
+    if (!any)
+        return;
+    QVector<QPointF> const was = pos;
+    for (int i = 0; i < n; ++i) {
+        QPointF const before = i > 0 ? was[i - 1] : (closed ? was[n - 2 >= 0 ? n - 2 : 0] : was[i]);
+        QPointF const after = i + 1 < n ? was[i + 1] : (closed ? was[1] : was[i]);
+        QPointF way = after - before;
+        double length = std::hypot(way.x(), way.y());
+        if (length < 1e-9)
+            continue;
+        QPointF const left(way.y() / length, -way.x() / length);     // to the left as the line goes (y grows downwards)
+        pos[i] = was[i] + left * (half[i] * lean[i]);
+    }
+}

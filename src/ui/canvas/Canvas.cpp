@@ -633,7 +633,7 @@ void Canvas::eraseStretch(int from)
     Stroke stretch;
     stretch.width = m_stroke.width;
     stretch.points = m_stroke.points.mid(from);
-    QVector<QPolygonF> const rubbed = stretch.outlinePolygons();
+    QVector<QPolygonF> const rubbed = eraserArea(stretch);
     if (rubbed.isEmpty())
         return;
     QPainterPath area;
@@ -690,7 +690,7 @@ void Canvas::cutWithEraser()
     if (m_stroke.points.isEmpty() || (!m_eraseAny && !everywhere && arts.size() == 1))
         return;
     m_eraseAny = false;
-    QVector<QPolygonF> const rubbed = m_stroke.outlinePolygons();
+    QVector<QPolygonF> const rubbed = eraserArea(m_stroke);
     if (rubbed.isEmpty())
         return;
     double const fine = std::max(0.25 / m_zoom, 0.05);
