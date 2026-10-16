@@ -379,6 +379,8 @@ void Canvas::penUp()
         // The smoothing setting is how far, in pixels of the screen, the line may stray
         // from the samples: from a fifth of a pixel to four.
         double const tolerance = (0.2 + m_smoothing * 0.038) / m_zoom;
+        if (m_tool == Pencil && m_stencil != StencilUniform)
+            applyStencil(m_stroke, m_stencil);
         if (m_snapGrid && (m_tool == Brush || m_tool == Pencil) && m_stroke.points.size() >= 2) {
             // Snap to Grid: the line begins and ends on a crossing of the grid when it is near one.
             m_stroke.points.first().pos = snapped(m_stroke.points.first().pos);

@@ -53,6 +53,10 @@
   <shortcut id="shortcut.pumpThickness" text="Pump Selection Thickness" value=""/>
   <shortcut id="shortcut.deflateThickness" text="Deflate Selection Thickness" value=""/>
   <shortcut id="shortcut.setThickness" text="Set Selection Thickness" value=""/>
+  <shortcut id="shortcut.reversePencilThickness" text="Reverse Pencil Thickness" value=""/>
+  <shortcut id="shortcut.joinPencilLines" text="Join Pencil Lines" value="Alt+Shift+J"/>
+  <shortcut id="shortcut.mergePencilLines" text="Merge Pencil Lines" value=""/>
+  <shortcut id="shortcut.splitPencilLine" text="Split Pencil Line" value="Alt+Shift+K"/>
   <shortcut id="shortcut.deleteNonSelection" text="Delete Non Selection" value=""/>
   <shortcut id="shortcut.quickCloseup" text="Quick Close-up" value=""/>
   <shortcut id="shortcut.prevColumn" text="Go to Previous Column" value=""/>

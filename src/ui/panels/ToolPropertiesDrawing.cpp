@@ -156,6 +156,24 @@ void ToolProperties::addSizeRows()
         m_form->addRow(tr("Mode"), row);
         m_lineModeRow = row;
     }
+    // The Pencil's thickness stencil: how thick a new line is along its length.
+    {
+        QComboBox* const stencil = new QComboBox(this);
+        stencil->setObjectName(QStringLiteral("ThicknessStencil"));
+        stencil->addItems({tr("Uniform"), tr("Tapered"), tr("Tapered Beginning"), tr("Tapered End"), tr("Medium Tapered"), tr("Pointy"), tr("Fat Ends")});
+        stencil->setToolTip(tr("The thickness stencil: how thick a new pencil line is from its start to its end."));
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/thicknessStencil"), 0).toInt(), 0, int(Canvas::StencilCount) - 1);
+        stencil->setCurrentIndex(kept);
+        m_canvas->setThicknessStencil(kept);
+        connect(stencil, &QComboBox::currentIndexChanged, this, [this](int i) {
+            m_canvas->setThicknessStencil(i);
+            settings().setValue(QStringLiteral("tools/thicknessStencil"), i);
+        });
+        QHBoxLayout* const row = new QHBoxLayout;
+        row->addWidget(stencil, 1);
+        m_form->addRow(tr("Thickness Stencil"), row);
+        m_stencilRow = row;
+    }
     // The Rectangle and the Ellipse: painted inside as they are drawn.
     m_shapeFill = new QCheckBox(tr("Auto Fill"), this);
     m_shapeFill->setObjectName(QStringLiteral("ShapeAutoFill"));

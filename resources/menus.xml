@@ -288,6 +288,11 @@
     <item id="PumpThickness" icon="anim/smooth" text="&amp;Pump Selection Thickness" shortcut="shortcut.pumpThickness" responder="camera" slot="onActionPumpThickness()"/>
     <item id="DeflateThickness" icon="anim/smooth" text="&amp;Deflate Selection Thickness" shortcut="shortcut.deflateThickness" responder="camera" slot="onActionDeflateThickness()"/>
     <item id="SetThickness" icon="anim/smooth" text="Set Selection &amp;Thickness..." shortcut="shortcut.setThickness" responder="camera" slot="onActionSetThickness()"/>
+    <item id="ReversePencilThickness" icon="anim/smooth" text="Re&amp;verse Pencil Thickness" shortcut="shortcut.reversePencilThickness" responder="camera" slot="onActionReversePencilThickness()"/>
+    <separator/>
+    <item id="JoinPencilLines" icon="anim/smooth" text="&amp;Join Pencil Lines" shortcut="shortcut.joinPencilLines" responder="camera" slot="onActionJoinPencilLines()"/>
+    <item id="MergePencilLines" icon="anim/smooth" text="&amp;Merge Pencil Lines" shortcut="shortcut.mergePencilLines" responder="camera" slot="onActionMergePencilLines()"/>
+    <item id="SplitPencilLine" icon="anim/smooth" text="Sp&amp;lit Pencil Line" shortcut="shortcut.splitPencilLine" responder="camera" slot="onActionSplitPencilLine()"/>
     <separator/>
     <item id="ReducePoints" icon="anim/reducepoints" text="&amp;Reduce Points" responder="camera" slot="onActionReducePoints()"/>
     <item id="CreateContourStrokes" icon="anim/contourcreate" text="&amp;Create Contour Strokes" shortcut="shortcut.createContourStrokes" responder="camera" slot="onActionCreateContourStrokes()"/>

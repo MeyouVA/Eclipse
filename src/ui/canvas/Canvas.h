@@ -120,6 +120,14 @@ public:
     void setLineMode(int mode) { m_lineMode = std::clamp(mode, 0, 2); }
     int lineMode() const { return m_lineMode; }
     bool bendingLine() const { return m_bending; }
+    // The thickness stencils of the Pencil: how thick a new pencil line is along its length.
+    enum Stencil { StencilUniform, StencilTapered, StencilTaperedStart, StencilTaperedEnd, StencilMediumTapered, StencilPointy, StencilFatEnds, StencilCount };
+    void setThicknessStencil(int stencil) { m_stencil = std::clamp(int(stencil), 0, int(StencilCount) - 1); }
+    int thicknessStencil() const { return m_stencil; }
+    // A stencil's thickness at `along` (0: the start of the line, 1: its end), as a share of the full thickness.
+    static float stencilThickness(int stencil, double along);
+    // The stencil laid on a line: each point as thick as the stencil says at its place along it.
+    static void applyStencil(Stroke& stroke, int stencil);
     // The Rectangle and the Ellipse: the inside is painted with the colour in hand as the shape is drawn.
     void setShapeAutoFill(bool on) { m_shapeAutoFill = on; }
     bool shapeAutoFill() const { return m_shapeAutoFill; }
@@ -440,6 +448,8 @@ public:
     QRectF selectionRect() const { return hasSelection() ? selectionBounds() : QRectF(); }
     // Moves and stretches what is selected so that it fills this box.
     void setSelectionRect(QRectF const& box);
+    // These lines, painted areas and pictures of the current drawing selected (indices into it).
+    void setSelection(QVector<int> const& strokes, QVector<int> const& fills, QVector<int> const& pictures = {});
     // Turns what is selected about its middle, clockwise.
     void rotateSelection(double degrees);
     void copySelection();
@@ -611,6 +621,12 @@ public slots:
     // goes.
     void onActionSmoothFast();
     void onActionPumpThickness();
+    // The pencil lines selected made one line, end to end - Merge across any gap, Join only where their ends meet; the
+    // Contour Editor's line cut in two at its picked point; the thickness of the lines selected turned end for end.
+    void onActionMergePencilLines();
+    void onActionJoinPencilLines();
+    void onActionSplitPencilLine();
+    void onActionReversePencilThickness();
     void onActionDeflateThickness();
     void onActionSetThickness();
     void onActionDeleteNonSelection();
@@ -976,7 +992,6 @@ private:
     // Selects (or with `toggle`, flips) the item under the point; false when there is none.
     bool selectAt(QPointF scenePos, bool toggle);
     void selectInRect(QRectF const& rect, bool add);
-    void setSelection(QVector<int> const& strokes, QVector<int> const& fills, QVector<int> const& pictures = {});
 
     Document* m_document;
     Tool m_tool = Brush;
@@ -985,6 +1000,8 @@ private:
     bool m_brushOutline = false;
     int m_stabiliser = StabiliserOff;
     int m_pressureFeel = 50;
+    int m_stencil = StencilUniform;
+    void mergeSelectedLines(bool bridge, QString const& text);
     int m_stabiliserStrength = 50;
     QPointF m_stabiliserLine, m_stabiliserPen;
     int m_lineMode = LineStraight;

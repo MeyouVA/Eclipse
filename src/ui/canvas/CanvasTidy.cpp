@@ -1,5 +1,7 @@
 // Eclipse - the Camera view: tidying what is drawn - smooth, reduce points, flatten, group, colour art from lines.
 #include "ui/canvas/Canvas.h"
+#include <QLineF>
+#include <algorithm>
 
 #include <QInputDialog>
 #include <QPainterPath>
@@ -624,4 +626,227 @@ void Canvas::onActionFlatten()
         edited.strokes.removeAt(goneLines[i]);
     clearSelection();
     commitDrawing(edited, tr("Flatten"));
+}
+
+float Canvas::stencilThickness(int stencil, double along)
+{
+    // Thinning to a point over a quarter of the line, smoothly.
+    auto taper = [](double x) {
+        x = std::clamp(x / 0.25, 0.0, 1.0);
+        return x * x * (3.0 - 2.0 * x);
+    };
+    double const t = std::clamp(along, 0.0, 1.0);
+    double share = 1.0;
+    switch (stencil) {
+    case StencilTapered: share = taper(t) * taper(1.0 - t); break;
+    case StencilTaperedStart: share = taper(t); break;
+    case StencilTaperedEnd: share = taper(1.0 - t); break;
+    case StencilMediumTapered: share = 0.4 + 0.6 * taper(t) * taper(1.0 - t); break;
+    case StencilPointy: share = 1.0 - std::abs(2.0 * t - 1.0); break;
+    case StencilFatEnds: share = 0.35 + 0.65 * (2.0 * t - 1.0) * (2.0 * t - 1.0); break;
+    default: break;
+    }
+    return float(std::max(0.05, share));
+}
+
+// How far along a line each of its points lies, from the first (straight from point to point).
+static QVector<double> distancesAlong(QVector<StrokePoint> const& points)
+{
+    QVector<double> along(points.size(), 0.0);
+    for (int i = 1; i < points.size(); ++i)
+        along[i] = along[i - 1] + QLineF(points[i - 1].pos, points[i].pos).length();
+    return along;
+}
+
+void Canvas::applyStencil(Stroke& stroke, int stencil)
+{
+    QVector<double> const along = distancesAlong(stroke.points);
+    double const total = along.isEmpty() ? 0.0 : along.last();
+    if (total <= 0.0)
+        return;
+    for (int i = 0; i < stroke.points.size(); ++i)
+        stroke.points[i].pressure *= stencilThickness(stencil, along[i] / total);
+}
+
+void Canvas::onActionReversePencilThickness()
+{
+    Drawing const* const d = currentDrawing();
+    QVector<int> lines = selecting() ? m_selStrokes : QVector<int>();
+    if (m_tool == ContourEditor && m_ceStroke >= 0)
+        lines = {m_ceStroke};
+    if (!d || lines.isEmpty()) {
+        emit message(tr("Select lines first (the Select tool, or one in the Contour Editor)."));
+        return;
+    }
+    Drawing edited = *d;
+    bool changed = false;
+    for (int index : std::as_const(lines)) {
+        if (index < 0 || index >= edited.strokes.size())
+            continue;
+        Stroke& line = edited.strokes[index];
+        QVector<StrokePoint> const before = line.points;
+        QVector<double> const along = distancesAlong(before);
+        double const total = along.isEmpty() ? 0.0 : along.last();
+        if (total <= 0.0)
+            continue;
+        // Each point takes the thickness the line had as far from the other end.
+        for (int i = 0; i < before.size(); ++i) {
+            double const at = total - along[i];
+            int k = 0;
+            while (k + 1 < along.size() - 1 && along[k + 1] < at)
+                ++k;
+            double const span = along[k + 1] - along[k];
+            double const t = span > 0.0 ? std::clamp((at - along[k]) / span, 0.0, 1.0) : 0.0;
+            line.points[i].pressure = float(before[k].pressure + (before[k + 1].pressure - before[k].pressure) * t);
+        }
+        for (int i = 0; i < before.size(); ++i)
+            changed = changed || line.points[i].pressure != before[i].pressure;
+    }
+    if (changed)
+        commitDrawing(edited, tr("Reverse Pencil Thickness"));
+    update();
+}
+
+// A line turned end for end: its points the other way round, and the handles of each with them.
+static Stroke reversedLine(Stroke line)
+{
+    std::reverse(line.points.begin(), line.points.end());
+    for (StrokePoint& point : line.points)
+        std::swap(point.in, point.out);
+    std::swap(line.capStart, line.capEnd);
+    return line;
+}
+
+void Canvas::mergeSelectedLines(bool bridge, QString const& text)
+{
+    Drawing const* const d = currentDrawing();
+    QVector<int> lines;
+    if (d && selecting())
+        for (int index : std::as_const(m_selStrokes))
+            if (index >= 0 && index < d->strokes.size() && !d->strokes[index].closed && d->strokes[index].points.size() >= 2 && !lines.contains(index))
+                lines.push_back(index);
+    std::sort(lines.begin(), lines.end());
+    if (!d || lines.size() < 2) {
+        emit message(tr("Select two pencil lines or more first (the Select tool)."));
+        return;
+    }
+    QVector<Stroke> pool;
+    bool anyCurve = false;
+    for (int index : std::as_const(lines)) {
+        pool.push_back(d->strokes[index]);
+        anyCurve = anyCurve || d->strokes[index].curve;
+    }
+    // A line of straight pieces joined to a curved one: its pieces become straight runs of a curve.
+    if (anyCurve)
+        for (Stroke& line : pool)
+            if (!line.curve) {
+                line.curve = true;
+                for (StrokePoint& point : line.points) {
+                    point.handles = true;
+                    point.corner = true;
+                    point.in = point.out = QPointF();
+                }
+            }
+    // Join: only ends this near one another (the width of the lines, and a few pixels of the screen) are joined.
+    double reach = 0.0;
+    for (Stroke const& line : std::as_const(pool))
+        reach = std::max(reach, double(line.width) / 2.0);
+    reach += 6.0 / std::max(m_zoom, 1e-6);
+    Stroke chain = pool.takeFirst();
+    QVector<int> used{lines.first()};
+    QVector<int> left = lines.mid(1);
+    while (!pool.isEmpty()) {
+        int best = -1, how = 0;
+        double nearest = 0.0;
+        for (int k = 0; k < pool.size(); ++k) {
+            QPointF const ends[4][2] = {{chain.points.last().pos, pool[k].points.first().pos}, {chain.points.last().pos, pool[k].points.last().pos},
+                                        {chain.points.first().pos, pool[k].points.last().pos}, {chain.points.first().pos, pool[k].points.first().pos}};
+            for (int way = 0; way < 4; ++way) {
+                double const gap = QLineF(ends[way][0], ends[way][1]).length();
+                if (best < 0 || gap < nearest) {
+                    best = k;
+                    how = way;
+                    nearest = gap;
+                }
+            }
+        }
+        if (!bridge && nearest > reach)
+            break;
+        Stroke next = pool.takeAt(best);
+        used.push_back(left.takeAt(best));
+        // 0: on after the end; 1: the same, turned round; 2: on before the start; 3: before the start, turned round.
+        if (how == 1 || how == 3)
+            next = reversedLine(next);
+        Stroke& first = how <= 1 ? chain : next;
+        Stroke const& second = how <= 1 ? next : chain;
+        Stroke joined = first;
+        int from = 0;
+        if (QLineF(first.points.last().pos, second.points.first().pos).length() < 1e-6) {
+            joined.points.last().out = second.points.first().out;
+            from = 1;
+        }
+        for (int i = from; i < second.points.size(); ++i)
+            joined.points.push_back(second.points[i]);
+        joined.capEnd = second.capEnd;
+        chain = joined;
+    }
+    if (used.size() < 2) {
+        emit message(tr("The ends of the lines selected do not meet: Merge Pencil Lines joins them across the gap."));
+        return;
+    }
+    Drawing edited = *d;
+    std::sort(used.begin(), used.end());
+    int const at = used.first();
+    for (int i = int(used.size()) - 1; i >= 0; --i)
+        edited.strokes.removeAt(used[i]);
+    edited.strokes.insert(at, chain);
+    commitDrawing(edited, text);
+    setSelection({at}, {});
+    update();
+}
+
+void Canvas::onActionMergePencilLines()
+{
+    mergeSelectedLines(true, tr("Merge Pencil Lines"));
+}
+
+void Canvas::onActionJoinPencilLines()
+{
+    mergeSelectedLines(false, tr("Join Pencil Lines"));
+}
+
+void Canvas::onActionSplitPencilLine()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || m_tool != ContourEditor || m_ceStroke < 0 || m_ceFill >= 0 || m_ceStroke >= d->strokes.size() || m_cePoint < 0
+        || m_cePoint >= d->strokes[m_ceStroke].points.size()) {
+        emit message(tr("Pick a point of a pencil line with the Contour Editor first: the line is cut there."));
+        return;
+    }
+    Drawing edited = *d;
+    Stroke const line = d->strokes[m_ceStroke];
+    int const point = m_cePoint;
+    if (line.closed) {
+        // A closed line opens there: it starts and ends at that point.
+        Stroke opened = line;
+        opened.closed = false;
+        opened.points.clear();
+        for (int i = 0; i <= line.points.size(); ++i)
+            opened.points.push_back(line.points[(point + i) % line.points.size()]);
+        edited.strokes[m_ceStroke] = opened;
+    } else {
+        if (point == 0 || point == line.points.size() - 1) {
+            emit message(tr("That is an end of the line already: pick a point along it."));
+            return;
+        }
+        Stroke a = line, b = line;
+        a.points = line.points.mid(0, point + 1);
+        b.points = line.points.mid(point);
+        a.capEnd = line.capStart;
+        b.capStart = line.capEnd;
+        edited.strokes[m_ceStroke] = a;
+        edited.strokes.insert(m_ceStroke + 1, b);
+    }
+    commitDrawing(edited, tr("Split Pencil Line"));
+    update();
 }
