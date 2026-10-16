@@ -328,6 +328,8 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_stabiliserRow, brush || pencil);
     m_form->setRowVisible(m_lineModeRow, tool == T::Line);
     m_form->setRowVisible(m_stencilRow, pencil);
+    m_form->setRowVisible(m_lineFill, brush || pencil);
+    m_form->setRowVisible(m_scaleThickness, tool == T::Select);
     m_form->setRowVisible(m_shapeFill, tool == T::Rectangle || tool == T::Ellipse);
     m_form->setRowVisible(m_minSizeRow, brush);
     m_form->setRowVisible(m_hardnessRow, brush);

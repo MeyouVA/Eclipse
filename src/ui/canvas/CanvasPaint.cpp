@@ -1294,8 +1294,14 @@ Drawing Canvas::previewDrawing() const
         contourEdited(shown);
     }
     if (m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate) {
-        for (int i : m_selStrokes)
+        // Scaled, a line keeps its thickness - unless Scale Pencil Line Thickness is on: then it is as much thicker or thinner.
+        bool const keepWidth = m_drag == DragScale && !m_scaleThickness;
+        for (int i : m_selStrokes) {
+            float const width = shown.strokes[i].width;
             shown.strokes[i].transform(m_dragTransform);
+            if (keepWidth)
+                shown.strokes[i].width = width;
+        }
         for (int i : m_selFills)
             shown.fills[i].transform(m_dragTransform);
         if (picturesHere())

@@ -18,6 +18,7 @@
 #include <QSlider>
 #include <QSpinBox>
 
+#include "actions/manager/ActionManager.h"
 #include "ui/canvas/Canvas.h"
 #include "ui/canvas/PencilTexture.h"
 #include "ui/window/MainWindowPrivate.h"
@@ -174,6 +175,30 @@ void ToolProperties::addSizeRows()
         m_form->addRow(tr("Thickness Stencil"), row);
         m_stencilRow = row;
     }
+    // The Brush and the Pencil: a line whose ends meet is painted inside.
+    m_lineFill = new QCheckBox(tr("Auto Fill"), this);
+    m_lineFill->setObjectName(QStringLiteral("LineAutoFill"));
+    m_lineFill->setToolTip(tr("Automatically fills closed areas with the selected colour: a line whose ends meet is painted inside."));
+    m_lineFill->setChecked(settings().value(QStringLiteral("tools/lineAutoFill"), false).toBool());
+    m_canvas->setLineAutoFill(m_lineFill->isChecked());
+    connect(m_lineFill, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setLineAutoFill(on);
+        settings().setValue(QStringLiteral("tools/lineAutoFill"), on);
+        if (QAction* const action = m_actions->action(QStringLiteral("AutoFillInside")))
+            action->setChecked(on);
+    });
+    m_form->addRow(m_lineFill);
+    // The Select tool: lines scaled get thicker or thinner with it.
+    m_scaleThickness = new QCheckBox(tr("Scale Pencil Line Thickness"), this);
+    m_scaleThickness->setObjectName(QStringLiteral("SelectScaleThickness"));
+    m_scaleThickness->setToolTip(tr("When enabled, the width of pencil lines will be adjusted when scaling them with the Select tool."));
+    m_scaleThickness->setChecked(settings().value(QStringLiteral("tools/scaleThickness"), false).toBool());
+    m_canvas->setScaleThickness(m_scaleThickness->isChecked());
+    connect(m_scaleThickness, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setScaleThickness(on);
+        settings().setValue(QStringLiteral("tools/scaleThickness"), on);
+    });
+    m_form->addRow(m_scaleThickness);
     // The Rectangle and the Ellipse: painted inside as they are drawn.
     m_shapeFill = new QCheckBox(tr("Auto Fill"), this);
     m_shapeFill->setObjectName(QStringLiteral("ShapeAutoFill"));
@@ -497,6 +522,18 @@ void ToolProperties::addSelectRows()
     m_snapAlign->setObjectName(QStringLiteral("SelectSnapAlign"));
     m_snapAlign->setToolTip(tr("What you drag goes edge to edge, or middle to middle, with the other artwork of the drawing when it comes near."));
     connect(m_snapAlign, &QCheckBox::toggled, m_canvas, &Canvas::setSnapAlign);
+    connect(m_snapAlign, &QCheckBox::toggled, this, [this](bool on) {
+        if (QAction* const action = m_actions->action(QStringLiteral("SnapAndAlign")))
+            action->setChecked(on);
+    });
+    // A command that changes a setting shown here (Snap and Align, Auto Fill): shown again.
+    connect(m_canvas, &Canvas::toolSettingsChanged, this, [this] {
+        QSignalBlocker const quiet1(m_snapAlign), quiet2(m_lineFill);
+        m_snapAlign->setChecked(m_canvas->snapsAndAligns());
+        if (m_lineFill)
+            m_lineFill->setChecked(m_canvas->lineAutoFill());
+        settings().setValue(QStringLiteral("tools/lineAutoFill"), m_canvas->lineAutoFill());
+    });
     m_form->addRow(m_snapAlign);
     // The Dropper: the colour of whatever is seen there, or only of what is on the layer worked on.
     m_dropperAll = new QCheckBox(tr("Sample All Layers"), this);

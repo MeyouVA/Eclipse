@@ -83,6 +83,8 @@ private:
     QLayout* m_stabiliserRow = nullptr;
     QLayout* m_lineModeRow = nullptr;
     QLayout* m_stencilRow = nullptr;
+    QCheckBox* m_lineFill = nullptr;
+    QCheckBox* m_scaleThickness = nullptr;
     QCheckBox* m_shapeFill = nullptr;
     QLayout* m_cornersRow = nullptr;
     QLayout* m_minSizeRow = nullptr;

@@ -128,6 +128,12 @@ public:
     static float stencilThickness(int stencil, double along);
     // The stencil laid on a line: each point as thick as the stencil says at its place along it.
     static void applyStencil(Stroke& stroke, int stencil);
+    // The Brush and the Pencil: a line whose ends meet is painted inside with the colour in hand.
+    void setLineAutoFill(bool on) { m_lineAutoFill = on; }
+    bool lineAutoFill() const { return m_lineAutoFill; }
+    // The Select tool: lines scaled get thicker or thinner with it (off: they keep their thickness).
+    void setScaleThickness(bool on) { m_scaleThickness = on; }
+    bool scaleThickness() const { return m_scaleThickness; }
     // The Rectangle and the Ellipse: the inside is painted with the colour in hand as the shape is drawn.
     void setShapeAutoFill(bool on) { m_shapeAutoFill = on; }
     bool shapeAutoFill() const { return m_shapeAutoFill; }
@@ -448,6 +454,8 @@ public:
     QRectF selectionRect() const { return hasSelection() ? selectionBounds() : QRectF(); }
     // Moves and stretches what is selected so that it fills this box.
     void setSelectionRect(QRectF const& box);
+    // Where a corner of the selection's box is in the view (0: top left, then round to the right; (-1, -1): none selected).
+    QPointF selectionCorner(int corner) const;
     // These lines, painted areas and pictures of the current drawing selected (indices into it).
     void setSelection(QVector<int> const& strokes, QVector<int> const& fills, QVector<int> const& pictures = {});
     // Turns what is selected about its middle, clockwise.
@@ -639,6 +647,10 @@ public slots:
     // Quick Close-up: a close-up of what is under the pointer (four times as near, in the middle); again, back to the view
     // as it was.
     void onActionQuickCloseup();
+    // What is selected, in the middle of the view and as big as it will go.
+    void onActionFrameSelection();
+    void onActionSnapAndAlign(bool on) { m_snapAlign = on; emit toolSettingsChanged(); }
+    void onActionAutoFillInside(bool on) { m_lineAutoFill = on; emit toolSettingsChanged(); }
     bool inQuickCloseup() const { return m_closeup; }
     // The same, about a place of the view rather than the pointer.
     void recentreOn(QPointF widgetPos);
@@ -828,6 +840,8 @@ public slots:
     void onActionHighlightColour(bool on);
 
 signals:
+    // A setting of the tool in hand changed by a command (Tool Properties shows it again).
+    void toolSettingsChanged();
     void selectionChanged();
     // The textures there are to choose from have changed, or the one in hand has.
     void texturesChanged();
@@ -1001,6 +1015,10 @@ private:
     int m_stabiliser = StabiliserOff;
     int m_pressureFeel = 50;
     int m_stencil = StencilUniform;
+    bool m_lineAutoFill = false;
+    bool m_scaleThickness = false;
+    // A painted area under `line`, the shape it goes round (one step to undo with what is drawn after it).
+    void fillUnder(Stroke const& line);
     void mergeSelectedLines(bool bridge, QString const& text);
     int m_stabiliserStrength = 50;
     QPointF m_stabiliserLine, m_stabiliserPen;

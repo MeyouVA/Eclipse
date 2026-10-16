@@ -47,6 +47,11 @@
   <shortcut id="shortcut.resetRotation" text="Reset Rotation" value="Shift+X"/>
   <shortcut id="shortcut.resetPan" text="Reset Pan" value="Shift+N"/>
   <shortcut id="shortcut.recentre" text="Recentre" value=""/>
+  <shortcut id="shortcut.frameSelection" text="Frame Drawing Selection" value="Shift+F"/>
+  <shortcut id="shortcut.snapToContour" text="Snap to Contour" value="Ctrl+Alt+;"/>
+  <shortcut id="shortcut.snapToGrid" text="Snap to Grid" value="Ctrl+Alt+'"/>
+  <shortcut id="shortcut.snapAndAlign" text="Snap and Align" value="Ctrl+Alt+,"/>
+  <shortcut id="shortcut.autoFillInside" text="Automatically Fill Inside Regions" value="Ctrl+Shift+R"/>
   <shortcut id="shortcut.hideSelection" text="Hide Selection" value=""/>
   <shortcut id="shortcut.showSelectionHideOthers" text="Show Selection And Hide All Others" value=""/>
   <shortcut id="shortcut.smoothFast" text="Smooth Fast" value=""/>

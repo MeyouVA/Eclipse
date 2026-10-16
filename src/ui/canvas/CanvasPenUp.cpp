@@ -206,19 +206,24 @@ void Canvas::keepShape()
         return;
     }
     m_document->beginMacro(tr("Draw Shape"));
+    fillUnder(m_stroke);
+    keepStroke(m_stroke, false);
+    m_document->endMacro();
+}
+
+void Canvas::fillUnder(Stroke const& line)
+{
     Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
     QPolygonF outline;
-    for (StrokePoint const& point : m_stroke.path())
+    for (StrokePoint const& point : line.path())
         outline << point.pos;
     Fill area;
     area.outlines = {outline};
-    area.swatch = m_stroke.swatch;
-    area.color = m_stroke.color;
+    area.swatch = line.swatch;
+    area.color = line.color;
     area.order = Drawing::topOrder(art.fills, art.strokes);
     art.fills.push_back(area);
     commitDrawing(art, tr("Paint"));
-    keepStroke(m_stroke, false);
-    m_document->endMacro();
 }
 
 void Canvas::penUp()
@@ -387,7 +392,18 @@ void Canvas::penUp()
             m_stroke.points.last().pos = snapped(m_stroke.points.last().pos);
         }
         m_stroke.fit(tolerance, m_cornerAngle);
-        keepStroke(m_stroke, true, tolerance);
+        // Auto Fill: a line whose ends meet is painted inside.
+        double const reach = m_stroke.width / 2.0 + 8.0 / std::max(m_zoom, 1e-6);
+        QRectF const box = m_stroke.bounds();
+        if (m_lineAutoFill && (m_tool == Brush || m_tool == Pencil) && m_stroke.points.size() >= 3 && !bitmapNow()
+            && QLineF(m_stroke.points.first().pos, m_stroke.points.last().pos).length() <= reach && std::min(box.width(), box.height()) > reach * 2.0) {
+            m_document->beginMacro(tr("Draw Stroke"));
+            fillUnder(m_stroke);
+            keepStroke(m_stroke, true, tolerance);
+            m_document->endMacro();
+        } else {
+            keepStroke(m_stroke, true, tolerance);
+        }
     } else if (drag == DragShape) {
         // A click without a drag draws nothing.
         bool const drawn = m_stroke.bounds().width() * m_zoom > m_stroke.width * m_zoom + 3 || m_stroke.bounds().height() * m_zoom > m_stroke.width * m_zoom + 3;

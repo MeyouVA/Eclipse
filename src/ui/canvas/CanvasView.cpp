@@ -90,6 +90,20 @@ void Canvas::recentreOn(QPointF widgetPos)
     update();
 }
 
+void Canvas::onActionFrameSelection()
+{
+    if (!hasSelection()) {
+        emit message(tr("Select something first: it is framed in the view."));
+        return;
+    }
+    QRectF const box = layerViewTransform().mapRect(selectionBounds());
+    if (box.width() < 1e-6 && box.height() < 1e-6)
+        return;
+    double const factor = std::clamp(std::min(width() * 0.8 / std::max(box.width(), 1e-6), height() * 0.8 / std::max(box.height(), 1e-6)), 1e-3, 1e3);
+    zoomAt(box.center(), factor);
+    recentreOn(layerViewTransform().mapRect(selectionBounds()).center());
+}
+
 void Canvas::onActionQuickCloseup()
 {
     QPointF pointer = mapFromGlobal(QCursor::pos());

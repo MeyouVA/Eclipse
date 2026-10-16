@@ -97,6 +97,14 @@ QPointF Canvas::handlePos(Handle handle, QRectF const& b) const
     }
 }
 
+QPointF Canvas::selectionCorner(int corner) const
+{
+    if (!hasSelection() || corner < 0 || corner > 3)
+        return QPointF(-1, -1);
+    static Handle const corners[4] = {TopLeft, TopRight, BottomRight, BottomLeft};
+    return layerViewTransform().map(handlePos(corners[corner], selectionBounds()));
+}
+
 Canvas::Handle Canvas::handleAt(QPointF widgetPos) const
 {
     if (!hasSelection())
