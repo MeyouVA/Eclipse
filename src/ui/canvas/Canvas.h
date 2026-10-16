@@ -196,7 +196,7 @@ public:
     void setBitmapFlow(int percent) { m_bitmapFlow = std::clamp(percent, 1, 100); }
     int bitmapHardness() const { return m_bitmapHardness; }
     // The Brush on a bitmap layer: the shape of its tip, pressed down again and again along the stroke.
-    enum BitmapTip { BitmapRound, BitmapSquare, BitmapChisel, BitmapSpray };
+    enum BitmapTip { BitmapRound, BitmapSquare, BitmapChisel, BitmapSpray, BitmapImage };
     BitmapTip bitmapTip() const { return m_bitmapTip; }
     void setBitmapTip(BitmapTip tip) { m_bitmapTip = tip; }
     int bitmapFlow() const { return m_bitmapFlow; }
@@ -650,6 +650,54 @@ public:
     // How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
     static inline double s_lineOpacity = 1.0;
     static void paintFill(QPainter& painter, Fill const& fill, QBrush const& color);
+    // The bitmap brush's tip, as its editor (Tool Properties: Edit Tip...) sets it: turned, flattened, flipped; how far apart
+    // its dabs are and how many at each place; how much each of these varies at random; and how faint it is where the pen
+    // barely presses.
+    struct TipShape {
+        int angle = 0;              // degrees
+        int roundness = 100;        // per cent: how tall the tip is beside how wide
+        int spacing = 0;            // per cent of the size from dab to dab (0: as the tip has it)
+        int count = 1;              // dabs at each place
+        bool flipX = false, flipY = false;
+        int randomAngle = 0, randomSpacing = 0, randomCount = 0, randomSize = 0, randomOffset = 0;
+        int minOpacity = 100;       // per cent of solid at the lightest pressure (100: pressure leaves it solid)
+        // The tip turns with the stroke: Angle is then from the way the stroke goes.
+        bool followDirection = false;
+        // How the paint goes onto the pixels already there: over them; only where there is paint already (a stencil:
+        // its colour changes, its shape does not); behind them; or taking them away (an eraser with this tip).
+        enum Mode { Normal, Stencil, Behind, Erase };
+        int mode = Normal;
+        // A second tip (Dual Tip): the stroke shows only where it, stamped along the same way, leaves its mark.
+        bool dual = false;
+        int dualKind = 0;           // BitmapRound, BitmapSquare, BitmapChisel, BitmapSpray, BitmapImage (the dual tip picture)
+        int dualSize = 50;          // per cent of the brush's size
+        int dualSpacing = 25, dualCount = 1, dualRoundness = 100, dualAngle = 0;
+        bool dualFlipX = false, dualFlipY = false;
+        int dualRandomAngle = 0, dualRandomSpacing = 0, dualRandomCount = 0, dualRandomSize = 0, dualRandomOffset = 0;
+        bool engaged() const
+        {
+            return angle != 0 || roundness != 100 || spacing != 0 || count != 1 || flipX || flipY || randomAngle != 0 || randomSpacing != 0
+                   || randomCount != 0 || randomSize != 0 || randomOffset != 0 || minOpacity != 100 || followDirection || mode != Normal || dual;
+        }
+    };
+    void setTipShape(TipShape const& shape) { m_tipShape = shape; }
+    TipShape const& tipShape() const { return m_tipShape; }
+    // A tip of your own (BitmapImage): a picture whose light parts paint (and whose clear parts do not).
+    void setTipImage(QImage const& image) { m_tipImage = image; }
+    // The dual tip's picture (a dualKind of BitmapImage).
+    void setDualTipImage(QImage const& image) { m_dualImage = image; }
+    QImage const& tipImage() const { return m_tipImage; }
+    // The tips of a Photoshop brush file (.abr, versions 6 to 10: its sampled brushes), as pictures; none when it is not one.
+    static QVector<QImage> readAbr(QString const& path, QString* why = nullptr);
+    // The lines and areas of one art layer of a drawing painted into that art layer's pixels (made if it has none), and
+    // taken away: the art layer is a bitmap one from then on.  `fineness`: pixels for each unit of the scene; `canvas`: how
+    // much of the scene's frame the pixels cover (1.5: the frame and a quarter more on every side).
+    static void rasterize(Drawing& drawing, int sheet, Scene const& scene, double fineness, double canvas);
+    // The painted pixels of a drawing made finer or coarser by `factor` (2: twice as many each way); the picture stays as big.
+    static void resampleBitmaps(Drawing& drawing, double factor);
+    // Preferences: how much of the scene's frame a new drawing's pixels cover, per cent (150: the frame and a quarter more
+    // on every side).
+    void setBitmapCanvas(int percent) { m_bitmapCanvas = std::clamp(percent, 100, 400); }
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -795,6 +843,14 @@ public slots:
     void onActionFlattenRemoveExtra();
     // The lines with no thickness of the art in hand (of the selection, when there is one) taken away.
     void onActionRemoveInvisibleLines();
+    // Drawing > Convert > Convert to Bitmap Drawing: the art layer being worked on, painted into its pixels.
+    void onActionConvertToBitmap();
+    // Layer: every drawing of the layer made as its art layers are - those that are bitmap ones painted into pixels.
+    void onActionMatchArtLayerType();
+    // Drawing > Change Bitmap Drawing Resolution...: the pixels of the drawing finer or coarser.
+    void onActionBitmapResolution();
+    // The same, said how: so much finer (2: twice), on this drawing or every drawing of the layer.
+    void changeBitmapResolution(double factor, bool allDrawings);
     // The Contour Editor's picked point taken out of its joint: a point of its own line only, from then on.
     void onActionBreakJoint();
     // Overlay art to underlay art and back (from the line or colour art: to the overlay).
@@ -1085,6 +1141,14 @@ private:
     BitmapTip m_bitmapTip = BitmapRound;
     // The tip pressed along the stroke (its size `share` of the stroke's thickness at each place), in `brush`.
     void stampTip(QPainter& onto, Stroke const& stroke, double share, QBrush const& brush) const;
+    // The dabs of a tip along a stroke (the stroke's own tip, or the dual one): `size` the width of the line, the rest as TipShape.
+    struct Dabs {
+        int kind = 0, roundness = 100, angle = 0, count = 1, spacing = 0;
+        bool flipX = false, flipY = false, follow = false;
+        int randomAngle = 0, randomSpacing = 0, randomCount = 0, randomSize = 0, randomOffset = 0, minOpacity = 100;
+        double size = 1.0;
+    };
+    void stampDabs(QPainter& onto, QVector<StrokePoint> const& run, Dabs const& dabs, QBrush const& brush, QImage const& picture) const;
     bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept
     QRectF selectionBounds() const;
     QPointF handlePos(Handle handle, QRectF const& bounds) const;  // in scene coordinates
@@ -1101,6 +1165,10 @@ private:
     int m_stabiliser = StabiliserOff;
     int m_pressureFeel = 50;
     bool m_eraserSquare = false;
+    TipShape m_tipShape;
+    QImage m_tipImage;
+    QImage m_dualImage;
+    int m_bitmapCanvas = 150;
     bool m_autoColourArt = false;
     CopyArt m_copyArt;
     bool m_quietFlatten = false;

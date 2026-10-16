@@ -283,6 +283,9 @@
     <item id="RemoveArtOutsideAll" icon="anim/removeoutside" text="Remove Art Outside Selection on All Drawings" shortcut="shortcut.removeArtOutsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="removeOutsideAll"/>
     <item id="DeleteNonSelection" icon="anim/removeoutside" text="&amp;Delete Non Selection" shortcut="shortcut.deleteNonSelection" responder="camera" slot="onActionDeleteNonSelection()"/>
    </menu>
+   <item id="ConvertToBitmap" icon="anim/smooth" text="Convert to &amp;Bitmap Drawing" shortcut="shortcut.convertToBitmap" responder="camera" slot="onActionConvertToBitmap()"/>
+   <item id="MatchArtLayerType" icon="anim/smooth" text="Convert Drawings to Match Art Layer Type" shortcut="shortcut.matchArtLayerType" responder="camera" slot="onActionMatchArtLayerType()"/>
+   <item id="BitmapResolution" icon="anim/smooth" text="Change Bitmap Drawing Resol&amp;ution..." shortcut="shortcut.bitmapResolution" responder="camera" slot="onActionBitmapResolution()"/>
    <menu id="DrawingOptimize" text="&amp;Optimize">
     <item id="Flatten"/>
     <item id="FlattenDrawing" icon="anim/flatten" text="Flatten &amp;Drawing" shortcut="shortcut.flattenDrawing" responder="camera" slot="onActionFlattenDrawing()"/>

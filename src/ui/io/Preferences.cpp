@@ -294,6 +294,7 @@ void MainWindow::applyPreferences()
         w->update();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
     m_canvas->setPencilLinesOpacity(s.value(QStringLiteral("prefs/pencilLinesOpacity"), 100).toInt());
+    m_canvas->setBitmapCanvas(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt());
     m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
     // A drawing has four sheets; two of them - overlay and underlay - are out of the way
     // unless they are asked for.
@@ -917,6 +918,13 @@ void MainWindow::onActionPreferences()
     lineOpacity->setToolTip(tr("How strongly pencil lines show in the views (what is exported is not changed)."));
     lineOpacity->setValue(s.value(QStringLiteral("prefs/pencilLinesOpacity"), 100).toInt());
     drawingLayout->addRow(tr("Pencil lines opacity"), lineOpacity);
+    QSpinBox* const bitmapCanvas = new QSpinBox(drawing);
+    bitmapCanvas->setObjectName(QStringLiteral("PrefBitmapCanvas"));
+    bitmapCanvas->setRange(100, 400);
+    bitmapCanvas->setSuffix(tr(" %"));
+    bitmapCanvas->setToolTip(tr("Default Canvas for Bitmap Layers: how much of the scene's frame the pixels of a new bitmap drawing cover."));
+    bitmapCanvas->setValue(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt());
+    drawingLayout->addRow(tr("Bitmap canvas size"), bitmapCanvas);
 
     // Colours: of the view round the frame, and of the onion skin.
     QGroupBox* const colours = new QGroupBox(tr("Colours"), &dialog);
@@ -1146,6 +1154,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/lineArtBitmap"), lineArtBitmap->isChecked());
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
     s.setValue(QStringLiteral("prefs/pencilLinesOpacity"), lineOpacity->value());
+    s.setValue(QStringLiteral("prefs/bitmapCanvas"), bitmapCanvas->value());
     s.setValue(QStringLiteral("prefs/onionOver"), onionOver->isChecked());
     s.setValue(QStringLiteral("prefs/selectLasso"), selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/showStrokes"), showStrokes->isChecked());

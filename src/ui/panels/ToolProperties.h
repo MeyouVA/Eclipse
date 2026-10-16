@@ -8,6 +8,8 @@
 #include <QPixmap>
 #include <QWidget>
 
+#include "ui/canvas/Canvas.h"
+
 class ActionManager;
 class Canvas;
 class Document;
@@ -36,6 +38,11 @@ public:
     bool makeStencil(QString const& name);
     // One of the user's own presets of the tool in hand (by its place among them) made the size and smoothing now set.
     bool updatePreset(int index);
+    // Tips of your own for the bitmap brush, from a picture or a Photoshop brush file (.abr): kept, and the last chosen.
+    // The number taken in.
+    int importBitmapTips(QString const& path, QComboBox* box);
+    // The bitmap brush's tip editor (Angle, Roundness, Spacing, Count, flips, randomness, Minimum Opacity).
+    void editTipShape();
     // The presets list: shown with small or large pictures, or as names only (its right-click menu).
     void setPresetView(int view);
     // The same for the tool in hand: the presets may have changed.
@@ -93,6 +100,9 @@ private:
     QLayout* m_eraserTipRow = nullptr;
     QSpinBox* m_stampRandomSize = nullptr;
     void fillStencils(QComboBox* box);
+    void fillBitmapTips(QComboBox* box);
+    void loadTipShape();
+    void saveTipShape(Canvas::TipShape const& shape);
     QCheckBox* m_lineFill = nullptr;
     // The line options: the rows of each (the Brush, the Pencil, the Stroke tool show those that are theirs).
     QVector<QLayout*> m_brushLineRows;
