@@ -128,6 +128,24 @@ public:
     static float stencilThickness(int stencil, double along);
     // The stencil laid on a line: each point as thick as the stencil says at its place along it.
     static void applyStencil(Stroke& stroke, int stencil);
+    // How a line drawn with the pen is finished (Tool Properties of the Brush, the Pencil and the Stroke tool):
+    //  Start / End Taper: the Brush's line thins to a point over that share of its length (per cent, 0: none);
+    //  Speed Sensitivity: the faster the pen, the thinner the Brush's line (inverted: the thicker);
+    //  Trim Extra Lines: an end that runs a little past a line it crosses is cut off there;
+    //  Connect Line Ends: an end that stops a little short of a line is carried on to touch it;
+    //  Auto Close Gap: a line whose ends nearly meet is closed by an invisible stroke (paint stays in);
+    //  Line Building: a line begun or ended at the end of a line of its colour is joined to it, one line;
+    //  Straight Lines: the Stroke tool draws straight pieces, not curves.
+    struct LineOptions {
+        int startTaper = 0, endTaper = 0, speed = 0;
+        bool speedInvert = false, trim = false, connect = false, closeGap = false, building = false, straight = false;
+    };
+    void setLineOptions(LineOptions const& options) { m_lineOptions = options; }
+    LineOptions const& lineOptions() const { return m_lineOptions; }
+    // The steps, for the tests too: on the pen's samples (before they are fitted), and in `art` (the drawing it goes into).
+    static void applyTaperAndSpeed(Stroke& stroke, LineOptions const& options, double zoom);
+    static bool trimExtra(Stroke& stroke, Drawing const& art, double reach);
+    static bool connectEnds(Stroke& stroke, Drawing const& art, double reach);
     // The Brush and the Pencil: a line whose ends meet is painted inside with the colour in hand.
     void setLineAutoFill(bool on) { m_lineAutoFill = on; }
     bool lineAutoFill() const { return m_lineAutoFill; }
@@ -1016,6 +1034,9 @@ private:
     int m_pressureFeel = 50;
     int m_stencil = StencilUniform;
     bool m_lineAutoFill = false;
+    LineOptions m_lineOptions;
+    // After a line is drawn: the invisible stroke that closes it, and its joining to a line it was built on.
+    void finishDrawnLine(double reach);
     bool m_scaleThickness = false;
     // A painted area under `line`, the shape it goes round (one step to undo with what is drawn after it).
     void fillUnder(Stroke const& line);

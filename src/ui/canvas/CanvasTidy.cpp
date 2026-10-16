@@ -833,3 +833,226 @@ void Canvas::onActionSplitPencilLine()
     commitDrawing(edited, tr("Split Pencil Line"));
     update();
 }
+
+// ---- how a line drawn with the pen is finished ---------------------------------------------------------------------------
+
+void Canvas::applyTaperAndSpeed(Stroke& stroke, LineOptions const& options, double zoom)
+{
+    int const n = int(stroke.points.size());
+    if (n < 2)
+        return;
+    QVector<double> const along = distancesAlong(stroke.points);
+    double const total = along.last();
+    if (total <= 0.0)
+        return;
+    // Speed: how far the pen went between two samples, on the screen (the samples come at a steady rate), smoothed a little.
+    if (options.speed > 0) {
+        QVector<double> step(n, 0.0);
+        for (int i = 1; i < n; ++i)
+            step[i] = (along[i] - along[i - 1]) * zoom;
+        step[0] = n > 1 ? step[1] : 0.0;
+        for (int i = 0; i < n; ++i) {
+            double sum = 0.0;
+            int count = 0;
+            for (int k = std::max(0, i - 2); k <= std::min(n - 1, i + 2); ++k) {
+                sum += step[k];
+                ++count;
+            }
+            double const fast = std::clamp(sum / count / 30.0, 0.0, 1.0);
+            double const thinner = options.speed / 100.0 * 0.75 * (options.speedInvert ? 1.0 - fast : fast);
+            stroke.points[i].pressure = float(stroke.points[i].pressure * (1.0 - thinner));
+        }
+    }
+    // Taper: smoothly to a point over that share of the line at its start and at its end.
+    auto ramp = [](double x) {
+        x = std::clamp(x, 0.0, 1.0);
+        return x * x * (3.0 - 2.0 * x);
+    };
+    for (int i = 0; i < n; ++i) {
+        double share = 1.0;
+        if (options.startTaper > 0)
+            share *= ramp(along[i] / (total * options.startTaper / 100.0));
+        if (options.endTaper > 0)
+            share *= ramp((total - along[i]) / (total * options.endTaper / 100.0));
+        stroke.points[i].pressure = float(std::max(0.05, stroke.points[i].pressure * share));
+    }
+}
+
+// Where the piece a-b crosses the piece c-d: how far along a-b (0 to 1), or -1.
+static double crossing(QPointF a, QPointF b, QPointF c, QPointF d)
+{
+    QPointF const r = b - a, s = d - c;
+    double const across = r.x() * s.y() - r.y() * s.x();
+    if (std::abs(across) < 1e-12)
+        return -1.0;
+    QPointF const ac = c - a;
+    double const t = (ac.x() * s.y() - ac.y() * s.x()) / across, u = (ac.x() * r.y() - ac.y() * r.x()) / across;
+    return t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0 ? t : -1.0;
+}
+
+bool Canvas::trimExtra(Stroke& stroke, Drawing const& art, double reach)
+{
+    // Every place the new line crosses a line of the drawing, as a distance along it.
+    int const n = int(stroke.points.size());
+    if (n < 2)
+        return false;
+    QVector<double> const along = distancesAlong(stroke.points);
+    double const total = along.last();
+    double first = -1.0, last = -1.0;
+    QPointF firstAt, lastAt;
+    int firstPiece = -1, lastPiece = -1;
+    for (Stroke const& other : art.strokes) {
+        QVector<StrokePoint> const run = other.path();
+        int const pieces = int(run.size()) - 1 + (other.closed && run.size() > 2 ? 1 : 0);
+        for (int k = 0; k < pieces; ++k) {
+            QPointF const c = run[k].pos, d = run[(k + 1) % run.size()].pos;
+            for (int i = 0; i + 1 < n; ++i) {
+                double const t = crossing(stroke.points[i].pos, stroke.points[i + 1].pos, c, d);
+                if (t < 0.0)
+                    continue;
+                double const at = along[i] + (along[i + 1] - along[i]) * t;
+                QPointF const where = stroke.points[i].pos + (stroke.points[i + 1].pos - stroke.points[i].pos) * t;
+                if (first < 0.0 || at < first) {
+                    first = at;
+                    firstAt = where;
+                    firstPiece = i;
+                }
+                if (last < 0.0 || at > last) {
+                    last = at;
+                    lastAt = where;
+                    lastPiece = i;
+                }
+            }
+        }
+    }
+    if (first < 0.0)
+        return false;
+    // The ends that run only a little past the first and last crossings (and not most of the line) are cut off there.
+    bool const cutEnd = total - last > 1e-9 && total - last <= reach && total - last < total * 0.4;
+    bool const cutStart = first > 1e-9 && first <= reach && first < total * 0.4 && (!cutEnd || lastPiece >= firstPiece);
+    if (!cutEnd && !cutStart)
+        return false;
+    QVector<StrokePoint> kept;
+    int const from = cutStart ? firstPiece + 1 : 0, to = cutEnd ? lastPiece : n - 1;
+    if (cutStart)
+        kept.push_back({firstAt, stroke.points[firstPiece].pressure});
+    for (int i = from; i <= to; ++i)
+        kept.push_back(stroke.points[i]);
+    if (cutEnd)
+        kept.push_back({lastAt, stroke.points[std::min(lastPiece + 1, n - 1)].pressure});
+    if (kept.size() < 2)
+        return false;
+    stroke.points = kept;
+    return true;
+}
+
+bool Canvas::connectEnds(Stroke& stroke, Drawing const& art, double reach)
+{
+    // An end near a line of the drawing, but not on it: carried on to the nearest place on that line.
+    if (stroke.points.size() < 2)
+        return false;
+    auto nearest = [&](QPointF p, QPointF& on) {
+        double best = 1e300;
+        for (Stroke const& other : art.strokes) {
+            QVector<StrokePoint> const run = other.path();
+            int const pieces = int(run.size()) - 1 + (other.closed && run.size() > 2 ? 1 : 0);
+            for (int k = 0; k < pieces; ++k) {
+                QPointF const a = run[k].pos, ab = run[(k + 1) % run.size()].pos - a;
+                double const len2 = ab.x() * ab.x() + ab.y() * ab.y();
+                double const t = len2 > 0 ? std::clamp(((p.x() - a.x()) * ab.x() + (p.y() - a.y()) * ab.y()) / len2, 0.0, 1.0) : 0.0;
+                QPointF const there = a + ab * t;
+                double const distance = QLineF(p, there).length();
+                if (distance < best) {
+                    best = distance;
+                    on = there;
+                }
+            }
+        }
+        return best;
+    };
+    bool changed = false;
+    QPointF on;
+    double const atStart = nearest(stroke.points.first().pos, on);
+    if (atStart > reach * 0.02 && atStart <= reach) {
+        stroke.points.prepend({on, stroke.points.first().pressure});
+        changed = true;
+    }
+    double const atEnd = nearest(stroke.points.last().pos, on);
+    if (atEnd > reach * 0.02 && atEnd <= reach) {
+        stroke.points.push_back({on, stroke.points.last().pressure});
+        changed = true;
+    }
+    return changed;
+}
+
+void Canvas::finishDrawnLine(double reach)
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || d->strokes.isEmpty())
+        return;
+    Drawing edited = *d;
+    int const mine = int(edited.strokes.size()) - 1;        // the line just drawn is the last one
+    Stroke line = edited.strokes[mine];
+    if (line.points.size() < 2 || line.closed || line.width <= 0.0f)
+        return;
+    bool changed = false;
+    // Line Building: begun or ended at an end of a line of its colour - one line with it.
+    if (m_lineOptions.building) {
+        double const near = std::max(reach * 0.5, double(line.width));
+        for (int k = mine - 1; k >= 0 && !changed; --k) {
+            Stroke const& other = edited.strokes[k];
+            if (other.closed || other.points.size() < 2 || other.width <= 0.0f || other.swatch != line.swatch)
+                continue;
+            QPointF const oa = other.points.first().pos, ob = other.points.last().pos, na = line.points.first().pos, nb = line.points.last().pos;
+            Stroke before, after;
+            if (QLineF(ob, na).length() <= near) {
+                before = other;
+                after = line;
+            } else if (QLineF(oa, nb).length() <= near) {
+                before = line;
+                after = other;
+            } else if (QLineF(ob, nb).length() <= near) {
+                before = other;
+                after = reversedLine(line);
+            } else if (QLineF(oa, na).length() <= near) {
+                before = reversedLine(line);
+                after = other;
+            } else {
+                continue;
+            }
+            if (before.curve || after.curve) {
+                makeCurve(before);
+                makeCurve(after);
+            }
+            Stroke joined = other;
+            joined.curve = before.curve;
+            joined.points = before.points;
+            for (StrokePoint const& point : std::as_const(after.points))
+                joined.points.push_back(point);
+            joined.capStart = before.capStart;
+            joined.capEnd = after.capEnd;
+            edited.strokes[k] = joined;
+            edited.strokes.removeAt(mine);
+            line = joined;
+            changed = true;
+        }
+    }
+    // Auto Close Gap: ends that nearly meet - an invisible stroke across.
+    if (m_lineOptions.closeGap && !line.closed) {
+        QPointF const a = line.points.first().pos, b = line.points.last().pos;
+        double const gap = QLineF(a, b).length();
+        QRectF const box = line.bounds();
+        if (gap > 1e-6 && gap <= reach && std::max(box.width(), box.height()) > reach * 2.0) {
+            Stroke across;
+            across.width = 0.0f;
+            across.swatch = line.swatch;
+            across.color = line.color;
+            across.points = {{b, 1.0f}, {a, 1.0f}};
+            across.order = line.order;
+            edited.strokes.push_back(across);
+            changed = true;
+        }
+    }
+    if (changed)
+        commitDrawing(edited, tr("Draw Stroke"));
+}

@@ -199,6 +199,7 @@ void ToolProperties::addSizeRows()
         settings().setValue(QStringLiteral("tools/scaleThickness"), on);
     });
     m_form->addRow(m_scaleThickness);
+    addLineOptionRows();
     // The Rectangle and the Ellipse: painted inside as they are drawn.
     m_shapeFill = new QCheckBox(tr("Auto Fill"), this);
     m_shapeFill->setObjectName(QStringLiteral("ShapeAutoFill"));
@@ -713,4 +714,55 @@ void ToolProperties::addThicknessRow()
     row->addWidget(box);
     m_form->addRow(tr("Thickness"), row);
     m_thicknessRow = row;
+}
+
+void ToolProperties::addLineOptionRows()
+{
+    // Each kept under tools/line/<key>; the canvas is told the whole set each time one changes.
+    auto send = [this] {
+        QSettings const s = settings();
+        Canvas::LineOptions o;
+        o.startTaper = s.value(QStringLiteral("tools/line/startTaper"), 0).toInt();
+        o.endTaper = s.value(QStringLiteral("tools/line/endTaper"), 0).toInt();
+        o.speed = s.value(QStringLiteral("tools/line/speed"), 0).toInt();
+        o.speedInvert = s.value(QStringLiteral("tools/line/speedInvert"), false).toBool();
+        o.trim = s.value(QStringLiteral("tools/line/trim"), false).toBool();
+        o.connect = s.value(QStringLiteral("tools/line/connect"), false).toBool();
+        o.closeGap = s.value(QStringLiteral("tools/line/closeGap"), false).toBool();
+        o.building = s.value(QStringLiteral("tools/line/building"), false).toBool();
+        o.straight = s.value(QStringLiteral("tools/line/straight"), false).toBool();
+        m_canvas->setLineOptions(o);
+    };
+    send();
+    auto number = [&](QString const& label, QString const& tip, char const* key, int most) {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/line/") + QLatin1String(key), 0).toInt(), 0, most);
+        QString const name = QLatin1String(key);
+        m_brushLineRows.push_back(addSetting(label, tip, 0, most, kept, QStringLiteral(" %"), [this, name, send](int v) {
+            settings().setValue(QStringLiteral("tools/line/") + name, v);
+            send();
+        }));
+    };
+    number(tr("Start Taper"), tr("The Brush's line thins to a point at its start, over this share of its length."), "startTaper", 50);
+    number(tr("End Taper"), tr("The Brush's line thins to a point at its end, over this share of its length."), "endTaper", 50);
+    number(tr("Speed Sensitivity"), tr("The faster the pen moves, the thinner the Brush's line (with Invert: the thicker)."), "speed", 100);
+    auto box = [&](QString const& label, QString const& tip, char const* key) {
+        QCheckBox* const check = new QCheckBox(label, this);
+        check->setObjectName(QStringLiteral("Line") + QLatin1String(key));
+        check->setToolTip(tip);
+        check->setChecked(settings().value(QStringLiteral("tools/line/") + QLatin1String(key), false).toBool());
+        QString const name = QLatin1String(key);
+        connect(check, &QCheckBox::toggled, this, [this, name, send](bool on) {
+            settings().setValue(QStringLiteral("tools/line/") + name, on);
+            send();
+        });
+        m_form->addRow(check);
+        m_lineOptionBoxes.push_back(check);
+    };
+    box(tr("Invert Speed"), tr("Speed Sensitivity the other way: the faster the pen, the thicker the line."), "speedInvert");
+    box(tr("Trim Extra Lines"), tr("An end that runs a little past a line it crosses is cut off where it crosses."), "trim");
+    box(tr("Connect Line Ends"), tr("An end that stops a little short of a line is carried on to touch it."), "connect");
+    box(tr("Auto Close Gap"), tr("Automatically close strokes with an invisible stroke: ends that nearly meet are joined, so paint stays in."), "closeGap");
+    box(tr("Line Building Mode"), tr("In this mode, strokes drawn in small increments will be merged into a single line:\n"
+                                     "a line begun or ended at the end of a line of its colour becomes one line with it."), "building");
+    box(tr("Draw Stroke as Straight Lines"), tr("The Stroke tool draws straight pieces from point to point instead of curves."), "straight");
 }

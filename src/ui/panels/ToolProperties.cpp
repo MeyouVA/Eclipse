@@ -329,6 +329,17 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_lineModeRow, tool == T::Line);
     m_form->setRowVisible(m_stencilRow, pencil);
     m_form->setRowVisible(m_lineFill, brush || pencil);
+    // The line options: which tool has which.
+    for (QLayout* const row : std::as_const(m_brushLineRows))
+        m_form->setRowVisible(row, brush);
+    for (QWidget* const check : std::as_const(m_lineOptionBoxes)) {
+        QString const option = check->objectName();
+        bool const shown = option == QStringLiteral("LinespeedInvert") ? brush
+                           : option == QStringLiteral("Linetrim") || option == QStringLiteral("Lineconnect") ? (pencil || tool == T::StrokeTool)
+                           : option == QStringLiteral("LinecloseGap") || option == QStringLiteral("Linebuilding") ? (brush || pencil)
+                           : option == QStringLiteral("Linestraight") ? tool == T::StrokeTool : false;
+        m_form->setRowVisible(check, shown);
+    }
     m_form->setRowVisible(m_scaleThickness, tool == T::Select);
     m_form->setRowVisible(m_shapeFill, tool == T::Rectangle || tool == T::Ellipse);
     m_form->setRowVisible(m_minSizeRow, brush);

@@ -84,6 +84,10 @@ private:
     QLayout* m_lineModeRow = nullptr;
     QLayout* m_stencilRow = nullptr;
     QCheckBox* m_lineFill = nullptr;
+    // The line options: the rows of each (the Brush, the Pencil, the Stroke tool show those that are theirs).
+    QVector<QLayout*> m_brushLineRows;
+    QVector<QWidget*> m_lineOptionBoxes;
+    void addLineOptionRows();
     QCheckBox* m_scaleThickness = nullptr;
     QCheckBox* m_shapeFill = nullptr;
     QLayout* m_cornersRow = nullptr;

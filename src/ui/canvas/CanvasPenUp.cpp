@@ -386,12 +386,33 @@ void Canvas::penUp()
         double const tolerance = (0.2 + m_smoothing * 0.038) / m_zoom;
         if (m_tool == Pencil && m_stencil != StencilUniform)
             applyStencil(m_stroke, m_stencil);
+        // The line options (Tool Properties): taper and speed on the Brush; trimmed and carried on to the lines it meets.
+        double const near = 12.0 / std::max(m_zoom, 1e-6);
+        if (m_tool == Brush)
+            applyTaperAndSpeed(m_stroke, m_lineOptions, m_zoom);
+        if ((m_tool == Pencil || m_tool == StrokeTool) && currentDrawing()) {
+            if (m_lineOptions.trim)
+                trimExtra(m_stroke, *currentDrawing(), 30.0 / std::max(m_zoom, 1e-6));
+            if (m_lineOptions.connect)
+                connectEnds(m_stroke, *currentDrawing(), near);
+        }
         if (m_snapGrid && (m_tool == Brush || m_tool == Pencil) && m_stroke.points.size() >= 2) {
             // Snap to Grid: the line begins and ends on a crossing of the grid when it is near one.
             m_stroke.points.first().pos = snapped(m_stroke.points.first().pos);
             m_stroke.points.last().pos = snapped(m_stroke.points.last().pos);
         }
         m_stroke.fit(tolerance, m_cornerAngle);
+        if (m_tool == StrokeTool && m_lineOptions.straight) {
+            // Straight pieces from point to point.
+            m_stroke.curve = false;
+            for (StrokePoint& point : m_stroke.points) {
+                point.handles = false;
+                point.in = point.out = QPointF();
+            }
+        }
+        bool const finishing = (m_tool == Brush || m_tool == Pencil) && !bitmapNow() && (m_lineOptions.closeGap || m_lineOptions.building);
+        if (finishing)
+            m_document->beginMacro(tr("Draw Stroke"));
         // Auto Fill: a line whose ends meet is painted inside.
         double const reach = m_stroke.width / 2.0 + 8.0 / std::max(m_zoom, 1e-6);
         QRectF const box = m_stroke.bounds();
@@ -403,6 +424,10 @@ void Canvas::penUp()
             m_document->endMacro();
         } else {
             keepStroke(m_stroke, true, tolerance);
+        }
+        if (finishing) {
+            finishDrawnLine(near);
+            m_document->endMacro();
         }
     } else if (drag == DragShape) {
         // A click without a drag draws nothing.
