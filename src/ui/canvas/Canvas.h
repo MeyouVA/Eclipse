@@ -795,6 +795,8 @@ public slots:
     void onActionFlattenRemoveExtra();
     // The lines with no thickness of the art in hand (of the selection, when there is one) taken away.
     void onActionRemoveInvisibleLines();
+    // The Contour Editor's picked point taken out of its joint: a point of its own line only, from then on.
+    void onActionBreakJoint();
     // Overlay art to underlay art and back (from the line or colour art: to the overlay).
     void onActionSwitchOverlayUnderlay() { setArt(m_art == OverlayArt ? UnderlayArt : OverlayArt); }
     // Art Layer > Auto-Create Colour Art from Brush: a line drawn in the line art makes a line with no thickness on the
@@ -1134,6 +1136,11 @@ private:
     Stroke* handleLine(Drawing& d, int& point) const;
     int m_ceHandleStroke = -1, m_ceHandlePoint = -1;     // -1: the picked point's own handle
     bool joinDroppedEnd(Drawing& edited);
+    // A point let go on another point - or on a line (Snap to Contour puts it there): it is one point with it from then on
+    // (a joint; on a line, a point is made there first).
+    bool jointDroppedPoint(Drawing& edited);
+    // Two joints made one (the points of `from` join `into`).
+    static void mergeJoints(Drawing& drawing, int into, int from);
     int m_stabiliserStrength = 50;
     QPointF m_stabiliserLine, m_stabiliserPen;
     int m_lineMode = LineStraight;

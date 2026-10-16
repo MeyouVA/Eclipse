@@ -1,5 +1,6 @@
 // Eclipse - the scene: its layers and how they hang together, its frames and markers.
 #include "model/scene/Scene.h"
+#include <QHash>
 
 #include "model/geometry/Deform.h"
 
@@ -479,6 +480,60 @@ QVector<double> Scene::Controller::weightsAt(QPointF spot) const
     for (double& w : weights)
         w /= total;
     return weights;
+}
+
+void Drawing::keepJoints(Drawing const& before)
+{
+    for (int sheet = 0; sheet < SheetCount; ++sheet) {
+        QVector<Stroke>& lines = strokesOf(sheet);
+        // Where each joint was; where it went (the first of its points that moved), and how many points it has now.
+        QHash<int, QPointF> was, went;
+        QHash<int, int> count;
+        for (Stroke const& line : before.strokesOf(sheet))
+            for (StrokePoint const& point : line.points)
+                if (point.joint != 0 && !was.contains(point.joint))
+                    was.insert(point.joint, point.pos);
+        for (Stroke const& line : std::as_const(lines))
+            for (StrokePoint const& point : line.points) {
+                if (point.joint == 0)
+                    continue;
+                ++count[point.joint];
+                if (!went.contains(point.joint) && (!was.contains(point.joint) || point.pos != was.value(point.joint)))
+                    went.insert(point.joint, point.pos);
+            }
+        for (Stroke& line : lines)
+            for (StrokePoint& point : line.points) {
+                if (point.joint == 0)
+                    continue;
+                if (count.value(point.joint) < 2)
+                    point.joint = 0;
+                else if (went.contains(point.joint))
+                    point.pos = went.value(point.joint);
+            }
+    }
+}
+
+int Drawing::nextJoint() const
+{
+    int most = 0;
+    for (int sheet = 0; sheet < SheetCount; ++sheet)
+        for (Stroke const& line : strokesOf(sheet))
+            for (StrokePoint const& point : line.points)
+                most = std::max(most, point.joint);
+    return most + 1;
+}
+
+void Drawing::freshJoints(QVector<Stroke>& strokes, Drawing const& into)
+{
+    int next = into.nextJoint();
+    QHash<int, int> renamed;
+    for (Stroke& line : strokes)
+        for (StrokePoint& point : line.points)
+            if (point.joint != 0) {
+                if (!renamed.contains(point.joint))
+                    renamed.insert(point.joint, next++);
+                point.joint = renamed.value(point.joint);
+            }
 }
 
 int Drawing::topOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes)

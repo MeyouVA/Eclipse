@@ -241,6 +241,14 @@ void Canvas::paintContourAids(QPainter& painter)
         QPointF const w = toWidget.map(stroke.points[i].pos);
         painter.setPen(QPen(QColor(20, 20, 20), 1));
         painter.setBrush(i == m_cePoint || m_ceExtra.contains(i) ? accent : QColor(Qt::white));
+        // A joint (one point of several lines): a ring round it.
+        if (stroke.points[i].joint != 0) {
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(QPen(QColor(255, 210, 70), 1.5));
+            painter.drawEllipse(w, 7.0, 7.0);
+            painter.setPen(QPen(QColor(20, 20, 20), 1));
+            painter.setBrush(i == m_cePoint || m_ceExtra.contains(i) ? accent : QColor(Qt::white));
+        }
         // A square where the line turns sharply, a dot where it bends through.
         if (stroke.isCorner(i))
             painter.drawRect(QRectF(w.x() - 3.5, w.y() - 3.5, 7, 7));
@@ -253,19 +261,21 @@ void Canvas::paintContourAids(QPainter& painter)
 
 QVector<QPair<int, int>> Canvas::sharedPoints(Drawing const& d) const
 {
-    // The points of lines lying where the point in hand lies (it has not moved yet in `d`): not those picked with it.
+    // The other points of the joint of the point in hand (one point with it): not those picked with it.
     QVector<QPair<int, int>> shared;
     Stroke const* const mine = contourLine(d);
-    if (!mine || m_cePoint < 0 || m_cePoint >= mine->points.size())
+    if (!mine || m_ceFill >= 0 || m_cePoint < 0 || m_cePoint >= mine->points.size())
         return shared;
-    QPointF const at = mine->points[m_cePoint].pos;
+    int const joint = mine->points[m_cePoint].joint;
+    if (joint == 0)
+        return shared;
     QVector<int> const picked = contourPointsPicked();
     for (int s = 0; s < d.strokes.size(); ++s)
         for (int k = 0; k < d.strokes[s].points.size(); ++k) {
             bool const own = &d.strokes[s] == mine;
             if (own && (k == m_cePoint || picked.contains(k)))
                 continue;
-            if (QLineF(d.strokes[s].points[k].pos, at).length() < 1e-6)
+            if (d.strokes[s].points[k].joint == joint)
                 shared.push_back({s, k});
         }
     return shared;
@@ -278,7 +288,7 @@ QPointF Canvas::pointMagnet(QPointF p) const
     Stroke const* const mine = d ? contourLine(*d) : nullptr;
     if (!mine || m_cePoint < 0 || m_cePoint >= mine->points.size())
         return p;
-    QPointF const from = mine->points[m_cePoint].pos;
+    int const joint = m_ceFill < 0 ? mine->points[m_cePoint].joint : 0;
     QVector<int> const picked = contourPointsPicked();
     double nearest = 6.0 / std::max(m_zoom, 1e-6);
     QPointF best = p;
@@ -287,8 +297,8 @@ QPointF Canvas::pointMagnet(QPointF p) const
             QPointF const at = line.points[k].pos;
             if (&line == mine && (k == m_cePoint || picked.contains(k)))
                 continue;
-            if (QLineF(at, from).length() < 1e-6)
-                continue;       // it goes along with the point in hand
+            if (joint != 0 && line.points[k].joint == joint)
+                continue;       // one point with the point in hand: it goes along with it
             double const distance = QLineF(at, p).length();
             if (distance < nearest) {
                 nearest = distance;
@@ -415,4 +425,90 @@ Stroke* Canvas::handleLine(Drawing& d, int& point) const
     }
     point = m_cePoint;
     return contourLine(d);
+}
+
+void Canvas::mergeJoints(Drawing& drawing, int into, int from)
+{
+    if (into == from || from == 0)
+        return;
+    for (Stroke& line : drawing.strokes)
+        for (StrokePoint& point : line.points)
+            if (point.joint == from)
+                point.joint = into;
+}
+
+bool Canvas::jointDroppedPoint(Drawing& edited)
+{
+    if (m_ceStroke < 0 || m_ceFill >= 0 || m_ceStroke >= edited.strokes.size() || !contourPointsPicked().isEmpty()
+        || m_cePoint < 0 || m_cePoint >= edited.strokes[m_ceStroke].points.size())
+        return false;
+    QPointF const at = edited.strokes[m_ceStroke].points[m_cePoint].pos;
+    auto join = [&](int stroke, int point) {
+        int const mine = edited.strokes[m_ceStroke].points[m_cePoint].joint, theirs = edited.strokes[stroke].points[point].joint;
+        if (mine != 0 && theirs != 0) {
+            mergeJoints(edited, mine, theirs);
+        } else {
+            int const joint = mine != 0 ? mine : theirs != 0 ? theirs : edited.nextJoint();
+            edited.strokes[m_ceStroke].points[m_cePoint].joint = joint;
+            edited.strokes[stroke].points[point].joint = joint;
+        }
+    };
+    // Onto a point (of another line, or of this one away from its neighbours).
+    int const mineJoint = edited.strokes[m_ceStroke].points[m_cePoint].joint;
+    for (int s = 0; s < edited.strokes.size(); ++s)
+        for (int k = 0; k < edited.strokes[s].points.size(); ++k) {
+            if (s == m_ceStroke && std::abs(k - m_cePoint) <= 1)
+                continue;
+            StrokePoint const& other = edited.strokes[s].points[k];
+            if ((mineJoint != 0 && other.joint == mineJoint) || QLineF(other.pos, at).length() > 1e-6)
+                continue;
+            join(s, k);
+            return true;
+        }
+    // Onto a line (where Snap to Contour put it): a point there, joined.
+    for (int s = 0; s < edited.strokes.size(); ++s) {
+        if (s == m_ceStroke)
+            continue;
+        // (A line with a point there already - one joined to this one, or lying on it - needs no new point.)
+        bool already = false;
+        for (StrokePoint const& point : std::as_const(edited.strokes[s].points))
+            already = already || (mineJoint != 0 && point.joint == mineJoint) || QLineF(point.pos, at).length() < 1e-6;
+        if (already)
+            continue;
+        QVector<StrokePoint> const run = edited.strokes[s].path();
+        int const pieces = int(run.size()) - 1 + (edited.strokes[s].closed && run.size() > 2 ? 1 : 0);
+        double nearest = 1e300;
+        for (int i = 0; i < pieces; ++i) {
+            QPointF const a = run[i].pos, ab = run[(i + 1) % run.size()].pos - a;
+            double const len2 = ab.x() * ab.x() + ab.y() * ab.y();
+            double const t = len2 > 0 ? std::clamp(((at.x() - a.x()) * ab.x() + (at.y() - a.y()) * ab.y()) / len2, 0.0, 1.0) : 0.0;
+            nearest = std::min(nearest, QLineF(at, a + ab * t).length());
+        }
+        if (nearest > 1e-3)
+            continue;
+        int const made = edited.strokes[s].insertPoint(at);
+        if (made < 0)
+            continue;
+        edited.strokes[s].points[made].pos = at;
+        join(s, made);
+        return true;
+    }
+    return false;
+}
+
+void Canvas::onActionBreakJoint()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || m_tool != ContourEditor || m_ceStroke < 0 || m_ceFill >= 0 || m_ceStroke >= d->strokes.size() || m_cePoint < 0
+        || m_cePoint >= d->strokes[m_ceStroke].points.size() || d->strokes[m_ceStroke].points[m_cePoint].joint == 0) {
+        emit message(tr("Pick a joint with the Contour Editor first (a point with a ring round it)."));
+        return;
+    }
+    Drawing edited = *d;
+    edited.strokes[m_ceStroke].points[m_cePoint].joint = 0;
+    int const stroke = m_ceStroke, point = m_cePoint;
+    commitDrawing(edited, tr("Break Joint"));
+    m_ceStroke = stroke;
+    m_cePoint = point;
+    update();
 }

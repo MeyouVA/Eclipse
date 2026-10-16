@@ -67,6 +67,13 @@ static QJsonObject strokeToJson(Stroke const& s)
     }
     if (!leans.isEmpty())
         o["lean"] = leans;
+    // Joints: index, joint number.
+    QJsonArray joints;
+    for (int i = 0; i < s.points.size(); ++i)
+        if (s.points[i].joint != 0)
+            joints << i << s.points[i].joint;
+    if (!joints.isEmpty())
+        o["joints"] = joints;
     if (!opacities.isEmpty())
         o["opacity"] = opacities;
     if (s.join != Stroke::RoundJoin)

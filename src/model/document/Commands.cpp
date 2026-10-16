@@ -222,8 +222,12 @@ void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString 
             if (m_nameByFrame && made.name.isEmpty())
                 made.name = QString::number(frame + 1);
             startDrawingAt(s.layers[layer], frame, made);
-        } else
-            s.layers[layer].drawings[index] = drawing;
+        } else {
+            // Joints kept: a point of one that was moved takes the others with it.
+            Drawing kept = drawing;
+            kept.keepJoints(s.layers[layer].drawings[index]);
+            s.layers[layer].drawings[index] = kept;
+        }
     });
 }
 

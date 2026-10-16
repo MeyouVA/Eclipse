@@ -1345,6 +1345,23 @@ int Canvas::addCrossingPoints(QVector<Stroke>& strokes, QVector<int> const& whic
         return -1;
     };
     int added = 0;
+    int next = 1;
+    for (Stroke const& line : std::as_const(strokes))
+        for (StrokePoint const& point : line.points)
+            next = std::max(next, point.joint + 1);
+    // One point of both lines: a joint (two joints that meet become one).
+    auto joint = [&](StrokePoint& a, StrokePoint& b) {
+        if (a.joint != 0 && b.joint != 0 && a.joint != b.joint) {
+            int const from = b.joint;
+            for (Stroke& line : strokes)
+                for (StrokePoint& point : line.points)
+                    if (point.joint == from)
+                        point.joint = a.joint;
+            return;
+        }
+        int const j = a.joint != 0 ? a.joint : b.joint != 0 ? b.joint : next++;
+        a.joint = b.joint = j;
+    };
     // One crossing at a time: each new point changes the lines, so they are looked over again (a few hundred at most).
     for (int round = 0; round < 400; ++round) {
         bool found = false;
@@ -1366,8 +1383,14 @@ int Canvas::addCrossingPoints(QVector<Stroke>& strokes, QVector<int> const& whic
                             continue;
                         QPointF const at = p0 + (p1 - p0) * t;
                         int ia = pointAt(a, at), ib = pointAt(b, at);
-                        if (ia >= 0 && ib >= 0 && a.points[ia].pos == b.points[ib].pos)
-                            continue;       // a point on each already, one on the other
+                        if (ia >= 0 && ib >= 0 && a.points[ia].pos == b.points[ib].pos) {
+                            if (a.points[ia].joint != 0 && a.points[ia].joint == b.points[ib].joint)
+                                continue;       // one point of both already
+                            joint(a.points[ia], b.points[ib]);
+                            ++added;
+                            found = true;
+                            continue;
+                        }
                         if (ia < 0)
                             ia = a.insertPoint(at);
                         if (ib < 0)
@@ -1379,6 +1402,7 @@ int Canvas::addCrossingPoints(QVector<Stroke>& strokes, QVector<int> const& whic
                                               : (a.points[ia].pos + b.points[ib].pos) / 2.0;
                         a.points[ia].pos = place;
                         b.points[ib].pos = place;
+                        joint(a.points[ia], b.points[ib]);
                         ++added;
                         found = true;
                     }

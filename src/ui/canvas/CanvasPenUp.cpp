@@ -470,7 +470,7 @@ void Canvas::penUp()
             Drawing edited = previewDrawing();
             m_drag = DragNone;
             // An end dropped on an end: the line closes, or two lines become one.
-            bool const joined = joinDroppedEnd(edited);
+            bool const joined = joinDroppedEnd(edited) || jointDroppedPoint(edited);
             int const stroke = m_ceStroke, point = m_cePoint;
             commitDrawing(edited, joined ? tr("Join Points") : tr("Move Point"));
             if (joined) {

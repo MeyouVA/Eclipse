@@ -261,6 +261,8 @@ void Canvas::paste()
                 p.transform(move);
         }
     }
+    // Its joints its own: not joined to what happens to have the same numbers here.
+    Drawing::freshJoints(placed.strokes, merged);
     for (Fill const& f : placed.fills) {
         fills.push_back(int(merged.fills.size()));
         merged.fills.push_back(f);

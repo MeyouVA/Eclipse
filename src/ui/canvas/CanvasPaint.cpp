@@ -1427,6 +1427,9 @@ Drawing Canvas::previewDrawing() const
                 if (i >= 0 && i < shown.pictures.size())
                     shown.pictures[i].transform(m_dragTransform);
     }
+    // Joints: what was moved takes the points joined to it along (a line moved drags the ends of the lines joined to it).
+    if (current)
+        shown.keepJoints(*current);
     return shown;
 }
 

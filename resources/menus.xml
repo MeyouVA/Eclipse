@@ -288,6 +288,7 @@
     <item id="FlattenDrawing" icon="anim/flatten" text="Flatten &amp;Drawing" shortcut="shortcut.flattenDrawing" responder="camera" slot="onActionFlattenDrawing()"/>
     <item id="FlattenAllDrawings" icon="anim/flatten" text="Flatten On &amp;All Drawings" shortcut="shortcut.flattenAllDrawings" responder="camera" slot="onActionFlattenAllDrawings()"/>
     <item id="FlattenRemoveExtra" icon="anim/flatten" text="Flatten and &amp;Remove Extra Strokes" shortcut="shortcut.flattenRemoveExtra" responder="camera" slot="onActionFlattenRemoveExtra()"/>
+    <item id="BreakJoint" icon="anim/smooth" text="&amp;Break Joint" shortcut="shortcut.breakJoint" responder="camera" slot="onActionBreakJoint()"/>
     <item id="RemoveInvisibleLines" icon="anim/smooth" text="Remove &amp;Invisible Lines" shortcut="shortcut.removeInvisibleLines" responder="camera" slot="onActionRemoveInvisibleLines()"/>
     <item id="Smooth" icon="anim/smooth" text="&amp;Smooth" shortcut="shortcut.smooth" responder="camera" slot="onActionSmooth()"/>
     <item id="SmoothFast" icon="anim/smooth" text="Smooth &amp;Fast" shortcut="shortcut.smoothFast" responder="camera" slot="onActionSmoothFast()"/>

@@ -85,6 +85,7 @@
   <shortcut id="shortcut.flattenAllDrawings" text="Flatten On All Drawings" value=""/>
   <shortcut id="shortcut.flattenRemoveExtra" text="Flatten and Remove Extra Strokes" value=""/>
   <shortcut id="shortcut.removeInvisibleLines" text="Remove Invisible Lines" value=""/>
+  <shortcut id="shortcut.breakJoint" text="Break Joint" value=""/>
   <shortcut id="shortcut.copyArt" text="Copy Art" value=""/>
   <shortcut id="shortcut.autoColourArt" text="Auto-Create Colour Art from Brush" value="Shift+F2"/>
   <shortcut id="shortcut.switchOverlayUnderlay" text="Switch To Overlay/Underlay Art" value=":"/>

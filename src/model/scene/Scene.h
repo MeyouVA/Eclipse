@@ -43,6 +43,10 @@ struct StrokePoint {
     float lean = 0.0f;
     // How solid the line is here (0 to 1): a line can fade along its length.
     float opacity = 1.0f;
+    // A joint: where lines meet (or one line passes twice), their points there are one point of the drawing - they share a
+    // number (0: a point of its own).  The points of a joint are always in one place (see Drawing::keepJoints): moved,
+    // one of them takes the others with it, so the lines stay joined there - a line can branch.
+    int joint = 0;
 };
 
 // One pen stroke, in scene coordinates (pixels of the camera frame).
@@ -322,6 +326,13 @@ struct Drawing {
     // The places in the order of a sheet (see Stroke::order): the highest there is (a line given it is on top of
     // everything), and the lowest (a painted area given it is under everything).  0 for an empty sheet.
     static int topOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes);
+    // Joints (StrokePoint::joint), sheet by sheet: a point of a joint that has moved since `before` takes the other points
+    // of its joint there (the first that moved, when more than one did); a joint left with one point is a joint no more.
+    void keepJoints(Drawing const& before);
+    // A joint number no point of this drawing has yet; and lines brought in from elsewhere (pasted) given joint numbers of
+    // their own, not yet in `into` (joined among themselves as they were).
+    int nextJoint() const;
+    static void freshJoints(QVector<Stroke>& strokes, Drawing const& into);
     static int bottomOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes);
     // The order a new painted area takes to lie on top of everything in the sheet.
     static int orderOnTop(QVector<Fill> const& fills, QVector<Stroke> const& strokes);
