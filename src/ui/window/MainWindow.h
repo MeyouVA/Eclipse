@@ -524,6 +524,8 @@ public slots:
     void onActionChangeBrushSize(QString const& way);
     // The pen stabiliser off, or back on as it was.
     void onActionToggleStabilizer();
+    // Snapping and Auto-Create Colour Art: as they were left last time, and kept as they are turned on or off.
+    void rememberToggles();
     // How strongly the onion skin shows.
     void onActionTopLight();
 

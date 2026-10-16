@@ -157,6 +157,18 @@ public:
         bool speedInvert = false, trim = false, connect = false, closeGap = false, building = false, straight = false;
     };
     void setLineOptions(LineOptions const& options) { m_lineOptions = options; }
+    // Copy Art: the lines and areas of one art layer copied into another (lines as lines with no thickness, when the
+    // other is the colour art), as Art Layer > Copy Art Settings... says; Create Colour Art from Line Art is its usual case.
+    struct CopyArt {
+        int from = 2, to = 1;           // Drawing::Sheet: Line art into colour art
+        bool clearFirst = false, allDrawings = false;
+    };
+    void setCopyArt(CopyArt const& how) { m_copyArt = how; }
+    CopyArt const& copyArt() const { return m_copyArt; }
+    // Points where lines cross: a point put on each line at each place two of them cross (lying on one another - in the
+    // Contour Editor they move as one).  The number of places.
+    static int addCrossingPoints(QVector<Stroke>& strokes, QVector<int> const& which);
+    bool autoColourArt() const { return m_autoColourArt; }
     LineOptions const& lineOptions() const { return m_lineOptions; }
     // The steps, for the tests too: on the pen's samples (before they are fitted), and in `art` (the drawing it goes into).
     static void applyTaperAndSpeed(Stroke& stroke, LineOptions const& options, double zoom);
@@ -776,6 +788,20 @@ public slots:
     void onActionOnionAddNext() { setOnionRange(m_onionPrev, m_onionNext + 1); }
     // Joins the selected painted areas of one colour into one area.
     void onActionFlatten();
+    // Flatten on the whole drawing (nothing need be selected), on every drawing of the layer, and Flatten then Remove
+    // Extra Strokes.
+    void onActionFlattenDrawing();
+    void onActionFlattenAllDrawings();
+    void onActionFlattenRemoveExtra();
+    // The lines with no thickness of the art in hand (of the selection, when there is one) taken away.
+    void onActionRemoveInvisibleLines();
+    // Overlay art to underlay art and back (from the line or colour art: to the overlay).
+    void onActionSwitchOverlayUnderlay() { setArt(m_art == OverlayArt ? UnderlayArt : OverlayArt); }
+    // Art Layer > Auto-Create Colour Art from Brush: a line drawn in the line art makes a line with no thickness on the
+    // same points in the colour art, so that it bounds the paint there too.
+    void onActionAutoColourArt(bool on) { m_autoColourArt = on; }
+    void onActionCopyArt();
+    void onActionCopyArtSettings();
     // What is selected made one group (picked together from then on); and groups among it taken apart.
     void onActionGroupArtwork();
     // The lines of the line art copied into the colour art as lines with no thickness: the
@@ -1073,6 +1099,9 @@ private:
     int m_stabiliser = StabiliserOff;
     int m_pressureFeel = 50;
     bool m_eraserSquare = false;
+    bool m_autoColourArt = false;
+    CopyArt m_copyArt;
+    bool m_quietFlatten = false;
     // A line that fades along its length, painted: solid into a picture of its own, then made fainter there.
     static void paintFadingStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
     int m_tiltSensitivity = 0;

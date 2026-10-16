@@ -412,7 +412,8 @@ void Canvas::penUp()
                 point.in = point.out = QPointF();
             }
         }
-        bool const finishing = (m_tool == Brush || m_tool == Pencil) && !bitmapNow() && (m_lineOptions.closeGap || m_lineOptions.building);
+        bool const colourToo = m_autoColourArt && m_art == LineArt && (m_tool == Brush || m_tool == Pencil) && !bitmapNow();
+        bool const finishing = ((m_tool == Brush || m_tool == Pencil) && !bitmapNow() && (m_lineOptions.closeGap || m_lineOptions.building)) || colourToo;
         if (finishing)
             m_document->beginMacro(tr("Draw Stroke"));
         // Auto Fill: a line whose ends meet is painted inside.
@@ -429,6 +430,25 @@ void Canvas::penUp()
         }
         if (finishing) {
             finishDrawnLine(near);
+            if (colourToo && realDrawing()) {
+                // The line just drawn (or the edge of the brush shape just made), with no thickness, into the colour art.
+                Drawing whole = *realDrawing();
+                QVector<Stroke> edges;
+                if (m_tool == Brush && m_brushShapes && !whole.fills.isEmpty())
+                    edges = whole.fills.last().contours;
+                else if (!whole.strokes.isEmpty())
+                    edges = {whole.strokes.last()};
+                for (Stroke edge : std::as_const(edges)) {
+                    edge.width = 0.0f;
+                    edge.group = 0;
+                    whole.colourStrokes.push_back(edge);
+                }
+                if (!edges.isEmpty()) {
+                    m_committing = true;
+                    m_document->setDrawing(m_layer, m_frame, whole, tr("Draw Stroke"));
+                    m_committing = false;
+                }
+            }
             m_document->endMacro();
         }
     } else if (drag == DragShape) {

@@ -285,6 +285,10 @@
    </menu>
    <menu id="DrawingOptimize" text="&amp;Optimize">
     <item id="Flatten"/>
+    <item id="FlattenDrawing" icon="anim/flatten" text="Flatten &amp;Drawing" shortcut="shortcut.flattenDrawing" responder="camera" slot="onActionFlattenDrawing()"/>
+    <item id="FlattenAllDrawings" icon="anim/flatten" text="Flatten On &amp;All Drawings" shortcut="shortcut.flattenAllDrawings" responder="camera" slot="onActionFlattenAllDrawings()"/>
+    <item id="FlattenRemoveExtra" icon="anim/flatten" text="Flatten and &amp;Remove Extra Strokes" shortcut="shortcut.flattenRemoveExtra" responder="camera" slot="onActionFlattenRemoveExtra()"/>
+    <item id="RemoveInvisibleLines" icon="anim/smooth" text="Remove &amp;Invisible Lines" shortcut="shortcut.removeInvisibleLines" responder="camera" slot="onActionRemoveInvisibleLines()"/>
     <item id="Smooth" icon="anim/smooth" text="&amp;Smooth" shortcut="shortcut.smooth" responder="camera" slot="onActionSmooth()"/>
     <item id="SmoothFast" icon="anim/smooth" text="Smooth &amp;Fast" shortcut="shortcut.smoothFast" responder="camera" slot="onActionSmoothFast()"/>
     <separator/>
@@ -493,6 +497,10 @@
   <item id="SetColourArt" icon="art/colour" text="&amp;Colour Art" shortcut="shortcut.colourArt" checkable="true" group="art" responder="camera" slot="onActionSetColourArt()"/>
   <item id="SetUnderlayArt" icon="art/underlay" text="&amp;Underlay Art" shortcut="shortcut.underlayArt" checkable="true" group="art" responder="camera" slot="onActionSetUnderlayArt()"/>
   <item id="CreateColourArt" icon="art/createcolour" text="Create Colour Art from Line Art" responder="camera" slot="onActionCreateColourArt()"/>
+  <item id="CopyArt" icon="art/createcolour" text="Copy Art" shortcut="shortcut.copyArt" responder="camera" slot="onActionCopyArt()"/>
+  <item id="CopyArtSettings" icon="art/createcolour" text="Copy Art Settings..." responder="camera" slot="onActionCopyArtSettings()"/>
+  <item id="AutoColourArt" icon="art/createcolour" text="Auto-Create Colour Art from Brush" shortcut="shortcut.autoColourArt" checkable="true" responder="camera" slot="onActionAutoColourArt(bool)"/>
+  <item id="SwitchOverlayUnderlay" icon="art/switch" text="Switch To Overlay/Underlay Art" shortcut="shortcut.switchOverlayUnderlay" responder="camera" slot="onActionSwitchOverlayUnderlay()"/>
   <item id="ApplyToLineAndColourArt" icon="art/bothart" text="Apply Tool to Line and Colour Art" checkable="true" responder="camera" slot="setSelectBothArts(bool)"/>
   <item id="SnapToContour" icon="art/snapcontour" text="Snap to Contour" shortcut="shortcut.snapToContour" checkable="true" responder="camera" slot="onActionSnapToContour(bool)"/>
   <item id="SnapToGrid" icon="art/snapgrid" text="Snap to Grid" shortcut="shortcut.snapToGrid" checkable="true" responder="camera" slot="onActionSnapToGrid(bool)"/>

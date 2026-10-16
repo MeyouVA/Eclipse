@@ -225,3 +225,23 @@ void MainWindow::onActionToggleStabilizer()
     mode->setCurrentIndex(mode->currentIndex() != 0 ? 0 : std::clamp(s.value(QStringLiteral("tools/stabiliserLast"), 1).toInt(), 1, 2));
     statusBar()->showMessage(mode->currentIndex() != 0 ? tr("Stabilizer on") : tr("Stabilizer off"), 1500);
 }
+
+void MainWindow::rememberToggles()
+{
+    QSettings const s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    for (char const* id : {"SnapToContour", "SnapToGrid", "SnapAndAlign", "AutoColourArt"}) {
+        QAction* const action = m_actions->action(QLatin1String(id));
+        if (!action)
+            continue;
+        QString const key = QStringLiteral("tools/toggle/") + QLatin1String(id);
+        if (s.value(key, false).toBool() && !action->isChecked())
+            action->trigger();
+        connect(action, &QAction::toggled, this, [key](bool on) {
+            QSettings store(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+            store.setValue(key, on);
+        });
+    }
+    QStringList const copy = s.value(QStringLiteral("tools/copyArt")).toString().split(QLatin1Char(','));
+    if (copy.size() == 4)
+        m_canvas->setCopyArt({std::clamp(copy[0].toInt(), 0, 3), std::clamp(copy[1].toInt(), 0, 3), copy[2] == QStringLiteral("1"), copy[3] == QStringLiteral("1")});
+}
