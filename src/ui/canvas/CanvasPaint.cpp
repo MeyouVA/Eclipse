@@ -1270,14 +1270,34 @@ Drawing Canvas::previewDrawing() const
         contourEdited(shown);
     }
     if (m_drag == DragHandle && contourValid() && m_ceHandle == 2 && pulledHandles()) {
-        // Handles pulled out of the point: the one after it where the pen is, the one before it opposite - on each of
-        // the points lying on it too.
+        // Handles pulled out of the point: the one after it where the pen is, the one before it opposite.  The points lying
+        // on it (where lines meet) get handles too, each along its own branch - so that they spread round the point, one
+        // per branch, as long as the pull (but no more than half way along the branch).
         QVector<QPair<int, int>> const stacked = stackedPoints(shown);
         QPointF const reach = m_dragNow - contourLine(shown)->points[m_cePoint].pos;
+        double const pull = std::hypot(reach.x(), reach.y());
+        bool first = true;
         for (auto const& [line, point] : stacked) {
             Stroke& stroke = line < 0 || m_ceFill >= 0 ? *contourLine(shown) : shown.strokes[line];
-            stroke.setHandles(point, -reach, reach);
-            stroke.points[point].corner = false;
+            if (first) {
+                first = false;
+                stroke.setHandles(point, -reach, reach);
+                stroke.points[point].corner = false;
+                continue;
+            }
+            int const n = int(stroke.points.size());
+            QPointF const at = stroke.points[point].pos;
+            auto along = [&](int neighbour) {
+                if (neighbour < 0 || neighbour >= n)
+                    return QPointF();
+                QPointF const way = stroke.points[neighbour].pos - at;
+                double const length = std::hypot(way.x(), way.y());
+                return length > 1e-9 ? way / length * std::min(pull, length / 2.0) : QPointF();
+            };
+            int const before = point > 0 ? point - 1 : (stroke.closed ? n - 1 : -1);
+            int const after = point + 1 < n ? point + 1 : (stroke.closed ? 0 : -1);
+            stroke.setHandles(point, along(before), along(after));
+            stroke.points[point].corner = true;
         }
         contourEdited(shown);
     }
