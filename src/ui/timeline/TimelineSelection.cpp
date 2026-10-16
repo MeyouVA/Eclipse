@@ -136,9 +136,22 @@ bool Timeline::canPasteCells()
     return !cellClipboard().isEmpty();
 }
 
+static bool s_artworkLast = false;
+
+bool Timeline::artworkCopiedLast()
+{
+    return s_artworkLast;
+}
+
+void Timeline::setArtworkCopiedLast(bool artwork)
+{
+    s_artworkLast = artwork;
+}
+
 void Timeline::copy()
 {
     cellClipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame());
+    s_artworkLast = false;
 }
 
 void Timeline::cut()
@@ -149,6 +162,10 @@ void Timeline::cut()
 
 void Timeline::paste()
 {
+    if (s_artworkLast) {
+        emit pasteArtwork();
+        return;
+    }
     pasteBlock(cellClipboard(), selectionFirstFrame());
 }
 

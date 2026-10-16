@@ -122,6 +122,10 @@ public:
     void moveSelection(int rows, int frames, bool copy);
     void clearRange();
     static bool canPasteCells();
+    // Whether what was copied last is artwork (from a drawing view) rather than cells: then Paste in the Timeline or the
+    // Xsheet puts that artwork into the drawing at the current cell (pasteArtwork), as it would in a drawing view.
+    static bool artworkCopiedLast();
+    static void setArtworkCopiedLast(bool artwork);
     // What was cut or copied last, in this view or in the Xsheet.
     static CellBlock& clipboard();
     // Pastes it from its last frame to its first; or so many times over.
@@ -167,6 +171,8 @@ public slots:
     void onActionResetZoom() { setCellWidth(8); }
 
 signals:
+    // Paste, with artwork copied last: it goes into the current drawing.
+    void pasteArtwork();
     // A handle of the onion skin was dragged on the ruler.
     void onionRangeChanged(int previous, int next);
     void currentCellChanged(int layer, int frame);

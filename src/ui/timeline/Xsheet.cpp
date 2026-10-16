@@ -397,6 +397,7 @@ bool Xsheet::eventFilter(QObject* watched, QEvent* event)
 void Xsheet::copy()
 {
     Timeline::clipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame());
+    Timeline::setArtworkCopiedLast(false);
 }
 
 void Xsheet::cut()
@@ -407,6 +408,10 @@ void Xsheet::cut()
 
 void Xsheet::paste()
 {
+    if (Timeline::artworkCopiedLast()) {
+        emit pasteArtwork();
+        return;
+    }
     // From the left-most column selected, onto as many columns to the right as there are.
     QVector<int> layers;
     for (int column = columnOfLayer(selectedLayers().first()); column < m_document->scene().layers.size(); ++column)

@@ -1,5 +1,6 @@
 // Eclipse - the Camera view: cut, copy, paste and delete.
 #include "ui/canvas/Canvas.h"
+#include "ui/timeline/Timeline.h"
 
 #include <cmath>
 #include <numeric>
@@ -167,6 +168,7 @@ void Canvas::copySelection()
     if (!d || !hasSelection())
         return;
     s_clipboard = Drawing();
+    Timeline::setArtworkCopiedLast(true);
     for (int i : m_selStrokes)
         s_clipboard.strokes.push_back(d->strokes[i]);
     for (int i : m_selFills)

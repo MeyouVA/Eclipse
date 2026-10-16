@@ -88,6 +88,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     });
 
     connect(m_timeline, &Timeline::currentCellChanged, m_canvas, &Canvas::setCurrentCell);
+    // Paste in the Timeline or the Xsheet with artwork copied last: into the drawing at the current cell.
+    connect(m_timeline, &Timeline::pasteArtwork, m_canvas, &Canvas::paste);
+    connect(m_xsheet, &Xsheet::pasteArtwork, m_canvas, &Canvas::paste);
     // The timeline holds the current cell; the other views follow it and ask it to change.
     connect(m_timeline, &Timeline::currentCellChanged, m_xsheet, &Xsheet::setCurrentCell);
     connect(m_timeline, &Timeline::currentCellChanged, m_layerPanel, &LayerPanel::setCurrentCell);

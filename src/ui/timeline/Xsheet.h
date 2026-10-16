@@ -61,6 +61,8 @@ public:
 
 signals:
     void cellPicked(int layer, int frame);
+    // Paste, with artwork copied last (see Timeline::artworkCopiedLast).
+    void pasteArtwork();
     void contextMenuRequested(QPoint const& globalPos);
 
 protected:
