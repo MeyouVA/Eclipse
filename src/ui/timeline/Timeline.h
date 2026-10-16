@@ -122,6 +122,8 @@ public:
     void moveSelection(int rows, int frames, bool copy);
     void clearRange();
     static bool canPasteCells();
+    // The row a layer is listed in (its own row, not one of its parameters'); -1 when it is not listed.
+    int rowOfLayer(int layer) const;
     // Whether what was copied last is artwork (from a drawing view) rather than cells: then Paste in the Timeline or the
     // Xsheet puts that artwork into the drawing at the current cell (pasteArtwork), as it would in a drawing view.
     static bool artworkCopiedLast();
@@ -206,7 +208,6 @@ private:
     void updateScrollBars();
     void rebuildRows();
     // Row 0 is the front layer, i.e. the last one of the scene.  -1 for a layer folded away.
-    int rowOfLayer(int layer) const;
     int layerOfRow(int row) const;
     // The row under a point of the viewport, or -1.
     int rowAt(int y) const;

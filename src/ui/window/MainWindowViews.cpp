@@ -1,5 +1,6 @@
 // Eclipse - the main window: its views put in their panels; the Camera view and the Timeline with their toolbars.
 #include "ui/window/MainWindow.h"
+#include <QScrollArea>
 #include "model/geometry/Deform.h"
 
 #include <QApplication>
@@ -118,7 +119,16 @@ QDockWidget* MainWindow::addView(QString const& title, QString const& name, QWid
 {
     QDockWidget* const d = new QDockWidget(title, this);
     d->setObjectName(name);
-    d->setWidget(viewFrame(content, d));
+    // However small the panel is made (to give another one room), it can be: below the smallest its view can be, the
+    // view scrolls in it.  (Otherwise the biggest smallest size among the panels of a column would keep the others from
+    // growing - the Timeline could not be dragged taller.)
+    QScrollArea* const room = new QScrollArea(d);
+    room->setObjectName(QStringLiteral("ViewRoom"));
+    room->setFrameShape(QFrame::NoFrame);
+    room->setWidgetResizable(true);
+    room->setMinimumSize(24, 16);     // (a scroll area would ask for room for its scroll bars)
+    room->setWidget(viewFrame(content, room));
+    d->setWidget(room);
     addDockWidget(area, d);
     m_docks << d;
     // Wherever a view goes, the tabs of the panels follow.

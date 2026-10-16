@@ -51,7 +51,30 @@ void Timeline::rebuildRows()
     Scene const& scene = m_document->scene();
     m_rows.clear();
     m_params.clear();
-    for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {
+    // The layers as a tree: each with the layers attached to it right under it (as Harmony lists them), the front one
+    // first at each level.  (The order the picture is put together in is the layers' own: this is only how they are listed.)
+    int const count = int(scene.layers.size());
+    QVector<QVector<int>> children(count);
+    QVector<int> tops;
+    for (int l = count - 1; l >= 0; --l) {
+        int const parent = scene.parentIndex(l);
+        (parent >= 0 && parent < count ? children[parent] : tops).push_back(l);
+    }
+    QVector<int> order;
+    QVector<bool> listed(count, false);
+    auto visit = [&](auto&& self, int l, int guard) -> void {
+        if (listed[l] || guard > 256)
+            return;
+        listed[l] = true;
+        order.push_back(l);
+        for (int child : std::as_const(children[l]))
+            self(self, child, guard + 1);
+    };
+    for (int l : std::as_const(tops))
+        visit(visit, l, 0);
+    for (int l = count - 1; l >= 0; --l)
+        visit(visit, l, 0);     // (anything a damaged file left attached in a loop)
+    for (int l : std::as_const(order)) {
         if (scene.foldedAway(l))
             continue;
         // A view of some of the layers only (the current one is always among them).
