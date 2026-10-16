@@ -1020,6 +1020,14 @@ private:
     // A painted area under `line`, the shape it goes round (one step to undo with what is drawn after it).
     void fillUnder(Stroke const& line);
     void mergeSelectedLines(bool bridge, QString const& text);
+    // A line turned end for end (its handles with it); a line of straight pieces made a curve with straight runs.
+    static Stroke reversedLine(Stroke line);
+    static void makeCurve(Stroke& line);
+    // The Contour Editor: where the point in hand goes when it is let go near another point (on it); the points of
+    // lines that lie where it lay (they go with it, as one point); and two lines joined where an end was dropped on an end.
+    QPointF pointMagnet(QPointF p) const;
+    QVector<QPair<int, int>> sharedPoints(Drawing const& d) const;
+    bool joinDroppedEnd(Drawing& edited);
     int m_stabiliserStrength = 50;
     QPointF m_stabiliserLine, m_stabiliserPen;
     int m_lineMode = LineStraight;

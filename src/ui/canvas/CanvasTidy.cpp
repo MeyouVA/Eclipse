@@ -707,16 +707,6 @@ void Canvas::onActionReversePencilThickness()
     update();
 }
 
-// A line turned end for end: its points the other way round, and the handles of each with them.
-static Stroke reversedLine(Stroke line)
-{
-    std::reverse(line.points.begin(), line.points.end());
-    for (StrokePoint& point : line.points)
-        std::swap(point.in, point.out);
-    std::swap(line.capStart, line.capEnd);
-    return line;
-}
-
 void Canvas::mergeSelectedLines(bool bridge, QString const& text)
 {
     Drawing const* const d = currentDrawing();
@@ -739,14 +729,7 @@ void Canvas::mergeSelectedLines(bool bridge, QString const& text)
     // A line of straight pieces joined to a curved one: its pieces become straight runs of a curve.
     if (anyCurve)
         for (Stroke& line : pool)
-            if (!line.curve) {
-                line.curve = true;
-                for (StrokePoint& point : line.points) {
-                    point.handles = true;
-                    point.corner = true;
-                    point.in = point.out = QPointF();
-                }
-            }
+            makeCurve(line);
     // Join: only ends this near one another (the width of the lines, and a few pixels of the screen) are joined.
     double reach = 0.0;
     for (Stroke const& line : std::as_const(pool))

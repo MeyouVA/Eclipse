@@ -1,5 +1,7 @@
 // Eclipse - the Camera view: the Contour Editor.
 #include "ui/canvas/Canvas.h"
+#include <QLineF>
+#include <algorithm>
 
 #include <QPainter>
 
@@ -240,4 +242,141 @@ void Canvas::paintContourAids(QPainter& painter)
         else
             painter.drawEllipse(w, 4.0, 4.0);
     }
+}
+
+// ---- points dropped on points ------------------------------------------------------------------------------------------
+
+QVector<QPair<int, int>> Canvas::sharedPoints(Drawing const& d) const
+{
+    // The points of lines lying where the point in hand lies (it has not moved yet in `d`): not those picked with it.
+    QVector<QPair<int, int>> shared;
+    Stroke const* const mine = contourLine(d);
+    if (!mine || m_cePoint < 0 || m_cePoint >= mine->points.size())
+        return shared;
+    QPointF const at = mine->points[m_cePoint].pos;
+    QVector<int> const picked = contourPointsPicked();
+    for (int s = 0; s < d.strokes.size(); ++s)
+        for (int k = 0; k < d.strokes[s].points.size(); ++k) {
+            bool const own = &d.strokes[s] == mine;
+            if (own && (k == m_cePoint || picked.contains(k)))
+                continue;
+            if (QLineF(d.strokes[s].points[k].pos, at).length() < 1e-6)
+                shared.push_back({s, k});
+        }
+    return shared;
+}
+
+QPointF Canvas::pointMagnet(QPointF p) const
+{
+    // Near enough another point - a few pixels of the screen - the point in hand goes onto it.
+    Drawing const* const d = currentDrawing();
+    Stroke const* const mine = d ? contourLine(*d) : nullptr;
+    if (!mine || m_cePoint < 0 || m_cePoint >= mine->points.size())
+        return p;
+    QPointF const from = mine->points[m_cePoint].pos;
+    QVector<int> const picked = contourPointsPicked();
+    double nearest = 6.0 / std::max(m_zoom, 1e-6);
+    QPointF best = p;
+    auto look = [&](Stroke const& line) {
+        for (int k = 0; k < line.points.size(); ++k) {
+            QPointF const at = line.points[k].pos;
+            if (&line == mine && (k == m_cePoint || picked.contains(k)))
+                continue;
+            if (QLineF(at, from).length() < 1e-6)
+                continue;       // it goes along with the point in hand
+            double const distance = QLineF(at, p).length();
+            if (distance < nearest) {
+                nearest = distance;
+                best = at;
+            }
+        }
+    };
+    for (Stroke const& line : d->strokes)
+        look(line);
+    for (Fill const& fill : d->fills)
+        for (Stroke const& contour : fill.contours)
+            look(contour);
+    return best;
+}
+
+Stroke Canvas::reversedLine(Stroke line)
+{
+    std::reverse(line.points.begin(), line.points.end());
+    for (StrokePoint& point : line.points)
+        std::swap(point.in, point.out);
+    std::swap(line.capStart, line.capEnd);
+    return line;
+}
+
+void Canvas::makeCurve(Stroke& line)
+{
+    if (line.curve)
+        return;
+    line.curve = true;
+    for (StrokePoint& point : line.points) {
+        point.handles = true;
+        point.corner = true;
+        point.in = point.out = QPointF();
+    }
+}
+
+bool Canvas::joinDroppedEnd(Drawing& edited)
+{
+    // Only a line's end, dropped exactly on a point (the magnet put it there).
+    if (m_ceStroke < 0 || m_ceFill >= 0 || m_ceStroke >= edited.strokes.size() || !contourPointsPicked().isEmpty())
+        return false;
+    Stroke const line = edited.strokes[m_ceStroke];
+    int const n = int(line.points.size());
+    bool const atEnd = m_cePoint == n - 1, atStart = m_cePoint == 0;
+    if (line.closed || n < 2 || (!atEnd && !atStart))
+        return false;
+    QPointF const at = line.points[m_cePoint].pos;
+    // Onto its own other end: the line closes there.
+    int const otherEnd = atEnd ? 0 : n - 1;
+    if (n >= 3 && QLineF(line.points[otherEnd].pos, at).length() < 1e-6) {
+        Stroke closed = line;
+        StrokePoint const dropped = closed.points.takeAt(m_cePoint);
+        if (atEnd)
+            closed.points.first().in = dropped.in;
+        else
+            closed.points.last().out = dropped.out;
+        closed.closed = true;
+        edited.strokes[m_ceStroke] = closed;
+        m_cePoint = atEnd ? 0 : int(closed.points.size()) - 1;
+        return true;
+    }
+    // Onto an end of another line: one line, through that point.
+    for (int s = 0; s < edited.strokes.size(); ++s) {
+        Stroke other = edited.strokes[s];
+        if (s == m_ceStroke || other.closed || other.points.size() < 2)
+            continue;
+        bool const toFirst = QLineF(other.points.first().pos, at).length() < 1e-6;
+        bool const toLast = !toFirst && QLineF(other.points.last().pos, at).length() < 1e-6;
+        if (!toFirst && !toLast)
+            continue;
+        // First the part that comes before the meeting point, then the part after it.
+        Stroke before = atEnd ? line : (toLast ? other : reversedLine(other));
+        Stroke after = atEnd ? (toFirst ? other : reversedLine(other)) : line;
+        if (before.curve || after.curve) {
+            makeCurve(before);
+            makeCurve(after);
+        }
+        Stroke joined = line;
+        joined.curve = before.curve;
+        joined.points = before.points;
+        joined.points.last().out = after.points.first().out;
+        joined.points.last().handles = joined.points.last().handles || after.points.first().handles;
+        for (int k = 1; k < after.points.size(); ++k)
+            joined.points.push_back(after.points[k]);
+        joined.capStart = before.capStart;
+        joined.capEnd = after.capEnd;
+        int const meeting = int(before.points.size()) - 1;
+        int const keep = std::min(s, m_ceStroke), drop = std::max(s, m_ceStroke);
+        edited.strokes[keep] = joined;
+        edited.strokes.removeAt(drop);
+        m_ceStroke = keep;
+        m_cePoint = meeting;
+        return true;
+    }
+    return false;
 }

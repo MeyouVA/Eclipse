@@ -1258,8 +1258,12 @@ Drawing Canvas::previewDrawing() const
     Drawing const* const current = currentDrawing();
     Drawing shown = current ? *current : Drawing();
     if (m_drag == DragPoint && contourValid()) {
+        QVector<QPair<int, int>> const shared = sharedPoints(shown);
         Stroke& line = *contourLine(shown);
         QPointF const by = m_dragNow - line.points[m_cePoint].pos;
+        // Points of lines that lie on it are one point with it: they go where it goes.
+        for (auto const& [stroke, point] : shared)
+            shown.strokes[stroke].points[point].pos += by;
         line.points[m_cePoint].pos = m_dragNow;
         for (int other : contourPointsPicked())     // the others picked go along
             line.points[other].pos += by;

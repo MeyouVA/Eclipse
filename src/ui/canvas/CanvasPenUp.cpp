@@ -420,9 +420,17 @@ void Canvas::penUp()
             keepShape();
     } else if (drag == DragPoint) {
         if (contourValid() && contourLine(*currentDrawing())->points[m_cePoint].pos != m_dragNow) {
-            Drawing const edited = previewDrawing();
+            Drawing edited = previewDrawing();
             m_drag = DragNone;
-            commitDrawing(edited, tr("Move Point"));
+            // An end dropped on an end: the line closes, or two lines become one.
+            bool const joined = joinDroppedEnd(edited);
+            int const stroke = m_ceStroke, point = m_cePoint;
+            commitDrawing(edited, joined ? tr("Join Points") : tr("Move Point"));
+            if (joined) {
+                m_ceStroke = stroke;
+                m_cePoint = point;
+                m_ceFill = -1;
+            }
         }
     } else if (drag == DragHandle && m_ceHandle == 2) {
         if (contourValid()) {

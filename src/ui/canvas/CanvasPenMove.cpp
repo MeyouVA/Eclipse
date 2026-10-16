@@ -275,7 +275,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     case DragPoint:
-        m_dragNow = snapped(p);
+        m_dragNow = pointMagnet(snapped(p));
         update();
         break;
     case DragPolyHandle:
