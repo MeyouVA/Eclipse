@@ -716,16 +716,10 @@ Stroke Canvas::bentSegment(Stroke line, int segment, double t, QPointF by)
     StrokePoint& b = line.points[next];
     a.out += first;
     b.in += second;
-    // A smooth point stays smooth: its other handle turns to stay in line (as long as it was).
-    auto align = [](QPointF const& moved, QPointF& other) {
-        double const length = std::hypot(other.x(), other.y()), reach = std::hypot(moved.x(), moved.y());
-        if (length > 1e-9 && reach > 1e-9)
-            other = -moved / reach * length;
-    };
-    if (!a.corner)
-        align(a.out, a.in);
-    if (!b.corner)
-        align(b.in, b.out);
+    // Only this piece changes: the other handle of each of its two points stays as it was (the points may now turn
+    // there - they are corners, their handles their own).
+    a.corner = true;
+    b.corner = true;
     return line;
 }
 
