@@ -107,6 +107,8 @@ static QJsonObject fillToJson(Fill const& f)
         o["order"] = f.order;
     if (f.gradPlaced)
         o["grad"] = QJsonArray{f.gradFrom.x(), f.gradFrom.y(), f.gradTo.x(), f.gradTo.y()};
+    if (f.follows)
+        o["follows"] = QJsonArray{std::round(f.seed.x() * 100.0) / 100.0, std::round(f.seed.y() * 100.0) / 100.0};
     if (f.texture != 0) {
         o["texture"] = f.texture;
         o["textureAmount"] = std::round(double(f.textureAmount) * 1000.0) / 1000.0;

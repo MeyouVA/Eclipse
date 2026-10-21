@@ -475,8 +475,10 @@ bool Canvas::joinDroppedEnd(Drawing& edited)
         Stroke other = edited.strokes[s];
         if (s == m_ceStroke || other.closed || other.points.size() < 2)
             continue;
-        bool const toFirst = QLineF(other.points.first().pos, at).length() < 1e-6;
-        bool const toLast = !toFirst && QLineF(other.points.last().pos, at).length() < 1e-6;
+        // (A point joined to the one dropped went along with it: it was not dropped on.)
+        int const joint = line.points[m_cePoint].joint;
+        bool const toFirst = QLineF(other.points.first().pos, at).length() < 1e-6 && (joint == 0 || other.points.first().joint != joint);
+        bool const toLast = !toFirst && QLineF(other.points.last().pos, at).length() < 1e-6 && (joint == 0 || other.points.last().joint != joint);
         if (!toFirst && !toLast)
             continue;
         // First the part that comes before the meeting point, then the part after it.

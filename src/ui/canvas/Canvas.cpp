@@ -377,7 +377,6 @@ bool Canvas::bitmapNow() const
 
 void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text, QRectF reach)
 {
-    Scene const& scene = m_document->scene();
     Drawing art = realDrawing() ? *realDrawing() : Drawing();
     // The pixels of the art layer being worked on.
     int const sheet = sheetOf(m_art);
@@ -386,11 +385,10 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
         if (art.pictures[i].painted && art.pictures[i].sheet == sheet)
             at = i;
     if (at < 0) {
-        // The pixels of the drawing: the frame of the scene and a quarter of it more on every side.
-        double const margin = (m_bitmapCanvas / 100.0 - 1.0) / 2.0;
-        QRectF const area(-scene.width * margin, -scene.height * margin, scene.width * (1.0 + 2.0 * margin), scene.height * (1.0 + 2.0 * margin));
+        // The pixels of the drawing: as Preferences say (the frame of the scene and a quarter of it more on every side).
+        QRectF const area = bitmapArea();
         // As fine as the layer asks: so many pixels across each unit of the scene.
-        double const fine = m_layer >= 0 && m_layer < scene.layers.size() ? std::clamp(scene.layers[m_layer].bitmapResolution, 25, 400) / 100.0 : 1.0;
+        double const fine = bitmapFineness();
         Picture pixels;
         pixels.painted = true;
         pixels.sheet = sheet;
@@ -776,6 +774,34 @@ void Canvas::cutWithEraser()
 void Canvas::commitDrawing(Drawing const& drawing, QString const& text)
 {
     m_committing = true;
-    m_document->setDrawing(m_layer, m_frame, withArt(drawing), text);
+    m_document->setDrawing(m_layer, m_frame, followLines(withArt(drawing), realDrawing()), text);
     m_committing = false;
+}
+
+QRectF Canvas::bitmapArea() const
+{
+    Scene const& scene = m_document->scene();
+    QRectF frame(0.0, 0.0, scene.width, scene.height);
+    if (m_bitmapBasis != CanvasScene && !m_drawingView && m_layer >= 0 && m_layer < scene.layers.size()) {
+        // The camera's frame brought onto the layer: on this frame, or on every frame of the scene.
+        auto covered = [&](int frameAt) {
+            QTransform const toPicture = worldOf(m_layer, frameAt) * scene.cameraTransform(frameAt);
+            return toPicture.isInvertible() ? toPicture.inverted().mapRect(QRectF(0.0, 0.0, scene.width, scene.height)) : QRectF();
+        };
+        QRectF area = covered(m_frame);
+        if (m_bitmapBasis == CanvasCameraMove)
+            for (int f = 0; f < scene.frameCount(); ++f)
+                area = area.united(covered(f));
+        if (area.isValid() && area.width() < scene.width * 64.0 && area.height() < scene.height * 64.0)
+            frame = area;
+    }
+    double const mx = (m_bitmapCanvas / 100.0 - 1.0) / 2.0, my = (m_bitmapCanvasHeight / 100.0 - 1.0) / 2.0;
+    return frame.adjusted(-frame.width() * mx, -frame.height() * my, frame.width() * mx, frame.height() * my);
+}
+
+double Canvas::bitmapFineness() const
+{
+    Scene const& scene = m_document->scene();
+    double const layer = m_layer >= 0 && m_layer < scene.layers.size() ? std::clamp(scene.layers[m_layer].bitmapResolution, 25, 400) / 100.0 : 1.0;
+    return std::clamp(layer * m_bitmapPpi / 72.0, 0.25, 8.0);
 }

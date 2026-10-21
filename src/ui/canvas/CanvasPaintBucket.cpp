@@ -101,6 +101,8 @@ void Canvas::paintAt(QPointF p)
     case FillRegion::Ok: {
         Fill fill;
         fill.outlines = outlines;
+        fill.follows = true;        // it goes where its lines go
+        fill.seed = p;
         fill.swatch = m_swatch;
         fill.color = color;
         // Under the brush shapes that bound it: the paint reaches a little way under the

@@ -630,6 +630,7 @@ void Fill::transform(QTransform const& t)
         textShape = textShape * QTransform(t.m11(), t.m12(), t.m21(), t.m22(), 0.0, 0.0);
     gradFrom = t.map(gradFrom);
     gradTo = t.map(gradTo);
+    seed = t.map(seed);
     if (!contours.isEmpty()) {
         // A contour shape: its points and handles are moved, and the outlines drawn again.
         for (Stroke& contour : contours)

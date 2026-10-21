@@ -37,6 +37,10 @@ static Fill fillFromJson(QJsonObject const& o)
         f.gradFrom = QPointF(grad[0].toDouble(), grad[1].toDouble());
         f.gradTo = QPointF(grad[2].toDouble(), grad[3].toDouble());
     }
+    if (QJsonArray const seed = o["follows"].toArray(); seed.size() == 2) {
+        f.follows = true;
+        f.seed = QPointF(seed[0].toDouble(), seed[1].toDouble());
+    }
     f.texture = textureRead(o["texture"].toInt(0));
     f.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
     f.textureCrisp = o["textureCrisp"].toBool(false);

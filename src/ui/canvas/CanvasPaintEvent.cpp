@@ -206,7 +206,8 @@ void Canvas::paintView()
         return;
     }
 
-    bool const transforming = m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate || m_drag == DragPoint || m_drag == DragHandle;
+    bool const transforming = m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate || m_drag == DragPoint || m_drag == DragHandle
+                              || m_drag == DragSegment || m_drag == DragCeBox;
     // The eraser cuts as it goes: the drawing is shown as it is so far, before it is in the scene.
     // (So is the gradient being placed: the area is shown with it where the pointer has it.)
     bool const erasing = (m_drag == DragErase && (m_eraserCuts || bitmapNow()) && m_eraseAny) || m_drag == DragGradient || m_drag == DragThickness || ((m_drag == DragInk || m_drag == DragSmooth || m_drag == DragRepaint || m_drag == DragRetouch) && m_inked) || m_drag == DragEnvelope;
@@ -308,7 +309,7 @@ void Canvas::paintView()
         if (index != Layer::kNoDrawing && !m_playing && m_backlight) {
             // Backlight: everything drawn as one dark shape, as if lit from behind.
             static QColor const dark(34, 34, 38);
-            paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? withArt(previewDrawing()) : layer.drawings[index]), 1.0, &dark);
+            paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? followLines(withArt(previewDrawing()), realDrawing()) : layer.drawings[index]), 1.0, &dark);
         } else if (index != Layer::kNoDrawing && !m_playing && m_outlineLocked && layer.locked) {
             // A locked layer as outlines: the edges of its paint and the paths of its lines.
             Drawing const lines = shown(l, m_frame, layer.drawings[index]);
@@ -331,7 +332,7 @@ void Canvas::paintView()
                         painter.drawPolyline(centre);
                 }
         } else if (l == m_layer && transforming)
-            paintLayerDrawing(painter, scene, l, m_frame, withArt(previewDrawing()), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
+            paintLayerDrawing(painter, scene, l, m_frame, followLines(withArt(previewDrawing()), realDrawing()), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
         else if (index != Layer::kNoDrawing && l == m_layer && !m_previewAllArt && !m_playing) {
             // Only the sheet being worked on.
             Drawing one = erasing ? withArt(m_eraseArt) : layer.drawings[index];

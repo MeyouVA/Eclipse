@@ -294,7 +294,10 @@ void MainWindow::applyPreferences()
         w->update();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
     m_canvas->setPencilLinesOpacity(s.value(QStringLiteral("prefs/pencilLinesOpacity"), 100).toInt());
-    m_canvas->setBitmapCanvas(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt());
+    m_canvas->setBitmapCanvasSize(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt(),
+                                  s.value(QStringLiteral("prefs/bitmapCanvasHeight"), s.value(QStringLiteral("prefs/bitmapCanvas"), 150)).toInt());
+    m_canvas->setBitmapPpi(s.value(QStringLiteral("prefs/bitmapPpi"), 72).toInt());
+    m_canvas->setBitmapCanvasBasis(s.value(QStringLiteral("prefs/bitmapCanvasBasis"), 0).toInt());
     m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
     // A drawing has four sheets; two of them - overlay and underlay - are out of the way
     // unless they are asked for.
@@ -929,7 +932,34 @@ void MainWindow::onActionPreferences()
     bitmapCanvas->setSuffix(tr(" %"));
     bitmapCanvas->setToolTip(tr("Default Canvas for Bitmap Layers: how much of the scene's frame the pixels of a new bitmap drawing cover."));
     bitmapCanvas->setValue(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt());
-    drawingLayout->addRow(tr("Bitmap canvas size"), bitmapCanvas);
+    // Its height apart, how fine the pixels are, and the area it is based on.
+    QSpinBox* const bitmapCanvasHeight = new QSpinBox(drawing);
+    bitmapCanvasHeight->setObjectName(QStringLiteral("PrefBitmapCanvasHeight"));
+    bitmapCanvasHeight->setRange(100, 400);
+    bitmapCanvasHeight->setSuffix(tr(" %"));
+    bitmapCanvasHeight->setToolTip(tr("Canvas Height: how much of the area's height the pixels of a new bitmap drawing cover."));
+    bitmapCanvasHeight->setValue(s.value(QStringLiteral("prefs/bitmapCanvasHeight"), bitmapCanvas->value()).toInt());
+    bitmapCanvas->setToolTip(tr("Canvas Width: how much of the area's width the pixels of a new bitmap drawing cover."));
+    QHBoxLayout* const canvasSize = new QHBoxLayout;
+    canvasSize->addWidget(new QLabel(tr("Width"), drawing));
+    canvasSize->addWidget(bitmapCanvas, 1);
+    canvasSize->addWidget(new QLabel(tr("Height"), drawing));
+    canvasSize->addWidget(bitmapCanvasHeight, 1);
+    drawingLayout->addRow(tr("Bitmap canvas size"), canvasSize);
+    QSpinBox* const bitmapPpi = new QSpinBox(drawing);
+    bitmapPpi->setObjectName(QStringLiteral("PrefBitmapPpi"));
+    bitmapPpi->setRange(18, 1200);
+    bitmapPpi->setSuffix(tr(" ppi"));
+    bitmapPpi->setToolTip(tr("How fine the pixels of new bitmap drawings are: 72 ppi is a pixel for each unit of the scene (at the layer's own resolution)."));
+    bitmapPpi->setValue(s.value(QStringLiteral("prefs/bitmapPpi"), 72).toInt());
+    drawingLayout->addRow(tr("Bitmap resolution"), bitmapPpi);
+    QComboBox* const canvasBasis = new QComboBox(drawing);
+    canvasBasis->setObjectName(QStringLiteral("PrefBitmapCanvasBasis"));
+    canvasBasis->addItems({tr("The Scene's Frame"), tr("Based on the Area Covered by the Camera"), tr("Camera Move over Current")});
+    canvasBasis->setToolTip(tr("What the canvas of a new bitmap drawing is sized from: the scene's frame; the area the camera covers on the frame;\n"
+                               "or all the camera covers as it moves over the scene."));
+    canvasBasis->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/bitmapCanvasBasis"), 0).toInt(), 0, 2));
+    drawingLayout->addRow(tr("Bitmap canvas from"), canvasBasis);
     // The drawing tool in hand when Eclipse starts.
     QComboBox* const initialTool = new QComboBox(drawing);
     initialTool->setObjectName(QStringLiteral("PrefInitialTool"));
@@ -1175,6 +1205,9 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
     s.setValue(QStringLiteral("prefs/pencilLinesOpacity"), lineOpacity->value());
     s.setValue(QStringLiteral("prefs/bitmapCanvas"), bitmapCanvas->value());
+    s.setValue(QStringLiteral("prefs/bitmapCanvasHeight"), bitmapCanvasHeight->value());
+    s.setValue(QStringLiteral("prefs/bitmapPpi"), bitmapPpi->value());
+    s.setValue(QStringLiteral("prefs/bitmapCanvasBasis"), canvasBasis->currentIndex());
     s.setValue(QStringLiteral("prefs/advancedElementMode"), elementMode->isChecked());
     s.setValue(QStringLiteral("prefs/initialTool"), initialTool->currentData().toString());
     s.setValue(QStringLiteral("prefs/scalePencilThickness"), scalePencil->isChecked());

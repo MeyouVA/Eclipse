@@ -192,6 +192,9 @@ void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
 {
     // With a Symmetry guide: once more over its axis - and over every other axis of symmetry the scene has.
     QVector<QTransform> const mirrors = symmetries();
+    // A line of the Line tool or the Polyline whose end was put on the end of another: the two are joined there.
+    if (!fromPen && mirrors.isEmpty() && keepJoined(stroke))
+        return;
     if (!mirrors.isEmpty())
         m_document->beginMacro(tr("Draw Stroke"));
     if (fromPen)
@@ -266,6 +269,8 @@ void Canvas::fillUnder(Stroke const& line)
         outline << point.pos;
     Fill area;
     area.outlines = {outline};
+    area.follows = true;
+    area.seed = insideOf(area.outlines);
     area.swatch = line.swatch;
     area.color = line.color;
     area.order = Drawing::topOrder(art.fills, art.strokes);
@@ -1048,7 +1053,7 @@ QVector<QImage> Canvas::readAbr(QString const& path, QString* why)
     return tips;
 }
 
-void Canvas::rasterize(Drawing& drawing, int sheet, Scene const& scene, double fineness, double canvas)
+void Canvas::rasterize(Drawing& drawing, int sheet, Scene const& scene, double fineness, QRectF const& canvas)
 {
     QVector<Stroke>& lines = drawing.strokesOf(sheet);
     QVector<Fill>& areas = drawing.fillsOf(sheet);
@@ -1065,9 +1070,8 @@ void Canvas::rasterize(Drawing& drawing, int sheet, Scene const& scene, double f
         if (drawing.pictures[i].painted && drawing.pictures[i].sheet == sheet)
             at = i;
     if (at < 0) {
-        double const margin = (canvas - 1.0) / 2.0;
-        QRectF const area = QRectF(-scene.width * margin, -scene.height * margin, scene.width * (1.0 + 2.0 * margin), scene.height * (1.0 + 2.0 * margin)).united(reach);
-        double const fine = std::clamp(fineness, 0.25, 4.0);
+        QRectF const area = (canvas.isValid() ? canvas : QRectF(0.0, 0.0, scene.width, scene.height)).united(reach);
+        double const fine = std::clamp(fineness, 0.25, 8.0);
         Picture pixels;
         pixels.painted = true;
         pixels.sheet = sheet;
@@ -1142,7 +1146,7 @@ void Canvas::onActionConvertToBitmap()
         emit message(tr("There is no vector art in this art layer to convert."));
         return;
     }
-    rasterize(whole, sheet, scene, std::clamp(scene.layers[m_layer].bitmapResolution, 25, 400) / 100.0, m_bitmapCanvas / 100.0);
+    rasterize(whole, sheet, scene, bitmapFineness(), bitmapArea());
     clearSelection();
     m_committing = true;
     m_document->setDrawing(m_layer, m_frame, whole, tr("Convert to Bitmap Drawing"));
@@ -1168,7 +1172,7 @@ void Canvas::onActionMatchArtLayerType()
         bool any = false;
         for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
             if (layer.bitmapSheet(sheet) && (!whole.strokesOf(sheet).isEmpty() || !whole.fillsOf(sheet).isEmpty())) {
-                rasterize(whole, sheet, scene, std::clamp(layer.bitmapResolution, 25, 400) / 100.0, m_bitmapCanvas / 100.0);
+                rasterize(whole, sheet, scene, bitmapFineness(), bitmapArea());
                 any = true;
             }
         if (any) {

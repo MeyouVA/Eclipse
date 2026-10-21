@@ -192,6 +192,10 @@ struct Fill {
     bool gradPlaced = false;
     QPointF gradFrom;
     QPointF gradTo;
+    // Paint that follows its lines (what the paint bucket puts in an area the lines close round): when they change, the
+    // area is found again from them, from where it was painted (`seed`).
+    bool follows = false;
+    QPointF seed;
 
     QRectF bounds() const;
     // A paper texture: the grain the area shows in place of solid paint (as a line's pencil

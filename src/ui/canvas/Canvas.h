@@ -692,12 +692,26 @@ public:
     // The lines and areas of one art layer of a drawing painted into that art layer's pixels (made if it has none), and
     // taken away: the art layer is a bitmap one from then on.  `fineness`: pixels for each unit of the scene; `canvas`: how
     // much of the scene's frame the pixels cover (1.5: the frame and a quarter more on every side).
-    static void rasterize(Drawing& drawing, int sheet, Scene const& scene, double fineness, double canvas);
+    static void rasterize(Drawing& drawing, int sheet, Scene const& scene, double fineness, QRectF const& canvas);
     // The painted pixels of a drawing made finer or coarser by `factor` (2: twice as many each way); the picture stays as big.
     static void resampleBitmaps(Drawing& drawing, double factor);
     // Preferences: how much of the scene's frame a new drawing's pixels cover, per cent (150: the frame and a quarter more
     // on every side).
     void setBitmapCanvas(int percent) { m_bitmapCanvas = std::clamp(percent, 100, 400); }
+    // Preferences: the new pixels' canvas as wide and as tall as so much of the area it is based on (per cent, apart), how
+    // fine they are (ppi: 72 is a pixel for each unit of the scene, at the layer's own resolution of 100 %), and what the area
+    // is - the scene's frame; the area the camera covers on the frame; or all it covers as it moves over the scene.
+    enum CanvasBasis { CanvasScene, CanvasCamera, CanvasCameraMove };
+    void setBitmapCanvasSize(int widthPercent, int heightPercent)
+    {
+        m_bitmapCanvas = std::clamp(widthPercent, 100, 400);
+        m_bitmapCanvasHeight = std::clamp(heightPercent, 100, 400);
+    }
+    void setBitmapPpi(int ppi) { m_bitmapPpi = std::clamp(ppi, 18, 1200); }
+    void setBitmapCanvasBasis(int basis) { m_bitmapBasis = std::clamp(basis, 0, 2); }
+    // Where the pixels of a new bitmap drawing of the current layer lie, on the layer; and how many to a unit of the scene.
+    QRectF bitmapArea() const;
+    double bitmapFineness() const;
     // The master switch of snapping (Tool Properties of the Select tool, the Contour Editor, the Envelope and the
     // Perspective tool): off, nothing snaps - to the grid, to contours and points, to guides, or into line with the rest -
     // whatever each of those is set to.
@@ -755,6 +769,8 @@ public:
     // the two points follows the pen, the handles of the two points pulled out to make it so.  For the tests too: the piece
     // of `line` (from its point `segment` to the next) nearest `p`, and how far along it (0 to 1); false when none is
     // within `reach`.  And the line with that place on that piece moved by `by`.
+    // A point well inside an area (outlines, odd-even); null for none.
+    static QPointF insideOf(QVector<QPolygonF> const& outlines);
     static bool segmentAt(Stroke const& line, QPointF p, double reach, int& segment, double& t);
     static Stroke bentSegment(Stroke line, int segment, double t, QPointF by);
     // What is selected moved by so much, as one step (with Reposition All Drawings: all of every drawing of the layer).
@@ -1245,6 +1261,9 @@ private:
     QImage m_tipImage;
     QImage m_dualImage;
     int m_bitmapCanvas = 150;
+    int m_bitmapCanvasHeight = 150;
+    int m_bitmapPpi = 72;
+    int m_bitmapBasis = CanvasScene;
     bool m_autoColourArt = false;
     CopyArt m_copyArt;
     bool m_quietFlatten = false;
@@ -1584,6 +1603,12 @@ private:
     // The Line tool and the Polyline: a point put near the end of a line already drawn goes onto that end (so that lines
     // drawn to meet do meet, and the area they close round can be painted).  Off with the master switch of snapping.
     QPointF endMagnet(QPointF p) const;
+    // The line kept joined to the lines whose ends its ends lie on (a joint at each: moved, they move together); false
+    // when there are none (and nothing was done).
+    bool keepJoined(Stroke const& line);
+    // Paint that follows its lines: each such area of `whole` near lines that changed from `before` (all of them, with none)
+    // found again from its lines.
+    Drawing followLines(Drawing whole, Drawing const* before) const;
     bool startBend(Stroke const& line, QPointF p, Qt::KeyboardModifiers modifiers);     // a press on a curve: bent if dragged
     int m_segIndex = -1;            // the Contour Editor: the piece of the line being bent, and where on it it was taken
     double m_segT = 0.5;

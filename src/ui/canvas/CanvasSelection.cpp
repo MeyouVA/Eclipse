@@ -11,6 +11,11 @@ void Canvas::setSelection(QVector<int> const& strokes, QVector<int> const& fills
 {
     QVector<int> allStrokes = strokes, allFills = fills;
     QVector<int> allPictures = pictures;
+    // (Only what the drawing has.)
+    if (Drawing const* const d = currentDrawing()) {
+        allStrokes.removeIf([d](int i) { return i < 0 || i >= d->strokes.size(); });
+        allFills.removeIf([d](int i) { return i < 0 || i >= d->fills.size(); });
+    }
     std::sort(allPictures.begin(), allPictures.end());
     // What is grouped with something picked is picked too.
     if (Drawing const* const d = currentDrawing()) {
