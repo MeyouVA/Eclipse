@@ -5,6 +5,7 @@
 #include <QPainterPath>
 #include <QRegion>
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -13,43 +14,52 @@ namespace FillRegion {
 // The raster is at most this many pixels on its longer side; larger frames are scaled down.
 static constexpr int kMaxRaster = 4096;
 
-static void rasterStroke(QPainter& painter, Stroke const& stroke, double extra)
+static void rasterStroke(QPainter& painter, Stroke const& stroke, double extra, double pixel)
 {
-    // A line that is seen: the area it really covers - its tips flat or round, its corners mitred, bevelled or round,
-    // thinner where the pen pressed less - thickened all round by the gap.
-    if (stroke.width > 0.0f) {
-        QVector<QPolygonF> const area = stroke.outlinePolygons();
-        if (!area.isEmpty()) {
-            QPainterPath shape;
-            shape.setFillRule(Qt::OddEvenFill);
-            for (QPolygonF const& outline : area) {
-                shape.addPolygon(outline);
-                shape.closeSubpath();
-            }
-            QPen edge(Qt::black, std::max(0.0, extra));
-            edge.setJoinStyle(Qt::RoundJoin);
-            painter.setPen(extra > 0.0 ? edge : QPen(Qt::NoPen));
-            painter.setBrush(Qt::black);
-            painter.drawPath(shape);
-            return;
-        }
-    }
-    QPen pen(Qt::black);
-    pen.setCapStyle(Qt::RoundCap);
-    pen.setJoinStyle(Qt::RoundJoin);
+    // A line is a wall as it is seen: the area it really covers - its tips flat or round, its corners mitred, bevelled or
+    // round, thinner where the pen pressed less (an invisible line: a hair line).  Gaps are closed at the ends of lines,
+    // where they open: each end reaches on by the gap.  The length of a line is not thickened, so a narrow stretch
+    // between two lines stays open for the paint.
     QVector<StrokePoint> const line = stroke.path();
-    auto widthAt = [&](int i) { return std::max(1.0, double(stroke.width) * line[i].pressure + extra); };
-    if (line.size() == 1) {
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(Qt::black);
-        painter.drawEllipse(line[0].pos, widthAt(0) / 2.0, widthAt(0) / 2.0);
+    if (line.isEmpty())
         return;
-    }
-    painter.setBrush(Qt::NoBrush);
-    for (int i = 1; i < line.size(); ++i) {
-        pen.setWidthF((widthAt(i - 1) + widthAt(i)) / 2.0);
+    QVector<QPolygonF> const area = stroke.width > 0.0f ? stroke.outlinePolygons() : QVector<QPolygonF>();
+    if (!area.isEmpty()) {
+        QPainterPath shape;
+        shape.setFillRule(Qt::OddEvenFill);
+        for (QPolygonF const& outline : area) {
+            shape.addPolygon(outline);
+            shape.closeSubpath();
+        }
+        // (At least a pixel of the raster round it, so that a very thin line is still a wall.)
+        QPen edge(Qt::black, pixel);
+        edge.setJoinStyle(Qt::RoundJoin);
+        painter.setPen(edge);
+        painter.setBrush(Qt::black);
+        painter.drawPath(shape);
+    } else {
+        QPen pen(Qt::black, std::max(pixel, double(stroke.width)));
+        pen.setCapStyle(Qt::RoundCap);
+        pen.setJoinStyle(Qt::RoundJoin);
+        QPolygonF centre;
+        for (StrokePoint const& p : line)
+            centre << p.pos;
+        if (stroke.closed && centre.size() > 2)
+            centre << centre.first();
         painter.setPen(pen);
-        painter.drawLine(line[i - 1].pos, line[i].pos);
+        painter.setBrush(Qt::NoBrush);
+        if (centre.size() == 1)
+            painter.drawPoint(centre.first());
+        else
+            painter.drawPolyline(centre);
+    }
+    if (extra <= 0.0 || stroke.closed)
+        return;
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::black);
+    for (StrokePoint const& end : {line.first(), line.last()}) {
+        double const half = std::max(0.0, double(stroke.width) * end.pressure / 2.0);
+        painter.drawEllipse(end.pos, half + extra, half + extra);
     }
 }
 
@@ -110,7 +120,9 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
     if (point.x() < 0 || point.y() < 0 || point.x() >= width || point.y() >= height)
         return Outside;
 
-    double const scale = std::min(1.0, double(kMaxRaster) / std::max(width, height));
+    // Finer than a pixel of the scene for small areas (up to three raster pixels to one), so that narrow places keep open;
+    // no more than a few million pixels in all, and no side longer than the most.
+    double const scale = std::min({3.0, double(kMaxRaster) / std::max(width, height), std::sqrt(6.0e6 / (double(width) * height))});
     int const w = std::max(1, int(std::ceil(width * scale)));
     int const h = std::max(1, int(std::ceil(height * scale)));
 
@@ -123,7 +135,7 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
         painter.scale(scale, scale);
         for (Stroke const& stroke : drawing.strokes)
             if (!stroke.points.isEmpty())
-                rasterStroke(painter, stroke, gap);
+                rasterStroke(painter, stroke, gap, 1.0 / scale);
         // Brush strokes are walls too: they are contour shapes, painted solid, and thickened
         // by the gap as the lines are.
         for (Fill const& fill : drawing.fills) {
@@ -184,7 +196,8 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
 
     // Reach under the lines: by the gap thickening that was added, plus a little more so
     // that no sliver of background shows between the paint and the middle of the line.
-    dilate(mask, w, h, int(std::ceil(gap * scale / 2.0)) + 2);
+    // Reach under the lines a little, so that no sliver of background shows between the paint and the line.
+    dilate(mask, w, h, int(std::ceil(2.0 * scale)));
 
     // Mask -> region (one rectangle per run) -> outline polygons.
     QRegion region;
