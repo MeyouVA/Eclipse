@@ -242,6 +242,7 @@
    <item id="CreateStampDrawings" icon="anim/stampcreate" text="Create Stamp from Selected &amp;Drawings" responder="window" slot="onActionCreateStampFromDrawings()"/>
    <item id="IncrementBrushSize" icon="tool/sizeup" text="&amp;Increase Brush Size" shortcut="shortcut.incrementBrushSize" responder="window" slot="onActionChangeBrushSize(QString)" itemParameter="up"/>
    <item id="DecrementBrushSize" icon="tool/sizedown" text="D&amp;ecrease Brush Size" shortcut="shortcut.decrementBrushSize" responder="window" slot="onActionChangeBrushSize(QString)" itemParameter="down"/>
+   <item id="OverlayBrushMode" icon="tool/autofill" text="&amp;Overlay Brush Mode" shortcut="shortcut.overlayBrushMode" checkable="true" responder="camera" slot="onActionOverlayBrushMode(bool)"/>
    <item id="AutoFillInside" icon="tool/autofill" text="Automatically &amp;Fill Inside Regions" shortcut="shortcut.autoFillInside" checkable="true" responder="camera" slot="onActionAutoFillInside(bool)"/>
    <item id="ToggleStabilizer" icon="tool/stabilizer" text="Toggle S&amp;tabilizer On/Off" shortcut="shortcut.toggleStabilizer" responder="window" slot="onActionToggleStabilizer()"/>
    <item id="NewToolPreset" icon="tool/newpreset" text="New Tool Pre&amp;set..." shortcut="shortcut.newToolPreset" responder="window" slot="onActionNewToolPreset()"/>

@@ -885,12 +885,29 @@ void Canvas::applyTaperAndSpeed(Stroke& stroke, LineOptions const& options, doub
         x = std::clamp(x, 0.0, 1.0);
         return x * x * (3.0 - 2.0 * x);
     };
-    for (int i = 0; i < n; ++i) {
+    // Fade Distance: thinning away to nothing so far from the start; past it there is no more line.
+    if (options.fade > 0) {
+        int keep = n;
+        for (int i = 0; i < n; ++i) {
+            double const left = 1.0 - along[i] / options.fade;
+            if (left <= 0.0) {
+                keep = std::max(2, i);
+                break;
+            }
+            stroke.points[i].pressure = float(stroke.points[i].pressure * left);
+        }
+        stroke.points.resize(keep);
+        if (keep < n)
+            stroke.points.last().pressure = 0.05f;
+    }
+    // (Tapered over the line as it is left.)
+    double const length = along[stroke.points.size() - 1];
+    for (int i = 0; i < stroke.points.size(); ++i) {
         double share = 1.0;
-        if (options.startTaper > 0)
-            share *= ramp(along[i] / (total * options.startTaper / 100.0));
-        if (options.endTaper > 0)
-            share *= ramp((total - along[i]) / (total * options.endTaper / 100.0));
+        if (options.startTaper > 0 && length > 0.0)
+            share *= ramp(along[i] / (length * options.startTaper / 100.0));
+        if (options.endTaper > 0 && length > 0.0)
+            share *= ramp((length - along[i]) / (length * options.endTaper / 100.0));
         stroke.points[i].pressure = float(std::max(0.05, stroke.points[i].pressure * share));
     }
 }
@@ -1133,8 +1150,14 @@ void Canvas::retouchAt(QPointF p, int mode)
     // As far round the pen as the size in Tool Properties: the lines there get a point under the pen if they have none
     // near it, then each point near is made thicker (or thinner), most at the middle of the pen.
     double const reach = std::max(m_brushWidth / 2.0, 4.0 / std::max(m_zoom, 1e-6));
-    for (Stroke& line : m_eraseArt.strokes) {
+    for (int index = 0; index < m_eraseArt.strokes.size(); ++index) {
+        Stroke& line = m_eraseArt.strokes[index];
         if (line.width <= 0.0f || line.points.size() < 2 || !line.hit(p, reach))
+            continue;
+        // Apply to Single Stroke: the first line rubbed, and that one only.
+        if (m_singleNow && m_onlyLine == -1)
+            m_onlyLine = index;
+        if (m_singleNow && m_onlyLine != index)
             continue;
         bool pointNear = false;
         for (StrokePoint const& point : std::as_const(line.points))
@@ -1572,4 +1595,24 @@ void Canvas::onActionCopyArtSettings()
     m_copyArt = {from->currentIndex(), to->currentIndex(), clear->isChecked(), all->isChecked()};
     QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
     s.setValue(QStringLiteral("tools/copyArt"), QStringLiteral("%1,%2,%3,%4").arg(m_copyArt.from).arg(m_copyArt.to).arg(int(m_copyArt.clearFirst)).arg(int(m_copyArt.allDrawings)));
+}
+
+void Canvas::smoothOpacity(Stroke& line, int percent)
+{
+    int const n = int(line.points.size());
+    int const reach = int(std::lround(percent / 10.0));     // up to ten points on each side
+    if (n < 3 || reach <= 0)
+        return;
+    QVector<float> was(n);
+    for (int i = 0; i < n; ++i)
+        was[i] = line.points[i].opacity;
+    for (int i = 0; i < n; ++i) {
+        double sum = 0.0;
+        int count = 0;
+        for (int k = std::max(0, i - reach); k <= std::min(n - 1, i + reach); ++k) {
+            sum += was[k];
+            ++count;
+        }
+        line.points[i].opacity = float(sum / count);
+    }
 }

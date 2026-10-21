@@ -98,6 +98,7 @@
   <shortcut id="shortcut.newToolPreset" text="New Tool Preset" value=""/>
   <shortcut id="shortcut.showContourControls" text="Show/Hide Contour Editor Controls" value=""/>
   <shortcut id="shortcut.copyThickness" text="Copy Thickness" value=""/>
+  <shortcut id="shortcut.overlayBrushMode" text="Overlay Brush Mode" value=""/>
   <shortcut id="shortcut.toolPreset1" text="Tool Preset Shortcut #1" value=""/>
   <shortcut id="shortcut.toolPreset2" text="Tool Preset Shortcut #2" value=""/>
   <shortcut id="shortcut.toolPreset3" text="Tool Preset Shortcut #3" value=""/>

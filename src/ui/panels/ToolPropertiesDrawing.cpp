@@ -702,6 +702,7 @@ void ToolProperties::addSelectRows()
     m_form->addRow(m_snapAlign);
     addSnapRows();
     addModeRows();
+    addStylusRows();
     // The Dropper: the colour of whatever is seen there, or only of what is on the layer worked on.
     m_dropperAll = new QCheckBox(tr("Sample All Layers"), this);
     m_dropperAll->setObjectName(QStringLiteral("DropperAllLayers"));
@@ -897,6 +898,7 @@ void ToolProperties::addLineOptionRows()
         o.closeGap = s.value(QStringLiteral("tools/line/closeGap"), false).toBool();
         o.building = s.value(QStringLiteral("tools/line/building"), false).toBool();
         o.straight = s.value(QStringLiteral("tools/line/straight"), false).toBool();
+        o.fade = std::clamp(s.value(QStringLiteral("tools/line/fade"), 0).toInt(), 0, 5000);
         m_canvas->setLineOptions(o);
     };
     send();
@@ -920,6 +922,15 @@ void ToolProperties::addLineOptionRows()
                                              }));
     }
     number(tr("Speed Sensitivity"), tr("The faster the pen moves, the thinner the Brush's line (with Invert: the thicker)."), "speed", 100);
+    {
+        // Fade Distance: the line thins away to nothing so far from where it began.
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/line/fade"), 0).toInt(), 0, 2000);
+        m_brushLineRows.push_back(addSetting(tr("Fade Distance"), tr("The Brush's line thins away to nothing over this distance from where it began (0: it does not fade)."),
+                                             0, 2000, kept, QString(), [this, send](int v) {
+                                                 settings().setValue(QStringLiteral("tools/line/fade"), v);
+                                                 send();
+                                             }));
+    }
     auto box = [&](QString const& label, QString const& tip, char const* key) {
         QCheckBox* const check = new QCheckBox(label, this);
         check->setObjectName(QStringLiteral("Line") + QLatin1String(key));

@@ -1,5 +1,6 @@
 // Eclipse - the Camera view: what is painted in the view - the layers, the onion skin, and the aids over them.
 #include "ui/canvas/Canvas.h"
+#include "ui/window/InterfaceColours.h"
 
 #include <QElapsedTimer>
 #include <QPainter>
@@ -394,6 +395,18 @@ void Canvas::paintView()
             painter.setPen(QPen(QColor(255, 255, 255, 200), 2.0));
             painter.drawEllipse(m_hoverWidget, radius, radius);
             painter.setPen(QPen(QColor(20, 20, 20, 220), 1.0));
+            painter.drawEllipse(m_hoverWidget, radius, radius);
+            painter.restore();
+        }
+        if (l == m_layer && m_tool == SmoothEditor && m_hoverKnown && !m_playing && layer.holdsDrawings()) {
+            // The smoothing tool's brush, round the pointer, in its colour (Preferences > Colours).
+            QTransform const where = layerViewTransform();
+            double const radius = std::max(m_brushWidth / 2.0, 4.0 / std::max(m_zoom, 1e-6)) * std::sqrt(std::abs(where.determinant()));
+            painter.save();
+            painter.resetTransform();
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(InterfaceColours::get("smoothBrush"));
             painter.drawEllipse(m_hoverWidget, radius, radius);
             painter.restore();
         }

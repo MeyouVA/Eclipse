@@ -11,6 +11,7 @@
 #include <QWidget>
 
 #include <functional>
+#include <QPainterPath>
 
 #include "model/scene/Scene.h"
 
@@ -154,6 +155,8 @@ public:
     //  Straight Lines: the Stroke tool draws straight pieces, not curves.
     struct LineOptions {
         int startTaper = 0, endTaper = 0, speed = 0;
+        // Fade Distance: the Brush's line thins away to nothing over so far from where it began (scene units; 0: no fade).
+        int fade = 0;
         bool speedInvert = false, trim = false, connect = false, closeGap = false, building = false, straight = false;
     };
     void setLineOptions(LineOptions const& options) { m_lineOptions = options; }
@@ -203,7 +206,7 @@ public:
     // What the tool in hand makes of how hard the pen is pressed (0 to 1).
     float pressureFor(float raw) const
     {
-        float const least = m_tool == Brush ? float(m_minSize) / 100.0f : 0.0f;
+        float const least = m_tool == Brush ? float(m_minSize) / 100.0f : m_tool == Eraser ? float(m_eraserMinSize) / 100.0f : 0.0f;
         return least + (1.0f - least) * feltPressure(raw);
     }
     // The Brush with a pen that tells its tilt: the more the pen leans, the thicker the line (Tilt Sensitivity, per cent).
@@ -773,6 +776,45 @@ public:
     static QPointF insideOf(QVector<QPolygonF> const& outlines);
     static bool segmentAt(Stroke const& line, QPointF p, double reach, int& segment, double& t);
     static Stroke bentSegment(Stroke line, int segment, double t, QPointF by);
+    // The Eraser with a pen: how wide it rubs where the pen barely touches, per cent of its size (100: pressure leaves it be).
+    void setEraserMinimumSize(int percent) { m_eraserMinSize = std::clamp(percent, 0, 100); }
+    int eraserMinimumSize() const { return m_eraserMinSize; }
+    // Smoothing with pressure (the Brush and the Pencil): the Smoothing set is the most, at full pressure; at the lightest
+    // the line is smoothed `minimumPercent` of that - between, as hard as the pen pressed on the whole.
+    void setPressureSmoothing(bool on, int minimumPercent)
+    {
+        m_pressureSmoothing = on;
+        m_minSmoothing = std::clamp(minimumPercent, 0, 100);
+    }
+    // The smoothing for a line drawn pressing so hard on the whole (0 to 1).
+    int smoothingFor(double pressure) const
+    {
+        if (!m_pressureSmoothing)
+            return m_smoothing;
+        double const share = m_minSmoothing / 100.0 + (1.0 - m_minSmoothing / 100.0) * std::clamp(pressure, 0.0, 1.0);
+        return int(std::lround(m_smoothing * share));
+    }
+    // The Pencil with a pen: how solid its line is where the pen barely presses (per cent; 100: pressure leaves it solid),
+    // and how much those changes are smoothed along the line (Opacity Smoothing, per cent).
+    void setPencilOpacity(int minimumPercent, int smoothing)
+    {
+        m_pencilMinOpacity = std::clamp(minimumPercent, 0, 100);
+        m_opacitySmoothing = std::clamp(smoothing, 0, 100);
+    }
+    static void smoothOpacity(Stroke& line, int percent);
+    // The Smooth Editor and the Pencil Retouch tool: Apply to Single Stroke - a rub works on the first line it touches only
+    // (Shift, held as the pen goes down, the other way about).
+    void setSingleStroke(bool on) { m_singleStroke = on; }
+    bool singleStroke() const { return m_singleStroke; }
+    // Edge Type of what the shape tools draw on a bitmap layer: smooth (antialiased) or hard (every pixel all or nothing).
+    void setHardEdges(bool on) { m_hardEdges = on; }
+    bool hardEdges() const { return m_hardEdges; }
+    // Overlay Brush Mode: what the Brush and the Pencil draw is kept only where the artwork of the layers chosen (`masks`
+    // says which: the layers selected, the current one left out) is - a mask for the new strokes.
+    void setMaskLayers(std::function<QVector<int>()> masks) { m_maskLayers = std::move(masks); }
+    bool overlayBrush() const { return m_overlayBrush; }
+    // The artwork of those layers on this frame, on the current layer (empty with none).
+    QPainterPath overlayMask() const;
     // What is selected moved by so much, as one step (with Reposition All Drawings: all of every drawing of the layer).
     void moveSelectionBy(QPointF by, QString const& text) { transformSelection(QTransform::fromTranslate(by.x(), by.y()), text); }
 
@@ -787,6 +829,12 @@ public slots:
     void onActionScalePencilThickness(bool on)
     {
         setScaleThickness(on);
+        emit toolSettingsChanged();
+    }
+    // Drawing > Overlay Brush Mode.
+    void onActionOverlayBrushMode(bool on)
+    {
+        m_overlayBrush = on;
         emit toolSettingsChanged();
     }
     // Copy Thickness: how thick the first line selected is along its length; Paste Thickness: the lines selected made so.
@@ -1600,6 +1648,19 @@ public:
     QPointF envelopeHandleInView(bool after) const;
 private:
     bool m_snapping = true;
+    int m_eraserMinSize = 100;
+    bool m_pressureSmoothing = false;
+    int m_minSmoothing = 30;
+    int m_pencilMinOpacity = 100;
+    int m_opacitySmoothing = 0;
+    QVector<float> m_rawPressure;   // the pen's pressure along the line being drawn (for smoothing with pressure)
+    bool m_singleStroke = false;
+    bool m_singleNow = false;       // for the rub going on (Shift turns it the other way)
+    int m_onlyLine = -1;            // ... the line it keeps to, or the brush shape (-2 - index)
+    bool m_hardEdges = false;
+    bool m_overlayBrush = false;
+    std::function<QVector<int>()> m_maskLayers;
+    QPainterPath m_paintClip;       // while a stroke is painted into pixels: only within this (Overlay Brush Mode)
     // The Line tool and the Polyline: a point put near the end of a line already drawn goes onto that end (so that lines
     // drawn to meet do meet, and the area they close round can be painted).  Off with the master switch of snapping.
     QPointF endMagnet(QPointF p) const;

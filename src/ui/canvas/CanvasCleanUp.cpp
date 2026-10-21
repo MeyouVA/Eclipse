@@ -686,9 +686,29 @@ void Canvas::smoothAt(QPointF p)
         }
         return any;
     };
-    for (Stroke& stroke : m_eraseArt.strokes)
-        m_inked = settle(stroke) || m_inked;
-    for (Fill& fill : m_eraseArt.fills) {
+    // Apply to Single Stroke: the first line (or brush shape) the rub reaches, and that one only.
+    auto reached = [&](Stroke const& line) {
+        for (StrokePoint const& point : line.points)
+            if (QLineF(point.pos, p).length() <= reach)
+                return true;
+        return false;
+    };
+    if (m_singleNow && m_onlyLine == -1) {
+        for (int i = 0; i < m_eraseArt.strokes.size() && m_onlyLine == -1; ++i)
+            if (reached(m_eraseArt.strokes[i]))
+                m_onlyLine = i;
+        for (int i = 0; i < m_eraseArt.fills.size() && m_onlyLine == -1; ++i)
+            for (Stroke const& contour : m_eraseArt.fills[i].contours)
+                if (m_onlyLine == -1 && reached(contour))
+                    m_onlyLine = -2 - i;
+    }
+    for (int i = 0; i < m_eraseArt.strokes.size(); ++i)
+        if (!m_singleNow || m_onlyLine == i)
+            m_inked = settle(m_eraseArt.strokes[i]) || m_inked;
+    for (int i = 0; i < m_eraseArt.fills.size(); ++i) {
+        Fill& fill = m_eraseArt.fills[i];
+        if (m_singleNow && m_onlyLine != -2 - i)
+            continue;
         bool changed = false;
         for (Stroke& contour : fill.contours)
             changed = settle(contour) || changed;

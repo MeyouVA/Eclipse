@@ -19,6 +19,25 @@
 
 void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
 {
+    // Overlay Brush Mode: kept only where the artwork of the layers chosen is.
+    QPainterPath const mask = m_overlayBrush && (m_tool == Brush || m_tool == Pencil) ? overlayMask() : QPainterPath();
+    QVector<QPolygonF> maskShape;
+    for (QPolygonF const& outline : mask.toSubpathPolygons())
+        maskShape.push_back(outline);
+    if (bitmapNow())
+        m_paintClip = mask;
+    else if (!mask.isEmpty() && !(m_tool == Brush && m_brushShapes)) {
+        QVector<QPolygonF> outside{QPolygonF(stroke.bounds().adjusted(-1000, -1000, 1000, 1000).united(mask.boundingRect()))};
+        outside += maskShape;
+        QVector<Stroke> const pieces = stroke.minus(outside, std::max(tolerance * 0.5, 0.05));
+        if (pieces.isEmpty())
+            return;
+        m_document->beginMacro(tr("Draw Stroke"));
+        for (Stroke const& piece : pieces)
+            addStrokeToArt(piece);
+        m_document->endMacro();
+        return;
+    }
     if (bitmapNow()) {
         // A bitmap layer: the stroke is painted into the pixels of the drawing, looking as it would as a line or a shape.
         Scene const& scene = m_document->scene();
@@ -139,6 +158,11 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
             Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
             // Drawn behind, the stroke is the one that gives way: what lies over it is cut out of it.
             QVector<Fill> mine{shape};
+            if (!maskShape.isEmpty()) {
+                mine = shape.within(maskShape, fine);       // Overlay Brush Mode
+                if (mine.isEmpty())
+                    return;
+            }
             if (m_autoFlatten) {
                 // Flattened as it is drawn: the shapes of its colour that it overlaps
                 // become part of it, and it is cut out of the others it lies over.
@@ -447,7 +471,17 @@ void Canvas::penUp()
         // screen is given up for it.
         // The smoothing setting is how far, in pixels of the screen, the line may stray
         // from the samples: from a fifth of a pixel to four.
-        double const tolerance = (0.2 + m_smoothing * 0.038) / m_zoom;
+        // (With smoothing by pressure: as hard as the pen pressed on the whole.)
+        double pressed = 1.0;
+        if (!m_rawPressure.isEmpty()) {
+            pressed = 0.0;
+            for (float p : std::as_const(m_rawPressure))
+                pressed += p;
+            pressed /= m_rawPressure.size();
+        }
+        double const tolerance = (0.2 + smoothingFor(pressed) * 0.038) / m_zoom;
+        if (m_tool == Pencil && m_pencilMinOpacity < 100)
+            smoothOpacity(m_stroke, m_opacitySmoothing);
         if (m_tool == Pencil && m_stencil == StencilCount && !m_customStencil.isEmpty())
             applyProfile(m_stroke, m_customStencil);
         else if (m_tool == Pencil && m_stencil != StencilUniform && m_stencil < StencilCount)

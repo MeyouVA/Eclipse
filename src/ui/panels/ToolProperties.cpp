@@ -424,6 +424,12 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_pencilModeRow, pencil);
     m_form->setRowVisible(m_autoColour, brush || pencil || shape);
     m_form->setRowVisible(m_polyBehind, tool == T::Polyline);
+    m_form->setRowVisible(m_eraserMinRow, eraser);
+    m_form->setRowVisible(m_pressureSmoothRow, brush || pencil);
+    m_form->setRowVisible(m_pencilOpacityRow, pencil);
+    m_form->setRowVisible(m_singleStrokeBox, tool == T::SmoothEditor || tool == T::PencilRetouch);
+    m_form->setRowVisible(m_edgeType, shape);
+    m_form->setRowVisible(m_overlayBox, brush || pencil);
     // The Pencil Retouch tool's size is the reach of its rub.
     if (QLabel* const label = qobject_cast<QLabel*>(m_form->labelForField(m_sizeRow)))
         label->setText(tool == T::PencilRetouch ? tr("Retouch Radius") : tr("Size"));

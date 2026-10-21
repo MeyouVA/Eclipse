@@ -13,6 +13,8 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QSpinBox>
+#include <QLabel>
 
 #include "actions/manager/ActionManager.h"
 #include "ui/canvas/Canvas.h"
@@ -85,4 +87,120 @@ void ToolProperties::addModeRows()
         settings().setValue(QStringLiteral("tools/polylineBehind"), on);
     });
     m_form->addRow(m_polyBehind);
+}
+
+void ToolProperties::addStylusRows()
+{
+    // The Eraser: how wide it rubs where the pen barely touches.
+    {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/eraserMinSize"), 100).toInt(), 0, 100);
+        m_canvas->setEraserMinimumSize(kept);
+        m_eraserMinRow = addSetting(tr("Eraser Minimum Size"), tr("With a pen tablet: how wide the eraser rubs where the pen barely touches, as a percentage of its size.\n"
+                                                              "100: the same size however hard you press."),
+                                    0, 100, kept, QStringLiteral(" %"), [this](int v) {
+                                        m_canvas->setEraserMinimumSize(v);
+                                        settings().setValue(QStringLiteral("tools/eraserMinSize"), v);
+                                    });
+    }
+    // Smoothing with pressure: the Smoothing is the most; Minimum Smoothing, at the lightest pressure, a share of it.
+    m_pressureSmoothRow = new QWidget(this);
+    {
+        QHBoxLayout* const row = new QHBoxLayout(m_pressureSmoothRow);
+        row->setContentsMargins(0, 0, 0, 0);
+        QCheckBox* const on = new QCheckBox(tr("Smoothing with Pressure"), m_pressureSmoothRow);
+        on->setObjectName(QStringLiteral("PressureSmoothing"));
+        on->setToolTip(tr("Maximum Smoothing: the Smoothing above, when the pen presses fully.\n"
+                          "Minimum Smoothing: the smoothing when the pen barely presses, as a percentage of the maximum."));
+        QSpinBox* const least = new QSpinBox(m_pressureSmoothRow);
+        least->setObjectName(QStringLiteral("MinimumSmoothing"));
+        least->setRange(0, 100);
+        least->setSuffix(QStringLiteral(" %"));
+        least->setToolTip(tr("Minimum Smoothing: as a percentage of the maximum, at the lightest pressure."));
+        on->setChecked(settings().value(QStringLiteral("tools/pressureSmoothing"), false).toBool());
+        least->setValue(std::clamp(settings().value(QStringLiteral("tools/minimumSmoothing"), 30).toInt(), 0, 100));
+        least->setEnabled(on->isChecked());
+        auto send = [this, on, least] {
+            m_canvas->setPressureSmoothing(on->isChecked(), least->value());
+            least->setEnabled(on->isChecked());
+            settings().setValue(QStringLiteral("tools/pressureSmoothing"), on->isChecked());
+            settings().setValue(QStringLiteral("tools/minimumSmoothing"), least->value());
+        };
+        send();
+        connect(on, &QCheckBox::toggled, this, send);
+        connect(least, &QSpinBox::valueChanged, this, send);
+        row->addWidget(on, 1);
+        row->addWidget(least);
+    }
+    m_form->addRow(m_pressureSmoothRow);
+    // The Pencil: fainter where the pen presses less, and those changes smoothed along the line.
+    m_pencilOpacityRow = new QWidget(this);
+    {
+        QHBoxLayout* const row = new QHBoxLayout(m_pencilOpacityRow);
+        row->setContentsMargins(0, 0, 0, 0);
+        QSpinBox* const least = new QSpinBox(m_pencilOpacityRow);
+        least->setObjectName(QStringLiteral("PencilMinimumOpacity"));
+        least->setRange(0, 100);
+        least->setSuffix(QStringLiteral(" %"));
+        least->setToolTip(tr("With a pen tablet: how solid the pencil line is where the pen barely presses (100: pressure leaves it solid)."));
+        QSpinBox* const smooth = new QSpinBox(m_pencilOpacityRow);
+        smooth->setObjectName(QStringLiteral("OpacitySmoothing"));
+        smooth->setRange(0, 100);
+        smooth->setSuffix(QStringLiteral(" %"));
+        smooth->setToolTip(tr("Opacity Smoothing: how much the changes of opacity along the line are smoothed."));
+        least->setValue(std::clamp(settings().value(QStringLiteral("tools/pencilMinOpacity"), 100).toInt(), 0, 100));
+        smooth->setValue(std::clamp(settings().value(QStringLiteral("tools/opacitySmoothing"), 30).toInt(), 0, 100));
+        auto send = [this, least, smooth] {
+            m_canvas->setPencilOpacity(least->value(), smooth->value());
+            settings().setValue(QStringLiteral("tools/pencilMinOpacity"), least->value());
+            settings().setValue(QStringLiteral("tools/opacitySmoothing"), smooth->value());
+        };
+        send();
+        connect(least, &QSpinBox::valueChanged, this, send);
+        connect(smooth, &QSpinBox::valueChanged, this, send);
+        row->addWidget(new QLabel(tr("Minimum Opacity"), m_pencilOpacityRow));
+        row->addWidget(least);
+        row->addWidget(new QLabel(tr("Opacity Smoothing"), m_pencilOpacityRow));
+        row->addWidget(smooth);
+    }
+    m_form->addRow(m_pencilOpacityRow);
+    // The Smooth Editor and the Pencil Retouch tool: a rub works on one line.
+    m_singleStrokeBox = new QCheckBox(tr("Apply to Single Stroke"), this);
+    m_singleStrokeBox->setObjectName(QStringLiteral("SingleStroke"));
+    m_singleStrokeBox->setToolTip(tr("Snaps to the first pencil line stroke the tool is used on, allowing it to affect only a single stroke.\n"
+                                     "Press and hold Shift to temporarily shift between single stroke and multiple strokes modes."));
+    m_singleStrokeBox->setChecked(settings().value(QStringLiteral("tools/singleStroke"), false).toBool());
+    m_canvas->setSingleStroke(m_singleStrokeBox->isChecked());
+    connect(m_singleStrokeBox, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setSingleStroke(on);
+        settings().setValue(QStringLiteral("tools/singleStroke"), on);
+    });
+    m_form->addRow(m_singleStrokeBox);
+    // The shape tools on a bitmap layer: smooth or hard edges.
+    m_edgeType = new QComboBox(this);
+    m_edgeType->setObjectName(QStringLiteral("EdgeType"));
+    m_edgeType->addItems({tr("Smooth"), tr("Hard")});
+    m_edgeType->setToolTip(tr("Edge Type: on a bitmap layer, the edge of what the shape tools draw is smooth (antialiased) or hard (each pixel all or nothing)."));
+    m_edgeType->setCurrentIndex(settings().value(QStringLiteral("tools/hardEdges"), false).toBool() ? 1 : 0);
+    m_canvas->setHardEdges(m_edgeType->currentIndex() == 1);
+    connect(m_edgeType, &QComboBox::currentIndexChanged, this, [this](int i) {
+        m_canvas->setHardEdges(i == 1);
+        settings().setValue(QStringLiteral("tools/hardEdges"), i == 1);
+    });
+    m_form->addRow(tr("Edge Type"), m_edgeType);
+    // Overlay Brush Mode: the menu's switch, shown on the Brush and the Pencil.
+    m_overlayBox = new QCheckBox(tr("Overlay Brush Mode"), this);
+    m_overlayBox->setObjectName(QStringLiteral("OverlayBrushMode"));
+    m_overlayBox->setToolTip(tr("Uses the artwork on the selected layers as a mask for the creation of new strokes on the current layer."));
+    if (QAction* const action = m_actions->action(QStringLiteral("OverlayBrushMode"))) {
+        m_overlayBox->setChecked(action->isChecked());
+        connect(m_overlayBox, &QCheckBox::toggled, action, [action](bool on) {
+            if (action->isChecked() != on)
+                action->trigger();
+        });
+        connect(action, &QAction::toggled, m_overlayBox, [this](bool on) {
+            QSignalBlocker const quiet(m_overlayBox);
+            m_overlayBox->setChecked(on);
+        });
+    }
+    m_form->addRow(m_overlayBox);
 }

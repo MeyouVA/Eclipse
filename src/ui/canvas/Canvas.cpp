@@ -442,7 +442,10 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
         QPainter painter(&image);
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setTransform(pixels.placement.inverted());
+        if (!m_paintClip.isEmpty())
+            painter.setClipPath(m_paintClip);       // Overlay Brush Mode
         paint(painter);
+        m_paintClip = QPainterPath();
     }
     if (m_bitmapUnchanged && pieces.isEmpty()) {
         m_bitmapUnchanged = false;
@@ -589,7 +592,12 @@ void Canvas::addStrokeToArt(Stroke const& stroke)
 {
     if (bitmapNow()) {
         Scene const& scene = m_document->scene();
-        paintIntoBitmap([&](QPainter& painter) { paintStroke(painter, stroke, scene.brushFor(stroke)); }, tr("Paint Stroke"), stroke.bounds());
+        bool const hard = m_hardEdges && (m_tool == Line || m_tool == Rectangle || m_tool == Ellipse || m_tool == Polyline);
+        paintIntoBitmap([&](QPainter& painter) {
+            if (hard)
+                painter.setRenderHint(QPainter::Antialiasing, false);       // Edge Type: hard
+            paintStroke(painter, stroke, scene.brushFor(stroke));
+        }, tr("Paint Stroke"), stroke.bounds());
         return;
     }
     bool const behind = m_tool == Polyline && m_polyBehind;
@@ -804,4 +812,40 @@ double Canvas::bitmapFineness() const
     Scene const& scene = m_document->scene();
     double const layer = m_layer >= 0 && m_layer < scene.layers.size() ? std::clamp(scene.layers[m_layer].bitmapResolution, 25, 400) / 100.0 : 1.0;
     return std::clamp(layer * m_bitmapPpi / 72.0, 0.25, 8.0);
+}
+
+QPainterPath Canvas::overlayMask() const
+{
+    QPainterPath mask;
+    Scene const& scene = m_document->scene();
+    if (!m_maskLayers || m_layer < 0 || m_layer >= scene.layers.size())
+        return mask;
+    QTransform const toMine = worldOf(m_layer, m_frame).inverted();
+    for (int l : m_maskLayers()) {
+        if (l == m_layer || l < 0 || l >= scene.layers.size() || !scene.layers[l].holdsDrawings())
+            continue;
+        Layer const& layer = scene.layers[l];
+        int const index = m_frame >= 0 && m_frame < layer.cells.size() ? layer.cells[m_frame] : -1;
+        if (index < 0 || index >= layer.drawings.size())
+            continue;
+        Drawing const& d = layer.drawings[index];
+        QTransform const there = worldOf(l, m_frame) * toMine;
+        auto add = [&](QVector<QPolygonF> const& outlines) {
+            QPainterPath piece;
+            piece.setFillRule(Qt::OddEvenFill);
+            for (QPolygonF const& outline : outlines) {
+                piece.addPolygon(there.map(outline));
+                piece.closeSubpath();
+            }
+            mask = mask.isEmpty() ? piece : mask.united(piece);
+        };
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            for (Fill const& fill : d.fillsOf(sheet))
+                add(fill.outlines);
+            for (Stroke const& line : d.strokesOf(sheet))
+                if (line.width > 0.0f)
+                    add(line.outlinePolygons());
+        }
+    }
+    return mask.isEmpty() ? mask : mask.simplified();
 }

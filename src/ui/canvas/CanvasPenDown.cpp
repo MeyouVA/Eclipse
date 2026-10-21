@@ -188,6 +188,8 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             m_dragNow = p;
             // Alt does the other of the pair: thinner for thicker, fainter for more solid, and back.
             m_retouchNow = modifiers & Qt::AltModifier ? (m_retouchMode ^ 1) : m_retouchMode;
+            m_singleNow = m_singleStroke != bool(modifiers & Qt::ShiftModifier);
+            m_onlyLine = -1;
             retouchAt(p, m_retouchNow);
         }
         return;
@@ -197,6 +199,8 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             m_eraseArt = *d;
             m_inked = false;
             m_drag = DragSmooth;
+            m_singleNow = m_singleStroke != bool(modifiers & Qt::ShiftModifier);
+            m_onlyLine = -1;
             smoothAt(p);
         }
         return;
@@ -223,6 +227,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         }
         return;
     }
+    float const raw = pressure;     // (how hard the pen pressed: the Pencil's opacity, smoothing with pressure)
     if (m_tool == Pencil || m_tool == StrokeTool)
         pressure = 1.0f;  // a pencil line has one thickness
     if (m_tool == Rigging) {
@@ -304,7 +309,11 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         m_stroke.capStart = m_capStart;
         m_stroke.capEnd = m_capEnd;
         textureNewLine(m_stroke);
-        m_stroke.points.push_back({p, pressure});
+        StrokePoint first{p, pressure};
+        if (m_tool == Pencil && m_pencilMinOpacity < 100)
+            first.opacity = float((m_pencilMinOpacity + (100 - m_pencilMinOpacity) * std::clamp(raw, 0.0f, 1.0f)) / 100.0);
+        m_stroke.points.push_back(first);
+        m_rawPressure = {raw};
         m_stabiliserLine = m_stabiliserPen = p;
     } else if (m_tool == Eraser) {
         m_drag = DragErase;
@@ -313,14 +322,14 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             // gets the result, as one step, when it lifts.
             m_stroke = Stroke();
             m_stroke.width = float(m_brushWidth);
-            m_stroke.points.push_back({p, 1.0f});
+            m_stroke.points.push_back({p, pressure});      // (narrower where the pen presses less, with a Minimum Size)
             Drawing const* const under = currentDrawing();
             m_eraseArt = under ? *under : Drawing();
             m_eraseAny = false;
             eraseStretch(0);
             update();
         } else {
-            eraseArtAt(p, m_brushWidth / 2.0);
+            eraseArtAt(p, m_brushWidth / 2.0 * pressure);
         }
     } else if ((m_tool == Paint || m_tool == Unpaint) && bitmapNow()) {
         // On a bitmap layer the bucket fills pixels.
@@ -426,6 +435,15 @@ void Canvas::followSettings(Canvas const& leader)
     m_hideManipulator = leader.m_hideManipulator;
     m_ceControls = leader.m_ceControls;
     m_envAdvanced = leader.m_envAdvanced;
+    m_eraserMinSize = leader.m_eraserMinSize;
+    m_pressureSmoothing = leader.m_pressureSmoothing;
+    m_minSmoothing = leader.m_minSmoothing;
+    m_pencilMinOpacity = leader.m_pencilMinOpacity;
+    m_opacitySmoothing = leader.m_opacitySmoothing;
+    m_singleStroke = leader.m_singleStroke;
+    m_hardEdges = leader.m_hardEdges;
+    m_overlayBrush = leader.m_overlayBrush;
+    m_maskLayers = leader.m_maskLayers;
     m_brushShapes = leader.m_brushShapes;
     m_textFont = leader.m_textFont;
     m_textAlign = leader.m_textAlign;

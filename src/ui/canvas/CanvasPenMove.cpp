@@ -310,6 +310,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     case DragDraw: {
+        float const raw = pressure;
         if (m_tool == Pencil)
             pressure = 1.0f;
         // With Shift the line is a straight one, from where the pen went down to where it is.
@@ -329,7 +330,11 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         // Skip samples that did not move: they add weight to the file and nothing to the line.
         QPointF const d = at - m_stroke.points.last().pos;
         if (std::hypot(d.x(), d.y()) * m_zoom >= 1.0) {
-            m_stroke.points.push_back({at, pressure});
+            StrokePoint point{at, pressure};
+            if (m_tool == Pencil && m_pencilMinOpacity < 100)
+                point.opacity = float((m_pencilMinOpacity + (100 - m_pencilMinOpacity) * std::clamp(raw, 0.0f, 1.0f)) / 100.0);
+            m_stroke.points.push_back(point);
+            m_rawPressure.push_back(raw);
             update();
         }
         break;
@@ -337,7 +342,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     case DragErase: {
         if (m_eraserCuts || bitmapNow()) {
             if (m_stroke.points.isEmpty() || QLineF(m_stroke.points.last().pos, p).length() * m_zoom >= 1.0) {
-                m_stroke.points.push_back({p, 1.0f});
+                m_stroke.points.push_back({p, pressure});
                 eraseStretch(std::max(0, int(m_stroke.points.size()) - 2));
                 update();
             }
@@ -346,7 +351,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         // Erase along the whole movement, not just where the samples landed: a fast drag
         // would otherwise jump over thin lines.
         QPointF const from = toLayer(m_lastWidgetPos);
-        double const radius = m_brushWidth / 2.0;
+        double const radius = m_brushWidth / 2.0 * pressure;
         double const length = std::hypot(p.x() - from.x(), p.y() - from.y());
         int const steps = std::max(1, int(std::ceil(length / std::max(radius, 0.5))));
         for (int i = 1; i <= steps; ++i)

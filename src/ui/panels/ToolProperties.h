@@ -67,6 +67,9 @@ private:
     void addSnapRows();
     // The Pencil's Line Pushing and Auto Adjust Thickness, Automatically Create Colour Art, the Polyline's Draw Behind.
     void addModeRows();
+    // The Eraser's Minimum Size, smoothing with pressure, the Pencil's opacity with pressure, Apply to Single Stroke, the
+    // shape tools' Edge Type, Overlay Brush Mode.
+    void addStylusRows();
     void addAutoFlattenRow();
     void addLineShapeRows();
     void fillTextureBox(class QComboBox* box, int current);
@@ -154,6 +157,12 @@ private:
     QWidget* m_pencilModeRow = nullptr;
     QCheckBox* m_autoColour = nullptr;
     QCheckBox* m_polyBehind = nullptr;
+    QLayout* m_eraserMinRow = nullptr;
+    QWidget* m_pressureSmoothRow = nullptr;
+    QWidget* m_pencilOpacityRow = nullptr;
+    QCheckBox* m_singleStrokeBox = nullptr;
+    QComboBox* m_edgeType = nullptr;
+    QCheckBox* m_overlayBox = nullptr;
     QSpinBox* m_stampScale = nullptr;
     QWidget* m_stampRow = nullptr;      // which stamp, and taking it off the list
     QCheckBox* m_stampRandom = nullptr;
