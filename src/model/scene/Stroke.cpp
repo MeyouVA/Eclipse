@@ -16,7 +16,7 @@ static void controls(Stroke const& stroke, int s, QPointF& c1, QPointF& c2)
 {
     QVector<StrokePoint> const& points = stroke.points;
     int const n = int(points.size());
-    bool const loop = stroke.closed && n > 2;
+    bool const loop = stroke.closed && n >= 2;
     StrokePoint const& a = points[s];
     StrokePoint const& b = points[(s + 1) % n];
     // The neighbour beyond an end: round the loop when closed, else the end mirrored.
@@ -53,7 +53,7 @@ void Stroke::handlesAt(int index, QPointF& in, QPointF& out) const
         out = points[index].out;
         return;
     }
-    bool const loop = closed && n > 2;
+    bool const loop = closed && n >= 2;
     QPointF c1, c2;
     if (index + 1 < n || loop) {
         controls(*this, index, c1, c2);
@@ -108,7 +108,7 @@ QVector<StrokePoint> Stroke::shapeWithPlaces(QVector<double>& places) const
             places.push_back(i);
         return out;
     }
-    int const spans = closed && n > 2 ? n : n - 1;
+    int const spans = closed && n >= 2 ? n : n - 1;
     for (int s = 0; s < spans; ++s) {
         StrokePoint const& a = points[s];
         StrokePoint const& b = points[(s + 1) % n];
@@ -183,7 +183,7 @@ QVector<StrokePoint> Stroke::pathWithPlaces(QVector<double>& places) const
     for (int i = 1; i < out.size(); ++i)
         along[i] = along[i - 1] + QLineF(out[i - 1].pos, out[i].pos).length();
     QVector<ThicknessPoint> const keys = keysByLength(places, along);
-    bool const loop = closed && points.size() > 2;
+    bool const loop = closed && points.size() >= 2;
     for (int i = 0; i < out.size(); ++i) {
         ThicknessPoint const sides = sidesAlong(keys, along[i], loop, along.last());
         float const sum = sides.left + sides.right;
@@ -449,7 +449,7 @@ void Stroke::transform(QTransform const& t)
 int Stroke::pieces() const
 {
     int const n = int(points.size());
-    return n < 2 ? 0 : (closed && n > 2 ? n : n - 1);
+    return n < 2 ? 0 : (closed && n >= 2 ? n : n - 1);
 }
 
 namespace {
@@ -489,7 +489,7 @@ ThicknessPoint Stroke::sidesAt(double at) const
         if (n == 0)
             return result;
         int const span = std::max(1, pieces());
-        double const place = closed && n > 2 ? std::fmod(std::fmod(at, span) + span, span) : std::clamp(at, 0.0, double(n - 1));
+        double const place = closed && n >= 2 ? std::fmod(std::fmod(at, span) + span, span) : std::clamp(at, 0.0, double(n - 1));
         int const i = std::clamp(int(std::floor(place)), 0, n - 1);
         StrokePoint const& a = points[i];
         StrokePoint const& b = points[(i + 1) % n];
@@ -501,7 +501,7 @@ ThicknessPoint Stroke::sidesAt(double at) const
         return result;
     }
     // By how far along the line: the shape, and the places of the thickness on it.
-    bool const loop = closed && n > 2;
+    bool const loop = closed && n >= 2;
     QVector<double> places;
     QVector<StrokePoint> const shape = shapeWithPlaces(places);
     QVector<double> along(shape.size(), 0.0);
@@ -763,7 +763,7 @@ void Stroke::simplifyThickness(double tolerance)
             break;
         int best = -1;
         double bestOff = tolerance;
-        bool const loop = closed && points.size() > 2;
+        bool const loop = closed && points.size() >= 2;
         for (int k = 0; k < thickness.size(); ++k) {
             if (!loop && (k == 0 || k + 1 == thickness.size()))
                 continue;       // the first and the last stay: what is said of one place is not then said of the whole line
@@ -892,7 +892,7 @@ Stroke Stroke::section(int from, int to) const
         p.lean = 0.0f;
     }
     double const span = pieces();
-    bool const loop = closed && n > 2;
+    bool const loop = closed && n >= 2;
     auto put = [&](double at, ThicknessPoint sides) {
         sides.at = at;
         out.thickness.push_back(sides);
@@ -915,7 +915,7 @@ void Stroke::reverse()
 {
     int const n = int(points.size());
     double const span = pieces();
-    bool const loop = closed && n > 2;
+    bool const loop = closed && n >= 2;
     std::reverse(points.begin(), points.end());
     for (StrokePoint& p : points) {
         std::swap(p.in, p.out);
@@ -961,26 +961,8 @@ void Stroke::append(Stroke const& other, bool meets)
     // Each line keeps its course exactly: on a curve, a point whose handles the curve worked out for itself (from its
     // neighbours - and it is to have new ones) has them set down as they are.
     if (curve || after.curve) {
-        auto freeze = [](Stroke& line) {
-            if (!line.curve) {
-                for (StrokePoint& p : line.points) {
-                    p.handles = true;
-                    p.corner = true;
-                    p.in = p.out = QPointF();
-                }
-                line.curve = true;
-                return;
-            }
-            for (int i = 0; i < line.points.size(); ++i) {
-                QPointF in, out;
-                line.handlesAt(i, in, out);
-                line.points[i].handles = true;
-                line.points[i].in = in;
-                line.points[i].out = out;
-            }
-        };
-        freeze(*this);
-        freeze(after);
+        freezeHandles();
+        after.freezeHandles();
     }
     if (meets) {
         // The point where they meet: this one's way in, the other's way out (a corner, as the two lines meet there).
@@ -1023,4 +1005,29 @@ void Stroke::removePoint(int index)
     points.removeAt(index);
     if (profiled)
         setThicknessByLength(byLength);
+}
+
+void Stroke::freezeHandles()
+{
+    if (!curve) {
+        // Straight pieces: a curve whose handles have no length.
+        for (StrokePoint& p : points) {
+            p.handles = true;
+            p.corner = true;
+            p.in = p.out = QPointF();
+        }
+        curve = true;
+        return;
+    }
+    QVector<QPair<QPointF, QPointF>> kept;
+    for (int i = 0; i < points.size(); ++i) {
+        QPointF in, out;
+        handlesAt(i, in, out);
+        kept.push_back({in, out});
+    }
+    for (int i = 0; i < points.size(); ++i) {
+        points[i].handles = true;
+        points[i].in = kept[i].first;
+        points[i].out = kept[i].second;
+    }
 }

@@ -179,6 +179,10 @@ struct Stroke {
     ThicknessPoint sidesAtLength(double fraction) const;
     // A point taken out of the line; its thickness kept where it was along the line.
     void removePoint(int index);
+    // Every point given the handles the curve has there now (worked out from its neighbours, for a point without), so that
+    // the curve stays as it is whatever is done to its neighbours or its ends; a line of straight pieces made a curve of
+    // handles with no length.
+    void freezeHandles();
     // (After piece `s` was cut in two at `t`: its thickness places moved to where they now are.)
     void splitThickness(int s, double t);
     // The index of the point after which a new point at `p` would go.

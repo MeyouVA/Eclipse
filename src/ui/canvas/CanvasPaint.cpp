@@ -1371,6 +1371,10 @@ Drawing Canvas::previewDrawing() const
     if (m_drag == DragPoint && contourValid()) {
         QVector<QPair<int, int>> const shared = sharedPoints(shown);
         Stroke& line = *contourLine(shown);
+        // The curve keeps its handles as they are (as Harmony's points have handles of their own): a point moved does not
+        // bend its neighbours' stretches round anew.
+        if (line.curve)
+            line.freezeHandles();
         QPointF const by = m_dragNow - line.points[m_cePoint].pos;
         // Points of lines that lie on it are one point with it: they go where it goes.
         for (auto const& [stroke, point] : shared)

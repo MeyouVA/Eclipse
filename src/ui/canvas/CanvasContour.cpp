@@ -479,6 +479,7 @@ bool Canvas::joinDroppedEnd(Drawing& edited)
     int const otherEnd = atEnd ? 0 : n - 1;
     if (n >= 3 && QLineF(line.points[otherEnd].pos, at).length() < 1e-6) {
         Stroke closed = line;
+        closed.freezeHandles();     // (the curve as it is: closed, its points' neighbours go round)
         StrokePoint const dropped = closed.points.takeAt(m_cePoint);
         if (atEnd)
             closed.points.first().in = dropped.in;
@@ -652,7 +653,7 @@ namespace {
 bool pieceOf(Stroke const& line, int segment, QPointF& p0, QPointF& p1, QPointF& p2, QPointF& p3)
 {
     int const n = int(line.points.size());
-    bool const loop = line.closed && n > 2;
+    bool const loop = line.closed && n >= 2;
     if (segment < 0 || n < 2 || segment >= (loop ? n : n - 1))
         return false;
     int const next = (segment + 1) % n;
@@ -677,7 +678,7 @@ QPointF cubicAt(QPointF p0, QPointF p1, QPointF p2, QPointF p3, double t)
 bool Canvas::segmentAt(Stroke const& line, QPointF p, double reach, int& segment, double& t)
 {
     int const n = int(line.points.size());
-    int const pieces = line.closed && n > 2 ? n : n - 1;
+    int const pieces = line.closed && n >= 2 ? n : n - 1;
     double best = reach;
     bool found = false;
     for (int s = 0; s < pieces; ++s) {

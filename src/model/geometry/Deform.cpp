@@ -435,7 +435,7 @@ int insertWarpPoint(QVector<QPointF>& points, bool closed, QPointF near, double 
     int const n = int(points.size()) / 3;
     if (n < 2)
         return -1;
-    int const stretches = closed && n >= 3 ? n : n - 1;
+    int const stretches = closed && n >= 2 ? n : n - 1;
     int best = -1;
     double bestT = 0.0, nearest = within;
     auto at = [&](int i, double t) {
