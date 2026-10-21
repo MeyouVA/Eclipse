@@ -98,6 +98,8 @@ void Canvas::onActionProportionGrid(bool on)
 
 QPointF Canvas::snapped(QPointF p) const
 {
+    if (!m_snapping)
+        return p;       // the master switch is off
     Drawing const* const d = currentDrawing();
     if (m_showGuides && !m_document->scene().guides.isEmpty() && m_layer >= 0 && m_layer < m_document->scene().layers.size()) {
         // Onto a guide that is near: across to one that runs down, up or down to one that runs across - or both.

@@ -66,6 +66,17 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
     Drawing const* const d = currentDrawing();
     QTransform const toWidget = layerViewTransform();
     QPointF const press = toWidget.map(p);
+    // A control of the box round the points picked: they are scaled or turned.
+    for (int which = 0; which <= 4; ++which) {
+        QPointF const at = contourControlInView(which);
+        if (at.isNull() || std::abs(at.x() - press.x()) > 7 || std::abs(at.y() - press.y()) > 7)
+            continue;
+        m_ceBoxStart = contourControlBox();
+        m_ceBoxCorner = which;
+        m_dragStart = m_dragNow = which < 4 ? toWidget.inverted().map(at) : p;
+        m_drag = DragCeBox;
+        return;
+    }
     // A handle of the point picked?  (Before anything else: a handle may lie over another point.)
     if (d && contourValid()) {
         // (The handles of the points lying on the picked one too: to the eye they are one point.)
@@ -255,6 +266,100 @@ void Canvas::paintContourAids(QPainter& painter)
         else
             painter.drawEllipse(w, 4.0, 4.0);
     }
+    // The controls: a box round the points picked, its corners and its knob.
+    QRectF const box = contourControlBox();
+    if (!box.isNull()) {
+        QTransform const moved = m_drag == DragCeBox ? contourBoxTransform() : QTransform();
+        QPolygonF const outline = toWidget.map(moved.map(QPolygonF(box)));
+        QPen dashed(accent, 1.0);
+        dashed.setStyle(Qt::DashLine);
+        painter.setPen(dashed);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPolygon(outline);
+        painter.setPen(QPen(accent));
+        painter.setBrush(Qt::white);
+        for (int corner = 0; corner < 4; ++corner) {
+            QPointF const c = outline[corner];
+            painter.drawRect(QRectF(c.x() - 4, c.y() - 4, 8, 8));
+        }
+        QPointF const top = (outline[0] + outline[1]) / 2.0;
+        QPointF const knob = m_drag == DragCeBox ? toWidget.map(moved.map(toWidget.inverted().map(contourControlInView(4)))) : contourControlInView(4);
+        painter.drawLine(top, knob);
+        painter.drawEllipse(knob, 5, 5);
+    }
+}
+
+// ---- the controls: a box round the points picked, to scale and turn them ------------------------------------------------
+
+QRectF Canvas::contourControlBox() const
+{
+    Drawing const* const d = currentDrawing();
+    Stroke const* const line = d ? contourLine(*d) : nullptr;
+    if (!m_ceControls || m_tool != ContourEditor || !line || m_cePoint < 0 || m_cePoint >= line->points.size())
+        return QRectF();
+    QVector<int> const picked = contourPointsPicked();
+    if (picked.isEmpty())
+        return QRectF();        // one point: there is nothing to scale or turn
+    // (Points have no size, and a rectangle of none is left out of a union: the corners are found by hand.)
+    QPointF least = line->points[m_cePoint].pos, most = least;
+    for (int i : picked) {
+        QPointF const p = line->points[i].pos;
+        least = QPointF(std::min(least.x(), p.x()), std::min(least.y(), p.y()));
+        most = QPointF(std::max(most.x(), p.x()), std::max(most.y(), p.y()));
+    }
+    QRectF const box(least, most);
+    if (box.width() * m_zoom < 2.0 && box.height() * m_zoom < 2.0)
+        return QRectF();        // all in one place
+    // A little room round the points, so that the corners do not lie on them.
+    double const room = 6.0 / std::max(m_zoom, 1e-6);
+    return box.adjusted(-room, -room, room, room);
+}
+
+QPointF Canvas::contourControlInView(int which) const
+{
+    QRectF const box = contourControlBox();
+    if (box.isNull() || which < 0 || which > 4)
+        return QPointF();
+    QTransform const view = layerViewTransform();
+    if (which < 4) {
+        QPointF const corners[4] = {box.topLeft(), box.topRight(), box.bottomRight(), box.bottomLeft()};
+        return view.map(corners[which]);
+    }
+    // The knob: a little way out over the middle of the top, on the screen.
+    QPointF const top = view.map(QPointF(box.center().x(), box.top()));
+    QPointF const middle = view.map(box.center());
+    QPointF way = top - middle;
+    double const length = std::hypot(way.x(), way.y());
+    way = length > 1e-9 ? way / length : QPointF(0.0, -1.0);
+    return top + way * 22.0;
+}
+
+QTransform Canvas::contourBoxTransform() const
+{
+    QRectF const box = m_ceBoxStart;
+    if (box.isNull())
+        return QTransform();
+    if (m_ceBoxCorner == 4) {
+        // Turned about its middle, as far as the pen has gone round it.
+        QPointF const c = box.center();
+        double const from = std::atan2(m_dragStart.y() - c.y(), m_dragStart.x() - c.x());
+        double const to = std::atan2(m_dragNow.y() - c.y(), m_dragNow.x() - c.x());
+        QTransform turn;
+        turn.rotateRadians(to - from);
+        return QTransform::fromTranslate(-c.x(), -c.y()) * turn * QTransform::fromTranslate(c.x(), c.y());
+    }
+    // Scaled from the corner across from the one pulled.
+    // (From the corner of the points themselves: the box has a little room round them.)
+    double const room = 6.0 / std::max(m_zoom, 1e-6);
+    QRectF const tight = box.adjusted(room, room, -room, -room);
+    QPointF const corners[4] = {box.topLeft(), box.topRight(), box.bottomRight(), box.bottomLeft()};
+    QPointF const tightCorners[4] = {tight.topLeft(), tight.topRight(), tight.bottomRight(), tight.bottomLeft()};
+    QPointF const anchor = tightCorners[(m_ceBoxCorner + 2) % 4];
+    QPointF const from = corners[m_ceBoxCorner] - anchor;
+    QPointF const to = m_dragNow - anchor;
+    double const sx = std::abs(from.x()) > 1e-9 ? to.x() / from.x() : 1.0;
+    double const sy = std::abs(from.y()) > 1e-9 ? to.y() / from.y() : 1.0;
+    return QTransform::fromTranslate(-anchor.x(), -anchor.y()) * QTransform::fromScale(sx, sy) * QTransform::fromTranslate(anchor.x(), anchor.y());
 }
 
 // ---- points dropped on points ------------------------------------------------------------------------------------------
@@ -286,7 +391,7 @@ QPointF Canvas::pointMagnet(QPointF p) const
     // Near enough another point - a few pixels of the screen - the point in hand goes onto it.
     Drawing const* const d = currentDrawing();
     Stroke const* const mine = d ? contourLine(*d) : nullptr;
-    if (!mine || m_cePoint < 0 || m_cePoint >= mine->points.size())
+    if (!m_snapping || !mine || m_cePoint < 0 || m_cePoint >= mine->points.size())
         return p;
     int const joint = m_ceFill < 0 ? mine->points[m_cePoint].joint : 0;
     QVector<int> const picked = contourPointsPicked();

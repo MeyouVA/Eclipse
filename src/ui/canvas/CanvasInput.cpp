@@ -175,6 +175,12 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         update();
         return;
     }
+    // Alt and the up or down arrow: the lines selected a little thicker or thinner (Nudge Selection Thickness).
+    if (m_tool == Select && hasSelection() && m_drag == DragNone && (event->modifiers() & Qt::AltModifier)
+        && (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)) {
+        nudgeSelectionThickness(event->key() == Qt::Key_Up, event->modifiers() & Qt::ShiftModifier);
+        return;
+    }
     // The arrow keys nudge what the Select tool has selected: a pixel (or what Preferences says), ten times that with Shift.
     if (m_tool == Select && hasSelection() && m_drag == DragNone
         && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right || event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)) {

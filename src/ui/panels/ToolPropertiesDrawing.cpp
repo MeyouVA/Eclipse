@@ -300,11 +300,15 @@ void ToolProperties::addSizeRows()
     m_scaleThickness = new QCheckBox(tr("Scale Pencil Line Thickness"), this);
     m_scaleThickness->setObjectName(QStringLiteral("SelectScaleThickness"));
     m_scaleThickness->setToolTip(tr("When enabled, the width of pencil lines will be adjusted when scaling them with the Select tool."));
-    m_scaleThickness->setChecked(settings().value(QStringLiteral("tools/scaleThickness"), false).toBool());
+    // (On or off to begin with as Preferences say: Scale Pencil Line Thickness by default.)
+    m_scaleThickness->setChecked(settings().value(QStringLiteral("prefs/scalePencilThickness"), false).toBool());
     m_canvas->setScaleThickness(m_scaleThickness->isChecked());
+    if (QAction* const action = m_actions->action(QStringLiteral("ScalePencilThickness")))
+        action->setChecked(m_scaleThickness->isChecked());
     connect(m_scaleThickness, &QCheckBox::toggled, this, [this](bool on) {
         m_canvas->setScaleThickness(on);
-        settings().setValue(QStringLiteral("tools/scaleThickness"), on);
+        if (QAction* const action = m_actions->action(QStringLiteral("ScalePencilThickness")))
+            action->setChecked(on);
     });
     m_form->addRow(m_scaleThickness);
     addLineOptionRows();
@@ -686,11 +690,17 @@ void ToolProperties::addSelectRows()
     connect(m_canvas, &Canvas::toolSettingsChanged, this, [this] {
         QSignalBlocker const quiet1(m_snapAlign), quiet2(m_lineFill);
         m_snapAlign->setChecked(m_canvas->snapsAndAligns());
+        m_scaleThickness->setChecked(m_canvas->scaleThickness());
+        if (QAction* const action = m_actions->action(QStringLiteral("ScalePencilThickness")))
+            action->setChecked(m_canvas->scaleThickness());
+        if (m_ceControls)
+            m_ceControls->setChecked(m_canvas->contourControls());
         if (m_lineFill)
             m_lineFill->setChecked(m_canvas->lineAutoFill());
         settings().setValue(QStringLiteral("tools/lineAutoFill"), m_canvas->lineAutoFill());
     });
     m_form->addRow(m_snapAlign);
+    addSnapRows();
     // The Dropper: the colour of whatever is seen there, or only of what is on the layer worked on.
     m_dropperAll = new QCheckBox(tr("Sample All Layers"), this);
     m_dropperAll->setObjectName(QStringLiteral("DropperAllLayers"));
@@ -1203,4 +1213,112 @@ void ToolProperties::editTipShape()
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted)
         saveTipShape(was);
+}
+
+void ToolProperties::addSnapRows()
+{
+    // The master switch of snapping: the Select tool, the Contour Editor, the Envelope and the Perspective tool.
+    m_snapMaster = new QCheckBox(tr("Snapping"), this);
+    m_snapMaster->setObjectName(QStringLiteral("SnapMaster"));
+    m_snapMaster->setToolTip(tr("Master switch for all snapping modes: off, nothing snaps - to the grid, to contours, to guides or into line."));
+    m_snapMaster->setChecked(settings().value(QStringLiteral("tools/snapping"), true).toBool());
+    m_canvas->setSnapping(m_snapMaster->isChecked());
+    connect(m_snapMaster, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setSnapping(on);
+        settings().setValue(QStringLiteral("tools/snapping"), on);
+    });
+    m_form->addRow(m_snapMaster);
+    // The Select tool: no box and no handles round what is selected.
+    m_hideManipulator = new QCheckBox(tr("Hide Manipulator Controls"), this);
+    m_hideManipulator->setObjectName(QStringLiteral("SelectHideManipulator"));
+    m_hideManipulator->setToolTip(tr("Hides the bounding box and manipulator controls when an element is selected."));
+    m_hideManipulator->setChecked(settings().value(QStringLiteral("tools/hideManipulator"), false).toBool());
+    m_canvas->setHideManipulator(m_hideManipulator->isChecked());
+    connect(m_hideManipulator, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setHideManipulator(on);
+        settings().setValue(QStringLiteral("tools/hideManipulator"), on);
+    });
+    m_form->addRow(m_hideManipulator);
+    // The Contour Editor: a box round the points picked, to scale and turn them.
+    m_ceControls = new QCheckBox(tr("Show Controls"), this);
+    m_ceControls->setObjectName(QStringLiteral("ContourShowControls"));
+    m_ceControls->setToolTip(tr("Use to scale, reposition and rotate the selected anchor points: a box round them, its corners and its knob."));
+    m_ceControls->setChecked(settings().value(QStringLiteral("tools/contourControls"), false).toBool());
+    m_canvas->setContourControls(m_ceControls->isChecked());
+    if (QAction* const action = m_actions->action(QStringLiteral("ShowContourControls")))
+        action->setChecked(m_ceControls->isChecked());
+    connect(m_ceControls, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setContourControls(on);
+        settings().setValue(QStringLiteral("tools/contourControls"), on);
+        if (QAction* const action = m_actions->action(QStringLiteral("ShowContourControls")))
+            action->setChecked(on);
+    });
+    m_form->addRow(m_ceControls);
+    // The Envelope tool: the handles of its points.
+    m_envAdvanced = new QCheckBox(tr("Show Advanced Controls"), this);
+    m_envAdvanced->setObjectName(QStringLiteral("EnvelopeAdvanced"));
+    m_envAdvanced->setToolTip(tr("The handles of the outline's points, to lead it another way through them."));
+    m_envAdvanced->setChecked(settings().value(QStringLiteral("tools/envelopeAdvanced"), true).toBool());
+    m_canvas->setEnvelopeAdvanced(m_envAdvanced->isChecked());
+    connect(m_envAdvanced, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setEnvelopeAdvanced(on);
+        settings().setValue(QStringLiteral("tools/envelopeAdvanced"), on);
+    });
+    m_form->addRow(m_envAdvanced);
+    // The Cutter: its gestures, and the ends it leaves on the lines it cuts.
+    m_cutterRow = new QWidget(this);
+    {
+        QFormLayout* const rows = new QFormLayout(m_cutterRow);
+        rows->setContentsMargins(0, 0, 0, 0);
+        QComboBox* const gesture = new QComboBox(m_cutterRow);
+        gesture->setObjectName(QStringLiteral("CutterGesture"));
+        gesture->addItems({tr("No Gesture"), tr("Single Line Cutting Gesture"), tr("Multiple Lines Cutting Gesture"), tr("Mouse Gesture Breaker Mode")});
+        gesture->setToolTip(tr("Use Mouse Gesture: a quick straight stroke across lines (not round them).\n"
+                               "Single Line: deletes the first line segment it crosses.\nMultiple Lines: deletes every line segment it crosses.\n"
+                               "Breaker: cuts each pencil line it crosses into two individual lines."));
+        gesture->setCurrentIndex(std::clamp(settings().value(QStringLiteral("tools/cutterGesture"), 0).toInt(), 0, 3));
+        m_canvas->setCutterGesture(gesture->currentIndex());
+        connect(gesture, &QComboBox::currentIndexChanged, this, [this](int i) {
+            m_canvas->setCutterGesture(i);
+            settings().setValue(QStringLiteral("tools/cutterGesture"), i);
+        });
+        QComboBox* const tip = new QComboBox(m_cutterRow);
+        tip->setObjectName(QStringLiteral("CutterTip"));
+        tip->addItems({tr("Round"), tr("Bevel")});
+        tip->setToolTip(tr("How the ends of a pencil line cut by the Cutter are left: rounded, or cut square across."));
+        tip->setCurrentIndex(std::clamp(settings().value(QStringLiteral("prefs/cutterTip"), 1).toInt(), 0, 1));
+        m_canvas->setCutterTip(tip->currentIndex());
+        connect(tip, &QComboBox::currentIndexChanged, this, [this](int i) {
+            m_canvas->setCutterTip(i);
+            settings().setValue(QStringLiteral("prefs/cutterTip"), i);
+        });
+        rows->addRow(tr("Gesture"), gesture);
+        rows->addRow(tr("Cut Tips"), tip);
+    }
+    m_form->addRow(m_cutterRow);
+    // Reposition All Drawings: a distance typed moves all of every drawing of the layer by it (then the box is back at 0).
+    m_repositionRow = new QWidget(this);
+    {
+        QHBoxLayout* const row = new QHBoxLayout(m_repositionRow);
+        row->setContentsMargins(0, 0, 0, 0);
+        for (int axis = 0; axis < 2; ++axis) {
+            QDoubleSpinBox* const box = new QDoubleSpinBox(m_repositionRow);
+            box->setObjectName(axis == 0 ? QStringLiteral("RepositionX") : QStringLiteral("RepositionY"));
+            box->setRange(-100000.0, 100000.0);
+            box->setDecimals(2);
+            box->setKeyboardTracking(false);
+            box->setToolTip(axis == 0 ? tr("X Offset: reposition every drawing along the X axis by this much.")
+                                      : tr("Y Offset: reposition every drawing along the Y axis by this much."));
+            row->addWidget(new QLabel(axis == 0 ? tr("X Offset") : tr("Y Offset"), m_repositionRow));
+            row->addWidget(box, 1);
+            connect(box, &QDoubleSpinBox::valueChanged, this, [this, box, axis](double by) {
+                if (by == 0.0)
+                    return;
+                m_canvas->moveSelectionBy(QPointF(axis == 0 ? by : 0.0, axis == 1 ? by : 0.0), tr("Reposition All Drawings"));
+                QSignalBlocker const quiet(box);
+                box->setValue(0.0);
+            });
+        }
+    }
+    m_form->addRow(m_repositionRow);
 }

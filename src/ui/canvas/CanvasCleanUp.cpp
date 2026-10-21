@@ -725,7 +725,7 @@ QPointF Canvas::envelopePointInView(int point) const
 QPointF Canvas::envelopeHandleInView(bool after) const
 {
     QVector<QPointF> const points = m_drag == DragEnvelope ? m_envNow : selectionEnvelope();
-    if (m_tool != Envelope || m_envPicked < 0 || m_envPicked + 2 >= points.size())
+    if (m_tool != Envelope || !m_envAdvanced || m_envPicked < 0 || m_envPicked + 2 >= points.size())
         return QPointF();
     return layerViewTransform().map(points[m_envPicked] + points[m_envPicked + (after ? 2 : 1)]);
 }
@@ -735,7 +735,7 @@ bool Canvas::envelopeDown(QPointF widgetPos)
     QVector<QPointF> const points = selectionEnvelope();
     QTransform const view = layerViewTransform();
     // A handle of the point pressed last: the outline is led another way through its point.
-    if (m_envPicked >= 0 && m_envPicked + 2 < points.size()) {
+    if (m_envAdvanced && m_envPicked >= 0 && m_envPicked + 2 < points.size()) {
         for (int which : {1, 2}) {
             if (QLineF(view.map(points[m_envPicked] + points[m_envPicked + which]), widgetPos).length() > 7.0)
                 continue;

@@ -107,7 +107,7 @@ QPointF Canvas::selectionCorner(int corner) const
 
 Canvas::Handle Canvas::handleAt(QPointF widgetPos) const
 {
-    if (!hasSelection())
+    if (!hasSelection() || (m_hideManipulator && m_tool == Select))
         return NoHandle;
     QRectF const bounds = selectionBounds();
     QTransform const view = layerViewTransform();
@@ -127,7 +127,7 @@ QPointF Canvas::aligned(QPointF by)
 {
     m_alignLines.clear();
     Drawing const* const d = currentDrawing();
-    if (!m_snapAlign || m_tool != Select || !d)
+    if (!m_snapping || !m_snapAlign || m_tool != Select || !d)
         return by;
     QRectF const box = m_dragBounds.translated(by);
     double const near = 6.0 / std::max(m_zoom, 1e-6);
@@ -177,7 +177,7 @@ QPointF Canvas::alignedCorner(QPointF corner)
 {
     m_alignLines.clear();
     Drawing const* const d = currentDrawing();
-    if (!m_snapAlign || m_tool != Select || !d)
+    if (!m_snapping || !m_snapAlign || m_tool != Select || !d)
         return corner;
     double const near = 6.0 / std::max(m_zoom, 1e-6);
     double bestX = near, bestY = near;

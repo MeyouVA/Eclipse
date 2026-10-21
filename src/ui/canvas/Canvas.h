@@ -698,8 +698,60 @@ public:
     // Preferences: how much of the scene's frame a new drawing's pixels cover, per cent (150: the frame and a quarter more
     // on every side).
     void setBitmapCanvas(int percent) { m_bitmapCanvas = std::clamp(percent, 100, 400); }
+    // The master switch of snapping (Tool Properties of the Select tool, the Contour Editor, the Envelope and the
+    // Perspective tool): off, nothing snaps - to the grid, to contours and points, to guides, or into line with the rest -
+    // whatever each of those is set to.
+    void setSnapping(bool on) { m_snapping = on; }
+    bool snapping() const { return m_snapping; }
+    // The Select tool: no box and no handles round what is selected (it is still moved by dragging it, and by the keys).
+    void setHideManipulator(bool on) { m_hideManipulator = on; update(); }
+    bool hidesManipulator() const { return m_hideManipulator; }
+    // The Envelope tool: the handles of the outline's points (its advanced controls), shown and pulled, or not.
+    void setEnvelopeAdvanced(bool on) { m_envAdvanced = on; update(); }
+    bool envelopeAdvanced() const { return m_envAdvanced; }
+    // The Contour Editor's controls: with two points or more picked, a box round them - a corner pulled scales them
+    // (from the corner across from it), the knob over it turns them about its middle.
+    void setContourControls(bool on) { m_ceControls = on; update(); }
+    bool contourControls() const { return m_ceControls; }
+    // That box on the layer (null when it is not shown); its corners (0 to 3: from the top left, clockwise) and its knob (4)
+    // in the view.
+    QRectF contourControlBox() const;
+    QPointF contourControlInView(int which) const;
+    // The Cutter's gestures (Use Mouse Gesture): a quick straight stroke across lines - not round them - takes away the
+    // piece of the first line it crosses between the lines that cross it (Single Line), of every line it crosses (Multiple
+    // Lines), or cuts each line it crosses in two there (Breaker: the line becomes two lines).
+    enum CutterGesture { GestureOff, GestureSingle, GestureMultiple, GestureBreak };
+    void setCutterGesture(int gesture) { m_cutterGesture = std::clamp(gesture, 0, 3); }
+    int cutterGesture() const { return m_cutterGesture; }
+    // How the Cutter leaves the ends of a pencil line it cuts: cut square (Stroke::FlatCap, as Harmony's bevel tip) or round.
+    void setCutterTip(int cap) { m_cutterTip = std::clamp(cap, 0, 1); }
+    int cutterTip() const { return m_cutterTip; }
+    // The gesture from a to b done on the lines of `drawing` (a CutterGesture); whether anything changed.
+    static bool gestureCut(Drawing& drawing, QPointF a, QPointF b, int gesture, int tip);
+    // Whether a path drawn with the Cutter is a gesture: long enough on the screen, and near enough straight.
+    static bool isGesture(QPolygonF const& path, double zoom);
+    // Nudge Selection Thickness: the lines selected a little thicker or thinner (Alt and the up or down arrow; a lot with
+    // Shift too).
+    void nudgeSelectionThickness(bool thicker, bool more);
+    // What is selected moved by so much, as one step (with Reposition All Drawings: all of every drawing of the layer).
+    void moveSelectionBy(QPointF by, QString const& text) { transformSelection(QTransform::fromTranslate(by.x(), by.y()), text); }
 
 public slots:
+    // View > Show Contour Editor Controls.
+    void onActionShowContourControls(bool on)
+    {
+        setContourControls(on);
+        emit toolSettingsChanged();
+    }
+    // The Select tool's Scale Pencil Line Thickness, switched from the menu (or its shortcut).
+    void onActionScalePencilThickness(bool on)
+    {
+        setScaleThickness(on);
+        emit toolSettingsChanged();
+    }
+    // Copy Thickness: how thick the first line selected is along its length; Paste Thickness: the lines selected made so.
+    void onActionCopyThickness();
+    void onActionPasteThickness();
     void setCurrentCell(int layer, int frame);
     // The Morphing tool: the morphing it works on here (its place among the current layer's; -1 when the frame is not the
     // first or the last drawing of one), and the morphing layer of it that Ctrl+click puts shapes in or takes them out of
@@ -1301,7 +1353,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -1504,6 +1556,17 @@ public:
     // A handle of the point of the outline pressed last (the one before it, or the one after); null when none shows.
     QPointF envelopeHandleInView(bool after) const;
 private:
+    bool m_snapping = true;
+    bool m_hideManipulator = false;
+    bool m_envAdvanced = true;
+    bool m_ceControls = false;
+    int m_ceBoxCorner = -1;         // the control of that box being dragged (0 to 3 a corner, 4 the knob)
+    QRectF m_ceBoxStart;            // the box when it was taken
+    QTransform contourBoxTransform() const;     // what the drag does to the points picked
+    int m_cutterGesture = GestureOff;
+    int m_cutterTip = 1;            // Stroke::FlatCap
+    QVector<float> m_copiedProfile; // Copy Thickness: the profile (shares of the thickest) and how thick the thickest is
+    float m_copiedWidth = 0.0f;
     double m_nudgeStep = 1.0;
     int m_ikIterations = 24;
     double m_ikError = 0.2;

@@ -441,7 +441,7 @@ void Canvas::penUp()
             if (m_lineOptions.connect)
                 connectEnds(m_stroke, *currentDrawing(), near);
         }
-        if (m_snapGrid && (m_tool == Brush || m_tool == Pencil) && m_stroke.points.size() >= 2) {
+        if (m_snapping && m_snapGrid && (m_tool == Brush || m_tool == Pencil) && m_stroke.points.size() >= 2) {
             // Snap to Grid: the line begins and ends on a crossing of the grid when it is near one.
             m_stroke.points.first().pos = snapped(m_stroke.points.first().pos);
             m_stroke.points.last().pos = snapped(m_stroke.points.last().pos);
@@ -508,6 +508,14 @@ void Canvas::penUp()
         m_drag = DragNone;
         if (drawn)
             keepShape();
+    } else if (drag == DragCeBox) {
+        bool const moved = contourValid() && QLineF(m_dragStart, m_dragNow).length() * m_zoom > 1.0;
+        Drawing const edited = moved ? previewDrawing() : Drawing();
+        m_drag = DragNone;
+        if (moved)
+            commitDrawing(edited, m_ceBoxCorner == 4 ? tr("Rotate Points") : tr("Scale Points"));
+        m_ceBoxCorner = -1;
+        update();
     } else if (drag == DragPoint) {
         if (contourValid() && contourLine(*currentDrawing())->points[m_cePoint].pos != m_dragNow) {
             Drawing edited = previewDrawing();
@@ -672,7 +680,13 @@ void Canvas::penUp()
             // (The Select tool on a bitmap layer picks pixels: those in the shape are cut loose, to be moved.)
             QPolygonF const shape = m_dragLasso ? m_lassoPath : QPolygonF(rect);
             m_lassoPath.clear();
-            if (shape.size() >= 3 && (shape.boundingRect().width() * m_zoom > 2 || shape.boundingRect().height() * m_zoom > 2))
+            if (m_tool == Cutter && m_cutterGesture != GestureOff && m_dragLasso && currentDrawing() && isGesture(shape, m_zoom)) {
+                // A gesture: a quick straight stroke across lines.
+                Drawing edited = *currentDrawing();
+                clearSelection();
+                if (gestureCut(edited, shape.first(), shape.last(), m_cutterGesture, m_cutterTip))
+                    commitDrawing(edited, m_cutterGesture == GestureBreak ? tr("Break Lines") : tr("Cut Lines"));
+            } else if (shape.size() >= 3 && (shape.boundingRect().width() * m_zoom > 2 || shape.boundingRect().height() * m_zoom > 2))
                 cutInside(shape);
             else
                 clearSelection();

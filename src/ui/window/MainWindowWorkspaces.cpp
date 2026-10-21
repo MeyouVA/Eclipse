@@ -536,6 +536,10 @@ void MainWindow::restoreWorkspace()
         setWindowState(windowState() | Qt::WindowMaximized);
     m_persistWorkspaces = true;
     applyPreferences();
+    // Preferences: the drawing tool in hand to begin with.
+    QString const first = s.value(QStringLiteral("prefs/initialTool"), QStringLiteral("ToolBrush")).toString();
+    if (QAction* const tool = first.startsWith(QLatin1String("Tool")) ? m_actions->action(first) : nullptr; tool && !tool->isChecked())
+        tool->trigger();
     QString const name = s.value(QStringLiteral("window/workspace"), QStringLiteral("Default")).toString();
     m_workspace = workspaces().contains(name) ? name : QStringLiteral("Default");
     loadWorkspace(m_workspace);

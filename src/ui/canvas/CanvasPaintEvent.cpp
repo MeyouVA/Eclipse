@@ -434,7 +434,7 @@ void Canvas::paintView()
                 painter.setPen(outline);
                 painter.setBrush(Qt::NoBrush);
                 painter.drawPolygon(where.map(Deform::warpLine(points, true, 12)));
-                if (m_envPicked >= 0 && m_envPicked + 2 < points.size()) {
+                if (m_envAdvanced && m_envPicked >= 0 && m_envPicked + 2 < points.size()) {
                     // The handles of the point pressed last.
                     QPointF const at = where.map(points[m_envPicked]);
                     for (int which : {1, 2}) {
@@ -689,7 +689,9 @@ void Canvas::paintView()
         QPen box(accent);
         box.setStyle(Qt::DashLine);
         painter.setPen(box);
-        if (m_drag == DragRotate || (m_tool == Perspective && m_drag == DragScale)) {
+        if (m_hideManipulator && m_tool == Select) {
+            // Hide Manipulator Controls: no box and no handles.
+        } else if (m_drag == DragRotate || (m_tool == Perspective && m_drag == DragScale)) {
             painter.drawPolygon(layerView.map(m_dragTransform.map(QPolygonF(m_dragBounds))));
         } else {
             painter.drawPolygon(layerView.map(QPolygonF(bounds)));

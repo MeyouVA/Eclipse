@@ -374,6 +374,22 @@ void Canvas::cutInside(QPolygonF const& shape)
     all.adjust(-1000, -1000, 1000, 1000);
     QVector<QPolygonF> const within{shape};
     QVector<QPolygonF> const without{QPolygonF(all), shape};
+    // The ends the cut makes on pencil lines are left as the Cutter's tip says.
+    auto tipped = [this](QVector<Stroke> pieces, Stroke const& whole) {
+        if (whole.points.isEmpty() || whole.width <= 0.0f)
+            return pieces;
+        QPointF const first = whole.points.first().pos, last = whole.points.last().pos;
+        auto made = [&](QPointF p) { return whole.closed || (QLineF(p, first).length() > 1e-3 && QLineF(p, last).length() > 1e-3); };
+        for (Stroke& piece : pieces) {
+            if (piece.points.isEmpty())
+                continue;
+            if (made(piece.points.first().pos))
+                piece.capStart = Stroke::Cap(m_cutterTip);
+            if (made(piece.points.last().pos))
+                piece.capEnd = Stroke::Cap(m_cutterTip);
+        }
+        return pieces;
+    };
     Drawing art = *d;
     art.fills.clear();
     art.strokes.clear();
@@ -398,14 +414,14 @@ void Canvas::cutInside(QPolygonF const& shape)
     }
     for (Stroke const& stroke : d->strokes) {
         bool lost = false;
-        QVector<Stroke> const inside = stroke.minus(without, fine, &lost);
+        QVector<Stroke> const inside = tipped(stroke.minus(without, fine, &lost), stroke);
         if (!lost) {
             strokes.push_back(int(art.strokes.size()));
             art.strokes.push_back(stroke);
         } else if (inside.isEmpty()) {
             art.strokes.push_back(stroke);
         } else {
-            art.strokes += stroke.minus(within, fine);
+            art.strokes += tipped(stroke.minus(within, fine), stroke);
             for (Stroke const& piece : inside) {
                 strokes.push_back(int(art.strokes.size()));
                 art.strokes.push_back(piece);

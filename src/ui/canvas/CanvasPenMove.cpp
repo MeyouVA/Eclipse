@@ -274,6 +274,10 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
             updateShape(snapped(p), modifiers);
         update();
         break;
+    case DragCeBox:
+        m_dragNow = p;
+        update();
+        break;
     case DragPoint:
         m_dragNow = pointMagnet(snapped(p));
         update();

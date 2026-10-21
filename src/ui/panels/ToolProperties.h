@@ -62,6 +62,9 @@ private:
     void addBrushRows();
     void addRiggingRows();
     void addSelectRows();
+    // The master switch of snapping, Hide Manipulator Controls, the Contour Editor's and the Envelope's controls, the Cutter's
+    // gestures and cut tips.
+    void addSnapRows();
     void addAutoFlattenRow();
     void addLineShapeRows();
     void fillTextureBox(class QComboBox* box, int current);
@@ -140,6 +143,12 @@ private:
     QCheckBox* m_permanent = nullptr;
     QCheckBox* m_envelopeOutline = nullptr;
     QCheckBox* m_snapAlign = nullptr;
+    QCheckBox* m_snapMaster = nullptr;
+    QCheckBox* m_hideManipulator = nullptr;
+    QCheckBox* m_ceControls = nullptr;
+    QCheckBox* m_envAdvanced = nullptr;
+    QWidget* m_cutterRow = nullptr;
+    QWidget* m_repositionRow = nullptr;
     QSpinBox* m_stampScale = nullptr;
     QWidget* m_stampRow = nullptr;      // which stamp, and taking it off the list
     QCheckBox* m_stampRandom = nullptr;

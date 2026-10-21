@@ -925,6 +925,21 @@ void MainWindow::onActionPreferences()
     bitmapCanvas->setToolTip(tr("Default Canvas for Bitmap Layers: how much of the scene's frame the pixels of a new bitmap drawing cover."));
     bitmapCanvas->setValue(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt());
     drawingLayout->addRow(tr("Bitmap canvas size"), bitmapCanvas);
+    // The drawing tool in hand when Eclipse starts.
+    QComboBox* const initialTool = new QComboBox(drawing);
+    initialTool->setObjectName(QStringLiteral("PrefInitialTool"));
+    initialTool->setToolTip(tr("Initial Drawing Tool: the tool in hand when Eclipse starts."));
+    for (char const* id : {"ToolBrush", "ToolPencil", "ToolSelect", "ToolCutter", "ToolContourEditor", "ToolEraser", "ToolPaint", "ToolLine",
+                           "ToolRectangle", "ToolEllipse", "ToolPolyline", "ToolStroke", "ToolText"})
+        if (QAction* const action = m_actions->action(QLatin1String(id)))
+            initialTool->addItem(action->text().remove(QLatin1Char('&')), QLatin1String(id));
+    initialTool->setCurrentIndex(std::max(0, initialTool->findData(s.value(QStringLiteral("prefs/initialTool"), QStringLiteral("ToolBrush")).toString())));
+    drawingLayout->addRow(tr("Initial drawing tool"), initialTool);
+    QCheckBox* const scalePencil = new QCheckBox(tr("Scale pencil line thickness"), drawing);
+    scalePencil->setObjectName(QStringLiteral("PrefScalePencilThickness"));
+    scalePencil->setToolTip(tr("The Select tool's Scale Pencil Line Thickness is on to begin with: pencil lines scaled get thicker or thinner."));
+    scalePencil->setChecked(s.value(QStringLiteral("prefs/scalePencilThickness"), false).toBool());
+    drawingLayout->addRow(scalePencil);
 
     // Colours: of the view round the frame, and of the onion skin.
     QGroupBox* const colours = new QGroupBox(tr("Colours"), &dialog);
@@ -1155,6 +1170,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
     s.setValue(QStringLiteral("prefs/pencilLinesOpacity"), lineOpacity->value());
     s.setValue(QStringLiteral("prefs/bitmapCanvas"), bitmapCanvas->value());
+    s.setValue(QStringLiteral("prefs/initialTool"), initialTool->currentData().toString());
+    s.setValue(QStringLiteral("prefs/scalePencilThickness"), scalePencil->isChecked());
     s.setValue(QStringLiteral("prefs/onionOver"), onionOver->isChecked());
     s.setValue(QStringLiteral("prefs/selectLasso"), selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/showStrokes"), showStrokes->isChecked());

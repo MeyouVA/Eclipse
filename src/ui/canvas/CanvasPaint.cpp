@@ -1346,6 +1346,23 @@ Drawing Canvas::previewDrawing() const
 {
     Drawing const* const current = currentDrawing();
     Drawing shown = current ? *current : Drawing();
+    if (m_drag == DragCeBox && contourValid()) {
+        // The points picked scaled or turned by the box round them; their handles with them.
+        QTransform const t = contourBoxTransform();
+        QTransform const linear(t.m11(), t.m12(), t.m21(), t.m22(), 0.0, 0.0);
+        Stroke& line = *contourLine(shown);
+        QVector<int> moved = contourPointsPicked();
+        moved.push_back(m_cePoint);
+        for (int i : std::as_const(moved)) {
+            StrokePoint& point = line.points[i];
+            point.pos = t.map(point.pos);
+            if (point.handles) {
+                point.in = linear.map(point.in);
+                point.out = linear.map(point.out);
+            }
+        }
+        contourEdited(shown);
+    }
     if (m_drag == DragPoint && contourValid()) {
         QVector<QPair<int, int>> const shared = sharedPoints(shown);
         Stroke& line = *contourLine(shown);

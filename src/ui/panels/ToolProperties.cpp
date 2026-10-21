@@ -339,7 +339,7 @@ void ToolProperties::showFor(int tool)
                                       "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D", "ToolPencilRetouch"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
-    bool const any = draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
+    bool const any = draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Reposition || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
     m_form->setRowVisible(m_morphLayers, tool == T::Morphing);
     m_form->setRowVisible(m_morphButtons, tool == T::Morphing);
@@ -353,7 +353,7 @@ void ToolProperties::showFor(int tool)
     // "Properties", the others "Options".
     QString const heading = brush ? tr("Vector Brush Properties") : eraser ? tr("Vector Eraser Properties") : pencil ? tr("Pencil Properties")
                             : shape ? tr("%1 Tool Properties").arg(name) : Canvas::isPaintTool(Canvas::Tool(tool)) ? tr("Paint Tool Options")
-                            : contour ? tr("Contour Editor Options") : tr("%1 Tool Options").arg(name.endsWith(tr(" Tool")) ? name.chopped(tr(" Tool").size()) : name);
+                            : contour ? tr("Contour Editor Options") : tool == T::PencilRetouch ? tr("Pencil Retouch Options") : tr("%1 Tool Options").arg(name.endsWith(tr(" Tool")) ? name.chopped(tr(" Tool").size()) : name);
     m_toolTitle->setText(any ? heading : QString());
     m_noOptions->setText(tr("No options for %1.").arg(name));
     m_form->setRowVisible(m_toolTitle, any);
@@ -415,6 +415,15 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_bothArts, tool == T::Eraser);
     m_form->setRowVisible(m_selectBothArts, tool == T::Select || tool == T::Cutter);
     m_form->setRowVisible(m_snapAlign, tool == T::Select);
+    m_form->setRowVisible(m_snapMaster, tool == T::Select || contour || tool == T::Envelope || tool == T::Perspective);
+    m_form->setRowVisible(m_hideManipulator, tool == T::Select);
+    m_form->setRowVisible(m_ceControls, contour);
+    m_form->setRowVisible(m_envAdvanced, tool == T::Envelope);
+    m_form->setRowVisible(m_cutterRow, tool == T::Cutter);
+    m_form->setRowVisible(m_repositionRow, tool == T::Reposition);
+    // The Pencil Retouch tool's size is the reach of its rub.
+    if (QLabel* const label = qobject_cast<QLabel*>(m_form->labelForField(m_sizeRow)))
+        label->setText(tool == T::PencilRetouch ? tr("Retouch Radius") : tr("Size"));
     m_form->setRowVisible(m_stampScale, tool == T::Stamp);
     m_form->setRowVisible(m_stampRandomSize, tool == T::Stamp);
     m_form->setRowVisible(m_stampRow, tool == T::Stamp);

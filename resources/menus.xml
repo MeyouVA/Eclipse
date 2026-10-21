@@ -134,6 +134,7 @@
     <item id="ShowSymbolPivot" icon="view/symbolpivot" text="Symbol &amp;Pivot" checkable="true" responder="camera" slot="onActionShowSymbolPivot(bool)"/>
     <item id="ShowStrokes"/>
     <item id="ShowStrokesWash"/>
+    <item id="ShowContourControls" icon="view/showcontrol" text="Contour &amp;Editor Controls" shortcut="shortcut.showContourControls" checkable="true" responder="camera" slot="onActionShowContourControls(bool)"/>
     <item id="HighlightColour" icon="view/highlightcolour" text="&amp;Highlight Selected Colour" shortcut="shortcut.highlightColour" checkable="true" responder="camera" slot="onActionHighlightColour(bool)"/>
    </menu>
    <menu id="ViewAlignmentGuides" text="&amp;Alignment Guides">
@@ -299,6 +300,9 @@
     <item id="PumpThickness" icon="anim/smooth" text="&amp;Pump Selection Thickness" shortcut="shortcut.pumpThickness" responder="camera" slot="onActionPumpThickness()"/>
     <item id="DeflateThickness" icon="anim/smooth" text="&amp;Deflate Selection Thickness" shortcut="shortcut.deflateThickness" responder="camera" slot="onActionDeflateThickness()"/>
     <item id="SetThickness" icon="anim/smooth" text="Set Selection &amp;Thickness..." shortcut="shortcut.setThickness" responder="camera" slot="onActionSetThickness()"/>
+    <item id="CopyThickness" icon="anim/smooth" text="&amp;Copy Thickness" shortcut="shortcut.copyThickness" responder="camera" slot="onActionCopyThickness()"/>
+    <item id="PasteThickness" icon="anim/smooth" text="Paste T&amp;hickness" shortcut="shortcut.pasteThickness" responder="camera" slot="onActionPasteThickness()"/>
+    <item id="ScalePencilThickness" icon="anim/smooth" text="Scale Pencil &amp;Line Thickness" shortcut="shortcut.scalePencilThickness" checkable="true" responder="camera" slot="onActionScalePencilThickness(bool)"/>
     <item id="SetPencilSoftTip" icon="anim/smooth" text="Set Pencil Opacity So&amp;ft Tip" shortcut="shortcut.setPencilSoftTip" responder="camera" slot="onActionSetPencilSoftTip()"/>
     <item id="SetPencilSoftTipAll" icon="anim/smooth" text="Set Pencil Opacity Soft Tip On All Drawings" shortcut="shortcut.setPencilSoftTipAll" responder="camera" slot="onActionSetPencilSoftTipAllDrawings()"/>
     <item id="ReversePencilThickness" icon="anim/smooth" text="Re&amp;verse Pencil Thickness" shortcut="shortcut.reversePencilThickness" responder="camera" slot="onActionReversePencilThickness()"/>
