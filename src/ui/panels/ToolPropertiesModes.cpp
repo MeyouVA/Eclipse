@@ -91,6 +91,19 @@ void ToolProperties::addModeRows()
 
 void ToolProperties::addStylusRows()
 {
+    // The Pencil: thinner where the pen presses less (into the line's own thickness along it).
+    {
+        int const kept = std::clamp(settings().value(QStringLiteral("tools/pencilMinSize"), 100).toInt(), 0, 100);
+        m_canvas->setPencilMinimumSize(kept);
+        m_pencilMinRow = addSetting(tr("Minimum Size"), tr("With a pen tablet: how thick the pencil line is where the pen barely presses, as a percentage of its size.\n"
+                                                       "100: the same thickness however hard you press. The thickness stencil is laid over it."),
+                                    0, 100, kept, QStringLiteral(" %"), [this](int v) {
+                                        m_canvas->setPencilMinimumSize(v);
+                                        settings().setValue(QStringLiteral("tools/pencilMinSize"), v);
+                                    });
+        if (QLayoutItem* const item = m_pencilMinRow->itemAt(1); item && item->widget())
+            item->widget()->setObjectName(QStringLiteral("PencilMinimumSize"));
+    }
     // The Eraser: how wide it rubs where the pen barely touches.
     {
         int const kept = std::clamp(settings().value(QStringLiteral("tools/eraserMinSize"), 100).toInt(), 0, 100);

@@ -427,6 +427,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_autoColour, brush || pencil || shape);
     m_form->setRowVisible(m_polyBehind, tool == T::Polyline);
     m_form->setRowVisible(m_eraserMinRow, eraser);
+    m_form->setRowVisible(m_pencilMinRow, pencil);
     m_form->setRowVisible(m_pressureSmoothRow, brush || pencil);
     m_form->setRowVisible(m_pencilOpacityRow, pencil);
     m_form->setRowVisible(m_singleStrokeBox, tool == T::SmoothEditor || tool == T::PencilRetouch);

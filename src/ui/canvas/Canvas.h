@@ -212,7 +212,8 @@ public:
     // What the tool in hand makes of how hard the pen is pressed (0 to 1).
     float pressureFor(float raw) const
     {
-        float const least = m_tool == Brush ? float(m_minSize) / 100.0f : m_tool == Eraser ? float(m_eraserMinSize) / 100.0f : 0.0f;
+        float const least = m_tool == Brush ? float(m_minSize) / 100.0f : m_tool == Eraser ? float(m_eraserMinSize) / 100.0f
+                            : m_tool == Pencil ? float(m_pencilMinSize) / 100.0f : 0.0f;
         return least + (1.0f - least) * feltPressure(raw);
     }
     // The Brush with a pen that tells its tilt: the more the pen leans, the thicker the line (Tilt Sensitivity, per cent).
@@ -784,6 +785,12 @@ public:
     static Stroke bentSegment(Stroke line, int segment, double t, QPointF by);
     // The Eraser with a pen: how wide it rubs where the pen barely touches, per cent of its size (100: pressure leaves it be).
     void setEraserMinimumSize(int percent) { m_eraserMinSize = std::clamp(percent, 0, 100); }
+    // The Pencil with a pen: how thick its line is where the pen barely presses, per cent of its size (100: as thick
+    // however it presses - the pencil's way to begin with).  What the pen does goes into the line's thickness along it.
+    void setPencilMinimumSize(int percent) { m_pencilMinSize = std::clamp(percent, 0, 100); }
+    int pencilMinimumSize() const { return m_pencilMinSize; }
+    // Whether the tool in hand takes the pen's pressure as how thick it draws.
+    bool pressureThickens() const { return m_tool == Brush || (m_tool == Pencil && m_pencilMinSize < 100); }
     int eraserMinimumSize() const { return m_eraserMinSize; }
     // Smoothing with pressure (the Brush and the Pencil): the Smoothing set is the most, at full pressure; at the lightest
     // the line is smoothed `minimumPercent` of that - between, as hard as the pen pressed on the whole.
@@ -1667,6 +1674,7 @@ public:
 private:
     bool m_snapping = true;
     int m_eraserMinSize = 100;
+    int m_pencilMinSize = 100;
     bool m_pressureSmoothing = false;
     int m_minSmoothing = 30;
     int m_pencilMinOpacity = 100;

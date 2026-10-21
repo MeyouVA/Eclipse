@@ -311,7 +311,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     case DragDraw: {
         float const raw = pressure;
-        if (m_tool == Pencil)
+        if (m_tool == Pencil && m_pencilMinSize >= 100)
             pressure = 1.0f;
         // With Shift the line is a straight one, from where the pen went down to where it is.
         if ((modifiers & Qt::ShiftModifier) && (m_tool == Brush || m_tool == Pencil) && !m_stroke.points.isEmpty()) {

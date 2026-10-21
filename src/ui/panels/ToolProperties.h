@@ -159,6 +159,7 @@ private:
     QCheckBox* m_autoColour = nullptr;
     QCheckBox* m_polyBehind = nullptr;
     QLayout* m_eraserMinRow = nullptr;
+    QLayout* m_pencilMinRow = nullptr;
     QWidget* m_pressureSmoothRow = nullptr;
     QWidget* m_pencilOpacityRow = nullptr;
     QCheckBox* m_singleStrokeBox = nullptr;

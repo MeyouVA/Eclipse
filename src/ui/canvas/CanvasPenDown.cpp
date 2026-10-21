@@ -228,8 +228,8 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         return;
     }
     float const raw = pressure;     // (how hard the pen pressed: the Pencil's opacity, smoothing with pressure)
-    if (m_tool == Pencil || m_tool == StrokeTool)
-        pressure = 1.0f;  // a pencil line has one thickness
+    if (m_tool == StrokeTool || (m_tool == Pencil && m_pencilMinSize >= 100))
+        pressure = 1.0f;  // a pencil line has one thickness (unless it is to follow the pen: a Minimum Size)
     if (m_tool == Rigging) {
         riggingDown(widgetPos, p, modifiers);
     } else if (m_tool == ContourEditor) {
@@ -436,6 +436,7 @@ void Canvas::followSettings(Canvas const& leader)
     m_ceControls = leader.m_ceControls;
     m_envAdvanced = leader.m_envAdvanced;
     m_eraserMinSize = leader.m_eraserMinSize;
+    m_pencilMinSize = leader.m_pencilMinSize;
     for (int slot = 0; slot < 3; ++slot) {
         m_stencils[slot] = leader.m_stencils[slot];
         m_customStencils[slot] = leader.m_customStencils[slot];
