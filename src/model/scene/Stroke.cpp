@@ -958,12 +958,36 @@ void Stroke::append(Stroke const& other, bool meets)
         after.thicknessPointAt(0.0);
     }
     double const offset = pieces() + (meets ? 0.0 : 1.0);
+    // Each line keeps its course exactly: on a curve, a point whose handles the curve worked out for itself (from its
+    // neighbours - and it is to have new ones) has them set down as they are.
+    if (curve || after.curve) {
+        auto freeze = [](Stroke& line) {
+            if (!line.curve) {
+                for (StrokePoint& p : line.points) {
+                    p.handles = true;
+                    p.corner = true;
+                    p.in = p.out = QPointF();
+                }
+                line.curve = true;
+                return;
+            }
+            for (int i = 0; i < line.points.size(); ++i) {
+                QPointF in, out;
+                line.handlesAt(i, in, out);
+                line.points[i].handles = true;
+                line.points[i].in = in;
+                line.points[i].out = out;
+            }
+        };
+        freeze(*this);
+        freeze(after);
+    }
     if (meets) {
-        // The point where they meet: this one's way in, the other's way out.
+        // The point where they meet: this one's way in, the other's way out (a corner, as the two lines meet there).
         StrokePoint& meet = points.last();
         meet.out = after.points.first().out;
         meet.handles = meet.handles || after.points.first().handles;
-        meet.corner = meet.corner || after.points.first().corner;
+        meet.corner = true;
     }
     for (int i = meets ? 1 : 0; i < after.points.size(); ++i)
         points.push_back(after.points[i]);
