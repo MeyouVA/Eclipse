@@ -126,9 +126,15 @@ public:
     // The thickness stencils of the Pencil: how thick a new pencil line is along its length.
     enum Stencil { StencilUniform, StencilTapered, StencilTaperedStart, StencilTaperedEnd, StencilMediumTapered, StencilPointy, StencilFatEnds,
                    StencilCurvedAbove, StencilCurvedBelow, StencilCount };
-    void setThicknessStencil(int stencil) { m_stencil = std::clamp(int(stencil), 0, int(StencilCount)); }
+    // (Each of the tools that has one keeps its own - the Pencil, the Line tool, the Polyline - as in Harmony: these set the
+    // one of the tool in hand, or of the tool named.)
+    static int stencilSlot(int tool) { return tool == Line ? 1 : tool == Polyline ? 2 : 0; }
+    void setThicknessStencil(int stencil) { setThicknessStencilOf(m_tool, stencil); }
+    void setThicknessStencilOf(int tool, int stencil) { m_stencils[stencilSlot(tool)] = std::clamp(int(stencil), 0, int(StencilCount)); }
+    void setCustomStencilOf(int tool, QVector<float> const& profile) { m_customStencils[stencilSlot(tool)] = profile; }
+    int thicknessStencilOf(int tool) const { return m_stencils[stencilSlot(tool)]; }
     // A stencil of your own (StencilCount): the thickness at evenly spaced places from the start of the line to its end.
-    void setCustomStencil(QVector<float> const& profile) { m_customStencil = profile; }
+    void setCustomStencil(QVector<float> const& profile) { setCustomStencilOf(m_tool, profile); }
     static float profileThickness(QVector<float> const& profile, double along);
     static void applyProfile(Stroke& stroke, QVector<float> const& profile);
     // The thickness of the first line selected along its length (32 places), for a stencil of your own; empty with none.
@@ -140,7 +146,7 @@ public:
     void setPencilLinesOpacity(int percent) { m_pencilOpacity = std::clamp(percent, 0, 100); update(); }
     // The lines selected made wiggly: bent this far to each side (scene units), every so far along; one step to undo.
     void wiggleSelectedLines(double amount, double every, quint32 seed);
-    int thicknessStencil() const { return m_stencil; }
+    int thicknessStencil() const { return thicknessStencilOf(m_tool); }
     // A stencil's thickness at `along` (0: the start of the line, 1: its end), as a share of the full thickness.
     static float stencilThickness(int stencil, double along);
     // The stencil laid on a line: each point as thick as the stencil says at its place along it.
@@ -802,6 +808,9 @@ public:
         m_opacitySmoothing = std::clamp(smoothing, 0, 100);
     }
     static void smoothOpacity(Stroke& line, int percent);
+    // The pen's samples with more put in between where they lie further apart than `step` (each as the two either side
+    // say, by how far along it is).
+    static QVector<StrokePoint> evenlySampled(QVector<StrokePoint> const& samples, double step);
     // The Smooth Editor and the Pencil Retouch tool: Apply to Single Stroke - a rub works on the first line it touches only
     // (Shift, held as the pen goes down, the other way about).
     void setSingleStroke(bool on) { m_singleStroke = on; }
@@ -1318,8 +1327,8 @@ private:
     // A line that fades along its length, painted: solid into a picture of its own, then made fainter there.
     static void paintFadingStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
     int m_tiltSensitivity = 0;
-    int m_stencil = StencilUniform;
-    QVector<float> m_customStencil;
+    int m_stencils[3] = {StencilUniform, StencilUniform, StencilUniform};     // the Pencil's, the Line tool's, the Polyline's
+    QVector<float> m_customStencils[3];
     int m_retouchMode = 0;
     int m_retouchNow = 0;      // the mode of this rub (Alt turns it round)
     int m_pencilOpacity = 100;

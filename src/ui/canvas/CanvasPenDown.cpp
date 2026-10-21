@@ -436,6 +436,10 @@ void Canvas::followSettings(Canvas const& leader)
     m_ceControls = leader.m_ceControls;
     m_envAdvanced = leader.m_envAdvanced;
     m_eraserMinSize = leader.m_eraserMinSize;
+    for (int slot = 0; slot < 3; ++slot) {
+        m_stencils[slot] = leader.m_stencils[slot];
+        m_customStencils[slot] = leader.m_customStencils[slot];
+    }
     m_pressureSmoothing = leader.m_pressureSmoothing;
     m_minSmoothing = leader.m_minSmoothing;
     m_pencilMinOpacity = leader.m_pencilMinOpacity;

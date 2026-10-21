@@ -491,14 +491,35 @@ void Canvas::penUp()
         double const tolerance = (0.2 + smoothingFor(pressed) * 0.038) / m_zoom;
         if (m_tool == Pencil && m_pencilMinOpacity < 100)
             smoothOpacity(m_stroke, m_opacitySmoothing);
-        if (m_tool == Pencil && m_stencil == StencilCount && !m_customStencil.isEmpty())
-            applyProfile(m_stroke, m_customStencil);
-        else if (m_tool == Pencil && m_stencil != StencilUniform && m_stencil < StencilCount)
-            applyStencil(m_stroke, m_stencil);
-        // The line options (Tool Properties): taper and speed on the Brush; trimmed and carried on to the lines it meets.
+        // The thickness along the line as drawn, worked out on samples of their own: the pen's, with the speed it moved at
+        // (the Brush), then with more put in a couple of pixels of the screen apart - so that the stencil, the taper and the
+        // fade lie along all of the line, a straight one drawn with Shift (the pen's two ends, no more) as much as any.
+        // The shape of the line is the pen's samples as they were.
+        bool const ownThick = (m_tool == Pencil || m_tool == Brush) && m_stroke.width > 0.0f && !bitmapNow();
+        Stroke thick = m_stroke;
+        if (m_tool == Brush) {
+            LineOptions speedOnly = m_lineOptions;
+            speedOnly.startTaper = speedOnly.endTaper = speedOnly.fade = 0;
+            applyTaperAndSpeed(thick, speedOnly, m_zoom);
+        }
+        if (m_tool == Brush || m_tool == Pencil)
+            thick.points = evenlySampled(thick.points, 2.0 / std::max(m_zoom, 1e-6));
+        int const stencil = thicknessStencilOf(Pencil);
+        QVector<float> const& custom = m_customStencils[stencilSlot(Pencil)];
+        if (m_tool == Pencil && stencil == StencilCount && !custom.isEmpty())
+            applyProfile(thick, custom);
+        else if (m_tool == Pencil && stencil != StencilUniform && stencil < StencilCount)
+            applyStencil(thick, stencil);
+        if (m_tool == Brush) {
+            LineOptions shapeOnly = m_lineOptions;
+            shapeOnly.speed = 0;
+            applyTaperAndSpeed(thick, shapeOnly, m_zoom);
+        }
+        // (A line that faded away ends where it did; a bitmap stroke is painted along all of its samples.)
+        if ((m_tool == Brush || m_tool == Pencil) && (!ownThick || (m_tool == Brush && m_lineOptions.fade > 0)))
+            m_stroke.points = thick.points;
+        // The line options (Tool Properties): trimmed and carried on to the lines it meets.
         double const near = 12.0 / std::max(m_zoom, 1e-6);
-        if (m_tool == Brush)
-            applyTaperAndSpeed(m_stroke, m_lineOptions, m_zoom);
         if ((m_tool == Pencil || m_tool == StrokeTool) && currentDrawing()) {
             if (m_lineOptions.trim)
                 trimExtra(m_stroke, *currentDrawing(), 30.0 / std::max(m_zoom, 1e-6));
@@ -510,10 +531,9 @@ void Canvas::penUp()
             m_stroke.points.first().pos = snapped(m_stroke.points.first().pos);
             m_stroke.points.last().pos = snapped(m_stroke.points.last().pos);
         }
-        // The thickness of the line kept apart from its points (as Harmony's pencil lines have it): the pen's pressure all
-        // along the line as it was drawn, however few points the fitting keeps.
-        bool const ownThick = (m_tool == Pencil || m_tool == Brush) && m_stroke.width > 0.0f && !bitmapNow();
-        QVector<StrokePoint> const drawnSamples = m_stroke.points;
+        // The thickness of the line kept apart from its points (as Harmony's pencil lines have it): as worked out above, all
+        // along the line, however few points the fitting keeps.
+        QVector<StrokePoint> const drawnSamples = thick.points;
         if (ownThick)
             for (StrokePoint& point : m_stroke.points) {
                 point.pressure = 1.0f;

@@ -104,6 +104,7 @@ private:
     QLayout* m_stabiliserRow = nullptr;
     QLayout* m_lineModeRow = nullptr;
     QLayout* m_stencilRow = nullptr;
+    std::function<void(int)> m_showStencil;     // the stencil box set to the stencil of a tool
     QLayout* m_retouchRow = nullptr;
     QLayout* m_eraserTipRow = nullptr;
     QSpinBox* m_stampRandomSize = nullptr;

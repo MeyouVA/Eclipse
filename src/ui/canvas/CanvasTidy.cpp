@@ -1623,3 +1623,28 @@ void Canvas::smoothOpacity(Stroke& line, int percent)
         line.points[i].opacity = float(sum / count);
     }
 }
+
+QVector<StrokePoint> Canvas::evenlySampled(QVector<StrokePoint> const& samples, double step)
+{
+    if (samples.size() < 2 || step <= 0.0)
+        return samples;
+    QVector<StrokePoint> out;
+    out.push_back(samples.first());
+    for (int i = 1; i < samples.size(); ++i) {
+        StrokePoint const& a = samples[i - 1];
+        StrokePoint const& b = samples[i];
+        int const pieces = std::clamp(int(std::ceil(QLineF(a.pos, b.pos).length() / step)), 1, 2000);
+        for (int k = 1; k < pieces; ++k) {
+            double const t = double(k) / pieces;
+            StrokePoint between = a;
+            between.pos = a.pos + (b.pos - a.pos) * t;
+            between.pressure = float(a.pressure + (b.pressure - a.pressure) * t);
+            between.lean = float(a.lean + (b.lean - a.lean) * t);
+            between.opacity = float(a.opacity + (b.opacity - a.opacity) * t);
+            between.handles = between.corner = false;
+            out.push_back(between);
+        }
+        out.push_back(b);
+    }
+    return out;
+}

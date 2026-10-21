@@ -9,16 +9,19 @@
 
 void Canvas::stencilLine(Stroke& line) const
 {
-    bool const custom = m_stencil == StencilCount && !m_customStencil.isEmpty();
-    if ((m_tool != Line && m_tool != Polyline) || line.width <= 0.0f || line.closed || line.points.size() < 2
-        || (!custom && (m_stencil == StencilUniform || m_stencil >= StencilCount)))
+    if (m_tool != Line && m_tool != Polyline)
+        return;
+    int const stencil = thicknessStencilOf(m_tool);
+    QVector<float> const& own = m_customStencils[stencilSlot(m_tool)];
+    bool const custom = stencil == StencilCount && !own.isEmpty();
+    if (line.width <= 0.0f || line.closed || line.points.size() < 2 || (!custom && (stencil == StencilUniform || stencil >= StencilCount)))
         return;
     // The stencil, place by place along the line, as its thickness there (Curved Above / Below: all to the one side).
-    double const lean = m_stencil == StencilCurvedAbove ? 1.0 : m_stencil == StencilCurvedBelow ? -1.0 : 0.0;
+    double const lean = stencil == StencilCurvedAbove ? 1.0 : stencil == StencilCurvedBelow ? -1.0 : 0.0;
     QVector<QPair<double, ThicknessPoint>> byLength;
     for (int k = 0; k <= 32; ++k) {
         double const f = k / 32.0;
-        double const share = custom ? profileThickness(m_customStencil, f) : stencilThickness(m_stencil, f);
+        double const share = custom ? profileThickness(own, f) : stencilThickness(stencil, f);
         byLength.push_back({f, {0.0, float(share * (1.0 + lean)), float(share * (1.0 - lean))}});
     }
     line.setThicknessByLength(byLength);

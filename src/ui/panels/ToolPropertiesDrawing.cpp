@@ -211,30 +211,47 @@ void ToolProperties::addSizeRows()
         stencil->setObjectName(QStringLiteral("ThicknessStencil"));
         stencil->setToolTip(tr("The thickness stencil: how thick a new pencil line is from its start to its end."));
         fillStencils(stencil);
-        // Which one: one of the usual ones by number, or one of your own by name.
-        auto choose = [this, stencil](int i) {
+        // Each tool keeps its own: the Pencil (tools/thicknessStencil), the Line tool and the Polyline.
+        auto keyOf = [](int tool) {
+            return tool == Canvas::Line ? QStringLiteral("tools/lineStencil") : tool == Canvas::Polyline ? QStringLiteral("tools/polylineStencil")
+                                                                                                         : QStringLiteral("tools/thicknessStencil");
+        };
+        // Which one, for a tool: one of the usual ones by number, or one of your own by name.
+        auto chooseFor = [this, stencil, keyOf](int tool, int i) {
             if (i < 0)
                 return;
+            QString const key = keyOf(tool);
             QVariant const own = stencil->itemData(i);
             if (own.isValid()) {
                 QVector<float> profile;
                 for (QString const& share : settings().value(QStringLiteral("tools/stencils/") + own.toString()).toString().split(QLatin1Char(','), Qt::SkipEmptyParts))
                     profile.push_back(share.toFloat());
-                m_canvas->setCustomStencil(profile);
-                m_canvas->setThicknessStencil(Canvas::StencilCount);
-                settings().setValue(QStringLiteral("tools/thicknessStencilName"), own.toString());
+                m_canvas->setCustomStencilOf(tool, profile);
+                m_canvas->setThicknessStencilOf(tool, Canvas::StencilCount);
+                settings().setValue(key + QStringLiteral("Name"), own.toString());
             } else {
-                m_canvas->setThicknessStencil(i);
-                settings().remove(QStringLiteral("tools/thicknessStencilName"));
+                m_canvas->setThicknessStencilOf(tool, i);
+                settings().remove(key + QStringLiteral("Name"));
             }
-            settings().setValue(QStringLiteral("tools/thicknessStencil"), i);
+            settings().setValue(key, i);
         };
-        connect(stencil, &QComboBox::currentIndexChanged, this, choose);
-        QString const keptName = settings().value(QStringLiteral("tools/thicknessStencilName")).toString();
-        int const kept = keptName.isEmpty() ? std::clamp(settings().value(QStringLiteral("tools/thicknessStencil"), 0).toInt(), 0, int(Canvas::StencilCount) - 1)
-                                            : std::max(0, stencil->findData(keptName));
-        stencil->setCurrentIndex(kept);
-        choose(kept);
+        auto keptFor = [stencil, keyOf](int tool) {
+            QString const key = keyOf(tool);
+            QString const keptName = settings().value(key + QStringLiteral("Name")).toString();
+            return keptName.isEmpty() ? std::clamp(settings().value(key, 0).toInt(), 0, int(Canvas::StencilCount) - 1) : std::max(0, stencil->findData(keptName));
+        };
+        connect(stencil, &QComboBox::currentIndexChanged, this, [this, chooseFor](int i) {
+            int const tool = m_canvas->tool();
+            chooseFor(tool == Canvas::Line || tool == Canvas::Polyline ? tool : int(Canvas::Pencil), i);
+        });
+        for (int tool : {int(Canvas::Pencil), int(Canvas::Line), int(Canvas::Polyline)})
+            chooseFor(tool, keptFor(tool));
+        // The box shows the stencil of the tool in hand.
+        m_showStencil = [this, stencil, keptFor](int tool) {
+            QSignalBlocker const quiet(stencil);
+            stencil->setCurrentIndex(keptFor(tool == Canvas::Line || tool == Canvas::Polyline ? tool : int(Canvas::Pencil)));
+        };
+        m_showStencil(Canvas::Pencil);
         // Stencils of your own: made from the thickness of the line selected; renamed; deleted.
         QToolButton* const more = new QToolButton(this);
         more->setObjectName(QStringLiteral("StencilMenu"));
