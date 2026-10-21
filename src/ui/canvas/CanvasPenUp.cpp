@@ -244,13 +244,17 @@ void Canvas::keepShape()
 {
     // Auto Fill: a rectangle or an ellipse is painted inside with the colour in hand, under its line.
     bool const fill = m_shapeAutoFill && m_stroke.closed && (m_tool == Rectangle || m_tool == Ellipse) && !bitmapNow() && m_stroke.width > 0.0f;
-    if (!fill) {
+    bool const twin = m_autoColourArt && m_art == LineArt && !bitmapNow() && m_stroke.width > 0.0f;
+    if (!fill && !twin) {
         keepStroke(m_stroke, false);
         return;
     }
     m_document->beginMacro(tr("Draw Shape"));
-    fillUnder(m_stroke);
+    if (fill)
+        fillUnder(m_stroke);
     keepStroke(m_stroke, false);
+    if (twin)
+        colourArtTwin(m_stroke);
     m_document->endMacro();
 }
 
@@ -422,6 +426,18 @@ void Canvas::penUp()
             for (int i = 1; i <= steps; ++i)
                 m_stroke.points.push_back({from + (m_stabiliserPen - from) * (double(i) / steps), pressure});
         }
+        // Line Pushing, Auto Adjust Thickness: the stroke is done to the line it was drawn along, and is not kept.
+        if (m_tool == Pencil && m_pencilMode != PencilDraw && !bitmapNow()) {
+            Stroke const highlight = m_stroke;
+            m_stroke = Stroke();
+            Drawing edited = currentDrawing() ? *currentDrawing() : Drawing();
+            if (pushLine(edited, highlight, m_pencilMode, 16.0 / std::max(m_zoom, 1e-6)))
+                commitDrawing(edited, m_pencilMode == PencilPush ? tr("Push Line") : tr("Adjust Line Thickness"));
+            else
+                emit message(tr("Draw along a pencil line to push it, or to make it thicker."));
+            update();
+            return;
+        }
         // The pen samples become a curve through a few of them: about a pixel of the
         // screen is given up for it.
         // The smoothing setting is how far, in pixels of the screen, the line may stray
@@ -508,6 +524,14 @@ void Canvas::penUp()
         m_drag = DragNone;
         if (drawn)
             keepShape();
+    } else if (drag == DragSegment) {
+        bool const moved = QLineF(m_dragStart, m_dragNow).length() * m_zoom > 1.0;
+        Drawing const edited = moved ? previewDrawing() : Drawing();
+        m_drag = DragNone;
+        if (moved)
+            commitDrawing(edited, tr("Bend Line"));
+        m_segIndex = -1;
+        update();
     } else if (drag == DragCeBox) {
         bool const moved = contourValid() && QLineF(m_dragStart, m_dragNow).length() * m_zoom > 1.0;
         Drawing const edited = moved ? previewDrawing() : Drawing();
@@ -796,8 +820,16 @@ void Canvas::finishPolyline(bool keep)
     Stroke const line = m_stroke;
     m_stroke = Stroke();
     update();
-    if (keep && line.points.size() >= 2 && m_layer >= 0 && m_layer < m_document->scene().layers.size())
+    if (keep && line.points.size() >= 2 && m_layer >= 0 && m_layer < m_document->scene().layers.size()) {
+        bool const twin = m_autoColourArt && m_art == LineArt && !bitmapNow() && line.width > 0.0f;
+        if (twin)
+            m_document->beginMacro(tr("Draw Stroke"));
         keepStroke(line, false);
+        if (twin) {
+            colourArtTwin(line);
+            m_document->endMacro();
+        }
+    }
 }
 
 void Canvas::stampTip(QPainter& onto, Stroke const& stroke, double share, QBrush const& brush) const

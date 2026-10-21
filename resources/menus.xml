@@ -248,6 +248,18 @@
    <item id="ManagePresets" icon="tool/managepresets" text="&amp;Manage Presets..." shortcut="shortcut.managePresets" responder="window" slot="onActionManagePresets()"/>
    <item id="ImportPresets" icon="tool/importpresets" text="&amp;Import Presets..." responder="window" slot="onActionImportPresets()"/>
    <item id="ExportPresets" icon="tool/exportpresets" text="E&amp;xport Presets..." responder="window" slot="onActionExportPresets()"/>
+   <menu id="DrawingToolPresets" text="Tool Preset Shor&amp;tcuts">
+    <item id="ToolPreset1" icon="tool/newpreset" text="Tool Preset &amp;1" shortcut="shortcut.toolPreset1" responder="window" slot="onActionToolPreset(QString)" itemParameter="1"/>
+    <item id="ToolPreset2" icon="tool/newpreset" text="Tool Preset &amp;2" shortcut="shortcut.toolPreset2" responder="window" slot="onActionToolPreset(QString)" itemParameter="2"/>
+    <item id="ToolPreset3" icon="tool/newpreset" text="Tool Preset &amp;3" shortcut="shortcut.toolPreset3" responder="window" slot="onActionToolPreset(QString)" itemParameter="3"/>
+    <item id="ToolPreset4" icon="tool/newpreset" text="Tool Preset &amp;4" shortcut="shortcut.toolPreset4" responder="window" slot="onActionToolPreset(QString)" itemParameter="4"/>
+    <item id="ToolPreset5" icon="tool/newpreset" text="Tool Preset &amp;5" shortcut="shortcut.toolPreset5" responder="window" slot="onActionToolPreset(QString)" itemParameter="5"/>
+    <item id="ToolPreset6" icon="tool/newpreset" text="Tool Preset &amp;6" shortcut="shortcut.toolPreset6" responder="window" slot="onActionToolPreset(QString)" itemParameter="6"/>
+    <item id="ToolPreset7" icon="tool/newpreset" text="Tool Preset &amp;7" shortcut="shortcut.toolPreset7" responder="window" slot="onActionToolPreset(QString)" itemParameter="7"/>
+    <item id="ToolPreset8" icon="tool/newpreset" text="Tool Preset &amp;8" shortcut="shortcut.toolPreset8" responder="window" slot="onActionToolPreset(QString)" itemParameter="8"/>
+    <item id="ToolPreset9" icon="tool/newpreset" text="Tool Preset &amp;9" shortcut="shortcut.toolPreset9" responder="window" slot="onActionToolPreset(QString)" itemParameter="9"/>
+    <item id="ToolPreset10" icon="tool/newpreset" text="Tool Preset &amp;0" shortcut="shortcut.toolPreset10" responder="window" slot="onActionToolPreset(QString)" itemParameter="10"/>
+   </menu>
    <item id="AutoMatte" icon="anim/automatte" text="Generate Auto-&amp;Matte" shortcut="shortcut.autoMatte" responder="camera" slot="onActionAutoMatte()"/>
    <item id="DistributeToLayers" icon="anim/distribute" text="&amp;Distribute to Layers" responder="camera" slot="onActionDistributeToLayers()"/>
    <submenu id="menu.arrange" text="&amp;Arrange"/>

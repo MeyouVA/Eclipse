@@ -315,6 +315,8 @@ void Canvas::updateShape(QPointF p, Qt::KeyboardModifiers modifiers)
             double const step = 3.14159265358979323846 / 12.0;
             double const angle = std::round(std::atan2(p.y() - a.y(), p.x() - a.x()) / step) * step;
             p = a + QPointF(std::cos(angle), std::sin(angle)) * length;
+        } else {
+            p = endMagnet(p);       // onto the end of a line near it: the two meet, and the shape they make closes
         }
         m_stroke.points = {{a, 1.0f}, {p, 1.0f}};
         return;

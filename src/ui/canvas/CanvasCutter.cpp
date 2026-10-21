@@ -324,6 +324,26 @@ void Canvas::onActionPencilLineProperties()
     crispBox->setChecked(shown.textureCrisp);
     form->addRow(crispBox);
     form->addRow(tr("Corners"), join);
+    // The thickness multiplied (the line as it is, thicker or thinner), the tips with it or not, and grown besides.
+    QSpinBox* const multiplier = new QSpinBox(&dialog);
+    multiplier->setObjectName(QStringLiteral("PencilThicknessMultiplier"));
+    multiplier->setRange(1, 1000);
+    multiplier->setSuffix(QStringLiteral(" %"));
+    multiplier->setValue(100);
+    multiplier->setToolTip(tr("The lines made thicker or thinner, along all their length."));
+    QCheckBox* const tipsToo = new QCheckBox(tr("Apply Multiplier to Tips"), &dialog);
+    tipsToo->setObjectName(QStringLiteral("PencilMultiplyTips"));
+    tipsToo->setChecked(true);
+    tipsToo->setToolTip(tr("Grow the lines tips using the Thickness Multiplier."));
+    QSpinBox* const tipExtra = new QSpinBox(&dialog);
+    tipExtra->setObjectName(QStringLiteral("PencilTipMultiplier"));
+    tipExtra->setRange(10, 1000);
+    tipExtra->setSuffix(QStringLiteral(" %"));
+    tipExtra->setValue(100);
+    tipExtra->setToolTip(tr("Additional Tip Multiplier: apply an additional multiplier to extend line tips."));
+    form->addRow(tr("Thickness Multiplier"), multiplier);
+    form->addRow(tipsToo);
+    form->addRow(tr("Additional Tip Multiplier"), tipExtra);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -332,6 +352,8 @@ void Canvas::onActionPencilLineProperties()
         return;
     float const width = float(thickness->value()), shows = float(amount->value()) / 100.0f;
     bool const crispEdge = crispBox->isChecked();
+    double const times = multiplier->value() / 100.0, tipTimes = tipExtra->value() / 100.0;
+    bool const tips = tipsToo->isChecked();
     int const kind = texture->currentData().toInt(), corners = join->currentIndex();
     restyleSelection(tr("Pencil Line Properties"), [=](Stroke& s) {
         if (s.width <= 0.0f)
@@ -341,6 +363,8 @@ void Canvas::onActionPencilLineProperties()
         s.textureAmount = shows;
         s.textureCrisp = crispEdge;
         s.join = Stroke::Join(corners);
+        if (times != 1.0 || tipTimes != 1.0)
+            multiplyThickness(s, times, tips, tipTimes);
     });
 }
 

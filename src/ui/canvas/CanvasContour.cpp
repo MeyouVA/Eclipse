@@ -140,6 +140,9 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
                 return;
             }
         }
+        // On the curve itself, between two points: dragged, it bends there.
+        if (startBend(*line, p, modifiers))
+            return;
     }
     for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
         if (!d->strokes[i].hit(p, 4.0 / m_zoom))
@@ -161,6 +164,7 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
         }
         m_ceStroke = i;
         m_ceFill = -1;
+        startBend(d->strokes[i], p, modifiers);
         return;
     }
     // A brush shape?  Pressed on its edge or inside it: the contour nearest the press.
@@ -202,6 +206,7 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
         m_ceStroke = -1;
         m_ceFill = i;
         m_ceContour = nearest;
+        startBend(shape.contours[nearest], p, modifiers);
         return;
     }
     // On nothing.  With a curve being edited, a box can be dragged round some of its points
@@ -616,4 +621,121 @@ void Canvas::onActionBreakJoint()
     m_ceStroke = stroke;
     m_cePoint = point;
     update();
+}
+
+// ---- a line bent by dragging it between two of its points ---------------------------------------------------------------
+
+namespace {
+
+// The four points of the curve from point `segment` to the next (its two ends and the two handles between).
+bool pieceOf(Stroke const& line, int segment, QPointF& p0, QPointF& p1, QPointF& p2, QPointF& p3)
+{
+    int const n = int(line.points.size());
+    bool const loop = line.closed && n > 2;
+    if (segment < 0 || n < 2 || segment >= (loop ? n : n - 1))
+        return false;
+    int const next = (segment + 1) % n;
+    QPointF in, out, unused;
+    line.handlesAt(segment, unused, out);
+    line.handlesAt(next, in, unused);
+    p0 = line.points[segment].pos;
+    p3 = line.points[next].pos;
+    p1 = p0 + out;
+    p2 = p3 + in;
+    return true;
+}
+
+QPointF cubicAt(QPointF p0, QPointF p1, QPointF p2, QPointF p3, double t)
+{
+    double const u = 1.0 - t;
+    return p0 * (u * u * u) + p1 * (3.0 * u * u * t) + p2 * (3.0 * u * t * t) + p3 * (t * t * t);
+}
+
+} // namespace
+
+bool Canvas::segmentAt(Stroke const& line, QPointF p, double reach, int& segment, double& t)
+{
+    int const n = int(line.points.size());
+    int const pieces = line.closed && n > 2 ? n : n - 1;
+    double best = reach;
+    bool found = false;
+    for (int s = 0; s < pieces; ++s) {
+        QPointF p0, p1, p2, p3;
+        if (!pieceOf(line, s, p0, p1, p2, p3))
+            continue;
+        for (int k = 1; k < 64; ++k) {
+            double const at = k / 64.0;
+            double const d = QLineF(cubicAt(p0, p1, p2, p3, at), p) .length();
+            if (d <= best) {
+                best = d;
+                segment = s;
+                t = at;
+                found = true;
+            }
+        }
+    }
+    return found;
+}
+
+Stroke Canvas::bentSegment(Stroke line, int segment, double t, QPointF by)
+{
+    int const n = int(line.points.size());
+    QPointF p0, p1, p2, p3;
+    if (!pieceOf(line, segment, p0, p1, p2, p3) || t <= 0.0 || t >= 1.0)
+        return line;
+    // Every point keeps the curve it has now (its handles made its own), so that only this piece changes.
+    QVector<QPair<QPointF, QPointF>> kept;
+    for (int i = 0; i < n; ++i) {
+        QPointF in, out;
+        line.handlesAt(i, in, out);
+        kept.push_back({in, out});
+    }
+    bool const wasCurve = line.curve;
+    for (int i = 0; i < n; ++i) {
+        bool const corner = !wasCurve || line.points[i].corner;
+        line.setHandles(i, kept[i].first, kept[i].second);
+        line.points[i].corner = corner;
+    }
+    // The two handles moved so that the place taken goes exactly where the pen is: shared between them by how near
+    // the place is to each end (as drawing programs do).
+    double weight;
+    if (t <= 1.0 / 6.0)
+        weight = 0.0;
+    else if (t <= 0.5)
+        weight = std::pow((6.0 * t - 1.0) / 2.0, 3.0) / 2.0;
+    else if (t <= 5.0 / 6.0)
+        weight = (1.0 - std::pow((6.0 * (1.0 - t) - 1.0) / 2.0, 3.0)) / 2.0 + 0.5;
+    else
+        weight = 1.0;
+    QPointF const first = by * ((1.0 - weight) / (3.0 * t * (1.0 - t) * (1.0 - t)));
+    QPointF const second = by * (weight / (3.0 * t * t * (1.0 - t)));
+    int const next = (segment + 1) % n;
+    StrokePoint& a = line.points[segment];
+    StrokePoint& b = line.points[next];
+    a.out += first;
+    b.in += second;
+    // A smooth point stays smooth: its other handle turns to stay in line (as long as it was).
+    auto align = [](QPointF const& moved, QPointF& other) {
+        double const length = std::hypot(other.x(), other.y()), reach = std::hypot(moved.x(), moved.y());
+        if (length > 1e-9 && reach > 1e-9)
+            other = -moved / reach * length;
+    };
+    if (!a.corner)
+        align(a.out, a.in);
+    if (!b.corner)
+        align(b.in, b.out);
+    return line;
+}
+
+bool Canvas::startBend(Stroke const& line, QPointF p, Qt::KeyboardModifiers modifiers)
+{
+    int segment = -1;
+    double t = 0.0;
+    if ((modifiers & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier)) || !segmentAt(line, p, 5.0 / std::max(m_zoom, 1e-6), segment, t))
+        return false;
+    m_segIndex = segment;
+    m_segT = t;
+    m_dragStart = m_dragNow = p;
+    m_drag = DragSegment;
+    return true;
 }

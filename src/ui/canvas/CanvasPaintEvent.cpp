@@ -366,7 +366,9 @@ void Canvas::paintView()
                     painter.drawPolyline(centre);
             }
         }
-        if (l == m_layer && (m_drag == DragDraw || m_drag == DragShape))
+        if (l == m_layer && m_drag == DragDraw && m_tool == Pencil && m_pencilMode != PencilDraw)
+            paintStroke(painter, m_stroke, QBrush(m_pushHighlight));     // a highlight: it pushes or thickens, it is not kept
+        else if (l == m_layer && (m_drag == DragDraw || m_drag == DragShape))
             paintStroke(painter, m_stroke, scene.brushFor(m_stroke));
         if (l == m_layer && (m_drag == DragDraw || m_drag == DragShape) && m_stroke.width <= 0.0f) {
             // A line with no thickness, as it is drawn: a hair line.

@@ -15,6 +15,7 @@
 #include <QDialogButtonBox>
 #include <QHeaderView>
 #include <QTableWidget>
+#include <QSettings>
 
 #include "model/document/Commands.h"
 #include "ui/panels/Effects.h"
@@ -157,6 +158,16 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         if (!m_refreshing)
             m_document->setLayerBitmap(m_layer, on);
     });
+    // Advanced Element Mode (Preferences): the drawings the layer shows - its own, or another layer's (each with its own timing).
+    m_element = new QComboBox(this);
+    m_element->setObjectName(QStringLiteral("LayerElement"));
+    m_element->setToolTip(tr("The drawings this layer shows: its own, or those of another layer - one set of drawings, each layer timing them its own way."));
+    connect(m_element, &QComboBox::activated, this, [this](int row) {
+        if (m_refreshing || row < 0)
+            return;
+        int const id = m_element->itemData(row).toInt();
+        m_document->useDrawingsOf(m_layer, id == 0 ? -1 : m_document->scene().layerIndex(id));
+    });
     m_blend = new QComboBox(this);
     m_blend->setObjectName(QStringLiteral("LayerBlend"));
     m_blend->addItems({tr("Normal"), tr("Multiply"), tr("Screen"), tr("Overlay"), tr("Darken"), tr("Lighten"), tr("Colour Dodge"), tr("Colour Burn"),
@@ -213,6 +224,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("IK"), m_ikRow);
     form->addRow(tr("Art Layers"), m_artRow);
     form->addRow(QString(), m_bitmap);
+    form->addRow(tr("Drawings"), m_element);
     form->addRow(tr("Attached to"), m_parent);
     form->addRow(tr("Rides on"), m_bone);
     form->addRow(QString(), m_bend);
@@ -415,6 +427,22 @@ void LayerPanel::refresh()
     m_form->setRowVisible(m_artRow, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
     m_form->setRowVisible(m_bitmap, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
     m_bitmap->setChecked(layer.bitmap);
+    {
+        // The drawings shown: only in Advanced Element Mode.
+        bool const advanced = QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/advancedElementMode"), false).toBool();
+        Scene const& all = m_document->scene();
+        bool const shown = advanced && layer.holdsDrawings() && !layer.showsSymbol();
+        m_form->setRowVisible(m_element, shown);
+        if (shown) {
+            m_element->clear();
+            m_element->addItem(tr("Its own"), 0);
+            for (int l = 0; l < all.layers.size(); ++l)
+                if (l != m_layer && all.layers[l].holdsDrawings() && !all.layers[l].showsSymbol())
+                    m_element->addItem(all.layers[l].name, all.layers[l].id);
+            int const source = all.drawingsSource(m_layer);
+            m_element->setCurrentIndex(std::max(0, m_element->findData(source >= 0 ? all.layers[source].id : 0)));
+        }
+    }
     {
         int const up = m_document->scene().parentIndex(m_layer);
         m_form->setRowVisible(m_bend, layer.holdsDrawings() && up >= 0 && m_document->scene().layers[up].kind == Layer::Bone);

@@ -701,6 +701,7 @@ void ToolProperties::addSelectRows()
     });
     m_form->addRow(m_snapAlign);
     addSnapRows();
+    addModeRows();
     // The Dropper: the colour of whatever is seen there, or only of what is on the layer worked on.
     m_dropperAll = new QCheckBox(tr("Sample All Layers"), this);
     m_dropperAll->setObjectName(QStringLiteral("DropperAllLayers"));

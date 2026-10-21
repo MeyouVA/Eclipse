@@ -1346,6 +1346,11 @@ Drawing Canvas::previewDrawing() const
 {
     Drawing const* const current = currentDrawing();
     Drawing shown = current ? *current : Drawing();
+    if (m_drag == DragSegment && current && contourLine(shown)) {
+        Stroke& line = *contourLine(shown);
+        line = bentSegment(line, m_segIndex, m_segT, m_dragNow - m_dragStart);
+        contourEdited(shown);
+    }
     if (m_drag == DragCeBox && contourValid()) {
         // The points picked scaled or turned by the box round them; their handles with them.
         QTransform const t = contourBoxTransform();

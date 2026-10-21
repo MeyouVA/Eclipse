@@ -733,6 +733,30 @@ public:
     // Nudge Selection Thickness: the lines selected a little thicker or thinner (Alt and the up or down arrow; a lot with
     // Shift too).
     void nudgeSelectionThickness(bool thicker, bool more);
+    // The Pencil's ways of drawing over a line already there (Tool Properties): Line Pushing - a stroke drawn over a stretch
+    // of the line moves that stretch onto it; Auto Adjust Thickness - the stretch is made thicker, out to the stroke.  The
+    // stroke is shown in the highlight colour while it is drawn, and is not kept.
+    enum PencilMode { PencilDraw, PencilPush, PencilThicken };
+    void setPencilMode(int mode) { m_pencilMode = std::clamp(mode, 0, 2); }
+    int pencilMode() const { return m_pencilMode; }
+    void setPushHighlight(QColor const& colour) { m_pushHighlight = colour; }
+    QColor pushHighlight() const { return m_pushHighlight; }
+    // For the tests too: the stroke `highlight` (its points as the pen made them) done to the line of `drawing` it runs along
+    // (within `reach` of its edge); whether there was one.
+    static bool pushLine(Drawing& drawing, Stroke const& highlight, int mode, double reach);
+    // The Polyline tool: its lines go under everything else of the art layer (Draw Behind Current Layers).
+    void setPolylineBehind(bool on) { m_polyBehind = on; }
+    bool polylineBehind() const { return m_polyBehind; }
+    // Edit Pencil Lines Properties: a line made thicker or thinner by `multiplier`, its tips (where it thins to its ends) too
+    // or not - not, they keep their thickness at the very ends and grow towards the body; and the tips grown by
+    // `tipExtra` besides (1: no more), never past the thickest of the line.
+    static void multiplyThickness(Stroke& line, double multiplier, bool tips, double tipExtra);
+    // The Contour Editor: a line taken hold of between two of its points and dragged bends there - the stretch between
+    // the two points follows the pen, the handles of the two points pulled out to make it so.  For the tests too: the piece
+    // of `line` (from its point `segment` to the next) nearest `p`, and how far along it (0 to 1); false when none is
+    // within `reach`.  And the line with that place on that piece moved by `by`.
+    static bool segmentAt(Stroke const& line, QPointF p, double reach, int& segment, double& t);
+    static Stroke bentSegment(Stroke line, int segment, double t, QPointF by);
     // What is selected moved by so much, as one step (with Reposition All Drawings: all of every drawing of the layer).
     void moveSelectionBy(QPointF by, QString const& text) { transformSelection(QTransform::fromTranslate(by.x(), by.y()), text); }
 
@@ -1353,7 +1377,7 @@ private:
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment
     } m_drag = DragNone;
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
@@ -1557,6 +1581,17 @@ public:
     QPointF envelopeHandleInView(bool after) const;
 private:
     bool m_snapping = true;
+    // The Line tool and the Polyline: a point put near the end of a line already drawn goes onto that end (so that lines
+    // drawn to meet do meet, and the area they close round can be painted).  Off with the master switch of snapping.
+    QPointF endMagnet(QPointF p) const;
+    bool startBend(Stroke const& line, QPointF p, Qt::KeyboardModifiers modifiers);     // a press on a curve: bent if dragged
+    int m_segIndex = -1;            // the Contour Editor: the piece of the line being bent, and where on it it was taken
+    double m_segT = 0.5;
+    int m_pencilMode = PencilDraw;
+    QColor m_pushHighlight = QColor(255, 140, 0);
+    bool m_polyBehind = false;
+    // Auto-Create Colour Art for a line kept by a shape tool or the Polyline: its twin, with no thickness, in the colour art.
+    void colourArtTwin(Stroke const& line);
     bool m_hideManipulator = false;
     bool m_envAdvanced = true;
     bool m_ceControls = false;

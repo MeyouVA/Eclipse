@@ -315,6 +315,8 @@ public:
     // A clone of the layer: the same drawings and timing, changed on either; its place, or -1.
     int addCloneLayer(int layer, bool timing = true);
     void makeCloneIndependent(int layer);
+    // Advanced Element Mode (Layer Properties): the layer shows the drawings of another (-1: its own again).
+    bool useDrawingsOf(int layer, int source);
     void syncLayerWith(int layer, int other);
     // IK constraints of a bone: left out of IK; and whether it is turned only between two angles, and which.
     void setIkConstraints(int layer, bool excluded, bool limited, double minimum, double maximum);

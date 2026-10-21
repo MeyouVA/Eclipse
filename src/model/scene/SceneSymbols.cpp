@@ -550,6 +550,55 @@ void Scene::makeCloneIndependent(int layer)
                 l.cloneGroup = 0;
 }
 
+bool Scene::useDrawingsOf(int layer, int source)
+{
+    if (layer < 0 || layer >= layers.size() || !layers[layer].holdsDrawings() || layers[layer].showsSymbol())
+        return false;
+    if (source < 0) {
+        if (layers[layer].cloneGroup == 0)
+            return false;
+        makeCloneIndependent(layer);
+        return true;
+    }
+    if (source >= layers.size() || source == layer || !layers[source].holdsDrawings() || layers[source].showsSymbol())
+        return false;
+    if (layers[source].cloneGroup != 0 && layers[source].cloneTiming)
+        return false;       // shared with their timing: that is a clone, not an element
+    if (layers[layer].cloneGroup != 0 && layers[layer].cloneGroup == layers[source].cloneGroup)
+        return false;       // it shows those already
+    makeCloneIndependent(layer);
+    if (layers[source].cloneGroup == 0) {
+        int next = 1;
+        for (Layer const& l : std::as_const(layers))
+            next = std::max(next, l.cloneGroup + 1);
+        layers[source].cloneGroup = next;
+        layers[source].cloneTiming = false;
+    }
+    for (Drawing& d : layers[source].drawings)
+        d.pinned = true;
+    Layer& mine = layers[layer];
+    mine.cloneGroup = layers[source].cloneGroup;
+    mine.cloneTiming = false;
+    mine.bitmap = layers[source].bitmap;
+    mine.bitmapArt = layers[source].bitmapArt;
+    mine.drawings = layers[source].drawings;
+    // Its timing stays its own; a frame that showed a drawing the source has not got shows nothing.
+    for (int& cell : mine.cells)
+        if (cell >= mine.drawings.size())
+            cell = -1;
+    return true;
+}
+
+int Scene::drawingsSource(int layer) const
+{
+    if (layer < 0 || layer >= layers.size() || layers[layer].cloneGroup == 0 || layers[layer].cloneTiming)
+        return -1;
+    for (int l = 0; l < layers.size(); ++l)
+        if (l != layer && layers[l].cloneGroup == layers[layer].cloneGroup)
+            return l;
+    return -1;
+}
+
 int Scene::insertControlPoint(int layer, int frame)
 {
     if (layer < 0 || layer >= layers.size())

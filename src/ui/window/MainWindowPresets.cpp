@@ -205,6 +205,20 @@ void MainWindow::onActionImportPresets()
     statusBar()->showMessage(count < 0 ? tr("That is not a file of Eclipse presets.") : tr("%n preset(s) taken in.", nullptr, count), 6000);
 }
 
+void MainWindow::onActionToolPreset(QString const& which)
+{
+    QListWidget* const list = findChild<QListWidget*>(QStringLiteral("Presets"));
+    int const row = which.toInt() - 1;
+    if (!list || presetKind().isEmpty() || row < 0 || row >= list->count()) {
+        statusBar()->showMessage(tr("The tool in hand has no preset %1.").arg(which), 3000);
+        return;
+    }
+    QListWidgetItem* const item = list->item(row);
+    list->setCurrentItem(item);
+    emit list->itemClicked(item);
+    statusBar()->showMessage(tr("Preset: %1").arg(item->text()), 2000);
+}
+
 void MainWindow::onActionChangeBrushSize(QString const& way)
 {
     // A step of a tenth of the size (at least 1), as the size box of Tool Properties takes it.

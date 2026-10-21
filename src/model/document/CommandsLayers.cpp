@@ -432,6 +432,15 @@ void Document::makeCloneIndependent(int layer)
     apply(tr("Make Clone Independent"), [&](Scene& s) { s.makeCloneIndependent(layer); });
 }
 
+bool Document::useDrawingsOf(int layer, int source)
+{
+    Scene probe = m_scene;
+    if (!probe.useDrawingsOf(layer, source))
+        return false;
+    apply(tr("Change Drawing Element"), [&](Scene& s) { s.useDrawingsOf(layer, source); });
+    return true;
+}
+
 int Document::insertControlPoint(int layer, int frame)
 {
     Scene probe = m_scene;

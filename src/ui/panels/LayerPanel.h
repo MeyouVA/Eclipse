@@ -47,6 +47,7 @@ private:
     QLabel* m_kind;
     QLabel* m_parent;
     QComboBox* m_bone;
+    QComboBox* m_element = nullptr;     // Advanced Element Mode: whose drawings the layer shows
     QLabel* m_key;
     QDoubleSpinBox* m_x;
     QDoubleSpinBox* m_y;

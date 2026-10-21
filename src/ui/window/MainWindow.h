@@ -522,6 +522,8 @@ public slots:
     void onActionManagePresets();
     // The size of the Brush, the Pencil or the Eraser, a step bigger ("up") or smaller ("down").
     void onActionChangeBrushSize(QString const& way);
+    // Tool Preset Shortcut #n: the n-th preset of the tool in hand (as Tool Properties lists them) taken up.
+    void onActionToolPreset(QString const& which);
     // The pen stabiliser off, or back on as it was.
     void onActionToggleStabilizer();
     // Snapping and Auto-Create Colour Art: as they were left last time, and kept as they are turned on or off.

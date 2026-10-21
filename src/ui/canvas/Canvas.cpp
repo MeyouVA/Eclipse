@@ -594,12 +594,21 @@ void Canvas::addStrokeToArt(Stroke const& stroke)
         paintIntoBitmap([&](QPainter& painter) { paintStroke(painter, stroke, scene.brushFor(stroke)); }, tr("Paint Stroke"), stroke.bounds());
         return;
     }
-    if (m_art == LineArt) {
+    bool const behind = m_tool == Polyline && m_polyBehind;
+    if (m_art == LineArt && !behind) {
         m_document->addStroke(m_layer, m_frame, stroke);
         return;
     }
     Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
     Stroke placed = stroke;
+    if (behind) {
+        // Draw Behind Current Layers: under everything of the art layer (below the lowest painted area, areas lying under lines).
+        int const bottom = Drawing::bottomOrder(art.fills, art.strokes);
+        placed.order = std::any_of(art.fills.begin(), art.fills.end(), [bottom](Fill const& f) { return f.order == bottom; }) ? bottom - 1 : bottom;
+        art.strokes.push_front(placed);
+        commitDrawing(art, tr("Draw Stroke"));
+        return;
+    }
     placed.order = Drawing::topOrder(art.fills, art.strokes);
     art.strokes.push_back(placed);
     commitDrawing(art, tr("Draw Stroke"));

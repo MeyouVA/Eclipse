@@ -1193,6 +1193,12 @@ public:
     // A clone of the layer, over it; its place, or -1.  And a clone made a layer of its own again.
     int addCloneLayer(int layer, bool timing = true);
     void makeCloneIndependent(int layer);
+    // Advanced Element Mode: the layer shows the drawings of `source` (they are one set of drawings, each layer with its
+    // own timing - a clone of the drawings only); -1: drawings of its own again (a copy of those it had).  False when it
+    // cannot (not drawing layers; or the source's drawings are shared with their timing too).
+    bool useDrawingsOf(int layer, int source);
+    // The layer whose drawings it shows (another of its drawings-only group), or -1 for its own.
+    int drawingsSource(int layer) const;
     void syncLayerWith(int layer, int other);
     // Makes a symbol of these layers and everything attached to them; one layer shows it in their place.
     // Returns where that layer is, or -1.

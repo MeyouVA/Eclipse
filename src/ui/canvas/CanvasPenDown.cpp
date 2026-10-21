@@ -276,7 +276,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         // A click on the point just made adds nothing (the second click of a double click).
         if (m_stroke.points.isEmpty() || QLineF(layerViewTransform().map(m_stroke.points.last().pos), widgetPos).length() > 2) {
             // (With a guide in use, each piece runs one of its ways from the point before.)
-            StrokePoint point{snapped(m_stroke.points.isEmpty() ? p : toLayer(guidedFrom(layerViewTransform().map(m_stroke.points.last().pos), widgetPos))), 1.0f};
+            StrokePoint point{endMagnet(snapped(m_stroke.points.isEmpty() ? p : toLayer(guidedFrom(layerViewTransform().map(m_stroke.points.last().pos), widgetPos)))), 1.0f};
             point.corner = m_stroke.curve;      // on a line that bends elsewhere, a point clicked is a corner
             m_stroke.points.push_back(point);
             m_drag = DragPolyHandle;            // dragged on from here, the line bends through it
@@ -284,7 +284,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         m_polyHover = m_stroke.points.isEmpty() ? snapped(p) : m_stroke.points.last().pos;
     } else if (m_tool == Line || m_tool == Rectangle || m_tool == Ellipse || m_tool == CloseGap) {
         m_drag = DragShape;
-        m_dragStart = snapped(p);
+        m_dragStart = m_tool == Line || m_tool == CloseGap ? endMagnet(snapped(p)) : snapped(p);
         m_stroke = Stroke();
         m_stroke.swatch = m_swatch;
         m_stroke.color = scene.resolve(m_swatch, Qt::black);
@@ -417,6 +417,15 @@ void Canvas::followSettings(Canvas const& leader)
     m_lasso = leader.m_lasso;
     m_dropperAllLayers = leader.m_dropperAllLayers;
     m_drawBehind = leader.m_drawBehind;
+    m_polyBehind = leader.m_polyBehind;
+    m_pencilMode = leader.m_pencilMode;
+    m_pushHighlight = leader.m_pushHighlight;
+    m_snapping = leader.m_snapping;
+    m_cutterGesture = leader.m_cutterGesture;
+    m_cutterTip = leader.m_cutterTip;
+    m_hideManipulator = leader.m_hideManipulator;
+    m_ceControls = leader.m_ceControls;
+    m_envAdvanced = leader.m_envAdvanced;
     m_brushShapes = leader.m_brushShapes;
     m_textFont = leader.m_textFont;
     m_textAlign = leader.m_textAlign;

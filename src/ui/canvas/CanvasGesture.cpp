@@ -155,6 +155,30 @@ QVector<QPair<Stroke, QPair<double, double>>> cutAt(Stroke line, QVector<double>
     return pieces;
 }
 
+// How far `p` is from the line through `points`, and where on it that is nearest.
+double nearestOn(QVector<QPointF> const& points, QPointF p, QPointF* at)
+{
+    if (points.size() == 1) {
+        if (at)
+            *at = points.first();
+        return QLineF(p, points.first()).length();
+    }
+    double best = 1e300;
+    for (int i = 0; i + 1 < points.size(); ++i) {
+        QPointF const a = points[i], ab = points[i + 1] - a;
+        double const len2 = ab.x() * ab.x() + ab.y() * ab.y();
+        double const t = len2 > 0.0 ? std::clamp(((p.x() - a.x()) * ab.x() + (p.y() - a.y()) * ab.y()) / len2, 0.0, 1.0) : 0.0;
+        QPointF const q = a + ab * t;
+        double const d = QLineF(p, q).length();
+        if (d < best) {
+            best = d;
+            if (at)
+                *at = q;
+        }
+    }
+    return best;
+}
+
 } // namespace
 
 bool Canvas::isGesture(QPolygonF const& path, double zoom)
@@ -297,4 +321,148 @@ void Canvas::onActionPasteThickness()
     }
     commitDrawing(edited, tr("Paste Thickness"));
     update();
+}
+
+// ---- the Pencil's Line Pushing and Auto Adjust Thickness ---------------------------------------------------------------
+
+bool Canvas::pushLine(Drawing& drawing, Stroke const& highlight, int mode, double reach)
+{
+    if (mode == PencilDraw || highlight.points.size() < 2)
+        return false;
+    QVector<QPointF> h;
+    for (StrokePoint const& p : highlight.points)
+        h.push_back(p.pos);
+    auto thickest = [](Stroke const& line) {
+        float most = 0.0f;
+        for (StrokePoint const& p : line.points)
+            most = std::max(most, p.pressure);
+        return line.width * most;
+    };
+    // The line it runs along: the one most of its points are near (and at least half of them).
+    int target = -1, best = 0;
+    for (int i = 0; i < drawing.strokes.size(); ++i) {
+        Stroke const& line = drawing.strokes[i];
+        if (line.width <= 0.0f || line.points.size() < 2)
+            continue;
+        double const r = reach + thickest(line) / 2.0;
+        int near = 0;
+        for (QPointF const& q : std::as_const(h))
+            near += line.hit(q, r) ? 1 : 0;
+        if (near > best) {
+            best = near;
+            target = i;
+        }
+    }
+    if (target < 0 || best < std::max<qsizetype>(2, h.size() / 2))
+        return false;
+    Stroke& line = drawing.strokes[target];
+    double const r = reach + thickest(line) / 2.0;
+    // Points on the line all along the stretch the stroke covers, so that the line follows the stroke there.
+    double const spacing = std::max(r * 0.5, 1e-3);
+    QPointF last;
+    bool any = false;
+    for (QPointF const& q : std::as_const(h)) {
+        if (any && QLineF(last, q).length() < spacing)
+            continue;
+        last = q;
+        any = true;
+        if (!line.hit(q, r))
+            continue;
+        Stroke tried = line;
+        int const added = tried.insertPoint(q);
+        if (added < 0)
+            continue;
+        bool crowded = false;
+        for (int k = 0; k < line.points.size(); ++k)
+            crowded = crowded || QLineF(line.points[k].pos, tried.points[added].pos).length() < spacing * 0.5;
+        if (!crowded)
+            line = tried;
+    }
+    // Each point of the line by the stroke: moved onto it, or the line made as thick there as reaches it.
+    float const halfStroke = highlight.width / 2.0f;
+    bool changed = false;
+    for (StrokePoint& point : line.points) {
+        QPointF onto;
+        double const d = nearestOn(h, point.pos, &onto);
+        if (d > r)
+            continue;
+        if (mode == PencilPush) {
+            if (d > 1e-9) {
+                point.pos = onto;
+                changed = true;
+            }
+        } else if (line.width > 0.0f) {
+            double const half = d + halfStroke, now = line.width * point.pressure / 2.0;
+            if (half > now + 1e-6) {
+                point.pressure = float(std::min(half * 2.0 / line.width, 50.0));
+                changed = true;
+            }
+        }
+    }
+    return changed;
+}
+
+void Canvas::multiplyThickness(Stroke& line, double multiplier, bool tips, double tipExtra)
+{
+    int const n = int(line.points.size());
+    if (n == 0 || multiplier <= 0.0)
+        return;
+    float most = 0.0f;
+    for (StrokePoint const& p : line.points)
+        most = std::max(most, p.pressure);
+    if (most <= 0.0f)
+        return;
+    // The tips: from each end, the points before the line reaches (near enough) its full thickness.
+    QVector<bool> tip(n, false);
+    for (int i = 0; i < n && line.points[i].pressure < most * 0.95f; ++i)
+        tip[i] = true;
+    for (int i = n - 1; i >= 0 && line.points[i].pressure < most * 0.95f; --i)
+        tip[i] = true;
+    line.width = float(line.width * multiplier);
+    for (int i = 0; i < n; ++i) {
+        if (!tip[i])
+            continue;
+        float& p = line.points[i].pressure;
+        double const share = p / most;      // 0 at a point, 1 where the tip meets the body
+        if (!tips)
+            p = float(p * (1.0 + (multiplier - 1.0) * share) / multiplier);
+        if (tipExtra != 1.0)
+            p = float(std::min<double>(most, p * tipExtra));
+    }
+}
+
+void Canvas::colourArtTwin(Stroke const& line)
+{
+    Drawing const* const real = realDrawing();
+    if (!real || line.points.size() < 2)
+        return;
+    Drawing whole = *real;
+    Stroke edge = line;
+    edge.width = 0.0f;
+    edge.group = 0;
+    whole.colourStrokes.push_back(edge);
+    m_committing = true;
+    m_document->setDrawing(m_layer, m_frame, whole, tr("Draw Stroke"));
+    m_committing = false;
+}
+
+QPointF Canvas::endMagnet(QPointF p) const
+{
+    Drawing const* const d = currentDrawing();
+    if (!m_snapping || !d)
+        return p;
+    double nearest = 8.0 / std::max(m_zoom, 1e-6);
+    QPointF best = p;
+    for (Stroke const& line : d->strokes) {
+        if (line.closed || line.points.isEmpty())
+            continue;
+        for (QPointF const& end : {line.points.first().pos, line.points.last().pos}) {
+            double const distance = QLineF(end, p).length();
+            if (distance < nearest) {
+                nearest = distance;
+                best = end;
+            }
+        }
+    }
+    return best;
 }

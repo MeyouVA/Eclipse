@@ -622,6 +622,11 @@ void MainWindow::onActionPreferences()
     moreArt->setChecked(s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool());
     QFormLayout* const advancedLayout = new QFormLayout(advanced);
     advancedLayout->addRow(moreArt);
+    QCheckBox* const elementMode = new QCheckBox(tr("Advanced Element Mode"), advanced);
+    elementMode->setObjectName(QStringLiteral("PrefAdvancedElementMode"));
+    elementMode->setToolTip(tr("Layer Properties shows which drawings a layer uses: a layer can use the drawings of another, timing them its own way."));
+    elementMode->setChecked(s.value(QStringLiteral("prefs/advancedElementMode"), false).toBool());
+    advancedLayout->addRow(elementMode);
 
     // Timeline: how wide a frame is.
     QGroupBox* const timelinePage = new QGroupBox(tr("Timeline"), &dialog);
@@ -1170,6 +1175,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/thumbnailSize"), thumbnails->value());
     s.setValue(QStringLiteral("prefs/pencilLinesOpacity"), lineOpacity->value());
     s.setValue(QStringLiteral("prefs/bitmapCanvas"), bitmapCanvas->value());
+    s.setValue(QStringLiteral("prefs/advancedElementMode"), elementMode->isChecked());
     s.setValue(QStringLiteral("prefs/initialTool"), initialTool->currentData().toString());
     s.setValue(QStringLiteral("prefs/scalePencilThickness"), scalePencil->isChecked());
     s.setValue(QStringLiteral("prefs/onionOver"), onionOver->isChecked());
