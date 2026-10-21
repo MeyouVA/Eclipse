@@ -91,7 +91,8 @@ void Canvas::onActionSmooth()
             StrokePoint const& a = before[(k + n - 1) % n];
             StrokePoint const& b = before[(k + 1) % n];
             points[k].pos = before[k].pos * keep + (a.pos + b.pos) * side;
-            points[k].pressure = before[k].pressure * float(keep) + (a.pressure + b.pressure) * float(side);
+            if (edited.strokes[i].thickness.isEmpty())
+                points[k].pressure = before[k].pressure * float(keep) + (a.pressure + b.pressure) * float(side);
             changed = changed || points[k].pos != before[k].pos;
             // A point with handles: they are put in one line, so the curve passes through it without a kink.
             if (before[k].handles) {
@@ -398,8 +399,13 @@ void Canvas::onActionReducePoints()
         int const n = int(before.size());
         if (n < 3)
             continue;
+        // (A thickness of its own stays where it was along the line, whatever points go.)
+        QVector<QPair<double, ThicknessPoint>> const thick = stroke.thickness.isEmpty() ? QVector<QPair<double, ThicknessPoint>>() : stroke.thicknessByLength();
         if (std::any_of(before.begin(), before.end(), [](StrokePoint const& point) { return point.handles; })) {
-            removed += reduceCurve(stroke, 2.0);     // (two curves drawn out never lie closer than a pixel or so)
+            int const gone = reduceCurve(stroke, 2.0);     // (two curves drawn out never lie closer than a pixel or so)
+            removed += gone;
+            if (gone > 0 && !thick.isEmpty())
+                stroke.setThicknessByLength(thick);
             continue;
         }
         // Half a pixel of the drawing for a line of straight pieces; a curve bends between
@@ -415,6 +421,8 @@ void Canvas::onActionReducePoints()
             continue;
         removed += n - int(kept.size());
         stroke.points = kept;
+        if (!thick.isEmpty())
+            stroke.setThicknessByLength(thick);
     }
     if (removed > 0)
         commitDrawing(edited, tr("Reduce Points"));
@@ -569,12 +577,6 @@ void Canvas::onActionFlatten()
         auto alike = [](Stroke const& a, Stroke const& b) {
             return a.swatch == b.swatch && a.color == b.color && std::abs(a.width - b.width) < 1e-3f && a.curve == b.curve && a.join == b.join;
         };
-        auto turned = [](QVector<StrokePoint> points) {
-            std::reverse(points.begin(), points.end());
-            for (StrokePoint& point : points)
-                std::swap(point.in, point.out);
-            return points;
-        };
         auto meet = [&](StrokePoint const& a, StrokePoint const& b) { return QLineF(a.pos, b.pos).length() <= near; };
         bool joinedAny = true;
         while (joinedAny) {
@@ -589,25 +591,24 @@ void Canvas::onActionFlatten()
                     Stroke const& b = edited.strokes[m_selStrokes[y]];
                     if (b.closed || b.points.size() < 2 || !alike(a, b))
                         continue;
-                    QVector<StrokePoint> mine = a.points, theirs = b.points;
-                    if (meet(mine.last(), theirs.first())) {
+                    Stroke mine = a, theirs = b;
+                    if (meet(mine.points.last(), theirs.points.first())) {
                         // as they are
-                    } else if (meet(mine.last(), theirs.last())) {
-                        theirs = turned(theirs);
-                    } else if (meet(mine.first(), theirs.first())) {
-                        mine = turned(mine);
-                    } else if (meet(mine.first(), theirs.last())) {
-                        mine = turned(mine);
-                        theirs = turned(theirs);
+                    } else if (meet(mine.points.last(), theirs.points.last())) {
+                        theirs.reverse();
+                    } else if (meet(mine.points.first(), theirs.points.first())) {
+                        mine.reverse();
+                    } else if (meet(mine.points.first(), theirs.points.last())) {
+                        mine.reverse();
+                        theirs.reverse();
                     } else {
                         continue;
                     }
                     // Where they meet is one point: it arrives as the first line did and leaves as the second does.
-                    mine.last().out = theirs.first().out;
-                    mine.last().handles = mine.last().handles || theirs.first().handles;
-                    mine.last().corner = true;
-                    theirs.removeFirst();
-                    a.points = mine + theirs;
+                    int const meeting = int(mine.points.size()) - 1;
+                    mine.append(theirs, true);
+                    mine.points[meeting].corner = true;
+                    a = mine;
                     goneLines.push_back(m_selStrokes[y]);
                     joinedAny = true;
                 }
@@ -701,23 +702,27 @@ void Canvas::onActionReversePencilThickness()
         if (index < 0 || index >= edited.strokes.size())
             continue;
         Stroke& line = edited.strokes[index];
-        QVector<StrokePoint> const before = line.points;
-        QVector<double> const along = distancesAlong(before);
-        double const total = along.isEmpty() ? 0.0 : along.last();
-        if (total <= 0.0)
-            continue;
-        // Each point takes the thickness the line had as far from the other end.
-        for (int i = 0; i < before.size(); ++i) {
-            double const at = total - along[i];
-            int k = 0;
-            while (k + 1 < along.size() - 1 && along[k + 1] < at)
-                ++k;
-            double const span = along[k + 1] - along[k];
-            double const t = span > 0.0 ? std::clamp((at - along[k]) / span, 0.0, 1.0) : 0.0;
-            line.points[i].pressure = float(before[k].pressure + (before[k + 1].pressure - before[k].pressure) * t);
+        // The thickness along the line turned end for end (the line itself as it is; each side stays its side).
+        QVector<ThicknessPoint> const was = line.thickness;
+        QVector<float> const pressures = [&] {
+            QVector<float> all;
+            for (StrokePoint const& p : line.points)
+                all.push_back(p.pressure);
+            return all;
+        }();
+        QVector<QPair<double, ThicknessPoint>> byLength = line.thicknessByLength();
+        for (auto& entry : byLength)
+            entry.first = 1.0 - entry.first;
+        std::reverse(byLength.begin(), byLength.end());
+        line.setThicknessByLength(byLength);
+        // (A line as thick all along is as it was.)
+        Stroke plain = line;
+        if (plain.uniform() && !plain.leans() && was.isEmpty()) {
+            line.thickness.clear();
+            for (int i = 0; i < line.points.size(); ++i)
+                line.points[i].pressure = pressures[i];
         }
-        for (int i = 0; i < before.size(); ++i)
-            changed = changed || line.points[i].pressure != before[i].pressure;
+        changed = changed || line.thickness != was;
     }
     if (changed)
         commitDrawing(edited, tr("Reverse Pencil Thickness"));
@@ -780,14 +785,7 @@ void Canvas::mergeSelectedLines(bool bridge, QString const& text)
         Stroke& first = how <= 1 ? chain : next;
         Stroke const& second = how <= 1 ? next : chain;
         Stroke joined = first;
-        int from = 0;
-        if (QLineF(first.points.last().pos, second.points.first().pos).length() < 1e-6) {
-            joined.points.last().out = second.points.first().out;
-            from = 1;
-        }
-        for (int i = from; i < second.points.size(); ++i)
-            joined.points.push_back(second.points[i]);
-        joined.capEnd = second.capEnd;
+        joined.append(second, QLineF(first.points.last().pos, second.points.first().pos).length() < 1e-6);
         chain = joined;
     }
     if (used.size() < 2) {
@@ -828,20 +826,13 @@ void Canvas::onActionSplitPencilLine()
     int const point = m_cePoint;
     if (line.closed) {
         // A closed line opens there: it starts and ends at that point.
-        Stroke opened = line;
-        opened.closed = false;
-        opened.points.clear();
-        for (int i = 0; i <= line.points.size(); ++i)
-            opened.points.push_back(line.points[(point + i) % line.points.size()]);
-        edited.strokes[m_ceStroke] = opened;
+        edited.strokes[m_ceStroke] = line.section(point, point + int(line.points.size()));
     } else {
         if (point == 0 || point == line.points.size() - 1) {
             emit message(tr("That is an end of the line already: pick a point along it."));
             return;
         }
-        Stroke a = line, b = line;
-        a.points = line.points.mid(0, point + 1);
-        b.points = line.points.mid(point);
+        Stroke a = line.section(0, point), b = line.section(point, int(line.points.size()) - 1);
         a.capEnd = line.capStart;
         b.capStart = line.capEnd;
         edited.strokes[m_ceStroke] = a;
@@ -1058,13 +1049,8 @@ void Canvas::finishDrawnLine(double reach)
                 makeCurve(before);
                 makeCurve(after);
             }
-            Stroke joined = other;
-            joined.curve = before.curve;
-            joined.points = before.points;
-            for (StrokePoint const& point : std::as_const(after.points))
-                joined.points.push_back(point);
-            joined.capStart = before.capStart;
-            joined.capEnd = after.capEnd;
+            Stroke joined = startedFrom(other, before);
+            joined.append(after, false);
             edited.strokes[k] = joined;
             edited.strokes.removeAt(mine);
             line = joined;
@@ -1159,6 +1145,26 @@ void Canvas::retouchAt(QPointF p, int mode)
             m_onlyLine = index;
         if (m_singleNow && m_onlyLine != index)
             continue;
+        if (!opacity) {
+            // Thicker or thinner: the thickness points under the pen (one is put there when none is near), most at its middle.
+            line.ownThickness();
+            bool keyNear = false;
+            for (ThicknessPoint const& key : std::as_const(line.thickness))
+                keyNear = keyNear || QLineF(line.pointAt(key.at), p).length() <= reach * 0.5;
+            if (!keyNear)
+                line.thicknessPointAt(line.placeAt(p));
+            for (ThicknessPoint& key : line.thickness) {
+                double const distance = QLineF(line.pointAt(key.at), p).length();
+                if (distance > reach)
+                    continue;
+                double const fall = 1.0 - distance / reach;
+                double const step = 1.0 + 0.15 * fall * (thinner ? -1.0 : 1.0);
+                key.left = float(std::clamp(key.left * step, 0.02, 24.0));
+                key.right = float(std::clamp(key.right * step, 0.02, 24.0));
+                m_inked = true;
+            }
+            continue;
+        }
         bool pointNear = false;
         for (StrokePoint const& point : std::as_const(line.points))
             pointNear = pointNear || QLineF(point.pos, p).length() <= reach * 0.5;
@@ -1216,6 +1222,7 @@ void Canvas::wiggleSelectedLines(double amount, double every, quint32 seed)
             wiggled.push_back({pos + side * push, float(run[k].pressure + (run[k + 1].pressure - run[k].pressure) * t)});
         }
         line.points = wiggled;
+        line.thickness.clear();     // (its places carry the thickness the line had there)
         line.curve = false;
         line.fit(std::max(amount * 0.05, 0.01), 180.0);
     }

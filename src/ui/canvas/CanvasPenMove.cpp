@@ -389,31 +389,32 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         }
         break;
     case DragThickness:
-        if (m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size() && m_thickPoint >= 0 && m_thickPoint < m_eraseArt.strokes[m_thickStroke].points.size()) {
-            Stroke& stroke = m_eraseArt.strokes[m_thickStroke];
-            StrokePoint& point = stroke.points[m_thickPoint];
-            double const width = std::max(double(stroke.width), 1e-6);
-            if (modifiers & Qt::AltModifier) {
-                // One side only: the edge on the pointer's side goes to the pointer, the other edge stays where it was.
-                // (A line thicker on one side is a line as thick as the two together, a little to that side.)
-                int const n = int(stroke.points.size());
-                QPointF const along = stroke.points[std::min(n - 1, m_thickPoint + 1)].pos - stroke.points[std::max(0, m_thickPoint - 1)].pos;
-                double const length = std::hypot(along.x(), along.y());
-                if (length > 1e-9) {
-                    QPointF const across(-along.y() / length, along.x() / length);
-                    double const pulled = QPointF::dotProduct(p - m_thickPos0, across);
-                    double const side = pulled < 0.0 ? -1.0 : 1.0;
-                    double const edge = std::max(std::abs(pulled), 0.01 * width - m_thickHalf0);
-                    double const half = std::max((edge + m_thickHalf0) / 2.0, 0.01 * width);
-                    point.pressure = float(std::clamp(2.0 * half / width, 0.02, 12.0));
-                    point.pos = m_thickPos0 + across * (side * (edge - m_thickHalf0) / 2.0);
+        if (m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size()) {
+            Stroke& line = m_eraseArt.strokes[m_thickStroke];
+            if (m_thickKey >= 0 && m_thickKey < line.thickness.size() && line.width > 0.0f) {
+                m_thickMoved = m_thickMoved || QLineF(m_thickPress, p).length() * m_zoom > 2.0;
+                if (!m_thickMoved)
+                    break;
+                double const width = line.width;
+                ThicknessPoint& key = line.thickness[m_thickKey];
+                if (m_thickOneSide) {
+                    // One side only: the edge on the pointer's side goes to the pointer; the other stays.
+                    double const off = QPointF::dotProduct(p - m_thickPos0, m_thickAcross);
+                    float const share = float(std::clamp(2.0 * std::abs(off) / width, 0.0, 24.0));
+                    (off >= 0.0 ? key.left : key.right) = share;
+                } else {
+                    // How far the pointer is from the line there is how thick the line is to each side (as it leaned).
+                    double const share = std::clamp(2.0 * QLineF(m_thickPos0, p).length() / width, 0.01, 24.0);
+                    double const was = (key.left + key.right) / 2.0;
+                    if (was > 1e-6) {
+                        key.left = float(key.left * share / was);
+                        key.right = float(key.right * share / was);
+                    } else {
+                        key.left = key.right = float(share);
+                    }
                 }
-            } else {
-                // How far the pointer is from the point is half of how thick the line is there.
-                point.pos = m_thickPos0;
-                point.pressure = float(std::clamp(2.0 * QLineF(point.pos, p).length() / width, 0.02, 12.0));
+                update();
             }
-            update();
         }
         break;
     case DragGradient: {

@@ -420,20 +420,36 @@ void Canvas::paintView()
             painter.restore();
         }
         if (l == m_layer && m_tool == PencilEditor && !m_playing && layer.holdsDrawings()) {
-            // The points of the pencil lines, to take hold of.
+            // The thickness points of the pencil lines, to take hold of: a mark on the line and one on each edge there.
             Drawing const* const lines = m_drag == DragThickness ? &m_eraseArt : currentDrawing();
             if (lines) {
                 QTransform const where = layerViewTransform();
                 painter.save();
                 painter.resetTransform();
-                painter.setPen(QPen(QColor(20, 20, 20), 1.0));
+                painter.setRenderHint(QPainter::Antialiasing, true);
                 for (int i = 0; i < lines->strokes.size(); ++i) {
-                    if (lines->strokes[i].width <= 0.0f)
+                    Stroke line = lines->strokes[i];
+                    if (line.width <= 0.0f || line.points.size() < 2)
                         continue;
-                    for (int k = 0; k < lines->strokes[i].points.size(); ++k) {
-                        QPointF const at = where.map(lines->strokes[i].points[k].pos);
-                        painter.setBrush(i == m_thickStroke && k == m_thickPoint ? QColor(255, 255, 255) : QColor(60, 200, 230));
-                        painter.drawRect(QRectF(at.x() - 3, at.y() - 3, 6, 6));
+                    line.ownThickness();
+                    for (int k = 0; k < line.thickness.size(); ++k) {
+                        ThicknessPoint const& key = line.thickness[k];
+                        QPointF const centre = line.pointAt(key.at), way = line.directionAt(key.at);
+                        QPointF const across(way.y(), -way.x());
+                        QPointF const left = where.map(centre + across * (line.width / 2.0 * key.left));
+                        QPointF const right = where.map(centre - across * (line.width / 2.0 * key.right));
+                        QPointF const middle = where.map(centre);
+                        bool const held = i == m_thickStroke && k == m_thickKey;
+                        painter.setPen(QPen(QColor(60, 200, 230), 1.0));
+                        painter.drawLine(left, right);
+                        painter.setPen(QPen(QColor(20, 20, 20), 1.0));
+                        painter.setBrush(held ? QColor(255, 255, 255) : QColor(60, 200, 230));
+                        QPolygonF diamond;
+                        diamond << middle + QPointF(0, -4) << middle + QPointF(4, 0) << middle + QPointF(0, 4) << middle + QPointF(-4, 0);
+                        painter.drawPolygon(diamond);
+                        painter.setBrush(held ? QColor(255, 255, 255) : QColor(255, 210, 70));
+                        painter.drawEllipse(left, 2.5, 2.5);
+                        painter.drawEllipse(right, 2.5, 2.5);
                     }
                 }
                 painter.restore();

@@ -13,7 +13,7 @@ int Canvas::pointThickness() const
 {
     if (m_tool != ContourEditor || !contourValid() || m_ceFill >= 0)
         return -1;      // a brush shape has no thickness at a point: its contour is its edge
-    return int(currentDrawing()->strokes[m_ceStroke].points[m_cePoint].pressure * 100.0f + 0.5f);
+    return int(currentDrawing()->strokes[m_ceStroke].pressureAt(m_cePoint) * 100.0f + 0.5f);
 }
 
 void Canvas::setPointThickness(int percent)
@@ -21,7 +21,21 @@ void Canvas::setPointThickness(int percent)
     if (pointThickness() < 0 || pointThickness() == percent)
         return;
     Drawing edited = *currentDrawing();
-    edited.strokes[m_ceStroke].points[m_cePoint].pressure = float(std::clamp(percent, 0, 400)) / 100.0f;
+    Stroke& line = edited.strokes[m_ceStroke];
+    float const pressure = float(std::clamp(percent, 0, 400)) / 100.0f;
+    if (line.thickness.isEmpty()) {
+        line.points[m_cePoint].pressure = pressure;
+    } else {
+        // A thickness point at that point of the line, as thick as asked (to each side as it leaned there).
+        ThicknessPoint& key = line.thickness[line.thicknessPointAt(m_cePoint)];
+        float const was = (key.left + key.right) / 2.0f;
+        if (was > 1e-6f) {
+            key.left *= pressure / was;
+            key.right *= pressure / was;
+        } else {
+            key.left = key.right = pressure;
+        }
+    }
     commitDrawing(edited, tr("Change Thickness"));
     update();
 }
@@ -232,6 +246,8 @@ void Canvas::onActionConvertBrushToPencil()
     Drawing edited = *d;
     bool changed = false;
     for (int i : std::as_const(m_selStrokes)) {
+        changed = changed || !edited.strokes[i].thickness.isEmpty();
+        edited.strokes[i].thickness.clear();
         for (StrokePoint& p : edited.strokes[i].points) {
             changed = changed || p.pressure != 1.0f;
             p.pressure = 1.0f;
@@ -274,7 +290,7 @@ void Canvas::onActionConvertPencilToBrush()
         if (stroke.closed)
             centre.closeSubpath();
         QPainterPathStroker stroker;
-        stroker.setWidth(std::max(0.1, double(stroke.width) * stroke.points.first().pressure));
+        stroker.setWidth(std::max(0.1, double(stroke.width) * stroke.pressureAt(0.0)));
         stroker.setJoinStyle(stroke.join == Stroke::MitreJoin ? Qt::MiterJoin : stroke.join == Stroke::BevelJoin ? Qt::BevelJoin : Qt::RoundJoin);
         stroker.setMiterLimit(Stroke::kMitreLimit / 2.0);
         stroker.setCapStyle(stroke.capStart == Stroke::FlatCap && stroke.capEnd == Stroke::FlatCap ? Qt::FlatCap : Qt::RoundCap);

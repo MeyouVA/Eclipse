@@ -222,6 +222,7 @@ template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
             bent.curve = false;
             bent.closed = false;  // the path already comes back to its start
             bent.points.clear();
+            bent.thickness.clear();     // (its places carry the thickness)
             QVector<StrokePoint> const line = stroke.path();
             for (int i = 0; i + 1 < line.size(); ++i) {
                 StrokePoint const& a = line[i];

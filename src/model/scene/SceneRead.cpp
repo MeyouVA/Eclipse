@@ -128,6 +128,16 @@ static Stroke strokeFromJson(QJsonObject const& o)
     for (int i = 0; i + 1 < opacities.size(); i += 2)
         if (int const index = opacities[i].toInt(-1); index >= 0 && index < s.points.size())
             s.points[index].opacity = float(std::clamp(opacities[i + 1].toDouble(1.0), 0.0, 1.0));
+    QJsonArray const thick = o["thickness"].toArray();
+    double const most = std::max(0, s.pieces());
+    for (int i = 0; i + 2 < thick.size(); i += 3) {
+        ThicknessPoint key;
+        key.at = std::clamp(thick[i].toDouble(), 0.0, most);
+        key.left = float(std::clamp(thick[i + 1].toDouble(1.0), 0.0, 100.0));
+        key.right = float(std::clamp(thick[i + 2].toDouble(1.0), 0.0, 100.0));
+        if (s.thickness.isEmpty() || key.at > s.thickness.last().at)
+            s.thickness.push_back(key);
+    }
     return s;
 }
 

@@ -49,6 +49,17 @@ struct StrokePoint {
     int joint = 0;
 };
 
+// A place on the thickness of a pencil line - which Harmony keeps apart from the points that shape the line.  Where it is
+// along the line, as a place on its curve: the whole part says which piece (from that point to the next), the rest how far
+// along the piece.  And how thick the line is there to its left and to its right (as the line goes), each as a share of
+// half its width: 1 and 1 is as thick as `width`, both sides alike; 2 and 0 the same thickness all on the left.
+struct ThicknessPoint {
+    double at = 0.0;
+    float left = 1.0f;
+    float right = 1.0f;
+    bool operator==(ThicknessPoint const& o) const { return at == o.at && left == o.left && right == o.right; }
+};
+
 // One pen stroke, in scene coordinates (pixels of the camera frame).
 struct Stroke {
     QVector<StrokePoint> points;
@@ -119,6 +130,57 @@ struct Stroke {
     // short straight pieces.  `segmentOf`, when given, receives for each piece the index
     // of the point it starts from.
     QVector<StrokePoint> path(QVector<int>* segmentOf = nullptr) const;
+    // The same, with the place on the curve of each piece's start (see ThicknessPoint::at).
+    QVector<StrokePoint> pathWithPlaces(QVector<double>& places) const;
+    // The shape alone (places along it, with the points' own thickness where the line has none of its own).
+    QVector<StrokePoint> shapeWithPlaces(QVector<double>& places) const;
+    // (The thickness places as how far along the line they are, given the shape's places and lengths; and the thickness
+    // that far along, from those.)
+    QVector<ThicknessPoint> keysByLength(QVector<double> const& places, QVector<double> const& along) const;
+    static ThicknessPoint sidesAlong(QVector<ThicknessPoint> keys, double length, bool loop, double total);
+
+    // The thickness along the line, apart from its points (as Harmony's pencil lines have it): places in order along it,
+    // the thickness running smoothly from one to the next - never past either - and holding before the first and after the
+    // last (round a closed line, from the last on to the first).  Empty: the line is as thick as its points say (their
+    // `pressure` and `lean`), from one to the next.  With it, the points' pressure and lean are not used.
+    QVector<ThicknessPoint> thickness;
+    // The pieces of the curve: places run from 0 to this.
+    int pieces() const;
+    // How thick the line is at a place (as `pressure`), and to which side (as `lean`); its two sides there.
+    void thicknessAt(double at, float& pressure, float& lean) const;
+    float pressureAt(double at) const;
+    ThicknessPoint sidesAt(double at) const;
+    // The thickness made a profile of its own, from the points' (a place at each); one there is already is kept.
+    void ownThickness();
+    // A profile from the thickness the line had along it as drawn, before it was fitted with fewer points: `drawn` the pen's
+    // samples (their pressure and lean), spread along this line by how far along they were.  None when that was even.
+    void takeThicknessFrom(QVector<StrokePoint> const& drawn);
+    // The thickness, as places along the line by how far along it they are (0 its start, 1 its end), and set so.
+    QVector<QPair<double, ThicknessPoint>> thicknessByLength() const;
+    void setThicknessByLength(QVector<QPair<double, ThicknessPoint>> const& byLength);
+    // Places that a smooth run through their neighbours says within `tolerance` anyway: dropped.
+    void simplifyThickness(double tolerance);
+    // A thickness place put at `at` (as thick as the line is there), or the one already within `near`; its index.
+    int thicknessPointAt(double at, double near = 1e-6);
+    // The place on the curve nearest `p`, and the point of the curve at a place.
+    double placeAt(QPointF p) const;
+    QPointF pointAt(double at) const;
+    // Which way the line goes at a place (a unit vector; null where it has no length).
+    QPointF directionAt(double at) const;
+    // A stretch of the line, from point `from` to point `to` (later along it; round a closed line, `to` may pass its last
+    // point and go on from its first): an open line of its own, with its thickness there.
+    Stroke section(int from, int to) const;
+    // The line end for end: its points, its tips, its thickness (and which side is which).
+    void reverse();
+    // `other` put on after this line's end: one line, its thickness the two's (the other's measured against this one's
+    // width).  `meets`: its first point is this line's last (one point of both); otherwise a piece goes across to it.
+    void append(Stroke const& other, bool meets = true);
+    // The thickness at a share of the way along the line (0 its start, 1 its end).
+    ThicknessPoint sidesAtLength(double fraction) const;
+    // A point taken out of the line; its thickness kept where it was along the line.
+    void removePoint(int index);
+    // (After piece `s` was cut in two at `t`: its thickness places moved to where they now are.)
+    void splitThickness(int s, double t);
     // The index of the point after which a new point at `p` would go.
     int segmentAt(QPointF p) const;
     // Drops the points a curve through the others passes within `tolerance` of, and makes

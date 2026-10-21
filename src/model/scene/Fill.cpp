@@ -546,6 +546,7 @@ QVector<Stroke> Stroke::minus(QVector<QPolygonF> const& area, double tolerance, 
         piece.closed = false;
         piece.curve = false;
         piece.points.clear();
+        piece.thickness.clear();        // (its places carry the thickness the line had there)
         for (int i = 0; i < left.places.size(); ++i)
             if (curve || left.places[i].own || i == 0 || i + 1 == left.places.size())
                 piece.points.push_back(left.places[i].at);

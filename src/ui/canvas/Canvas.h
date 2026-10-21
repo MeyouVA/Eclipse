@@ -1333,6 +1333,8 @@ private:
     void mergeSelectedLines(bool bridge, QString const& text);
     // A line turned end for end (its handles with it); a line of straight pieces made a curve with straight runs.
     static Stroke reversedLine(Stroke line);
+    // A line with the look of `look` and the course and thickness of `before` (to have more joined on after it).
+    static Stroke startedFrom(Stroke const& look, Stroke const& before);
     static void makeCurve(Stroke& line);
     // The Contour Editor: where the point in hand goes when it is let go near another point (on it); the points of
     // lines that lie where it lay (they go with it, as one point); and two lines joined where an end was dropped on an end.
@@ -1606,10 +1608,17 @@ private:
     QPointF m_hoverWidget;       // where the pointer is (in the view)
     Drawing stampNow() const;
     void stampAt(QPointF p);
-    int m_thickStroke = -1;      // the Pencil Editor: the line and the point of it in hand
-    int m_thickPoint = -1;
-    QPointF m_thickPos0;         // where that point was, and half of how thick the line was there, when it was taken
-    double m_thickHalf0 = 0.0;
+    int m_thickStroke = -1;      // the Pencil Editor: the line and the thickness point of it in hand (in m_eraseArt)
+    int m_thickKey = -1;
+    QPointF m_thickPos0;         // where on the line that is, and which way its left is
+    QPointF m_thickAcross;
+    QPointF m_thickPress;        // where the pen went down
+    bool m_thickOneSide = false; // Alt: only the side pulled on
+    bool m_thickMoved = false;
+    bool m_thickExisting = false;   // a thickness point that was there (not one put down by this press)
+    // The Line tool and the Polyline: the thickness stencil laid on the line drawn, as its thickness along it.
+    void stencilLine(Stroke& line) const;
+    void thicknessPointDown(QPointF p, Qt::KeyboardModifiers modifiers);
     void thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
     bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
     void inkAt(QPointF p);

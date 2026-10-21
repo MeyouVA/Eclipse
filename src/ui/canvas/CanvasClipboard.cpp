@@ -52,6 +52,10 @@ void Canvas::deleteSelection()
         m_cePoint = going.takeLast();
         // The others first; the one left (the first of them) goes below, as a single point does.
         int const fewest = m_ceFill >= 0 ? 3 : 2;
+        // (A line's thickness of its own stays where it was along it.)
+        QVector<QPair<double, ThicknessPoint>> thick;
+        if (m_ceFill < 0 && m_ceStroke >= 0 && m_ceStroke < edited.strokes.size() && !edited.strokes[m_ceStroke].thickness.isEmpty())
+            thick = edited.strokes[m_ceStroke].thicknessByLength();
         if (Stroke* const line = contourLine(edited)) {
             if (int(line->points.size()) - int(going.size()) > fewest) {
                 for (int point : std::as_const(going))
@@ -80,6 +84,8 @@ void Canvas::deleteSelection()
             m_ceStroke = -1;
         } else {
             edited.strokes[m_ceStroke].points.removeAt(m_cePoint);
+            if (!thick.isEmpty())
+                edited.strokes[m_ceStroke].setThicknessByLength(thick);
         }
         m_cePoint = -1;
         commitDrawing(edited, tr("Delete Point"));

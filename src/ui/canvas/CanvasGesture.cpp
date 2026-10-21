@@ -114,10 +114,9 @@ QVector<QPair<Stroke, QPair<double, double>>> cutAt(Stroke line, QVector<double>
         at.push_back(best);
     }
     // (The cuts are in order along the line, and so are the points made for them.)
-    auto piece = [&](QVector<StrokePoint> const& points, bool startCut, bool endCut) {
-        Stroke s = line;
-        s.closed = false;
-        s.points = points;
+    // A piece of the line, from one of its points to another (round past its start on a closed line), with its thickness.
+    auto piece = [&](int from, int to, bool startCut, bool endCut) {
+        Stroke s = line.section(from, to);
         if (startCut)
             s.capStart = Stroke::Cap(tip);
         if (endCut)
@@ -131,25 +130,19 @@ QVector<QPair<Stroke, QPair<double, double>>> cutAt(Stroke line, QVector<double>
             int const to = k < at.size() ? at[k] : int(line.points.size()) - 1;
             double const toAt = k < at.size() ? cuts[k] : run.total;
             if (to > from)
-                pieces.push_back({piece(line.points.mid(from, to - from + 1), k > 0, k < at.size()), {fromAt, toAt}});
+                pieces.push_back({piece(from, to, k > 0, k < at.size()), {fromAt, toAt}});
             from = to;
             fromAt = toAt;
         }
     } else {
         int const n = int(line.points.size());
         for (int k = 0; k < at.size(); ++k) {
-            int const from = at[k], to = at[(k + 1) % at.size()];
-            QVector<StrokePoint> points;
-            for (int i = from;; i = (i + 1) % n) {
-                points.push_back(line.points[i]);
-                if (i == to && points.size() > 1)
-                    break;
-                if (points.size() > n + 1)
-                    break;
-            }
+            int const from = at[k];
+            int to = at[(k + 1) % at.size()];
+            if (to <= from)
+                to += n;
             double const toAt = k + 1 < at.size() ? cuts[k + 1] : cuts[0] + run.total;
-            if (points.size() >= 2)
-                pieces.push_back({piece(points, true, true), {cuts[k], toAt}});
+            pieces.push_back({piece(from, to, true, true), {cuts[k], toAt}});
         }
     }
     return pieces;
@@ -314,10 +307,14 @@ void Canvas::onActionPasteThickness()
         if (i < 0 || i >= edited.strokes.size() || edited.strokes[i].width <= 0.0f)
             continue;       // an invisible line stays one
         Stroke& line = edited.strokes[i];
-        for (StrokePoint& p : line.points)
-            p.pressure = 1.0f;
         line.width = m_copiedWidth;
-        applyProfile(line, m_copiedProfile);
+        QVector<QPair<double, ThicknessPoint>> byLength;
+        for (int k = 0; k < m_copiedProfile.size(); ++k) {
+            float const share = m_copiedProfile[k];
+            byLength.push_back({m_copiedProfile.size() > 1 ? double(k) / (m_copiedProfile.size() - 1) : 0.0, {0.0, share, share}});
+        }
+        line.setThicknessByLength(byLength);
+        line.simplifyThickness(0.005);
     }
     commitDrawing(edited, tr("Paste Thickness"));
     update();
@@ -334,7 +331,7 @@ bool Canvas::pushLine(Drawing& drawing, Stroke const& highlight, int mode, doubl
         h.push_back(p.pos);
     auto thickest = [](Stroke const& line) {
         float most = 0.0f;
-        for (StrokePoint const& p : line.points)
+        for (StrokePoint const& p : line.path())
             most = std::max(most, p.pressure);
         return line.width * most;
     };
@@ -357,11 +354,13 @@ bool Canvas::pushLine(Drawing& drawing, Stroke const& highlight, int mode, doubl
         return false;
     Stroke& line = drawing.strokes[target];
     double const r = reach + thickest(line) / 2.0;
-    // Points on the line all along the stretch the stroke covers, so that the line follows the stroke there.
+    // Pushing: points on the line all along the stretch the stroke covers, so that the line follows the stroke there.
     double const spacing = std::max(r * 0.5, 1e-3);
     QPointF last;
-    bool any = false;
+    bool any = mode != PencilPush;
     for (QPointF const& q : std::as_const(h)) {
+        if (mode != PencilPush)
+            break;
         if (any && QLineF(last, q).length() < spacing)
             continue;
         last = q;
@@ -378,56 +377,99 @@ bool Canvas::pushLine(Drawing& drawing, Stroke const& highlight, int mode, doubl
         if (!crowded)
             line = tried;
     }
-    // Each point of the line by the stroke: moved onto it, or the line made as thick there as reaches it.
-    float const halfStroke = highlight.width / 2.0f;
+    // Line Pushing: each point of the line by the stroke moved onto it.
     bool changed = false;
-    for (StrokePoint& point : line.points) {
-        QPointF onto;
-        double const d = nearestOn(h, point.pos, &onto);
-        if (d > r)
-            continue;
-        if (mode == PencilPush) {
-            if (d > 1e-9) {
+    if (mode == PencilPush) {
+        for (StrokePoint& point : line.points) {
+            QPointF onto;
+            double const d = nearestOn(h, point.pos, &onto);
+            if (d <= r && d > 1e-9) {
                 point.pos = onto;
                 changed = true;
             }
-        } else if (line.width > 0.0f) {
-            double const half = d + halfStroke, now = line.width * point.pressure / 2.0;
-            if (half > now + 1e-6) {
-                point.pressure = float(std::min(half * 2.0 / line.width, 50.0));
-                changed = true;
-            }
+        }
+        return changed;
+    }
+    // Auto Adjust Thickness: the line made as thick as reaches the stroke, along the stretch it covers - its own thickness
+    // points (apart from its points), close enough together to follow the stroke.
+    if (line.width <= 0.0f)
+        return false;
+    float const halfStroke = highlight.width / 2.0f;
+    line.ownThickness();
+    QVector<double> places;
+    QVector<StrokePoint> const run = line.pathWithPlaces(places);
+    // Places along the line no further apart than half the spacing.
+    QVector<QPair<double, QPointF>> along;
+    for (int i = 0; i + 1 < run.size(); ++i) {
+        int const steps = std::max(1, int(std::ceil(QLineF(run[i].pos, run[i + 1].pos).length() / (spacing * 0.5))));
+        for (int k = 0; k < steps; ++k) {
+            double const t = double(k) / steps;
+            along.push_back({places[i] + (places[i + 1] - places[i]) * t, run[i].pos + (run[i + 1].pos - run[i].pos) * t});
         }
     }
+    if (!run.isEmpty())
+        along.push_back({places.last(), run.last().pos});
+    for (auto const& [place, at] : std::as_const(along)) {
+        QPointF foot;
+        double const d = nearestOn(h, at, &foot);
+        if (d > r)
+            continue;
+        // (Only where the stroke runs beside the line: past its ends, it reaches no further than they do.)
+        if ((QLineF(foot, h.first()).length() < 1e-6 || QLineF(foot, h.last()).length() < 1e-6) && d > halfStroke + 1e-6)
+            continue;
+        double const share = (d + halfStroke) * 2.0 / line.width;
+        ThicknessPoint& key = line.thickness[line.thicknessPointAt(place, 1e-4)];
+        if (key.left < share - 1e-6 || key.right < share - 1e-6) {
+            key.left = float(std::min(std::max<double>(key.left, share), 50.0));
+            key.right = float(std::min(std::max<double>(key.right, share), 50.0));
+            changed = true;
+        }
+    }
+    if (changed)
+        line.simplifyThickness(0.01);
     return changed;
 }
 
 void Canvas::multiplyThickness(Stroke& line, double multiplier, bool tips, double tipExtra)
 {
-    int const n = int(line.points.size());
-    if (n == 0 || multiplier <= 0.0)
+    if (multiplier <= 0.0 || line.points.isEmpty())
         return;
-    float most = 0.0f;
-    for (StrokePoint const& p : line.points)
-        most = std::max(most, p.pressure);
-    if (most <= 0.0f)
+    // The thickness along the line: its own places, or its points'.
+    bool const own = !line.thickness.isEmpty();
+    int const n = own ? int(line.thickness.size()) : int(line.points.size());
+    auto value = [&](int i) { return own ? (line.thickness[i].left + line.thickness[i].right) / 2.0 : double(line.points[i].pressure); };
+    auto scale = [&](int i, double by) {
+        if (own) {
+            line.thickness[i].left = float(line.thickness[i].left * by);
+            line.thickness[i].right = float(line.thickness[i].right * by);
+        } else {
+            line.points[i].pressure = float(line.points[i].pressure * by);
+        }
+    };
+    double most = 0.0;
+    for (int i = 0; i < n; ++i)
+        most = std::max(most, value(i));
+    if (most <= 0.0)
         return;
-    // The tips: from each end, the points before the line reaches (near enough) its full thickness.
+    // The tips: from each end, the places before the line reaches (near enough) its full thickness.
     QVector<bool> tip(n, false);
-    for (int i = 0; i < n && line.points[i].pressure < most * 0.95f; ++i)
+    for (int i = 0; i < n && value(i) < most * 0.95; ++i)
         tip[i] = true;
-    for (int i = n - 1; i >= 0 && line.points[i].pressure < most * 0.95f; --i)
+    for (int i = n - 1; i >= 0 && value(i) < most * 0.95; --i)
         tip[i] = true;
     line.width = float(line.width * multiplier);
     for (int i = 0; i < n; ++i) {
         if (!tip[i])
             continue;
-        float& p = line.points[i].pressure;
+        double const p = value(i);
         double const share = p / most;      // 0 at a point, 1 where the tip meets the body
+        double next = p;
         if (!tips)
-            p = float(p * (1.0 + (multiplier - 1.0) * share) / multiplier);
+            next = next * (1.0 + (multiplier - 1.0) * share) / multiplier;
         if (tipExtra != 1.0)
-            p = float(std::min<double>(most, p * tipExtra));
+            next = std::min(most, next * tipExtra);
+        if (p > 1e-9)
+            scale(i, next / p);
     }
 }
 

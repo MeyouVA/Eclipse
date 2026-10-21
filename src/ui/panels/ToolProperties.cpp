@@ -363,7 +363,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_smoothingRow, brush || pencil);
     m_form->setRowVisible(m_stabiliserRow, brush || pencil);
     m_form->setRowVisible(m_lineModeRow, tool == T::Line);
-    m_form->setRowVisible(m_stencilRow, pencil);
+    m_form->setRowVisible(m_stencilRow, pencil || tool == T::Line || tool == T::Polyline);
     m_form->setRowVisible(m_retouchRow, tool == T::PencilRetouch);
     m_form->setRowVisible(m_eraserTipRow, eraser);
     m_form->setRowVisible(m_lineFill, brush || pencil);

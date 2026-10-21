@@ -74,6 +74,12 @@ static QJsonObject strokeToJson(Stroke const& s)
             joints << i << s.points[i].joint;
     if (!joints.isEmpty())
         o["joints"] = joints;
+    // The thickness along the line, apart from its points: place, left, right.
+    QJsonArray thick;
+    for (ThicknessPoint const& key : s.thickness)
+        thick << std::round(key.at * 10000.0) / 10000.0 << std::round(double(key.left) * 1000.0) / 1000.0 << std::round(double(key.right) * 1000.0) / 1000.0;
+    if (!thick.isEmpty())
+        o["thickness"] = thick;
     if (!opacities.isEmpty())
         o["opacity"] = opacities;
     if (s.join != Stroke::RoundJoin)

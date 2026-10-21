@@ -158,6 +158,8 @@ QByteArray drawingPrint(Drawing const& d)
             out << s.width << s.color << qint32(s.points.size());
             for (StrokePoint const& p : s.points)
                 out << p.pos << p.pressure;
+            for (ThicknessPoint const& key : s.thickness)
+                out << key.at << key.left << key.right;
         }
         for (Fill const& f : d.fillsOf(sheet)) {
             out << f.color << qint32(f.swatch) << qint32(f.outlines.size());

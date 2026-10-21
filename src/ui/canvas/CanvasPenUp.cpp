@@ -269,6 +269,7 @@ void Canvas::bendLine(QPointF at)
 
 void Canvas::keepShape()
 {
+    stencilLine(m_stroke);
     // Auto Fill: a rectangle or an ellipse is painted inside with the colour in hand, under its line.
     bool const fill = m_shapeAutoFill && m_stroke.closed && (m_tool == Rectangle || m_tool == Ellipse) && !bitmapNow() && m_stroke.width > 0.0f;
     bool const twin = m_autoColourArt && m_art == LineArt && !bitmapNow() && m_stroke.width > 0.0f;
@@ -389,14 +390,22 @@ void Canvas::penUp()
     if (drag == DragThickness) {
         m_drag = DragNone;
         Drawing const* const d = currentDrawing();
-        if (d && m_thickStroke >= 0 && m_thickStroke < d->strokes.size() && m_thickStroke < m_eraseArt.strokes.size()
-            && m_thickPoint < d->strokes[m_thickStroke].points.size() && m_thickPoint < m_eraseArt.strokes[m_thickStroke].points.size()
-            && d->strokes[m_thickStroke].points[m_thickPoint].pressure != m_eraseArt.strokes[m_thickStroke].points[m_thickPoint].pressure) {
-            Drawing const art = m_eraseArt;
-            commitDrawing(art, tr("Pencil Line Thickness"));
+        if (d && m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size() && m_thickStroke < d->strokes.size()) {
+            Stroke& line = m_eraseArt.strokes[m_thickStroke];
+            if (!m_thickMoved && m_thickOneSide && m_thickExisting) {
+                // Alt and a click on a thickness point: it goes (the thickness runs on between its neighbours).
+                if (line.thickness.size() > 1 && m_thickKey >= 0 && m_thickKey < line.thickness.size()) {
+                    line.thickness.removeAt(m_thickKey);
+                    Drawing const art = m_eraseArt;
+                    commitDrawing(art, tr("Remove Thickness Point"));
+                }
+            } else if (m_thickMoved) {
+                Drawing const art = m_eraseArt;
+                commitDrawing(art, tr("Pencil Line Thickness"));
+            }
         }
         m_eraseArt = Drawing();
-        m_thickStroke = m_thickPoint = -1;
+        m_thickStroke = m_thickKey = -1;
         update();
         return;
     }
@@ -501,7 +510,18 @@ void Canvas::penUp()
             m_stroke.points.first().pos = snapped(m_stroke.points.first().pos);
             m_stroke.points.last().pos = snapped(m_stroke.points.last().pos);
         }
+        // The thickness of the line kept apart from its points (as Harmony's pencil lines have it): the pen's pressure all
+        // along the line as it was drawn, however few points the fitting keeps.
+        bool const ownThick = (m_tool == Pencil || m_tool == Brush) && m_stroke.width > 0.0f && !bitmapNow();
+        QVector<StrokePoint> const drawnSamples = m_stroke.points;
+        if (ownThick)
+            for (StrokePoint& point : m_stroke.points) {
+                point.pressure = 1.0f;
+                point.lean = 0.0f;
+            }
         m_stroke.fit(tolerance, m_cornerAngle);
+        if (ownThick)
+            m_stroke.takeThicknessFrom(drawnSamples);
         if (m_tool == StrokeTool && m_lineOptions.straight) {
             // Straight pieces from point to point.
             m_stroke.curve = false;
@@ -856,8 +876,9 @@ void Canvas::finishPolyline(bool keep)
     if (!m_polyActive)
         return;
     m_polyActive = false;
-    Stroke const line = m_stroke;
+    Stroke line = m_stroke;
     m_stroke = Stroke();
+    stencilLine(line);
     update();
     if (keep && line.points.size() >= 2 && m_layer >= 0 && m_layer < m_document->scene().layers.size()) {
         bool const twin = m_autoColourArt && m_art == LineArt && !bitmapNow() && line.width > 0.0f;

@@ -547,49 +547,27 @@ bool Canvas::autoMatte(double radius, int source, int destination)
 void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)
 {
     Drawing const* const d = currentDrawing();
-    m_thickStroke = m_thickPoint = -1;
-    double nearest = 0.0;
+    m_thickStroke = m_thickKey = -1;
     if (d && (modifiers & Qt::ControlModifier)) {
-        // With Ctrl: a new point where the line was pressed, to make it thicker or thinner there.
-        // The line keeps its shape and its thickness; the point is as thick as the line was at that place.
+        // With Ctrl: a thickness point where the line was pressed, as thick as the line is there - to pull on later.
+        // The line keeps its shape and its thickness.
         for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
-            if (d->strokes[i].width <= 0.0f || !d->strokes[i].hit(p, 4.0 / std::max(m_zoom, 1e-6)))
+            if (d->strokes[i].width <= 0.0f || d->strokes[i].points.size() < 2 || !d->strokes[i].hit(p, 4.0 / std::max(m_zoom, 1e-6)))
                 continue;
             Drawing edited = *d;
-            if (edited.strokes[i].insertPoint(p) >= 0)
-                commitDrawing(edited, tr("Add Point"));
+            Stroke& line = edited.strokes[i];
+            line.ownThickness();
+            int const had = int(line.thickness.size());
+            line.thicknessPointAt(line.placeAt(p), 1e-3);
+            if (line.thickness.size() > had)
+                commitDrawing(edited, tr("Add Thickness Point"));
             update();
             return;
         }
-        emit message(tr("Hold Ctrl and press on a pencil line to put a point there."));
+        emit message(tr("Hold Ctrl and press on a pencil line to put a thickness point there."));
         return;
     }
-    if (d) {
-        // The point of a line under the pointer: within the line there, or a few pixels off it.
-        for (int i = 0; i < d->strokes.size(); ++i) {
-            Stroke const& stroke = d->strokes[i];
-            if (stroke.width <= 0.0f)
-                continue;
-            for (int k = 0; k < stroke.points.size(); ++k) {
-                double const away = QLineF(stroke.points[k].pos, p).length();
-                double const reach = stroke.width * stroke.points[k].pressure / 2.0 + 8.0 / std::max(m_zoom, 1e-6);
-                if (away <= reach && (m_thickStroke < 0 || away < nearest)) {
-                    m_thickStroke = i;
-                    m_thickPoint = k;
-                    nearest = away;
-                }
-            }
-        }
-    }
-    if (m_thickStroke < 0) {
-        emit message(tr("Press on a point of a pencil line and pull: away from the line makes it thicker there, towards it thinner. With Alt, only the side pulled on moves."));
-        return;
-    }
-    m_eraseArt = *d;
-    m_thickPos0 = d->strokes[m_thickStroke].points[m_thickPoint].pos;
-    m_thickHalf0 = d->strokes[m_thickStroke].width * d->strokes[m_thickStroke].points[m_thickPoint].pressure / 2.0;
-    m_drag = DragThickness;
-    update();
+    thicknessPointDown(p, modifiers);
 }
 
 // ---- the Ink tool -----------------------------------------------------------------------------------
@@ -678,7 +656,8 @@ void Canvas::smoothAt(QPointF p)
             StrokePoint const& after = was[(k + 1) % n];
             // A step towards the middle of its neighbours; a corner is a corner no longer.
             line.points[k].pos = was[k].pos * 0.6 + (before.pos + after.pos) * 0.2;
-            line.points[k].pressure = was[k].pressure * 0.6f + (before.pressure + after.pressure) * 0.2f;
+            if (line.thickness.isEmpty())
+                line.points[k].pressure = was[k].pressure * 0.6f + (before.pressure + after.pressure) * 0.2f;
             line.points[k].in *= 0.8;
             line.points[k].out *= 0.8;
             line.points[k].corner = false;
@@ -1060,6 +1039,7 @@ void Canvas::onActionStrokesToPencil()
         if (stroke.width > 0.0f)
             continue;
         stroke.width = float(m_brushWidth);
+        stroke.thickness.clear();
         for (StrokePoint& point : stroke.points)
             point.pressure = 1.0f;
         changed = true;

@@ -371,6 +371,7 @@ bool curveBetween(Stroke const& fromCurve, Stroke const& toCurve, double t, Stro
         }
     out = t < 0.5 ? a : b;
     out.points.clear();
+    out.thickness.clear();
     out.curve = true;
     out.closed = a.closed;
     out.group = 0;
@@ -390,6 +391,25 @@ bool curveBetween(Stroke const& fromCurve, Stroke const& toCurve, double t, Stro
         }
         out.points.push_back(r);
     }
+    if (!a.thickness.isEmpty() || !b.thickness.isEmpty()) {
+        // The thickness along the lines (apart from their points): mixed place by place along them.
+        QVector<double> shares;
+        for (Stroke const* line : {&a, &b})
+            for (auto const& entry : line->thicknessByLength())
+                shares.push_back(bestReversed && line == &b ? 1.0 - entry.first : entry.first);
+        std::sort(shares.begin(), shares.end());
+        shares.erase(std::unique(shares.begin(), shares.end(), [](double x, double y) { return y - x < 1e-6; }), shares.end());
+        QVector<QPair<double, ThicknessPoint>> mixed;
+        for (double f : std::as_const(shares)) {
+            ThicknessPoint const p = a.sidesAtLength(f);
+            ThicknessPoint q = b.sidesAtLength(bestReversed ? 1.0 - f : f);
+            if (bestReversed)
+                std::swap(q.left, q.right);
+            mixed.push_back({f, {0.0, float(mix(p.left, q.left, t)), float(mix(p.right, q.right, t))}});
+        }
+        out.setThicknessByLength(mixed);
+        out.simplifyThickness(0.005);
+    }
     return true;
 }
 
@@ -407,6 +427,7 @@ Stroke strokeBetween(Stroke const& a, Stroke const& b, double t, QVector<QLineF>
     QVector<Sample> const to = aligned(from, other, closed, pinsFor(from, other, hints));
     Stroke out = t < 0.5 ? a : b;
     out.points.clear();
+    out.thickness.clear();      // (its places carry the thickness, the two lines' mixed)
     out.curve = false;
     out.closed = closed;
     out.group = 0;

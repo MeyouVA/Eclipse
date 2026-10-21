@@ -426,11 +426,30 @@ QPointF Canvas::pointMagnet(QPointF p) const
 
 Stroke Canvas::reversedLine(Stroke line)
 {
-    std::reverse(line.points.begin(), line.points.end());
-    for (StrokePoint& point : line.points)
-        std::swap(point.in, point.out);
-    std::swap(line.capStart, line.capEnd);
+    line.reverse();
     return line;
+}
+
+Stroke Canvas::startedFrom(Stroke const& look, Stroke const& before)
+{
+    // The look (colour, width, texture...) of the one, the course and the thickness of the other.
+    Stroke joined = look;
+    joined.curve = before.curve;
+    joined.closed = false;
+    joined.points = before.points;
+    joined.thickness = before.thickness;
+    joined.capStart = before.capStart;
+    joined.capEnd = before.capEnd;
+    if (before.width > 0.0f && joined.width > 0.0f && std::abs(before.width - joined.width) > 1e-6f) {
+        // Its thickness against the width it now has.
+        joined.ownThickness();
+        double const scale = double(before.width) / joined.width;
+        for (ThicknessPoint& key : joined.thickness) {
+            key.left = float(key.left * scale);
+            key.right = float(key.right * scale);
+        }
+    }
+    return joined;
 }
 
 void Canvas::makeCurve(Stroke& line)
@@ -466,6 +485,13 @@ bool Canvas::joinDroppedEnd(Drawing& edited)
         else
             closed.points.last().out = dropped.out;
         closed.closed = true;
+        // (Its pieces are the pieces it had: dropped at its start, the first of them is now the last, the one that closes it.)
+        if (!atEnd && !closed.thickness.isEmpty()) {
+            double const span = closed.pieces();
+            for (ThicknessPoint& key : closed.thickness)
+                key.at = key.at < 1.0 ? key.at + span - 1.0 : key.at - 1.0;
+            std::stable_sort(closed.thickness.begin(), closed.thickness.end(), [](ThicknessPoint const& a, ThicknessPoint const& b) { return a.at < b.at; });
+        }
         edited.strokes[m_ceStroke] = closed;
         m_cePoint = atEnd ? 0 : int(closed.points.size()) - 1;
         return true;
@@ -488,15 +514,8 @@ bool Canvas::joinDroppedEnd(Drawing& edited)
             makeCurve(before);
             makeCurve(after);
         }
-        Stroke joined = line;
-        joined.curve = before.curve;
-        joined.points = before.points;
-        joined.points.last().out = after.points.first().out;
-        joined.points.last().handles = joined.points.last().handles || after.points.first().handles;
-        for (int k = 1; k < after.points.size(); ++k)
-            joined.points.push_back(after.points[k]);
-        joined.capStart = before.capStart;
-        joined.capEnd = after.capEnd;
+        Stroke joined = startedFrom(line, before);
+        joined.append(after, true);
         int const meeting = int(before.points.size()) - 1;
         int const keep = std::min(s, m_ceStroke), drop = std::max(s, m_ceStroke);
         edited.strokes[keep] = joined;
