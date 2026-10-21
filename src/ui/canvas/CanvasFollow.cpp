@@ -5,6 +5,8 @@
 
 #include <algorithm>
 
+#include <QSet>
+
 #include "model/geometry/FillRegion.h"
 
 namespace {
@@ -90,6 +92,71 @@ QPointF Canvas::insideOf(QVector<QPolygonF> const& outlines)
     return best;
 }
 
+namespace {
+
+// The lines (by their place in `lines`) an area's edge runs along: each line some of the edge lies within `near` of.
+QSet<int> boundingLines(QVector<QPolygonF> const& outlines, QVector<Stroke> const& lines, double near)
+{
+    QSet<int> found;
+    QVector<QVector<QPointF>> runs;
+    for (Stroke const& line : lines) {
+        QVector<QPointF> run;
+        for (StrokePoint const& p : line.path())
+            run.push_back(p.pos);
+        if (line.closed && run.size() > 2)
+            run.push_back(run.first());
+        runs.push_back(run);
+    }
+    for (QPolygonF const& outline : outlines) {
+        // Places along the edge no more than a few units apart.
+        QVector<QPointF> places;
+        for (int i = 0; i < outline.size(); ++i) {
+            QPointF const a = outline[i], b = outline[(i + 1) % outline.size()];
+            int const steps = std::max(1, int(std::ceil(QLineF(a, b).length() / 3.0)));
+            for (int k = 0; k < steps; ++k)
+                places.push_back(a + (b - a) * (double(k) / steps));
+        }
+        for (int l = 0; l < runs.size(); ++l) {
+            if (found.contains(l))
+                continue;
+            QVector<QPointF> const& run = runs[l];
+            bool hit = false;
+            for (QPointF const& p : std::as_const(places)) {
+                for (int i = 0; i + 1 < run.size() && !hit; ++i) {
+                    QPointF const ab = run[i + 1] - run[i];
+                    double const len2 = ab.x() * ab.x() + ab.y() * ab.y();
+                    double const t = len2 > 0.0 ? std::clamp(QPointF::dotProduct(p - run[i], ab) / len2, 0.0, 1.0) : 0.0;
+                    hit = QLineF(p, run[i] + ab * t).length() <= near;
+                }
+                if (hit)
+                    break;
+            }
+            if (hit)
+                found.insert(l);
+        }
+    }
+    return found;
+}
+
+// How big an area is (outlines odd-even: the outer ones less the holes in them, as near as the largest says).
+double areaOf(QVector<QPolygonF> const& outlines)
+{
+    double total = 0.0, largest = 0.0;
+    for (QPolygonF const& outline : outlines) {
+        double twice = 0.0;
+        for (int i = 0; i < outline.size(); ++i) {
+            QPointF const a = outline[i], b = outline[(i + 1) % outline.size()];
+            twice += a.x() * b.y() - b.x() * a.y();
+        }
+        double const area = std::abs(twice) / 2.0;
+        total += area;
+        largest = std::max(largest, area);
+    }
+    return std::max(largest - (total - largest), 0.0);
+}
+
+} // namespace
+
 Drawing Canvas::followLines(Drawing whole, Drawing const* before) const
 {
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
@@ -100,34 +167,117 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before) const
         if (!any)
             continue;
         QVector<Stroke> const lines = boundsOf(whole, sheet);
-        QRectF const changed = before ? changedBetween(lines, boundsOf(*before, sheet)) : QRectF();
+        QVector<Stroke> const linesBefore = before ? boundsOf(*before, sheet) : QVector<Stroke>();
+        QRectF const changed = before ? changedBetween(lines, linesBefore) : QRectF();
         if (before && changed.isNull())
             continue;       // the lines round the paint are as they were
         Drawing bounded;
         bounded.strokes = lines;
         QRectF const area = FillRegion::paintArea(bounded);
         double const room = m_gapSize + 4.0;
+        double const near = m_gapSize + 3.0;
+        // (The lines are the same lines, one for one, when there are as many: then the paint is found by the lines round it.)
+        bool const sameLines = before && lines.size() == linesBefore.size();
         for (Fill& fill : fills) {
             if (!fill.follows || !fill.contours.isEmpty())
                 continue;
             QRectF const was = fill.bounds();
             if (before && !was.adjusted(-room, -room, room, room).intersects(changed))
                 continue;       // nothing near it changed
-            // Found again from where it was painted (while that is still in it), or from well inside it.
+            // The lines it was painted inside.
+            QSet<int> const own = sameLines ? boundingLines(fill.outlines, linesBefore, near) : QSet<int>();
+            // Places to look from: where it was painted (while that is still in it), well inside it - and, when it knows
+            // its lines, either side of each of them all along (the area they close round may have gone over to the other
+            // side of one of them).
             QVector<QPointF> tries;
             if (fill.contains(fill.seed))
                 tries.push_back(fill.seed);
             if (QPointF const inside = insideOf(fill.outlines); !inside.isNull())
                 tries.push_back(inside);
-            for (QPointF const& from : std::as_const(tries)) {
-                QVector<QPolygonF> outlines;
-                if (FillRegion::compute(bounded, area, from, m_gapSize, outlines) != FillRegion::Ok || outlines.isEmpty())
-                    continue;
-                fill.outlines = outlines;
-                if (!fill.contains(fill.seed))
-                    fill.seed = from;
-                break;
+            QRectF within = area;
+            if (!own.isEmpty()) {
+                QRectF reach;
+                for (int l : own) {
+                    Stroke const& line = lines[l];
+                    reach = reach.united(line.bounds());
+                    QVector<double> places;
+                    QVector<StrokePoint> const run = line.pathWithPlaces(places);
+                    double gone = 1e9;
+                    for (int i = 0; i + 1 < run.size(); ++i) {
+                        gone += QLineF(run[i].pos, run[i + 1].pos).length();
+                        if (gone < 12.0)
+                            continue;
+                        gone = 0.0;
+                        QPointF const way = run[i + 1].pos - run[i].pos;
+                        double const length = std::hypot(way.x(), way.y());
+                        if (length < 1e-9)
+                            continue;
+                        QPointF const across(-way.y() / length, way.x() / length);
+                        double const off = line.width * run[i].pressure / 2.0 + 3.0;
+                        tries.push_back(run[i].pos + across * off);
+                        tries.push_back(run[i].pos - across * off);
+                    }
+                }
+                // An area closed round by these lines lies within them: no further need be looked.
+                within = reach.adjusted(-2.0 * room, -2.0 * room, 2.0 * room, 2.0 * room);
             }
+            double const wasArea = areaOf(fill.outlines);
+            // Each area found once; the one whose lines are the lines it had (most alike), then the one most of it lies in.
+            QVector<QVector<QPolygonF>> found;
+            QVector<QPolygonF> best;
+            double bestScore = -1.0;
+            QVector<QPointF> probes;
+            {
+                QRectF const box = fill.bounds();
+                for (int i = 1; i < 6; ++i)
+                    for (int k = 1; k < 6; ++k) {
+                        QPointF const p(box.left() + box.width() * i / 6.0, box.top() + box.height() * k / 6.0);
+                        if (fill.contains(p))
+                            probes.push_back(p);
+                    }
+            }
+            for (int t = 0; t < tries.size(); ++t) {
+                QPointF const from = tries[t];
+                if (!within.contains(from))
+                    continue;
+                bool known = false;
+                for (QVector<QPolygonF> const& outlines : std::as_const(found)) {
+                    Fill probe;
+                    probe.outlines = outlines;
+                    known = known || probe.contains(from);
+                }
+                if (known)
+                    continue;
+                QVector<QPolygonF> outlines;
+                if (FillRegion::compute(bounded, within, from, m_gapSize, outlines) != FillRegion::Ok || outlines.isEmpty())
+                    continue;
+                found.push_back(outlines);
+                if (own.isEmpty()) {
+                    best = outlines;        // (not knowing its lines: the first found, from where it was)
+                    break;
+                }
+                QSet<int> const theirs = boundingLines(outlines, lines, near);
+                double const alike = double((own & theirs).size()) / std::max<qsizetype>(1, (own | theirs).size());
+                Fill probe;
+                probe.outlines = outlines;
+                int inside = 0;
+                for (QPointF const& p : std::as_const(probes))
+                    inside += probe.contains(p) ? 1 : 0;
+                // (Then as much of it as lay in the paint before; then as big as the paint was.)
+                double const sizes = std::min(areaOf(outlines), wasArea) / std::max({areaOf(outlines), wasArea, 1e-9});
+                double const score = alike * 1000.0 + (probes.isEmpty() ? 0.0 : double(inside) / probes.size()) * 10.0 + sizes + (t == 0 ? 0.001 : 0.0);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = outlines;
+                }
+                if (alike >= 1.0 && t <= 1 && inside > 0)
+                    break;      // its own lines round it still, where it was: that is it
+            }
+            if (best.isEmpty())
+                continue;
+            fill.outlines = best;
+            if (!fill.contains(fill.seed))
+                fill.seed = insideOf(best);
         }
     }
     return whole;

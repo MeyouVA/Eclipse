@@ -1,5 +1,6 @@
 #include "model/geometry/FillRegion.h"
 
+#include <QHash>
 #include <QImage>
 #include <QPainter>
 #include <QPainterPath>
@@ -153,6 +154,114 @@ QRectF paintArea(Drawing const& drawing, double margin)
     return all.isNull() ? all : all.adjusted(-margin, -margin, margin, margin);
 }
 
+// The middles of lines, to put the places of a traced edge onto: the pieces of every line, in a grid of cells.
+class Snapper {
+public:
+    Snapper(QVector<Stroke> const& strokes, double reach) : m_reach(reach), m_cell(std::max(reach * 2.0, 1.0))
+    {
+        for (Stroke const& stroke : strokes) {
+            QVector<StrokePoint> const run = stroke.path();
+            int const count = int(run.size());
+            int const pieces = count - 1 + (stroke.closed && count > 2 ? 1 : 0);
+            for (int i = 0; i < pieces; ++i) {
+                QLineF const piece(run[i].pos, run[(i + 1) % count].pos);
+                int const index = int(m_pieces.size());
+                m_pieces.push_back(piece);
+                QRectF const box = QRectF(piece.p1(), piece.p2()).normalized().adjusted(-reach, -reach, reach, reach);
+                for (int cx = cellOf(box.left()); cx <= cellOf(box.right()); ++cx)
+                    for (int cy = cellOf(box.top()); cy <= cellOf(box.bottom()); ++cy)
+                        m_grid[key(cx, cy)].push_back(index);
+            }
+        }
+    }
+    // `p` put on the middle of the nearest line, when one is within reach; whether it was.
+    bool onto(QPointF& p) const
+    {
+        auto const found = m_grid.constFind(key(cellOf(p.x()), cellOf(p.y())));
+        if (found == m_grid.constEnd())
+            return false;
+        double best = m_reach;
+        QPointF to;
+        bool any = false;
+        for (int index : *found) {
+            QLineF const& piece = m_pieces[index];
+            QPointF const ab = piece.p2() - piece.p1();
+            double const len2 = ab.x() * ab.x() + ab.y() * ab.y();
+            double const t = len2 > 0.0 ? std::clamp(QPointF::dotProduct(p - piece.p1(), ab) / len2, 0.0, 1.0) : 0.0;
+            QPointF const q = piece.p1() + ab * t;
+            double const d = QLineF(p, q).length();
+            if (d <= best) {
+                best = d;
+                to = q;
+                any = true;
+            }
+        }
+        if (any)
+            p = to;
+        return any;
+    }
+
+private:
+    int cellOf(double v) const { return int(std::floor(v / m_cell)); }
+    static qint64 key(int x, int y) { return (qint64(x) << 32) ^ quint32(y); }
+    double m_reach, m_cell;
+    QVector<QLineF> m_pieces;
+    QHash<qint64, QVector<int>> m_grid;
+};
+
+// Douglas and Peucker round a closed edge: within `fine` along the stretches that lie on lines, `coarse` elsewhere.
+static QPolygonF simplifyEdge(QPolygonF const& ring, QVector<bool> const& onLine, double fine, double coarse)
+{
+    int const n = int(ring.size());
+    if (n < 4)
+        return ring;
+    std::vector<char> keep(size_t(n), 0);
+    int a = 0, b = 0;
+    for (int i = 1; i < n; ++i) {
+        if (ring[i].x() < ring[a].x())
+            a = i;
+        if (ring[i].x() > ring[b].x())
+            b = i;
+    }
+    if (a == b)
+        return ring;
+    keep[size_t(a)] = keep[size_t(b)] = 1;
+    std::vector<std::pair<int, int>> todo{{a, b}, {b, a}};
+    while (!todo.empty()) {
+        auto [first, last] = todo.back();
+        todo.pop_back();
+        int const count = (last - first + n) % n;
+        if (count < 2)
+            continue;
+        QPointF const p0 = ring[first], p1 = ring[last];
+        double const dx = p1.x() - p0.x(), dy = p1.y() - p0.y();
+        double const len = std::hypot(dx, dy);
+        double worst = -1.0;
+        int worstIndex = -1;
+        bool allOnLine = onLine[first] && onLine[last];
+        for (int k = 1; k < count; ++k) {
+            int const i = (first + k) % n;
+            allOnLine = allOnLine && onLine[i];
+            double const d = len > 0 ? std::abs(dy * (ring[i].x() - p0.x()) - dx * (ring[i].y() - p0.y())) / len
+                                     : std::hypot(ring[i].x() - p0.x(), ring[i].y() - p0.y());
+            if (d > worst) {
+                worst = d;
+                worstIndex = i;
+            }
+        }
+        if (worst > (allOnLine ? fine : coarse)) {
+            keep[size_t(worstIndex)] = 1;
+            todo.push_back({first, worstIndex});
+            todo.push_back({worstIndex, last});
+        }
+    }
+    QPolygonF out;
+    for (int i = 0; i < n; ++i)
+        if (keep[size_t(i)] && (out.isEmpty() || QLineF(out.last(), ring[i]).length() > 1e-6))
+            out.push_back(ring[i]);
+    return out;
+}
+
 Result compute(Drawing const& drawing, QRectF const& area, QPointF point, double gap, QVector<QPolygonF>& outlines)
 {
     outlines.clear();
@@ -280,9 +389,18 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
     QPainterPath path;
     path.addRegion(region);
     QTransform const toScene = QTransform::fromScale(1.0 / scale, 1.0 / scale);
+    // The edge of the paint on the lines themselves, as a vector: each place of the traced edge near the middle of a line
+    // goes onto it (the pixels only said which area; the lines say where its edge is).  Elsewhere (a gap closed, the edge
+    // of a brush shape) the pixel staircase is smoothed away.
+    Snapper const snap(drawing.strokes, (3.0 + std::ceil(scale)) / scale + 0.5);
     for (QPolygonF const& raw : path.simplified().toSubpathPolygons()) {
-        // The outline follows pixel edges; smooth the staircase away.
-        QPolygonF const poly = simplify(toScene.map(raw), 0.75 / scale);
+        QPolygonF ring = toScene.map(raw);
+        if (ring.size() > 1 && ring.first() == ring.last())
+            ring.removeLast();
+        QVector<bool> onLine(ring.size(), false);
+        for (int i = 0; i < ring.size(); ++i)
+            onLine[i] = snap.onto(ring[i]);
+        QPolygonF const poly = simplifyEdge(ring, onLine, 0.04, 0.75 / scale);
         if (poly.size() >= 3)
             outlines.push_back(poly);
     }
