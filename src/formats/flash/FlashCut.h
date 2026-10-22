@@ -105,8 +105,6 @@ inline QVector<QPolygonF> clipTo(Picture const& picture, QVector<QPolygonF> cons
     return out;
 }
 
-// The area a drawing covers as a mask: its areas and its pictures' boxes.  (Flash leaves a mask's lines out: only what is
-// filled lets anything through.)
 inline QVector<QPolygonF> areaOf(Drawing const& d)
 {
     QVector<QPolygonF> area;

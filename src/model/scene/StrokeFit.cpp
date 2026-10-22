@@ -22,8 +22,6 @@ void Stroke::fit(double tolerance, double cornerDegrees)
     }
     tolerance = std::max(tolerance, 1e-4);
 
-    // The corners: found on the line simplified to the tolerance (Douglas and Peucker), where
-    // it turns by more than the corner angle.
     QVector<bool> keep(n, false);
     keep[0] = keep[n - 1] = true;
     QVector<QPair<int, int>> stack{{0, n - 1}};
@@ -49,8 +47,6 @@ void Stroke::fit(double tolerance, double cornerDegrees)
         if (keep[i])
             kept.push_back(i);
     double const cornerCosine = std::cos(std::clamp(cornerDegrees, 0.0, 180.0) * 3.14159265358979323846 / 180.0);
-    // The places the line must pass through with a point: its ends, its corners, and where
-    // the pressure of the pen changed course (so that the thickness is kept between points).
     QVector<int> anchors{0};
     QVector<bool> isCorner{false};
     for (int k = 1; k + 1 < kept.size(); ++k) {
@@ -100,14 +96,10 @@ void Stroke::fit(double tolerance, double cornerDegrees)
         }
     }
 
-    // Each run between two such places, fitted; the directions at a place that is not a
-    // corner are shared by the runs on either side of it.
     double const reach = std::max(tolerance * 3.0, 1e-3);
     QVector<Piece> pieces;
     for (int k = 0; k + 1 < anchors.size(); ++k) {
         int const first = anchors[k], last = anchors[k + 1];
-        // Where a run starts and ends it heads for the next turn of the simplified line: at
-        // this tolerance that is the shape of the line, and the wobble of the pen is not.
         int towards = last, back = first;
         for (int i : std::as_const(kept)) {
             if (i > first && i < towards)

@@ -20,14 +20,10 @@ class ECLIPSE_UI_API ViewTitleBar : public QWidget {
     Q_OBJECT
 
 public:
-    // For a view that can be moved about.  `all` is every such view of the window, in the
-    // order their tabs are to be shown.
     ViewTitleBar(QMainWindow* window, QDockWidget* dock, QList<QDockWidget*> const* all);
     // For the view in the middle of the window, which stays where it is.
     explicit ViewTitleBar(QString const& title, QWidget* parent = nullptr);
 
-    // For the view in the middle: the kinds of view it can be (Camera, Drawing), as tabs,
-    // and which of them it is now.  A tab pressed says so with titleChosen.
     void setTitles(QStringList const& titles, int current);
     int currentTitle() const { return m_current; }
 
@@ -36,8 +32,6 @@ public:
     // The names on the tabs, left to right.
     QStringList tabs() const;
 
-    // The menu of the view itself (the Timeline's, the Xsheet's ...): what the menu button at the
-    // left shows, before Float and Close.  `make` builds it afresh each time; the bar owns what it gets.
     void setViewMenu(std::function<QMenu*()> make) { m_makeMenu = std::move(make); }
     // What the menu button offers, top to bottom (separators left out).
     QStringList viewMenuEntries();
@@ -54,8 +48,6 @@ signals:
     // The view in the middle is asked out into a window of its own (or back), or to be closed.
     void floatRequested(bool floating);
     void closeRequested();
-    // The view in the middle asked to a side of the window among the panels (Qt::DockWidgetArea; with `tabbed`, as a tab of
-    // the panels there), or (Qt::NoDockWidgetArea) back into the middle.
     void dockRequested(int area, bool tabbed);
 
 public:

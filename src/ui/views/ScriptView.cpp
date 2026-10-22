@@ -539,8 +539,6 @@ struct Piece {
     char const* kind;
 };
 
-// The pieces of a line that are coloured; `comment` says whether the line starts inside a /* comment, and is left
-// saying whether it ends inside one.
 QVector<Piece> pieces(QString const& line, bool& comment)
 {
     static QStringList const keywords = {

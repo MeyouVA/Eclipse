@@ -395,8 +395,6 @@ void LayerPanel::refresh()
     if (!valid)
         return;
     Layer const& layer = scene.layers[m_layer];
-    // As the scene has it: a value that follows another layer's (an attribute control) shows what it follows, and cannot
-    // be typed in.
     Pose const pose = scene.poseOf(m_layer, m_frame);
     m_refreshing = true;
     {
@@ -504,8 +502,6 @@ void LayerPanel::applyPose()
         return;
     // A scale of nothing could not be dragged back with the transform tool.
     auto keep = [](double v) { return std::abs(v) < 0.001 ? (v < 0 ? -0.001 : 0.001) : v; };
-    // Only the numbers that were changed are taken from the boxes: they round what they
-    // show, and the others must not pick that rounding up.
     Pose const now = scene.layers[m_layer].poseAt(m_frame);
     // (Compared with what the boxes were showing - the pose as the scene has it, values that follow other layers' too.)
     Pose const seen = scene.poseOf(m_layer, m_frame);

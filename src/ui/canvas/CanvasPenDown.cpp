@@ -8,9 +8,6 @@
 
 void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers)
 {
-    // A frame in between the two drawings of a morphing has no drawing of its own to work on: a tool that changes artwork
-    // makes the morphing's frames real drawings first, then works on this one - both one step to undo, closed when the
-    // pen comes up (or at once when the press starts no drag).
     static QVector<Tool> const looking = {Hand, Zoom, RotateView, Transform, IK, Rigging, Dropper, Morphing, SplineOffset, Turn3D, Reposition};
     Scene const& scene = m_document->scene();
     if (!panning && !m_morphMacro && !looking.contains(m_tool) && m_layer >= 0 && m_layer < scene.layers.size()
@@ -99,8 +96,6 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             return;
         }
     }
-    // A layer that shows a symbol is moved about like any other, but there is nothing on it to draw on: its
-    // picture is the symbol's.
     if (scene.layers[m_layer].showsSymbol() && m_tool != Transform && m_tool != IK && m_tool != Rigging) {
         emit message(tr("This layer shows a symbol: its artwork is changed in the symbol itself (Edit > Edit Symbol), or after Expand Symbol."));
         return;
@@ -318,8 +313,6 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
     } else if (m_tool == Eraser) {
         m_drag = DragErase;
         if (m_eraserCuts || bitmapNow()) {
-            // What it passes over is cut out as it goes, in a drawing of its own; the scene
-            // gets the result, as one step, when it lifts.
             m_stroke = Stroke();
             m_stroke.width = float(m_brushWidth);
             m_stroke.points.push_back({p, pressure});      // (narrower where the pen presses less, with a Minimum Size)
@@ -355,15 +348,11 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         } else if (m_dragHandle != NoHandle) {
             m_drag = DragScale;
         } else {
-            // Press inside the selection drags it.  Otherwise press on an item selects it
-            // (and drags it); on empty space, start a marquee.  Shift adds or removes.
             if (m_tool == Reposition) {
                 m_drag = hasSelection() ? DragMove : DragNone;      // pressed anywhere, it all moves
             } else if (hasSelection() && !shift && m_dragBounds.contains(p)) {
                 m_drag = DragMove;
             } else if (int const piece = m_tool == Select && bitmapNow() ? liftedPieceAt(p) : -1; piece >= 0) {
-                // On a bitmap layer: a piece of its pixels cut loose before is picked up again (the rest of the pixels
-                // are not taken whole: a drag there picks pixels out instead).
                 setSelection({}, {}, {piece});
                 m_dragBounds = selectionBounds();
                 m_drag = DragMove;

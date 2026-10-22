@@ -137,8 +137,6 @@ void Swatch::setTextureText(QString const& text)
 QBrush Swatch::brush(QPointF from, QPointF to) const
 {
     if (isTexture()) {
-        // The picture lies with the middle of its left side at `from` and of its right side at `to` - as big
-        // and as turned as that makes it - and is repeated all round.
         QBrush picture(texture);
         double const length = QLineF(from, to).length();
         double const scale = length > 1e-6 ? length / texture.width() : 1.0;

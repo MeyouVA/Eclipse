@@ -29,8 +29,6 @@ static QIcon swatchIcon(Swatch const& swatch)
     for (int y = 0; y < 14; y += 7)
         for (int x = 0; x < 34; x += 7)
             painter.fillRect(x, y, 7, 7, ((x + y) / 7) % 2 ? QColor(200, 200, 200) : QColor(255, 255, 255));
-    // A gradient shows as one: along the patch, or out from its middle.
-    // (And a texture: its picture, as wide as the patch.)
     painter.fillRect(pixmap.rect(), swatch.kind == Swatch::Radial ? swatch.brush(QPointF(17, 7), QPointF(34, 7)) : swatch.brush(QPointF(0, 7), QPointF(34, 7)));
     painter.setPen(QColor(240, 240, 240));
     painter.drawRect(0, 0, 33, 13);

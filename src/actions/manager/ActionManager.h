@@ -40,15 +40,11 @@ public:
 
     explicit ActionManager(QObject* parent = nullptr);
 
-    // Reads the three files from `directory`.  False, with a message, when one is missing
-    // or malformed.
     bool load(QString const& directory, QString* error);
     // Where the files are looked for: the `resources` folder next to the program.
     static QString defaultDirectory();
 
     void registerResponder(QString const& name, QObject* responder);
-    // The view in use (the outlined one).  Commands for "focus" go to the responder inside
-    // it first, wherever the keyboard focus happens to be.
     void setActiveView(QWidget* view) { m_activeView = view; }
 
     // ---- building ------------------------------------------------------------------------
@@ -74,8 +70,6 @@ public:
     void setToolbarEntries(QString const& toolbarId, QStringList const& entries);
     // Opens the dialog that edits the list.
     void customizeToolbar(QString const& toolbarId, QWidget* parent);
-    // Makes the shortcut of every command work in `window`, whether or not the command is
-    // in a menu that is showing.
     void installShortcuts(QWidget* window);
 
     // ---- commands ------------------------------------------------------------------------

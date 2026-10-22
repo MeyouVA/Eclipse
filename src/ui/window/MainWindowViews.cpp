@@ -119,9 +119,6 @@ QDockWidget* MainWindow::addView(QString const& title, QString const& name, QWid
 {
     QDockWidget* const d = new QDockWidget(title, this);
     d->setObjectName(name);
-    // However small the panel is made (to give another one room), it can be: below the smallest its view can be, the
-    // view scrolls in it.  (Otherwise the biggest smallest size among the panels of a column would keep the others from
-    // growing - the Timeline could not be dragged taller.)
     QScrollArea* const room = new QScrollArea(d);
     room->setObjectName(QStringLiteral("ViewRoom"));
     room->setFrameShape(QFrame::NoFrame);
@@ -270,8 +267,6 @@ void MainWindow::createCameraView()
         statusBar()->showMessage(on ? tr("Drawing view: the drawing alone, flat. Turn on the light table to see the other layers.") : tr("Camera view"), 4000);
     });
     layout->addWidget(bar);
-    // The view, with a narrow strip down its right edge: both sheets of the drawing shown
-    // or only the one worked on, and which of the two that is.
     QWidget* const viewAndStrip = new QWidget(this);
     {
         QWidget* const strip = new QWidget(viewAndStrip);
@@ -319,8 +314,6 @@ void MainWindow::createCameraView()
         });
     }
     connect(m_canvas, &Canvas::selectBothArtsChanged, this, [this](bool on) { m_actions->setChecked(QStringLiteral("ApplyToLineAndColourArt"), on); });
-    // Along the bottom of the view: how close it is, the tool in use (or a word to
-    // the user), and where in the scene one is.  The window has no status bar of its own.
     QWidget* const status = new QWidget(panel);
     status->setObjectName(QStringLiteral("CameraStatusBar"));
     status->setAttribute(Qt::WA_StyledBackground, true);
@@ -408,8 +401,6 @@ void MainWindow::createCameraView()
     row->addWidget(m_colourLabel);
     row->addSpacing(4);
     row->addWidget(m_colourPatch);
-    // Where the pointer is, in fields: twelve from the middle of the picture to its top, and
-    // four thirds as wide as they are high (the 4:3 field chart of the animation stand).
     connect(m_canvas, &Canvas::pointerMoved, this, [this](QPointF scenePos) {
         Scene const& scene = m_document->scene();
         double const field = scene.height / 24.0;
@@ -438,8 +429,6 @@ void MainWindow::createCameraView()
 void MainWindow::createTimelineView()
 {
     m_timeline = new Timeline(m_document, this);
-    // Over the timeline: playing (with the frame, where playing starts and stops, and
-    // the speed), then the commands of the view itself.
     QToolBar* const playback = m_actions->createToolbar(QStringLiteral("PlaybackToolbar"), this);
     m_jog = new QSlider(Qt::Horizontal, this);
     m_jog->setObjectName(QStringLiteral("Jog"));

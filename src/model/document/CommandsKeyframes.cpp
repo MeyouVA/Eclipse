@@ -287,8 +287,6 @@ void Document::setFov(int layer, double degrees, int frame)
             l.fov = degrees;
             return;
         }
-        // The keyframes that did not say are given the angle they stood for, so that the
-        // angle glides from the one keyframe to the next.
         Pose pose = l.poseAt(frame);
         for (Keyframe& k : l.keys)
             if (k.pose.fov <= 0.0)
@@ -304,8 +302,6 @@ void Document::setPivot(int layer, QPointF pivot)
         return;
     apply(tr("Move Pivot"), [&](Scene& s) {
         Layer& l = s.layers[layer];
-        // Each keyframe keeps the artwork where it was: its offset absorbs the difference
-        // between turning about the old pivot and about the new one.
         for (Keyframe& k : l.keys) {
             QTransform const before = Layer::matrix(k.pose, l.pivot);
             QTransform const after = Layer::matrix(k.pose, pivot);

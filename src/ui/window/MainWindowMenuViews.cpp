@@ -34,8 +34,6 @@
 #include <QStatusBar>
 #include <QToolBar>
 
-// The views opened from the Windows menu that are classes of their own: each is made, wired to the
-// Timeline and the commands, and put away until it is asked for.
 void MainWindow::createWindowsMenuViews()
 {
     // Node Library: the kinds of layer and effect there are, to add from.
@@ -77,8 +75,6 @@ void MainWindow::createWindowsMenuViews()
         connect(m_timeline, &Timeline::currentCellChanged, view, &MetadataView::setCurrentCell);
         addView(tr("Metadata"), QStringLiteral("MetadataDock"), view, Qt::RightDockWidgetArea)->hide();
     }
-    // (Scripts > the scripts kept, each run on a click: see onShowScripts.)
-    // Pose Controllers: poses of a set of layers kept under names, and a slider between them.
     {
         ControllerView* const view = new ControllerView(m_document, m_timeline, this);
         view->setCameraHost(m_canvas);

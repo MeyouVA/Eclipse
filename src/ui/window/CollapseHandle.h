@@ -14,8 +14,6 @@ class ECLIPSE_UI_API CollapseHandle : public QWidget {
 public:
     explicit CollapseHandle(QWidget* parent = nullptr);
 
-    // Stacked: the two things lie one above the other (the arrows point up and down, side by side);
-    // otherwise they lie side by side (the arrows point left and right, one above the other).
     void setStacked(bool stacked);
     bool stacked() const { return m_stacked; }
     // The size it wants, the way it lies now.

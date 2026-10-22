@@ -141,8 +141,6 @@ static QJsonObject fillToJson(Fill const& f)
             o["textShape"] = QJsonArray{f.textShape.m11(), f.textShape.m12(), f.textShape.m21(), f.textShape.m22()};
     }
     if (!f.contours.isEmpty()) {
-        // (The outlines are written too, so that the file still shows in a reader that does
-        // not know contours; this one makes them again from the contours.)
         QJsonArray contours;
         for (Stroke const& contour : f.contours)
             contours.append(strokeToJson(contour));

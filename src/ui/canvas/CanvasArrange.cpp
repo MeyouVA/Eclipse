@@ -123,8 +123,6 @@ void Canvas::arrangeSelection(bool front)
     Drawing const* const d = currentDrawing();
     if (!selecting() || !d || !hasSelection())
         return;
-    // The selected ones keep their order among themselves and go in front of (after) or
-    // behind (before) all the others.  Returns where they are afterwards.
     auto arrange = [front](auto& items, QVector<int> const& selected) {
         std::remove_reference_t<decltype(items)> chosen, rest;
         for (int i = 0; i < items.size(); ++i)
@@ -175,8 +173,6 @@ void Canvas::stepSelection(int direction)
     Drawing const* const d = currentDrawing();
     if (!selecting() || !d || !hasSelection())
         return;
-    // Each selected thing changes places with the unselected one next to it on that side (taking its place in
-    // the order of the sheet as well).
     auto swapAt = [](auto& items, int a, int b) {
         items.swapItemsAt(a, b);
         std::swap(items[a].order, items[b].order);
@@ -265,8 +261,6 @@ void Canvas::onActionConvertPencilToBrush()
         emit message(tr("Select the lines to convert with the Select tool."));
         return;
     }
-    // Each line of one thickness becomes the painted shape it covers: its outline, with
-    // its corners and ends as they were.
     Drawing edited = *d;
     QVector<int> gone;
     for (int i : std::as_const(m_selStrokes)) {
@@ -295,8 +289,6 @@ void Canvas::onActionConvertPencilToBrush()
         stroker.setMiterLimit(Stroke::kMitreLimit / 2.0);
         stroker.setCapStyle(stroke.capStart == Stroke::FlatCap && stroke.capEnd == Stroke::FlatCap ? Qt::FlatCap : Qt::RoundCap);
         Fill shape;
-        // (Its corners and ends as the line had them; the outline then gets points and handles,
-        // so that the Contour Editor can work on it as on a stroke of the brush.)
         for (QPolygonF const& outline : stroker.createStroke(centre).simplified().toSubpathPolygons())
             if (outline.size() >= 3)
                 shape.contours.push_back(Fill::contourOf(outline, 0.1));
@@ -330,8 +322,6 @@ void Canvas::onActionBreakApartText()
         emit message(tr("Select words written with the Text tool to break them apart."));
         return;
     }
-    // Words become letters, each still text that can be typed over; a letter alone becomes
-    // a painted shape, text no longer.
     Drawing edited = *d;
     edited.fills.clear();
     QVector<int> picked;

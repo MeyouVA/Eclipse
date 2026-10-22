@@ -92,8 +92,6 @@ std::shared_ptr<Model3D::Mesh const> Model3D::parseObj(QByteArray const& text, Q
                 if (mesh->materials[m].name == name)
                     material = m;
         } else if (w[0] == "f" && w.size() >= 4) {
-            // A face: its corners (vertex/texture/normal, counted from 1, or back from the last when below 0), cut into
-            // triangles fanning from the first.
             QVector<int> vs, ts;
             for (int k = 1; k < w.size(); ++k) {
                 QList<QByteArray> const parts = w[k].split('/');
@@ -169,8 +167,6 @@ QImage Model3D::render(Mesh const& mesh, double rotX, double rotY, int pixels, Q
     double const scale = pixels / span;
     double const ax = qDegreesToRadians(rotX), ay = qDegreesToRadians(rotY);
     double const cx = std::cos(ax), sx = std::sin(ax), cy = std::cos(ay), sy = std::sin(ay);
-    // Each corner: from the middle of the model, up the picture (the model's up is up), turned about the line up it
-    // (its right side going away) and then about the line across it (its top leaning away); towards the eye is +z.
     QVector<QVector3D> at(mesh.vertices.size());
     for (int i = 0; i < mesh.vertices.size(); ++i) {
         QVector3D const p = mesh.vertices[i] - mesh.centre;

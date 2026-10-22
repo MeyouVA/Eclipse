@@ -78,8 +78,6 @@ void ToolProperties::addSelectionRows()
         for (int i = 0; i < 4; ++i) {
             QDoubleSpinBox* const box = new QDoubleSpinBox(selection);
             box->setObjectName(QLatin1String(names[i]));
-            // Each is a change to make, not a place or a size: the first two stand at nought and
-            // the other two at a hundred per cent, and go back there once what was typed is done.
             box->setDecimals(i < 2 ? 2 : 1);
             box->setRange(i < 2 ? -100000.0 : 1.0, i < 2 ? 100000.0 : 10000.0);
             box->setValue(i < 2 ? 0.0 : 100.0);
@@ -132,8 +130,6 @@ void ToolProperties::addSelectionRows()
             boxes[i]->setValue(i < 2 ? 0.0 : 100.0);
         }
     };
-    // A number typed is done to what is selected: moved by so much, or scaled about its middle
-    // by so many per cent (both ways at once with the lock on).  Then the box is back at no change.
     auto applySelection = [this, selX, selY, selW, selH, selLock, showSelection](int changed) {
         QRectF const now = m_canvas->selectionRect();
         if (now.isNull())

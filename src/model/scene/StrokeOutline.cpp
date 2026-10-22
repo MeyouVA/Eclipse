@@ -11,12 +11,6 @@
 
 #include "model/scene/StrokePrivate.h"
 
-// The area a line covers.  The line is first thinned to the places that matter (where it
-// bends or changes thickness).  Either side of it an edge is then stepped out by half the
-// thickness - one place on each edge for each place on the line, so that neighbouring
-// stretches share an edge exactly - and the line is cut into short ribbons, each gone round
-// the same way; a disc rounds each tip and each sharp turn.  All of it is then made one
-// shape, which also sorts out where the line crosses itself.
 QVector<QPolygonF> Stroke::outlinePolygons() const
 {
     QVector<QPolygonF> result;
@@ -33,8 +27,6 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
         return result;
     leanAside(all, allHalf, allLean, closed);
 
-    // Thinned: a place is dropped when the line and its thickness pass within a twentieth of
-    // a unit of it anyway.
     QVector<QPointF> pos;
     QVector<double> half;
     {
@@ -103,9 +95,6 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
         };
         auto normalOf = [](QPointF d) { return QPointF(-d.y(), d.x()); };
         bool const loop = closed && n > 2 && QLineF(pos[0], pos[n - 1]).length() < 1e-6;
-        // For each place: where the two edges are as the line arrives there, and as it leaves.
-        // Along a curve they are the same place (where the edges of the two stretches meet);
-        // at a sharp turn they differ, and a disc covers the gap.
         QVector<QPointF> leftIn(n), leftOut(n), rightIn(n), rightOut(n);
         QVector<bool> sharp(n, false);
         for (int i = 0; i < n; ++i) {
@@ -128,9 +117,6 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
                 rightOut[i] = pos[i] - n1 * half[i];
             }
         }
-        // Ribbons: a run of stretches as one piece, ended at a sharp turn, after a dozen
-        // stretches, or once it has turned a third of the way round (a longer one could
-        // fold over itself).
         int from = 0;
         double turned = 0.0;
         for (int i = 1; i < n; ++i) {
@@ -151,9 +137,6 @@ QVector<QPolygonF> Stroke::outlinePolygons() const
             from = i;
             turned = 0.0;
         }
-        // The sharp turns, finished as the line asks: rounded by a disc; or, on a line of one thickness, carried on to a
-        // point (mitre - its very tip trimmed where it would reach too far out, so that it still comes to a point) or cut
-        // flat across (bevel).
         bool const shaped = join != RoundJoin && uniform();
         for (int i = 0; i < n; ++i) {
             if (!sharp[i])

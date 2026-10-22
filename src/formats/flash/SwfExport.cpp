@@ -226,8 +226,6 @@ struct Collector {
     {
         if (!d.pictures.isEmpty() && report)
             report->skippedPictures = true;
-        // Sheet by sheet from the underlay up; in each, by the order things were put on top of one another (areas under
-        // lines of the same number).
         for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
             struct Item {
                 int order;

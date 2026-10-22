@@ -68,8 +68,6 @@ void Canvas::paintGrid(QPainter& painter, QRectF const& frameRect) const
         }
         return;
     }
-    // A field grid: so many fields from the middle to each edge, the middle lines and the
-    // diagonals stronger.
     int const across = m_gridKind == 0 ? 2 * m_fieldsAcross : 32, down = m_gridKind == 1 ? 32 : m_gridKind == 0 ? 2 * m_fieldsDown : 24;
     for (int i = 1; i < across; ++i) {
         painter.setPen(i == across / 2 ? strong : thin);

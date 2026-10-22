@@ -25,8 +25,6 @@ void blur(QImage& image, double radius);
 // Moves every colour towards `color` by `amount` (0..1), leaving the shape as it is.
 void tint(QImage& image, QColor const& color, double amount);
 
-// A soft copy of the shape of the picture in one colour, `radius` pixels soft, moved by
-// `offset` pixels, put under the picture (a shadow) - or with no offset, around it (a glow).
 void halo(QImage& image, QColor const& color, double radius, QPointF offset);
 
 // Makes the picture `amount` (0..1) see-through.
@@ -53,23 +51,15 @@ void ripple(QImage& image, double height, double length, int frame);
 void bloom(QImage& image, double radius);
 // Blocks `size` pixels across, each the mean colour of what lies in it.
 void pixelate(QImage& image, double size);
-// Each point taken from up to `strength` pixels away, by a smooth noise whose swirls are about `size` pixels across; it moves
-// on with `frame`.
 void turbulence(QImage& image, double strength, double size, int frame);
-// The picture made a soft matte of `colour`: solid where it is painted and as far as `inner` pixels out from it, fading to
-// nothing at `outer` pixels.
 void matteGenerator(QImage& image, double inner, double outer, QColor const& colour);
 // The colours made grey (as light as they were), `amount` of the way (0..1).
 void blackWhite(QImage& image, double amount);
 // What is painted grown by `radius` pixels all round (shrunk, with `shrink`): each point the strongest (weakest) of those round it.
 void matteResize(QImage& image, double radius, bool shrink);
-// What is painted coloured from `from` to `to` across it, along `degrees` (0: left to right) or, `radial`, from its middle
-// out - `amount` of the way (0..1); how see-through it is stays as it was.
 void gradient(QImage& image, QColor const& from, QColor const& to, double degrees, bool radial, double amount);
 
 QString name(Effect const& effect, Scene const& scene);
-// One channel of the picture (0 red, 1 green, 2 blue, 3 opacity) as grey: the colour channels where the picture is, the
-// opacity over the whole of it.
 void channelSelect(QImage& image, int channel);
 // Only what lies inside a rectangle of the image (in its pixels) is kept.
 void crop(QImage& image, QRectF const& keep);
@@ -81,11 +71,7 @@ void matteComposite(QImage& image);
 void blendOnto(QImage& under, QImage const& top, int mode);
 // Blurred `radius` where the matte is white, less where it is darker, not at all where there is none.
 void variableBlur(QImage& image, QImage const& matte, double radius);
-// A 12-field chart of a frame (where it lies in the image, in its pixels) drawn over the image: its edge, the field lines
-// either side of the middle, the cross and the diagonals.
 void fieldChart(QImage& image, QRectF const& frame, QColor const& colour, double width);
-// What each of the 256 levels turns into on a curve through `points` (in, out; 0..1, in order of `in`): smooth, and never
-// turning back between two points (flat before the first and after the last).  No points: each level as it is.
 QVector<int> curveLevels(QVector<QPointF> const& points);
 // Each colour level changed as the curves say (the three together, then red, green and blue), `amount` of the way (0..1).
 void colourCurves(QImage& image, QVector<QPointF> const (&curves)[4], double amount);
@@ -93,24 +79,12 @@ void colourCurves(QImage& image, QVector<QPointF> const (&curves)[4], double amo
 void transformImage(QImage& image, QTransform const& transform);
 // The image made at `scale` (0..1) of its resolution, then brought back to its size.
 void scaleOutput(QImage& image, double scale);
-// `top` and `under` joined in `under`: the two together, and the gaps between them up to `radius` pixels across filled in
-// the colours of what is round them.
 void glue(QImage& under, QImage const& top, double radius);
-// A Script effect: `script` (JavaScript) run on the picture.  It sees `frame` (from 1), `amount`, and `image`: width and
-// height (pixels), pixel(x, y) -> "#aarrggbb", setPixel(x, y, "#rrggbb" or "#aarrggbb"), and blur(radius), tint(colour,
-// amount), transparency(amount), negate(amount), blackWhite(amount), hueSaturation(hue, saturation, lightness),
-// brightnessContrast(brightness, contrast), pixelate(size), median(radius), bloom(radius), grain(amount),
-// directionalBlur(length, degrees), colourScale(colour, amount) - distances in scene units (`unit` pixels each).
-// What went wrong, or empty.
 QString runScript(QImage& image, QString const& script, int frame, double amount, double unit);
-// An External effect: the command line run on the picture ({in}, {out}, {frame} filled in); waits up to `seconds` for it.
-// What went wrong, or empty.
 QString runExternal(QImage& image, QString const& command, int frame, int seconds = 60);
 
 }
 
-// A curve to drag the points of: what each level (0..1, across) turns into (up).  A click away from the points adds one; a
-// double click on one (not either end) takes it away.
 class ECLIPSE_UI_API ColourCurveEdit : public QWidget {
     Q_OBJECT
 
@@ -142,8 +116,6 @@ private:
     int m_dragged = -1;
 };
 
-// The effects of the current layer, in the order they are applied: tick to switch one on
-// or off, pick one to change it.
 class ECLIPSE_UI_API EffectsPanel : public QWidget {
     Q_OBJECT
 

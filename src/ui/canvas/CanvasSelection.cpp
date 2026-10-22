@@ -126,8 +126,6 @@ Canvas::Handle Canvas::handleAt(QPointF widgetPos) const
     return NoHandle;
 }
 
-// Snap and Align: how far the selection is to be moved, when `by` would bring an edge or the middle
-// of it within a few pixels of an edge or the middle of something else in the drawing.
 QPointF Canvas::aligned(QPointF by)
 {
     m_alignLines.clear();
@@ -176,8 +174,6 @@ QPointF Canvas::aligned(QPointF by)
     return by + QPointF(moveX, moveY);
 }
 
-// Snap and Align while scaling: the corner in hand goes onto an edge or the middle of something
-// else in the drawing when it comes within a few pixels of it.
 QPointF Canvas::alignedCorner(QPointF corner)
 {
     m_alignLines.clear();

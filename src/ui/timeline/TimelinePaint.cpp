@@ -155,8 +155,6 @@ void Timeline::paintEvent(QPaintEvent*)
         // Keyframes: a diamond on the frame, and a line from a motion keyframe to the next.
         QColor const keyColor = InterfaceColours::get("timelineKeyframe");
         int const ky = layer.holdsDrawings() && !param ? y + kRowHeight - 6 : y + kRowHeight / 2;
-        // On a parameter's row, the keyframes that set that parameter only.
-        // (On an effect's row, the keyframes that carry its amount: only an animated effect has them.)
         bool const effectRow = param && m_params[row] >= ParameterCount && m_params[row] < kBoneRows;
         int const effect = effectRow ? m_params[row] - ParameterCount : -1;
         bool const keyedEffect = effectRow && effect < layer.effects.size() && layer.effects[effect].animated;
@@ -463,8 +461,6 @@ void Timeline::paintEvent(QPaintEvent*)
             onionMark(switchRect(layerIndex, Onion), layer.onion);
         swatch(switchRect(layerIndex, Colour), layer.trackColor.isValid() ? layer.trackColor : QColor(120, 120, 120));
 
-        // Attached layers are indented under what they follow.  A layer with others under
-        // it has a triangle that folds them away.
         int const indent = std::min(scene.depth(layerIndex), 6) * 10;
         int textX = kSwitches + indent;
         if (scene.hasChildren(layerIndex)) {

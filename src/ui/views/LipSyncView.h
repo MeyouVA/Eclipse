@@ -45,8 +45,6 @@ class ECLIPSE_UI_API LipSyncView : public QWidget {
 public:
     explicit LipSyncView(Document* document, QWidget* parent = nullptr);
 
-    // The sound layer lip-sync is about: the current layer when it is one, else the first
-    // sound layer of the scene; -1 when there is none.
     static int soundLayerFor(Scene const& scene, int current);
     // The shape of a mouth, drawn: for the chart, and wherever a shape is to be shown.
     static void paintMouth(QPainter& painter, QRectF const& box, QChar shape);

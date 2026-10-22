@@ -74,8 +74,6 @@ QPointF pointAlong(Run const& run, double distance)
     return run.at.isEmpty() ? QPointF() : run.at.first();
 }
 
-// The line cut at those distances along it: the pieces, each with the stretch of the line it was ([from, to]; a closed
-// line's last piece runs on round past its start).  Its own ends stay as they were; the ends made by the cuts get `tip`.
 QVector<QPair<Stroke, QPair<double, double>>> cutAt(Stroke line, QVector<double> cuts, int tip)
 {
     Run const run = runOf(line);
@@ -113,8 +111,6 @@ QVector<QPair<Stroke, QPair<double, double>>> cutAt(Stroke line, QVector<double>
         }
         at.push_back(best);
     }
-    // (The cuts are in order along the line, and so are the points made for them.)
-    // A piece of the line, from one of its points to another (round past its start on a closed line), with its thickness.
     auto piece = [&](int from, int to, bool startCut, bool endCut) {
         Stroke s = line.section(from, to);
         if (startCut)
@@ -390,8 +386,6 @@ bool Canvas::pushLine(Drawing& drawing, Stroke const& highlight, int mode, doubl
         }
         return changed;
     }
-    // Auto Adjust Thickness: the line made as thick as reaches the stroke, along the stretch it covers - its own thickness
-    // points (apart from its points), close enough together to follow the stroke.
     if (line.width <= 0.0f)
         return false;
     float const halfStroke = highlight.width / 2.0f;

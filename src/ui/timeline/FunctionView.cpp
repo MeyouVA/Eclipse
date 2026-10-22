@@ -80,8 +80,6 @@ int FunctionGraph::firstShown() const
     return -1;
 }
 
-// A handle stands a tenth of the way to the next keyframe (or the one before) when there is no ease, and half
-// way when the ease is all there can be; level with its keyframe, unless it was pulled up or down.
 QPointF FunctionGraph::easeHandleOf(Layer const& layer, int key, bool out) const
 {
     int const which = firstShown();
@@ -504,8 +502,6 @@ void FunctionGraph::mouseMoveEvent(QMouseEvent* event)
                 double const from = xOfFrame(keys[m_easeKey].frame), to = xOfFrame(keys[other].frame);
                 if (std::abs(to - from) > 1e-9)
                     m_easeValue = std::clamp(((event->position().x() - from) / (to - from) - 0.1) / 0.4, 0.0, 1.0);
-                // Up and down as well: how far off the level of its keyframe, against the way to the other one
-                // (on the first curve shown).  Near the level it is level; Shift keeps it there.
                 int const which = firstShown();
                 if (which >= 0) {
                     double const scale = which == Timeline::Opacity ? 100.0 : 1.0;

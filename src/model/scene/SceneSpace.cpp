@@ -258,8 +258,6 @@ QVector<int> Scene::drawOrder(int frame) const
         depth[i] = depthOf(i, frame);
         flat = flat && depth[i] == depth[0];
     }
-    // In the order of the layers' tree, as Harmony draws them (and the Timeline lists them): a layer, then just behind it
-    // what hangs from it (the front one first), and so on down - from the back here.
     int const n = int(layers.size());
     QVector<QVector<int>> children(n);
     QVector<int> tops;
@@ -309,8 +307,6 @@ QTransform Scene::worldTransform(int layer, int frame, PoseOverride const* over)
     Pose const cameraPose = camera >= 0 ? poseFor(*this, camera, frame, over) : Pose();
     bool const cameraTurned = cameraPose.rotX != 0.0 || cameraPose.rotY != 0.0;
     if (turned(layer, frame, over) || cameraTurned) {
-        // Turned in space (the layer, or the camera): four points of it about its pivot, each where the camera sees it,
-        // give the whole of it in perspective.
         QTransform const lens = cameraTransform(frame);
         double const cameraDepth = camera >= 0 ? depthOf(camera, frame) : 0.0, distance = focalDistance(frame);
         QPointF const middle(width / 2.0, height / 2.0), pivot = layers[layer].pivot;

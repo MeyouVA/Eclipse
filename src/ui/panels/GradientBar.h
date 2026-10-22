@@ -7,8 +7,6 @@
 
 #include "model/scene/Scene.h"
 
-// The colours of a gradient laid out along a bar, each with a marker under it: press a
-// marker to choose it, drag it along, double-click the bar to put another in.
 class ECLIPSE_UI_API GradientBar : public QWidget {
     Q_OBJECT
 

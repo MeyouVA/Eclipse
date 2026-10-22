@@ -324,8 +324,6 @@ void MainWindow::applyBuiltinWorkspace(QString const& name)
         bar->show();
 
     if (name == QLatin1String("Hand-Drawn")) {
-        // Paper animation: the exposure sheet beside the drawing, colours and tool
-        // settings on the other side.
         place(tool, Qt::LeftDockWidgetArea);
         place(colour, Qt::LeftDockWidgetArea);
         place(xsheet, Qt::RightDockWidgetArea);
@@ -335,8 +333,6 @@ void MainWindow::applyBuiltinWorkspace(QString const& name)
         resizeDocks({xsheet, tool}, {330, 250}, Qt::Horizontal);
         resizeDocks({timeline}, {150}, Qt::Vertical);
     } else if (name == QLatin1String("Compositing")) {
-        // Putting the picture together: the node graph large down the right, the node library and the layer's properties
-        // (its effects) beside it, the timeline low along the bottom.
         QDockWidget* const nodeView = dockOf("NodeViewDock");
         QDockWidget* const nodeLibrary = dockOf("NodeLibraryDock");
         place(nodeView, Qt::RightDockWidgetArea);
@@ -364,9 +360,6 @@ void MainWindow::applyBuiltinWorkspace(QString const& name)
         resizeDocks({layerProps}, {270}, Qt::Horizontal);
         resizeDocks({timeline}, {300}, Qt::Vertical);
     } else {
-        // The usual arrangement of animation software: Tool Properties with the Library behind it over
-        // the colours (with the Node View behind them) down the right; the Timeline along the
-        // bottom with the Node Library behind it.  The other views are opened from the Windows menu.
         place(tool, Qt::RightDockWidgetArea);
         place(colour, Qt::RightDockWidgetArea);
         place(timeline, Qt::BottomDockWidgetArea);
@@ -375,9 +368,6 @@ void MainWindow::applyBuiltinWorkspace(QString const& name)
         tool->raise();
         colour->raise();
         timeline->raise();
-        // About a quarter of the width for the panels at the right and of the height for
-        // the timeline: 520 and 243 pixels on a 1920 x 1080 screen.
-        // Before the window is shown it has not its size yet: it will fill the screen.
         QSize const size = isVisible() && !isMinimized() ? this->size() : screen()->availableGeometry().size();
         resizeDocks({tool}, {std::max(360, size.width() * 520 / 1920)}, Qt::Horizontal);
         resizeDocks({tool, colour}, {359, 376}, Qt::Vertical);
@@ -451,8 +441,6 @@ void MainWindow::loadWorkspaceExtras(QString const& name)
 
 void MainWindow::saveCurrentWorkspace(bool force)
 {
-    // A workspace is kept as the user left it - or, with that preference off, only when saved.
-    // (Panels hidden by a collapse arrow are brought back first: the arrow would not be there to do it next time.)
     if (!m_persistWorkspaces || (!force && !m_autoSaveWorkspace))
         return;
     expandAllSides();
@@ -510,8 +498,6 @@ void MainWindow::onActionSaveWorkspaceAs()
     QString const name = QInputDialog::getText(this, tr("Save Workspace As"), tr("Name:"), QLineEdit::Normal, QString(), &ok).trimmed();
     if (!ok || name.isEmpty() || name.contains(QLatin1Char('/')))
         return;
-    // The arrangement on screen becomes the new workspace; the old one keeps what it had
-    // when it was last left.
     m_workspace = name;
     settings().setValue(QStringLiteral("workspaces/") + name, saveState(kLayoutVersion));
     saveWorkspaceExtras(name);
@@ -549,8 +535,6 @@ void MainWindow::restoreWorkspace()
 
 void MainWindow::holdBackFloating()
 {
-    // Before the window itself is shown (while the Welcome window asks what to open), the panels and toolbars that float
-    // as windows of their own wait for it, instead of standing about the screen alone.
     if (!isVisible()) {
         for (QDockWidget* const dock : findChildren<QDockWidget*>())
             if (dock->isFloating() && dock->isVisible()) {

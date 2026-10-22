@@ -80,8 +80,6 @@ void Canvas::onActionRespectProtected(bool on)
     m_respectProtected = on;
 }
 
-// `how` is what to do - "unpaint", "repaint" or "remove" - then "Outside" when it is for all that
-// is not selected, then "All" when it is for every drawing of the layer.
 void Canvas::onActionSelectionArt(QString const& how)
 {
     Scene const& scene = m_document->scene();
@@ -116,8 +114,6 @@ void Canvas::onActionSelectionArt(QString const& how)
         for (int i = 0; i < edited.fills.size(); ++i)
             keptPaints.push_back(i);
     } else if (fewer && outside) {
-        // Only paint outside the selection went: the lines are where they were; the paint selected
-        // has moved down by as many as went below it.
         keptLines = lines;
         for (int i : paints) {
             int below = 0;
@@ -472,8 +468,6 @@ void Canvas::stampAt(QPointF p)
 
 // ---- Generate Auto-Matte ---------------------------------------------------------------------------
 
-// A painted shape, in the colour in hand, that covers everything inside the outline of the line art:
-// put at the back of the colour art, to stand behind the drawing or to be cut with.
 void Canvas::onActionAutoMatte()
 {
     Drawing const* const real = realDrawing();
@@ -549,8 +543,6 @@ void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)
     Drawing const* const d = currentDrawing();
     m_thickStroke = m_thickKey = -1;
     if (d && (modifiers & Qt::ControlModifier)) {
-        // With Ctrl: a thickness point where the line was pressed, as thick as the line is there - to pull on later.
-        // The line keeps its shape and its thickness.
         for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
             if (d->strokes[i].width <= 0.0f || d->strokes[i].points.size() < 2 || !d->strokes[i].hit(p, 4.0 / std::max(m_zoom, 1e-6)))
                 continue;
@@ -950,8 +942,6 @@ void Canvas::onActionRemoveContourStrokes()
     update();
 }
 
-// Remove Extra Strokes: the strokes with no thickness that lie wholly inside paint of one colour
-// divide nothing, and go.  Of what is selected, or of the whole drawing when nothing is.
 void Canvas::onActionRemoveExtraStrokes()
 {
     Drawing const* const d = currentDrawing();

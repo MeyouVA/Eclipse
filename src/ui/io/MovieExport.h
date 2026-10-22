@@ -27,9 +27,6 @@ struct Options {
 // What ffmpeg is told about the encoding of a movie of that kind (by its extension), with sound or without.
 QStringList encoderArguments(QString const& suffix, Options const& options, bool sound);
 
-// Writes `path` (the kind of movie follows its extension: .mp4, .mov, .webm, .gif).
-// `progress` is called before each frame with its index and may return false to stop.
-// False, with a message, on failure or when stopped.
 bool write(Scene const& scene, QString const& path, std::function<bool(int frame)> const& progress, QString* error,
            Options const& options = Options());
 

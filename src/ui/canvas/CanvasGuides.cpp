@@ -139,8 +139,6 @@ bool Canvas::guidedShape(QPointF a, QPointF p)
     QVector<QPointF> const here = ways(from), there = ways(to);
     if (here.size() < 2 || there.size() < 2)
         return false;
-    // Two sides leave the first corner along the guide's first two ways; the other two come back from the
-    // far corner along the ways the guide has there (towards the same vanishing points).
     QPointF second, fourth;
     if (QLineF(from, from + here[0]).intersects(QLineF(to, to + there[1]), &second) == QLineF::NoIntersection
         || QLineF(from, from + here[1]).intersects(QLineF(to, to + there[0]), &fourth) == QLineF::NoIntersection)

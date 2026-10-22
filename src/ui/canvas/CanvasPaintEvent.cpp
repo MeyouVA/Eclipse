@@ -172,8 +172,6 @@ void Canvas::paintView()
 {
     Scene const& scene = m_document->scene();
     QPainter painter(this);
-    // The view is one even grey; the camera frame is only an outline on it, and what is
-    // drawn outside the frame shows too.  (The paper colour is for what is exported.)
     painter.fillRect(rect(), m_backdrop);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setTransform(cameraViewTransform());
@@ -212,8 +210,6 @@ void Canvas::paintView()
 
     bool const transforming = m_drag == DragMove || m_drag == DragScale || m_drag == DragRotate || m_drag == DragPoint || m_drag == DragHandle
                               || m_drag == DragSegment || m_drag == DragCeBox;
-    // The eraser cuts as it goes: the drawing is shown as it is so far, before it is in the scene.
-    // (So is the gradient being placed: the area is shown with it where the pointer has it.)
     bool const erasing = (m_drag == DragErase && (m_eraserCuts || bitmapNow()) && m_eraseAny) || m_drag == DragGradient || m_drag == DragThickness || ((m_drag == DragInk || m_drag == DragSmooth || m_drag == DragRepaint || m_drag == DragRetouch) && m_inked) || m_drag == DragEnvelope;
     QTransform const view = viewTransform();
     // The grid, when it is to lie behind the drawings.
@@ -300,8 +296,6 @@ void Canvas::paintView()
         // The light table: while drawing, the layers that are not being drawn on are faint.
         double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? m_lightWash / 100.0 : 1.0;
         if (index != Layer::kNoDrawing && layer.morphing(m_frame)) {
-            // In between the two key drawings of a morphing: the drawing made for this frame.
-            // (It is not one that can be drawn on, so none of the editing aids apply.)
             static QColor const dark(34, 34, 38);
             Drawing const made = shown(l, m_frame, layer.shownAt(m_frame));
             if (!m_playing && m_backlight)

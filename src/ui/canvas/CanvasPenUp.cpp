@@ -86,8 +86,6 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
                 paintAt(painter, 1.0);
                 return;
             }
-            // A soft edge: the stroke laid down again and again, each time thinner and more opaque, so the paint
-            // fades out towards the edge; and all of it at the flow asked for.
             QImage dab(target->size(), QImage::Format_ARGB32_Premultiplied);
             dab.fill(Qt::transparent);
             {
@@ -145,8 +143,6 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
         return;
     }
     if (m_tool == Brush && m_brushShapes) {
-        // A brush stroke is a shape, not a line: the area the stroke covers, with a
-        // contour of its own that the Contour Editor can pull about.
         double const fine = std::max(tolerance * 0.5, 0.05);
         Fill shape = Fill::fromStroke(stroke, fine);
         shape.texture = m_brushTexture;
@@ -164,8 +160,6 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
                     return;
             }
             if (m_autoFlatten) {
-                // Flattened as it is drawn: the shapes of its colour that it overlaps
-                // become part of it, and it is cut out of the others it lies over.
                 QVector<Fill> kept;
                 for (Fill const& under : std::as_const(art.fills)) {
                     if (!under.overlaps(shape)) {
@@ -487,11 +481,6 @@ void Canvas::penUp()
             update();
             return;
         }
-        // The pen samples become a curve through a few of them: about a pixel of the
-        // screen is given up for it.
-        // The smoothing setting is how far, in pixels of the screen, the line may stray
-        // from the samples: from a fifth of a pixel to four.
-        // (With smoothing by pressure: as hard as the pen pressed on the whole.)
         double pressed = 1.0;
         if (!m_rawPressure.isEmpty()) {
             pressed = 0.0;
@@ -502,10 +491,6 @@ void Canvas::penUp()
         double const tolerance = (0.2 + smoothingFor(pressed) * 0.038) / m_zoom;
         if (m_tool == Pencil && m_pencilMinOpacity < 100)
             smoothOpacity(m_stroke, m_opacitySmoothing);
-        // The thickness along the line as drawn, worked out on samples of their own: the pen's, with the speed it moved at
-        // (the Brush), then with more put in a couple of pixels of the screen apart - so that the stencil, the taper and the
-        // fade lie along all of the line, a straight one drawn with Shift (the pen's two ends, no more) as much as any.
-        // The shape of the line is the pen's samples as they were.
         bool const ownThick = (m_tool == Pencil || m_tool == Brush) && m_stroke.width > 0.0f && !bitmapNow();
         Stroke thick = m_stroke;
         if (m_tool == Brush) {
@@ -542,8 +527,6 @@ void Canvas::penUp()
             m_stroke.points.first().pos = snapped(m_stroke.points.first().pos);
             m_stroke.points.last().pos = snapped(m_stroke.points.last().pos);
         }
-        // The thickness of the line kept apart from its points (as Harmony's pencil lines have it): as worked out above, all
-        // along the line, however few points the fitting keeps.
         QVector<StrokePoint> const drawnSamples = thick.points;
         if (ownThick)
             for (StrokePoint& point : m_stroke.points) {
@@ -565,8 +548,6 @@ void Canvas::penUp()
         bool const finishing = ((m_tool == Brush || m_tool == Pencil) && !bitmapNow() && (m_lineOptions.closeGap || m_lineOptions.building)) || colourToo;
         if (finishing)
             m_document->beginMacro(tr("Draw Stroke"));
-        // Auto Fill: a line whose ends meet is painted inside.
-        // (However thin the shape - a lid, a teardrop - as long as it goes round some room of its own.)
         double const reach = m_stroke.width / 2.0 + 8.0 / std::max(m_zoom, 1e-6);
         QRectF const box = m_stroke.bounds();
         double room = 0.0;
@@ -710,8 +691,6 @@ void Canvas::penUp()
                 paintInside([&rect](QPointF q) { return rect.contains(q); }, rect);
         };
         Scene const& scene = m_document->scene();
-        // Apply to All Layers: the other drawing layers that are seen and may be drawn on, each with the way from
-        // this layer's sheet to its own.
         QVector<QPair<int, QTransform>> others;
         if (m_paintLayers && isPaintTool(m_tool) && m_layer >= 0 && m_layer < scene.layers.size()) {
             for (int l = 0; l < scene.layers.size(); ++l) {
@@ -1058,8 +1037,6 @@ void Canvas::stampDabs(QPainter& onto, QVector<StrokePoint> const& run, Dabs con
 
 QVector<QImage> Canvas::readAbr(QString const& path, QString* why)
 {
-    // As Adobe's brush files of versions 6 to 10 have them: a header, then sections "8BIM" + four letters + length; the
-    // "samp" section holds the sampled brushes, each a greyscale picture (raw, or packed a line at a time - PackBits).
     QVector<QImage> tips;
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {

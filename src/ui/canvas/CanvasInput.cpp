@@ -32,8 +32,6 @@ bool Canvas::eventFilter(QObject* object, QEvent* event)
 
 bool Canvas::event(QEvent* event)
 {
-    // While a polyline is being laid down, Enter and Escape end it: they are not to set
-    // off whatever command has them as its shortcut (Enter plays the scene).
     if (event->type() == QEvent::ShortcutOverride && m_polyActive) {
         int const key = static_cast<QKeyEvent*>(event)->key();
         if (key == Qt::Key_Return || key == Qt::Key_Enter || key == Qt::Key_Escape) {

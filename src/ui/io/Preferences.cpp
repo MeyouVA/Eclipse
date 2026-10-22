@@ -175,8 +175,6 @@ void MainWindow::onActionCheckFiles()
     dialog.exec();
 }
 
-// Scene > Element Manager: the layers that hold drawings - the elements of the scene - with how many drawings
-// each has; one can be added, given another name, or deleted with all its drawings.
 void MainWindow::onActionElementManager()
 {
     QDialog dialog(this);
@@ -299,8 +297,6 @@ void MainWindow::applyPreferences()
     m_canvas->setBitmapPpi(s.value(QStringLiteral("prefs/bitmapPpi"), 72).toInt());
     m_canvas->setBitmapCanvasBasis(s.value(QStringLiteral("prefs/bitmapCanvasBasis"), 0).toInt());
     m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
-    // A drawing has four sheets; two of them - overlay and underlay - are out of the way
-    // unless they are asked for.
     bool const moreArt = s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool();
     for (char const* id : {"SetOverlayArt", "SetUnderlayArt"}) {
         if (QAction* const a = m_actions->action(QLatin1String(id)))
@@ -1068,8 +1064,6 @@ void MainWindow::onActionPreferences()
         }
     });
 
-    // The look: dark or light, the size of everything, and the user's own additions to the stylesheet (all on the next start,
-    // but the additions, which the Style Editor shows at once).
     QCheckBox* const darkStyle = new QCheckBox(tr("Use dark style sheet (on the next start)"), general);
     darkStyle->setObjectName(QStringLiteral("PrefDarkStyle"));
     darkStyle->setChecked(s.value(QStringLiteral("prefs/darkStyle"), true).toBool());

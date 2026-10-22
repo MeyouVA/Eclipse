@@ -28,8 +28,6 @@
 
 namespace Effects {
 
-// One pass of a box blur along the rows, then along the columns.  What lies outside the
-// picture counts as transparent, so a blurred edge fades out.
 static void boxBlur(QImage& image, int r)
 {
     int const w = image.width(), h = image.height();
@@ -919,8 +917,6 @@ QVector<int> Effects::curveLevels(QVector<QPointF> const& points)
             levels[i] = i;
         return levels;
     }
-    // A smooth curve that does not overshoot (Fritsch-Carlson): the slope at each point between those either side of it, cut
-    // back where it would turn the curve back.
     QVector<double> slope(n, 0.0);
     QVector<double> step(std::max(0, n - 1), 0.0);
     for (int k = 0; k + 1 < n; ++k) {

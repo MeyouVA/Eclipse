@@ -23,16 +23,11 @@ static double twiceArea(QPolygonF const& p)
     return sum;
 }
 
-// The outlines of the pixels set in `dark`, which is (w + 2) by (h + 2): the picture with a
-// clear pixel all round it, so that every edge has a neighbour.
 static QVector<QPolygonF> traceMask(QVector<uchar>& dark, int w, int h, double minimumArea)
 {
     QVector<QPolygonF> outlines;
     auto at = [&](int x, int y) -> uchar& { return dark[(y + 1) * (w + 2) + (x + 1)]; };
 
-    // Every side of a dark pixel that faces a clear one is a piece of outline, going round
-    // the dark area clockwise.  A piece is known by the corner it starts from and its direction.
-    // Directions: 0 right, 1 down, 2 left, 3 up.
     static int const dx[4] = {1, 0, -1, 0}, dy[4] = {0, 1, 0, -1};
     auto key = [&](int x, int y, int direction) { return (qint64(y) * (w + 1) + x) * 4 + direction; };
     QHash<qint64, bool> pieces;     // true once followed
@@ -68,8 +63,6 @@ static QVector<QPolygonF> traceMask(QVector<uchar>& dark, int w, int h, double m
             outline.push_back(QPointF(x, y));
             x += dx[direction];
             y += dy[direction];
-            // At the next corner: turn right if there is a piece that way (this keeps two
-            // areas that touch by a corner apart), else straight on, else left.
             int next = -1;
             for (int turn : {1, 0, 3}) {
                 int const d = (direction + turn) % 4;
@@ -166,13 +159,9 @@ QVector<ColourShape> traceColours(QImage const& source, int maxColours, QColor c
     maxColours = std::clamp(maxColours, 1, 64);
     QImage const image = source.convertToFormat(QImage::Format_ARGB32);
     int const w = image.width(), h = image.height();
-    // Ink is what is opaque and not the paper.  A little away from the paper still counts
-    // as paper: the soft edge of a scan, the grain of the sheet.
     int const paperNear = 24 * 24 * 3;
     auto ink = [&](QRgb c) { return qAlpha(c) >= 128 && (!paper.isValid() || distance(c, paper) > paperNear); };
 
-    // The colours of the ink, with how many pixels have each (colours are rounded a little,
-    // so that a photograph does not have a million of them).
     QHash<QRgb, int> histogram;
     for (int y = 0; y < h; ++y) {
         QRgb const* const line = reinterpret_cast<QRgb const*>(image.constScanLine(y));
@@ -183,8 +172,6 @@ QVector<ColourShape> traceColours(QImage const& source, int maxColours, QColor c
     if (histogram.isEmpty())
         return shapes;
 
-    // Median cut: the box that is longest is cut in two where half its pixels are, until
-    // there are as many boxes as colours wanted.
     QVector<Box> boxes(1);
     for (auto it = histogram.begin(); it != histogram.end(); ++it)
         boxes[0].colours.push_back({it.key(), it.value()});
@@ -241,8 +228,6 @@ QVector<ColourShape> traceColours(QImage const& source, int maxColours, QColor c
         }
     }
 
-    // The area of each colour, largest first; each grown by a pixel so that it reaches
-    // under the areas beside it.
     QVector<int> order;
     for (int i = 0; i < palette.size(); ++i)
         if (pixels[i] > 0 && pixels[i] >= minimumArea)      // a colour that is only a speck is left out before it is grown
@@ -271,8 +256,6 @@ QVector<ColourShape> traceColours(QImage const& source, int maxColours, QColor c
 
 // ---- centre lines ----------------------------------------------------------------------------
 
-// The points of a line that matter: those further than `tolerance` from the straight line between the points
-// kept either side of them (Douglas and Peucker).
 static QPolygonF fewerPoints(QPolygonF const& line, double tolerance)
 {
     if (line.size() < 3)
@@ -320,8 +303,6 @@ QVector<CentreLine> centreLines(QImage const& source, int threshold, int minimum
         for (int x = 0; x < w; ++x)
             thin[(y + 1) * across + (x + 1)] = qAlpha(row[x]) >= 128 && qGray(row[x]) < threshold;
     }
-    // How deep in the ink each pixel lies (steps to the nearest clear pixel, across and down): about half
-    // the thickness of the stroke, at its middle.
     QVector<int> depth(thin.size(), 0);
     for (int y = 1; y <= h; ++y)
         for (int x = 1; x <= w; ++x)
@@ -332,8 +313,6 @@ QVector<CentreLine> centreLines(QImage const& source, int threshold, int minimum
             if (thin[y * across + x])
                 depth[y * across + x] = std::min(depth[y * across + x], std::min(depth[(y + 1) * across + x], depth[y * across + x + 1]) + 1);
 
-    // Thinned (Zhang and Suen): pixels are taken off the edges of the ink, turn and turn about from two sides,
-    // for as long as taking one away neither breaks a stroke nor shortens it.
     QVector<int> gone;
     for (bool changed = true; changed;) {
         changed = false;
@@ -365,8 +344,6 @@ QVector<CentreLine> centreLines(QImage const& source, int threshold, int minimum
         }
     }
 
-    // What is left is a net of pixels.  A pixel's neighbours along it: those beside it, and those cornerwise
-    // that cannot be come to by way of one beside it (so that a stair is one path, not a tangle).
     auto neighbours = [&](int i) {
         QVector<int> found;
         static int const beside[4] = {1, 0, -1, 0}, below[4] = {0, 1, 0, -1};

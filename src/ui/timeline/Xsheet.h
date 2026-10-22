@@ -21,8 +21,6 @@ public:
     int layerOfColumn(int column) const;
     // Preferences: how wide a column is (pixels).
     void setColumnWidth(int pixels);
-    // Preferences: the current frame kept in the middle of the sheet; and how many frames a drawing typed into a cell fills
-    // before the next cell down is typed in.
     void setCentreOnFrame(bool on) { m_centreOnFrame = on; }
     bool centreOnFrame() const { return m_centreOnFrame; }
     void setDefaultHold(int frames) { m_defaultHold = std::clamp(frames, 1, 100); }
@@ -33,8 +31,6 @@ public:
 public slots:
     // Follows the timeline; does not signal back.
     void setCurrentCell(int layer, int frame);
-    // What the Edit menu does when this view has the focus: on the frames selected in the
-    // current column.
     void deleteSelection();
     void cut();
     void copy();
@@ -46,16 +42,12 @@ public:
     // The frames selected: from the current cell down or up its column.
     int selectionFirstFrame() const { return m_extent < 0 ? m_frame : std::min(m_frame, m_extent); }
     int selectionLastFrame() const { return m_extent < 0 ? m_frame : std::max(m_frame, m_extent); }
-    // Selects from the current cell to this frame, and across to the column of `layer`
-    // (-1: the current column only).
     void extendSelection(int frame, int layer = -1);
     // The layers of the columns selected, left to right.
     QVector<int> selectedLayers() const;
     bool hasSelection() const { return m_extent >= 0 || m_extentLayer >= 0; }
     // Where a cell is, in the coordinates of viewport().
     QRect cellRect(int layer, int frame) const;
-    // Typing in the current cell: the name or number of the drawing it is to show.  Enter takes
-    // it and goes on to the frame below; Escape, or a click elsewhere, leaves things as they were.
     void beginTyping();
     void endTyping(bool keep);
 

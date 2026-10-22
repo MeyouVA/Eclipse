@@ -143,8 +143,6 @@ static Stroke strokeFromJson(QJsonObject const& o)
     return s;
 }
 
-// Where a file of the scene is now: where it was, or - when it is not there any more - at
-// the same place from the folder of the scene.
 static QString found(QString const& folder, QString const& file, QString const& relative)
 {
     if (folder.isEmpty() || relative.isEmpty() || QFileInfo::exists(file))

@@ -77,8 +77,6 @@ QIcon icon(QString const& resources, QString const& name)
     QSvgRenderer renderer(path);
     if (!renderer.isValid())
         return QIcon();
-    // Drawn here at the sizes buttons use, so that nothing depends on an image plugin
-    // being installed next to the program.
     QIcon icon;
     for (int size : {20, 40}) {
         QPixmap normal(size, size);

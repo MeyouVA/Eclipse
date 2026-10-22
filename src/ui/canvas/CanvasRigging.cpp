@@ -49,8 +49,6 @@ void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers mod
         return;
     }
     if (m_rigMode != RigBones) {
-        // A curve or an envelope: a point or handle of it under the pointer is dragged; a
-        // click anywhere else adds a point after the last.
         Layer const& layer = scene.layers[m_layer];
         int const at = warpAt(layer.warp, widgetPos);
         if (at >= 0) {
@@ -101,8 +99,6 @@ void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers mod
         emit message(tr("Click where the first bone should end. Each further click adds a bone; Delete removes the last."));
 }
 
-// The way the layer goes: where its pivot is on every frame from its first keyframe to its
-// last, with a mark on each keyframe.
 void Canvas::paintMotionPath(QPainter& painter)
 {
     // A control point being dragged: the path is shown as it will be when it is let go.
@@ -335,8 +331,6 @@ void Canvas::onActionDistributeToLayers()
     emit message(tr("%n thing(s) put on layers of their own, attached to %1.", nullptr, int(parts.size())).arg(name));
 }
 
-// Edit > Create Drawing from Drawing Selection: what is selected leaves this drawing for a drawing of its
-// own, on a new layer attached to this one - so that it stays where it was and goes where this layer goes.
 void Canvas::onActionCreateDrawingFromSelection()
 {
     Scene const& scene = m_document->scene();
@@ -693,9 +687,6 @@ void Canvas::paintBones(QPainter& painter, QVector<QPointF> const& joints, int p
     }
 }
 
-// Inverse kinematics tool: drag a joint and the bones before it turn so that it follows.
-// Pressed on a layer that rides on a bone of its parent (a hand), it takes hold of the end
-// of that bone instead, so that the hand can be pulled and the arm comes along.
 void Canvas::boneIkMove(QPointF widgetPos)
 {
     Scene const& now = m_document->scene();
@@ -704,8 +695,6 @@ void Canvas::boneIkMove(QPointF widgetPos)
     for (int l : std::as_const(m_ikChain))
         if (l < 0 || l >= now.layers.size() || now.layers[l].kind != Layer::Bone)
             return;
-    // Worked out on a copy of the scene: each bone in turn, from the one in hand up to the first of the
-    // chain, is turned about where it hangs so that the tip comes nearer the pointer; and round again.
     Scene posed = now;
     QPointF const target = toScene(widgetPos);
     int const grabbed = m_ikChain.first();
@@ -789,8 +778,6 @@ void Canvas::ikDown(QPointF widgetPos)
 {
     Scene const& scene = m_document->scene();
     if (scene.layers[m_layer].kind == Layer::Bone) {
-        // A rigid bone: it and the bones it hangs on.
-        // (Up to a nailed bone: it and those above it stay where they are.)
         if (scene.layers[m_layer].ikNail) {
             emit message(tr("This bone is nailed (Layer Properties > IK): pull a bone that hangs below it."));
             return;

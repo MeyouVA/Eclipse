@@ -106,8 +106,6 @@ public:
     Q_INVOKABLE void hold(int layer, int frame, int length);
     Q_INVOKABLE void clear(int layer, int first, int last);
     Q_INVOKABLE bool renameDrawing(int layer, int frame, QString const& name);
-    // Attribute controls: a value of a layer's pose ("x", "y", "scaleX", "scaleY", "angle", "opacity", "z", "skew", "fov")
-    // made to follow a value of another layer's, so many times it and so much more.
     Q_INVOKABLE bool addDriver(int layer, QString const& value, int source, QString const& sourceValue, double factor = 1.0, double offset = 0.0);
     Q_INVOKABLE int driverCount(int layer) const;
     Q_INVOKABLE QJSValue driver(int layer, int index) const;
@@ -143,8 +141,6 @@ class ECLIPSE_UI_API ScriptHighlighter : public QSyntaxHighlighter {
 
 public:
     explicit ScriptHighlighter(QTextDocument* document);
-    // What kind of thing the text at `position` of a line is coloured as: "keyword", "eclipse", "number", "string",
-    // "comment" or "" (plain) - for the tests.
     static QString kindAt(QString const& line, int position, bool inComment = false);
 
 protected:
@@ -218,8 +214,6 @@ public:
     QString folder() const { return m_folder; }
     static QString defaultFolder();
 
-    // Runs the script; what it logged, and the error should it have stopped on one (with its line).
-    // All it changed is one step to undo, called `name`.
     QString run(QString const& code, QString const& name = QString());
 
     // The script shown, by name (without .js); false when there is none of that name.

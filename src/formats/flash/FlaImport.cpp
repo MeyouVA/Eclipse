@@ -219,8 +219,6 @@ void skipSpaces(QString const& s, int& i)
         ++i;
 }
 
-// How an area is painted: a colour; or one of the document's gradients (`gradient`, its colour then the first), lying
-// from `from` to `to` (for a round one, from its middle to its rim) in the area's own coordinates.
 struct Paint {
     QColor colour;
     int gradient = -1;
@@ -231,9 +229,6 @@ struct Paint {
 };
 
 
-// How a line is drawn: its colour and thickness, how its thickness goes with scaling (0: with it, 1: not at all, 2: only
-// with the scaling across, 3: only with that down), its ends (round, flat, or square - flat, half the thickness beyond the
-// end) and its corners.
 struct LineStyle {
     QColor colour = Qt::black;
     double weight = 1.0;
@@ -241,18 +236,11 @@ struct LineStyle {
     Stroke::Cap cap = Stroke::RoundCap;
     bool square = false;
     Stroke::Join join = Stroke::RoundJoin;
-    // A line of varying width: so wide (as a share of its weight) so far along it (0..1), from its start to its end;
-    // empty: as wide all along.
     QVector<QPointF> profile;
-    // A ragged line (Flash's RaggedStroke): how far it wobbles (0 flat, 1 wavy, 2 very wavy, 3 wild) and how long its
-    // waves are (0 very short .. 3 long); and the pattern it is broken into (0 solid, 1 simple, 2 random, 3 dotted,
-    // 4 random dotted, 5 triple dotted, 6 random triple dotted).
     bool ragged = false;
     int waveHeight = 0;
     int waveLength = 2;
     int pattern = 0;
-    // A dashed line (DashedStroke): so long on, so long off (pixels, as Flash has them); a dotted one (DottedStroke): dots
-    // so far apart.  Nought: solid.
     double dashOn = 0.0;
     double dashOff = 0.0;
 };
@@ -359,8 +347,6 @@ Stroke strokeOf(QPolygonF const& points, LineStyle const& st, QTransform const& 
     return stroke;
 }
 
-// A line as its style draws it: ragged (its points nudged off the line, by the same "random" every time it is read), broken
-// into dashes or dots - so maybe several lines.  (Lengths in the line's own pixels, as wide as it is.)
 QVector<Stroke> styled(Stroke stroke, LineStyle const& st)
 {
     bool const dashed = st.dashOff > 0.0;
@@ -639,8 +625,6 @@ Shape readShape(Node const& shape, std::function<Paint(Node const&)> const& pain
     return out;
 }
 
-// A bitmap of the document, from its file in the .fla: a JPEG as it is, or Flash's own (03 05: so many rows of A, R, G, B
-// bytes, zlib-packed in pieces); and the size it is shown at (its frame, in pixels).
 QImage bitmapOf(QByteArray const& b, QSizeF* shown)
 {
     if (b.startsWith("\xff\xd8")) {
@@ -722,8 +706,6 @@ public:
         return int(out->gradients.size()) - 1;
     }
 
-    // How a fill style paints: a solid colour; a gradient (its box, -819.2 to 819.2 each way, placed by its matrix);
-    // grey for a bitmap.
     Paint paintOf(Node const& fill)
     {
         Paint paint;
@@ -797,9 +779,6 @@ public:
         return gradient(s);
     }
 
-    // What a symbol's timeline shows on a frame, in the symbol's own coordinates and colours: drawn (its masks cut) once,
-    // however many times and places it is used.
-    // (With what in it was drawn with a blend mode or filters, apart: by what the effect is.)
     struct Built {
         Drawing main;
         QMap<QString, Drawing> sides;
@@ -945,8 +924,6 @@ public:
             Node const* elements = f.child(QStringLiteral("elements"));
             if (!elements)
                 return;
-            // A classic motion tween: each placed thing on its way to where it is on the next keyframe.  A shape tween: the
-            // drawing itself on its way to the next keyframe's.
             Node const* next = k + 1 < frames->children.size() ? &frames->children[k + 1] : nullptr;
             Node const* nextElements = next ? next->child(QStringLiteral("elements")) : nullptr;
             bool const tween = f.attr(QStringLiteral("tweenType")) == QLatin1String("motion") && nextElements && duration > 0;
@@ -997,10 +974,6 @@ public:
         return point ? QPointF(point->number(QStringLiteral("x"), 0.0), point->number(QStringLiteral("y"), 0.0)) : QPointF();
     }
 
-    // How far along a tween is when `t` (0..1) of its time has passed: by its custom ease (a curve of cubic pieces through
-    // points, from (0, 0) to (1, 1)), or its ease out (above 0) or in (below), -100 to 100.
-    // The eases Animate names (quadIn, circInOut, bounceOut...): how far along when `t` of the time has passed; -1 for
-    // a name it does not know.
     static double named(QString const& name, double t)
     {
         double const pi = 3.14159265358979323846;
@@ -1095,8 +1068,6 @@ public:
         return std::clamp(t + ease * t * (1.0 - t), 0.0, 1.0);
     }
 
-    // `t` of the way from one placing to another: turned, scaled and leaned part by part about `pivot` (a straight blend
-    // of the numbers would shrink what turns), the pivot itself going straight from where it was to where it goes.
     static QTransform between(QTransform const& a, QTransform const& b, double t, QPointF pivot = QPointF())
     {
         // Turned, scaled and moved part by part (a straight blend of the numbers would shrink what turns).
@@ -1111,8 +1082,6 @@ public:
         double pa[6], pb[6], v[6];
         parts(a, pa);
         parts(b, pb);
-        // (The second angle as a lean from the first: so that half a turn, whose two angles may come out as a half turn
-        // one way and the other, blends as a turn and not as a lean.)
         double const turn = 2.0 * 3.14159265358979323846;
         pa[1] = std::remainder(pa[1] - pa[0], turn);
         pb[1] = std::remainder(pb[1] - pb[0], turn);
@@ -1134,8 +1103,6 @@ public:
         Node const* layers = t.child(QStringLiteral("layers"));
         if (!layers)
             return;
-        // From the bottom layer up (the list goes from the top); guides, folders and masks not drawn - what a mask covers
-        // cut to it.
         for (int l = int(layers->children.size()) - 1; l >= 0; --l) {
             Node const& layerNode = layers->children[l];
             QString const type = layerNode.attr(QStringLiteral("layerType"));
@@ -1156,8 +1123,6 @@ public:
             int maskOrder = 0;
             layer(layerNode, frame, place, tint, masked, order, depth);
             layer(*mask, frame, place, Tint(), shape, maskOrder, depth);
-            // A mask with nothing on this frame masks nothing: what it covers shows whole (as Flash plays it - no mask is
-            // placed).  One with only lines on it still hides all, as lines do not mask.
             if (shape.isEmpty()) {
                 for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
                     drawing.fillsOf(sheet) += masked.fillsOf(sheet);
@@ -1212,8 +1177,6 @@ public:
         }
     }
 
-    // The font a run of text names: Flash names a font as PostScript does ("Arial-BoldMT", "ComicSansMS-Bold"), so the
-    // family is looked for as it is, then without its style and maker's mark, then with its words spaced out.
     static QFont fontOf(Node const* attrs)
     {
         QString const face = attrs ? attrs->attr(QStringLiteral("face"), QStringLiteral("Arial")) : QStringLiteral("Arial");
@@ -1244,8 +1207,6 @@ public:
         return font;
     }
 
-    // Words: each run in its font, size and colour, line under line (each aligned in the width of the text box), as the
-    // shapes of their letters.
     void text(Node const& element, QTransform const& place, Tint const& tint, Drawing& drawing, int& order)
     {
         Node const* runs = element.child(QStringLiteral("textRuns"));
@@ -1566,8 +1527,6 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
     reader.mediaFolder = mediaFolder;
     QTemporaryDir passing;
     reader.passing = &passing;
-    // The bitmaps of the library: each by its name, with the file in bin/ that holds it.  And its sounds: Flash keeps
-    // them as plain samples ("44kHz 16bit Mono"), or as the MP3 they came as.
     QHash<QString, Sound> sounds;
     if (Node const* media = document.child(QStringLiteral("media")))
         for (Node const& item : media->children) {
@@ -1706,8 +1665,6 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
             }
         }
         if (layer.mask && layer.cells.contains(-1)) {
-            // A mask with nothing on a frame masks nothing then (Flash places no mask): there it is the whole stage and more,
-            // so that what it cuts shows whole.  (A mask layer is not seen itself.)
             Drawing everything;
             Fill stage;
             stage.color = Qt::black;

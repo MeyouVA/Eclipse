@@ -249,8 +249,6 @@ void Canvas::paste()
     Drawing const* const d = currentDrawing();
     Drawing merged = d ? *d : Drawing();
     QVector<int> strokes, fills;
-    // Where it goes (Preferences: Paste Behaviour): where it was, or in the middle of the view - always, or when where it was
-    // is out of sight.
     Drawing placed = s_clipboard;
     if (m_pasteBehaviour != 0) {
         QRectF const box = placed.bounds();

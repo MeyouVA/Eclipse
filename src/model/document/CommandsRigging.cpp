@@ -45,8 +45,6 @@ void Document::setWarp(int layer, QVector<QPointF> const& points, bool closed, Q
         return;
     apply(text, [&](Scene& s) {
         Layer& l = s.layers[layer];
-        // An envelope opened into a curve, or a curve closed, is another deformer: what the
-        // keyframes did to the old one means nothing to it.
         bool const another = l.warpClosed != closed && !l.warp.isEmpty();
         l.warp = points;
         l.warpClosed = closed;

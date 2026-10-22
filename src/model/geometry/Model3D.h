@@ -52,8 +52,6 @@ std::shared_ptr<Mesh const> load(QString const& file, QString* error = nullptr);
 // A mesh read from the text of an OBJ file (materials from `folder`, where the file was).
 std::shared_ptr<Mesh const> parseObj(QByteArray const& text, QString const& folder, QString* error = nullptr);
 
-// A picture of the model turned `rotX` degrees about the line across it (its top leaning away) and `rotY` about the line up
-// it (its right side going away), `pixels` across and down; `placement` takes its pixels to the drawing's coordinates.
 QImage render(Mesh const& mesh, double rotX, double rotY, int pixels, QTransform* placement);
 
 // What a drawing that is the model in `file` shows, turned so: one picture (none if the model could not be read).

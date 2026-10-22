@@ -19,8 +19,6 @@
 #include "ui/canvas/PencilTexture.h"
 #include "ui/panels/Effects.h"
 
-// An area with a paper texture: the area in solid paint, seen through the grain lying flat.  Towards its edge
-// the grain thins out, so that the edge is the grain's own and not a cut through it.
 static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill const& fill, QBrush const& color)
 {
     QTransform const world = painter.combinedTransform();
@@ -81,8 +79,6 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
             }
         }
     }
-    // (A box blur, across and then down: sums of what lies within `soft` pixels.  Past the rim of what was worked
-    // out, things are taken to go on as at the rim.)
     for (int pass = 0; pass < 2; ++pass) {
         int const count = pass == 0 ? wide : high, lines = pass == 0 ? high : wide, step = pass == 0 ? 1 : wide, lineStep = pass == 0 ? wide : 1;
         for (int l = 0; l < lines; ++l) {
@@ -101,8 +97,6 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
     }
     double const amount = std::clamp(double(fill.textureAmount), 0.0, 1.0);
     if (fill.textureCrisp) {
-        // Crisp: the edge of the area does not cut through the bits of the grain.  Each bit of the paper is there
-        // whole or not at all, by whether its middle lies in the area (and by how the edge frays there).
         QImage const& paper = PencilTexture::paper(fill.texture);
         double const bit = 0.1875;      // a bit of the paper, in units of the scene
         QTransform const back = world.inverted();
@@ -153,9 +147,6 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
     painter.restore();
 }
 
-// A line with a pencil texture.  Every place the line covers is asked which place of the line is nearest to
-// it: how far along the line that is, and how far to the side, say where in the strip of grain it lies.  So the
-// grain bends with the line without a seam, and the edge of the line is the edge of the grain itself.
 static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
 {
     QVector<StrokePoint> const line = stroke.path();
@@ -242,9 +233,6 @@ static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush 
                 bool const tip = (first && t < 0.0) || (last && t > 1.0);
                 double const side = (ab.x() * py - ab.y() * px) / onScreen;
                 if (crisp) {
-                    // Crisp: the shape of the line does not cut through the bits of the grain.  Each bit of the strip
-                    // is there whole or not at all - so here the question is only which bit this pixel lies in, and
-                    // whether that bit, taken at its middle, belongs to the line.
                     double const beyond = t < 0.0 ? -t * onScreen : t > 1.0 ? (t - 1.0) * onScreen : 0.0;      // how far past the end
                     if (std::abs(side) > half || distance >= nearest[y * wide + x] || (tip ? beyond > half : distance > half))
                         continue;
@@ -346,8 +334,6 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
     }
     painter.setBrush(Qt::NoBrush);
     if (stroke.uniform()) {
-        // One thickness all along: the whole line as one outline, which is what lets a
-        // corner come to a point or be cut flat, and an end be cut square.
         QPainterPath path(line[0].pos);
         int const last = stroke.closed ? int(line.size()) - 1 : int(line.size());  // a closed path ends where it began
         for (int i = 1; i < last; ++i)
@@ -356,8 +342,6 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
             path.closeSubpath();
         pen.setWidthF(widthAt(0));
         pen.setCapStyle(stroke.capStart == Stroke::FlatCap ? Qt::FlatCap : Qt::RoundCap);
-        // A mitre past the limit is shortened (its tip trimmed) rather than cut flat: it still comes to a point.  (Qt counts
-        // the limit in whole widths, Eclipse in half widths.)
         pen.setJoinStyle(stroke.join == Stroke::MitreJoin ? Qt::MiterJoin : stroke.join == Stroke::BevelJoin ? Qt::BevelJoin : Qt::RoundJoin);
         pen.setMiterLimit(Stroke::kMitreLimit / 2.0);
         if (stroke.closed || stroke.capStart == stroke.capEnd) {
@@ -365,9 +349,6 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
             painter.drawPath(path);
             return;
         }
-        // One end round, the other flat: a pen has only one kind of end, so the outline of
-        // the line with flat ends is taken and a disc added at the round one.  Filled as
-        // one shape, so that a translucent colour is not doubled where they overlap.
         QPainterPathStroker stroker(pen);
         stroker.setCapStyle(Qt::FlatCap);
         QPainterPath outline = stroker.createStroke(path);
@@ -379,8 +360,6 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
         painter.drawPath(outline);
         return;
     }
-    // The thickness changes along the line: its outline is built by stepping half the
-    // thickness to either side of each point, and filled as one shape.
     QVector<QPointF> pos;
     QVector<double> half, lean;
     for (StrokePoint const& p : line) {
@@ -404,8 +383,6 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
         return length > 0.0 ? v / length : QPointF(1, 0);
     };
     auto normalOf = [](QPointF d) { return QPointF(-d.y(), d.x()); };
-    // (The body of the line and the discs that round it off are kept apart: laid into one outline, a disc
-    // would be cancelled out wherever the body happens to wind the other way under it.)
     QPainterPath outline, discs;
     outline.setFillRule(Qt::WindingFill);
     discs.setFillRule(Qt::WindingFill);
@@ -450,8 +427,6 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
         shape.push_back(right[i]);
     outline.addPolygon(shape);
     outline.closeSubpath();
-    // Tips: a disc where the end is round.  Where the line has thinned to nothing the disc
-    // is nothing too, and the line simply comes to a point.
     if (!stroke.closed && stroke.capStart == Stroke::RoundCap)
         discs.addEllipse(pos[0], half[0], half[0]);
     if (!stroke.closed && stroke.capEnd == Stroke::RoundCap)
@@ -468,8 +443,6 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
 
 void Canvas::paintFadingStroke(QPainter& painter, Stroke const& stroke, QBrush const& color)
 {
-    // Painted solid into a picture of its own (as big as it is where it is painted), then made as faint there as the line
-    // is along its length - a wide soft line along it, each stretch as solid as the line is there - and laid down.
     QPaintDevice* const device = painter.device();
     if (!device)
         return;
@@ -557,8 +530,6 @@ void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
 
 static void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing const& drawing, QColor const* tint)
 {
-    // Pictures lie under everything drawn.  One whose file has gone shows where it was.  The pixels of a bitmap art
-    // layer lie at the bottom of that art layer instead.
     auto paintPicture = [&painter](Picture const& picture) {
         painter.save();
         painter.setTransform(picture.placement, true);
@@ -658,8 +629,6 @@ void Canvas::paintDrawing(QPainter& painter, Scene const& scene, Drawing const& 
         paintDrawingOpaque(painter, scene, drawing, tint);
         return;
     }
-    // A translucent drawing is painted opaque into its own image and blended once: painting
-    // the pieces translucent one by one would darken every place where two of them overlap.
     QPaintDevice* const device = painter.device();
     double const dpr = device->devicePixelRatioF();
     QImage image(QSize(int(device->width() * dpr), int(device->height() * dpr)), QImage::Format_ARGB32_Premultiplied);
@@ -818,8 +787,6 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             double const rate = layer.effectAmount(thrown, layer.poseAt(frame));
             QTransform const now = scene.worldTransform(l, frame);
             QTransform const base = off.transform();
-            // Turning to another colour as they age: the picture, once, as an image; and from it, the picture part way to that
-            // colour (in eight steps), each made when first wanted.  A particle with any of the colour is drawn from those.
             QImage plain;
             QRectF area;
             QVector<QImage> mixed;
@@ -879,8 +846,6 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                         places.push_back(p - middle);
                 }
             }
-            // A layer to bounce off: its drawing on this frame, where the particles let go on each frame are measured from (each
-            // from where the layer was then, the middle of the drawing).
             std::function<QPainterPath(int)> shapeFor;
             int const wall = emitter.matte != 0 ? scene.layerIndex(emitter.matte) : -1;
             QPainterPath obstacle;
@@ -935,8 +900,6 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     }
     // A blur is so many scene units wide: on screen that depends on the zoom.
     double const pixelsPerUnit = std::sqrt(std::abs(sceneToDevice.determinant())) * dpr;
-    // The matte a cutter, a tone or a highlight takes: the drawing of that layer - or, when that layer makes a matte of its
-    // drawing (Matte Generator), that matte.  (A matte that takes this layer as its own matte in turn goes no deeper.)
     static thread_local int tMatteDepth = 0;
     auto paintMatte = [&](QPainter& mp, int m, int index) {
         Layer const& matteLayer = scene.layers[m];
@@ -1010,8 +973,6 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             Effects::fieldChart(image, QTransform::fromScale(dpr, dpr).mapRect(sceneToDevice.mapRect(QRectF(0, 0, scene.width, scene.height))), e.color,
                                 amount * dpr);
         } else if (e.type == Effect::MotionBlur && !symbol) {
-            // The layer as it was on the frames before - where it was, with the drawing it had - fainter the further back, under
-            // it as it is now.
             int const back = std::clamp(int(std::lround(amount)), 0, 60);
             QImage trail(size, QImage::Format_ARGB32_Premultiplied);
             trail.setDevicePixelRatio(dpr);
@@ -1167,8 +1128,6 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     painter.restore();
 }
 
-// A point of a layer with a blend mode (`s`) mixed with what is under it (`d`), both premultiplied: where both are, the
-// mode's mix of their colours; where only one is, that one (as for the composition modes of a painter).
 static QRgb blendPixel(QRgb s, QRgb d, int mode)
 {
     double const sa = qAlpha(s) / 255.0, da = qAlpha(d) / 255.0;
@@ -1238,8 +1197,6 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
     QTransform const base = painter.transform();
     QTransform const camera = scene.cameraTransform(frame);
     QVector<int> const order = scene.drawOrder(frame);
-    // Layers turned in space pass through what lies about them: then each point of each layer is only seen where nothing
-    // nearer the camera is in front of it, so that where two cross, each is cut by the other.
     bool turnedAny = false;
     int drawn = 0;
     for (int l : order) {
@@ -1389,8 +1346,6 @@ Drawing Canvas::previewDrawing() const
     if (m_drag == DragPoint && contourValid()) {
         QVector<QPair<int, int>> const shared = sharedPoints(shown);
         Stroke& line = *contourLine(shown);
-        // The curve keeps its handles as they are (as Harmony's points have handles of their own): a point moved does not
-        // bend its neighbours' stretches round anew.
         if (line.curve)
             line.freezeHandles();
         QPointF const by = m_dragNow - line.points[m_cePoint].pos;
@@ -1403,9 +1358,6 @@ Drawing Canvas::previewDrawing() const
         contourEdited(shown);
     }
     if (m_drag == DragHandle && contourValid() && m_ceHandle == 2 && pulledHandles()) {
-        // Handles pulled out of the point: the one after it where the pen is, the one before it opposite.  The points lying
-        // on it (where lines meet) get handles too, each along its own branch - so that they spread round the point, one
-        // per branch, as long as the pull (but no more than half way along the branch).
         QVector<QPair<int, int>> const stacked = stackedPoints(shown);
         QPointF const reach = m_dragNow - contourLine(shown)->points[m_cePoint].pos;
         double const pull = std::hypot(reach.x(), reach.y());
@@ -1444,8 +1396,6 @@ Drawing Canvas::previewDrawing() const
         QPointF& other = m_ceHandle == 0 ? out : in;
         mine = reach;
         double const length = std::hypot(reach.x(), reach.y()), otherLength = std::hypot(other.x(), other.y());
-        // The other handle keeps its length and stays in line with this one, so that the
-        // curve goes smoothly through the point - unless the handle was pulled away on its own.
         if (!m_ceBreak && length > 1e-9 && otherLength > 1e-9)
             other = -reach / length * otherLength;
         stroke.setHandles(handled, in, out);

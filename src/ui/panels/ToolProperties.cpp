@@ -208,8 +208,6 @@ ToolProperties::ToolProperties(Document* document, Canvas* canvas, ActionManager
 {
     setObjectName(QStringLiteral("ToolProperties"));
     m_form = new QFormLayout(this);
-    // What the tool in hand is called, a picture of what it draws, and - under the
-    // settings - sizes to pick from.  Only the settings the tool has are shown.
     m_toolTitle = new QLabel(this);
     m_toolTitle->setObjectName(QStringLiteral("ToolTitle"));
     m_preview = new StrokePreview(this);
@@ -272,8 +270,6 @@ void ToolProperties::addPresetRows()
     m_presets->setObjectName(QStringLiteral("Presets"));
     m_presets->setIconSize(QSize(120, 26));
     m_presets->setUniformItemSizes(true);
-    // Room for a handful of them: when the view is too small for that, the view scrolls -
-    // the list is not squeezed down to a row or two.
     m_presets->setMinimumHeight(150);
     m_form->addRow(m_presetsTitle);
     m_form->addRow(m_presets);
@@ -349,8 +345,6 @@ void ToolProperties::showFor(int tool)
         m_form->setRowVisible(row, tool == T::Rigging && m_rigMode->currentIndex() == Canvas::RigWeights);
     m_form->setRowVisible(m_envelopePoints, tool == T::Rigging);
     m_form->setRowVisible(m_envelopeOutline, tool == T::Rigging);
-    // What the settings are headed with: the tools that have a tip to set up are headed
-    // "Properties", the others "Options".
     QString const heading = brush ? tr("Vector Brush Properties") : eraser ? tr("Vector Eraser Properties") : pencil ? tr("Pencil Properties")
                             : shape ? tr("%1 Tool Properties").arg(name) : Canvas::isPaintTool(Canvas::Tool(tool)) ? tr("Paint Tool Options")
                             : contour ? tr("Contour Editor Options") : tool == T::PencilRetouch ? tr("Pencil Retouch Options") : tr("%1 Tool Options").arg(name.endsWith(tr(" Tool")) ? name.chopped(tr(" Tool").size()) : name);
@@ -448,8 +442,6 @@ void ToolProperties::showFor(int tool)
 
 void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
 {
-    // The sizes of this tool.
-    // (A minimum size of -1, or a taper of -1: the preset leaves that setting as it is.)
     struct Preset { char const* name; int size; int minSize = -1; int taper = -1; int square = -1; };
     static Preset const kBrush[] = {{QT_TR_NOOP("Solid Brush 1"), 5}, {QT_TR_NOOP("Solid Brush 2"), 10}, {QT_TR_NOOP("Solid Brush 3"), 15},
                                     {QT_TR_NOOP("Solid Brush 4"), 20}, {QT_TR_NOOP("Solid Brush 5"), 30}, {QT_TR_NOOP("Solid Brush 6"), 45},

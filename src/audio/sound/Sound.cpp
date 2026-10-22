@@ -169,8 +169,6 @@ QVector<qint16> mix(Scene const& scene)
             sum[(offset + i) * 2 + 1] += data->samples[i * 2 + 1];
         }
     }
-    // The sounds inside symbols: each frame of the scene a symbol is shown on plays the piece of its sound that belongs to the
-    // frame of the symbol shown there - so a symbol held holds its sound's piece, and one played backwards plays its pieces backwards.
     std::function<void(QVector<Layer> const&, QVector<int> const&, int)> inside = [&](QVector<Layer> const& layers, QVector<int> const& shown, int depth) {
         if (depth > Scene::kSymbolDepth)
             return;

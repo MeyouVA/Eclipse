@@ -47,8 +47,6 @@ struct Layer {
     int maskedBy = -1;          // the layer (in `layers`) that masks this one, or -1
     QVector<Drawing> drawings;  // the different drawings it shows
     QVector<int> cells;         // for each frame: which of them (or -1: none)
-    // What on this Flash layer was drawn with a blend mode ("add", "multiply"...; empty: none) or filters comes on a layer
-    // of its own, over the layer it was on, with them.
     QString blend;
     QVector<Filter> filters;
 };
@@ -89,10 +87,6 @@ struct Document {
     int skippedSounds = 0;      // sounds in a form Eclipse does not read
 };
 
-// False (and why) when the bytes are not a Flash document that can be read.  The frames of its video are decoded into
-// `mediaFolder` and shown from there (linked pictures); without one, they are decoded in passing and kept in the drawings.
-// `progress`, when given, is told how far the reading has come (so much done of so much in all) now and then; false from
-// it stops the reading (and it fails, as stopped).
 using Progress = std::function<bool(qint64 done, qint64 all)>;
 ECLIPSE_FORMATS_API bool read(QByteArray const& bytes, Document& out, QString* error = nullptr, QString const& mediaFolder = QString(),
                          Progress const& progress = {});

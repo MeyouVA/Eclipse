@@ -12,8 +12,6 @@ class QPushButton;
 class QSlider;
 class Timeline;
 
-// The pad of a 2D point controller: the states as dots on a square, and the point dragged among them.  Shift-drag
-// a state to move it.
 class ECLIPSE_UI_API ControllerPad : public QWidget {
     Q_OBJECT
 

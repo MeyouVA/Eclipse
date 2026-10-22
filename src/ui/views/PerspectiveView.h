@@ -43,8 +43,6 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
-    // The four corners of what a layer shows on this frame, in the view; empty when it shows
-    // nothing or some of it is behind the eye.  `box` is told the rectangle they are the corners of.
     QPolygonF layerQuad(int layer, QRectF* box = nullptr) const;
     // How far from the eye a point is (bigger: further off), to draw the furthest first.
     double distanceOf(double x, double y, double z) const;

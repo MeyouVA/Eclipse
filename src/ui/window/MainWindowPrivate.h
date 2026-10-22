@@ -17,8 +17,6 @@ inline QSettings settings()
     return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
 }
 
-// A view made of settings, put where it can be scrolled: when its panel is too small for
-// all of it, a scroll bar shows instead of the bottom (or the side) being cut off.
 inline QWidget* scrollingView(QWidget* view)
 {
     QScrollArea* const area = new QScrollArea(view->parentWidget());

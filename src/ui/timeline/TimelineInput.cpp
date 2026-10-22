@@ -167,9 +167,6 @@ void Timeline::mouseReleaseEvent(QMouseEvent*)
 
 void Timeline::dropLayer(int layer, int target, bool below)
 {
-    // Dropped beside a row, a layer goes to that row's level - attached to what it is attached to (or to nothing) - and
-    // there where it was let go; dropped just under an open parent (above the first layer attached to it), it is the first
-    // layer attached to that parent.
     Scene const& scene = m_document->scene();
     if (layer < 0 || layer >= scene.layers.size() || target < 0 || target >= scene.layers.size() || layer == target)
         return;

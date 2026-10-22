@@ -39,8 +39,6 @@ static QString shortNumber(double value)
     return text == QLatin1String("-0") ? QStringLiteral("0") : text;
 }
 
-// How many pixels a field is: twelve of them from the middle of the picture to its top, and
-// across the picture four thirds as wide (the 4:3 field chart).
 static double fieldSize(int axis, double sceneHeight)
 {
     double const up = sceneHeight / 24.0;
@@ -52,8 +50,6 @@ QString CoordView::fieldText(double pixels, int axis, double sceneHeight)
     double const size = fieldSize(axis, sceneHeight);
     if (size <= 0.0)
         return QStringLiteral("0");
-    // Across: east is to the right.  Up and down: the scene counts downwards, north is up.
-    // Depth: forward is towards the camera.
     double const fields = (axis == 1 ? -pixels : pixels) / size;
     static char const* const letters[3][2] = {{"E", "W"}, {"N", "S"}, {"F", "B"}};
     QString const number = shortNumber(std::abs(fields));

@@ -4,8 +4,6 @@
 #include <QList>
 #include <QString>
 
-// The colours the views paint with, each named, grouped as the Colours page of the Preferences shows them, and kept between
-// runs (under prefs/colours/, so a preference set carries them and Restore All Defaults puts them back).
 namespace InterfaceColours {
 
 struct Entry {

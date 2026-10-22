@@ -30,8 +30,6 @@ public:
     static QString const kMimeType;     // what a template dragged out of the view is carried as (its path)
     // Where templates go unless another folder is added: "Eclipse Library" in Documents.
     static QString defaultFolder();
-    // The first frame on which the scene shows a drawing (0 when it never does): the frame
-    // a template is pictured by, so that one that starts empty is not a blank square.
     static int firstDrawnFrame(Scene const& scene);
     // A picture of a frame of a scene, to fit `size`.
     static QImage picture(Scene const& scene, int frame, QSize size);
@@ -43,8 +41,6 @@ public:
     void removeFolder(int index);
     QString currentFolder() const;
     void setCurrentFolder(int index);
-    // The folders inside the folders of the library are shown under them, set in; any of them
-    // can be the current one.  A new one is made inside the current folder.
     bool setCurrentPath(QString const& folder);
     bool addSubFolder(QString const& name);
     QStringList shownFolders() const;
@@ -53,9 +49,6 @@ public:
     QStringList templates() const;
     QString currentTemplate() const;
     void setCurrentTemplate(QString const& path);
-    // The other things a folder of the library may hold, listed with the templates: sounds (.wav) and
-    // palettes (.eclpal).  Inserted, a sound becomes a sound layer from the current frame and a palette one
-    // of the palettes of the scene.
     QStringList otherItems() const;
     static bool isTemplate(QString const& path);
     // Reads the folder again (a template was saved or deleted).

@@ -170,8 +170,6 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
             continue;
         QVector<Stroke> const lines = boundsOf(whole, sheet);
         QVector<Stroke> const linesBefore = before ? boundsOf(*before, sheet) : QVector<Stroke>();
-        // (Only plain lines move bucket paint: a shape with paint of its own - Auto Fill - is paint, and paint keeps apart
-        // from other paint; it follows just its own line.)
         auto plain = [](QVector<Stroke> const& all) {
             QVector<Stroke> kept;
             for (Stroke const& line : all)
@@ -260,9 +258,6 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
                 for (int i : boundingLines(fill.outlines, linesBefore, near))
                     if (now[i] >= 0)
                         own.insert(now[i]);
-            // Places to look from: where it was painted (while that is still in it), well inside it - and, when it knows
-            // its lines, either side of each of them all along (the area they close round may have gone over to the other
-            // side of one of them).
             QVector<QPointF> tries;
             if (fill.contains(fill.seed))
                 tries.push_back(fill.seed);

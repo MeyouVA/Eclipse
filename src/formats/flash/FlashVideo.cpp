@@ -151,9 +151,6 @@ QByteArray flaMovie(QByteArray const& data)
 
 bool flaFrames(QByteArray const& data, int& codec, QVector<QByteArray>& frames, QVector<bool>& keyframes)
 {
-    // 03, the codec; ... ; from byte 76, 17 bytes a frame: where it starts (from the first), how long it is, 1, 5 for a
-    // frame that stands on its own or 4 for one that does not, and 1 (0 on the last).  Four bytes on, the frames (a byte
-    // later for VP6).
     frames.clear();
     keyframes.clear();
     if (data.size() < 100 || quint8(data[0]) != 0x03)

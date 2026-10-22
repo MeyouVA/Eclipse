@@ -176,8 +176,6 @@ void Canvas::transformDown(QPointF widgetPos)
     // The frame of a camera fills the view, so its knob stands inside the frame, where it can be reached.
     QPointF const knob = top + up * (m_document->scene().layers[m_layer].kind == Layer::Camera ? -28.0 : 28.0);
 
-    // A joint of the chain (not the first, which is where the chain hangs): turn the bone
-    // that ends there.
     if (scene.layers[m_layer].bones.size() >= 2) {
         QVector<QPointF> const posed = Deform::posedJoints(scene.layers[m_layer].bones, m_dragPose.bend);
         for (int j = int(posed.size()) - 1; j >= 1; --j) {
@@ -237,8 +235,6 @@ void Canvas::transformDown(QPointF widgetPos)
             return;
         }
     }
-    // On artwork: that of this layer (or of something attached to it) moves this layer;
-    // that of another layer picks that layer and moves it.
     int const hit = layerUnder(m_dragStartScene);
     if (hit >= 0 && hit != m_layer && !scene.isAncestor(m_layer, hit)) {
         emit layerPicked(hit);  // comes back through setCurrentCell
@@ -334,9 +330,6 @@ void Canvas::updateShape(QPointF p, Qt::KeyboardModifiers modifiers)
     if (m_tool == Rectangle) {
         m_stroke.points = {{r.topLeft(), 1.0f}, {r.topRight(), 1.0f}, {r.bottomRight(), 1.0f}, {r.bottomLeft(), 1.0f}};
     } else {
-        // Four points round the ellipse - right, bottom, left, top - each with its two handles along the ellipse, so
-        // that the Contour Editor has them to pull from the start.  (A quarter of an ellipse is a Bezier curve with its
-        // handles 0.5523 of the way along the sides of the box round that quarter.)
         m_stroke.curve = true;
         double const k = 0.5522847498, rx = r.width() / 2.0, ry = r.height() / 2.0;
         QPointF const c = r.center();

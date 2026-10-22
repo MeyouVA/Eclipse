@@ -50,8 +50,6 @@ public:
     static constexpr int kBoneRows = ParameterCount + 1000;
     // And two for each point of its deformer, how far the pose has moved it across and down: kWarpRows + 2 * the point (+ 1).
     static constexpr int kWarpRows = ParameterCount + 2000;
-    // And, under the first layer of a pose controller, the controller's own row (always shown): where its slider stands
-    // on each frame, and the frames it was set on: kControllerRows + the controller.
     static constexpr int kControllerRows = ParameterCount + 3000;
     static bool isEffectRow(Parameter which) { return which >= ParameterCount && which < kBoneRows; }
     static bool isBoneRow(Parameter which) { return which >= kBoneRows && which < kWarpRows; }
@@ -88,13 +86,9 @@ public:
     // The buttons over the names: add a layer, delete, add a peg.
     enum HeaderButton { AddLayer, DeleteLayer, AddPeg };
     QRect headerButtonRect(HeaderButton which) const;
-    // The mark on the ruler at the end of the scene; dragging it makes the scene longer
-    // or shorter.
     QRect sceneEndRect() const;
     // The band of a scene marker on the ruler.
     QRect markerRect(int marker) const;
-    // What is selected: the current cell, or a block of cells dragged or Shift-clicked out
-    // from it.  The layers of the block top to bottom, and its first and last frame.
     QVector<int> selectedLayers() const;
     int selectionFirstFrame() const;
     int selectionLastFrame() const;
@@ -103,19 +97,13 @@ public:
     void extendSelection(int layer, int frame);
     // A layer picked on its own with Ctrl, besides the block: in or out.
     void toggleLayer(int layer);
-    // What was copied, pasted in part: its drawings (exposure), its keyframes, or both; so
-    // many times over; from its last frame to its first.
     void pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse);
     // These layers picked besides the current one (those that are not it).
     void setExtraLayers(QVector<int> const& layers);
     // Whether sound layers show how loud the sound is along their row.
     bool showWaveforms() const { return m_waveforms; }
-    // The sound a layer that shows a symbol plays (the sounds inside the symbol, where it shows them), from the scene's
-    // first frame; null when the symbol has none.  Worked out once for each way the layer and the symbol are.
     std::shared_ptr<SoundData> symbolSound(int layer) const;
     void setShowWaveforms(bool on);
-    // The onion skin: whether it is on, and how far before and after the current frame it
-    // reaches.  Shown on the ruler, with a handle at each end to drag.
     void setOnion(bool on, int previous, int next);
     QRect onionHandleRect(bool before) const;
     // Moves (or copies) the block selected by so many rows and frames; the block stays selected.
@@ -126,8 +114,6 @@ public:
     void dropLayer(int layer, int target, bool below);
     // The row a layer is listed in (its own row, not one of its parameters'); -1 when it is not listed.
     int rowOfLayer(int layer) const;
-    // Whether what was copied last is artwork (from a drawing view) rather than cells: then Paste in the Timeline or the
-    // Xsheet puts that artwork into the drawing at the current cell (pasteArtwork), as it would in a drawing view.
     static bool artworkCopiedLast();
     static void setArtworkCopiedLast(bool artwork);
     // What was cut or copied last, in this view or in the Xsheet.
@@ -137,10 +123,6 @@ public:
     void pasteCycle(int times);
     // The cells selected, again and again after themselves: `times` in all.
     void createCycle(int times);
-    // Which layers have a row: all of them; only those that were selected when this was asked
-    // for; or only the tagged ones.  (The current layer always has its row.)
-    // ShowControlled: the layers a controller moves - those of the Pose Controllers, and those that follow another layer
-    // (Attribute Controls) with the layers they follow (Harmony's Controlled view mode).
     enum ViewMode { ShowAll, ShowSelected, ShowTagged, ShowControlled };
     // Whether a layer is among those ShowControlled shows.
     bool controlled(int layer) const;
@@ -226,8 +208,6 @@ private:
     static constexpr int kRowHeight = 20;
     static constexpr int kPastEnd = 40;        // frames of ruler shown after the scene ends
 
-    // Dragging a layer by its name: dropped on the middle of another it is attached to
-    // it, dropped on the edge between two it moves there.
     enum Drop { DropNone, DropOnto, DropAbove, DropBelow };
     Drop dropAt(QPoint pos, int& targetLayer) const;
 

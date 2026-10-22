@@ -38,8 +38,6 @@ public:
     bool makeStencil(QString const& name);
     // One of the user's own presets of the tool in hand (by its place among them) made the size and smoothing now set.
     bool updatePreset(int index);
-    // Tips of your own for the bitmap brush, from a picture or a Photoshop brush file (.abr): kept, and the last chosen.
-    // The number taken in.
     int importBitmapTips(QString const& path, QComboBox* box);
     // The bitmap brush's tip editor (Angle, Roundness, Spacing, Count, flips, randomness, Minimum Opacity).
     void editTipShape();
@@ -62,13 +60,9 @@ private:
     void addBrushRows();
     void addRiggingRows();
     void addSelectRows();
-    // The master switch of snapping, Hide Manipulator Controls, the Contour Editor's and the Envelope's controls, the Cutter's
-    // gestures and cut tips.
     void addSnapRows();
     // The Pencil's Line Pushing and Auto Adjust Thickness, Automatically Create Colour Art, the Polyline's Draw Behind.
     void addModeRows();
-    // The Eraser's Minimum Size, smoothing with pressure, the Pencil's opacity with pressure, Apply to Single Stroke, the
-    // shape tools' Edge Type, Overlay Brush Mode.
     void addStylusRows();
     void addAutoFlattenRow();
     void addLineShapeRows();
@@ -78,8 +72,6 @@ private:
     void addTextRows();
     void addSelectionRows();
     void addPresetRows();
-    // The Morphing tool: the morphing layers of the morphing here - added, taken away, renamed, moved up and down; the one
-    // chosen is where Ctrl+click puts shapes.
     void addMorphRows();
     void refreshMorphLayers();
     // A slider with a box beside it, under a label.

@@ -25,9 +25,6 @@ Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_documen
 void Canvas::onDocumentChanged()
 {
     m_modeCache = QImage();
-    // An edit that did not come from the selection itself (undo, another tool) may have changed what the indices refer
-    // to - unless the drawing still has as many lines, areas and pictures as it had (an undone point move, a reshape, a
-    // recolour): then they are the same things, and stay picked.
     QVector<int> const shape = drawingShape();
     bool const same = !shape.isEmpty() && shape == m_seenShape;
     m_seenShape = shape;
@@ -169,9 +166,6 @@ void Canvas::setCurrentCell(int layer, int frame)
     update();
 }
 
-// The cross the drawing tools point with.  The system's own cross is drawn by inverting
-// what is under it, and on the mid-grey of the view that gives the same grey back: this
-// one is black with a white edge, so it shows on anything.
 static QCursor drawingCursor()
 {
     static QCursor const cursor = [] {
@@ -262,8 +256,6 @@ Drawing const* Canvas::currentDrawing() const
     }
     if (!real || m_art == LineArt)
         return real;
-    // The colour art, as a drawing.  It is taken afresh only when the scene has another
-    // one: what was handed out before stays where it is as long as nothing changed.
     QVector<Stroke> const& sheetStrokes = real->strokesOf(sheetOf(m_art));
     QVector<Fill> const& sheetFills = real->fillsOf(sheetOf(m_art));
     if (m_artView.strokes.constData() != sheetStrokes.constData() || m_artView.fills.constData() != sheetFills.constData()
@@ -658,8 +650,6 @@ void Canvas::eraseStretch(int from)
     QRectF const reach = area.boundingRect();
     double const fine = std::max(0.25 / m_zoom, 0.05);
     bool any = false;
-    // Only what the stretch reaches is gone through again.  The edges are left as the cut
-    // made them (no fitting): the contours get their points when the eraser lifts.
     QVector<Fill> fills;
     for (Fill const& fill : std::as_const(m_eraseArt.fills)) {
         bool changed = false;
@@ -729,8 +719,6 @@ void Canvas::cutWithEraser()
             any = true;
         return any;
     };
-    // Each drawing to erase in is come to by a frame that shows it: this one, or with
-    // Apply to All Drawings every drawing of the layer.
     QVector<int> frames = {m_frame};
     if (everywhere) {
         QVector<int> const cells = scene.layers[m_layer].cells;

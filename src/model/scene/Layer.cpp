@@ -10,8 +10,6 @@
 
 // ---- Pose ---------------------------------------------------------------------------------
 
-// Where something is after `t` that starts at `x` going `v` and gathering `a` each frame, between two walls it bounces off
-// (keeping `keep` of its speed each time).
 static double between(double x, double v, double a, double lo, double hi, double t, double keep)
 {
     for (int hits = 0; hits < 64; ++hits) {
@@ -40,9 +38,6 @@ static double between(double x, double v, double a, double lo, double hi, double
     return std::clamp(x, lo, hi);
 }
 
-// Where something is after `age` frames that starts at `at` going `v` and gathering `a` each frame, when it bounces off
-// `shape` (and the floor and walls, when there are some), keeping `keep` of its speed each time.  Taken a quarter of a
-// frame at a time; on the way it goes exactly as it would with nothing in the way.
 static QPointF throughShape(QPointF at, QPointF v, QPointF a, double age, double floor, double walls, double keep, QPainterPath const& shape)
 {
     QRectF const box = shape.boundingRect();
@@ -218,8 +213,6 @@ double easedProgress(double t, double easeOut, double easeIn, double liftOut, do
     easeIn = std::clamp(easeIn, 0.0, 1.0);
     if (easeOut <= 0.0 && easeIn <= 0.0 && liftOut == 0.0 && liftIn == 0.0)
         return t;
-    // A cubic curve from (0,0) to (1,1) in (time, progress).  Its handles lie flat along
-    // the time axis: the longer a handle, the longer the motion stays slow at that end.
     double const x1 = easeOut * 0.8, x2 = 1.0 - easeIn * 0.8;
     auto bezier = [](double s, double a, double b) {
         double const u = 1.0 - s;
@@ -235,8 +228,6 @@ double easedProgress(double t, double easeOut, double easeIn, double liftOut, do
             hi = mid;
     }
     double const s = (lo + hi) / 2.0;
-    // Progress: flat handles at height 0 and 1 where there is ease, on the diagonal where not.
-    // (A handle that was pulled up or down stands that much off its level.)
     double const y1 = (easeOut > 0.0 || liftOut != 0.0 ? 0.0 : x1) + liftOut, y2 = (easeIn > 0.0 || liftIn != 0.0 ? 1.0 : x2) + liftIn;
     return bezier(s, y1, y2);
 }
@@ -447,8 +438,6 @@ void Layer::setKey(int frame, Pose const& pose)
 
 QTransform Layer::matrix(Pose const& pose, QPointF pivot)
 {
-    // Read from the bottom: a point is brought to the pivot, scaled, turned, and put back
-    // where the pivot is, moved by the offset.
     QTransform m;
     m.translate(pivot.x() + pose.x, pivot.y() + pose.y);
     m.rotate(pose.rotation);
@@ -465,8 +454,6 @@ QTransform Layer::quadWarp(QSizeF size, QVector<QPointF> const& quad)
     if (quad.size() != 4 || size.isEmpty())
         return warp;
     QPolygonF const from({QPointF(0, 0), QPointF(size.width(), 0), QPointF(size.width(), size.height()), QPointF(0, size.height())});
-    // Corners that cannot be reached (three in a line) leave it flat: a pull that cannot be
-    // undone would lose the pointer, which is found by going back through it.
     if (!QTransform::quadToQuad(from, QPolygonF(quad), warp) || !warp.isInvertible())
         return QTransform();
     return warp;
@@ -557,8 +544,6 @@ double Morph::progress(double t) const
     t = std::clamp(t, 0.0, 1.0);
     if (velocity.isEmpty())
         return easedProgress(t, easeOut, easeIn);
-    // A smooth curve through the ends and the points: each piece a cubic whose slopes at its ends are those of the
-    // straight line between the points either side.
     QVector<QPointF> p{QPointF(0.0, 0.0)};
     for (QPointF const& v : velocity)
         if (v.x() > p.last().x() + 1e-6 && v.x() < 1.0 - 1e-6)
@@ -677,8 +662,6 @@ void Layer::compact()
     for (Drawing const& d : drawings)
         bank = bank || d.pinned;
     if (bank) {
-        // A layer with a bank of drawings keeps them in the order they were made, so that
-        // "next drawing" means the same thing whatever the frames show.
         QVector<bool> used(drawings.size(), false);
         for (int cell : cells)
             if (cell != kNoDrawing)

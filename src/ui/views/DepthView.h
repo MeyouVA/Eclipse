@@ -20,8 +20,6 @@ public:
     // Where the mark of a layer is in the view (its middle), and what depth a place stands for.
     QPointF layerPoint(int layer) const;
     double depthAt(QPointF widgetPos) const;
-    // Roll the wheel to come closer, drag with the middle or right button to slide the
-    // view, double-click an empty place to see everything again.
     double zoom() const { return m_zoom; }
     QPointF pan() const { return m_pan; }
     void resetView();

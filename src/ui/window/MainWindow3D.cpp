@@ -94,8 +94,6 @@ void MainWindow::onActionSnapshot3D()
         QMessageBox::information(this, tr("Snapshot 3D"), tr("The layer shows no 3D model on this frame."));
         return;
     }
-    // The model as it is seen on this frame - turned as the layer is - kept as a flat picture on a layer of its own, which
-    // stands where the model's layer does (without its turn: that is in the picture).
     Pose const pose = scene.poseOf(l, f);
     Drawing flat = Deform::shown(model.drawings[model.drawingAt(f)], model, pose);
     flat.name = model.drawings[model.drawingAt(f)].name;

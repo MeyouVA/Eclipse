@@ -33,8 +33,6 @@ class PalettePanel;
 class Timeline;
 class ViewTitleBar;
 
-// What the Export Movie dialog was told: the frames (counted from 0), the size as a
-// percentage of the scene's, and the quality (18 fine, 23 medium, 28 small).
 struct MovieChoices {
     int first = 0;
     int last = -1;
@@ -61,8 +59,6 @@ public:
     int playbackSpeed() const { return m_playSpeed; }
     void setPlaybackSpeed(int percent);
     int playStop() const;
-    // Starts an empty scene of this camera size and saves it as `path`, making the
-    // folder it goes in.
     bool createScene(QString const& path, int width, int height, double fps, double fov = 0.0);
     ActionManager* actions() const { return m_actions; }
 
@@ -72,8 +68,6 @@ public:
     QString currentWorkspace() const { return m_workspace; }
     // Remembers the arrangement of the current workspace and shows that of `name`.
     void switchWorkspace(QString const& name);
-    // The Workspace Manager's work, as functions too: false (or empty) when it cannot be done - a built-in workspace is not
-    // renamed or deleted, a name is not used twice.
     bool renameWorkspace(QString const& name, QString const& to);
     QString duplicateWorkspace(QString const& name);
     bool deleteWorkspace(QString const& name);
@@ -104,8 +98,6 @@ public:
     // Preference sets: every preference saved to a file (an ini file), loaded back, or all put back as they were at first.
     bool savePreferenceSet(QString const& path) const;
     bool loadPreferenceSet(QString const& path);
-    // The languages the interface can be shown in ("en" and each resources/translations/eclipse_<code>.qm), and putting one in
-    // place (before the window is made: on the next start).
     static QStringList languages();
     static bool installLanguage(QString const& code);
     void restoreDefaultPreferences();
@@ -113,8 +105,6 @@ public:
     void showStyleEditor();
     // Whether the arrangement is not as the workspace was when it was opened or last saved.
     bool workspaceChanged() const;
-    // Puts the docks and toolbars back where the user left them last time.
-    // While the window is not shown yet: its floating panels and toolbars hidden until it is.
     void holdBackFloating();
     void restoreWorkspace();
 
@@ -142,49 +132,31 @@ public:
     // The layers selected in the Timeline (with everything attached to them), over the frames
     // selected - or the whole scene when no frames are - written as a template file.
     bool saveTemplate(QString const& path, QString* error);
-    // The layers of a template file brought into the scene from `frame` on.  Returns the
-    // first of them, or -1 with a message.
     int insertTemplate(QString const& path, int frame, QString* error);
     // The template put in as a symbol (its layers in the symbol, one layer showing it); that layer, or -1.
     int insertTemplateAsSymbol(QString const& path, int frame, QString* error);
-    // A template put in the way Paste Special asks: as new layers or onto the layers of the same names (`onto`), with or
-    // without its drawings and keyframes, and making the scene longer or not.  The first layer it went to, or -1.
     int pasteTemplateSpecial(QString const& path, int frame, bool onto, bool drawings, bool keys, bool extend, QString* error);
     // Library > Paste Special...: the window that asks how.
     void onTemplatePasteSpecial(QString const& path);
-    // Record and Play: the frames playing runs between, written as a small movie in the temporary folder.
-    // The file, or nothing (with a message, unless it was stopped).
     QString recordForPlay(QString* error);
     class LibraryView* library() const { return m_library; }
-    // The files the scene reads from outside itself (linked pictures, sounds), each once;
-    // with `missingOnly`, those that are not where the scene expects them.
     QStringList sceneFiles(bool missingOnly) const;
-    // Takes up what Edit > Preferences keeps: how the Select tool takes things, how often
-    // the scene is saved by itself (0: never).
     void applyPreferences();
     // The Camera view made to show a scene just made or opened, as the preferences say (fitted, or at its own size).
     void placeCameraView();
-    // A drawing layer over the current one, called `name` (when that is not empty); with
-    // `wholeScene`, an empty drawing in it held from the first frame to the last.  Its place.
     int addDrawingLayer(QString const& name, bool wholeScene);
     int autoSaveMinutes() const { return m_autoSaveMinutes; }
     // The view in the middle (Camera / Drawing) out in a window of its own, and back into the middle.
     void setCameraFloating(bool floating);
     bool cameraFloating() const { return m_cameraWindow != nullptr; }
-    // ... or docked at a side of the window among the panels (with `tabbed`, as a tab of the panels there); Qt::NoDockWidgetArea:
-    // back into the middle.  Where it is docked (none: it is not).
     void setCameraDocked(Qt::DockWidgetArea area, bool tabbed = false);
     Qt::DockWidgetArea cameraDockArea() const;
     // Shown at all: Close View hides it, Windows > Camera brings it back.
     void setCameraShown(bool shown);
     bool cameraShown() const { return cameraFloating() || m_cameraDock || !m_middleCollapsed; }
-    // Pictures to look at while drawing, shown in the Reference view (which comes up).
-    // Returns how many could be read.
     int addReferences(QStringList const& files);
     // Returns the layer they went to, or -1 with a message.
     int importImages(ImageImport const& options, QString* error);
-    // The frames of a movie as pictures on a new layer, and its sound on a sound layer.
-    // Needs ffmpeg, and a scene that has been saved (the frames are kept beside it).
     int importMovie(QString const& path, QString* error);
     struct ImageExport {
         QString folder;
@@ -198,21 +170,14 @@ public:
     int exportImages(ImageExport const& options, QString* error);
     // A frame of the scene on a page, as large as the page takes it.
     bool printFrame(QPrinter& printer, int frame);
-    // The drawing of the current cell on every frame selected (of the current layer); and the
-    // drawings of the layer in order from `start` (a place in its list), each held for `hold`
-    // frames, going on by `increment`.  Each returns how many frames it filled.
     int fillSelection();
     int sequenceFill(int start, int increment, int hold, bool cycle);
     // The sound of the scene, mixed, as a WAV file.  False when there is none or it cannot be written.
     bool exportAudio(QString const& path, QString* error);
 
-    // The tool presets of your own, written to a file and read from one (those already
-    // there by the same name and tool are not doubled).  The number written or taken in; -1 on failure.
     int exportPresets(QString const& path) const;
     int importPresets(QString const& path);
 
-    // Lip-sync: listens to the sound of a sound layer and gives each of its frames a mouth
-    // shape.  The number of frames lettered; -1 when the layer has no sound that can be read.
     int detectLipSync(int soundLayer);
     // Preferences: the frames the detected mouth shapes are shown before they are heard.
     int lipSyncLead() const;
@@ -248,8 +213,6 @@ public slots:
     void onShowWindows(QMenu* menu);
     void onShowCameras(QMenu* menu);
     void onActionResetAllExceptZ();
-    // The 3D submenu: the models of the current layer played from a frame, so many frames each; the model on this frame
-    // made a flat picture on a layer of its own; the model files read again and the models put back in the frame's middle.
     void onActionSet3DAnimationTiming();
     void onActionSnapshot3D();
     void onActionUpdate3DModelPosition();
@@ -258,11 +221,7 @@ public slots:
     // ---- Play ----
     void onActionTogglePlayback();
     void onActionToggleLoop(bool on) { m_loop = on; }
-    // Play > Enable Playback: whether the Top, Side or Perspective view plays along (they stand still otherwise,
-    // and show the frame again when playing stops).
     void onActionEnablePlayback(QString const& which);
-    // Drawing > Create Stamp from Selected Drawings: the drawings on the frames selected in the Timeline, of the
-    // current layer, become one stamp that puts them down in turn.
     void onActionCreateStampFromDrawings();
     // Edit > Symbol.
     void onActionCreateSymbol();
@@ -280,13 +239,9 @@ public slots:
     void runScript(QString const& name);
     // Map Lip-Sync for one sound layer: the window that asks which drawings are the mouths, and the mapping.
     bool mapLipSyncFor(int sound);
-    // Windows > Drawing: a Drawing view in a window of its own, beside the Camera view - the current drawing, flat,
-    // drawn on with the tool in hand.
     void setDrawingWindowShown(bool on);
     // What a workspace keeps besides the panels: whether the Camera view floats, and the Drawing window, and where they are.
     void saveWorkspaceExtras(QString const& name);
-    // File > Export > Render Write Nodes: every write output of the scene that is on, made.  How many were made;
-    // what went wrong with the others in `error`.
     int renderWrites(QString* error);
     void onActionRenderWrites();
     // Scene > Write Outputs...: the outputs listed, to add to, change and take away.
@@ -400,8 +355,6 @@ public slots:
     void onActionImportFla();
     // The same, from a file; how many layers were made, or -1 (and why).
     int importFla(QString const& path, QString* error = nullptr);
-    // Drawing layers (sets of drawings within a layer): the next drawing of the same one; the drawing of the same name in
-    // the next one; and the drawing on the current frame put in one.  `direction` is "1" or "-1".
     void onActionSubstituteSameSet(QString const& direction);
     void onActionSubstituteLayer(QString const& direction);
     void onActionSetDrawingLayer();
@@ -488,8 +441,6 @@ public slots:
     void onActionSetEase(QString const& which);
     void onActionShowLayerProperties();
     void onActionShowMessageLog();
-    // Help > Debug Mode: the Message Log also tells every command that is run, how long it took, and every step
-    // that goes onto the list of things to undo.
     void onActionDebugMode(bool on);
     bool debugMode() const { return m_debugMode; }
     void onActionHelp();
@@ -497,9 +448,6 @@ public slots:
     void onActionSetEaseDialog();
     // The ease of the keyframes on the frames and layers selected (0 to 1 each; below 0: left as it is).  How many were changed.
     int setEaseOnSelection(double easeIn, double easeOut);
-    // Breakdown Assistant: a keyframe on the current frame of the current layer, so many per cent of the way
-    // from the keyframe before it to the keyframe after it (below 0 or over 100: beyond them).  False when
-    // the frame does not lie between two keyframes.
     bool applyBreakdown(double percent);
     void onActionMarkFrame(QString const& colour);
     void onActionLayerKeys(QString const& how);
@@ -572,10 +520,6 @@ private:
     QDockWidget* dockOf(char const* objectName) const;
     // Brings the tabs across the top of every panel up to date with where the views are.
     void refreshViewTabs();
-    // The collapse arrows: a pair at each edge of the middle view that has panels beyond it, and a
-    // pair on the line between two panels of the same side.  Each arrow pushes the line its own
-    // way: it folds away what lies on the side it points to (the panels of that side, the middle
-    // view, one of the two panels), or brings back what was folded away on the other side.
     enum Side { LeftSide, RightSide, TopSide, BottomSide, SideCount };
     void createCollapseArrows();
     void placeCollapseArrows();
@@ -593,8 +537,6 @@ private:
     QWidget* m_cameraWindow = nullptr;     // the window it is in while it floats
     class QDockWidget* m_cameraDock = nullptr;     // the panel it is in while it is docked
     QHash<QDockWidget*, QSize> m_sizesBeforeMiddle;     // how big the panels were with the middle view there
-    // A panel (with those on its tabs) folded away from between two: which, which of them was in
-    // front, the neighbour its arrows stay by, and whether it lay before that neighbour.
     struct Fold {
         QList<QDockWidget*> docks, front;
         QDockWidget* anchor = nullptr;
@@ -653,8 +595,6 @@ private:
     bool refuseUnlessModel(QString const& what);
     // Floating panels and toolbars kept hidden until the window is first shown (see restoreWorkspace).
     QVector<QPointer<QWidget>> m_heldBack;
-    // Preferences: the Camera view, the Timeline, the Xsheet and the Node View take the keyboard when the pointer comes over
-    // them.
     bool m_focusOnEnter = false;
     Q_INVOKABLE void shuttleStep();     // one tick of the shuttle
 
@@ -703,8 +643,6 @@ private:
     bool m_soundOn = true;
     bool m_scrub = false;           // a frame of sound is heard when the frame is changed by hand
     QVector<qint16> m_scrubMix;     // the sound of the scene for that; emptied when the scene changes
-    // Playback follows the clock, not a count of timer ticks: a slow frame is skipped
-    // rather than putting the picture behind the sound.
     QElapsedTimer m_playClock;
     int m_playFrom = 0;
     QVector<qint16> m_playMix;

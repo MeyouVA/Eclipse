@@ -39,8 +39,6 @@ Stroke const* Canvas::contourLine(Drawing const& drawing) const
 
 Stroke* Canvas::contourLine(Drawing& drawing) const
 {
-    // Reached through the drawing as something that may be written to: its lists are shared
-    // with the scene until then, and must become this drawing's own before a point is moved.
     if (!contourLine(std::as_const(drawing)))
         return nullptr;
     if (m_ceFill >= 0)
@@ -114,8 +112,6 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
             if (std::abs(w.x() - press.x()) <= 6 && std::abs(w.y() - press.y()) <= 6) {
                 m_cePoint = i;
                 if (modifiers & Qt::AltModifier) {
-                    // Alt: dragged, the point's two handles are pulled out of it (in line, as long as each other);
-                    // clicked, a corner becomes smooth and a smooth point a corner (when the pen comes up).
                     m_ceHandle = 2;
                     m_ceBreak = false;
                     m_dragStart = m_dragNow = points[i].pos;
@@ -148,8 +144,6 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
         if (!d->strokes[i].hit(p, 4.0 / m_zoom))
             continue;
         if (i == m_ceStroke && (modifiers & Qt::ControlModifier)) {
-            // A new point where the line was pressed; it can be dragged at once.
-            // The line keeps its shape: the new point lies on it, with the handles that make it so.
             Drawing edited = *d;
             int const added = edited.strokes[i].insertPoint(p);
             if (added < 0)
@@ -209,8 +203,6 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
         startBend(shape.contours[nearest], p, modifiers);
         return;
     }
-    // On nothing.  With a curve being edited, a box can be dragged round some of its points
-    // (a click without a drag lets the curve go).
     if (contourLine(*d)) {
         m_drag = DragPointMarquee;
         m_dragStart = m_dragNow = p;
@@ -353,8 +345,6 @@ QTransform Canvas::contourBoxTransform() const
         turn.rotateRadians(to - from);
         return QTransform::fromTranslate(-c.x(), -c.y()) * turn * QTransform::fromTranslate(c.x(), c.y());
     }
-    // Scaled from the corner across from the one pulled.
-    // (From the corner of the points themselves: the box has a little room round them.)
     double const room = 6.0 / std::max(m_zoom, 1e-6);
     QRectF const tight = box.adjusted(room, room, -room, -room);
     QPointF const corners[4] = {box.topLeft(), box.topRight(), box.bottomRight(), box.bottomLeft()};
@@ -718,8 +708,6 @@ Stroke Canvas::bentSegment(Stroke line, int segment, double t, QPointF by)
         line.setHandles(i, kept[i].first, kept[i].second);
         line.points[i].corner = corner;
     }
-    // The two handles moved so that the place taken goes exactly where the pen is: shared between them by how near
-    // the place is to each end (as drawing programs do).
     double weight;
     if (t <= 1.0 / 6.0)
         weight = 0.0;
@@ -736,8 +724,6 @@ Stroke Canvas::bentSegment(Stroke line, int segment, double t, QPointF by)
     StrokePoint& b = line.points[next];
     a.out += first;
     b.in += second;
-    // Only this piece changes: the other handle of each of its two points stays as it was (the points may now turn
-    // there - they are corners, their handles their own).
     a.corner = true;
     b.corner = true;
     return line;

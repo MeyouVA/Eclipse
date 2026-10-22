@@ -781,8 +781,6 @@ void NodeView::graphPress(QMouseEvent* event)
     }
     NodeGraph const& g = m_document->scene().graph;
     {
-        // A transformation port: out of a node's right end, what is to hang from it; a cable taken off a node's left end,
-        // to hang it elsewhere (or from nothing).
         Scene const& scene = m_document->scene();
         double const reach = std::max(6.0, 8.0 * m_zoom);
         for (GraphNode const& n : g.nodes) {
@@ -877,8 +875,6 @@ void NodeView::graphRelease(QMouseEvent* event)
                 g.nodes[i].at += (at - m_pressPos) / m_zoom;
         m_document->setGraph(g, moving.size() > 1 ? tr("Move Nodes") : tr("Move Node"));
     } else if (drag == DragPeg) {
-        // Onto a layer's node: that layer hangs from the one the cable came out of.  Taken off and let go of in the open: it
-        // hangs from nothing.
         Scene const& scene = m_document->scene();
         NodeGraph const& g = scene.graph;
         GraphNode const* const from = g.node(m_pegFrom);

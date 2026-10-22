@@ -18,10 +18,6 @@ class ECLIPSE_UI_API PreviewManagerView : public QWidget {
 
 public:
     PreviewManagerView(Document* document, Canvas* canvas, QWidget* parent = nullptr);
-    // Renders every frame of the scene at the size chosen and hands them to the Camera view
-    // to play from.  The number of frames rendered.
-    // Frames already kept whose picture cannot have changed (nothing they show has) are not rendered again,
-    // unless `everything`.  The number of frames rendered afresh; -1 when it was stopped.
     int render(bool everything = false);
     void clear();
     // Stops a render under way (what was rendered so far is kept for the next one).

@@ -49,8 +49,6 @@ void Canvas::paintAt(QPointF p)
         }
         return;
     }
-    // On a line: recolour the line - unless there is paint under it there: then it is the paint that
-    // is meant (the Ink tool is the one for lines).
     bool paintUnder = false;
     for (Fill const& fill : std::as_const(edited.fills))
         paintUnder = paintUnder || fill.contains(p);
@@ -70,8 +68,6 @@ void Canvas::paintAt(QPointF p)
             return;
         }
     }
-    // Inside a closed line (a shape): the whole shape is painted, as its line goes round - lines of other shapes crossing it
-    // do not cut it up.  The paint is the line's own (as Auto Fill's): it follows that line alone, and goes with it.
     {
         int shape = -1;
         QPolygonF round;
@@ -220,8 +216,6 @@ void Canvas::paintAt(QPointF p)
         fill.seed = p;
         fill.swatch = m_swatch;
         fill.color = color;
-        // Under the shapes with paint of their own (brush shapes, Auto Fill): the paint reaches a little way under the
-        // lines round it, and runs on under those shapes - it must not show over them.
         edited.fills.insert(underIndex(edited), fill);
         commitDrawing(edited, tr("Paint"));
         break;

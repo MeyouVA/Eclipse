@@ -60,8 +60,6 @@ void Canvas::addText(QPointF layerPos, QString const& text)
     if (text.trimmed().isEmpty() || m_layer < 0 || m_layer >= scene.layers.size() || !scene.layers[m_layer].holdsDrawings()
         || scene.layers[m_layer].locked)
         return;
-    // The outlines of the letters: one painted shape for all of them, with the holes of
-    // the letters left out by the outlines inside outlines.
     QPainterPath path;
     // The letters as far apart as asked (the font kept with the words is the plain one).
     QFont spaced = m_textFont;

@@ -34,14 +34,10 @@
 
 MainWindow::~MainWindow()
 {
-    // The views are taken apart after this: the keyboard focus moving among them, and events on the way to them,
-    // are not to come here any more.
     disconnect(qApp, nullptr, this, nullptr);
     qApp->removeEventFilter(this);
     if (m_actions)
         m_actions->setActiveView(nullptr);
-    // Nor are the views, panels and the document to tell anyone anything while they go (a dock hidden, a focus moved):
-    // what would hear it may already be gone.
     for (QObject* const child : findChildren<QObject*>())
         child->blockSignals(true);
     // The list of things to undo is emptied as the document goes, and says so: no one is to hear it.
@@ -160,8 +156,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     });
     updateActionStates();
     connect(m_canvas, &Canvas::colourPicked, this, [this](int swatch, QColor const& colour) {
-        // The colour of the palette it was painted with; else one of the same colour; else
-        // it joins the palette.
         Scene const& scene = m_document->scene();
         int id = scene.findSwatch(swatch) ? swatch : Scene::kNoSwatch;
         for (int i = 0; id == Scene::kNoSwatch && i < scene.palette.size(); ++i)
@@ -204,8 +198,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         updateStatus();
     });
     connect(m_document->undoStack(), &QUndoStack::cleanChanged, this, &MainWindow::updateTitle);
-    // The receiver is the action manager: when the window is torn down the undo stack still
-    // signals, and by then the manager may be gone.
     connect(m_document->undoStack(), &QUndoStack::canUndoChanged, m_actions, [this](bool can) {
         if (QAction* const a = m_actions->action(QStringLiteral("EditUndo")))
             a->setEnabled(can);
@@ -219,8 +211,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(&m_autoSave, &QTimer::timeout, this, &MainWindow::autoSaveNow);
     m_playTimer.setTimerType(Qt::PreciseTimer);
 
-    // What would go to a status bar shows under the Camera view instead; a message stands
-    // there for a while, then the name of the tool is back.
     statusBar()->hide();
     m_toolName = tr("Brush");
     m_messageLabel->setText(m_toolName);

@@ -47,8 +47,6 @@ void PerspectiveView::resetView()
     update();
 }
 
-// The scene is turned about the middle of the frame, on the plane of no depth, and looked
-// at from well in front of it.
 static void turn(Scene const& scene, double yaw, double pitch, double& x, double& y, double& z)
 {
     x -= scene.width / 2.0;

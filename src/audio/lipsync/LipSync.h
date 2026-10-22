@@ -26,20 +26,12 @@ int indexOf(QChar shape);
 QString describe(QChar shape);
 // A letter for every frame of the sound (16-bit stereo at `rate`), at `fps` frames a second.
 QString detect(QVector<qint16> const& stereo, int rate, double fps);
-// The two lowest resonances of a stretch of voice (mono, -1..1, at `rate`), in Hz, found from its spectral envelope
-// (linear prediction); false when there are not two to be found.
 bool formants(QVector<double> const& samples, int rate, double& first, double& second);
 // The shape that goes with a vowel of those resonances.
 QChar vowelShape(double first, double second);
 // The mouth shapes a word says, one for each sound of it, read from its spelling (English, as it is mostly spelt).
 QString wordShapes(QString const& word);
-// The words said (`text`) laid over a sound whose shapes were detected (`detected`, a letter a frame): each stretch of speech
-// in it (the frames not at rest, a pause of a frame within one not counting) says as many of the words as its length is a
-// share of all the speech; within it each sound of a word takes as long as each other.  Frames between stay at rest.  With
-// no speech found, the words take the whole sound.
 QString fromText(QString const& text, QString const& detected);
-// The shapes shown `frames` earlier than they are heard (the mouth gets there a little before the sound is made, as animators
-// time it): the first ones go, the end is at rest.
 QString lead(QString const& shapes, int frames);
 
 }

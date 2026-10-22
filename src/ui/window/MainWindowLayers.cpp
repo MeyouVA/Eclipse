@@ -417,8 +417,6 @@ void MainWindow::onActionSyncLayerWith()
 
 void MainWindow::onActionCloneLayer()
 {
-    // A drawing layer: a clone that shares its drawings and has a timing of its own, drawn on directly.
-    // (A layer that shows a symbol: another layer that shows the same symbol.)
     Scene const& scene = m_document->scene();
     if (layer() >= 0 && layer() < scene.layers.size() && scene.layers[layer()].holdsDrawings() && !scene.layers[layer()].showsSymbol()) {
         int const at = m_document->addCloneLayer(layer(), false);
@@ -664,8 +662,6 @@ void MainWindow::onActionMarkDrawing(QString const& as)
     m_document->markDrawing(layer(), frame(), mark);
 }
 
-// Which layers show their neighbouring drawings while another is worked on: "add" / "remove" the
-// layers selected, "removeUnselected", "addAll", "removeAll".
 void MainWindow::onActionOnionLayers(QString const& which)
 {
     Scene const& scene = m_document->scene();
@@ -690,8 +686,6 @@ void MainWindow::onActionMarkFrame(QString const& colour)
                            colour == QLatin1String("none") ? QColor() : QColor(colour));
 }
 
-// All the keyframes of the layers selected: "clear" takes them away, "stop" makes them stop-motion
-// (each holds until the next), "motion" makes them motion keyframes (each glides to the next).
 void MainWindow::onActionLayerKeys(QString const& how)
 {
     Scene const& scene = m_document->scene();

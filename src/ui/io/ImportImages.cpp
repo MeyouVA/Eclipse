@@ -46,11 +46,6 @@
 #include "formats/flash/SwfImport.h"
 #include "formats/flash/FlaImport.h"
 
-// A sound (or other media) that came inside an imported file, written out as a file of its own: into the folder kept
-// beside the scene (<scene>-media/<what it came from>/), or, for a scene not saved yet, into Eclipse's own folder of
-// imported media.  Empty when it could not be written.
-// While a long import is read: how far it has come, and a button to stop it.  (Shown only once the reading has taken a
-// moment, and kept alive meanwhile, so that the window never seems to hang.)
 class ImportProgress {
 public:
     ImportProgress(QWidget* parent, QString const& label) : m_dialog(label, QCoreApplication::translate("MainWindow", "Cancel"), 0, 1000, parent)
@@ -245,8 +240,6 @@ int MainWindow::importFla(QString const& path, QString* error)
                 layer.cells[f] = cells[f];
             layer.visible = shown;
             layer.locked = locked;
-            // What had a blend mode or filters in Flash: the layer mixed and softened as they say (a blend mode Eclipse
-            // has; a glow, a blur or a drop shadow, at the size the import scales to).
             static QHash<QString, int> const blends{{QStringLiteral("add"), Layer::BlendAdd},
                                                     {QStringLiteral("multiply"), Layer::BlendMultiply},
                                                     {QStringLiteral("screen"), Layer::BlendScreen},
@@ -293,8 +286,6 @@ int MainWindow::importFla(QString const& path, QString* error)
         cut.matte = ids[by];
         m_document->editLayers({at}, tr("Import FLA"), [&](Layer& layer) { layer.effects.push_back(cut); });
     }
-    // Its frame labels as markers of the scene (a comment as a marker's note); its sounds on sound layers of their own,
-    // each sound written out once.
     for (FlaImport::Label const& label : std::as_const(fla.labels)) {
         if (m_document->scene().markerAt(label.frame) >= 0)
             continue;
@@ -411,15 +402,11 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         QImage image = reader.read();
         if (image.isNull())
             return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), reader.errorString()));
-        // In the middle of the frame: made to fit it, or at its own size.
-        // (Pan: made to fill it, the longer way hanging over the edges for the camera to pan across.)
         double const across = double(scene.width) / image.width(), down = double(scene.height) / image.height();
         double const scale = !options.fit ? 1.0 : options.pan ? std::max(across, down) : std::min(across, down);
         QTransform placement = QTransform::fromScale(scale, scale);
         placement *= QTransform::fromTranslate((scene.width - image.width() * scale) / 2.0, (scene.height - image.height() * scale) / 2.0);
         Drawing drawing;
-        // How far a traced shape's curves may stray from the edge of the picture (scene units): about a pixel of the picture,
-        // so that the steps of its pixels are smoothed over rather than taken for corners.
         double const kTraceTolerance = std::max(0.75, 1.25 * scale);
         if (options.vectorize && options.colours > 0) {
             // In colour: a painted shape for the area of each colour, the largest underneath.

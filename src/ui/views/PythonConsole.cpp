@@ -27,8 +27,6 @@
 
 namespace {
 
-// What the Python side runs first: the names as stand-ins that ask Eclipse, what is printed sent back, and the loop that
-// takes each line to run.
 char const* const kBridge = R"PY(
 import sys, json, io, traceback
 _real_out, _in = sys.stdout, sys.stdin

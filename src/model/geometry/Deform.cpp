@@ -24,8 +24,6 @@ bool isBent(QVector<QPointF> const& joints, QVector<double> const& bend)
 
 namespace {
 
-// What each bone does to the points that belong to it: from where the bone lies at rest
-// to where the pose puts it.
 struct Chain {
     QVector<QPointF> joints;
     QVector<QTransform> bones;
@@ -52,10 +50,6 @@ struct Chain {
     {
         if (bones.isEmpty())
             return p;
-        // Each bone pulls with a strength that falls off fast with distance, so a point
-        // beside one bone follows that bone, and one at a joint goes half way with each.
-        // The pull of each bone by nearness; then what is painted added to it (never below nothing).  Where the painting
-        // takes every pull away, nearness alone says.
         QVarLengthArray<double, 16> pull(bones.size());
         nearness(p, pull);
         if (!skin.isEmpty()) {
@@ -82,8 +76,6 @@ struct Chain {
     void nearness(QPointF p, QVarLengthArray<double, 16>& pull) const
     {
         if (smooth > 1.0) {
-            // Smoothed joints: the nearest bone pulls fully, another as much less as it is further than that one, and
-            // not at all once it is `smooth` further - so the bend is shared out round a joint, and nowhere else.
             QVarLengthArray<double, 16> away(bones.size());
             double nearest = 1e300;
             for (int i = 0; i < bones.size(); ++i) {
@@ -103,8 +95,6 @@ struct Chain {
     }
 };
 
-// Adds the points from `a` towards `b` (not `b` itself), close enough together that the
-// bent line stays smooth.
 template <class Add> void pieces(QPointF a, QPointF b, Add add)
 {
     int const steps = std::clamp(int(std::ceil(std::hypot(b.x() - a.x(), b.y() - a.y()) / 6.0)), 1, 400);
@@ -151,8 +141,6 @@ QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, in
     if (bend.size() < endJoint)
         bend.resize(endJoint);
     double const degrees = 180.0 / 3.14159265358979323846;
-    // Cyclic coordinate descent: from the last bone back to the first, turn each so that
-    // the end of the chain swings onto the line from its joint to the target; and again.
     for (int pass = 0; pass < 40; ++pass) {
         for (int i = endJoint - 1; i >= 0; --i) {
             QVector<QPointF> const posed = posedJoints(joints, bend);
@@ -191,8 +179,6 @@ QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> c
 
 namespace {
 
-// The drawing with every point of it sent through `map`: lines and outlines are first cut
-// into short pieces, so that what was straight can come out bent.
 template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
 {
     Drawing out;
@@ -233,8 +219,6 @@ template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
             }
             if (!line.isEmpty())
                 bent.points.push_back({map(line.last().pos), line.last().pressure});
-            // Where it came out straight after all, the pieces are one piece again: a run of
-            // points in a dead straight line is drawn with a small bump at each of them.
             QVector<StrokePoint> kept;
             for (StrokePoint const& q : bent.points) {
                 while (kept.size() >= 2 && kept.last().pressure == q.pressure && kept[kept.size() - 2].pressure == q.pressure
@@ -280,8 +264,6 @@ struct Warper {
         if (closed)
             return;
         for (int i = 0; i + 1 < rest.size(); ++i) {
-            // From the piece at rest - along it, and to the side of it - to the piece as posed:
-            // as much longer or shorter along it as the piece has become, as far to the side.
             QPointF const a = rest[i + 1] - rest[i], b = posed[i + 1] - posed[i];
             double const la = length(a), lb = length(b);
             if (la < 1e-9 || lb < 1e-9) {
@@ -300,8 +282,6 @@ struct Warper {
 
     QPointF map(QPointF p) const { return closed ? inside(p) : beside(p); }
 
-    // Along an open curve: each piece pulls with a strength that falls off fast with distance,
-    // as the bones of a chain do, so the artwork follows the stretch of curve it lies by.
     QPointF beside(QPointF p) const
     {
         if (pieces.isEmpty())
@@ -317,8 +297,6 @@ struct Warper {
         return sum / total;
     }
 
-    // In an envelope: mean value coordinates - the point is a weighted mean of the points of
-    // the outline at rest, and goes to the same mean of where the pose has put them.
     QPointF inside(QPointF p) const
     {
         int const n = int(rest.size());
@@ -412,8 +390,6 @@ void smoothWarpHandles(QVector<QPointF>& points, bool closed, int index)
     QPointF const after = hasAfter ? points[((index + 1) % n) * 3] : here;
     QPointF in, out;
     if (hasBefore && hasAfter && n > 2) {
-        // Through the point in the direction from its one neighbour to the other, each handle
-        // a third of the way to the neighbour on its side.
         QPointF const through = after - before;
         double const l = length(through);
         if (l > 1e-9) {
@@ -660,9 +636,6 @@ static void transformAll(Drawing& drawing, QTransform const& t)
 
 namespace {
 
-// The Game Bones a layer hangs from (from the first of the chain to the one it hangs on), the joints of the chain as they
-// stand on frame 0 in the first bone's own coordinates, how far each bone is turned on `frame` from how it stood then, and
-// from the layer's own coordinates (on `frame`) into the first bone's.  False when it hangs from none.
 bool gameChain(Scene const& scene, int layer, int frame, QVector<int>& chain, QVector<QPointF>& joints, QVector<double>& bend, QTransform& into)
 {
     chain.clear();
@@ -674,8 +647,6 @@ bool gameChain(Scene const& scene, int layer, int frame, QVector<int>& chain, QV
         return false;
     std::reverse(chain.begin(), chain.end());      // from the first bone to the last
     auto local = [&scene](int l, int f) { return scene.layers[l].matrixFor(scene.layers[l].poseAt(f)); };
-    // From each bone (on frame 0) to the first bone's own coordinates; and the drawing there - its own place on this frame,
-    // the bones as they stand on frame 0.
     QVector<QTransform> toRoot(chain.size());
     for (int i = 0; i < chain.size(); ++i)
         toRoot[i] = i == 0 ? QTransform() : local(chain[i], 0) * toRoot[i - 1];

@@ -135,8 +135,6 @@ QByteArray unzlib(QByteArray const& data)
     return ok ? out : QByteArray();
 }
 
-// How a fill style paints: a colour (a solid one, a gradient's first, grey for a bitmap); a gradient (its square, -16384
-// to 16384 twips each way, placed in the shape by a matrix); or a bitmap, placed by a matrix from its pixels to the shape.
 struct FillStyle {
     QColor colour;
     Swatch gradient;            // (Swatch::Solid: none)
@@ -144,8 +142,6 @@ struct FillStyle {
     QTransform matrix;
 };
 
-// A shape as read: its fills (rings of points, in twips) and lines.
-// A line that keeps its thickness however it is scaled, marked so while a frame is put together (see where lines are made).
 constexpr int kKeepWidthMark = -77;
 
 struct Shape {
@@ -259,8 +255,6 @@ void styles(QByteArray const& b, int& p, int version, QVector<FillStyle>& fills,
     }
 }
 
-// One shape record: a change of style (a move, the fills on each side, the line; new styles from here), or an edge (a
-// straight one to `anchor`, or a curve through `control` to it - each from where the last one ended).
 struct Rec {
     bool edge = false;
     bool move = false;
@@ -334,8 +328,6 @@ QVector<Rec> parseRecords(QByteArray const& b, int p, int version, QVector<FillS
     return out;
 }
 
-// A shape made of its records: edges with the fill on their left (fill 0) and right (fill 1), joined into rings fill by
-// fill; runs of edges with a line style, lines.
 Shape build(QVector<Rec> const& records, QVector<FillStyle> const& fills, QVector<LineStyle> const& lineStyles)
 {
     struct Edge {
@@ -474,8 +466,6 @@ Shape shape(QByteArray const& b, int version)
     return records(b, p, version, fills, lineStyles);
 }
 
-// A morph shape: two shapes with the same edges (the same styles, the colours, places and widths apart), drawn some
-// way from the one to the other.
 struct MorphShape {
     QVector<FillStyle> fills0, fills1;
     QVector<LineStyle> lines0, lines1;
@@ -608,8 +598,6 @@ QTransform mixed(QTransform const& a, QTransform const& b, double t)
     return QTransform(at(a.m11(), b.m11()), at(a.m12(), b.m12()), at(a.m21(), b.m21()), at(a.m22(), b.m22()), at(a.dx(), b.dx()), at(a.dy(), b.dy()));
 }
 
-// The morph `t` of the way (0..1) from its start to its end: its edges paired one with the other (a straight edge with a
-// curve as a curve with its control in its middle), its styles mixed.
 Shape morphAt(MorphShape const& m, double t)
 {
     QVector<FillStyle> fills;
@@ -834,8 +822,6 @@ QImage lossless(QByteArray const& b, bool alpha)
     return image;
 }
 
-// A sound of the movie in the form of a file: an MP3 as it is, uncompressed samples as a WAV; or nothing when it is in a
-// form Eclipse does not read.
 bool soundFile(int format, QByteArray const& data, SwfImport::Sound& out)
 {
     int const compression = format >> 4;
@@ -1131,8 +1117,6 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
         } else if (code == 8) {
             jpegTables = body;
         } else if (code == 6) {
-            // A JPEG whose tables are kept apart (JPEGTables): the two put together, less the end of the one and the start of
-            // the other.
             QByteArray picture = body.mid(2);
             if (picture.startsWith("\xff\xd9\xff\xd8"))
                 picture = picture.mid(4);
@@ -1303,8 +1287,6 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
         else
             ++out.skippedSounds;
     }
-    // The movie clips' own sounds, on the frames of the main timeline their clips get to them: each time round a clip that
-    // loops; once, when it is put there, for a clip of a single frame (which stands still).  Clips in clips too.
     if (!spriteSounds.isEmpty()) {
         std::function<void(DisplayList const&, int, int, int)> clipSounds = [&](DisplayList const& list, int age, int mainFrame, int depth) {
             for (Placed const& placed : list) {
@@ -1424,8 +1406,6 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             for (QPolygonF const& ring : area.rings)
                 fill.outlines.push_back(place.map(ring));
             if (area.style.gradient.isGradient()) {
-                // A gradient: as the colour effect leaves it, from one side of its square to the other (a round one from its
-                // middle to its rim).
                 Swatch g = area.style.gradient;
                 for (GradientStop& stop : g.stops)
                     stop.color = fx.apply(stop.color);
@@ -1444,8 +1424,6 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
             stroke.order = order;
             stroke.width = float(line.width * std::sqrt(std::abs(place.determinant())));
             if (line.keepWidth) {
-                // As thick as it says, however the movie clips it is in are scaled: its width in pixels now, and marked to be
-                // left so as it is placed (the mark goes before the frame leaves here).
                 stroke.width = float(line.width / 20.0);
                 stroke.texture = kKeepWidthMark;
             }

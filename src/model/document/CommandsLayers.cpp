@@ -699,8 +699,6 @@ void Document::applyControllerPoint(int controller, int frame, QPointF where)
             int const l = s.layerIndex(into.layers[i]);
             if (l < 0)
                 continue;
-            // The weighted mean of the poses, built up a state at a time: each blended in by its share of what has
-            // been taken so far.
             Pose blended = into.states[0].poses[i];
             double taken = weights[0];
             for (int k = 1; k < into.states.size(); ++k) {

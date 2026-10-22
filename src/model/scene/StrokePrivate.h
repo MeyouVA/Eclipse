@@ -27,12 +27,6 @@ inline QPointF cubicAt(QPointF p0, QPointF c1, QPointF c2, QPointF p3, double t)
     return u * u * u * p0 + 3.0 * u * u * t * c1 + 3.0 * u * t * t * c2 + t * t * t * p3;
 }
 
-//
-// The samples are cut where the pen turned a corner; each run between two corners is then
-// fitted with cubic Bezier pieces by least squares: one piece is tried, and where it strays
-// further from the samples than the tolerance the run is cut in two at the worst place and
-// each half fitted again, the two halves sharing their direction at the cut so that the
-// line is smooth through it.
 
 namespace {
 
@@ -57,8 +51,6 @@ QPointF unit(QPointF v)
     return l > 1e-12 ? v / l : QPointF();
 }
 
-// The direction the line takes from sample `from` towards `to`, judged over a little
-// distance rather than from the very next sample (which jitters).
 QPointF directionFrom(QVector<StrokePoint> const& d, int from, int to, double reach)
 {
     int const step = to > from ? 1 : -1;
@@ -68,8 +60,6 @@ QPointF directionFrom(QVector<StrokePoint> const& d, int from, int to, double re
     return QPointF();
 }
 
-// The direction the line has as it passes sample `at`, judged between the samples a little
-// way off on either side of it (no further than `low` and `high`).
 QPointF directionThrough(QVector<StrokePoint> const& d, int at, int low, int high, double reach)
 {
     int before = at, after = at;
@@ -80,8 +70,6 @@ QPointF directionThrough(QVector<StrokePoint> const& d, int at, int low, int hig
     return unit(d[after].pos - d[before].pos);
 }
 
-// One cubic through the two ends of the run with the given directions there, as close to
-// the samples between as its two handle lengths allow.
 Piece shape(QVector<StrokePoint> const& d, int first, int last, QVector<double> const& u, QPointF t1, QPointF t2)
 {
     QPointF const p0 = d[first].pos, p3 = d[last].pos;
@@ -124,10 +112,6 @@ QVector<double> byLength(QVector<StrokePoint> const& d, int first, int last)
     return u;
 }
 
-// The furthest any sample is from the piece - from the curve itself, wherever on it is
-// nearest, not from a place guessed for the sample - and which sample that is.  Each
-// sample is also told where along the piece (0 to 1) it was found nearest, which is the
-// place to give it when the piece is shaped again.
 double worst(QVector<StrokePoint> const& d, Piece const& piece, QVector<double>& u, int& at)
 {
     QPointF const p0 = d[piece.first].pos, p3 = d[piece.last].pos;
@@ -137,8 +121,6 @@ double worst(QVector<StrokePoint> const& d, Piece const& piece, QVector<double>&
     QVector<QPointF> line(bits + 1);
     for (int k = 0; k <= bits; ++k)
         line[k] = cubicAt(p0, piece.c1, piece.c2, p3, double(k) / bits);
-    // Every bit is looked at when that is not much work; else only those about where the
-    // sample was last placed.
     bool const all = double(samples) * bits <= 600000.0;
     double most = 0.0;
     at = (piece.first + piece.last) / 2;
@@ -187,9 +169,6 @@ void fitRun(QVector<StrokePoint> const& d, int first, int last, QPointF t1, QPoi
     Piece piece = shape(d, first, last, u, t1, t2);
     int split = 0;
     double error = worst(d, piece, u, split);
-    // The samples were placed along the piece by guess (by the length of line before each);
-    // measuring has put each where it really is nearest the curve.  Shaped again with those
-    // places the piece often comes within the tolerance - above all on a shaky line.
     for (int round = 0; round < 4 && error > tolerance; ++round) {
         Piece const again = shape(d, first, last, u, t1, t2);
         int where = 0;
@@ -206,10 +185,6 @@ void fitRun(QVector<StrokePoint> const& d, int first, int last, QPointF t1, QPoi
         out.push_back(piece);
         return;
     }
-    // Cut in two where it is worst - but not out towards an end of the run: a cut is kept
-    // within the middle part of it (by length of line), which spreads the points evenly
-    // along a long bend instead of crowding them at its ends.  The line goes straight
-    // through the cut.
     {
         QVector<double> const along = byLength(d, first, last);
         int low = first + 1, high = last - 1;
@@ -230,9 +205,6 @@ void fitRun(QVector<StrokePoint> const& d, int first, int last, QPointF t1, QPoi
 
 }  // namespace
 
-// A line whose thickness leans to one side: each place moved that way by its lean times half the thickness (the
-// thickness then lies about the moved place as usual - so at a lean of 1 all of it is on the one side of the line as
-// drawn).  Done on the places of the line before its edges are found.
 inline void leanAside(QVector<QPointF>& pos, QVector<double> const& half, QVector<double> const& lean, bool closed)
 {
     int const n = int(pos.size());

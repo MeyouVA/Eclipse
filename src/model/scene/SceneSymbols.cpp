@@ -68,8 +68,6 @@ void Scene::refreshSymbolInstances(int symbolId)
             continue;
         Symbol const* const symbol = findSymbol(layer.symbolId);
         int const count = symbol ? std::max(1, symbol->frameCount) : 1;
-        // A drawing for each frame of the symbol: what it shows there, all in one - to be picked and measured by
-        // (it is the symbol itself that is painted).
         QVector<Drawing> made(count);
         for (int i = 0; i < count; ++i) {
             if (symbol)
@@ -86,9 +84,6 @@ void Scene::refreshSymbolInstances(int symbolId)
 
 int Scene::makeSymbol(QVector<int> const& picked, QString const& name)
 {
-    // Those picked, and everything attached to them.  A camera picked goes in, as in Harmony (an ordinary layer there: the
-    // scene is seen through its own camera, never one inside a symbol); one only attached to them stays in the scene.  A
-    // sound picked goes in, and plays where the symbol is shown.
     QVector<bool> in(layers.size(), false);
     for (int l : picked)
         if (l >= 0 && l < layers.size())
@@ -130,8 +125,6 @@ int Scene::makeSymbol(QVector<int> const& picked, QString const& name)
             unique = QStringLiteral("%1 %2").arg(base).arg(n);
         symbol.name = unique;
     }
-    // What its topmost layers were attached to outside: the layer that shows the symbol is attached there instead
-    // (when they all agree), so that it stays where it was.
     int outside = 0;
     bool agreed = true, first = true;
     for (int l = 0; l < layers.size(); ++l) {
@@ -388,8 +381,6 @@ void Scene::copyTiming(int from, int to)
         return;
     Layer const& source = layers[from];
     Layer& target = layers[to];
-    // Each drawing of the one stands for a drawing of the other: the one that was shown where it first
-    // appears, when that is not spoken for already - else a new, empty one.
     QHash<int, int> standsFor;
     QVector<int> spoken;
     QVector<int> cells(target.cells.size(), Layer::kNoDrawing);
@@ -490,8 +481,6 @@ void Scene::followClones(Scene const& before)
         if (leader == touched.constEnd() || layers[*leader].cells.size() != layers[l].cells.size())
             continue;
         if (!layers[*leader].cloneTiming) {
-            // The drawings only: every one of them is kept in the bank, so that the places the frames of
-            // each layer point to stay the same whatever the others show.
             for (Drawing& d : layers[*leader].drawings)
                 d.pinned = true;
             layers[l].drawings = layers[*leader].drawings;

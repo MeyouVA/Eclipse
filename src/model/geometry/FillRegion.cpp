@@ -15,10 +15,6 @@ namespace FillRegion {
 // The raster is at most this many pixels on its longer side; larger frames are scaled down.
 static constexpr int kMaxRaster = 4096;
 
-// The lines of a drawing as the walls of its areas, as Harmony has them: the middle of each line (paint goes under the line
-// up to it, so two thick lines lying against each other still leave the area between their middles open); and, where a line
-// ends against another - its tip reaching the other's edge, or within the gap of it - a wall from its end to the other's
-// middle, so lines drawn to meet close what they go round.
 struct Wall {
     QVector<StrokePoint> line;   // the middle, as drawn
     bool closed = false;
@@ -39,8 +35,6 @@ static void rasterWalls(QPainter& painter, QVector<Stroke> const& strokes, doubl
             continue;
         Wall w;
         w.line = stroke.path();
-        // A line with paint of its own inside (Auto Fill) is a closed shape: its paint goes round from its end back to its
-        // start, so that is walled too (nothing leaks in where its ends only nearly meet).
         w.closed = stroke.closed || stroke.link != 0;
         w.width = std::max(0.0, double(stroke.width));
         w.roundStart = stroke.capStart == Stroke::RoundCap;
@@ -292,22 +286,16 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
     if (point.x() < 0 || point.y() < 0 || point.x() >= width || point.y() >= height)
         return Outside;
 
-    // Finer than a pixel of the scene for small areas (up to three raster pixels to one), so that narrow places keep open;
-    // no more than a few million pixels in all, and no side longer than the most.
     double const scale = std::min({3.0, double(kMaxRaster) / std::max(width, height), std::sqrt(6.0e6 / (double(width) * height))});
     int const w = std::max(1, int(std::ceil(width * scale)));
     int const h = std::max(1, int(std::ceil(height * scale)));
 
-    // Lines in black on white, without antialiasing: a pixel is either a wall or it is not.
-    // Thickening every line by the gap size closes openings up to that width.
     QImage image(w, h, QImage::Format_Grayscale8);
     image.fill(Qt::white);
     {
         QPainter painter(&image);
         painter.scale(scale, scale);
         rasterWalls(painter, drawing.strokes, gap, 1.0 / scale);
-        // Brush strokes are walls too: they are contour shapes, painted solid, and thickened
-        // by the gap as the lines are.
         for (Fill const& fill : drawing.fills) {
             if (fill.contours.isEmpty())
                 continue;
@@ -364,9 +352,6 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
     if (leaked)
         return NotClosed;
 
-    // Reach under the lines: by the gap thickening that was added, plus a little more so
-    // that no sliver of background shows between the paint and the middle of the line.
-    // Up to the middle of the lines round it (and a little past, so that no sliver shows): the lines are drawn over it.
     dilate(mask, w, h, int(std::ceil(scale)) + 1);
 
     // Mask -> region (one rectangle per run) -> outline polygons.
@@ -391,8 +376,6 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
     QPainterPath path;
     path.addRegion(region);
     QTransform const toScene = QTransform::fromScale(1.0 / scale, 1.0 / scale);
-    // The quick edge, as the pixels have it (the staircase simplified away): what the paint keeps, and shows while things
-    // move.  refine() puts it on the lines themselves, as a vector.
     for (QPolygonF const& raw : path.simplified().toSubpathPolygons()) {
         QPolygonF const poly = simplify(toScene.map(raw), 0.75 / scale);
         if (poly.size() >= 3)
@@ -403,9 +386,6 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
 
 QVector<QPolygonF> refine(QVector<QPolygonF> const& outlines, QVector<Stroke> const& walls, double reach)
 {
-    // The edge of the paint on the lines themselves, as a vector: the quick edge, in places close together, each place near
-    // the middle of a line put onto it (the pixels only said which area; the lines say where its edge is).  Elsewhere (a gap
-    // closed, the edge of a brush shape) the edge stays as it was.
     Snapper const snap(walls, reach);
     QVector<QPolygonF> fine;
     for (QPolygonF const& outline : outlines) {

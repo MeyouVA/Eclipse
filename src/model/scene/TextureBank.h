@@ -19,8 +19,6 @@ constexpr int kStripHeight = 64;
 struct Entry {
     int id = 0;
     QString name;
-    // The grain: grey, 255 where the ink is solid and 0 where there is none; kStripHeight high.
-    // It repeats along its length (and, lying flat under a brush stroke, down as well).
     QImage grain;
     // How much the grain thins out towards the edges of a line: 0 not at all (the edge is cut clean), 1 a great deal.
     double edge = 0.5;

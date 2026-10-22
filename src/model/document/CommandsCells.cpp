@@ -24,8 +24,6 @@ void Document::duplicateDrawing(int layer, int frame)
         return;
     apply(tr("Duplicate Drawing"), [&](Scene& s) {
         Drawing copy = s.layers[layer].drawings[index];
-        // A name belongs to one drawing: the copy takes it only when the drawing it was made from
-        // is shown nowhere else, and so goes.
         bool elsewhere = s.layers[layer].drawings[index].pinned;
         // (The copy takes over from this frame to the end of the exposure.)
         QVector<int> const& cells = s.layers[layer].cells;
@@ -737,8 +735,6 @@ void Document::pasteCells(QVector<int> const& layers, int frame, CellBlock const
     apply(tr("Paste Cells"), [&](Scene& s) { putBlock(s, layers, frame, block); });
 }
 
-// The cells of a layer are as many as the scene has frames: what is pushed past the end is
-// lost, and what is pulled back leaves empty cells at the end.
 static void fitCells(Scene& s, int layer)
 {
     s.layers[layer].cells.resize(s.frameCount(), Layer::kNoDrawing);

@@ -32,8 +32,6 @@ class ECLIPSE_UI_API WelcomeDialog : public QDialog {
 public:
     enum Choice { Nothing, CreateScene, OpenScene };
 
-    // `resourceDirectory` is where `resolutions.xml` is.
-    // With `newSceneOnly` it is the form of File > New: the new scene, and nothing else.
     explicit WelcomeDialog(QString const& resourceDirectory, QWidget* parent = nullptr, bool newSceneOnly = false);
 
     // What the user asked for, once the window has closed.

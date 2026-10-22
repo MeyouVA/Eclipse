@@ -453,8 +453,6 @@ void Canvas::cutInside(QPolygonF const& shape)
             cut = true;
         }
     }
-    // Pictures kept in the scene (the pixels of a bitmap layer among them): the part inside the shape
-    // becomes a picture of its own, and is gone from the one it was cut out of.
     QVector<int> pictures;
     if (picturesHere()) {
         int const count = int(art.pictures.size());
@@ -560,8 +558,6 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
         edited.fills.push_back(fill);
     }
     if (m_tool == Paint || m_tool == PaintUnpainted) {
-        // The closed areas with no paint that lie wholly inside what was drawn round: found
-        // from a few places across it, each filled as a click there would fill it.
         int const across = 6;
         for (int row = 0; row < across; ++row) {
             for (int column = 0; column < across; ++column) {

@@ -54,8 +54,6 @@ void MainWindow::onActionTogglePlayback()
         stop();
         return;
     }
-    // Starting from the last frame would stop at once: begin again.  And from outside the
-    // frames playing runs between, begin at their start.
     if (frame() >= playStop() || frame() < m_playStart)
         m_timeline->setCurrentFrame(m_playStart);
     // Preroll: from so many frames before (not before where playing begins).
@@ -137,8 +135,6 @@ QString MainWindow::recordForPlay(QString* error)
     return ok ? path : QString();
 }
 
-// Play > Record and Play: the scene is written as a movie, sound and all, and handed to the program this
-// computer plays movies with.
 void MainWindow::onActionRecordAndPlay()
 {
     QString error;
@@ -154,8 +150,6 @@ void MainWindow::onActionRecordAndPlay()
         QMessageBox::information(this, tr("Eclipse"), tr("The recording is in\n%1\nbut no program could be found to play it.").arg(QDir::toNativeSeparators(movie)));
 }
 
-// Play > Mini Playback: the few frames before this one and the few after it, over and over, to see how a
-// movement goes just here.  Stopped, it is back on the frame it began on.
 void MainWindow::onActionMiniPlayback()
 {
     if (m_playTimer.isActive()) {

@@ -83,8 +83,6 @@ void Canvas::onActionSmooth()
         if (n < 3)
             continue;
         bool const closed = edited.strokes[i].closed;
-        // Each point goes half way towards the middle of its neighbours; corners and the
-        // ends of an open line stay where they are.
         for (int k = 0; k < n; ++k) {
             if (before[k].corner || (!closed && (k == 0 || k == n - 1)))
                 continue;
@@ -156,8 +154,6 @@ void Canvas::onActionSetThickness()
         scaleSelectionThickness(1.0, width, tr("Set Selection Thickness"));
 }
 
-// The points of a line that it needs: the others lie within `tolerance` of the line through
-// the ones kept (Douglas and Peucker's way).
 static void keepNeeded(QVector<StrokePoint> const& points, int first, int last, double tolerance, QVector<bool>& keep)
 {
     if (last <= first + 1)
@@ -210,8 +206,6 @@ static double strayFrom(Stroke const& a, Stroke const& b)
     return worst;
 }
 
-// A curve with handles loses a point only where the curve, its neighbours' handles stretched over the gap, stays
-// where it was (within `tolerance` both ways); a corner stays.  How many points it lost.
 static int reduceCurve(Stroke& stroke, double tolerance)
 {
     Stroke const original = stroke;
@@ -408,8 +402,6 @@ void Canvas::onActionReducePoints()
                 stroke.setThicknessByLength(thick);
             continue;
         }
-        // Half a pixel of the drawing for a line of straight pieces; a curve bends between
-        // its points, so it can lose more.
         QVector<bool> keep(n, false);
         keep[0] = keep[n - 1] = true;
         keepNeeded(before, 0, n - 1, stroke.curve ? 1.5 : 0.5, keep);
@@ -437,8 +429,6 @@ void Canvas::onActionCreateColourArt()
         emit message(tr("There is no line art on this frame to make colour art from."));
         return;
     }
-    // Each line of the line art, and each contour of its brush shapes, as a line with no
-    // thickness in the colour art - unless one is there on the same points already.
     QVector<Stroke> lines;
     for (Stroke const& stroke : real->strokes)
         lines.push_back(stroke);
@@ -567,8 +557,6 @@ void Canvas::onActionFlatten()
         same.removeLast();
         gone += same;
     }
-    // Lines: two of the same colour and thickness whose ends meet become one line, and so on along
-    // the run; a run that comes back to where it began is closed.
     QVector<int> goneLines;
     // Where the selected lines cross: a point on each, lying on one another.
     int const crossings = addCrossingPoints(edited.strokes, m_selStrokes);
@@ -1133,8 +1121,6 @@ QVector<float> Canvas::selectedLineProfile() const
 void Canvas::retouchAt(QPointF p, int mode)
 {
     bool const thinner = mode == 1 || mode == 3, opacity = mode >= 2;
-    // As far round the pen as the size in Tool Properties: the lines there get a point under the pen if they have none
-    // near it, then each point near is made thicker (or thinner), most at the middle of the pen.
     double const reach = std::max(m_brushWidth / 2.0, 4.0 / std::max(m_zoom, 1e-6));
     for (int index = 0; index < m_eraseArt.strokes.size(); ++index) {
         Stroke& line = m_eraseArt.strokes[index];
@@ -1321,8 +1307,6 @@ QVector<QPolygonF> Canvas::eraserArea(Stroke const& path) const
 {
     if (!m_eraserSquare)
         return path.outlinePolygons();
-    // A square tip: the square at each place, and the shape it sweeps from each place to the next (the outline round
-    // the two squares), all as one area.
     double const r = std::max(path.width / 2.0, 0.25);
     auto square = [r](QPointF c) { return QPolygonF({c + QPointF(-r, -r), c + QPointF(r, -r), c + QPointF(r, r), c + QPointF(-r, r)}); };
     auto hull = [](QVector<QPointF> points) {

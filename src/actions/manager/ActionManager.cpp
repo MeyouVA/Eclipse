@@ -142,8 +142,6 @@ bool ActionManager::load(QString const& directory, QString* error)
     }
     defineItems(menus);
     defineItems(toolbars);
-    // Every command exists from the start, so that its shortcut works before the menu it
-    // is in has ever been opened.
     for (Node const& item : std::as_const(m_items))
         actionFor(item);
     return true;
@@ -225,8 +223,6 @@ QObject* ActionManager::resolve(QString const& responders, QByteArray const& slo
                         return w;
                 }
             }
-            // From the widget with the focus outwards: the first registered responder that
-            // knows the slot.
             for (QWidget* w = QApplication::focusWidget(); w; w = w->parentWidget()) {
                 for (QPointer<QObject> const& r : m_responders)
                     if (r == w && w->metaObject()->indexOfMethod(slot.constData()) >= 0)
@@ -303,8 +299,6 @@ void ActionManager::fillMenu(QMenu* menu, Node const& node)
             break;
         }
         case Node::Placeholder:
-            // The program fills in the rest of the menu each time it opens: what it added
-            // last time is taken out first.
             if (child.attr.contains(QStringLiteral("aboutToShowSlot"))) {
                 connect(menu, &QMenu::aboutToShow, this, [this, child, menu] {
                     QList<QAction*> const old = menu->findChildren<QAction*>(QStringLiteral("placeholder:") + child.value("id"));
@@ -459,8 +453,6 @@ void ActionManager::customizeToolbar(QString const& toolbarId, QWidget* parent)
     dialog.exec();
 }
 
-// The button of a group of tools: a click picks the tool it shows; a click on it while that tool is already in use (or
-// holding it down, or a click on its arrow) offers the others.
 namespace {
 class GroupButton : public QToolButton {
 public:
@@ -479,8 +471,6 @@ protected:
 };
 }  // namespace
 
-// Puts the entries of a toolbar on it, in place of the ones this function put there
-// before.  Anything else on the bar (widgets the window added) stays, after them.
 void ActionManager::populateToolbar(QToolBar* bar)
 {
     QString const toolbarId = bar->objectName();

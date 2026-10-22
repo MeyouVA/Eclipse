@@ -51,8 +51,6 @@ QPointF middleOf(QVector<Sample> const& samples)
     return samples.isEmpty() ? sum : sum / double(samples.size());
 }
 
-// How far apart two runs of places are, each taken from its own middle: so that a shape
-// which has only moved is matched point for point, not turned round.
 double apart(QVector<Sample> const& a, QVector<Sample> const& b, int shift, bool reversed)
 {
     QPointF const ma = middleOf(a), mb = middleOf(b);
@@ -66,10 +64,6 @@ double apart(QVector<Sample> const& a, QVector<Sample> const& b, int shift, bool
     return sum;
 }
 
-// `b` put in the order that lies nearest `a`: begun at the best place (a closed run) and
-// run the best way round.
-// (`pins`: a point of `a`, by its number, and the point of `b` it is to be matched with - what hints ask for.
-// They count before nearness does.)
 QVector<Sample> aligned(QVector<Sample> const& a, QVector<Sample> const& b, bool closed, QVector<QPair<int, int>> const& pins = {})
 {
     int const n = int(a.size());
@@ -152,8 +146,6 @@ void pairUp(QVector<QPointF> const& first, QVector<QPointF> const& second, QVect
             left.push_back(k);
 }
 
-// The colour of something in between: that of both when they share it, a mix when
-// neither is linked to the palette, else that of the nearer drawing.
 void colourBetween(int swatchA, QColor const& a, int swatchB, QColor const& b, double t, int& swatch, QColor& colour)
 {
     if (swatchA == swatchB && (swatchA != Scene::kNoSwatch || a == b)) {
@@ -252,8 +244,6 @@ double awayFrom(Fill const& fill, QPointF p)
 // A hint is for the shape it lies on, or within this of.
 constexpr double kHintReach = 25.0;
 
-// What the hints ask of the pairing: the shape of the first lot nearest the one end of a hint goes with the
-// shape of the second lot nearest the other end; whatever had that partner takes the one given up.
 template <typename Shape>
 void pairByHints(QVector<Shape> const& from, QVector<Shape> const& to, QVector<QLineF> const& hints, QVector<int>& partner, QVector<int>& left,
                  QVector<QVector<QLineF>>& hintsOf)
@@ -293,8 +283,6 @@ void pairByHints(QVector<Shape> const& from, QVector<Shape> const& to, QVector<Q
             left.push_back(k);
 }
 
-// More points on a curve without changing its shape: its longest pieces are each split in two where they are half done
-// (de Casteljau), until it has `count`.  False when it cannot be (a point without handles, too few points).
 bool splitTo(Stroke& s, int count)
 {
     int const segments = [&] { return int(s.points.size()) - (s.closed ? 0 : 1); }();
@@ -333,11 +321,6 @@ bool splitTo(Stroke& s, int count)
     return true;
 }
 
-// Two curves of as many points (with their handles), point for point - the points of the one paired with those of the
-// other where that moves them least (round a closed one, and either way along) - as far from the one to the other as `t`.
-// The points, handles and corners are kept: what comes between is a curve of those points too.  Curves of different numbers
-// of points: the one with fewer is split (in shape as it was) to as many.  False when they cannot be paired so (not curves,
-// a point without handles where points are to be added, one closed and one not).
 bool curveBetween(Stroke const& fromCurve, Stroke const& toCurve, double t, Stroke& out)
 {
     // Not as many points: the one with fewer is given more, its shape as it was.
@@ -473,8 +456,6 @@ Fill fillBetween(Fill const& a, Fill const& b, double t, QVector<QLineF> const& 
 {
     Fill out;
     colourBetween(a.swatch, a.color, b.swatch, b.color, t, out.swatch, out.color);
-    // A gradient placed by hand goes from where it lay in the one to where it lies in the other
-    // (one not placed lies across its area: from side to side of it).
     if (a.gradPlaced || b.gradPlaced) {
         QRectF const boxA = a.bounds(), boxB = b.bounds();
         QPointF const fromA = a.gradPlaced ? a.gradFrom : QPointF(boxA.left(), boxA.center().y());
@@ -493,8 +474,6 @@ Fill fillBetween(Fill const& a, Fill const& b, double t, QVector<QLineF> const& 
     QVector<int> partner, left;
     pairUp(first, second, partner, left);
     if (hints.isEmpty() && left.isEmpty() && !a.contours.isEmpty() && a.contours.size() == a.outlines.size() && b.contours.size() == b.outlines.size()) {
-        // Contour shapes whose contours pair up point for point: the contours themselves go from the one to the other,
-        // and the area in between is a contour shape with those points too.
         QVector<Stroke> contours;
         bool all = true;
         for (int i = 0; i < a.contours.size() && all; ++i) {

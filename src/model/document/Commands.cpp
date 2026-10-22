@@ -39,8 +39,6 @@ private:
     Stroke m_stroke;
 };
 
-// Going into a symbol or out of one: the scene worked on, and the scenes around it, before and after.
-// A step of undo like any other, so that what was done before is still there to undo.
 class SymbolLevelCommand : public QUndoCommand {
 public:
     SymbolLevelCommand(Document* doc, Scene before, QVector<Document::Around> aroundBefore, Scene after, QVector<Document::Around> aroundAfter,

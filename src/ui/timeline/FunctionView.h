@@ -26,13 +26,8 @@ public:
     // Preferences: the lines across at round values and down every so many frames (the numbers stay).
     void setGridShown(bool on);
     bool gridShown() const { return m_grid; }
-    // The other layers selected in the Timeline: their curves are shown too, faint and dashed,
-    // to compare with (the squares to drag are the current layer's).
     void setOtherLayers(QVector<int> const& layers);
     QVector<int> otherLayers() const { return m_others; }
-    // The keyframe on the current frame has two handles, on the first curve shown: the one after it
-    // is pulled along to leave more gently (ease out), the one before it to arrive more gently
-    // (ease in).  Where a handle is; a null point when there is none.
     QPointF easeHandle(bool out) const;
     bool isShown(Timeline::Parameter which) const { return m_shown[which]; }
     static QColor colourOf(Timeline::Parameter which);
@@ -45,8 +40,6 @@ public:
     // The lowest and highest value the graph shows.
     double bottomValue() const { return m_low; }
     double topValue() const { return m_high; }
-    // The wheel comes closer along the frames, about the pointer; with Ctrl or Shift, along
-    // the values.  The middle button slides the graph; pressed twice, it shows all of it again.
     double firstFrame() const { return m_first; }
     double frameSpan() const;
     bool zoomed() const { return m_zoomed || m_span > 0.0; }
@@ -85,8 +78,6 @@ private:
     QPointF m_slideLast;
     double m_low = -1.0, m_high = 1.0;
     bool m_grid = true;
-    // The keyframe being dragged: which curve, which of the layer's keyframes, and the
-    // value it would have.
     int m_dragParam = -1;
     int m_dragKey = -1;
     double m_dragValue = 0.0;

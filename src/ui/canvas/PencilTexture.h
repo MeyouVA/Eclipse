@@ -10,8 +10,6 @@
 
 namespace PencilTexture {
 
-// How many come with the program; a line's `texture` is 0 for none, 1 to this for one of them - or the
-// number of a texture of your own (see TextureBank).
 int count();
 // Every kind there is to choose from: none, those that come with the program, then your own by name.
 QVector<int> kinds();
@@ -27,21 +25,15 @@ int keep(QString const& name, QImage const& grain, double edge);
 void discard(int id);
 // Gives one another name (the lines drawn with it are not touched: they know it by its number).
 void rename(int id, QString const& name);
-// Writes one as a file of its own - a picture, with its name and edge inside - to hand to somebody; and
-// takes one in from such a file (0 when the picture is not a texture of Eclipse's).
 bool exportTo(int id, QString const& path);
 int importFile(QString const& path);
 // The grain a picture makes: ink where it is dark (or where it is light), none where it is clear.
 QImage grainFromPicture(QImage const& picture, bool lightIsInk);
-// A grain put together by the program: how coarse (1 to 100), how much ink (0 to 100), how far drawn out
-// into streaks along the line (0 to 100); `seed` gives another of the same sort.
 QImage makeGrain(int size, int density, int streaks, unsigned seed);
 // A picture of a grain as a line and lying flat, for the windows that make one.
 QImage preview(QImage const& grain, double edge, QSize size);
 // What kind `kind` (1 to count) is called.
 QString name(int kind);
-// The strip of grain: only how opaque each pixel is counts.  It repeats along its length.
-// Crisp: its edge frays as the grain does but does not fade - every bit of it is grain or nothing.
 QImage const& tile(int kind, bool crisp = false);
 // The same grain lying flat, as on paper - what a brush stroke shows of it.  It repeats both ways.
 QImage const& paper(int kind);

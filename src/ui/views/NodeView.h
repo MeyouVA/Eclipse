@@ -28,14 +28,8 @@ public:
     QPointF outPort(int layer) const;
     // The middle of the cable into `child` from its parent (for picking it).
     QPointF cableMiddle(int child) const;
-    // The next layer after the current one whose name has `text` in it (whatever its capitals):
-    // it becomes the current layer and its node is brought to the middle of the view.  -1: none.
     int find(QString const& text);
-    // The small map of the whole graph in the corner of the view: where it is, and where a place of
-    // the graph is on it.  A click on the map brings that part of the graph to the middle of the view.
     QRectF navigatorRect() const;
-    // Groups: at the top a group is one node and what is in it is not shown; gone into, the view shows what
-    // is in it and nothing else.  The group the view is inside (its place among the layers), or -1 at the top.
     int enteredGroup() const;
     void enterGroup(int layer);
     void leaveGroup();
@@ -44,8 +38,6 @@ public:
     // The path along the top of the view while inside a group; a click on it goes out one level.
     QRectF pathRect() const;
     QString pathText() const;
-    // Inside a group: the node that stands for what comes into it (its transformation, which what hangs from the group
-    // takes), above the rest; and the one that stands for what goes out (its picture), under the composite.  Null at the top.
     QRectF groupInputRect() const;
     QRectF groupOutputRect() const;
     // The layers the input node is cabled to: those that hang from the group itself.
@@ -82,30 +74,18 @@ public:
     int pickedGraphCable() const { return m_graphCable; }
     void pickGraphNode(int id);
     void pickGraphCable(int index);
-    // A node put in the graph at a place of it (inside the group the view is in): its id.  A group comes with its input
-    // and output nodes inside it.
     int addGraphNode(GraphNode node, QPointF graphPos);
-    // A cable from an output to an input, in place of what went into that input; false when it would close a ring (the
-    // input already feeds the output) or a port is not there.
     bool connectGraph(int from, int fromPort, int to, int toPort);
-    // A composite's or a group's inputs, or a group's outputs, one more (`by` 1) or one fewer (-1): a group's input and
-    // output nodes inside follow; a cable into a port taken away goes too.
     void changeGraphPorts(int id, bool outputs, int by);
-    // A layer node's transformation ports: what it hangs from comes in on its left, what hangs from it leaves on its right
-    // (a peg's, a group's, any layer's) - the parenting of the layers, as cables.
     QPointF graphTransformIn(int id) const;
     QPointF graphTransformOut(int id) const;
     // The nodes picked together (Ctrl+click adds one or takes it away).
     QVector<int> pickedGraphNodes() const;
     void addPickedGraphNode(int id);
-    // The nodes picked put in a new group (at the level the view is at): cables that came in from outside come in at the
-    // group's inputs, cables that went out leave by its outputs.  The group's id; 0 when none could be.
     int groupGraphNodes(QVector<int> const& ids);
 
 public slots:
     void setCurrentCell(int layer, int frame);
-    // Edit > Delete with this view in focus: the picked cable (detaches), else the
-    // current layer.
     void deleteSelection();
     void onActionResetView();
     // The group that is the current layer is gone into; and out again, one level.
@@ -126,8 +106,6 @@ signals:
     // A double-click on a layer's node, when it is to open the layer's properties (setDoubleClickOpensEditor).
     void editRequested(int layer);
     void contextMenuRequested(QPoint const& globalPos);
-    // Something of the Node Library was dropped here: what (as NodeLibraryView::add takes it), and where its
-    // node is to stand in the graph.
     void nodeDropped(QString const& what, QPointF graphPos);
 
 protected:
@@ -148,8 +126,6 @@ private:
     static constexpr double kNodeWidth = 124.0;
     static constexpr double kNodeHeight = 30.0;
 
-    // Top-left corner of every node, in graph coordinates: where the user put it, or a
-    // tidy default for those never moved.
     QVector<QPointF> positions() const;
     QPointF compositePos(QVector<QPointF> const& positions) const;
     QPointF toWidget(QPointF graph) const { return graph * m_zoom + m_pan; }

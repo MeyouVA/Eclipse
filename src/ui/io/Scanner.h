@@ -13,8 +13,6 @@ class QWidget;
 
 namespace Scanner {
 
-// Scans into `folder` (made if need be): the files of the pages scanned, none if the scan was called off or failed (`error`
-// then says why, empty when it was called off).
 ECLIPSE_UI_API QStringList acquire(QWidget* parent, QString const& folder, QString* error = nullptr);
 // Something to ask in place of the scanner (for trying the rest out where there is none); none: the scanner itself.
 ECLIPSE_UI_API void setStandIn(std::function<QStringList(QString*)> standIn);

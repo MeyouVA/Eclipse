@@ -9,9 +9,6 @@
 
 #include "model/scene/StrokePrivate.h"
 
-// The two control points of the piece of a curve from point `s` to the next: from the
-// handles the points were given, or - for a point without - from the smooth curve through
-// the points on either side (a centripetal Catmull-Rom spline, which is a cubic too).
 static void controls(Stroke const& stroke, int s, QPointF& c1, QPointF& c2)
 {
     QVector<StrokePoint> const& points = stroke.points;
@@ -117,9 +114,6 @@ QVector<StrokePoint> Stroke::shapeWithPlaces(QVector<double>& places) const
         double length = QLineF(a.pos, b.pos).length();
         if (curve) {
             controls(*this, s, c1, c2);
-            // Enough pieces that none is long and none turns far: a short span round a
-            // tight bend needs as many as a long gentle one, or the bend shows as corners
-            // when looked at closely.
             QLineF const first(a.pos, c1), middle(c1, c2), last(c2, b.pos);
             length = first.length() + middle.length() + last.length();
             auto turn = [](QLineF const& u, QLineF const& v) {
@@ -142,8 +136,6 @@ QVector<StrokePoint> Stroke::shapeWithPlaces(QVector<double>& places) const
         for (int k = 0; k < steps; ++k)
             at.push_back(double(k) / steps);
         if (profiled && !evenly) {
-            // Where the thickness changes along the piece: places close enough that its swelling shows smoothly, and one at
-            // each of its own places.
             for (ThicknessPoint const& key : thickness)
                 if (key.at > s && key.at < s + 1)
                     at.push_back(key.at - s);
@@ -177,8 +169,6 @@ QVector<StrokePoint> Stroke::pathWithPlaces(QVector<double>& places) const
     QVector<StrokePoint> out = shapeWithPlaces(places);
     if (thickness.isEmpty() || out.isEmpty())
         return out;
-    // The thickness laid along the line by how far along it each place is (so that a point put in, which leaves the line as
-    // it was, leaves its thickness as it was too).
     QVector<double> along(out.size(), 0.0);
     for (int i = 1; i < out.size(); ++i)
         along[i] = along[i - 1] + QLineF(out[i - 1].pos, out[i].pos).length();
@@ -230,8 +220,6 @@ int Stroke::insertPoint(QPointF p)
             best = t;
         }
     }
-    // The piece cut in two there (de Casteljau): each half is a Bezier curve of its own,
-    // and together they are the piece as it was.
     double const t = best;
     QPointF const ab = a.pos + (c1 - a.pos) * t, bc = c1 + (c2 - c1) * t, cd = c2 + (b.pos - c2) * t;
     QPointF const abc = ab + (bc - ab) * t, bcd = bc + (cd - bc) * t;
@@ -400,8 +388,6 @@ bool Stroke::hit(QPointF p, double radius) const
     if (points.size() == 1)
         return std::hypot(p.x() - points[0].pos.x(), p.y() - points[0].pos.y()) <= reach;
     if (width > 0.0f) {
-        // On the area the line really covers (its tips, its corners, its thickness point by point), or within
-        // `radius` of its edge.
         QVector<QPolygonF> const area = outlinePolygons();
         if (!area.isEmpty()) {
             QPainterPath shape;
@@ -454,8 +440,6 @@ int Stroke::pieces() const
 
 namespace {
 
-// Monotone cubic (Fritsch and Butland): the thickness runs smoothly through its places, never past either neighbour, and
-// lies flat at the first and the last.
 double smoothBetween(QVector<ThicknessPoint> const& keys, int j, double at, float ThicknessPoint::*side)
 {
     auto slope = [&](int k) {
@@ -599,8 +583,6 @@ void Stroke::ownThickness()
         p.pressure = 1.0f;
         p.lean = 0.0f;
     }
-    // (One at every point, even where the thickness does not change there: so that thickening at a point is only
-    // between it and its neighbours.)
 }
 
 namespace {
@@ -749,8 +731,6 @@ void Stroke::simplifyThickness(double tolerance)
                 kept.push_back(thickness[k]);
         thickness = kept;
     }
-    // Then one at a time, the place the smooth run through the others says best, while it says it within the tolerance.
-    // (The shape does not change meanwhile: how far along the line each place is, worked out once.)
     QVector<double> places;
     QVector<StrokePoint> const shape = shapeWithPlaces(places);
     QVector<double> along(shape.size(), 0.0);
@@ -958,8 +938,6 @@ void Stroke::append(Stroke const& other, bool meets)
         after.thicknessPointAt(0.0);
     }
     double const offset = pieces() + (meets ? 0.0 : 1.0);
-    // Each line keeps its course exactly: on a curve, a point whose handles the curve worked out for itself (from its
-    // neighbours - and it is to have new ones) has them set down as they are.
     if (curve || after.curve) {
         freezeHandles();
         after.freezeHandles();

@@ -68,8 +68,6 @@ void Graph3DView::rebuild()
     };
     static char const* const kKinds[] = {QT_TR_NOOP("drawing"), QT_TR_NOOP("peg"), QT_TR_NOOP("camera"), QT_TR_NOOP("sound"),
                                          QT_TR_NOOP("colour-card"), QT_TR_NOOP("group"), QT_TR_NOOP("bone"), QT_TR_NOOP("quadmap")};
-    // Which layers there are and what each hangs under.  While that is as it was, the rows are
-    // only written afresh: a row must not be thrown away while its own tick is being seen to.
     QVector<int> shape;
     for (Layer const& layer : scene.layers)
         shape << layer.id << layer.parent;

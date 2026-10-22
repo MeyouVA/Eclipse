@@ -93,8 +93,6 @@ bool Scene::guideArc(Guide const& guide, QPointF at, int way, QPointF* centre, d
     QVector<QPointF> const v = guideVanishingPoints(guide);
     if (v.size() != 4 || way < 0 || way > 1)
         return false;
-    // Four points: one family of curves joins the first and third vanishing points, the other the second and
-    // fourth.  Five: one joins left and right, the other above and below.
     if (guide.kind == Guide::FourPoint)
         return way == 0 ? circleThrough(v[0], at, v[2], centre, radius) : circleThrough(v[1], at, v[3], centre, radius);
     return way == 0 ? circleThrough(v[0], at, v[1], centre, radius) : circleThrough(v[2], at, v[3], centre, radius);
@@ -155,8 +153,6 @@ QVector<QPointF> Scene::guideDirections(Guide const& guide, QPointF at)
         QVector<QPointF> const v = guideVanishingPoints(guide);
         if (v.size() != 4)
             break;
-        // Always three: along each of the two curves through the place (or straight along its chord, where
-        // the place lies on it), and the straight one - upright from the horizon, or out from the middle.
         for (int way = 0; way < 2; ++way) {
             QPointF centre;
             double radius = 0.0;

@@ -61,8 +61,6 @@ QWidget* MainWindow::createOnionSkinView()
     opacity->setObjectName(QStringLiteral("OnionOpacity"));
     opacity->setRange(5, 100);
     onionForm->addRow(show);
-    // A slider for each drawing shown: those before at the left (the furthest off first), those
-    // after at the right (the nearest first), each setting how strongly that one drawing shows.
     QWidget* const bank = new QWidget(onion);
     bank->setObjectName(QStringLiteral("OnionBank"));
     QSlider* strengths[2][Canvas::kOnionSteps] = {};
@@ -85,8 +83,6 @@ QWidget* MainWindow::createOnionSkinView()
             column->setSpacing(1);
             column->addWidget(number);
             column->addWidget(slider, 0, Qt::AlignHCenter);
-            // Under it, the colour that drawing shows in: pressed, one of its own is chosen; pressed with the
-            // right button, it goes back to the colour of its side.
             QToolButton* const colour = new QToolButton(bank);
             colour->setObjectName((after ? QStringLiteral("OnionAfterColour%1") : QStringLiteral("OnionBeforeColour%1")).arg(step + 1));
             colour->setFixedSize(16, 12);

@@ -49,8 +49,6 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         widgetPos = guided(widgetPos);
     else if (m_drag == DragShape && m_tool == Line)
         widgetPos = guidedFrom(layerViewTransform().map(m_dragStart), widgetPos);
-    // While a pose is being dragged the layer moves under the pointer: those drags work
-    // from the scene position instead.
     QPointF const p = posing() || m_drag == DragPivot || m_drag == DragPan || m_drag == DragJoint || m_drag == DragWeights || m_drag == DragWarpRest || m_drag == DragQuad || m_drag == DragRotateView ? QPointF() : toLayer(widgetPos);
     switch (m_drag) {
     case DragPoseMove: {
@@ -88,8 +86,6 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         m_dragPose.x += d.x();
         m_dragPose.y += d.y();
         {
-            // Turned in space (or seen through a turned camera), the picture of a move is not the move itself: the place
-            // the layer was taken by is brought under the pointer by a few steps of correction.
             Scene const& scene = m_document->scene();
             int const camera = scene.cameraIndex();
             Pose const lens = camera >= 0 ? scene.layers[camera].poseAt(m_frame) : Pose();
@@ -177,8 +173,6 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     case DragQuad: {
-        // The corner goes under the pointer.  Corners are kept where the pull puts them,
-        // before the quadmap's own position and what it is attached to.
         Scene const& scene = m_document->scene();
         Layer const& layer = scene.layers[m_layer];
         QTransform const after = Layer::matrix(layer.poseAt(m_frame), layer.pivot) * parentSeen();
@@ -284,8 +278,6 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         break;
     case DragPolyHandle:
-        // Dragged while placing a point of the polyline: the line bends through the point,
-        // its handles reaching as far as the drag (the points only clicked stay corners).
         if (m_polyActive && !m_stroke.points.isEmpty()) {
             StrokePoint& point = m_stroke.points.last();
             QPointF const reach = p - point.pos;
@@ -348,8 +340,6 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
             }
             break;
         }
-        // Erase along the whole movement, not just where the samples landed: a fast drag
-        // would otherwise jump over thin lines.
         QPointF const from = toLayer(m_lastWidgetPos);
         double const radius = m_brushWidth / 2.0 * pressure;
         double const length = std::hypot(p.x() - from.x(), p.y() - from.y());

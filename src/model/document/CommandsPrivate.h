@@ -5,8 +5,6 @@
 #include "model/geometry/Deform.h"
 #include <QUndoCommand>
 
-// Swaps the whole scene.  Scenes are small enough for now that this is simpler and safer
-// than a command per kind of edit.
 class SceneStateCommand : public QUndoCommand {
 public:
     SceneStateCommand(Document* doc, Scene before, Scene after, QString const& text)

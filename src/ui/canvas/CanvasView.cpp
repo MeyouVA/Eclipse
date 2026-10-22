@@ -32,8 +32,6 @@ QTransform Canvas::viewTransform() const
 {
     if (m_drawingView)
         return cameraViewTransform();   // no camera: the sheet as it is
-    // The stored camera, not one being dragged: the view holds still while the transform
-    // tool moves the camera, and follows when the drag ends.
     return m_document->scene().cameraTransform(m_frame) * cameraViewTransform();
 }
 
@@ -299,8 +297,6 @@ Pose Canvas::poseOf(int layer, int frame) const
 
 bool Canvas::showsRest(int layer) const
 {
-    // Only the transform tool and the hand look at the scene; every other tool works on
-    // the artwork of the current layer.
     return layer == m_layer && !m_playing && m_tool != Transform && m_tool != Hand && m_tool != IK;
 }
 

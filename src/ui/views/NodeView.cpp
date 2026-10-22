@@ -223,8 +223,6 @@ QVector<QPointF> NodeView::positions() const
     int const n = int(scene.layers.size());
     QVector<QPointF> out(n);
     QVector<bool> done(n, false);
-    // Layers nothing is attached to stand in a row, the front one on the left; what they
-    // are attached to stands above them, over the middle of its group.
     QVector<QVector<int>> children(n);
     for (int l = 0; l < n; ++l) {
         int const parent = scene.parentIndex(l);
@@ -628,8 +626,6 @@ void NodeView::mousePressEvent(QMouseEvent* event)
     // The port under a node: pull a cable out of it.
     if (event->button() == Qt::LeftButton) {
         for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {
-            // The lower edge of the node and just under it - not its middle, which is
-            // close by when the graph is shown small.
             QRectF const r = nodeRect(l);
             QPointF const port(r.center().x(), r.bottom());
             if (std::hypot(port.x() - m_pressPos.x(), port.y() - m_pressPos.y()) <= std::max(5.0, 7.0 * m_zoom)

@@ -34,8 +34,6 @@ QSlider* slider(QWidget* parent, char const* name, int from, int to, int value, 
     return s;
 }
 
-// The window the two have in common: a name, a picture of the grain as it will draw, how soft its
-// edge is, and whatever `more` adds above that.  `grain` gives the grain as things stand.
 int ask(QWidget* parent, QString const& title, QString const& name, std::function<void(QDialog&, QFormLayout&, std::function<void()>)> more,
         std::function<QImage()> grain)
 {

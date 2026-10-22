@@ -25,8 +25,6 @@ Stroke Fill::contourOf(QPolygonF const& polygon, double tolerance)
         contour.points.push_back({p, 1.0f});
     if (ring.size() < 4 || tolerance < 0)
         return contour;     // a triangle: its three corners; or the outline wanted just as it is
-    // Begun at its sharpest turn: when the outline has a corner, the place where the curve
-    // closes is then that corner, and no kink is made on a smooth stretch.
     int start = 0;
     double sharpest = 2.0;
     int const count = int(ring.size());
@@ -104,9 +102,6 @@ double areaOfPolygon(QPolygonF const& polygon)
     return std::abs(twice) / 2.0;
 }
 
-// A contour for an outline that was changed by a cut or a join: where it still runs along a contour of `before` from one of
-// that contour's points to the next, that piece of curve is kept as it was (its points and handles); only the stretches that
-// are new (along the cut, or where two areas met) are fitted.  With fewer than two of the old points on it, all of it is fitted.
 Stroke keptContour(QPolygonF const& polygon, QVector<Fill const*> const& before, double tolerance)
 {
     using Key = std::pair<qint64, qint64>;
@@ -191,9 +186,6 @@ Stroke keptContour(QPolygonF const& polygon, QVector<Fill const*> const& before,
     return out;
 }
 
-// The outlines of `result` as areas: each outer outline with the holes in it is one area,
-// in the colour of `like`.  An outline that is one of `before` (the outlines there were
-// before the cut or the join) keeps the contour it had; any other gets one fitted to it.
 QVector<Fill> areasOf(QPainterPath const& result, Fill const& like, QVector<Fill const*> const& before, double tolerance)
 {
     QVector<QPolygonF> polygons;
@@ -203,8 +195,6 @@ QVector<Fill> areasOf(QPainterPath const& result, Fill const& like, QVector<Fill
         if (polygon.size() >= 3 && areaOfPolygon(polygon) > 0.01)
             polygons.push_back(polygon);
     }
-    // Which outline is inside which: one inside an odd number of others is a hole, and
-    // belongs to the smallest outline round it.
     int const count = int(polygons.size());
     QVector<int> owner(count, -1);
     QVector<bool> hole(count, false);
@@ -318,8 +308,6 @@ QVector<Fill> Fill::pieces(QVector<int> const& counts) const
         }
         return made;
     }
-    // An outline inside an odd number of the others is a hole: it goes with the smallest
-    // outline round it that is a shape.
     QVector<int> depth(outlines.size(), 0);
     for (int i = 0; i < outlines.size(); ++i)
         for (int j = 0; j < outlines.size(); ++j)
@@ -405,8 +393,6 @@ bool Fill::mergeWith(Fill const& other, double tolerance)
     QVector<Fill> const joined = areasOf(pathOfOutlines(outlines).united(pathOfOutlines(other.outlines)), *this, {this, &other}, tolerance);
     if (joined.isEmpty())
         return false;
-    // Two areas that overlap make one area (with whatever holes are left between them).
-    // Should more than one come back, they are kept together as one all the same.
     Fill all = joined.first();
     for (int k = 1; k < joined.size(); ++k) {
         if (all.contours.isEmpty())
@@ -430,9 +416,6 @@ QVector<Stroke> Stroke::minus(QVector<QPolygonF> const& area, double tolerance, 
     QPainterPath const cut = pathOfOutlines(area);
     if (points.size() < 2 || !bounds().intersects(cut.boundingRect()))
         return {*this};
-    // Along the line, place by place, no more than a unit apart: inside the cut or not.
-    // (`own` marks the places that are points of a line of straight pieces: the only ones
-    // such a line needs, besides the ends the cut gives it.)
     struct Place {
         StrokePoint at;
         bool own = false;

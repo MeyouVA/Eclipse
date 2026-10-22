@@ -208,8 +208,6 @@ void Scene::graphLayerAdded(int layer)
         graph.nodes.push_back(n);
         return;
     }
-    // The composite the Display shows: the new node goes in among the layers there by where it stacks (the first input in
-    // front), after those above it.
     GraphCable const* const shown = graph.display() ? graph.into(graph.display(), 0) : nullptr;
     int const composite = shown ? shown->from : 0;
     int const ci = graph.nodeIndex(composite);

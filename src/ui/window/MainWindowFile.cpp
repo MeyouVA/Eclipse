@@ -94,9 +94,6 @@ bool MainWindow::createScene(QString const& path, int width, int height, double 
 
 void MainWindow::onActionShowWelcome()
 {
-    // At startup the welcome window is all there is: the main window comes up once a
-    // scene has been made or chosen.  Closed without choosing, it stays hidden, and the
-    // program ends.
     WelcomeDialog welcome(ActionManager::defaultDirectory(), isVisible() ? this : nullptr);
     bool const accepted = welcome.exec() == QDialog::Accepted;
     if (accepted && !isVisible()) {

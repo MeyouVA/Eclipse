@@ -379,8 +379,6 @@ void ToolProperties::addSizeRows()
             0, 180, 50, QStringLiteral(" deg"), [this](int v) { m_canvas->setCornerAngle(v); });
 }
 
-// The ramp of a texture: two numbers - grain fainter than the first is no ink at all, grain denser than the
-// second is solid ink.  For lines, or for the brush.
 QWidget* ToolProperties::rampRow(QString const& name, bool brush)
 {
     QWidget* const row = new QWidget(this);
@@ -795,8 +793,6 @@ void ToolProperties::addShapeBox(QString const& label, QString const& tip, int k
     m_shapeRow->addWidget(box);
 }
 
-// How lines are finished at their two ends and at corners: three boxes of small
-// pictures, side by side.
 void ToolProperties::addLineShapeRows()
 {
     m_shapeRow = new QHBoxLayout;
@@ -865,8 +861,6 @@ void ToolProperties::addLineShapeRows()
     m_form->addRow(m_lineRamp);
 }
 
-// The thickness of the line at the point picked with the Contour Editor: how a line
-// drawn with the mouse is made to swell and taper.
 void ToolProperties::addThicknessRow()
 {
     QSlider* const slider = new QSlider(Qt::Horizontal, this);

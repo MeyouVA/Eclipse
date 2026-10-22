@@ -51,8 +51,6 @@ void Timeline::rebuildRows()
     Scene const& scene = m_document->scene();
     m_rows.clear();
     m_params.clear();
-    // The layers as a tree: each with the layers attached to it right under it (as Harmony lists them), the front one
-    // first at each level.  (The order the picture is put together in is the layers' own: this is only how they are listed.)
     int const count = int(scene.layers.size());
     QVector<QVector<int>> children(count);
     QVector<int> tops;
