@@ -1,5 +1,7 @@
 // Eclipse - the Camera view: cut, copy, paste and delete.
 #include "ui/canvas/Canvas.h"
+
+#include <QHash>
 #include "ui/timeline/Timeline.h"
 
 #include <cmath>
@@ -269,6 +271,26 @@ void Canvas::paste()
     }
     // Its joints its own: not joined to what happens to have the same numbers here.
     Drawing::freshJoints(placed.strokes, merged);
+    // And a shape's line and its paint know each other by numbers of their own here (a pasted shape is not the one copied).
+    {
+        int next = 1;
+        for (Stroke const& s : std::as_const(merged.strokes))
+            next = std::max(next, s.link + 1);
+        for (Fill const& f : std::as_const(merged.fills))
+            next = std::max(next, f.link + 1);
+        QHash<int, int> fresh;
+        auto renumber = [&](int& link) {
+            if (link == 0)
+                return;
+            if (!fresh.contains(link))
+                fresh.insert(link, next++);
+            link = fresh.value(link);
+        };
+        for (Stroke& s : placed.strokes)
+            renumber(s.link);
+        for (Fill& f : placed.fills)
+            renumber(f.link);
+    }
     for (Fill const& f : placed.fills) {
         fills.push_back(int(merged.fills.size()));
         merged.fills.push_back(f);
