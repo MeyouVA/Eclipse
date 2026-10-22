@@ -44,6 +44,10 @@ public:
     void unlinkPalette();
     // A palette of its own with the same colours as the one shown (to change without touching that one).  Its place among the palettes.
     int duplicatePalette();
+    // Linked palettes whose files are not there; those found (by file name) in a folder are linked again.
+    QVector<int> missingPalettes() const;
+    int linkMissingPalettes(QString const& folder);
+    int duplicateAndRecolour();
     // Opens the gradient editor for a colour: one colour, a gradient in a line, or a round one.
     void editGradient(int id);
     // A new colour that is a gradient from black to white, to change from there.  Its id.
@@ -103,6 +107,8 @@ public slots:
     void onActionLinkPalette();
     void onActionUpdatePaletteFromFile();
     void onActionUnlinkPalette();
+    void onActionLinkMissingPalettes();
+    void onActionDuplicateAndRecolour();
     void onActionColourEditor();
     void onActionImportPalette();
     void onActionExportPalette();

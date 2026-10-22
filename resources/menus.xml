@@ -890,6 +890,7 @@
   <item id="LinkPalette" text="&amp;Link..." responder="paletteView" slot="onActionLinkPalette()"/>
   <item id="UpdatePaletteFromFile" text="&amp;Update from Linked File" responder="paletteView" slot="onActionUpdatePaletteFromFile()"/>
   <item id="UnlinkPalette" text="Unlin&amp;k" responder="paletteView" slot="onActionUnlinkPalette()"/>
+  <item id="LinkMissingPalettes" text="Link M&amp;issing Palettes..." responder="paletteView" slot="onActionLinkMissingPalettes()"/>
   <item id="ImportPalette" text="&amp;Import..." responder="paletteView" slot="onActionImportPalette()"/>
   <item id="ExportPalette" text="E&amp;xport..." responder="paletteView" slot="onActionExportPalette()"/>
   <item id="RemovePalette" text="&amp;Remove" responder="paletteView" slot="onActionRemovePalette()"/>
@@ -897,6 +898,7 @@
   <separator/>
   <item id="RenamePalette" text="Rena&amp;me..." responder="paletteView" slot="onActionRenamePalette()"/>
   <item id="DuplicatePalette" text="Dupli&amp;cate..." responder="paletteView" slot="onActionDuplicatePalette()"/>
+  <item id="DuplicateAndRecolour" text="Duplicate and Recolour Selected Drawin&amp;gs" responder="paletteView" slot="onActionDuplicateAndRecolour()"/>
   <item id="ClonePalette" text="Cl&amp;one..." responder="paletteView" slot="onActionClonePalette()"/>
   <item id="MergePalettes" text="Mer&amp;ge Palettes..." responder="paletteView" slot="onActionMergePalettes()"/>
   <separator/>
