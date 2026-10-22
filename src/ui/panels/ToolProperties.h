@@ -57,6 +57,10 @@ signals:
 private:
     // The parts of the form, from the top down.
     void addSizeRows();
+    // Its parts: the Brush on a bitmap layer, the pen stabiliser, the Pencil's thickness stencil.
+    void addBitmapBrushRows();
+    void addStabiliserRows();
+    void addStencilRows();
     void addBrushRows();
     void addRiggingRows();
     void addSelectRows();

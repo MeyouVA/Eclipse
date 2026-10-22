@@ -58,6 +58,11 @@ public slots:
     void setCurrentCell(int layer, int frame);
 
 private:
+    // The constructor's parts: the settings of the kinds of effect that have more, and the editors wired up.
+    void addAdjustSettings(class QVBoxLayout* layout);
+    void addMoreSettings(class QVBoxLayout* layout);
+    void addParticleSettings(class QVBoxLayout* layout);
+    void connectEditors();
     void rebuild();
     void showEditors();
     void add(Effect::Type type);

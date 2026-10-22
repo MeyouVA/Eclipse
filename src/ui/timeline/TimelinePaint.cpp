@@ -1,5 +1,6 @@
 // Eclipse - the Timeline: painting.
 #include "ui/timeline/Timeline.h"
+#include "ui/timeline/TimelinePaintSpace.h"
 #include "actions/theme/InterfaceColours.h"
 
 #include <QPainter>
@@ -19,8 +20,17 @@ static QColor mixed(QColor const& a, QColor const& b, double t)
 
 void Timeline::paintEvent(QPaintEvent*)
 {
-    Scene const& scene = m_document->scene();
     QPainter p(viewport());
+    TimelinePaintSpace const space = paintSpace();
+    p.fillRect(0, 0, space.w, space.h, space.bg);
+    paintCells(p, space);
+    paintRuler(p, space);
+    paintHeaders(p, space);
+}
+
+TimelinePaintSpace Timeline::paintSpace() const
+{
+    Scene const& scene = m_document->scene();
     int const w = viewport()->width();
     int const h = viewport()->height();
     int const sx = horizontalScrollBar()->value();
@@ -28,17 +38,21 @@ void Timeline::paintEvent(QPaintEvent*)
     int const cw = m_cellWidth;
     int const frames = m_dragEnd ? m_endFrames : scene.frameCount();
     int const sceneEndX = kHeaderWidth + frames * cw - sx;
-
     QColor const bg = InterfaceColours::get("timelineBackground"), rowA(83, 83, 83), rowB(78, 78, 78), line(52, 52, 52);
     QColor const text(210, 210, 210), dim(130, 130, 130), exposed = InterfaceColours::get("timelineExposed"), exposedCurrent = exposed.lighter(123);
     QColor const currentRow = InterfaceColours::get("timelineCurrentLayer"), playhead = InterfaceColours::get("timelineCurrentFrame"), headerBg(69, 69, 69);
-    p.fillRect(0, 0, w, h, bg);
-
-    // ---- cells ----
-    p.save();
-    p.setClipRect(kHeaderWidth, kRulerHeight, w - kHeaderWidth, h - kRulerHeight);
     int const firstFrame = std::max(0, sx / cw);
     int const lastFrame = std::min(scene.frameCount() - 1, (sx + w - kHeaderWidth) / cw);
+    return TimelinePaintSpace{scene, w, h, sx, sy, cw, frames, sceneEndX, firstFrame, lastFrame,
+                              bg, rowA, rowB, line, text, dim, exposed, exposedCurrent, currentRow, playhead, headerBg};
+}
+
+// The cells: each layer's exposures and keys, the selection, where a dragged block would land, the current cell.
+void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
+{
+    [[maybe_unused]] auto const& [scene, w, h, sx, sy, cw, frames, sceneEndX, firstFrame, lastFrame, bg, rowA, rowB, line, text, dim, exposed, exposedCurrent, currentRow, playhead, headerBg] = space;
+    p.save();
+    p.setClipRect(kHeaderWidth, kRulerHeight, w - kHeaderWidth, h - kRulerHeight);
     for (int row = 0; row < m_rows.size(); ++row) {
         int const layerIndex = m_rows[row];
         Layer const& layer = scene.layers[layerIndex];
@@ -244,7 +258,12 @@ void Timeline::paintEvent(QPaintEvent*)
     }
     p.restore();
 
-    // ---- ruler: lighter over the scene, black after its end ----
+}
+
+// The ruler: frame numbers, markers, the onion skin, the playback range, the scene's ends, the playhead.
+void Timeline::paintRuler(QPainter& p, TimelinePaintSpace const& space)
+{
+    [[maybe_unused]] auto const& [scene, w, h, sx, sy, cw, frames, sceneEndX, firstFrame, lastFrame, bg, rowA, rowB, line, text, dim, exposed, exposedCurrent, currentRow, playhead, headerBg] = space;
     p.save();
     p.setClipRect(kHeaderWidth, 0, w - kHeaderWidth, h);
     p.fillRect(kHeaderWidth, 0, w - kHeaderWidth, kRulerHeight, QColor(22, 22, 22));
@@ -329,7 +348,12 @@ void Timeline::paintEvent(QPaintEvent*)
     p.drawLine(px + cw / 2, kRulerHeight, px + cw / 2, h);
     p.restore();
 
-    // ---- layer headers ----
+}
+
+// The layer headers: the switches, names, parameters, and where a dragged layer would go.
+void Timeline::paintHeaders(QPainter& p, TimelinePaintSpace const& space)
+{
+    [[maybe_unused]] auto const& [scene, w, h, sx, sy, cw, frames, sceneEndX, firstFrame, lastFrame, bg, rowA, rowB, line, text, dim, exposed, exposedCurrent, currentRow, playhead, headerBg] = space;
     p.setFont(font());
     p.fillRect(0, 0, kHeaderWidth, h, headerBg);
     int const nameEnd = kHeaderWidth - kParamWidth;
@@ -604,6 +628,7 @@ void Timeline::paintEvent(QPaintEvent*)
     p.drawLine(nameEnd, 0, nameEnd, h);
     p.drawLine(0, kRulerHeight - 1, w, kRulerHeight - 1);
 }
+
 
 std::shared_ptr<SoundData> Timeline::symbolSound(int l) const
 {

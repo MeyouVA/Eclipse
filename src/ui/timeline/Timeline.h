@@ -4,6 +4,9 @@
 // an exposed drawing; a dot marks where a new drawing starts.
 #pragma once
 
+class QPainter;
+struct TimelinePaintSpace;
+
 #include "EclipseExport.h"
 
 #include <QAbstractScrollArea>
@@ -186,6 +189,11 @@ protected:
     QSize sizeHint() const override { return QSize(800, 180); }
 
 private:
+    // The painting, in parts: what it is done with, then the cells, the ruler and the layer headers.
+    TimelinePaintSpace paintSpace() const;
+    void paintCells(QPainter& p, TimelinePaintSpace const& space);
+    void paintRuler(QPainter& p, TimelinePaintSpace const& space);
+    void paintHeaders(QPainter& p, TimelinePaintSpace const& space);
     void onDocumentChanged();
     void updateScrollBars();
     void rebuildRows();
