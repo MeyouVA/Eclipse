@@ -294,8 +294,12 @@ void ActionManager::fillMenu(QMenu* menu, Node const& node)
         }
         case Node::Submenu: {
             auto const shared = m_menus.constFind(child.value("id"));
-            if (shared != m_menus.constEnd())
-                fillMenu(menu->addMenu(child.value("text")), *shared);
+            if (shared != m_menus.constEnd()) {
+                QMenu* const sub = menu->addMenu(child.value("text"));
+                fillMenu(sub, *shared);
+                if (shared->attr.contains(QStringLiteral("aboutToShowSlot")))
+                    connect(sub, &QMenu::aboutToShow, this, [this, node = *shared, sub] { invoke(node, false, sub); });
+            }
             break;
         }
         case Node::Placeholder:
@@ -345,6 +349,8 @@ QMenu* ActionManager::createMenu(QString const& menuId, QWidget* parent)
         return nullptr;
     QMenu* const menu = new QMenu(parent);
     fillMenu(menu, *found);
+    if (found->attr.contains(QStringLiteral("aboutToShowSlot")))
+        connect(menu, &QMenu::aboutToShow, this, [this, node = *found, menu] { invoke(node, false, menu); });
     return menu;
 }
 

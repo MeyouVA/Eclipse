@@ -112,6 +112,8 @@ struct Layer {
     bool solo = false;
     // Shows its neighbouring drawings as onion skin even while another layer is worked on.
     bool onion = false;
+    // Palettes of clones (places in Scene::paletteNames) whose colours this layer is drawn with instead of the colours they clone.
+    QVector<int> paletteOverrides;
     // Tagged: marked out, so that the Timeline can be made to show the tagged layers only.
     bool tagged = false;
     int symbolId = 0;

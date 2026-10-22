@@ -48,6 +48,10 @@
     <item id="RenderWriteNodes" icon="file/exportframes" text="Render &amp;Write Nodes" responder="window" slot="onActionRenderWrites()"/>
    </menu>
    <separator/>
+   <menu id="FileOptimize" text="Optimi&amp;ze">
+    <item id="OptimizePalettes"/>
+   </menu>
+   <separator/>
    <item id="Print" icon="file/print" text="&amp;Print..." responder="window" slot="onActionPrint()"/>
    <separator/>
    <item id="Exit" icon="file/quit" text="&amp;Quit" shortcut="shortcut.quit" responder="window" slot="close()"/>
@@ -825,6 +829,69 @@
   <item id="PlayGotoFrame"/>
   <item id="PlaybackStartFrame" icon="play/startframe" text="Playback Start Frame..." responder="window" slot="onActionPlaybackStartFrame()"/>
   <item id="PlaybackStopFrame" icon="play/stopframe" text="Playback Stop Frame..." responder="window" slot="onActionPlaybackStopFrame()"/>
+ </menu>
+
+ <menu id="menu.colours" text="Colours" responder="paletteView" aboutToShowSlot="onShowColoursMenu(QMenu*)">
+  <item id="CutColours" icon="edit/cut" text="Cu&amp;t" responder="paletteView" slot="cut()"/>
+  <item id="CopyColours" icon="edit/copy" text="&amp;Copy" responder="paletteView" slot="copy()"/>
+  <item id="CopyColourId" text="Copy Colour &amp;ID" responder="paletteView" slot="onActionCopyColourId()"/>
+  <item id="PasteColourValues" text="Paste Colour &amp;Values" responder="paletteView" slot="onActionPasteColourValues()"/>
+  <item id="PasteAsNewColours" icon="edit/paste" text="&amp;Paste As New Colours" responder="paletteView" slot="onActionPasteAsNewColours()"/>
+  <item id="PasteAsClones" text="Paste As C&amp;lones" responder="paletteView" slot="onActionPasteAsClones()"/>
+  <separator/>
+  <item id="NewColour" text="&amp;New" responder="paletteView" slot="onActionNewColour()"/>
+  <item id="EditColour" text="&amp;Edit" responder="paletteView" slot="onActionEditColour()"/>
+  <item id="DeleteColour" icon="edit/delete" text="&amp;Delete" responder="paletteView" slot="deleteSelection()"/>
+  <item id="NewTextureColour" text="New &amp;Texture..." responder="paletteView" slot="onActionNewTexture()"/>
+  <item id="EditTexture" text="Edit Te&amp;xture" responder="paletteView" slot="onActionEditTexture()"/>
+  <item id="ScaleDownTexture" text="&amp;Scale Down Texture" responder="paletteView" slot="onActionScaleDownTexture()"/>
+  <item id="NewGradientColour" text="New &amp;Gradient" responder="paletteView" slot="onActionNewGradient()"/>
+  <item id="EditGradientColour" text="Edit Gr&amp;adient..." responder="paletteView" slot="onActionEditGradient()"/>
+  <item id="NewDefaultColour" text="New De&amp;fault Colour" responder="paletteView" slot="onActionNewDefaultColour()"/>
+  <item id="RecolourDrawings" text="&amp;Recolour Drawings..." shortcut="shortcut.recolourDrawings" responder="paletteView" slot="onActionRecolourDrawings()"/>
+  <separator/>
+  <item id="ProtectColour" text="Pr&amp;otect Colour" checkable="true" shortcut="shortcut.protectColour" responder="paletteView" slot="onActionProtectColour()"/>
+  <separator/>
+  <item id="MoveColourUp" text="Move &amp;Up" responder="paletteView" slot="onActionMoveColourUp()"/>
+  <item id="MoveColourDown" text="Move Do&amp;wn" responder="paletteView" slot="onActionMoveColourDown()"/>
+  <menu id="MoveColourToPalette" text="Move to &amp;Palette" responder="paletteView" aboutToShowSlot="onShowMoveToPalette(QMenu*)"/>
+  <separator/>
+  <item id="SwatchMode" text="S&amp;watch Mode" checkable="true" responder="paletteView" slot="onActionSwatchMode(bool)"/>
+  <item id="DisplayColourValues" text="Display Colour &amp;Values" checkable="true" responder="paletteView" slot="onActionDisplayColourValues(bool)"/>
+ </menu>
+
+ <menu id="menu.palettes" text="Palettes" responder="paletteView" aboutToShowSlot="onShowColoursMenu(QMenu*)">
+  <item id="NewPalette" text="&amp;New..." responder="paletteView" slot="onActionNewPalette()"/>
+  <item id="NewElementPalette" text="New &amp;Element Palette..." responder="paletteView" slot="onActionNewElementPalette()"/>
+  <item id="NewPaletteFromSelected" text="New Palette from &amp;Selected Drawings..." responder="paletteView" slot="onActionNewPaletteFromSelected()"/>
+  <item id="LinkPalette" text="&amp;Link..." responder="paletteView" slot="onActionLinkPalette()"/>
+  <item id="UpdatePaletteFromFile" text="&amp;Update from Linked File" responder="paletteView" slot="onActionUpdatePaletteFromFile()"/>
+  <item id="UnlinkPalette" text="Unlin&amp;k" responder="paletteView" slot="onActionUnlinkPalette()"/>
+  <item id="ImportPalette" text="&amp;Import..." responder="paletteView" slot="onActionImportPalette()"/>
+  <item id="ExportPalette" text="E&amp;xport..." responder="paletteView" slot="onActionExportPalette()"/>
+  <item id="RemovePalette" text="&amp;Remove" responder="paletteView" slot="onActionRemovePalette()"/>
+  <item id="RemoveAndDeletePalette" text="Remove and &amp;Delete on Disk" responder="paletteView" slot="onActionRemoveAndDeletePalette()"/>
+  <separator/>
+  <item id="RenamePalette" text="Rena&amp;me..." responder="paletteView" slot="onActionRenamePalette()"/>
+  <item id="DuplicatePalette" text="Dupli&amp;cate..." responder="paletteView" slot="onActionDuplicatePalette()"/>
+  <item id="ClonePalette" text="Cl&amp;one..." responder="paletteView" slot="onActionClonePalette()"/>
+  <item id="MergePalettes" text="Mer&amp;ge Palettes..." responder="paletteView" slot="onActionMergePalettes()"/>
+  <separator/>
+  <item id="MovePaletteUp" text="Move &amp;Up" responder="paletteView" slot="onActionMovePaletteUp()"/>
+  <item id="MovePaletteDown" text="Move Do&amp;wn" responder="paletteView" slot="onActionMovePaletteDown()"/>
+  <separator/>
+  <item id="ShowColourEditor" text="Colour &amp;Editor" shortcut="shortcut.colourEditor" responder="paletteView" slot="onActionColourEditor()"/>
+  <item id="TintPanel" text="&amp;Tint Panel..." responder="paletteView" slot="onActionTintPanel()"/>
+  <item id="PaletteOverrides" text="Current Palette &amp;Overrides..." responder="paletteView" slot="onActionPaletteOverrides()"/>
+  <item id="OptimizePalettes" text="O&amp;ptimize Palettes..." responder="paletteView" slot="onActionOptimizePalettes()"/>
+  <item id="RecoverColours" text="Re&amp;cover Lost Colours" responder="paletteView" slot="onActionRecoverColours()"/>
+  <separator/>
+  <item id="ShowPaletteList" text="Show Palette &amp;List View" checkable="true" checked="true" responder="paletteView" slot="onActionShowPaletteList(bool)"/>
+ </menu>
+
+ <menu id="menu.colourView" text="Palette Manager Menu">
+  <submenu id="menu.palettes" text="&amp;Palettes"/>
+  <submenu id="menu.colours" text="&amp;Colours"/>
  </menu>
 
  <menu id="menu.xsheet" text="Xsheet Menu">

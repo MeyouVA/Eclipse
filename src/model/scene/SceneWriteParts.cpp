@@ -507,6 +507,12 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         }
         layerObject["effects"] = effects;
     }
+    if (!layer.paletteOverrides.isEmpty()) {
+        QJsonArray overrides;
+        for (int palette : layer.paletteOverrides)
+            overrides.append(palette);
+        layerObject["paletteOverrides"] = overrides;
+    }
     if (layer.nodePlaced)
         layerObject["node"] = QJsonArray{layer.nodePos.x(), layer.nodePos.y()};
     if (!layer.frameMarks.isEmpty()) {

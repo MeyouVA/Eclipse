@@ -47,20 +47,27 @@ PalettePanel::PalettePanel(Document* document, QWidget* parent) : QWidget(parent
     m_list->setIconSize(QSize(34, 14));
     m_list->setEditTriggers(QAbstractItemView::EditKeyPressed | QAbstractItemView::SelectedClicked);
     m_list->setToolTip(tr("Double-click a colour to change it. Press F2 to rename it."));
+    m_list->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     QWidget* const palettesTitle = createPaletteHeader();
+    m_paletteHeader = palettesTitle;
     m_palettes = new QListWidget(this);
     m_palettes->setObjectName(QStringLiteral("PaletteList"));
     m_palettes->setFixedHeight(64);
     m_palettes->setFocusPolicy(Qt::NoFocus);
     m_palettes->setToolTip(tr("Double-click a palette to rename it."));
     connect(m_palettes, &QListWidget::currentRowChanged, this, [this](int row) {
-        if (!m_rebuilding && row >= 1)
-            setCurrentPalette(row - 1);     // the first row is the heading
+        QListWidgetItem* const item = m_palettes->item(row);
+        if (!m_rebuilding && item && item->data(Qt::UserRole).toInt() >= 0)
+            setCurrentPalette(item->data(Qt::UserRole).toInt());
     });
     connect(m_palettes, &QListWidget::itemDoubleClicked, this, &PalettePanel::renamePalette);
     m_palettes->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(m_palettes, &QListWidget::customContextMenuRequested, this, &PalettePanel::showPaletteMenu);
+    connect(m_palettes, &QListWidget::customContextMenuRequested, this, [this](QPoint const& pos) {
+        if (QListWidgetItem* const item = m_palettes->itemAt(pos); item && item->data(Qt::UserRole).toInt() >= 0)
+            m_palettes->setCurrentItem(item);
+        emit menuWanted(QStringLiteral("menu.palettes"), m_palettes->viewport()->mapToGlobal(pos));
+    });
 
     QWidget* const bar = createColourBar();
 
@@ -71,6 +78,10 @@ PalettePanel::PalettePanel(Document* document, QWidget* parent) : QWidget(parent
     layout->addWidget(m_palettes);
     layout->addWidget(bar);
     layout->addWidget(m_list, 1);
+    if (!QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("colour/paletteList"), true).toBool()) {
+        m_palettes->hide();
+        palettesTitle->hide();
+    }
 
     connect(this, &PalettePanel::currentSwatchChanged, this, &PalettePanel::showInHand);
     connect(m_document, &Document::changed, this, &PalettePanel::showInHand);
@@ -91,7 +102,12 @@ PalettePanel::PalettePanel(Document* document, QWidget* parent) : QWidget(parent
     });
     // The right button on a colour: its place in the palette, and the palette it is in.
     m_list->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(m_list, &QListWidget::customContextMenuRequested, this, &PalettePanel::showColourMenu);
+    connect(m_list, &QListWidget::customContextMenuRequested, this, [this](QPoint const& pos) {
+        // The colour under the pointer comes into hand (with the others selected, when it is one of them).
+        if (QListWidgetItem* const item = m_list->itemAt(pos); item && !item->isSelected())
+            m_list->setCurrentItem(item);
+        emit menuWanted(QStringLiteral("menu.colours"), m_list->viewport()->mapToGlobal(pos));
+    });
     connect(m_document, &Document::changed, this, &PalettePanel::rebuild);
     rebuild();
 }
@@ -226,69 +242,27 @@ void PalettePanel::showInHand()
     m_inHand->setStyleSheet(QStringLiteral("background: %1; border: 1px solid #101010;").arg(paint));
 }
 
-// The right button on a colour: its place in the palette, and the palette it is in.
-void PalettePanel::showColourMenu(QPoint const& pos)
-{
-    if (QListWidgetItem* const item = m_list->itemAt(pos))
-        m_list->setCurrentItem(item);
-    else
-        return;
-    QMenu menu(this);
-    int const picked = m_list->currentItem()->data(Qt::UserRole).toInt();
-    connect(menu.addAction(tr("Edit Gradient...")), &QAction::triggered, this, [this, picked] { editGradient(picked); });
-    connect(menu.addAction(tr("New Gradient Colour")), &QAction::triggered, this, [this] { editGradient(addGradientSwatch()); });
-    connect(menu.addAction(tr("New Texture Colour...")), &QAction::triggered, this, [this] {
-        QString const file = QFileDialog::getOpenFileName(this, tr("New Texture Colour"), QString(), tr("Pictures (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)"));
-        if (file.isEmpty())
-            return;
-        QImage const picture(file);
-        if (!picture.isNull())
-            addTextureSwatch(picture, QFileInfo(file).completeBaseName());
-    });
-    {
-        Swatch const* const swatch = m_document->scene().findSwatch(picked);
-        QAction* const plain = menu.addAction(tr("Make Plain Colour"));
-        plain->setEnabled(swatch && swatch->isTexture());
-        connect(plain, &QAction::triggered, this, [this, picked] { m_document->setSwatchTexture(picked, QImage()); });
-    }
-    menu.addSeparator();
-    {
-        // Protected: Paint, Repaint and Unpaint leave what has this colour as it is.
-        Swatch const* const swatch = m_document->scene().findSwatch(picked);
-        QAction* const protect = menu.addAction(tr("Protect Colour"));
-        protect->setCheckable(true);
-        protect->setChecked(swatch && swatch->isProtected);
-        connect(protect, &QAction::triggered, this, [this, picked](bool on) { m_document->setSwatchProtected(picked, on); });
-    }
-    menu.addSeparator();
-    connect(menu.addAction(tr("Move Up")), &QAction::triggered, this, [this] { moveCurrentSwatch(-1); });
-    connect(menu.addAction(tr("Move Down")), &QAction::triggered, this, [this] { moveCurrentSwatch(+1); });
-    QMenu* const to = menu.addMenu(tr("Move to Palette"));
-    QStringList const names = m_document->scene().paletteNames;
-    for (int palette = 0; palette < names.size(); ++palette) {
-        QAction* const a = to->addAction(names[palette]);
-        a->setEnabled(palette != m_palette);
-        connect(a, &QAction::triggered, this, [this, palette] { moveCurrentSwatchTo(palette); });
-    }
-    to->setEnabled(names.size() > 1);
-    menu.exec(m_list->viewport()->mapToGlobal(pos));
-}
-
 void PalettePanel::rebuild()
 {
     Scene const& scene = m_document->scene();
     m_rebuilding = true;
-    // The palettes: a heading, then one row each.
+    // The palettes: the scene's under a heading, then those of the layer worked on (its element palettes) under another.
     m_palette = std::clamp(m_palette, 0, int(scene.paletteNames.size()) - 1);
     m_palettes->clear();
-    QListWidgetItem* const heading = new QListWidgetItem(tr("Scene Palettes"), m_palettes);
-    heading->setFlags(Qt::NoItemFlags);
-    QFont bold = heading->font();
-    bold.setBold(true);
-    heading->setFont(bold);
-    heading->setForeground(QColor(200, 200, 200));
-    for (int i = 0; i < scene.paletteNames.size(); ++i) {
+    int const owner = m_layer >= 0 && m_layer < scene.layers.size() ? scene.layers[m_layer].id : -1;
+    auto headingRow = [&](QString const& text) {
+        QListWidgetItem* const heading = new QListWidgetItem(text, m_palettes);
+        heading->setFlags(Qt::NoItemFlags);
+        heading->setData(Qt::UserRole, -1);
+        QFont bold = heading->font();
+        bold.setBold(true);
+        heading->setFont(bold);
+        heading->setForeground(QColor(200, 200, 200));
+    };
+    int currentRow = -1;
+    auto paletteRow = [&](int i) {
         QListWidgetItem* const item = new QListWidgetItem(QStringLiteral("    ") + scene.paletteNames[i], m_palettes);
+        item->setData(Qt::UserRole, i);
         if (!scene.paletteLink(i).isEmpty()) {
             // A palette shared through a file is told apart by its slanted name.
             QFont slanted = item->font();
@@ -296,8 +270,28 @@ void PalettePanel::rebuild()
             item->setFont(slanted);
             item->setToolTip(tr("Linked to %1").arg(QDir::toNativeSeparators(scene.paletteLink(i))));
         }
+        bool clones = false;
+        for (Swatch const& swatch : scene.palette)
+            clones = clones || (swatch.palette == i && swatch.cloneOf != 0);
+        if (clones)
+            item->setToolTip(item->toolTip().isEmpty() ? tr("A palette of clones") : item->toolTip() + QLatin1Char('\n') + tr("A palette of clones"));
+        if (i == m_palette)
+            currentRow = m_palettes->count() - 1;
+    };
+    headingRow(tr("Scene Palettes"));
+    for (int i = 0; i < scene.paletteNames.size(); ++i)
+        if (scene.paletteIsScene(i))
+            paletteRow(i);
+    bool element = false;
+    for (int i = 0; i < scene.paletteNames.size(); ++i)
+        element = element || (!scene.paletteIsScene(i) && (scene.paletteOwner(i) == owner || i == m_palette));
+    if (element) {
+        headingRow(tr("Element Palettes"));
+        for (int i = 0; i < scene.paletteNames.size(); ++i)
+            if (!scene.paletteIsScene(i) && (scene.paletteOwner(i) == owner || i == m_palette))
+                paletteRow(i);
     }
-    m_palettes->setCurrentRow(m_palette + 1);
+    m_palettes->setCurrentRow(currentRow);
     // The colours of the one chosen.
     m_list->clear();
     bool currentHere = false;
@@ -310,12 +304,19 @@ void PalettePanel::rebuild()
             m_current = swatch.id;      // the colour in hand is of another palette, or gone: the first of this one
             currentHere = true;
         }
-        QListWidgetItem* const item = new QListWidgetItem(swatchIcon(swatch), m_grid ? QString() : swatch.name, m_list);
+        QString text = m_grid ? QString() : swatch.name;
+        if (m_values && !m_grid)
+            text += QStringLiteral("    %1, %2, %3, %4").arg(swatch.color.red()).arg(swatch.color.green()).arg(swatch.color.blue()).arg(swatch.color.alpha());
+        QListWidgetItem* const item = new QListWidgetItem(swatchIcon(swatch), text, m_list);
         item->setData(Qt::UserRole, swatch.id);
         if (m_grid)
             item->setToolTip(swatch.name);
-        else
+        else if (!m_values)
             item->setFlags(item->flags() | Qt::ItemIsEditable);
+        if (swatch.cloneOf != 0) {
+            Swatch const* const original = scene.findSwatch(swatch.cloneOf);
+            item->setToolTip(tr("%1 - a clone of %2").arg(swatch.name, original ? original->name : tr("a colour no longer there")));
+        }
         if (swatch.isProtected) {
             // A protected colour is told apart by its slanted name.
             QFont slanted = item->font();

@@ -308,7 +308,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
         if (n->kind == GraphNode::EffectNode)
             connect(menu.addAction(tr("Edit Effect...")), &QAction::triggered, this, [this, hit] { editGraphNode(hit); });
         if (n->kind == GraphNode::LayerNode && !pictureless(*n)) {
-            // Which of the layer's art layers the node gives (Harmony's Line Art, Colour Art, Underlay and Overlay nodes).
+            // Which of the layer's art layers the node gives (the Line Art, Colour Art, Underlay and Overlay nodes).
             QMenu* const arts = menu.addMenu(tr("Art Layers"));
             QString const names[4] = {tr("Underlay"), tr("Colour Art"), tr("Line Art"), tr("Overlay")};
             for (int sheet = Drawing::SheetCount - 1; sheet >= 0; --sheet) {

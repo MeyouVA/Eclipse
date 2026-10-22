@@ -38,8 +38,13 @@ QJsonObject Scene::toJson(QString const& folder) const
             swatch["texture"] = s.textureText();
         if (s.isProtected)
             swatch["protected"] = true;
+        if (s.cloneOf != 0)
+            swatch["clone"] = s.cloneOf;
         paletteArray.append(swatch);
     }
+    QJsonArray ownerArray;
+    for (int i = 0; i < paletteNames.size(); ++i)
+        ownerArray.append(paletteOwner(i));
     QJsonArray markerArray;
     for (Marker const& m : markers) {
         QJsonObject marker{{"frame", m.frame}, {"length", m.length}, {"name", m.name}, {"color", m.color.name()}};
@@ -170,6 +175,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"palette", paletteArray},
                        {"paletteNames", QJsonArray::fromStringList(paletteNames)},
                        {"paletteLinks", QJsonArray::fromStringList(paletteLinks)},
+                       {"paletteOwners", ownerArray},
                        {"width", width},
                        {"height", height},
                        {"fps", fps},

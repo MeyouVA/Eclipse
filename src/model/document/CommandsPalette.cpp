@@ -10,33 +10,7 @@ int Document::addSwatch(QString const& name, QColor const& color, int palette)
     return id;
 }
 
-// What was drawn with the swatch keeps its colour and is linked to no swatch.
-static void unlinkSwatch(Scene& s, int id, QColor const& color)
-{
-    auto strokes = [&](QVector<Stroke>& list) {
-        for (Stroke& stroke : list)
-            if (stroke.swatch == id) {
-                stroke.swatch = Scene::kNoSwatch;
-                stroke.color = color;
-            }
-    };
-    auto fills = [&](QVector<Fill>& list) {
-        for (Fill& fill : list)
-            if (fill.swatch == id) {
-                fill.swatch = Scene::kNoSwatch;
-                fill.color = color;
-            }
-    };
-    for (Layer& layer : s.layers)
-        for (Drawing& d : layer.drawings) {
-            for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
-                strokes(d.strokesOf(sheet));
-                fills(d.fillsOf(sheet));
-            }
-        }
-}
-
-int Document::addPalette(QString const& name)
+int Document::addPalette(QString const& name, int owner)
 {
     int at = -1;
     apply(tr("New Palette"), [&](Scene& s) {
@@ -45,6 +19,9 @@ int Document::addPalette(QString const& name)
             unique = QStringLiteral("%1 %2").arg(name.trimmed().isEmpty() ? tr("Palette") : name.trimmed()).arg(n);
         s.paletteNames.push_back(unique);
         at = int(s.paletteNames.size()) - 1;
+        while (s.paletteOwners.size() < at)
+            s.paletteOwners.push_back(0);
+        s.paletteOwners.push_back(owner);
         s.addSwatch(tr("Black"), QColor(0, 0, 0), at);
     });
     return at;
@@ -62,19 +39,7 @@ void Document::removePalette(int palette)
 {
     if (palette < 0 || palette >= m_scene.paletteNames.size() || m_scene.paletteNames.size() < 2)
         return;
-    apply(tr("Remove Palette"), [&](Scene& s) {
-        for (int i = int(s.palette.size()) - 1; i >= 0; --i) {
-            if (s.palette[i].palette == palette) {
-                unlinkSwatch(s, s.palette[i].id, s.palette[i].color);
-                s.palette.removeAt(i);
-            } else if (s.palette[i].palette > palette) {
-                --s.palette[i].palette;
-            }
-        }
-        s.paletteNames.removeAt(palette);
-        if (palette < s.paletteLinks.size())
-            s.paletteLinks.removeAt(palette);
-    });
+    apply(tr("Remove Palette"), [&](Scene& s) { s.dropPalette(palette); });
 }
 
 void Document::editSwatch(int id, QString const& name, QColor const& color)

@@ -211,7 +211,7 @@ QBrush Scene::brushFor(Fill const& fill) const
 {
     Swatch const* const s = findSwatch(fill.swatch);
     if (!s)
-        return QBrush(fill.color);
+        return QBrush(fill.swatch != kNoSwatch && replacementColour().isValid() ? replacementColour() : fill.color);
     if (!s->isPlaced())
         return QBrush(s->color);
     QPointF from, to;
@@ -223,7 +223,7 @@ QBrush Scene::brushFor(Stroke const& stroke) const
 {
     Swatch const* const s = findSwatch(stroke.swatch);
     if (!s)
-        return QBrush(stroke.color);
+        return QBrush(stroke.swatch != kNoSwatch && replacementColour().isValid() ? replacementColour() : stroke.color);
     if (!s->isPlaced())
         return QBrush(s->color);
     QPointF from, to;

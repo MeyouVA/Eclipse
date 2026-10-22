@@ -1,6 +1,6 @@
 // Eclipse - the Camera view: paint that follows its lines.  An area painted with the paint bucket (or filled under a line
 // drawn round it) is the area its lines close round: when those lines are moved, bent or reshaped, it is found again from
-// them - so the paint goes wherever the lines go, as it does in Harmony.
+// them - so the paint goes wherever the lines go, 
 #include "canvas/Canvas.h"
 
 #include <algorithm>
@@ -344,7 +344,7 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
                     break;      // its own lines round it still, where it was: that is it
             }
             if (best.isEmpty())
-                continue;       // (its lines taken away: the paint stays as it was, as in Harmony)
+                continue;       // (its lines taken away: the paint stays as it was)
             fill.outlines = best;
             if (!fill.contains(fill.seed))
                 fill.seed = insideOf(best);

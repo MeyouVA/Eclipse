@@ -170,6 +170,7 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
 
 // While a layer with a blend mode is painted alone, to be mixed with what is under it as a whole.
 static thread_local bool tPaintingToBlend = false;
+static thread_local bool tOverridden = false;
 
 void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int frame, Drawing const& drawing, double opacity,
                                QTransform const& sceneToDevice, bool everySheet)
@@ -203,6 +204,23 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         painter.drawImage(0, 0, alone);
         painter.restore();
         return;
+    }
+    if (!layer.paletteOverrides.isEmpty() && !tOverridden) {
+        // Its palette overrides: the colours they clone are drawn in the clones.
+        QHash<int, int> const swap = scene.overridesOf(l);
+        if (!swap.isEmpty()) {
+            Drawing swapped = drawing;
+            for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                for (Stroke& stroke : swapped.strokesOf(sheet))
+                    stroke.swatch = swap.value(stroke.swatch, stroke.swatch);
+                for (Fill& fill : swapped.fillsOf(sheet))
+                    fill.swatch = swap.value(fill.swatch, fill.swatch);
+            }
+            tOverridden = true;
+            paintLayerDrawing(painter, scene, l, frame, swapped, opacity, sceneToDevice, everySheet);
+            tOverridden = false;
+            return;
+        }
     }
     if (!everySheet && layer.hiddenSheets != 0 && !layer.showsSymbol()) {
         // The art layers left out of the picture are not in it.

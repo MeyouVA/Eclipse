@@ -230,7 +230,8 @@ void MainWindow::createViews()
         // The views that have a menu of their own show it from the menu button of their strip.
         QString const own = d->windowTitle() == tr("Timeline") ? QStringLiteral("menu.timeline")
                             : d->windowTitle() == tr("Xsheet") ? QStringLiteral("menu.xsheet")
-                            : d->windowTitle() == tr("Node View") ? QStringLiteral("menu.nodeView") : QString();
+                            : d->windowTitle() == tr("Node View") ? QStringLiteral("menu.nodeView")
+                            : d->windowTitle() == tr("Colour") ? QStringLiteral("menu.colourView") : QString();
         if (!own.isEmpty())
             bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
     }
@@ -359,7 +360,7 @@ void MainWindow::createCameraView()
         }
     }
     {
-        // How the view shows the frame (Harmony's view modes at the foot of the Camera view).
+        // How the view shows the frame (the view modes at the foot of the Camera view).
         QComboBox* const mode = new QComboBox(status);
         mode->setObjectName(QStringLiteral("ViewMode"));
         mode->addItems({tr("Normal View"), tr("Render View"), tr("Matte View"), tr("Depth View")});

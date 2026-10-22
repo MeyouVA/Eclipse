@@ -154,38 +154,6 @@ int PalettePanel::duplicatePalette()
     return made;
 }
 
-// The right button on a palette: the file it shares its colours with.
-void PalettePanel::showPaletteMenu(QPoint const& pos)
-{
-    QListWidgetItem* const item = m_palettes->itemAt(pos);
-    int const palette = item ? m_palettes->row(item) - 1 : -1;
-    if (palette < 0 || palette >= m_document->scene().paletteNames.size())
-        return;
-    setCurrentPalette(palette);
-    QString const linked = m_document->scene().paletteLink(palette);
-    QMenu menu(this);
-    connect(menu.addAction(tr("Duplicate Palette")), &QAction::triggered, this, [this] { duplicatePalette(); });
-    menu.addSeparator();
-    connect(menu.addAction(tr("Link to File...")), &QAction::triggered, this, [this] {
-        QString path = QFileDialog::getSaveFileName(this, tr("Link Palette to File"), m_document->scene().paletteNames.value(m_palette) + QStringLiteral(".eclpal"),
-                                                    tr("Eclipse palettes (*.eclpal)"), nullptr, QFileDialog::DontConfirmOverwrite);
-        if (path.isEmpty())
-            return;
-        if (QFileInfo(path).suffix().isEmpty())
-            path += QStringLiteral(".eclpal");
-        QString error;
-        if (!linkPalette(path, &error))
-            QMessageBox::warning(this, tr("Eclipse"), error);
-    });
-    QAction* const update = menu.addAction(tr("Update from File"));
-    update->setEnabled(!linked.isEmpty());
-    connect(update, &QAction::triggered, this, [this] { m_document->updatePaletteFromFile(m_palette); });
-    QAction* const unlink = menu.addAction(tr("Unlink from File"));
-    unlink->setEnabled(!linked.isEmpty());
-    connect(unlink, &QAction::triggered, this, [this] { unlinkPalette(); });
-    menu.exec(m_palettes->viewport()->mapToGlobal(pos));
-}
-
 void PalettePanel::addPalette()
 {
     bool ok = false;
@@ -203,7 +171,7 @@ void PalettePanel::removePalette()
 
 void PalettePanel::renamePalette(QListWidgetItem* item)
 {
-    int const palette = m_palettes->row(item) - 1;
+    int const palette = item ? item->data(Qt::UserRole).toInt() : -1;
     if (palette < 0 || palette >= m_document->scene().paletteNames.size())
         return;
     bool ok = false;

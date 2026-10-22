@@ -281,7 +281,7 @@ void MainWindow::onActionPreferences()
         reopen = true;
         dialog.reject();
     });
-    // A tab for each kind of setting, as Harmony has them.
+    // A tab for each kind of setting.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
     for (QGroupBox* const page : {w.general, w.camera, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.renderPage, w.soundPage, w.advanced}) {

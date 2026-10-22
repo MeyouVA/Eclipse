@@ -147,6 +147,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             scene.paletteLinks.push_back(lv.toString());
         while (scene.paletteLinks.size() > scene.paletteNames.size())
             scene.paletteLinks.removeLast();
+        for (QJsonValue const& ov : json["paletteOwners"].toArray())
+            if (scene.paletteOwners.size() < scene.paletteNames.size())
+                scene.paletteOwners.push_back(ov.toInt());
     }
     if (json.contains("palette")) {
         scene.palette.clear();
@@ -159,6 +162,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             s.color = QColor(so["color"].toString("#ff000000"));
             s.palette = std::clamp(so["palette"].toInt(0), 0, int(scene.paletteNames.size()) - 1);
             s.isProtected = so["protected"].toBool(false);
+            s.cloneOf = so["clone"].toInt(0);
             s.setStopsJson(so["stops"].toArray());
             s.kind = s.stops.size() >= 2 ? Swatch::Kind(std::clamp(so["kind"].toInt(0), 0, 2)) : Swatch::Solid;
             if (s.kind == Swatch::Solid)

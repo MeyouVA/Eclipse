@@ -179,6 +179,9 @@
   <shortcut id="shortcut.nextLayer" text="Next Layer" value=""/>
   <shortcut id="shortcut.prevColour" text="Previous Colour" value=""/>
   <shortcut id="shortcut.nextColour" text="Next Colour" value=""/>
+  <shortcut id="shortcut.recolourDrawings" text="Recolour Drawings..." value=""/>
+  <shortcut id="shortcut.protectColour" text="Protect Colour" value=""/>
+  <shortcut id="shortcut.colourEditor" text="Colour Editor" value=""/>
   <shortcut id="shortcut.mergeLayers" text="Merge Selected Layers" value=""/>
   <shortcut id="shortcut.extendExposure" text="Extend Exposure" value="F5"/>
   <shortcut id="shortcut.clearExposure" text="Clear Exposure" value=""/>

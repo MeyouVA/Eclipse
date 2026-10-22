@@ -373,6 +373,8 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.locked = lo["locked"].toBool(false);
     layer.solo = lo["solo"].toBool(false);
     layer.onion = lo["onion"].toBool(false);
+    for (QJsonValue const& pv : lo["paletteOverrides"].toArray())
+        layer.paletteOverrides.push_back(pv.toInt());
     layer.tagged = lo["tagged"].toBool(false);
     for (QJsonValue const& mv : lo["frameMarks"].toArray()) {
         QColor const colour(mv.toArray().at(1).toString());

@@ -270,7 +270,7 @@ public:
     bool contourControls() const { return m_ceControls; }
     void setCutterGesture(int gesture) { m_cutterGesture = std::clamp(gesture, 0, 3); }
     int cutterGesture() const { return m_cutterGesture; }
-    // How the Cutter leaves the ends of a pencil line it cuts: cut square (Stroke::FlatCap, as Harmony's bevel tip) or round.
+    // How the Cutter leaves the ends of a pencil line it cuts: cut square (Stroke::FlatCap, a bevel tip) or round.
     void setCutterTip(int cap) { m_cutterTip = std::clamp(cap, 0, 1); }
     int cutterTip() const { return m_cutterTip; }
     void setPencilMode(int mode) { m_pencilMode = std::clamp(mode, 0, 2); }

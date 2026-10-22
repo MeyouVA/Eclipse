@@ -1,4 +1,4 @@
-// Eclipse - the Camera view: the thickness of pencil lines, apart from their points (as Harmony keeps it) - the Pencil
+// Eclipse - the Camera view: the thickness of pencil lines, apart from their points - the Pencil
 // Editor's thickness points, and the thickness stencils of the Line tool and the Polyline.
 #include "canvas/Canvas.h"
 

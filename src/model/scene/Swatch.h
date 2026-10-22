@@ -37,4 +37,6 @@ struct Swatch {
     int palette = 0;
     // Protected: what is drawn or painted in it is left as it is by the paint tools.
     bool isProtected = false;
+    // A clone: the colour (by id) it stands in for where its palette overrides the other's.  0: none.
+    int cloneOf = 0;
 };

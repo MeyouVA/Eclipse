@@ -66,7 +66,7 @@ public:
     // ---- palette ------------------------------------------------------------------------
     int addSwatch(QString const& name, QColor const& color, int palette = 0);
     // Another palette of the scene, with one colour to start with.  Returns its place.
-    int addPalette(QString const& name);
+    int addPalette(QString const& name, int owner = 0);
     void renamePalette(int palette, QString const& name);
     void removePalette(int palette);
     void editSwatch(int id, QString const& name, QColor const& color);
@@ -87,6 +87,30 @@ public:
     bool setPaletteLink(int palette, QString const& path);
     bool updatePaletteFromFile(int palette);
     bool relinkFile(QString const& from, QString const& to);
+    // Whose palette it is: the scene's (0) or a layer's (its id).
+    bool setPaletteOwner(int palette, int owner);
+    // A palette moved up (-1) or down (+1) in the list.
+    bool movePalette(int palette, int by);
+    // A palette of clones of another's colours, to override it with on some layers.  Its place.
+    int clonePalette(int palette, QString const& name);
+    // The colours of one palette brought into another: those it has by name already replace them in the drawings.
+    bool mergePalette(int from, int into);
+    // A new palette of the colours the given layers are drawn with; their drawings then use it.  Its place (-1: no colours).
+    int paletteFromDrawings(QVector<int> const& layers, QString const& name, int owner = 0);
+    // Colours and palettes taken out, as one step (palettes after colours; a palette keeps one colour at least).
+    bool removeColours(QVector<int> const& swatches, QVector<int> const& palettes, QString const& text);
+    // What is in colour `from` (on the given layers; all when empty) put in colour `to`.  How much changed.
+    int recolour(int from, int to, QVector<int> const& layers = {});
+    // What is in the colour loses its paint: areas go, lines are no longer seen (they still bound areas).
+    int unpaintColour(int id, QVector<int> const& layers = {});
+    // The colours mixed toward `tint`: by `amount` (0..1) of the way (blend), or by `amount` of the tint added (offset).
+    bool tintColours(QVector<int> const& swatches, QColor const& tint, double amount, bool offset);
+    // Colours added to a palette, as copies (or as clones) of these.  Their ids.
+    QVector<int> addColours(QVector<Swatch> const& colours, int palette, bool clones);
+    // The values (colour, gradient, texture) of these colours given to those, in order.
+    bool setColourValues(QVector<int> const& targets, QVector<Swatch> const& values);
+    bool setPaletteOverrides(int layer, QVector<int> const& palettes);
+    int recoverColours();
 
     // ---- exposure -----------------------------------------------------------------------
     // A new empty drawing starting at `frame` (the rest of the old exposure keeps its drawing).

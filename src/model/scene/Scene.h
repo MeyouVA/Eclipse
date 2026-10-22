@@ -7,6 +7,9 @@
 
 #include "model/scene/NodeGraph.h"
 
+#include <QHash>
+#include <QSet>
+
 class Scene {
 public:
     Scene();
@@ -102,6 +105,29 @@ public:
     QStringList paletteNames = {QStringLiteral("Scene")};
     QStringList paletteLinks;
     QString paletteLink(int which) const { return paletteLinks.value(which); }
+    // Whose palette it is: 0 the scene's (every layer's), else the id of the layer (element) it belongs to.
+    QVector<int> paletteOwners;
+    int paletteOwner(int which) const { return paletteOwners.value(which, 0); }
+    // A palette of the scene's list: the scene's own, or one whose layer is gone.
+    bool paletteIsScene(int which) const { return paletteOwner(which) == 0 || layerIndex(paletteOwner(which)) < 0; }
+    // The colours of a palette, in order (their ids).
+    QVector<int> paletteSwatches(int which) const;
+    // A palette taken to another place in the list; and one taken out (its colours with it: what used them keeps their values).
+    void movePalette(int from, int to);
+    void dropPalette(int which);
+    // The ids of the colours that something is drawn or painted with.
+    QSet<int> usedSwatches() const;
+    // Every line and area of the given layers (all of them when empty) in colour `from` given colour `to`.  How many.
+    int recolour(int from, int to, QVector<int> const& layers = {});
+    // The colours a layer is drawn with in place of others, by its palette overrides: original id -> clone id.
+    QHash<int, int> overridesOf(int layer) const;
+    // When a colour is gone (its id unknown), what is drawn in it is shown in this colour instead of the colour it kept;
+    // no colour (the default): it keeps its own (colour recovery).
+    static void setReplacementColour(QColor const& colour);
+    static QColor replacementColour();
+    // Colours the artwork of the scene is linked to that the scene does not have: each made again, from what was
+    // drawn with it, in a palette "Recovered Palette".  How many.
+    int recoverColours();
     QJsonObject paletteJson(int which) const;
     bool takePaletteJson(int which, QJsonObject const& root);
     bool writePaletteFile(int which, QString const& path) const;

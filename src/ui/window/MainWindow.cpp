@@ -91,6 +91,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     // The timeline holds the current cell; the other views follow it and ask it to change.
     connect(m_timeline, &Timeline::currentCellChanged, m_xsheet, &Xsheet::setCurrentCell);
     connect(m_timeline, &Timeline::currentCellChanged, m_layerPanel, &LayerPanel::setCurrentCell);
+    // The Colour view: the layer worked on (for its element palettes and overrides), and its menus.
+    connect(m_timeline, &Timeline::currentCellChanged, m_palette, [this](int layer, int) { m_palette->setCurrentLayer(layer); });
+    m_palette->setSelectedLayers([this] { return m_timeline->selectedLayers(); });
+    connect(m_palette, &PalettePanel::menuWanted, this, [this](QString const& id, QPoint const& globalPos) {
+        if (QMenu* const menu = m_actions->createMenu(id, this)) {
+            menu->setAttribute(Qt::WA_DeleteOnClose);
+            menu->popup(globalPos);
+        }
+    });
     connect(m_canvas, &Canvas::animateChanged, m_layerPanel, &LayerPanel::setAnimate);
     connect(m_timeline, &Timeline::currentCellChanged, m_substitution, &SubstitutionPanel::setCurrentCell);
     connect(m_xsheet, &Xsheet::cellPicked, m_timeline, &Timeline::setCurrentCell);

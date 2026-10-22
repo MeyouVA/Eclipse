@@ -1,4 +1,4 @@
-// Eclipse - 3D models brought into a scene (Harmony's 3D model elements): a model file read (Wavefront OBJ, with the
+// Eclipse - 3D models brought into a scene (3D model elements): a model file read (Wavefront OBJ, with the
 // colours and textures of its MTL materials), and pictures made of it, turned in space, for a layer to show.
 //
 // A drawing of a layer can be a model (Drawing::model, the file): what it shows is a picture of the model, made for the
