@@ -31,3 +31,4 @@ pkg_log.txt
 ui_log.txt
 build_log.txt
 devnotes/
+*_log*.txt
