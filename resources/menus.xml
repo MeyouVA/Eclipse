@@ -654,6 +654,31 @@
   <item id="OnionOthers"/>
  </menu>
 
+ <menu id="menu.referenceView" text="Reference View Menu">
+  <item id="RefSelect" text="&amp;Select" checkable="true" group="referenceMode" responder="window" slot="onActionReference(QString)" itemParameter="select"/>
+  <item id="RefZoomTool" text="&amp;Zoom" checkable="true" group="referenceMode" responder="window" slot="onActionReference(QString)" itemParameter="zoom"/>
+  <item id="RefEyedropper" text="Colour &amp;Eyedropper" checkable="true" group="referenceMode" responder="window" slot="onActionReference(QString)" itemParameter="eyedropper"/>
+  <separator/>
+  <item id="RefPrevious" text="&amp;Previous" responder="window" slot="onActionReference(QString)" itemParameter="previous"/>
+  <item id="RefNext" text="&amp;Next" responder="window" slot="onActionReference(QString)" itemParameter="next"/>
+  <item id="RefUnload" text="&amp;Unload Current" responder="window" slot="onActionReference(QString)" itemParameter="unload"/>
+  <item id="RefDelete" text="&amp;Delete Current" responder="window" slot="onActionReference(QString)" itemParameter="delete"/>
+  <item id="RefUseDrawing" text="Use &amp;Current Drawing as Reference" responder="window" slot="onActionReference(QString)" itemParameter="useDrawing"/>
+  <item id="RefLoadDefaults" text="Load &amp;Default References" responder="window" slot="onActionReference(QString)" itemParameter="loadDefaults"/>
+  <separator/>
+  <item id="RefZoomIn" text="Zoom &amp;In" responder="window" slot="onActionReference(QString)" itemParameter="zoomIn"/>
+  <item id="RefZoomOut" text="Zoom &amp;Out" responder="window" slot="onActionReference(QString)" itemParameter="zoomOut"/>
+  <item id="RefResetZoom" text="Reset &amp;Zoom" responder="window" slot="onActionReference(QString)" itemParameter="resetZoom"/>
+  <item id="RefResetPan" text="Reset P&amp;an" responder="window" slot="onActionReference(QString)" itemParameter="resetPan"/>
+  <item id="RefResetView" text="Reset &amp;View" responder="window" slot="onActionReference(QString)" itemParameter="resetView"/>
+  <item id="RefRotateCW" text="Rotate View C&amp;W" responder="window" slot="onActionReference(QString)" itemParameter="rotateCW"/>
+  <item id="RefRotateCCW" text="Rotate View CC&amp;W" responder="window" slot="onActionReference(QString)" itemParameter="rotateCCW"/>
+  <item id="RefResetRotation" text="Reset &amp;Rotation" responder="window" slot="onActionReference(QString)" itemParameter="resetRotation"/>
+  <item id="RefMirror" text="&amp;Mirror View" checkable="true" responder="window" slot="onActionReference(QString)" itemParameter="mirror"/>
+  <separator/>
+  <item id="ShowReferenceView" text="Show &amp;Reference View" shortcut="shortcut.showReferenceView" checkable="true" checked="true" responder="window" slot="onActionShowReferenceView()"/>
+ </menu>
+
  <!-- Right-click menus of the views. -->
  <menu id="menu.cameraView" text="Camera View Menu">
   <submenu id="menu.animationTools" text="Animation Tools"/>

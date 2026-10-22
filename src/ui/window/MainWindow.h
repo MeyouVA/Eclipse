@@ -460,6 +460,10 @@ public slots:
     void onActionRenameWithPrefix();
     void onActionOnionLayers(QString const& which);
     void onActionOnionAdvanced(bool on);
+    void onActionReference(QString const& what);
+    void onActionShowReferenceView();
+    // The current drawing as a picture, kept beside the scene, for the Reference view.
+    QString referenceOfDrawing();
     void onActionOnionLinkSliders(bool on);
     void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();

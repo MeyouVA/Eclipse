@@ -44,6 +44,7 @@
   <shortcut id="shortcut.rotateViewCcw" text="Rotate View CCW" value="C"/>
   <shortcut id="shortcut.mirrorView" text="Mirror View" value=""/>
   <shortcut id="shortcut.resetZoom" text="Reset Zoom" value="Shift+Z"/>
+  <shortcut id="shortcut.showReferenceView" text="Show Reference View" value="Shift+K"/>
   <shortcut id="shortcut.resetRotation" text="Reset Rotation" value="Shift+X"/>
   <shortcut id="shortcut.resetPan" text="Reset Pan" value="Shift+N"/>
   <shortcut id="shortcut.recentre" text="Recentre" value=""/>

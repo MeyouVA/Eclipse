@@ -232,7 +232,8 @@ void MainWindow::createViews()
                             : d->windowTitle() == tr("Xsheet") ? QStringLiteral("menu.xsheet")
                             : d->windowTitle() == tr("Node View") ? QStringLiteral("menu.nodeView")
                             : d->windowTitle() == tr("Colour") ? QStringLiteral("menu.colourView")
-                            : d->windowTitle() == tr("Onion Skin") ? QStringLiteral("menu.onionSkinView") : QString();
+                            : d->windowTitle() == tr("Onion Skin") ? QStringLiteral("menu.onionSkinView")
+                            : d->windowTitle() == tr("Reference") ? QStringLiteral("menu.referenceView") : QString();
         if (!own.isEmpty())
             bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
     }
