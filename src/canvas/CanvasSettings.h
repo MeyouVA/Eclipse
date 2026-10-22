@@ -281,6 +281,15 @@ public:
     QColor onionAfter() const { return m_onionAfter; }
     QColor backdrop() const { return m_backdrop; }
     int lightTableWash() const { return m_lightWash; }
+    void setLightTableWhite(int percent) { m_lightWhite = std::clamp(percent, 0, 100); }
+    int lightTableWhite() const { return m_lightWhite; }
+    void setLightTableShade(bool on, bool inCamera) { m_lightShade = on; m_lightShadeCamera = inCamera; }
+    bool lightTableShade() const { return m_lightShade; }
+    bool lightTableShadeCamera() const { return m_lightShadeCamera; }
+    void setOnionWashRange(int least, int most) { m_onionWashMin = std::clamp(least, 0, 100); m_onionWashMax = std::clamp(most, 0, 100); }
+    int onionWashMin() const { return m_onionWashMin; }
+    int onionWashMax() const { return m_onionWashMax; }
+    bool onionWash() const { return m_onionWash; }
     bool onionStepHasColour(bool after, int step) const { return step >= 0 && step < kOnionSteps && m_onionStepColour[after ? 1 : 0][step].isValid(); }
     // The words being changed with the Text tool: which painted area of the drawing (-1: new words).
     int textEdited() const { return m_textEdit; }

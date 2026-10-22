@@ -132,6 +132,11 @@ protected:
     QColor m_onionAfter = QColor(50, 160, 80);
     QColor m_backdrop = QColor(127, 127, 127);
     int m_lightWash = 30;
+    int m_lightWhite = 0;           // the light table: how far the other layers are washed toward white
+    bool m_lightShade = false;      // the light table: a veil over the layers under the one drawn on
+    bool m_lightShadeCamera = false;    // ... in the Camera view too, not only the Drawing view
+    bool m_onionWash = false;       // onion skins in their own colours, washed with the onion colours
+    int m_onionWashMin = 20, m_onionWashMax = 60;
     QColor m_onionStepColour[2][kOnionSteps];
     QPointF m_lastWidgetPos;
     // selection: indices into the current drawing

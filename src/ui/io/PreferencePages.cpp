@@ -496,6 +496,19 @@ void MainWindow::preferencesOnion(PreferenceWidgets& w, QSettings& s, QDialog& d
     w.onionStyle->setToolTip(tr("How the drawings before and after are shown: washed with the onion skin colours, in their own colours, or as outlines."));
     w.onionStyle->setCurrentIndex(m_canvas->onionOutlines() ? 2 : m_canvas->onionOriginal() ? 1 : 0);
     w.onionLayout->addRow(tr("Onion Skin Render Style"), w.onionStyle);
+    w.onionWashMin = new QSpinBox(w.onionPage);
+    w.onionWashMin->setObjectName(QStringLiteral("PrefOnionWashMin"));
+    w.onionWashMax = new QSpinBox(w.onionPage);
+    w.onionWashMax->setObjectName(QStringLiteral("PrefOnionWashMax"));
+    for (QSpinBox* const box : {w.onionWashMin, w.onionWashMax}) {
+        box->setRange(0, 100);
+        box->setSuffix(tr(" %"));
+        box->setToolTip(tr("Apply Colour Wash (Onion Skin view): how much of the onion colour is laid over the drawings' own colours, the furthest (minimum) to the nearest (maximum)."));
+    }
+    w.onionWashMin->setValue(m_canvas->onionWashMin());
+    w.onionWashMax->setValue(m_canvas->onionWashMax());
+    w.onionLayout->addRow(tr("Onion Skin: Minimum Wash Value"), w.onionWashMin);
+    w.onionLayout->addRow(tr("Onion Skin: Maximum Wash Value"), w.onionWashMax);
     w.onionOthers = new QCheckBox(tr("Enable Onion Skin for Other Elements"), w.onionPage);
     w.onionOthers->setObjectName(QStringLiteral("PrefOnionOthers"));
     w.onionOthers->setToolTip(tr("Layers added to the onion skin (Timeline) show theirs too; off, only the layer worked on does."));

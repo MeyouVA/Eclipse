@@ -641,6 +641,12 @@
 
  <menu id="menu.onionSkinView" text="Onion Skin View Menu">
   <item id="OnionAdvanced" text="A&amp;dvanced Onion Skin" checkable="true" checked="true" responder="window" slot="onActionOnionAdvanced(bool)"/>
+  <item id="OnionLinkSliders" text="&amp;Link Sliders" checkable="true" responder="window" slot="onActionOnionLinkSliders(bool)"/>
+  <separator/>
+  <item id="OnionColoured" text="&amp;Coloured" checkable="true" checked="true" group="onionStyle" responder="camera" slot="onActionOnionStyle(QString)" itemParameter="0"/>
+  <item id="OnionOriginalColours" text="&amp;Original Colours" checkable="true" group="onionStyle" responder="camera" slot="onActionOnionStyle(QString)" itemParameter="1"/>
+  <item id="OnionColouredOutline" text="Coloured O&amp;utline" checkable="true" group="onionStyle" responder="camera" slot="onActionOnionStyle(QString)" itemParameter="2"/>
+  <item id="OnionColourWash" text="Apply Colour &amp;Wash" checkable="true" responder="camera" slot="onActionOnionWash(bool)"/>
   <separator/>
   <item id="OnionByFrames"/>
   <item id="OnionByDrawings"/>

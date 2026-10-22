@@ -56,3 +56,18 @@ QSet<int> Canvas::onionDrawings() const
     }
     return shown;
 }
+
+void Canvas::setOnionWash(bool on)
+{
+    if (m_onionWash == on)
+        return;
+    m_onionWash = on;
+    emit onionChanged();
+    update();
+}
+
+void Canvas::setOnionStyle(int style)
+{
+    setOnionOutlines(style == 2);
+    setOnionOriginal(style == 1);
+}

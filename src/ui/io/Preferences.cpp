@@ -108,6 +108,9 @@ void MainWindow::applyPreferences()
     m_canvas->setSafeMargin(std::clamp(s.value(QStringLiteral("prefs/safeMargin"), 10).toInt(), 1, 30) / 100.0);
     m_canvas->setBackdrop(QColor(s.value(QStringLiteral("prefs/backdrop"), QStringLiteral("#7f7f7f")).toString()));
     m_canvas->setLightTableWash(s.value(QStringLiteral("prefs/lightTableWash"), 30).toInt());
+    m_canvas->setLightTableWhite(s.value(QStringLiteral("prefs/lightTableWhite"), 0).toInt());
+    m_canvas->setLightTableShade(s.value(QStringLiteral("prefs/lightTableShade"), false).toBool(), s.value(QStringLiteral("prefs/lightTableShadeCamera"), false).toBool());
+    m_canvas->setOnionWashRange(s.value(QStringLiteral("prefs/onionWashMin"), 20).toInt(), s.value(QStringLiteral("prefs/onionWashMax"), 60).toInt());
     m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
     // Timeline: how wide a frame is to begin with.  Render: the preview's size, and whether it keeps itself up to date.
     m_timeline->setCellWidth(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
@@ -317,6 +320,12 @@ void MainWindow::onActionPreferences()
     if (result != QDialog::Accepted)
         return;
     s.setValue(QStringLiteral("prefs/lightTableWash"), w.wash->value());
+    s.setValue(QStringLiteral("prefs/lightTableWhite"), w.lightWhite->value());
+    s.setValue(QStringLiteral("prefs/lightTableShade"), w.lightShade->isChecked());
+    s.setValue(QStringLiteral("prefs/lightTableShadeCamera"), w.lightShadeCamera->isChecked());
+    s.setValue(QStringLiteral("prefs/gridOnDefault"), w.gridOnDefault->isChecked());
+    s.setValue(QStringLiteral("prefs/onionWashMin"), w.onionWashMin->value());
+    s.setValue(QStringLiteral("prefs/onionWashMax"), w.onionWashMax->value());
     s.setValue(QStringLiteral("prefs/frameWidth"), w.frameWidth->value());
     s.setValue(QStringLiteral("prefs/previewSize"), w.previewSize->currentData().toInt());
     s.setValue(QStringLiteral("prefs/autoRender"), w.autoRender->isChecked());

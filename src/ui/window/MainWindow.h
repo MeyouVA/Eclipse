@@ -460,6 +460,7 @@ public slots:
     void onActionRenameWithPrefix();
     void onActionOnionLayers(QString const& which);
     void onActionOnionAdvanced(bool on);
+    void onActionOnionLinkSliders(bool on);
     void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();
     void onActionMiniPlayback();

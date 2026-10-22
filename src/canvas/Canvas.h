@@ -203,6 +203,10 @@ public:
     void setOnionOutlines(bool on);
     void setOnionOriginal(bool on);
     void setOnionOthers(bool on);
+    void setOnionWash(bool on);
+    // How the onion skins are drawn: 0 in the onion colours, 1 in their own colours, 2 as coloured outlines.
+    void setOnionStyle(int style);
+    int onionStyle() const { return m_onionOutlines ? 2 : m_onionOriginal ? 1 : 0; }
     void setApplyToOnionRange(bool on);
     // The drawings of the layer worked on that the onion skin shows now (by index in the layer).
     QSet<int> onionDrawings() const;
@@ -425,6 +429,8 @@ public slots:
     // "frames" or "drawings": what counts as the one before.
     void onActionOnionBy(QString const& what) { setOnionByFrame(what == QLatin1String("frames")); }
     void onActionOnionOthers(bool on) { setOnionOthers(on); }
+    void onActionOnionStyle(QString const& style) { setOnionStyle(style.toInt()); }
+    void onActionOnionWash(bool on) { setOnionWash(on); }
     void onActionApplyToOnionRange(bool on) { setApplyToOnionRange(on); }
     void onActionOnionReducePrevious() { setOnionRange(m_onionPrev - 1, m_onionNext); }
     void onActionOnionReduceNext() { setOnionRange(m_onionPrev, m_onionNext - 1); }
@@ -784,7 +790,7 @@ private:
     bool penUpQuad(Drag drag);
     bool penUpSelection(Drag drag);
     void pickColourAt(QPointF widgetPos);
-    void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
+    void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint, double wash = 1.0) const;
     // What a symbol shows on one of its frames, painted where the painter stands (the sheet of the layer that shows it).
     static void paintSymbol(QPainter& painter, Scene const& scene, int symbolId, int frame);
     void alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text, QSet<int> const* only = nullptr);

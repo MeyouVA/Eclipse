@@ -98,7 +98,16 @@ QWidget* MainWindow::createOnionSkinView()
             connect(colour, &QToolButton::customContextMenuRequested, this, [this, after, step] { m_canvas->setOnionStepColour(after, step, QColor()); });
             across->addLayout(column);
             strengths[after ? 1 : 0][step] = slider;
-            connect(slider, &QSlider::valueChanged, this, [this, after, step](int percent) { m_canvas->setOnionStrength(after, step, percent); });
+            connect(slider, &QSlider::valueChanged, this, [this, after, step, bank](int percent) {
+                // Link Sliders: every drawing before and after takes the strength set on one.
+                if (bank->property("linked").toBool()) {
+                    for (bool side : {false, true})
+                        for (int each = 0; each < Canvas::kOnionSteps; ++each)
+                            m_canvas->setOnionStrength(side, each, percent);
+                    return;
+                }
+                m_canvas->setOnionStrength(after, step, percent);
+            });
         };
         for (int step = Canvas::kOnionSteps - 1; step >= 0; --step)
             one(false, step);
@@ -190,6 +199,10 @@ QWidget* MainWindow::createOnionSkinView()
         m_actions->setChecked(QStringLiteral("OnionSkinToggle"), m_canvas->onionSkin());
         m_actions->setChecked(QStringLiteral("OnionOthers"), m_canvas->onionOthers());
         m_actions->setChecked(QStringLiteral("ApplyToOnionRange"), m_canvas->appliesToOnionRange());
+        m_actions->setChecked(QStringLiteral("OnionColoured"), m_canvas->onionStyle() == 0);
+        m_actions->setChecked(QStringLiteral("OnionOriginalColours"), m_canvas->onionStyle() == 1);
+        m_actions->setChecked(QStringLiteral("OnionColouredOutline"), m_canvas->onionStyle() == 2);
+        m_actions->setChecked(QStringLiteral("OnionColourWash"), m_canvas->onionWash());
     };
     follow();
     {
@@ -197,6 +210,7 @@ QWidget* MainWindow::createOnionSkinView()
         m_canvas->setOnionByFrame(s.value(QStringLiteral("onion/byFrame"), false).toBool());
         m_canvas->setOnionOutlines(s.value(QStringLiteral("onion/outlines"), false).toBool());
         m_canvas->setOnionOthers(s.value(QStringLiteral("onion/others"), true).toBool());
+        m_canvas->setOnionWash(s.value(QStringLiteral("onion/wash"), false).toBool());
         m_canvas->setOnionOriginal(s.value(QStringLiteral("prefs/onionOriginal"), false).toBool());
         m_canvas->setOnionColours(QColor(s.value(QStringLiteral("onion/before"), m_canvas->onionBefore().name()).toString()),
                                   QColor(s.value(QStringLiteral("onion/after"), m_canvas->onionAfter().name()).toString()));
@@ -216,6 +230,8 @@ QWidget* MainWindow::createOnionSkinView()
         s.setValue(QStringLiteral("onion/byFrame"), m_canvas->onionByFrame());
         s.setValue(QStringLiteral("onion/outlines"), m_canvas->onionOutlines());
         s.setValue(QStringLiteral("onion/others"), m_canvas->onionOthers());
+        s.setValue(QStringLiteral("onion/wash"), m_canvas->onionWash());
+        s.setValue(QStringLiteral("prefs/onionOriginal"), m_canvas->onionOriginal());
         s.setValue(QStringLiteral("onion/before"), m_canvas->onionBefore().name());
         s.setValue(QStringLiteral("onion/after"), m_canvas->onionAfter().name());
         QStringList strengths;
@@ -236,6 +252,7 @@ QWidget* MainWindow::createOnionSkinView()
     connect(next, &QSpinBox::valueChanged, this, [this](int v) { m_canvas->setOnionRange(m_canvas->onionPrevious(), v); });
     connect(opacity, &QSlider::valueChanged, m_canvas, &Canvas::setOnionOpacity);
     onActionOnionAdvanced(settings().value(QStringLiteral("onion/advanced"), true).toBool());
+    onActionOnionLinkSliders(settings().value(QStringLiteral("onion/linkSliders"), false).toBool());
     return onion;
 }
 
@@ -246,6 +263,14 @@ void MainWindow::onActionOnionAdvanced(bool on)
         bank->setVisible(on);
     m_actions->setChecked(QStringLiteral("OnionAdvanced"), on);
     settings().setValue(QStringLiteral("onion/advanced"), on);
+}
+
+void MainWindow::onActionOnionLinkSliders(bool on)
+{
+    if (QWidget* const bank = findChild<QWidget*>(QStringLiteral("OnionBank")))
+        bank->setProperty("linked", on);
+    m_actions->setChecked(QStringLiteral("OnionLinkSliders"), on);
+    settings().setValue(QStringLiteral("onion/linkSliders"), on);
 }
 
 // Message Log: what the program has said, with the time it said it.

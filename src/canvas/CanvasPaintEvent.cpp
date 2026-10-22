@@ -13,7 +13,7 @@
 #include "model/geometry/Deform.h"
 
 // A drawing of the onion skin: whole, in its colour - or only its outlines.
-void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const
+void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint, double wash) const
 {
     if (!m_onionOutlines && m_onionBrightnessAlpha) {
         // The lighter a colour, the fainter: its own colour (from its swatch) given an opacity as dark as it is.
@@ -38,6 +38,9 @@ void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& dr
     }
     if (!m_onionOutlines) {
         paintDrawing(painter, scene, drawing, opacity, m_onionOriginal ? nullptr : &tint);
+        // Apply Colour Wash: their own colours, the onion colour laid over them (the nearest the most).
+        if (m_onionOriginal && m_onionWash && wash > 0.0)
+            paintDrawing(painter, scene, drawing, opacity * wash, &tint);
         return;
     }
     painter.save();
@@ -237,6 +240,10 @@ void Canvas::paintView()
         painter.fillRect(frameRect, Qt::white);
     }
     // Onion skin: the neighbouring drawings of the layer being edited, tinted - underneath it, or (Preferences) over everything.
+    auto washOf = [this](int i, int count) {
+        double const t = count > 1 ? double(i) / (count - 1) : 0.0;
+        return (m_onionWashMax + (m_onionWashMin - m_onionWashMax) * t) / 100.0;
+    };
     auto onionsOf = [&](int l) {
         Layer const& layer = scene.layers[l];
         if (!m_onionSkin || m_playing || (l != m_layer && (!layer.onion || !m_onionOthers)))
@@ -256,7 +263,7 @@ void Canvas::paintView()
             painter.setTransform(worldOf(l, prev) * view);
             if (m_onionStrength[0][i] > 0)
                 paintOnion(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
-                           strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, onionStepColour(false, i));
+                           strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, onionStepColour(false, i), washOf(i, m_onionPrev));
         }
         for (int i = 0, next = m_frame; i < m_onionNext; ++i) {
             next = m_onionByFrame ? next + 1 : layer.nextDrawingFrame(next);
@@ -271,11 +278,20 @@ void Canvas::paintView()
             painter.setTransform(worldOf(l, next) * view);
             if (m_onionStrength[1][i] > 0)
                 paintOnion(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
-                           strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, onionStepColour(true, i));
+                           strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, onionStepColour(true, i), washOf(i, m_onionNext));
         }
     };
-    for (int l : std::as_const(order))
+    bool const shade = m_lightTable && m_lightShade && !m_playing && (m_drawingView || m_lightShadeCamera);
+    for (int l : std::as_const(order)) {
+        if (shade && l == m_layer) {
+            // The light table's shade: a veil over what lies under the drawing worked on.
+            painter.save();
+            painter.resetTransform();
+            painter.fillRect(rect(), QColor(255, 255, 255, 110));
+            painter.restore();
+        }
         paintViewLayer(painter, l, frameRect, view, transforming, erasing, onionsOf);
+    }
     if (m_onionOver)
         for (int l : std::as_const(order))
             if (scene.shows(l) && scene.layers[l].holdsDrawings() && (!m_drawingView || l == m_layer || m_lightTable))
@@ -361,6 +377,12 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layer.drawings[index]),
                           layer.opacity * poseOf(l, m_frame).opacity * faint
                               * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), view);
+    if (index != Layer::kNoDrawing && faint < 1.0 && m_lightWhite > 0 && !m_backlight && !(l == m_layer && transforming)) {
+        // The light table's wash: the other layers' colours taken toward white.
+        static QColor const white(255, 255, 255);
+        painter.setTransform(worldOf(l, m_frame) * view);
+        paintDrawing(painter, scene, shown(l, m_frame, layer.drawings[index]), layer.opacity * m_lightWhite / 100.0, &white);
+    }
     if ((m_showStrokes || m_tool == StrokeTool || m_tool == CloseGap) && !m_playing && l == m_layer && index != Layer::kNoDrawing) {
         // Where the pen went, and the edges of the painted areas: hair lines over the artwork.
         Drawing const lines = erasing ? withArt(m_eraseArt) : transforming ? previewDrawing() : layer.drawings[index];

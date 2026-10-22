@@ -245,6 +245,9 @@ void MainWindow::rememberToggles()
     // Overlay Brush Mode masks new strokes with the artwork of the layers selected (in the Timeline).
     m_canvas->setMaskLayers([this] { return m_timeline->selectedLayers(); });
     QSettings const s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    // Preferences: the grid shown from the start.
+    if (QAction* const grid = m_actions->action(QStringLiteral("ShowGrid")); grid && s.value(QStringLiteral("prefs/gridOnDefault"), false).toBool() && !grid->isChecked())
+        grid->trigger();
     for (char const* id : {"SnapToContour", "SnapToGrid", "SnapAndAlign", "AutoColourArt"}) {
         QAction* const action = m_actions->action(QLatin1String(id));
         if (!action)
