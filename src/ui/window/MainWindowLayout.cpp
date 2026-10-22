@@ -281,6 +281,7 @@ void MainWindow::createToolbars()
     workspace->addWidget(m_workspaceBox);
     addToolBar(Qt::TopToolBarArea, workspace);
     m_toolbars << workspace;
+    createFlipToolbar();
 }
 
 void MainWindow::onShowToolbars(QMenu* menu)

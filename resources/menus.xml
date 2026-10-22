@@ -725,6 +725,7 @@
  </menu>
 
  <menu id="menu.shortcutsOnly" text="Commands with a Shortcut Only">
+  <item id="EasyFlip" text="Easy Flip" shortcut="shortcut.easyFlip" checkable="true" responder="window" slot="onActionEasyFlip(bool)"/>
   <item id="GoToDrawing1" text="Go to the First Drawing" shortcut="shortcut.goToDrawing1" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="1"/>
   <item id="GoToDrawing2" text="Go to the Second Drawing" shortcut="shortcut.goToDrawing2" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="2"/>
   <item id="GoToDrawing3" text="Go to the Third Drawing" shortcut="shortcut.goToDrawing3" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="3"/>

@@ -27,6 +27,8 @@ class QMenu;
 class QPrinter;
 class QSlider;
 class QSpinBox;
+class QCheckBox;
+class QTimer;
 class QToolBar;
 class SubstitutionPanel;
 class PalettePanel;
@@ -443,6 +445,7 @@ public slots:
     void onActionSequenceFill();
     void onActionHoldExposure();
     void onActionSetExposureAsk();
+    void onActionEasyFlip(bool on);
     void onActionSubstituteFrame(QString const& direction);
     void onActionGoToDrawing(QString const& which);
     bool cycleDialog(QString const& title, QString const& label, int least, int* times, int* kind);
@@ -612,11 +615,22 @@ private:
     void cellRange(int layer, int* first, int* last) const;
 public:
     int holdCells(int every);
+    QVector<int> flipFrames() const;
     int deleteEmptyElements();
     bool fillCellsRandomly(int layer, int first, int last, int shortest, int longest, quint32 seed);
     bool extendExposureTo(int layer, int from, int to);
 private:
     QListWidget* m_desk = nullptr;
+    void createFlipToolbar();
+    QSpinBox* m_flipSpeed = nullptr;
+    QSpinBox* m_flipBefore = nullptr;
+    QSpinBox* m_flipAfter = nullptr;
+    QCheckBox* m_flipKeys = nullptr;
+    QCheckBox* m_flipBreakdowns = nullptr;
+    QCheckBox* m_flipInbetweens = nullptr;
+    QTimer* m_flipTimer = nullptr;
+    QVector<int> m_flipFrames;
+    int m_flipAt = 0, m_flipWay = 1, m_flipLayer = 0, m_flipHome = 0;
     int m_deskThumbnails = 2;
     QWidget* createDeskView();
     class LibraryView* m_library = nullptr;
