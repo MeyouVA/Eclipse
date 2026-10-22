@@ -155,6 +155,12 @@ public:
     void substituteDrawing(int layer, int frame, int drawing);
     // Enforce Key Exposure: a substitution made in the middle of an exposure starts a new one there (off: the whole exposure is swapped).
     void setSubstitutionKeys(bool on) { m_substitutionKeys = on; }
+    // Ripple Scene Markers: a marker moved takes the markers after it along.
+    void setRippleMarkers(bool on) { m_rippleMarkers = on; }
+    bool rippleMarkers() const { return m_rippleMarkers; }
+    // A marker changed whole (its frames, name, colour and note); false when another starts on the same frame.
+    bool setMarker(int index, Scene::Marker const& marker);
+    void setSoloMode(bool on);
     bool substitutionKeys() const { return m_substitutionKeys; }
     // A drawing one place up or down the layer's list (its cells follow it).
     bool moveDrawing(int layer, int drawing, int direction);
@@ -334,7 +340,8 @@ public:
     // Empties those cells: no drawing shown, no keyframe.
     void clearCells(QVector<int> const& layers, int first, int last, QString const& text);
     void pasteCells(QVector<int> const& layers, int frame, CellBlock const& block);
-    void moveCells(QVector<int> const& from, int first, int last, QVector<int> const& to, int frame, bool copy);
+    // insert: the cells already there are pushed on to make room, not overwritten.
+    void moveCells(QVector<int> const& from, int first, int last, QVector<int> const& to, int frame, bool copy, bool insert = false);
     // One change made to several layers, as one undo step.
     void editLayers(QVector<int> const& layers, QString const& text, std::function<void(Layer&)> const& change);
     void removeLayers(QVector<int> const& layers);
@@ -415,5 +422,6 @@ private:
     int m_undoLevels = 0;
     bool m_substitutionCycles = true;
     bool m_substitutionKeys = true;
+    bool m_rippleMarkers = false;
     QUndoStack m_undo;
 };

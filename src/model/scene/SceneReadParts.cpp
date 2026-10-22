@@ -378,6 +378,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     for (QJsonValue const& pv : lo["paletteOverrides"].toArray())
         layer.paletteOverrides.push_back(pv.toInt());
     layer.tagged = lo["tagged"].toBool(false);
+    layer.thumbnails = lo["thumbnails"].toBool(false);
     for (QJsonValue const& mv : lo["frameMarks"].toArray()) {
         QColor const colour(mv.toArray().at(1).toString());
         if (colour.isValid() && mv.toArray().at(0).toInt(-1) >= 0)

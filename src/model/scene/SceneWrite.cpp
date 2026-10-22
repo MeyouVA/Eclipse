@@ -174,6 +174,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"width", width},
                        {"height", height},
                        {"fps", fps},
+                       {"soloMode", soloMode},
                        {"orthographic", orthographic},
                        {"fovAcross", fovAcross},
                        {"fov", fov},

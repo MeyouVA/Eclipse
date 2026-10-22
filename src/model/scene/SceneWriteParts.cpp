@@ -497,6 +497,7 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
                                   {"solo", layer.solo},
                                   {"onion", layer.onion},
                                   {"tagged", layer.tagged},
+                                  {"thumbnails", layer.thumbnails},
                                   {"collapsed", layer.collapsed},
                                   {"track", layer.trackColor.isValid() ? layer.trackColor.name() : QString()},
                                   {"opacity", layer.opacity},

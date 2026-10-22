@@ -8,6 +8,20 @@
 
 namespace commands_cells_shared {
 
+inline void makeRoom(Scene& s, int layer, int frame, int count)
+{
+    Layer& l = s.layers[layer];
+    if (frame < 0 || frame >= l.cells.size() || count < 1)
+        return;
+    l.cells.insert(frame, count, Layer::kNoDrawing);
+    l.cells.resize(s.frameCount());
+    l.shiftKeyExposures(frame, count);
+    for (Keyframe& key : l.keys)
+        if (key.frame >= frame)
+            key.frame += count;
+    l.keys.erase(std::remove_if(l.keys.begin(), l.keys.end(), [&](Keyframe const& k) { return k.frame >= s.frameCount(); }), l.keys.end());
+}
+
 // No drawing shown and no keyframe in the frames `first`..`last` of these layers.
 inline void emptyCells(Scene& s, QVector<int> const& layers, int first, int last)
 {

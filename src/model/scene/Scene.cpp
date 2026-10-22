@@ -95,7 +95,7 @@ bool Scene::shows(int layer) const
     if (!enabled(layer))
         return false;
     for (Layer const& l : layers)
-        if (l.solo)
+        if (l.solo && soloMode)
             return layers[layer].solo;
     return true;
 }

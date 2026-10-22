@@ -36,6 +36,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.height = std::max(1, json["height"].toInt(1080));
     scene.fps = std::clamp(json["fps"].toDouble(24.0), 1.0, 240.0);
     scene.orthographic = json["orthographic"].toBool(false);
+    scene.soloMode = json["soloMode"].toBool(true);
     scene.fovAcross = json["fovAcross"].toBool(false);
     scene.fov = std::clamp(json["fov"].toDouble(Layer::kDefaultFov), 1.0, 170.0);
     scene.activeCamera = json["camera"].toInt(0);

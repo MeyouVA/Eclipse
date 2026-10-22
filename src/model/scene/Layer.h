@@ -116,6 +116,8 @@ struct Layer {
     QVector<int> paletteOverrides;
     // Tagged: marked out, so that the Timeline can be made to show the tagged layers only.
     bool tagged = false;
+    // Its track in the Timeline shows a picture of each drawing it exposes (a taller row).
+    bool thumbnails = false;
     int symbolId = 0;
     int syncGroup = 0;
     int cloneGroup = 0;

@@ -119,7 +119,7 @@ CellBlock Document::copyCells(QVector<int> const& layers, int first, int last) c
     return block;
 }
 
-void Document::moveCells(QVector<int> const& from, int first, int last, QVector<int> const& to, int frame, bool copy)
+void Document::moveCells(QVector<int> const& from, int first, int last, QVector<int> const& to, int frame, bool copy, bool insert)
 {
     first = std::max(first, 0);
     last = std::min(last, m_scene.frameCount() - 1);
@@ -129,6 +129,10 @@ void Document::moveCells(QVector<int> const& from, int first, int last, QVector<
     apply(copy ? tr("Copy Cells") : tr("Move Cells"), [&](Scene& s) {
         if (!copy)
             emptyCells(s, from, first, last);
+        if (insert)
+            for (int t : to)
+                if (t >= 0 && t < s.layers.size())
+                    makeRoom(s, t, frame, last - first + 1);
         putBlock(s, to, frame, block);
     });
 }
@@ -186,12 +190,18 @@ bool Document::moveMarker(int index, int frame)
     frame = std::clamp(frame, 0, std::max(0, m_scene.frameCount() - now.length));
     if (frame == now.frame)
         return false;
+    int const delta = frame - now.frame;
+    auto rippled = [&](Scene::Marker const& m) { return m_rippleMarkers && m.frame > now.frame; };
     for (int i = 0; i < m_scene.markers.size(); ++i) {
         Scene::Marker const& other = m_scene.markers[i];
-        if (i != index && other.frame < frame + now.length && frame < other.frame + other.length)
+        if (i != index && !rippled(other) && other.frame < frame + now.length && frame < other.frame + other.length)
             return false;
     }
     apply(tr("Move Scene Marker"), [&](Scene& s) {
+        // Ripple: the markers after it go as far.
+        for (int i = 0; i < s.markers.size(); ++i)
+            if (i != index && rippled(s.markers[i]))
+                s.markers[i].frame = std::clamp(s.markers[i].frame + delta, 0, std::max(0, s.frameCount() - s.markers[i].length));
         Scene::Marker marker = s.markers.takeAt(index);
         marker.frame = frame;
         int at = 0;
@@ -227,4 +237,33 @@ void Document::removeMarker(int index)
     if (index < 0 || index >= m_scene.markers.size())
         return;
     apply(tr("Delete Scene Marker"), [&](Scene& s) { s.markers.removeAt(index); });
+}
+
+bool Document::setMarker(int index, Scene::Marker const& changed)
+{
+    if (index < 0 || index >= m_scene.markers.size())
+        return false;
+    Scene::Marker marker = changed;
+    marker.frame = std::clamp(marker.frame, 0, m_scene.frameCount() - 1);
+    marker.length = std::clamp(marker.length, 1, m_scene.frameCount() - marker.frame);
+    for (int i = 0; i < m_scene.markers.size(); ++i)
+        if (i != index && m_scene.markers[i].frame == marker.frame)
+            return false;   // two markers cannot start on the same frame
+    if (m_scene.markers[index] == marker)
+        return true;
+    apply(tr("Edit Scene Marker"), [&](Scene& s) {
+        s.markers.removeAt(index);
+        int at = 0;
+        while (at < s.markers.size() && s.markers[at].frame < marker.frame)
+            ++at;
+        s.markers.insert(at, marker);
+    });
+    return true;
+}
+
+void Document::setSoloMode(bool on)
+{
+    if (m_scene.soloMode == on)
+        return;
+    apply(on ? tr("Solo Mode On") : tr("Solo Mode Off"), [&](Scene& s) { s.soloMode = on; });
 }

@@ -28,6 +28,8 @@ public:
         bool operator==(Marker const&) const = default;
     };
     QVector<Marker> markers;    // sorted by frame
+    // Toggle Solo Mode: off, the solo layers are not singled out (their switches are kept).
+    bool soloMode = true;
     struct Controller {
         struct State {
             QString name;
