@@ -61,11 +61,11 @@ QVector<int> Canvas::drawingShape() const
 void Canvas::setTool(Tool tool)
 {
     bool const changed = tool != m_tool;
+    m_dropperTexture = false;
     if (changed) {
         // The tool to come back to once the Dropper has taken a colour (unless it is sticky).
         if (tool == Dropper)
             m_toolBeforeDropper = int(m_tool);
-        m_dropperTexture = false;
         finishPolyline(true);
         endText(true);
         if (m_bending) {        // a curve of the Line tool not put down yet: it goes
@@ -202,8 +202,8 @@ void Canvas::updateCursor()
         setCursor(m_drag == DragPan ? Qt::ClosedHandCursor : Qt::OpenHandCursor);
     else if (m_tool == Select || m_tool == Transform || m_tool == ContourEditor || m_tool == Rigging || m_tool == IK)
         setCursor(Qt::ArrowCursor);
-    else if (isPaintTool(m_tool) || m_tool == Dropper)
-        setCursor(Qt::PointingHandCursor);
+    else if (isPaintTool(m_tool) || m_tool == Dropper || m_tool == Ink)
+        setCursor(toolCursor());
     else if (m_tool == Zoom || m_tool == RotateView)
         setCursor(Qt::SizeAllCursor);
     else if (m_tool == Text)

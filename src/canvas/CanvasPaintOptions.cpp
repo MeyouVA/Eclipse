@@ -87,6 +87,7 @@ void Canvas::onActionPencilTextureEyedropper()
     // The Dropper, taking the texture of the pencil line clicked rather than its colour (until another tool is chosen).
     setTool(Dropper);
     m_dropperTexture = true;
+    updateCursor();
     emit message(tr("Pencil Texture Eyedropper: click a textured pencil line to take its texture."));
 }
 

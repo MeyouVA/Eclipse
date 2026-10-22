@@ -683,6 +683,7 @@ private:
     void penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers);
     void penUp();
     void updateCursor();
+    QCursor toolCursor() const;
     void onDocumentChanged();
 
     // The whole drawing shown in the current cell (both sheets), or null.
