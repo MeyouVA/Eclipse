@@ -195,11 +195,33 @@ void MainWindow::onActionMarkDrawing(QString const& as)
     int const mark = as == QLatin1String("key") ? Drawing::KeyMark : as == QLatin1String("breakdown") ? Drawing::BreakdownMark
                      : as == QLatin1String("inbetween") ? Drawing::InBetweenMark : Drawing::NoMark;
     Scene const& scene = m_document->scene();
-    if (layer() < 0 || layer() >= scene.layers.size() || scene.layers[layer()].drawingAt(frame()) == Layer::kNoDrawing) {
+    // The drawings of the cells selected (the current cell's, with no block selected), each once.
+    QVector<QPair<int, int>> cells;
+    QVector<int> const layers = m_timeline->hasRange() ? m_timeline->selectedLayers() : QVector<int>{layer()};
+    int const first = m_timeline->hasRange() ? m_timeline->selectionFirstFrame() : frame();
+    int const last = m_timeline->hasRange() ? m_timeline->selectionLastFrame() : frame();
+    for (int l : layers) {
+        if (l < 0 || l >= scene.layers.size())
+            continue;
+        QSet<int> seen;
+        for (int f = first; f <= last; ++f) {
+            int const d = scene.layers[l].drawingAt(f);
+            if (d != Layer::kNoDrawing && !seen.contains(d)) {
+                seen.insert(d);
+                cells.push_back({l, f});
+            }
+        }
+    }
+    if (cells.isEmpty()) {
         statusBar()->showMessage(tr("There is no drawing on this frame to mark."), 4000);
         return;
     }
-    m_document->markDrawing(layer(), frame(), mark);
+    if (cells.size() > 1)
+        m_document->beginMacro(tr("Mark Drawing"));
+    for (auto const& [l, f] : std::as_const(cells))
+        m_document->markDrawing(l, f, mark);
+    if (cells.size() > 1)
+        m_document->endMacro();
 }
 
 void MainWindow::onActionOnionLayers(QString const& which)
