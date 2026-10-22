@@ -666,6 +666,11 @@ public:
     // The lines that bound the paint of a sheet of a drawing (its own, the line art's, the brush shapes'), something that
     // tells those lines apart from others, and the fine edge of a paint among them (worked out once, then kept).
     static QVector<Stroke> wallsOf(Drawing const& drawing, int sheet);
+    // Paint keeps apart from other paint: no hole is cut in an area where a shape with paint of its own (Auto Fill) lies
+    // on it - the area goes on under that shape.
+    static void underShapes(QVector<QPolygonF>& outlines, Drawing const& drawing);
+    // Where new bucket paint goes among the fills: under the shapes with paint of their own (brush shapes, Auto Fill).
+    static int underIndex(Drawing const& drawing);
     static quint64 wallsKey(QVector<Stroke> const& walls);
     static QVector<QPolygonF> fineOutlinesOf(Fill const& fill, QVector<Stroke> const& walls, quint64 key);
     static void paintFill(QPainter& painter, Fill const& fill, QBrush const& color);

@@ -170,6 +170,16 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
             continue;
         QVector<Stroke> const lines = boundsOf(whole, sheet);
         QVector<Stroke> const linesBefore = before ? boundsOf(*before, sheet) : QVector<Stroke>();
+        // (Only plain lines move bucket paint: a shape with paint of its own - Auto Fill - is paint, and paint keeps apart
+        // from other paint; it follows just its own line.)
+        auto plain = [](QVector<Stroke> const& all) {
+            QVector<Stroke> kept;
+            for (Stroke const& line : all)
+                if (line.link == 0)
+                    kept.push_back(line);
+            return kept;
+        };
+        QRectF const changedPlain = before ? changedBetween(plain(lines), plain(linesBefore)) : QRectF();
         QRectF const changed = before ? changedBetween(lines, linesBefore) : QRectF();
         if (before && changed.isNull())
             continue;       // the lines round the paint are as they were
@@ -242,8 +252,8 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
                 continue;
             }
             QRectF const was = fill.bounds();
-            if (before && !was.adjusted(-room, -room, room, room).intersects(changed))
-                continue;       // nothing near it changed
+            if (before && !was.adjusted(-room, -room, room, room).intersects(changedPlain))
+                continue;       // none of its plain lines near it changed
             // The lines it was painted inside, as they are now.
             QSet<int> own;
             if (before)
@@ -315,6 +325,7 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
                 QVector<QPolygonF> outlines;
                 if (FillRegion::compute(bounded, within, from, m_gapSize, outlines) != FillRegion::Ok || outlines.isEmpty())
                     continue;
+                underShapes(outlines, bounded);
                 found.push_back(outlines);
                 if (own.isEmpty()) {
                     best = outlines;        // (not knowing its lines: the first found, from where it was)
@@ -445,4 +456,77 @@ QVector<QPolygonF> Canvas::fineOutlinesOf(Fill const& fill, QVector<Stroke> cons
     QVector<QPolygonF> const fine = FillRegion::refine(fill.outlines, walls);
     kept.insert(mine, fine);
     return fine;
+}
+
+// ---- paint kept apart from other paint ------------------------------------------------------------------------------------
+
+void Canvas::underShapes(QVector<QPolygonF>& outlines, Drawing const& drawing)
+{
+    if (outlines.size() < 2)
+        return;
+    QVector<QPolygonF> shapes;
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+        for (Stroke const& line : drawing.strokesOf(sheet))
+            if (line.link != 0) {
+                QPolygonF shape;
+                for (StrokePoint const& p : line.path())
+                    shape << p.pos;
+                if (shape.size() > 2)
+                    shapes.push_back(shape);
+            }
+    if (shapes.isEmpty())
+        return;
+    // How deep each outline lies among the others: odd is a hole.
+    int const n = int(outlines.size());
+    QVector<int> depth(n, 0);
+    for (int i = 0; i < n; ++i)
+        for (int k = 0; k < n; ++k)
+            if (k != i && !outlines[i].isEmpty() && outlines[k].containsPoint(outlines[i].first(), Qt::OddEvenFill))
+                ++depth[i];
+    QVector<bool> drop(n, false);
+    for (int i = 0; i < n; ++i) {
+        if (depth[i] % 2 == 0)
+            continue;
+        // A place inside the hole.
+        QPolygonF const& hole = outlines[i];
+        QRectF const box = hole.boundingRect();
+        QPointF inside = box.center();
+        if (!hole.containsPoint(inside, Qt::OddEvenFill)) {
+            bool found = false;
+            for (int y = 1; y < 8 && !found; ++y)
+                for (int x = 1; x < 8 && !found; ++x) {
+                    QPointF const q(box.left() + box.width() * x / 8.0, box.top() + box.height() * y / 8.0);
+                    if (hole.containsPoint(q, Qt::OddEvenFill)) {
+                        inside = q;
+                        found = true;
+                    }
+                }
+            if (!found)
+                continue;
+        }
+        for (QPolygonF const& shape : std::as_const(shapes))
+            if (shape.containsPoint(inside, Qt::WindingFill)) {
+                drop[i] = true;
+                break;
+            }
+    }
+    // The hole goes, and whatever lay inside it with it (the paint simply runs on under the shape).
+    for (int i = 0; i < n; ++i)
+        if (drop[i])
+            for (int k = 0; k < n; ++k)
+                if (k != i && depth[k] > depth[i] && !outlines[k].isEmpty() && outlines[i].containsPoint(outlines[k].first(), Qt::OddEvenFill))
+                    drop[k] = true;
+    QVector<QPolygonF> kept;
+    for (int i = 0; i < n; ++i)
+        if (!drop[i])
+            kept.push_back(outlines[i]);
+    outlines = kept;
+}
+
+int Canvas::underIndex(Drawing const& drawing)
+{
+    for (int i = 0; i < drawing.fills.size(); ++i)
+        if (!drawing.fills[i].contours.isEmpty() || drawing.fills[i].link != 0)
+            return i;
+    return int(drawing.fills.size());
 }

@@ -583,6 +583,7 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
                 QVector<QPolygonF> outlines;
                 if (FillRegion::compute(bounded, FillRegion::paintArea(bounded), at, m_gapSize, outlines) != FillRegion::Ok || outlines.isEmpty())
                     continue;
+                underShapes(outlines, bounded);
                 QRectF area;
                 for (QPolygonF const& outline : std::as_const(outlines))
                     area |= outline.boundingRect();
@@ -592,12 +593,7 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
                 fill.outlines = outlines;
                 fill.swatch = m_swatch;
                 fill.color = color;
-                int under = int(edited.fills.size());
-                for (int i = 0; i < edited.fills.size(); ++i)
-                    if (!edited.fills[i].contours.isEmpty()) {
-                        under = i;
-                        break;
-                    }
+                int const under = underIndex(edited);
                 edited.fills.insert(under, fill);
                 any = true;
             }

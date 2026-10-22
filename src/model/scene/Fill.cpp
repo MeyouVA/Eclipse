@@ -617,6 +617,13 @@ QRectF Fill::bounds() const
 
 bool Fill::contains(QPointF p) const
 {
+    // (Auto Fill paint: all its line goes round, where the line crosses itself too.)
+    if (link != 0) {
+        for (QPolygonF const& o : outlines)
+            if (o.containsPoint(p, Qt::WindingFill))
+                return true;
+        return false;
+    }
     bool inside = false;
     for (QPolygonF const& o : outlines)
         if (o.containsPoint(p, Qt::OddEvenFill))

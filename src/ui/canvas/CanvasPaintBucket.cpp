@@ -99,21 +99,16 @@ void Canvas::paintAt(QPointF p)
     // (Wherever the artwork is - beside the frame too, or on a layer the camera sees moved.)
     switch (FillRegion::compute(bounded, FillRegion::paintArea(bounded), p, m_gapSize, outlines)) {
     case FillRegion::Ok: {
+        underShapes(outlines, bounded);
         Fill fill;
         fill.outlines = outlines;
         fill.follows = true;        // it goes where its lines go
         fill.seed = p;
         fill.swatch = m_swatch;
         fill.color = color;
-        // Under the brush shapes that bound it: the paint reaches a little way under the
-        // lines round it, and must not show over them.
-        int under = int(edited.fills.size());
-        for (int i = 0; i < edited.fills.size(); ++i)
-            if (!edited.fills[i].contours.isEmpty()) {
-                under = i;
-                break;
-            }
-        edited.fills.insert(under, fill);
+        // Under the shapes with paint of their own (brush shapes, Auto Fill): the paint reaches a little way under the
+        // lines round it, and runs on under those shapes - it must not show over them.
+        edited.fills.insert(underIndex(edited), fill);
         commitDrawing(edited, tr("Paint"));
         break;
     }

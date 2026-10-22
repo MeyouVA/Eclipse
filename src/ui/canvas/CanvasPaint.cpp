@@ -540,7 +540,8 @@ void Canvas::paintFadingStroke(QPainter& painter, Stroke const& stroke, QBrush c
 void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
 {
     QPainterPath path;
-    path.setFillRule(Qt::OddEvenFill);
+    // (Auto Fill paint is all its line goes round: where the line crosses itself it is painted, not cut out.)
+    path.setFillRule(fill.link != 0 ? Qt::WindingFill : Qt::OddEvenFill);
     for (QPolygonF const& outline : fill.outlines) {
         path.addPolygon(outline);
         path.closeSubpath();
