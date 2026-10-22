@@ -244,7 +244,48 @@ void Document::substituteDrawing(int layer, int frame, int drawing)
     Layer const& l = m_scene.layers[layer];
     if (drawing < 0 || drawing >= l.drawings.size() || l.cells[frame] == drawing)
         return;
-    apply(tr("Substitute Drawing"), [&](Scene& s) { s.layers[layer].substitute(frame, drawing); });
+    bool const midway = frame > 0 && l.cells[frame - 1] == l.cells[frame] && l.cells[frame] != Layer::kNoDrawing;
+    // Enforce Key Exposure: from the frame chosen on (a new exposure starts there); off, the whole exposure is swapped.
+    int from = frame;
+    if (!m_substitutionKeys && midway)
+        while (from > 0 && l.cells[from - 1] == l.cells[frame] && !l.keyExposures.contains(from))
+            --from;
+    apply(tr("Substitute Drawing"), [&](Scene& s) { s.layers[layer].substitute(from, drawing); });
+}
+
+void Document::stepFrameSubstitution(int layer, int frame, int direction)
+{
+    if (!validCell(m_scene, layer, frame))
+        return;
+    Layer const& l = m_scene.layers[layer];
+    int const shown = l.cells[frame];
+    // The next (previous) exposure along the layer that shows another drawing.
+    for (int f = frame + direction; f >= 0 && f < l.cells.size(); f += direction)
+        if (l.cells[f] != shown && l.cells[f] != Layer::kNoDrawing) {
+            substituteDrawing(layer, frame, l.cells[f]);
+            return;
+        }
+}
+
+bool Document::moveDrawing(int layer, int drawing, int direction)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return false;
+    int const other = drawing + direction;
+    int const count = int(m_scene.layers[layer].drawings.size());
+    if (drawing < 0 || drawing >= count || other < 0 || other >= count)
+        return false;
+    int const id = m_scene.layers[layer].id;
+    apply(direction < 0 ? tr("Move Drawing Up") : tr("Move Drawing Down"), [&](Scene& s) {
+        Layer& edited = s.layers[layer];
+        edited.drawings.swapItemsAt(drawing, other);
+        for (int& cell : edited.cells)
+            cell = cell == drawing ? other : cell == other ? drawing : cell;
+        for (Scene::DeskItem& item : s.desk)
+            if (item.layer == id)
+                item.drawing = item.drawing == drawing ? other : item.drawing == other ? drawing : item.drawing;
+    });
+    return true;
 }
 
 void Document::stepSubstitution(int layer, int frame, int direction)

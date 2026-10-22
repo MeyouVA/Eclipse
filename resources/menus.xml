@@ -477,6 +477,8 @@
    <separator/>
    <item id="SubstitutePrevious" icon="anim/substituteprev" text="Substitute Drawing Pre&amp;vious" shortcut="shortcut.substitutePrev" responder="window" slot="onActionSubstitutePrevious()"/>
    <item id="SubstituteNext" icon="anim/substitutenext" text="Substitute Drawing Ne&amp;xt" shortcut="shortcut.substituteNext" responder="window" slot="onActionSubstituteNext()"/>
+   <item id="SubstituteFramePrevious" text="Substitute Frame Previous" shortcut="shortcut.substituteFramePrevious" responder="window" slot="onActionSubstituteFrame(QString)" itemParameter="-1"/>
+   <item id="SubstituteFrameNext" text="Substitute Frame Next" shortcut="shortcut.substituteFrameNext" responder="window" slot="onActionSubstituteFrame(QString)" itemParameter="1"/>
    <item id="SubstituteSameSetPrevious" icon="anim/substituteprev" text="Substitute Drawing Previous [Same Layer]" responder="window" slot="onActionSubstituteSameSet(QString)" itemParameter="-1"/>
    <item id="SubstituteSameSetNext" icon="anim/substitutenext" text="Substitute Drawing Next [Same Layer]" responder="window" slot="onActionSubstituteSameSet(QString)" itemParameter="1"/>
    <item id="SubstituteLayerPrevious" icon="anim/substituteprev" text="Substitute Layer Previous" responder="window" slot="onActionSubstituteLayer(QString)" itemParameter="-1"/>
@@ -723,6 +725,16 @@
  </menu>
 
  <menu id="menu.shortcutsOnly" text="Commands with a Shortcut Only">
+  <item id="GoToDrawing1" text="Go to the First Drawing" shortcut="shortcut.goToDrawing1" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="1"/>
+  <item id="GoToDrawing2" text="Go to the Second Drawing" shortcut="shortcut.goToDrawing2" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="2"/>
+  <item id="GoToDrawing3" text="Go to the Third Drawing" shortcut="shortcut.goToDrawing3" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="3"/>
+  <item id="GoToDrawing4" text="Go to the Fourth Drawing" shortcut="shortcut.goToDrawing4" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="4"/>
+  <item id="GoToDrawing5" text="Go to the Fifth Drawing" shortcut="shortcut.goToDrawing5" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="5"/>
+  <item id="GoToDrawing6" text="Go to the Sixth Drawing" shortcut="shortcut.goToDrawing6" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="6"/>
+  <item id="GoToDrawing7" text="Go to the Seventh Drawing" shortcut="shortcut.goToDrawing7" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="7"/>
+  <item id="GoToDrawing8" text="Go to the Eighth Drawing" shortcut="shortcut.goToDrawing8" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="8"/>
+  <item id="GoToDrawing9" text="Go to the Ninth Drawing" shortcut="shortcut.goToDrawing9" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="9"/>
+  <item id="GoToDrawing10" text="Go to the Tenth Drawing" shortcut="shortcut.goToDrawing10" responder="window" slot="onActionGoToDrawing(QString)" itemParameter="10"/>
   <item id="PasteModeCycle" text="Paste Mode: Cycle Through Presets" shortcut="shortcut.pasteModeCycle" responder="window" slot="onActionPasteModeCycle()"/>
   <item id="SetExposure4" text="Set Exposure to 4" shortcut="shortcut.setExposure4" responder="window" slot="onActionSetExposure(int)" itemParameter="4"/>
   <item id="SetExposure5" text="Set Exposure to 5" shortcut="shortcut.setExposure5" responder="window" slot="onActionSetExposure(int)" itemParameter="5"/>

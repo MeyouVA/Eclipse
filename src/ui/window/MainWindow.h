@@ -443,6 +443,9 @@ public slots:
     void onActionSequenceFill();
     void onActionHoldExposure();
     void onActionSetExposureAsk();
+    void onActionSubstituteFrame(QString const& direction);
+    void onActionGoToDrawing(QString const& which);
+    bool cycleDialog(QString const& title, QString const& label, int least, int* times, int* kind);
     void onActionHoldCells(QString const& every);
     void onActionFillCellsRandomly();
     void onActionExtendExposureTo();
@@ -609,6 +612,7 @@ private:
     void cellRange(int layer, int* first, int* last) const;
 public:
     int holdCells(int every);
+    int deleteEmptyElements();
     bool fillCellsRandomly(int layer, int first, int last, int shortest, int longest, quint32 seed);
     bool extendExposureTo(int layer, int from, int to);
 private:

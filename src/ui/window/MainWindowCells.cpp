@@ -3,6 +3,7 @@
 #include "model/geometry/Deform.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include "ui/panels/ColourEditor.h"
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -88,10 +89,9 @@ void MainWindow::onActionFillEmptyCells()
 
 void MainWindow::onActionPasteCycle()
 {
-    bool ok = false;
-    int const times = QInputDialog::getInt(this, tr("Paste Cycle"), tr("Number of cycles:"), 2, 1, 1000, 1, &ok);
-    if (ok)
-        m_timeline->pasteCycle(times);
+    int times = 2, kind = 0;
+    if (cycleDialog(tr("Paste Cycle"), tr("Number of cycles:"), 1, &times, &kind))
+        m_timeline->pasteCycle(times, kind);
 }
 
 void MainWindow::onActionPasteReverse()
@@ -101,10 +101,9 @@ void MainWindow::onActionPasteReverse()
 
 void MainWindow::onActionCreateCycle()
 {
-    bool ok = false;
-    int const times = QInputDialog::getInt(this, tr("Create Cycle"), tr("Number of cycles (with the one selected):"), 2, 2, 1000, 1, &ok);
-    if (ok)
-        m_timeline->createCycle(times);
+    int times = 2, kind = 0;
+    if (cycleDialog(tr("Create Cycle"), tr("Number of cycles (with the one selected):"), 2, &times, &kind))
+        m_timeline->createCycle(times, kind);
 }
 
 void MainWindow::onActionCreateSceneMarker()
@@ -183,4 +182,59 @@ void MainWindow::onActionExtendExposure()
 void MainWindow::onActionClearExposure()
 {
     m_document->clearCell(layer(), frame());
+}
+
+bool MainWindow::cycleDialog(QString const& title, QString const& label, int least, int* times, int* kind)
+{
+    // How many times round, and how: the same again, on from where it ended (a walk), or there and back.
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("CycleDialog"));
+    dialog.setWindowTitle(title);
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QSpinBox* const count = new QSpinBox(&dialog);
+    count->setObjectName(QStringLiteral("CycleCount"));
+    count->setRange(least, 1000);
+    count->setValue(std::max(least, *times));
+    QComboBox* const type = new QComboBox(&dialog);
+    type->setObjectName(QStringLiteral("CycleType"));
+    type->addItems({tr("Repeat"), tr("Repeat and Offset"), tr("Ping Pong")});
+    type->setToolTip(tr("Repeat: the same again. Repeat and Offset: each time the keyframes go on from where the last ended (a walk). Ping Pong: there and back again."));
+    type->setCurrentIndex(std::clamp(*kind, 0, 2));
+    form->addRow(label, count);
+    form->addRow(tr("Cycle Type"), type);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return false;
+    *times = count->value();
+    *kind = type->currentIndex();
+    return true;
+}
+
+void MainWindow::onActionSubstituteFrame(QString const& direction)
+{
+    m_document->stepFrameSubstitution(layer(), frame(), direction.toInt() < 0 ? -1 : 1);
+}
+
+void MainWindow::onActionGoToDrawing(QString const& which)
+{
+    // The nth drawing the layer shows, by the order they come along the layer: its first frame.
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size())
+        return;
+    Layer const& l = scene.layers[layer()];
+    QVector<int> met;
+    for (int f = 0; f < l.cells.size(); ++f) {
+        int const d = l.cells[f];
+        if (d == Layer::kNoDrawing || met.contains(d))
+            continue;
+        met.push_back(d);
+        if (met.size() == which.toInt()) {
+            m_timeline->setCurrentCell(layer(), f);
+            return;
+        }
+    }
+    statusBar()->showMessage(tr("The layer shows fewer than %1 drawings.").arg(which), 3000);
 }

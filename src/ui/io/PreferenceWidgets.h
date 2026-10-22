@@ -115,6 +115,7 @@ struct PreferenceWidgets {
     QCheckBox* selectLasso = nullptr;
     QCheckBox* showStrokes = nullptr;
     QCheckBox* drawingCycle = nullptr;
+    QCheckBox* substitutionKeys = nullptr;
     QSpinBox* fieldsAcross = nullptr;
     QSpinBox* fieldsDown = nullptr;
     QHBoxLayout* fields = nullptr;

@@ -118,6 +118,11 @@ void MainWindow::preferencesDrawing(PreferenceWidgets& w, QSettings& s, QDialog&
     w.drawingCycle->setToolTip(tr("Substitute Drawing Next on the last drawing goes back to the first (and Previous on the first, to the last); off: it stops."));
     w.drawingCycle->setChecked(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
     w.drawingLayout->addRow(w.drawingCycle);
+    w.substitutionKeys = new QCheckBox(tr("Enforce Key Exposure"), w.drawing);
+    w.substitutionKeys->setObjectName(QStringLiteral("PrefSubstitutionKeys"));
+    w.substitutionKeys->setToolTip(tr("When enabled, substituting a drawing will create a key exposure at the selected frame."));
+    w.substitutionKeys->setChecked(s.value(QStringLiteral("prefs/substitutionKeys"), true).toBool());
+    w.drawingLayout->addRow(w.substitutionKeys);
     w.fieldsAcross = new QSpinBox(w.drawing);
     w.fieldsAcross->setObjectName(QStringLiteral("PrefFieldsAcross"));
     w.fieldsAcross->setRange(2, 64);

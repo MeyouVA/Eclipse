@@ -203,6 +203,7 @@ void Timeline::pasteSpecial(PasteOptions const& options)
     block.keyParts = options.parts;
     block.matchNames = options.matchNames;
     block.pastePivot = options.pivot;
+    block.offsetKeys = options.offsetKeys;
     pasteBlock(block, selectionFirstFrame());
 }
 
@@ -211,17 +212,31 @@ void Timeline::pasteReversed()
     pasteBlock(cellClipboard().reversed(), selectionFirstFrame());
 }
 
-void Timeline::pasteCycle(int times)
+void Timeline::pasteCycle(int times, int kind)
 {
-    pasteBlock(cellClipboard().repeated(times), selectionFirstFrame());
+    pasteBlock(cellClipboard().cycled(times, kind), selectionFirstFrame());
 }
 
-void Timeline::createCycle(int times)
+void Timeline::createCycle(int times, int kind)
 {
     if (times < 2 || selectionLastFrame() + 1 >= m_document->scene().frameCount())
         return;
+    // The frames selected, then the cycle on after them (the first time round is the one there already).
     CellBlock const block = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame());
-    pasteBlock(block.repeated(times - 1), selectionLastFrame() + 1);
+    CellBlock const all = block.cycled(times, kind);
+    CellBlock after = all;
+    after.frames = all.frames - block.frames;
+    for (CellBlock::Row& row : after.rows) {
+        row.cells = row.cells.mid(block.frames);
+        QVector<Keyframe> keys;
+        for (Keyframe key : row.keys)
+            if (key.frame >= block.frames) {
+                key.frame -= block.frames;
+                keys.push_back(key);
+            }
+        row.keys = keys;
+    }
+    pasteBlock(after, selectionLastFrame() + 1);
 }
 
 void Timeline::selectAll()

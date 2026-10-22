@@ -107,6 +107,7 @@ public:
         int drawingMode = -1;       // CellBlock::DrawingMode
         int parts = 1023;           // Keyframe::Part
         bool matchNames = false, pivot = false;
+        bool offsetKeys = false;
     };
     void pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse);
     void pasteSpecial(PasteOptions const& options);
@@ -132,9 +133,9 @@ public:
     static CellBlock& clipboard();
     // Pastes it from its last frame to its first; or so many times over.
     void pasteReversed();
-    void pasteCycle(int times);
+    void pasteCycle(int times, int kind = 0);
     // The cells selected, again and again after themselves: `times` in all.
-    void createCycle(int times);
+    void createCycle(int times, int kind = 0);
     enum ViewMode { ShowAll, ShowSelected, ShowTagged, ShowControlled };
     // Whether a layer is among those ShowControlled shows.
     bool controlled(int layer) const;

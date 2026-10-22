@@ -31,6 +31,8 @@ struct CellBlock {
     int keyParts = 1023;
     bool matchNames = false;
     bool pastePivot = false;
+    // The keyframes pasted added to what the layer pasted onto has there (Offset Keyframes).
+    bool offsetKeys = false;
     int frames = 0;
     QVector<Row> rows;
     bool isEmpty() const { return frames <= 0 || rows.isEmpty(); }
@@ -40,6 +42,9 @@ struct CellBlock {
     CellBlock reversed() const;
     // The block `times` times over, one after the other.
     CellBlock repeated(int times) const;
+    // ... as a cycle: plain, each time on from where the last ended (keyframes moved on: a walk), or there and back again.
+    enum CycleKind { Repeat, RepeatOffset, PingPong };
+    CellBlock cycled(int times, int kind) const;
 };
 
 class ECLIPSE_MODEL_API Document : public QObject {
@@ -146,6 +151,13 @@ public:
     void deleteDrawing(int layer, int frame);
     // Shows another drawing of the layer on `frame` (to the end of its exposure).
     void substituteDrawing(int layer, int frame, int drawing);
+    // Enforce Key Exposure: a substitution made in the middle of an exposure starts a new one there (off: the whole exposure is swapped).
+    void setSubstitutionKeys(bool on) { m_substitutionKeys = on; }
+    bool substitutionKeys() const { return m_substitutionKeys; }
+    // A drawing one place up or down the layer's list (its cells follow it).
+    bool moveDrawing(int layer, int drawing, int direction);
+    // Substitute Frame: the cell takes the drawing of the exposure after (or before) its own.
+    void stepFrameSubstitution(int layer, int frame, int direction);
     // The drawing after (+1) or before (-1) the one shown, going round at the ends.
     void stepSubstitution(int layer, int frame, int direction);
     // Substitute Drawing Next / Previous [Same Layer]: the next drawing (or the one before) of the same drawing layer.
@@ -398,5 +410,6 @@ private:
     bool m_nameByFrame = false;
     int m_undoLevels = 0;
     bool m_substitutionCycles = true;
+    bool m_substitutionKeys = true;
     QUndoStack m_undo;
 };

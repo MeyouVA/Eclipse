@@ -268,6 +268,18 @@
   <shortcut id="shortcut.hold3" text="Set Hold 3 Cells" value=""/>
   <shortcut id="shortcut.hold4" text="Set Hold 4 Cells" value=""/>
   <shortcut id="shortcut.holdCustom" text="Set Custom Hold Cell" value=""/>
+  <shortcut id="shortcut.substituteFramePrevious" text="Substitute Frame Previous" value=""/>
+  <shortcut id="shortcut.substituteFrameNext" text="Substitute Frame Next" value=""/>
+  <shortcut id="shortcut.goToDrawing1" text="Go to the First Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing2" text="Go to the Second Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing3" text="Go to the Third Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing4" text="Go to the Fourth Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing5" text="Go to the Fifth Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing6" text="Go to the Sixth Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing7" text="Go to the Seventh Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing8" text="Go to the Eighth Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing9" text="Go to the Ninth Drawing in Drawing View" value=""/>
+  <shortcut id="shortcut.goToDrawing10" text="Go to the Tenth Drawing in Drawing View" value=""/>
   <shortcut id="shortcut.pasteModeExposure" text="Paste mode: Set exposures only" value=""/>
   <shortcut id="shortcut.pasteModeCycle" text="Paste mode: Cycle through presets" value=""/>
   <shortcut id="shortcut.toolShiftTrace" text="Shift and Trace Tool" value=""/>

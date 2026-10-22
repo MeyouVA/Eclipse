@@ -19,6 +19,44 @@ CellBlock CellBlock::reversed() const
     return out;
 }
 
+CellBlock CellBlock::cycled(int times, int kind) const
+{
+    if (times < 2 || kind == Repeat)
+        return repeated(times);
+    CellBlock out = *this;
+    out.frames = frames * times;
+    CellBlock const back = reversed();
+    for (int r = 0; r < rows.size(); ++r) {
+        Row const& row = rows[r];
+        // Repeat and Offset: each time on by as far as the keyframes went from the first to the last.
+        Pose step;
+        if (kind == RepeatOffset && row.keys.size() >= 2) {
+            Pose const& a = row.keys.first().pose;
+            Pose const& b = row.keys.last().pose;
+            step.x = b.x - a.x;
+            step.y = b.y - a.y;
+            step.z = b.z - a.z;
+            step.rotation = b.rotation - a.rotation;
+        }
+        for (int n = 1; n < times; ++n) {
+            bool const there = kind == PingPong && n % 2 == 1;
+            Row const& from = there ? back.rows[r] : row;
+            out.rows[r].cells += from.cells;
+            for (Keyframe key : from.keys) {
+                key.frame += n * frames;
+                if (kind == RepeatOffset) {
+                    key.pose.x += step.x * n;
+                    key.pose.y += step.y * n;
+                    key.pose.z += step.z * n;
+                    key.pose.rotation += step.rotation * n;
+                }
+                out.rows[r].keys.push_back(key);
+            }
+        }
+    }
+    return out;
+}
+
 CellBlock CellBlock::repeated(int times) const
 {
     CellBlock out = *this;

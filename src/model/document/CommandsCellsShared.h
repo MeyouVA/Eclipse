@@ -145,6 +145,29 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
             std::sort(layer.keys.begin(), layer.keys.end(), [](Keyframe const& a, Keyframe const& b) { return a.frame < b.frame; });
             continue;
         }
+        if (block.offsetKeys) {
+            // Offset Keyframes: what the layer has at each key's frame, moved, turned and scaled by the key pasted.
+            for (Keyframe key : row.keys) {
+                key.frame += frame;
+                if (key.frame < begin || key.frame >= end)
+                    continue;
+                Pose const there = layer.poseAt(key.frame);
+                key.pose.x += there.x;
+                key.pose.y += there.y;
+                key.pose.z += there.z;
+                key.pose.rotation += there.rotation;
+                key.pose.skew += there.skew;
+                key.pose.scaleX *= there.scaleX;
+                key.pose.scaleY *= there.scaleY;
+                auto here = std::find_if(layer.keys.begin(), layer.keys.end(), [&](Keyframe const& k) { return k.frame == key.frame; });
+                if (here != layer.keys.end())
+                    *here = key;
+                else
+                    layer.keys.push_back(key);
+            }
+            std::sort(layer.keys.begin(), layer.keys.end(), [](Keyframe const& a, Keyframe const& b) { return a.frame < b.frame; });
+            continue;
+        }
         // The keyframes of the block take the place of those that were in its frames.
         layer.keys.erase(std::remove_if(layer.keys.begin(), layer.keys.end(), [&](Keyframe const& k) { return k.frame >= begin && k.frame < end; }),
                          layer.keys.end());

@@ -91,6 +91,11 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     names->setToolTip(tr("When pasting the values of several layers (a character's rig) onto the same layers in another order: each onto the layer of its name."));
     names->setChecked(options.matchNames);
     more->addRow(names);
+    QCheckBox* const offset = new QCheckBox(tr("Offset Keyframes"), advanced);
+    offset->setObjectName(QStringLiteral("PasteOffsetKeys"));
+    offset->setToolTip(tr("Offsets the target keyframe values by the amount of the source keyframe values."));
+    offset->setChecked(options.offsetKeys);
+    more->addRow(offset);
     tabs->addTab(advanced, tr("Advanced"));
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -110,6 +115,7 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
             options.parts &= ~parts[i].parts;
     options.pivot = pivot->isChecked();
     options.matchNames = names->isChecked();
+    options.offsetKeys = offset->isChecked();
     return true;
 }
 

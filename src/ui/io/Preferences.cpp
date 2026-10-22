@@ -176,6 +176,7 @@ void MainWindow::applyPreferences()
     m_canvas->setOnionEnhanced(s.value(QStringLiteral("prefs/onionEnhanced"), false).toBool());
     m_canvas->setIkIterations(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
     m_document->setSubstitutionCycles(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
+    m_document->setSubstitutionKeys(s.value(QStringLiteral("prefs/substitutionKeys"), true).toBool());
     m_canvas->setFieldChart(s.value(QStringLiteral("prefs/fieldsAcross"), 12).toInt(), s.value(QStringLiteral("prefs/fieldsDown"), 12).toInt());
     Canvas::setBlursEnabled(s.value(QStringLiteral("prefs/renderBlurs"), true).toBool());
     Canvas::setFocusEnabled(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
@@ -403,6 +404,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/selectLasso"), w.selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/showStrokes"), w.showStrokes->isChecked());
     s.setValue(QStringLiteral("prefs/drawingCycle"), w.drawingCycle->isChecked());
+    s.setValue(QStringLiteral("prefs/substitutionKeys"), w.substitutionKeys->isChecked());
     s.setValue(QStringLiteral("prefs/fieldsAcross"), w.fieldsAcross->value());
     s.setValue(QStringLiteral("prefs/fieldsDown"), w.fieldsDown->value());
     s.setValue(QStringLiteral("prefs/closeGap"), w.closeGap->value());

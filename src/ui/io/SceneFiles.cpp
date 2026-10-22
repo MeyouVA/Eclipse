@@ -184,6 +184,7 @@ void MainWindow::onActionElementManager()
     QListWidget* const list = new QListWidget(&dialog);
     list->setObjectName(QStringLiteral("ElementList"));
     list->setMinimumSize(420, 260);
+    list->setSelectionMode(QAbstractItemView::ExtendedSelection);
     QLineEdit* const name = new QLineEdit(&dialog);
     name->setObjectName(QStringLiteral("ElementName"));
     name->setPlaceholderText(tr("Name of the element"));
@@ -257,10 +258,24 @@ void MainWindow::onActionElementManager()
         enable();
     });
     connect(remove, &QPushButton::clicked, &dialog, [=] {
-        int const layer = layerOf(list->currentItem());
-        if (layer < 0)
+        // The elements selected (the one chosen, with no other).
+        QVector<int> layers;
+        for (QListWidgetItem* const item : list->selectedItems())
+            if (int const layer = layerOf(item); layer >= 0)
+                layers << layer;
+        if (layers.isEmpty() && layerOf(list->currentItem()) >= 0)
+            layers << layerOf(list->currentItem());
+        if (layers.isEmpty())
             return;
-        m_document->removeLayers({layer});
+        m_document->removeLayers(layers);
+        fill(-1);
+        enable();
+    });
+    QPushButton* const empties = new QPushButton(tr("Delete Empty Elements"), &dialog);
+    empties->setObjectName(QStringLiteral("ElementDeleteEmpty"));
+    empties->setToolTip(tr("Deletes the elements that show no drawing on any frame."));
+    connect(empties, &QPushButton::clicked, &dialog, [=] {
+        deleteEmptyElements();
         fill(-1);
         enable();
     });
@@ -271,10 +286,31 @@ void MainWindow::onActionElementManager()
     row->addWidget(add);
     row->addWidget(rename);
     row->addWidget(remove);
+    row->addWidget(empties);
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addWidget(new QLabel(tr("The elements of the scene: the layers that hold drawings."), &dialog));
     layout->addWidget(list);
     layout->addLayout(row);
     layout->addWidget(buttons);
     dialog.exec();
+}
+
+int MainWindow::deleteEmptyElements()
+{
+    // The drawing layers that show no drawing on any frame, gone in one step.
+    Scene const& scene = m_document->scene();
+    QVector<int> empty;
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        Layer const& layer = scene.layers[l];
+        if (!layer.holdsDrawings())
+            continue;
+        bool shows = false;
+        for (int cell : layer.cells)
+            shows = shows || cell != Layer::kNoDrawing;
+        if (!shows)
+            empty << l;
+    }
+    if (!empty.isEmpty())
+        m_document->removeLayers(empty);
+    return int(empty.size());
 }

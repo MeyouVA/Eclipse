@@ -8,6 +8,7 @@
 #include <QSlider>
 #include <QPainter>
 #include <QVBoxLayout>
+#include <QToolButton>
 
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
@@ -58,7 +59,25 @@ SubstitutionPanel::SubstitutionPanel(Document* document, QWidget* parent) : QWid
     m_size->setValue(100);
     m_size->setFixedWidth(110);
     m_size->setToolTip(tr("How big the pictures of the drawings are."));
+    QToolButton* const up = new QToolButton(this);
+    up->setObjectName(QStringLiteral("SubstitutionUp"));
+    up->setText(tr("Up"));
+    up->setToolTip(tr("Move Drawing Up: the drawing chosen one place earlier in the layer's list."));
+    QToolButton* const down = new QToolButton(this);
+    down->setObjectName(QStringLiteral("SubstitutionDown"));
+    down->setText(tr("Down"));
+    down->setToolTip(tr("Move Drawing Down: the drawing chosen one place later in the layer's list."));
+    auto move = [this](int direction) {
+        QListWidgetItem* const item = m_list->currentItem();
+        int const drawing = item ? item->data(Qt::UserRole).toInt() : -1;
+        if (drawing >= 0)
+            m_document->moveDrawing(m_layer, drawing, direction);
+    };
+    connect(up, &QToolButton::clicked, this, [move] { move(-1); });
+    connect(down, &QToolButton::clicked, this, [move] { move(+1); });
     QHBoxLayout* const foot = new QHBoxLayout;
+    foot->addWidget(up);
+    foot->addWidget(down);
     foot->addWidget(m_name, 1);
     foot->addWidget(m_size);
     QVBoxLayout* const layout = new QVBoxLayout(this);
