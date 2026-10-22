@@ -286,15 +286,26 @@ void Canvas::keepShape()
     m_document->endMacro();
 }
 
-void Canvas::fillUnder(Stroke const& line)
+void Canvas::fillUnder(Stroke& line)
 {
     Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
+    // The paint and its line know each other by a number of their own in the drawing.
+    int next = 1;
+    if (Drawing const* const whole = realDrawing())
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            for (Stroke const& s : whole->strokesOf(sheet))
+                next = std::max(next, s.link + 1);
+            for (Fill const& f : whole->fillsOf(sheet))
+                next = std::max(next, f.link + 1);
+        }
+    line.link = next;
     QPolygonF outline;
     for (StrokePoint const& point : line.path())
         outline << point.pos;
     Fill area;
     area.outlines = {outline};
     area.follows = true;
+    area.link = next;
     area.seed = insideOf(area.outlines);
     area.swatch = line.swatch;
     area.color = line.color;

@@ -6,6 +6,8 @@
 #include <algorithm>
 
 #include <QSet>
+#include <QHash>
+#include <cstring>
 
 #include "model/geometry/FillRegion.h"
 
@@ -157,7 +159,7 @@ double areaOf(QVector<QPolygonF> const& outlines)
 
 } // namespace
 
-Drawing Canvas::followLines(Drawing whole, Drawing const* before) const
+Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) const
 {
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
         QVector<Fill>& fills = whole.fillsOf(sheet);
@@ -176,16 +178,78 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before) const
         QRectF const area = FillRegion::paintArea(bounded);
         double const room = m_gapSize + 4.0;
         double const near = m_gapSize + 3.0;
-        // (The lines are the same lines, one for one, when there are as many: then the paint is found by the lines round it.)
-        bool const sameLines = before && lines.size() == linesBefore.size();
-        for (Fill& fill : fills) {
+        // Which line each line was: one just as it was is that one; with as many lines as before, the one in its place.
+        QVector<int> now(linesBefore.size(), -1);
+        {
+            QVector<bool> taken(lines.size(), false);
+            for (int i = 0; i < linesBefore.size(); ++i)
+                for (int k = 0; k < lines.size(); ++k)
+                    if (!taken[k] && sameShape(linesBefore[i], lines[k])) {
+                        now[i] = k;
+                        taken[k] = true;
+                        break;
+                    }
+            if (lines.size() == linesBefore.size())
+                for (int i = 0; i < linesBefore.size(); ++i)
+                    if (now[i] < 0 && !taken[i]) {
+                        now[i] = i;
+                        taken[i] = true;
+                    }
+        }
+        QVector<int> gone;      // paint whose lines went with it
+        for (int f = 0; f < fills.size(); ++f) {
+            Fill& fill = fills[f];
             if (!fill.follows || !fill.contours.isEmpty())
                 continue;
+            // Paint inside a line of its own (Auto Fill): that line alone says where it is - while it is still there.
+            if (fill.link != 0) {
+                auto linked = [&](Drawing const& d) -> Stroke const* {
+                    for (Stroke const& line : d.strokesOf(sheet))
+                        if (line.link == fill.link)
+                            return &line;
+                    return nullptr;
+                };
+                auto inside = [](Stroke const& line) {
+                    QPolygonF outline;
+                    for (StrokePoint const& p : line.path())
+                        outline << p.pos;
+                    return outline;
+                };
+                Stroke const* const then = before ? linked(*before) : nullptr;
+                Stroke const* const line = linked(whole);
+                if (!before || (then && line && sameShape(*then, *line)))
+                    continue;       // its line as it was
+                // Still where its line went round (not moved away from it on its own)?
+                bool together = false;
+                if (then) {
+                    QRectF const a = fill.bounds(), b = inside(*then).boundingRect();
+                    together = std::abs(a.left() - b.left()) < 3.0 && std::abs(a.top() - b.top()) < 3.0 && std::abs(a.right() - b.right()) < 3.0
+                               && std::abs(a.bottom() - b.bottom()) < 3.0;
+                }
+                if (!together) {
+                    if (then || !line) {
+                        fill.link = 0;      // a shape of its own now
+                        fill.follows = false;
+                    }
+                    continue;
+                }
+                if (!line) {
+                    gone.push_back(f);      // its line deleted: it goes with it
+                    continue;
+                }
+                fill.outlines = {inside(*line)};
+                fill.seed = insideOf(fill.outlines);
+                continue;
+            }
             QRectF const was = fill.bounds();
             if (before && !was.adjusted(-room, -room, room, room).intersects(changed))
                 continue;       // nothing near it changed
-            // The lines it was painted inside.
-            QSet<int> const own = sameLines ? boundingLines(fill.outlines, linesBefore, near) : QSet<int>();
+            // The lines it was painted inside, as they are now.
+            QSet<int> own;
+            if (before)
+                for (int i : boundingLines(fill.outlines, linesBefore, near))
+                    if (now[i] >= 0)
+                        own.insert(now[i]);
             // Places to look from: where it was painted (while that is still in it), well inside it - and, when it knows
             // its lines, either side of each of them all along (the area they close round may have gone over to the other
             // side of one of them).
@@ -195,19 +259,19 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before) const
             if (QPointF const inside = insideOf(fill.outlines); !inside.isNull())
                 tries.push_back(inside);
             QRectF within = area;
-            if (!own.isEmpty()) {
+            if (!own.isEmpty() && !quick) {
                 QRectF reach;
                 for (int l : own) {
                     Stroke const& line = lines[l];
                     reach = reach.united(line.bounds());
                     QVector<double> places;
                     QVector<StrokePoint> const run = line.pathWithPlaces(places);
-                    double gone = 1e9;
+                    double walked = 1e9;
                     for (int i = 0; i + 1 < run.size(); ++i) {
-                        gone += QLineF(run[i].pos, run[i + 1].pos).length();
-                        if (gone < 12.0)
+                        walked += QLineF(run[i].pos, run[i + 1].pos).length();
+                        if (walked < 12.0)
                             continue;
-                        gone = 0.0;
+                        walked = 0.0;
                         QPointF const way = run[i + 1].pos - run[i].pos;
                         double const length = std::hypot(way.x(), way.y());
                         if (length < 1e-9)
@@ -274,11 +338,13 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before) const
                     break;      // its own lines round it still, where it was: that is it
             }
             if (best.isEmpty())
-                continue;
+                continue;       // (its lines taken away: the paint stays as it was, as in Harmony)
             fill.outlines = best;
             if (!fill.contains(fill.seed))
                 fill.seed = insideOf(best);
         }
+        for (int k = int(gone.size()) - 1; k >= 0; --k)
+            fills.removeAt(gone[k]);
     }
     return whole;
 }
@@ -319,4 +385,64 @@ bool Canvas::keepJoined(Stroke const& line)
     art.strokes.push_back(mine);
     commitDrawing(art, tr("Draw Stroke"));
     return true;
+}
+
+// ---- the fine edge of paint: on the lines themselves ---------------------------------------------------------------------
+
+QVector<Stroke> Canvas::wallsOf(Drawing const& drawing, int sheet)
+{
+    return boundsOf(drawing, sheet);
+}
+
+quint64 Canvas::wallsKey(QVector<Stroke> const& walls)
+{
+    // Enough to tell these lines from others: where all their points are, and how they are drawn through them.
+    quint64 key = 1469598103934665603ULL;
+    auto mix = [&key](double v) {
+        quint64 bits = 0;
+        std::memcpy(&bits, &v, sizeof bits);
+        key = (key ^ bits) * 1099511628211ULL;
+    };
+    for (Stroke const& line : walls) {
+        mix(line.width);
+        mix(line.closed ? 1.0 : 0.0);
+        mix(line.curve ? 1.0 : 0.0);
+        for (StrokePoint const& p : line.points) {
+            mix(p.pos.x());
+            mix(p.pos.y());
+            if (p.handles) {
+                mix(p.in.x() + 3.0 * p.in.y());
+                mix(p.out.x() + 7.0 * p.out.y());
+            }
+        }
+        for (ThicknessPoint const& k : line.thickness)
+            mix(k.at + k.left * 13.0 + k.right * 17.0);
+    }
+    return key;
+}
+
+QVector<QPolygonF> Canvas::fineOutlinesOf(Fill const& fill, QVector<Stroke> const& walls, quint64 key)
+{
+    static QHash<quint64, QVector<QPolygonF>> kept;
+    quint64 mine = key;
+    auto mix = [&mine](double v) {
+        quint64 bits = 0;
+        std::memcpy(&bits, &v, sizeof bits);
+        mine = (mine ^ bits) * 1099511628211ULL;
+    };
+    for (QPolygonF const& outline : fill.outlines) {
+        mix(double(outline.size()));
+        for (QPointF const& p : outline) {
+            mix(p.x());
+            mix(p.y());
+        }
+    }
+    auto const found = kept.constFind(mine);
+    if (found != kept.constEnd())
+        return *found;
+    if (kept.size() > 6000)
+        kept.clear();
+    QVector<QPolygonF> const fine = FillRegion::refine(fill.outlines, walls);
+    kept.insert(mine, fine);
+    return fine;
 }

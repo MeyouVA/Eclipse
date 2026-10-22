@@ -93,6 +93,8 @@ struct Stroke {
     // Things of one drawing sheet grouped together share a number here (0: on its own):
     // picking one of them with the Select tool picks them all.
     int group = 0;
+    // A line that paint was made inside of (Auto Fill): the number that paint knows it by (0: none). See Fill::link.
+    int link = 0;
     // Where it lies among the lines and painted areas of its sheet: the higher, the nearer the top (lines over
     // areas of the same number).  What is drawn later goes on top - a brush shape over the lines under it.
     int order = 0;
@@ -262,6 +264,10 @@ struct Fill {
     // area is found again from them, from where it was painted (`seed`).
     bool follows = false;
     QPointF seed;
+    // Paint inside a line of its own (Auto Fill): the line's `link` number (0: none).  While the paint lies where the line
+    // goes round, it is all that the line goes round - whatever other lines cross it - and follows that line alone; the
+    // line deleted, it goes too.  Moved away from it, it is a shape of its own (the link let go).
+    int link = 0;
 
     QRectF bounds() const;
     // A paper texture: the grain the area shows in place of solid paint (as a line's pencil

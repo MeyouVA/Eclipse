@@ -29,6 +29,8 @@ static QJsonObject strokeToJson(Stroke const& s)
     QJsonObject o{{"color", s.color.name(QColor::HexArgb)}, {"swatch", s.swatch}, {"width", double(s.width)}, {"points", pts}};
     if (s.group != 0)
         o["group"] = s.group;
+    if (s.link != 0)
+        o["link"] = s.link;
     if (s.gradPlaced)
         o["grad"] = QJsonArray{s.gradFrom.x(), s.gradFrom.y(), s.gradTo.x(), s.gradTo.y()};
     if (s.texture != 0) {
@@ -115,6 +117,8 @@ static QJsonObject fillToJson(Fill const& f)
         o["grad"] = QJsonArray{f.gradFrom.x(), f.gradFrom.y(), f.gradTo.x(), f.gradTo.y()};
     if (f.follows)
         o["follows"] = QJsonArray{std::round(f.seed.x() * 100.0) / 100.0, std::round(f.seed.y() * 100.0) / 100.0};
+    if (f.link != 0)
+        o["link"] = f.link;
     if (f.texture != 0) {
         o["texture"] = f.texture;
         o["textureAmount"] = std::round(double(f.textureAmount) * 1000.0) / 1000.0;

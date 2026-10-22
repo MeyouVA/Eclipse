@@ -597,10 +597,27 @@ static void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing co
         QVector<Fill> const& fills = drawing.fillsOf(sheet);
         QVector<Stroke> const& strokes = drawing.strokesOf(sheet);
         bool const withPictures = placed && sheet == Drawing::LineSheet;
+        // Paint that follows its lines: with its fine edge, on the lines themselves (unless things are moving).
+        bool fine = false;
+        if (Canvas::s_fineFills)
+            for (Fill const& fill : fills)
+                fine = fine || (fill.follows && fill.contours.isEmpty());
+        QVector<Stroke> const walls = fine ? Canvas::wallsOf(drawing, sheet) : QVector<Stroke>();
+        quint64 const key = fine ? Canvas::wallsKey(walls) : 0;
+        auto drawFill = [&](Fill const& fill) {
+            QBrush const brush = tint ? QBrush(*tint) : scene.brushFor(fill);
+            if (!fine || !fill.follows || !fill.contours.isEmpty()) {
+                Canvas::paintFill(painter, fill, brush);
+                return;
+            }
+            Fill shown = fill;
+            shown.outlines = Canvas::fineOutlinesOf(fill, walls, key);
+            Canvas::paintFill(painter, shown, brush);
+        };
         if (!withPictures && Drawing::topOrder(fills, strokes) == Drawing::bottomOrder(fills, strokes)) {
             // All in one place in the order (as nearly always): the areas, then the lines over them.
             for (Fill const& fill : fills)
-                Canvas::paintFill(painter, fill, tint ? QBrush(*tint) : scene.brushFor(fill));
+                drawFill(fill);
             for (Stroke const& stroke : strokes)
                 Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : scene.brushFor(stroke));
             continue;
@@ -625,7 +642,7 @@ static void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing co
             if (item.kind < 0)
                 paintPicture(drawing.pictures[item.index]);
             else if (item.kind == 0)
-                Canvas::paintFill(painter, fills[item.index], tint ? QBrush(*tint) : scene.brushFor(fills[item.index]));
+                drawFill(fills[item.index]);
             else
                 Canvas::paintStroke(painter, strokes[item.index], tint ? QBrush(*tint) : scene.brushFor(strokes[item.index]));
         }

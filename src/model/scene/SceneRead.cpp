@@ -41,6 +41,7 @@ static Fill fillFromJson(QJsonObject const& o)
         f.follows = true;
         f.seed = QPointF(seed[0].toDouble(), seed[1].toDouble());
     }
+    f.link = std::max(0, o["link"].toInt(0));
     f.texture = textureRead(o["texture"].toInt(0));
     f.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
     f.textureCrisp = o["textureCrisp"].toBool(false);
@@ -138,6 +139,7 @@ static Stroke strokeFromJson(QJsonObject const& o)
         if (s.thickness.isEmpty() || key.at > s.thickness.last().at)
             s.thickness.push_back(key);
     }
+    s.link = std::max(0, o["link"].toInt(0));
     return s;
 }
 

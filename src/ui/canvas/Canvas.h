@@ -659,6 +659,15 @@ public:
     static void paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
     // How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
     static inline double s_lineOpacity = 1.0;
+    // Paint that follows its lines drawn with its fine edge (on the lines themselves, a vector) - as it is exported and
+    // rendered, and in a view while nothing moves - or with its quick edge (as the pixels found it), while things move:
+    // drawing, dragging, animating, playing.
+    static inline bool s_fineFills = true;
+    // The lines that bound the paint of a sheet of a drawing (its own, the line art's, the brush shapes'), something that
+    // tells those lines apart from others, and the fine edge of a paint among them (worked out once, then kept).
+    static QVector<Stroke> wallsOf(Drawing const& drawing, int sheet);
+    static quint64 wallsKey(QVector<Stroke> const& walls);
+    static QVector<QPolygonF> fineOutlinesOf(Fill const& fill, QVector<Stroke> const& walls, quint64 key);
     static void paintFill(QPainter& painter, Fill const& fill, QBrush const& color);
     // The bitmap brush's tip, as its editor (Tool Properties: Edit Tip...) sets it: turned, flattened, flipped; how far apart
     // its dabs are and how many at each place; how much each of these varies at random; and how faint it is where the pen
@@ -1345,7 +1354,7 @@ private:
     void finishDrawnLine(double reach);
     bool m_scaleThickness = false;
     // A painted area under `line`, the shape it goes round (one step to undo with what is drawn after it).
-    void fillUnder(Stroke const& line);
+    void fillUnder(Stroke& line);
     void mergeSelectedLines(bool bridge, QString const& text);
     // A line turned end for end (its handles with it); a line of straight pieces made a curve with straight runs.
     static Stroke reversedLine(Stroke line);
@@ -1695,7 +1704,8 @@ private:
     bool keepJoined(Stroke const& line);
     // Paint that follows its lines: each such area of `whole` near lines that changed from `before` (all of them, with none)
     // found again from its lines.
-    Drawing followLines(Drawing whole, Drawing const* before) const;
+    // `quick`: while something is being dragged - found only from where it was (the thorough look when it is let go).
+    Drawing followLines(Drawing whole, Drawing const* before, bool quick = false) const;
     bool startBend(Stroke const& line, QPointF p, Qt::KeyboardModifiers modifiers);     // a press on a curve: bent if dragged
     int m_segIndex = -1;            // the Contour Editor: the piece of the line being bent, and where on it it was taken
     double m_segT = 0.5;

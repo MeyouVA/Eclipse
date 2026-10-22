@@ -389,22 +389,39 @@ Result compute(Drawing const& drawing, int width, int height, QPointF point, dou
     QPainterPath path;
     path.addRegion(region);
     QTransform const toScene = QTransform::fromScale(1.0 / scale, 1.0 / scale);
-    // The edge of the paint on the lines themselves, as a vector: each place of the traced edge near the middle of a line
-    // goes onto it (the pixels only said which area; the lines say where its edge is).  Elsewhere (a gap closed, the edge
-    // of a brush shape) the pixel staircase is smoothed away.
-    Snapper const snap(drawing.strokes, (3.0 + std::ceil(scale)) / scale + 0.5);
+    // The quick edge, as the pixels have it (the staircase simplified away): what the paint keeps, and shows while things
+    // move.  refine() puts it on the lines themselves, as a vector.
     for (QPolygonF const& raw : path.simplified().toSubpathPolygons()) {
-        QPolygonF ring = toScene.map(raw);
-        if (ring.size() > 1 && ring.first() == ring.last())
-            ring.removeLast();
-        QVector<bool> onLine(ring.size(), false);
-        for (int i = 0; i < ring.size(); ++i)
-            onLine[i] = snap.onto(ring[i]);
-        QPolygonF const poly = simplifyEdge(ring, onLine, 0.04, 0.75 / scale);
+        QPolygonF const poly = simplify(toScene.map(raw), 0.75 / scale);
         if (poly.size() >= 3)
             outlines.push_back(poly);
     }
     return outlines.isEmpty() ? OnLine : Ok;
+}
+
+QVector<QPolygonF> refine(QVector<QPolygonF> const& outlines, QVector<Stroke> const& walls, double reach)
+{
+    // The edge of the paint on the lines themselves, as a vector: the quick edge, in places close together, each place near
+    // the middle of a line put onto it (the pixels only said which area; the lines say where its edge is).  Elsewhere (a gap
+    // closed, the edge of a brush shape) the edge stays as it was.
+    Snapper const snap(walls, reach);
+    QVector<QPolygonF> fine;
+    for (QPolygonF const& outline : outlines) {
+        QPolygonF ring;
+        int const n = int(outline.size()) - (outline.size() > 1 && outline.first() == outline.last() ? 1 : 0);
+        for (int i = 0; i < n; ++i) {
+            QPointF const a = outline[i], b = outline[(i + 1) % n];
+            int const steps = std::clamp(int(std::ceil(QLineF(a, b).length() / 1.0)), 1, 4000);
+            for (int k = 0; k < steps; ++k)
+                ring.push_back(a + (b - a) * (double(k) / steps));
+        }
+        QVector<bool> onLine(ring.size(), false);
+        for (int i = 0; i < ring.size(); ++i)
+            onLine[i] = snap.onto(ring[i]);
+        QPolygonF const poly = simplifyEdge(ring, onLine, 0.04, 0.3);
+        fine.push_back(poly.size() >= 3 ? poly : outline);
+    }
+    return fine;
 }
 
 // Douglas-Peucker, iterative.

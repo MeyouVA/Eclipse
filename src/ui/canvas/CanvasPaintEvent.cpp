@@ -149,7 +149,10 @@ void Canvas::paintEvent(QPaintEvent*)
     drawing.start();
     // Preferences: pencil lines shown fainter in the view (only here: what is exported keeps them as they are).
     s_lineOpacity = m_pencilOpacity / 100.0;
+    // (While anything moves - the pen, the playhead - paint is drawn with its quick edge.)
+    s_fineFills = m_drag == DragNone && !m_playing;
     paintView();
+    s_fineFills = true;
     s_lineOpacity = 1.0;
     m_lastDrawMs = drawing.nsecsElapsed() / 1.0e6;
     m_averageDrawMs = m_averageDrawMs <= 0.0 ? m_lastDrawMs : m_averageDrawMs * 0.9 + m_lastDrawMs * 0.1;
@@ -310,7 +313,7 @@ void Canvas::paintView()
         if (index != Layer::kNoDrawing && !m_playing && m_backlight) {
             // Backlight: everything drawn as one dark shape, as if lit from behind.
             static QColor const dark(34, 34, 38);
-            paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? followLines(withArt(previewDrawing()), realDrawing()) : layer.drawings[index]), 1.0, &dark);
+            paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? followLines(withArt(previewDrawing()), realDrawing(), true) : layer.drawings[index]), 1.0, &dark);
         } else if (index != Layer::kNoDrawing && !m_playing && m_outlineLocked && layer.locked) {
             // A locked layer as outlines: the edges of its paint and the paths of its lines.
             Drawing const lines = shown(l, m_frame, layer.drawings[index]);
@@ -333,7 +336,7 @@ void Canvas::paintView()
                         painter.drawPolyline(centre);
                 }
         } else if (l == m_layer && transforming)
-            paintLayerDrawing(painter, scene, l, m_frame, followLines(withArt(previewDrawing()), realDrawing()), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
+            paintLayerDrawing(painter, scene, l, m_frame, followLines(withArt(previewDrawing()), realDrawing(), true), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
         else if (index != Layer::kNoDrawing && l == m_layer && !m_previewAllArt && !m_playing) {
             // Only the sheet being worked on.
             Drawing one = erasing ? withArt(m_eraseArt) : layer.drawings[index];
