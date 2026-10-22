@@ -254,6 +254,39 @@ void Document::setMetadata(int layer, QVector<QPair<QString, QString>> const& pa
     apply(text, [&](Scene& s) { (layer < 0 ? s.metadata : s.layers[layer].metadata) = kept; });
 }
 
+bool Document::setTrace(int layer, int drawing, QTransform const& trace, QString const& text)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || drawing < 0 || drawing >= m_scene.layers[layer].drawings.size()
+        || m_scene.layers[layer].drawings[drawing].trace == trace)
+        return false;
+    apply(text, [&](Scene& s) { s.layers[layer].drawings[drawing].trace = trace; });
+    return true;
+}
+
+bool Document::clearTraces(int layer)
+{
+    // Every drawing of the layer (of every layer, for -1) back where it is.
+    bool any = false;
+    for (int l = 0; l < m_scene.layers.size(); ++l)
+        for (Drawing const& d : m_scene.layers[l].drawings)
+            any = any || ((layer < 0 || l == layer) && !d.trace.isIdentity());
+    if (!any)
+        return false;
+    apply(tr("Clear All Shift and Trace Position"), [&](Scene& s) {
+        for (int l = 0; l < s.layers.size(); ++l)
+            if (layer < 0 || l == layer)
+                for (Drawing& d : s.layers[l].drawings)
+                    d.trace = QTransform();
+    });
+    return true;
+}
+
+void Document::setDesk(QVector<Scene::DeskItem> const& desk, QString const& text)
+{
+    if (m_scene.desk != desk)
+        apply(text, [&](Scene& s) { s.desk = desk; });
+}
+
 void Document::setReferences(QStringList const& files, QString const& text)
 {
     if (m_scene.references != files)

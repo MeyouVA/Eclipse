@@ -319,6 +319,8 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
     d.modelScale = std::clamp(dv.toObject()["modelScale"].toDouble(1.0), 0.01, 100.0);
     d.set = dv.toObject()["set"].toString();
     d.mark = std::clamp(dv.toObject()["mark"].toInt(0), 0, int(Drawing::InBetweenMark));
+    if (QJsonArray const t = dv.toObject()["trace"].toArray(); t.size() == 6)
+        d.trace = QTransform(t[0].toDouble(), t[1].toDouble(), t[2].toDouble(), t[3].toDouble(), t[4].toDouble(), t[5].toDouble());
     for (QJsonValue const& pv : dv.toObject()["pictures"].toArray()) {
         QJsonObject const po = pv.toObject();
         Picture p;

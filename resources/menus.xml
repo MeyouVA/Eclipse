@@ -583,6 +583,7 @@
   <item id="ToolSmoothEditor" icon="tool/smootheditor" text="Smoot&amp;h Editor" shortcut="shortcut.toolSmoothEditor" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="smootheditor"/>
   <item id="ToolPencilEditor" icon="tool/pencileditor" text="Pencil &amp;Editor" shortcut="shortcut.toolPencilEditor" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencileditor"/>
   <item id="ToolPencilRetouch" icon="tool/pencilretouch" text="Pencil &amp;Retouch" shortcut="shortcut.toolPencilRetouch" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencilretouch"/>
+  <item id="ToolShiftTrace" text="S&amp;hift and Trace" shortcut="shortcut.toolShiftTrace" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="shifttrace"/>
   <item id="ToolBrush" icon="tool/brush" text="&amp;Brush" shortcut="shortcut.toolBrush" checkable="true" checked="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="brush"/>
   <item id="ToolStamp" icon="tool/stamp" text="Sta&amp;mp" shortcut="shortcut.toolStamp" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="stamp"/>
 <item id="ToolPencil" icon="tool/pencil" text="Pe&amp;ncil" shortcut="shortcut.toolPencil" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="pencil"/>
@@ -637,6 +638,18 @@
   <item id="OnionRemoveAllLayers" icon="timeline/onionlayer" text="Remove All from Onion Skin" shortcut="shortcut.onionRemoveAllLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="removeAll"/>
   <separator/>
   <item id="TopLight" icon="view/toplight" text="&amp;Top Light..." shortcut="shortcut.topLight" responder="window" slot="onActionTopLight()"/>
+  <separator/>
+  <menu id="OnionShiftTrace" text="Shift and &amp;Trace">
+   <item id="ShiftTraceToggle" text="&amp;Shift and Trace" shortcut="shortcut.shiftTraceToggleView" checkable="true" responder="camera" slot="onActionShiftTrace(bool)"/>
+   <item id="ShiftTraceManipulator" text="Toggle &amp;Manipulator" shortcut="shortcut.shiftTraceManipulator" responder="camera" slot="onActionShiftTraceManipulator()"/>
+   <item id="ShiftTraceMoveTool" text="Move &amp;Tool" shortcut="shortcut.shiftTraceMoveTool" responder="camera" slot="onActionShiftTraceMoveTool()"/>
+   <item id="ShiftTraceReset" text="&amp;Reset Position" shortcut="shortcut.shiftTraceReset" responder="camera" slot="onActionShiftTraceReset()"/>
+   <item id="ShiftTraceVisibility" text="Toggle &amp;Visibility" shortcut="shortcut.shiftTraceVisibility" responder="camera" slot="onActionShiftTraceVisibility()"/>
+   <item id="ShiftTraceUp" text="Move &amp;Up" shortcut="shortcut.shiftTraceUp" responder="camera" slot="onActionShiftTraceMove(QString)" itemParameter="up"/>
+   <item id="ShiftTraceDown" text="Move &amp;Down" shortcut="shortcut.shiftTraceDown" responder="camera" slot="onActionShiftTraceMove(QString)" itemParameter="down"/>
+   <separator/>
+   <item id="ClearShiftTrace" text="&amp;Clear All Shift and Trace Positions" responder="camera" slot="onActionClearShiftTrace()"/>
+  </menu>
  </menu>
 
  <menu id="menu.onionSkinView" text="Onion Skin View Menu">
@@ -677,6 +690,16 @@
   <item id="RefMirror" text="&amp;Mirror View" checkable="true" responder="window" slot="onActionReference(QString)" itemParameter="mirror"/>
   <separator/>
   <item id="ShowReferenceView" text="Show &amp;Reference View" shortcut="shortcut.showReferenceView" checkable="true" checked="true" responder="window" slot="onActionShowReferenceView()"/>
+ </menu>
+
+ <menu id="menu.deskView" text="Desk Menu">
+  <item id="DeskThumbnails0" text="&amp;No Thumbnail" checkable="true" group="deskThumbnails" responder="window" slot="onActionDeskThumbnails(QString)" itemParameter="0"/>
+  <item id="DeskThumbnails1" text="&amp;Small Thumbnail" checkable="true" group="deskThumbnails" responder="window" slot="onActionDeskThumbnails(QString)" itemParameter="1"/>
+  <item id="DeskThumbnails2" text="&amp;Medium Thumbnail" checkable="true" checked="true" group="deskThumbnails" responder="window" slot="onActionDeskThumbnails(QString)" itemParameter="2"/>
+  <item id="DeskThumbnails3" text="&amp;Large Thumbnail" checkable="true" group="deskThumbnails" responder="window" slot="onActionDeskThumbnails(QString)" itemParameter="3"/>
+  <separator/>
+  <item id="ShiftTraceToggle"/>
+  <item id="ToolShiftTrace"/>
  </menu>
 
  <!-- Right-click menus of the views. -->
@@ -820,6 +843,9 @@
    <separator/>
    <item id="SubstitutePrevious"/>
    <item id="SubstituteNext"/>
+   <separator/>
+   <item id="SendToDesk" text="Send Drawings to Des&amp;k" responder="window" slot="onActionDesk(QString)" itemParameter="send"/>
+   <item id="AddToDesk" text="Add Drawings to De&amp;sk" responder="window" slot="onActionDesk(QString)" itemParameter="add"/>
   </menu>
   <menu id="TimelineExposure" text="Exposure">
    <item id="IncreaseExposure" icon="timeline/increaseexposure" text="Increase Exposure" shortcut="shortcut.increaseExposure" responder="window" slot="onActionIncreaseExposure()"/>
@@ -981,6 +1007,9 @@
    <separator/>
    <item id="SubstitutePrevious"/>
    <item id="SubstituteNext"/>
+   <separator/>
+   <item id="SendToDesk"/>
+   <item id="AddToDesk"/>
   </menu>
   <menu id="XsheetExposure" text="Exposure">
    <item id="ExtendExposure"/>

@@ -337,6 +337,10 @@ public:
     void setMetadata(int layer, QVector<QPair<QString, QString>> const& pairs, QString const& text);
     // The pictures of the Reference view.
     void setReferences(QStringList const& files, QString const& text);
+    // Shift and Trace: where a drawing is shown to trace from (identity: where it is); and the Desk.
+    bool setTrace(int layer, int drawing, QTransform const& trace, QString const& text);
+    bool clearTraces(int layer);
+    void setDesk(QVector<Scene::DeskItem> const& desk, QString const& text);
     int addMarker(int frame, int length, QString const& name, QColor const& color);
     void editMarker(int index, QString const& name, QColor const& color);
     bool setMarkerNote(int index, QString const& note);

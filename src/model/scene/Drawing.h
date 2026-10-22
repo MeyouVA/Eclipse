@@ -90,6 +90,8 @@ struct Drawing {
     double modelScale = 1.0;    // how big, as a share of Model3D::kSize at its biggest
     enum Mark { NoMark, KeyMark, BreakdownMark, InBetweenMark };
     int mark = NoMark;
+    // Shift and Trace: where the drawing is shown while tracing from it (its lines stay where they are).
+    QTransform trace;
     static QColor markColour(int mark)
     {
         return mark == KeyMark ? QColor(232, 76, 61) : mark == BreakdownMark ? QColor(80, 150, 240) : mark == InBetweenMark ? QColor(90, 200, 110) : QColor(24, 24, 24);

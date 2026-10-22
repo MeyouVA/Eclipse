@@ -461,6 +461,9 @@ public slots:
     void onActionOnionLayers(QString const& which);
     void onActionOnionAdvanced(bool on);
     void onActionReference(QString const& what);
+    void onActionDesk(QString const& how);
+    void onActionDeskThumbnails(QString const& which);
+    void syncDesk();
     void onActionShowReferenceView();
     // The current drawing as a picture, kept beside the scene, for the Reference view.
     QString referenceOfDrawing();
@@ -594,6 +597,9 @@ private:
     void askImportImages(bool linked, QStringList const& files = {});
     QWidget* makeReferenceView();
     QListWidget* m_references = nullptr;
+    QListWidget* m_desk = nullptr;
+    int m_deskThumbnails = 2;
+    QWidget* createDeskView();
     class LibraryView* m_library = nullptr;
     class QToolBar* m_scriptBar = nullptr;     // Scripts: the buttons of the scripts put on it
     // (`onto`: put on the layers of the same names when the scene has them all - a drop on the cells of the Timeline.)

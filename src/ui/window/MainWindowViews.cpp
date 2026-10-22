@@ -192,6 +192,8 @@ void MainWindow::createViews()
 
     // Reference: pictures to look at while drawing (File > Import > To Reference View).
     addView(tr("Reference"), QStringLiteral("ReferenceDock"), makeReferenceView(), Qt::RightDockWidgetArea)->hide();
+    // Desk: drawings kept at hand to trace from (Shift and Trace).
+    addView(tr("Desk"), QStringLiteral("DeskDock"), createDeskView(), Qt::RightDockWidgetArea)->hide();
 
     addView(tr("Message Log"), QStringLiteral("MessageLogDock"), createMessageLogView(), Qt::RightDockWidgetArea)->hide();
     addView(tr("Scene Markers"), QStringLiteral("SceneMarkersDock"), createSceneMarkersView(), Qt::RightDockWidgetArea)->hide();
@@ -233,7 +235,8 @@ void MainWindow::createViews()
                             : d->windowTitle() == tr("Node View") ? QStringLiteral("menu.nodeView")
                             : d->windowTitle() == tr("Colour") ? QStringLiteral("menu.colourView")
                             : d->windowTitle() == tr("Onion Skin") ? QStringLiteral("menu.onionSkinView")
-                            : d->windowTitle() == tr("Reference") ? QStringLiteral("menu.referenceView") : QString();
+                            : d->windowTitle() == tr("Reference") ? QStringLiteral("menu.referenceView")
+                            : d->windowTitle() == tr("Desk") ? QStringLiteral("menu.deskView") : QString();
         if (!own.isEmpty())
             bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
     }

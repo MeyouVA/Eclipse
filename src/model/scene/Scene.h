@@ -90,6 +90,14 @@ public:
     QVector<QPair<QString, QString>> metadata;
     // The pictures of the Reference view: the files they are read from.
     QStringList references;
+    // The Desk: drawings kept at hand to trace from (Shift and Trace), by layer id and drawing.
+    struct DeskItem {
+        int layer = 0;
+        int drawing = 0;
+        bool shown = true;
+        bool operator==(DeskItem const&) const = default;
+    };
+    QVector<DeskItem> desk;
     // The marker over `frame`, or -1.
     int markerAt(int frame) const;
     QColor background = Qt::white;

@@ -253,6 +253,14 @@
   <shortcut id="shortcut.toolPerspective" text="Perspective Tool" value="Alt+0"/>
   <shortcut id="shortcut.toolPencilEditor" text="Pencil Editor Tool" value=""/>
   <shortcut id="shortcut.toolPencilRetouch" text="Pencil Retouch Tool" value=""/>
+  <shortcut id="shortcut.toolShiftTrace" text="Shift and Trace Tool" value=""/>
+  <shortcut id="shortcut.shiftTraceToggleView" text="Desk: Shift Trace Toggle View" value=""/>
+  <shortcut id="shortcut.shiftTraceManipulator" text="Desk: Shift Trace Toggle Manipulator" value=""/>
+  <shortcut id="shortcut.shiftTraceMoveTool" text="Desk: Shift Trace Move Tool" value=""/>
+  <shortcut id="shortcut.shiftTraceReset" text="Desk: Shift Trace Drawing Reset Position" value=""/>
+  <shortcut id="shortcut.shiftTraceVisibility" text="Desk: Shift Trace Drawing Toggle Visibility" value=""/>
+  <shortcut id="shortcut.shiftTraceUp" text="Desk: Shift Trace Drawing Move Up" value=""/>
+  <shortcut id="shortcut.shiftTraceDown" text="Desk: Shift Trace Drawing Move Down" value=""/>
   <shortcut id="shortcut.pencilLineWiggle" text="Pencil Line Wiggle" value=""/>
   <shortcut id="shortcut.renderAndPlay" text="Render and Play" value="Ctrl+Return"/>
   <shortcut id="shortcut.miniPlayback" text="Mini Playback" value="Shift+Return"/>

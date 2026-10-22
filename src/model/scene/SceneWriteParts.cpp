@@ -333,6 +333,8 @@ if (!d.set.isEmpty())
     drawing["set"] = d.set;
 if (d.mark != Drawing::NoMark)
     drawing["mark"] = d.mark;
+if (!d.trace.isIdentity())
+    drawing["trace"] = QJsonArray{d.trace.m11(), d.trace.m12(), d.trace.m21(), d.trace.m22(), d.trace.dx(), d.trace.dy()};
     return drawing;
 }
 

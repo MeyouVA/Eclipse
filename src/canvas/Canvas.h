@@ -344,6 +344,18 @@ public slots:
     double zoomPercent() const;
     void setZoomPercent(double percent);
     double zoomUnit() const;
+    // Shift and Trace and the Desk.
+    void onActionShiftTrace(bool on);
+    void onActionShiftTraceManipulator();
+    void onActionShiftTraceReset();
+    void onActionShiftTraceVisibility();
+    void onActionShiftTraceMove(QString const& way);
+    void onActionShiftTraceMoveTool() { setTool(ShiftTrace); }
+    void onActionClearShiftTrace();
+    void setTraceTarget(int layer, int drawing);
+    // Where a drawing of the onion skin or the Desk is shown: its own place, or (Shift and Trace on) where it was moved to.
+    QTransform traceOf(int layer, int drawing) const;
+    bool traceHidden(int layer, int drawing) const { return m_traceHidden.contains({layer, drawing}); }
     void onActionPerformZoom(QString const& way) { zoomBy(way == QLatin1String("out") ? 1.0 / 1.5 : 1.5); }
     void onActionResetPan();
     void onActionSmoothFast();
@@ -704,6 +716,11 @@ private:
     void zoomToolDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers);
     void zoomToolMove(QPointF widgetPos);
     void zoomToolUp();
+    void traceDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers);
+    void traceMove(QPointF widgetPos);
+    void traceUp();
+    void paintDesk(QPainter& painter, QTransform const& view) const;
+    void paintTraceBox(QPainter& painter, QTransform const& view) const;
     QCursor toolCursor() const;
     void onDocumentChanged();
 

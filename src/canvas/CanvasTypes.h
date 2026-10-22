@@ -40,6 +40,8 @@ struct CanvasTypes {
         Turn3D,
         // Rubbed along pencil lines, it makes them thicker there (or thinner: its mode, or Alt), more the longer it is rubbed.
         PencilRetouch,
+        // Shift and Trace: the onion-skinned drawings and those on the Desk moved, turned or scaled to trace from.
+        ShiftTrace,
     };
     // Which sheet of the drawing the tools work on.
     enum Art { LineArt, ColourArt, OverlayArt, UnderlayArt };
@@ -104,6 +106,6 @@ struct CanvasTypes {
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom, DragTrace
     };
 };

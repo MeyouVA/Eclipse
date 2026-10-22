@@ -56,6 +56,10 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.metadata = pairsFromJson(json["metadata"].toArray());
     for (QJsonValue const& rv : json["references"].toArray())
         scene.references << found(folder, rv.toObject()["file"].toString(), rv.toObject()["relative"].toString());
+    for (QJsonValue const& dv : json["desk"].toArray()) {
+        QJsonObject const d = dv.toObject();
+        scene.desk.push_back({d["layer"].toInt(), d["drawing"].toInt(), d["shown"].toBool(true)});
+    }
     scene.m_frameCount = std::max(1, json["frames"].toInt(24));
     scene.background = QColor(json["background"].toString("#ffffff"));
     for (QJsonValue const& wv : json["writes"].toArray()) {

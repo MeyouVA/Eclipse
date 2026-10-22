@@ -260,8 +260,8 @@ void Canvas::paintView()
                 --i;            // not one of the drawings asked for: the next one back is looked at instead
                 continue;
             }
-            painter.setTransform(worldOf(l, prev) * view);
-            if (m_onionStrength[0][i] > 0)
+            painter.setTransform(traceOf(l, layer.cells[prev]) * worldOf(l, prev) * view);
+            if (m_onionStrength[0][i] > 0 && !traceHidden(l, layer.cells[prev]))
                 paintOnion(painter, scene, shown(l, prev, layer.drawings[layer.cells[prev]]),
                            strength * (m_onionPrev - i) / m_onionPrev * m_onionStrength[0][i] / 100.0, onionStepColour(false, i), washOf(i, m_onionPrev));
         }
@@ -275,8 +275,8 @@ void Canvas::paintView()
                 --i;
                 continue;
             }
-            painter.setTransform(worldOf(l, next) * view);
-            if (m_onionStrength[1][i] > 0)
+            painter.setTransform(traceOf(l, layer.cells[next]) * worldOf(l, next) * view);
+            if (m_onionStrength[1][i] > 0 && !traceHidden(l, layer.cells[next]))
                 paintOnion(painter, scene, shown(l, next, layer.drawings[layer.cells[next]]),
                            strength * 0.86 * (m_onionNext - i) / m_onionNext * m_onionStrength[1][i] / 100.0, onionStepColour(true, i), washOf(i, m_onionNext));
         }
@@ -297,6 +297,10 @@ void Canvas::paintView()
             if (scene.shows(l) && scene.layers[l].holdsDrawings() && (!m_drawingView || l == m_layer || m_lightTable))
                 onionsOf(l);
 
+    if (m_shiftTrace && !m_playing)
+        paintDesk(painter, view);
+    if (m_tool == ShiftTrace && !m_playing)
+        paintTraceBox(painter, view);
     if (paintViewAids(painter, frameRect, view))
         return;
     paintSelectionAids(painter);

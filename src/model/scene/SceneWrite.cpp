@@ -66,6 +66,9 @@ QJsonObject Scene::toJson(QString const& folder) const
     QJsonArray referenceArray;
     for (QString const& file : references)
         referenceArray.append(QJsonObject{{"file", file}, {"relative", pathFrom(folder, file)}});
+    QJsonArray deskArray;
+    for (DeskItem const& item : desk)
+        deskArray.append(QJsonObject{{"layer", item.layer}, {"drawing", item.drawing}, {"shown", item.shown}});
     // A symbol is written as a scene of its own (without symbols inside it: they are all here, side by side).
     QJsonArray symbolArray;
     for (Symbol const& symbol : symbols) {
@@ -185,6 +188,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"camera", activeCamera},
                        {"display", display},
                        {"references", referenceArray},
+                       {"desk", deskArray},
                        {"guides", guideArray},
                        {"metadata", pairsJson(metadata)},
                        {"frames", m_frameCount},

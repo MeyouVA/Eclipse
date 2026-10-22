@@ -57,6 +57,10 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         zoomToolDown(widgetPos, modifiers);
         return;
     }
+    if (m_tool == ShiftTrace) {
+        traceDown(widgetPos, modifiers);
+        return;
+    }
     if (m_tool == Turn3D) {
         Scene const& scene = m_document->scene();
         if (m_layer >= 0 && m_layer < scene.layers.size() && !m_drawingView && !scene.layers[m_layer].locked) {

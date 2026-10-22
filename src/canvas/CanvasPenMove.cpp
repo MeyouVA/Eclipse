@@ -256,6 +256,9 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     case DragZoom:
         zoomToolMove(widgetPos);
         break;
+    case DragTrace:
+        traceMove(widgetPos);
+        break;
     case DragRotateView: {
         // By the angle the pointer has gone round the middle of the view.
         QPointF const middle(width() / 2.0, height() / 2.0);

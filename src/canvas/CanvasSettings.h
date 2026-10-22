@@ -249,6 +249,10 @@ public:
     double quickCloseUpFactor() const { return m_quickFactor; }
     void setPaperZoom(bool on, int screenPpi) { m_paperZoom = on; m_screenPpi = std::clamp(screenPpi, 30, 600); }
     bool paperZoom() const { return m_paperZoom; }
+    bool shiftTrace() const { return m_shiftTrace; }
+    bool traceManipulator() const { return m_traceManipulator; }
+    int traceLayer() const { return m_traceLayer; }
+    int traceDrawing() const { return m_traceDrawing; }
     double viewRotation() const { return m_viewRotation; }
     bool viewMirrored() const { return m_mirror; }
     int onionPrevious() const { return m_onionPrev; }

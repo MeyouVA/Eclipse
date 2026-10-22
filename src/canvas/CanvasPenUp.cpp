@@ -315,6 +315,10 @@ void Canvas::penUp()
         zoomToolUp();
         return;
     }
+    if (drag == DragTrace) {
+        traceUp();
+        return;
+    }
     if (penUpTool(drag))
         return;
     if (drag == DragDraw) {

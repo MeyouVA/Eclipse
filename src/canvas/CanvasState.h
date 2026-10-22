@@ -159,6 +159,14 @@ protected:
     QPointF m_zoomFrom;
     double m_zoomStart = 1.0;
     bool m_zoomMoved = false, m_zoomOutClick = false;
+    // Shift and Trace: on or off, the box round the drawing being moved, which drawing that is, and the drag.
+    bool m_shiftTrace = false;
+    bool m_traceManipulator = true;
+    int m_traceLayer = -1, m_traceDrawing = -1;
+    QSet<QPair<int, int>> m_traceHidden;
+    QTransform m_traceStart, m_traceLive;
+    QPointF m_traceFrom, m_traceCentre;
+    int m_traceWay = 0;     // 0 move, 1 turn (Ctrl), 2 scale (Alt)
     bool m_snapContour = false;
     bool m_showGuides = true;
     int m_activeGuide = -1;

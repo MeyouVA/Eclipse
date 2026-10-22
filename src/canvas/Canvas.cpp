@@ -204,7 +204,7 @@ void Canvas::updateCursor()
         setCursor(Qt::ArrowCursor);
     else if (isPaintTool(m_tool) || m_tool == Dropper || m_tool == Ink)
         setCursor(toolCursor());
-    else if (m_tool == Zoom || m_tool == RotateView)
+    else if (m_tool == Zoom || m_tool == RotateView || m_tool == ShiftTrace)
         setCursor(Qt::SizeAllCursor);
     else if (m_tool == Text)
         setCursor(Qt::IBeamCursor);
