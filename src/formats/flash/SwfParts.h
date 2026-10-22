@@ -190,6 +190,10 @@ struct Placed {
     int add[4] = {0, 0, 0, 0};
     int ratio = 0;          // a video: the frame of it shown; a morph shape: how far it is from its start (of 65535)
     int since = 0;          // the frame of its timeline it was put there on (a movie clip plays from there)
+    QString name;           // its instance name
+    int blend = 0;          // Flash's blend mode (0 and 1: normal)
+    QVector<Flash::Filter> filters;
+    bool hidden = false;    // put there, but not seen
 };
 
 using DisplayList = QMap<int, Placed>;
@@ -239,6 +243,9 @@ struct ColourFx {
         return k;
     }
 };
+
+// A list of filters (of PlaceObject3), from `q` on; those Eclipse has none like (bevels, colour matrices ...) passed over.
+QVector<Flash::Filter> filters(QByteArray const& b, int& q);
 
 // A control tag of a timeline (the main one, or a movie clip's) applied to its display list, on frame `frame` of it.
 void control(int code, QByteArray const& body, DisplayList& list, int frame);

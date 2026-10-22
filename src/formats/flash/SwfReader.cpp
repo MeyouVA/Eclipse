@@ -223,6 +223,8 @@ bool Reader::readTags(int p)
             videoFrame(body);
         } else if (code == 12 || code == 59 || code == 82) {
             ++out.scripts;
+        } else if (code == 9) {
+            out.background = QColor(u8(body, 0), u8(body, 1), u8(body, 2));
         } else if (code == 1) {
             mainFrames.push_back(list);
         } else {
@@ -238,6 +240,7 @@ bool Reader::readTags(int p)
     if (!spriteSounds.isEmpty())
         for (int f = 0; f < mainFrames.size(); ++f)
             clipSounds(mainFrames[f], f, f, 0);
+    out.frameCount = int(mainFrames.size());
     return true;
 }
 

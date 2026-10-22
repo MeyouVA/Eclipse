@@ -376,6 +376,58 @@ bool soundFile(int format, QByteArray const& data, SwfImport::Sound& out)
     return false;
 }
 
+QVector<Flash::Filter> filters(QByteArray const& b, int& q)
+{
+    QVector<Flash::Filter> out;
+    auto fixed = [&]() {
+        double const v = qint32(u32(b, q)) / 65536.0;
+        q += 4;
+        return v;
+    };
+    auto colour = [&]() {
+        QColor const c(u8(b, q), u8(b, q + 1), u8(b, q + 2), u8(b, q + 3));
+        q += 4;
+        return c;
+    };
+    int const count = u8(b, q++);
+    for (int i = 0; i < count && q < b.size(); ++i) {
+        int const id = u8(b, q++);
+        Flash::Filter f;
+        if (id == 0 || id == 2) {
+            // A drop shadow or a glow: its colour, how soft it is, (a shadow) where it falls, how strong.
+            f.kind = id == 0 ? QStringLiteral("DropShadowFilter") : QStringLiteral("GlowFilter");
+            f.colour = colour();
+            f.blurX = fixed();
+            f.blurY = fixed();
+            if (id == 0) {
+                f.angle = fixed() * 180.0 / 3.14159265358979323846;
+                f.distance = fixed();
+            }
+            f.strength = qint16(u16(b, q)) / 256.0;
+            q += 2;
+            f.inner = u8(b, q++) & 0x80;
+            out.push_back(f);
+        } else if (id == 1) {
+            f.kind = QStringLiteral("BlurFilter");
+            f.blurX = fixed();
+            f.blurY = fixed();
+            ++q;
+            out.push_back(f);
+        } else if (id == 3) {
+            q += 27;    // a bevel (not one of Eclipse's)
+        } else if (id == 4 || id == 7) {
+            q += 1 + 5 * u8(b, q) + 19;     // a gradient glow or bevel
+        } else if (id == 5) {
+            q += 2 + 8 + 4 * u8(b, q) * u8(b, q + 1) + 5;     // a convolution
+        } else if (id == 6) {
+            q += 80;    // a colour matrix
+        } else {
+            q = int(b.size());  // not known: what follows cannot be found
+        }
+    }
+    return out;
+}
+
 void control(int code, QByteArray const& body, DisplayList& list, int frame)
 {
     if (code == 26 || code == 70) {
@@ -428,9 +480,19 @@ void control(int code, QByteArray const& body, DisplayList& list, int frame)
             q += 2;
         }
         if (flags & 0x20)
-            while (q < body.size() && body[q++] != 0) {}       // a name
-        if (flags & 0x40)
+            at.name = text(body, q);
+        if (flags & 0x40) {
             at.clipDepth = u16(body, q);
+            q += 2;
+        }
+        if (flags2 & 0x01)
+            at.filters = filters(body, q);
+        if (flags2 & 0x02)
+            at.blend = u8(body, q++);
+        if (flags2 & 0x04)
+            ++q;        // kept as a bitmap or not
+        if (flags2 & 0x20)
+            at.hidden = u8(body, q++) == 0;
     } else if (code == 4) {
         Placed placed;
         placed.character = u16(body, 0);

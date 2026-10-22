@@ -394,6 +394,28 @@ QTransform Layer::matrix(Pose const& pose, QPointF pivot)
     return m;
 }
 
+bool Layer::poseOf(QTransform const& m, Pose& pose)
+{
+    // matrix() is a turn, then a lean, then a scale: the first column is the scale along x, turned.
+    double const sx = std::hypot(m.m11(), m.m12());
+    if (sx < 1e-9)
+        return false;
+    double const turn = std::atan2(m.m12(), m.m11());
+    double const c = std::cos(turn), s = std::sin(turn);
+    double const sy = m.m22() * c - m.m21() * s;
+    if (std::abs(sy) < 1e-9)
+        return false;
+    double const lean = (m.m21() * c + m.m22() * s) / sy;
+    double const toDegrees = 180.0 / 3.14159265358979323846;
+    pose.x = m.dx();
+    pose.y = m.dy();
+    pose.rotation = turn * toDegrees;
+    pose.scaleX = sx;
+    pose.scaleY = sy;
+    pose.skew = -std::atan(lean) * toDegrees;
+    return true;
+}
+
 QTransform Layer::quadWarp(QSizeF size, QVector<QPointF> const& quad)
 {
     QTransform warp;

@@ -22,21 +22,14 @@
 
 #include <functional>
 
+#include "formats/flash/FlashFilter.h"
+
 struct Drawing;
 struct Swatch;
 
 namespace FlaImport {
 
-// A filter of Flash's on a symbol: a glow, a blur or a drop shadow (as Flash gives them: sizes in pixels).
-struct Filter {
-    QString kind;               // "GlowFilter", "BlurFilter", "DropShadowFilter"
-    double blurX = 5.0, blurY = 5.0;
-    QColor colour = Qt::black;
-    double strength = 1.0;      // (1: as strong as it comes)
-    double distance = 0.0;      // a shadow: how far it falls, at so many degrees
-    double angle = 45.0;
-    bool inner = false;
-};
+using Filter = Flash::Filter;
 
 struct Layer {
     QString name;

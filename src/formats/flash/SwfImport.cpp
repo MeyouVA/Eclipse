@@ -56,7 +56,7 @@ QByteArray wav(QByteArray const& samples, int rate, int bits, int channels)
     return out;
 }
 
-bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& mediaFolder, Progress const& progress)
+bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& mediaFolder, Progress const& progress, Layout layout)
 {
     auto fail = [&](QString const& why) {
         if (error)
@@ -90,18 +90,23 @@ bool read(QByteArray const& bytes, Movie& out, QString* error, QString const& me
     double const xmin = head.sb(n), xmax = head.sb(n), ymin = head.sb(n), ymax = head.sb(n);
     head.align();
     int p = head.byte();
+    out = Movie();
     out.size = QSize(std::max(1, int(std::lround((xmax - xmin) / 20.0))), std::max(1, int(std::lround((ymax - ymin) / 20.0))));
     out.fps = std::max(1.0, u16(data, p) / 256.0);
     p += 4;
-    out = Movie{out.size, out.fps, {}, {}, {}, {}, 0, 0, QString(), 0};
 
     swf::Reader reader(data, out, mediaFolder, progress);
+    QTransform const toPixels = QTransform::fromTranslate(-xmin, -ymin) * QTransform::fromScale(1.0 / 20.0, 1.0 / 20.0);
     if (!reader.readTags(p) || !reader.decodeVideo()
-        || !reader.drawFrames(QTransform::fromTranslate(-xmin, -ymin) * QTransform::fromScale(1.0 / 20.0, 1.0 / 20.0)))
+        || !(layout == Layout::Tracks ? reader.drawTracks(toPixels) : reader.drawFrames(toPixels)))
         return fail(reader.why);
     bool any = false;
+    auto drawn = [&](Drawing const& d) { any = any || !d.fills.isEmpty() || !d.strokes.isEmpty() || !d.pictures.isEmpty(); };
     for (Drawing const& d : out.frames)
-        any = any || !d.fills.isEmpty() || !d.strokes.isEmpty() || !d.pictures.isEmpty();
+        drawn(d);
+    for (Track const& t : std::as_const(out.tracks))
+        for (Drawing const& d : t.drawings)
+            drawn(d);
     any = any || !out.sounds.isEmpty();     // (a movie of sound alone is read too)
     if (!any)
         return fail(tr("The movie has nothing on its main timeline that Eclipse can read (only code)."));

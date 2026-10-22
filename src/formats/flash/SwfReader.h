@@ -21,6 +21,7 @@ public:
     using Movie = SwfImport::Movie;
     using Sound = SwfImport::Sound;
     using Label = SwfImport::Label;
+    using Track = SwfImport::Track;
 
     Reader(QByteArray const& data, Movie& out, QString const& mediaFolder, SwfImport::Progress const& progress)
         : data(data), out(out), mediaFolder(mediaFolder), progress(progress)
@@ -34,6 +35,8 @@ public:
     bool decodeVideo();
     // 3. Each frame drawn, from the movie's coordinates (`toPixels`) into pixels.
     bool drawFrames(QTransform const& toPixels);
+    // 3. Or what each depth of the main timeline shows: each thing drawn once, in pixels about its own registration point.
+    bool drawTracks(QTransform const& toPixels);
     // Why it stopped, when it did.
     QString why;
 
@@ -69,6 +72,8 @@ private:
     // What a character looks like where it is placed (in the coordinates of the timeline it is on), on frame `frame` of it.
     void drawPlaced(Placed const& placed, int frame, Drawing& d, int& order, int depth);
     void drawList(DisplayList const& shown, int frame, Drawing& d, int& order, int depth);
+    // The name a track goes by: what is put there first (its instance name, or its class), or its depth.
+    QString trackName(Placed const& placed, int depth) const;
 
     QByteArray const& data;
     Movie& out;

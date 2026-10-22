@@ -45,6 +45,7 @@
 #include "ui/io/ImportExportPrivate.h"
 #include "formats/flash/SwfImport.h"
 #include "formats/flash/FlaImport.h"
+#include "actions/theme/AppSettings.h"
 
 class ImportProgress {
 public:
@@ -99,7 +100,7 @@ static QString saveImportedMedia(QString const& scenePath, QString const& source
     return file.fileName();
 }
 
-int MainWindow::importSwf(QString const& path, QString* error)
+int MainWindow::importSwf(QString const& path, QString* error, bool asLayers, int* layers)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -110,34 +111,49 @@ int MainWindow::importSwf(QString const& path, QString* error)
     SwfImport::Movie movie;
     {
         ImportProgress shown(this, tr("Reading %1...").arg(QFileInfo(path).fileName()));
-        if (!SwfImport::read(file.readAll(), movie, error, importedMediaFolder(m_path, path), shown.callback()))
+        if (!SwfImport::read(file.readAll(), movie, error, importedMediaFolder(m_path, path), shown.callback(),
+                             asLayers ? SwfImport::Layout::Tracks : SwfImport::Layout::Frames))
             return -1;
     }
+    if (layers)
+        *layers = int(movie.tracks.size());
     // Made to fit the frame of the scene, in the middle of it.
     Scene const& scene = m_document->scene();
     double const scale = std::min(double(scene.width) / movie.size.width(), double(scene.height) / movie.size.height());
     QTransform const place = QTransform::fromScale(scale, scale)
                              * QTransform::fromTranslate((scene.width - movie.size.width() * scale) / 2.0, (scene.height - movie.size.height() * scale) / 2.0);
     m_document->beginMacro(tr("Import SWF"));
-    // Its gradients as swatches of the palette.
-    QVector<int> swatches;
-    for (Swatch const& gradient : std::as_const(movie.gradients)) {
-        int const id = m_document->addSwatch(gradient.name, gradient.color);
-        m_document->setSwatchGradient(id, gradient.kind, gradient.stops);
-        swatches.push_back(id);
-    }
-    QVector<Drawing> drawings = movie.frames;
-    for (Drawing& d : drawings) {
-        for (Fill& fill : d.fills) {
-            fill.transform(place);
-            fill.swatch = fill.swatch >= 0 && fill.swatch < swatches.size() ? swatches[fill.swatch] : -1;
+    int at = -1;
+    if (asLayers) {
+        // A template made of it: a peg over it all, a drawing layer on a peg for each depth; the movie's colour behind everything.
+        Scene const piece = SwfImport::rig(movie, QFileInfo(path).completeBaseName(), QSize(scene.width, scene.height));
+        int const first = m_document->insertTemplate(piece, 0);
+        if (first >= 0) {
+            at = int(m_document->scene().layers.size()) - 1;
+            if (m_document->scene().layers[first].kind == Layer::ColourCard && first > 0)
+                m_document->moveLayerBeside(first, 0, true);
         }
-        for (Stroke& stroke : d.strokes)
-            stroke.transform(place);        // (which scales the line's thickness with it)
-        for (Picture& picture : d.pictures)
-            picture.transform(place);
+    } else {
+        // Its gradients as swatches of the palette.
+        QVector<int> swatches;
+        for (Swatch const& gradient : std::as_const(movie.gradients)) {
+            int const id = m_document->addSwatch(gradient.name, gradient.color);
+            m_document->setSwatchGradient(id, gradient.kind, gradient.stops);
+            swatches.push_back(id);
+        }
+        QVector<Drawing> drawings = movie.frames;
+        for (Drawing& d : drawings) {
+            for (Fill& fill : d.fills) {
+                fill.transform(place);
+                fill.swatch = fill.swatch >= 0 && fill.swatch < swatches.size() ? swatches[fill.swatch] : -1;
+            }
+            for (Stroke& stroke : d.strokes)
+                stroke.transform(place);        // (which scales the line's thickness with it)
+            for (Picture& picture : d.pictures)
+                picture.transform(place);
+        }
+        at = m_document->importDrawings(-1, QFileInfo(path).completeBaseName(), 0, drawings, 1);
     }
-    int const at = m_document->importDrawings(-1, QFileInfo(path).completeBaseName(), 0, drawings, 1);
     int const id = at < 0 ? 0 : m_document->scene().layers[at].id;
     if (at >= 0) {
         // Its frame labels as markers of the scene, its sounds on sound layers of their own.
@@ -240,36 +256,7 @@ int MainWindow::importFla(QString const& path, QString* error)
                 layer.cells[f] = cells[f];
             layer.visible = shown;
             layer.locked = locked;
-            static QHash<QString, int> const blends{{QStringLiteral("add"), Layer::BlendAdd},
-                                                    {QStringLiteral("multiply"), Layer::BlendMultiply},
-                                                    {QStringLiteral("screen"), Layer::BlendScreen},
-                                                    {QStringLiteral("overlay"), Layer::BlendOverlay},
-                                                    {QStringLiteral("darken"), Layer::BlendDarken},
-                                                    {QStringLiteral("lighten"), Layer::BlendLighten},
-                                                    {QStringLiteral("hardlight"), Layer::BlendHardLight},
-                                                    {QStringLiteral("difference"), Layer::BlendDifference}};
-            if (!blend.isEmpty())
-                layer.blend = blends.value(blend, Layer::BlendNormal);
-            for (FlaImport::Filter const& f : filters) {
-                double const soft = (f.blurX + f.blurY) / 4.0 * scale;
-                if (f.kind == QLatin1String("BlurFilter")) {
-                    Effect blur = Effect::made(Effect::Blur);
-                    blur.amount = soft;
-                    layer.effects.push_back(blur);
-                } else if (f.kind == QLatin1String("GlowFilter") && !f.inner) {
-                    Effect glow = Effect::made(Effect::Glow);
-                    glow.amount = soft;
-                    glow.color = f.colour;
-                    layer.effects.push_back(glow);
-                } else if (f.kind == QLatin1String("DropShadowFilter") && !f.inner) {
-                    Effect shadow = Effect::made(Effect::Shadow);
-                    shadow.amount = soft;
-                    shadow.color = f.colour;
-                    double const a = f.angle * 3.14159265358979323846 / 180.0;
-                    shadow.offset = QPointF(std::cos(a), std::sin(a)) * f.distance * scale;
-                    layer.effects.push_back(shadow);
-                }
-            }
+            Flash::applyLook(layer, blend, filters, scale);
             if (colour.isValid())
                 layer.trackColor = colour;
             for (Drawing& d : layer.drawings)
@@ -368,15 +355,38 @@ void MainWindow::onActionImportSwf()
     QString const path = QFileDialog::getOpenFileName(this, tr("Import SWF"), QString(), tr("Flash Movie (*.swf)"));
     if (path.isEmpty())
         return;
+    // How to lay it out: a layer on a peg for each depth (to animate further), or the frames as they look.
+    QDialog ask(this);
+    ask.setWindowTitle(tr("Import SWF"));
+    auto* column = new QVBoxLayout(&ask);
+    auto* rigged = new QRadioButton(tr("A layer for each depth of the movie, moved by a peg of its own"), &ask);
+    auto* flat = new QRadioButton(tr("One layer, a drawing for each frame"), &ask);
+    rigged->setObjectName(QStringLiteral("SwfAsLayers"));
+    flat->setObjectName(QStringLiteral("SwfAsFrames"));
+    bool const wasLayers = settings().value(QStringLiteral("import/swfAsLayers"), true).toBool();
+    (wasLayers ? rigged : flat)->setChecked(true);
+    column->addWidget(rigged);
+    column->addWidget(flat);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &ask);
+    connect(buttons, &QDialogButtonBox::accepted, &ask, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &ask, &QDialog::reject);
+    column->addWidget(buttons);
+    if (ask.exec() != QDialog::Accepted)
+        return;
+    bool const asLayers = rigged->isChecked();
+    settings().setValue(QStringLiteral("import/swfAsLayers"), asLayers);
     QString error;
+    int tracks = 0;
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    int const at = importSwf(path, &error);
+    int const at = importSwf(path, &error, asLayers, &tracks);
     QApplication::restoreOverrideCursor();
     if (at < 0) {
         QMessageBox::warning(this, tr("Import SWF"), error);
         return;
     }
-    statusBar()->showMessage(tr("%1: a drawing for each frame of the movie, on the layer %2.").arg(QFileInfo(path).fileName(), m_document->scene().layers[at].name)
+    QString const done = asLayers ? tr("%1: %n layer(s), each on a peg of its own, under the peg %2.", nullptr, tracks)
+                                  : tr("%1: a drawing for each frame of the movie, on the layer %2.");
+    statusBar()->showMessage(done.arg(QFileInfo(path).fileName(), m_document->scene().layers[at].name)
                                  + (error.isEmpty() ? QString() : QLatin1Char(' ') + error),
                              10000);
 }

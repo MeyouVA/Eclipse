@@ -123,6 +123,14 @@ int Scene::pasteOnto(Scene const& piece, int frame, bool drawings, bool keys)
         if (found.value() == kNoSwatch) {
             Swatch const* const theirs = piece.findSwatch(swatch);
             found.value() = addSwatch(theirs ? theirs->name : QStringLiteral("Colour"), theirs ? theirs->color : colour, 0);
+            // A gradient or a texture comes as it is.
+            if (theirs)
+                for (Swatch& mine : palette)
+                    if (mine.id == found.value()) {
+                        mine.kind = theirs->kind;
+                        mine.stops = theirs->stops;
+                        mine.texture = theirs->texture;
+                    }
         }
         swatch = found.value();
     };
@@ -211,6 +219,14 @@ int Scene::insert(Scene const& piece, int frame)
         if (found.value() == kNoSwatch) {
             Swatch const* const theirs = piece.findSwatch(swatch);
             found.value() = addSwatch(theirs ? theirs->name : QStringLiteral("Colour"), theirs ? theirs->color : colour, 0);
+            // A gradient or a texture comes as it is.
+            if (theirs)
+                for (Swatch& mine : palette)
+                    if (mine.id == found.value()) {
+                        mine.kind = theirs->kind;
+                        mine.stops = theirs->stops;
+                        mine.texture = theirs->texture;
+                    }
         }
         swatch = found.value();
     };
@@ -290,12 +306,15 @@ int Scene::insert(Scene const& piece, int frame)
         if (firstIndex < 0)
             firstIndex = int(layers.size()) - 1;
     }
-    // What was attached to what, among them.
+    // What was attached to what, among them; and the mattes their effects take from among them.
     for (int index : std::as_const(added)) {
         Layer& layer = layers[index];
         layer.parent = idOf.value(layer.parent, 0);
         if (layer.parent == 0)
             layer.parentBone = -1;
+        for (Effect& effect : layer.effects)
+            if (idOf.contains(effect.matte))
+                effect.matte = idOf.value(effect.matte);
     }
     if (!symbolOf.isEmpty())
         refreshSymbolInstances();

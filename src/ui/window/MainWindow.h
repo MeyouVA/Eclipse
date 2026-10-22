@@ -347,10 +347,10 @@ public slots:
     void onActionTimelineViewMode(QString const& mode);
     // File > Export > SWF: the scene as a Flash movie of vector shapes.
     void onActionExportSwf();
-    // File > Import > SWF: the shapes of a Flash movie's frames, as the drawings of a new layer (one for each frame).
+    // File > Import > SWF: a Flash movie, a layer on a peg for each depth of it (or its frames as the drawings of one layer).
     void onActionImportSwf();
-    // The same, from a file; the layer made, or -1 (and why).
-    int importSwf(QString const& path, QString* error = nullptr);
+    // The same, from a file; the layer made (the peg over them all, `asLayers`), or -1 (and why).
+    int importSwf(QString const& path, QString* error = nullptr, bool asLayers = false, int* layers = nullptr);
     // File > Import > FLA: each layer of a Flash document's main timeline as a layer, frame by frame.
     void onActionImportFla();
     // The same, from a file; how many layers were made, or -1 (and why).

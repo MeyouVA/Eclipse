@@ -96,6 +96,8 @@ struct Layer {
     int nextKeyFrame(int frame) const;
     void setKey(int frame, Pose const& pose);
     static QTransform matrix(Pose const& pose, QPointF pivot);
+    // The move, turn, scale and lean `matrix` makes `m` of about the pivot (0, 0); false when `m` flattens all onto a line.
+    static bool poseOf(QTransform const& m, Pose& pose);
     // From layer coordinates to those of the parent.
     QTransform localTransform(int frame) const { return matrixFor(poseAt(frame)); }
     QTransform matrixFor(Pose const& pose) const;

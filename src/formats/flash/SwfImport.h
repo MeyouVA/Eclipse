@@ -11,14 +11,19 @@
 #include "EclipseExport.h"
 
 #include <QByteArray>
+#include <QColor>
 #include <QSize>
 #include <QString>
+#include <QTransform>
 #include <QVector>
 
 #include <functional>
 
+#include "formats/flash/FlashFilter.h"
+
 struct Drawing;
 struct Swatch;
+class Scene;
 
 namespace SwfImport {
 
@@ -34,10 +39,32 @@ struct Sound {
     int frame = 0;              // the frame it starts on
 };
 
+// What one depth of the main timeline shows (read as Tracks): each thing put there drawn once, and where it is on each frame.
+struct Track {
+    QString name;               // the instance name, or the name ActionScript knows what is put there by, or the depth
+    int depth = 0;
+    QVector<Drawing> drawings;  // about the registration point of what is drawn, as big as it first shows
+    QVector<int> cells;         // for each frame: which of them, or -1
+    QVector<QTransform> places; // for each frame: where it is put (in pixels, from the top left corner of the movie)
+    QVector<double> opacity;    // for each frame, 0..1 (a colour effect that only fades: the rest are drawn in)
+    bool mask = false;          // a mask: not seen itself, it cuts the tracks of `maskedBy`
+    QVector<int> maskedBy;      // the tracks (places in Movie::tracks) of the masks over this one
+    QString blend;              // as Flash names it ("multiply", "screen", ...), or empty
+    QVector<Flash::Filter> filters;
+};
+
+enum class Layout {
+    Frames,     // Movie::frames: the whole picture, a drawing a frame
+    Tracks,     // Movie::tracks: a track a depth, to be animated on pegs
+};
+
 struct Movie {
     QSize size;                 // the frame, in pixels
     double fps = 24.0;
-    QVector<Drawing> frames;    // one drawing for each frame of the main timeline
+    QColor background;          // (invalid: the movie gives none)
+    int frameCount = 0;
+    QVector<Drawing> frames;    // Layout::Frames: one drawing for each frame of the main timeline
+    QVector<Track> tracks;      // Layout::Tracks: from the back to the front
     // The gradients the drawings are painted with: a fill whose swatch is not -1 is painted with gradients[swatch].
     QVector<Swatch> gradients;
     QVector<Label> labels;
@@ -53,6 +80,9 @@ ECLIPSE_FORMATS_API QByteArray wav(QByteArray const& samples, int rate, int bits
 
 using Progress = std::function<bool(qint64 done, qint64 all)>;
 ECLIPSE_FORMATS_API bool read(QByteArray const& bytes, Movie& out, QString* error = nullptr, QString const& mediaFolder = QString(),
-                         Progress const& progress = {});
+                         Progress const& progress = {}, Layout layout = Layout::Frames);
+
+// A movie read in tracks as a template to put in a scene of that size: a peg fitting it into the frame, a peg a track.
+ECLIPSE_FORMATS_API Scene rig(Movie const& movie, QString const& name, QSize frame);
 
 }
