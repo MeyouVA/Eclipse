@@ -119,11 +119,14 @@ bool read(QByteArray const& bytes, Document& out, QString* error, QString const&
                     sounds.insert(sound.name, sound);
             }
         }
-    for (auto it = files.cbegin(); it != files.cend(); ++it) {
-        if (!it.key().startsWith(QLatin1String("LIBRARY/")) || !it.key().endsWith(QLatin1String(".xml")))
+    // (In the order of their file names: two of one name, the same one kept every time.)
+    QStringList names = files.keys();
+    names.sort();
+    for (QString const& file : std::as_const(names)) {
+        if (!file.startsWith(QLatin1String("LIBRARY/")) || !file.endsWith(QLatin1String(".xml")))
             continue;
         Node symbol;
-        if (parse(it.value(), symbol) && symbol.name == QLatin1String("DOMSymbolItem"))
+        if (parse(files.value(file), symbol) && symbol.name == QLatin1String("DOMSymbolItem"))
             reader.symbols.insert(symbol.attr(QStringLiteral("name")), symbol);
     }
     Node const* timelines = document.child(QStringLiteral("timelines"));

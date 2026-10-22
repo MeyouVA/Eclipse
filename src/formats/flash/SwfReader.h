@@ -3,6 +3,7 @@
 
 #include <QHash>
 #include <QImage>
+#include <QMap>
 #include <QPair>
 #include <QStringList>
 #include <QTemporaryDir>
@@ -74,7 +75,7 @@ private:
     QString mediaFolder;
     SwfImport::Progress progress;
 
-    QHash<int, Stream> streams;
+    QMap<int, Stream> streams;      // (by id, in order: video decoded in the same order every time)
     QHash<int, Shape> shapes;
     QHash<int, MorphShape> morphs;
     QHash<int, Font> fonts;

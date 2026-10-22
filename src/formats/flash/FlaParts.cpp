@@ -388,7 +388,7 @@ QVector<Stroke> styled(Stroke stroke, LineStyle const& st)
 Shape readShape(Node const& shape, std::function<Paint(Node const&)> const& paintOf)
 {
     Shape out;
-    QHash<int, Paint> fills;
+    QMap<int, Paint> fills;     // (by index, in order: the areas come out in the same order every time)
     QHash<int, LineStyle> strokes;
     if (Node const* f = shape.child(QStringLiteral("fills")))
         for (Node const& style : f->children)
