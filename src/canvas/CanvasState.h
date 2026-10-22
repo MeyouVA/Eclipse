@@ -269,6 +269,10 @@ protected:
     QVector<int> m_ikChain;     // the bone taken hold of, then the bones it hangs on, nearest first
     bool m_ikBegun = false;     // whether anything has been turned yet in this drag
     QPointer<Canvas> m_leader;     // the view whose tool settings this one follows (none: its own)
+    // The bucket on pixels: how near a colour fills (0-255 a channel), how far the fill reaches under the edge, and what it looks at.
+    int m_bitmapTolerance = 40;
+    int m_bitmapOverlap = 0;
+    int m_bitmapSource = 0;    // 0: the art layer painted; 1: every art layer of the drawing
     bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept
     int m_stencils[3] = {StencilUniform, StencilUniform, StencilUniform};     // the Pencil's, the Line tool's, the Polyline's
     int m_retouchNow = 0;      // the mode of this rub (Alt turns it round)

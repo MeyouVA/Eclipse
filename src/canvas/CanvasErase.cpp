@@ -1,4 +1,4 @@
-// Eclipse - the Camera view: painting into bitmaps, bitmap fill, erasing art and pictures, lines added to art, the eraser's cut.
+// Eclipse - the Camera view: painting into bitmaps, erasing art and pictures, lines added to art, the eraser's cut.
 #include "canvas/Canvas.h"
 
 #include <QPainter>
@@ -118,85 +118,6 @@ int Canvas::liftedPieceAt(QPointF p) const
         }
     }
     return -1;
-}
-
-bool Canvas::fillBitmapAt(QPointF p, bool clear)
-{
-    QColor const colour = clear ? QColor(Qt::transparent) : m_document->scene().resolve(m_swatch, Qt::black);
-    bool changed = false;
-    paintIntoBitmap([&](QPainter& painter) {
-        QImage* const target = dynamic_cast<QImage*>(painter.device());
-        if (!target)
-            return;
-        QPoint const seed = painter.transform().map(p).toPoint();
-        if (!target->rect().contains(seed)) {
-            m_bitmapUnchanged = true;
-            return;
-        }
-        QImage const before = target->copy();
-        int const w = before.width(), h = before.height();
-        QRgb const from = before.pixel(seed);
-        QRgb const to = colour.rgba();
-        if ((!clear && qUnpremultiply(from) == to) || (clear && qAlpha(from) == 0)) {
-            m_bitmapUnchanged = true;       // nothing to do: no step to undo
-            return;
-        }
-        // Near enough: no channel (alpha among them) more than this far from the pixel clicked.
-        auto near = [from](QRgb c) {
-            return std::abs(qRed(c) - qRed(from)) <= 40 && std::abs(qGreen(c) - qGreen(from)) <= 40 && std::abs(qBlue(c) - qBlue(from)) <= 40
-                   && std::abs(qAlpha(c) - qAlpha(from)) <= 40;
-        };
-        QImage mask(w, h, QImage::Format_ARGB32_Premultiplied);
-        mask.fill(Qt::transparent);
-        QVector<bool> seen(qsizetype(w) * h, false);
-        QVector<QPoint> todo = {seed};
-        seen[qsizetype(seed.y()) * w + seed.x()] = true;
-        QRgb const paint = clear ? qRgba(0, 0, 0, 255) : qPremultiply(to);     // (to clear: the mask marks where)
-        while (!todo.isEmpty()) {
-            QPoint const at = todo.takeLast();
-            mask.setPixel(at, paint);
-            changed = true;
-            for (QPoint const step : {QPoint(1, 0), QPoint(-1, 0), QPoint(0, 1), QPoint(0, -1)}) {
-                QPoint const next = at + step;
-                if (next.x() < 0 || next.y() < 0 || next.x() >= w || next.y() >= h)
-                    continue;
-                qsizetype const index = qsizetype(next.y()) * w + next.x();
-                if (seen[index] || !near(before.pixel(next)))
-                    continue;
-                seen[index] = true;
-                todo.push_back(next);
-            }
-        }
-        // The region takes the colour (cleared: is cut out) - pixel for pixel, no smoothing at its edge.
-        painter.resetTransform();
-        painter.setRenderHint(QPainter::Antialiasing, false);
-        painter.setCompositionMode(clear ? QPainter::CompositionMode_DestinationOut : QPainter::CompositionMode_Source);
-        if (clear) {
-            QImage cut = mask;
-            QPainter c(&cut);
-            c.setCompositionMode(QPainter::CompositionMode_SourceIn);
-            c.fillRect(cut.rect(), Qt::black);
-            c.end();
-            painter.drawImage(0, 0, cut);
-        } else {
-            // Only where the mask is: the rest of the picture stays as it was.
-            QImage merged = before;
-            QPainter m(&merged);
-            m.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-            QImage hole = mask;
-            {
-                QPainter hp(&hole);
-                hp.setCompositionMode(QPainter::CompositionMode_SourceIn);
-                hp.fillRect(hole.rect(), Qt::black);
-            }
-            m.drawImage(0, 0, hole);
-            m.setCompositionMode(QPainter::CompositionMode_SourceOver);
-            m.drawImage(0, 0, mask);
-            m.end();
-            painter.drawImage(0, 0, merged);
-        }
-    }, clear ? tr("Unpaint") : tr("Paint"));
-    return changed;
 }
 
 bool Canvas::erasePictures(Drawing& art, QVector<QPolygonF> const& rubbed) const

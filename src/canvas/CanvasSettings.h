@@ -137,6 +137,12 @@ public:
     bool hasStoredGradient() const { return m_hasStoredGradient; }
     // The Dropper: unseen lines and areas passed over; not sticky, the tool before it comes back once a colour is taken.
     void setDropperNoTransparency(bool on) { m_dropperNoTransparency = on; }
+    void setBitmapTolerance(int t) { m_bitmapTolerance = std::clamp(t, 0, 255); }
+    void setBitmapOverlap(int pixels) { m_bitmapOverlap = std::clamp(pixels, 0, 16); }
+    void setBitmapSource(int source) { m_bitmapSource = std::clamp(source, 0, 1); }
+    int bitmapTolerance() const { return m_bitmapTolerance; }
+    int bitmapOverlap() const { return m_bitmapOverlap; }
+    int bitmapSource() const { return m_bitmapSource; }
     bool dropperNoTransparency() const { return m_dropperNoTransparency; }
     void setStickyDropper(bool on) { m_stickyDropper = on; }
     bool stickyDropper() const { return m_stickyDropper; }

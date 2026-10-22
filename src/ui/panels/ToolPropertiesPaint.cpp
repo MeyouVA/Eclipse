@@ -4,6 +4,8 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QLabel>
+#include <QSpinBox>
 
 #include "actions/theme/AppSettings.h"
 
@@ -32,6 +34,45 @@ void ToolProperties::addPaintRows()
     box(m_paintRows, "PaintStoredGradient", tr("Use Stored Colour Gradient"),
         tr("A gradient colour is laid as the gradient last placed with Edit Gradient, so every new zone has the same gradient position."),
         QStringLiteral("paintStoredGradient"), false, [this](bool on) { m_canvas->setUseStoredGradient(on); });
+
+    // The bucket on bitmap art.
+    QLabel* const heading = new QLabel(QStringLiteral("<b>%1</b>").arg(tr("Bitmap Options")), this);
+    m_form->addRow(heading);
+    m_paintRows.push_back(heading);
+    QComboBox* const source = new QComboBox(this);
+    source->setObjectName(QStringLiteral("BitmapFillSource"));
+    source->addItems({tr("This art layer"), tr("Every art layer")});
+    source->setToolTip(tr("What the bucket looks at to find where to fill on bitmap art: the art layer painted, or every art layer of the drawing."));
+    source->setCurrentIndex(std::clamp(settings().value(QStringLiteral("tools/bitmapSource"), 0).toInt(), 0, 1));
+    m_canvas->setBitmapSource(source->currentIndex());
+    connect(source, &QComboBox::currentIndexChanged, this, [this](int at) {
+        m_canvas->setBitmapSource(at);
+        settings().setValue(QStringLiteral("tools/bitmapSource"), at);
+    });
+    auto spin = [this](char const* name, QString const& label, QString const& tip, QString const& key, int low, int high, int usual, std::function<void(int)> apply) {
+        QSpinBox* const box = new QSpinBox(this);
+        box->setObjectName(QLatin1String(name));
+        box->setRange(low, high);
+        box->setToolTip(tip);
+        box->setValue(std::clamp(settings().value(QStringLiteral("tools/") + key, usual).toInt(), low, high));
+        apply(box->value());
+        connect(box, &QSpinBox::valueChanged, this, [apply, key](int now) {
+            apply(now);
+            settings().setValue(QStringLiteral("tools/") + key, now);
+        });
+        QLabel* const text = new QLabel(label, this);
+        m_form->addRow(text, box);
+        m_paintRows.push_back(text);
+        m_paintRows.push_back(box);
+    };
+    QLabel* const sourceText = new QLabel(tr("Source"), this);
+    m_form->addRow(sourceText, source);
+    m_paintRows.push_back(sourceText);
+    m_paintRows.push_back(source);
+    spin("BitmapTolerance", tr("Colour Tolerance"), tr("How far a pixel's colour may be from the one clicked and still be filled (0: the same colour only)."),
+         QStringLiteral("bitmapTolerance"), 0, 255, 40, [this](int t) { m_canvas->setBitmapTolerance(t); });
+    spin("BitmapOverlap", tr("Maximum Overlap"), tr("How many pixels the fill reaches under the edge of what bounds it, so no pale rim is left."),
+         QStringLiteral("bitmapOverlap"), 0, 16, 0, [this](int pixels) { m_canvas->setBitmapOverlap(pixels); });
 
     box(m_inkRows, "InkShowInkable", tr("Show Inkable Lines"), tr("The lines the Ink tool would change are traced over."), QStringLiteral("inkShowInkable"), false,
         [this](bool on) { m_canvas->setInkShowInkable(on); });
