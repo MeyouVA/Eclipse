@@ -87,7 +87,7 @@ QRect Timeline::parameterToggleRect(int layer) const
     int const row = rowOfLayer(layer);
     if (row < 0 || !hasParameters(layer))
         return QRect();
-    return QRect(kHeaderWidth - kParamWidth - 17, kRulerHeight + row * kRowHeight - verticalScrollBar()->value() + 3, 14, 14);
+    return QRect(kHeaderWidth - kParamWidth - 17, kRulerHeight + rowTop(row) - verticalScrollBar()->value() + 3, 14, 14);
 }
 
 QRect Timeline::parameterRowRect(int layer, Parameter which) const
@@ -97,7 +97,7 @@ QRect Timeline::parameterRowRect(int layer, Parameter which) const
         return QRect();
     for (int r = row + 1; r < m_rows.size() && m_rows[r] == layer && m_params[r] >= 0; ++r)
         if (m_params[r] == int(which))
-            return QRect(0, kRulerHeight + r * kRowHeight - verticalScrollBar()->value(), kHeaderWidth, kRowHeight);
+            return QRect(0, kRulerHeight + rowTop(r) - verticalScrollBar()->value(), kHeaderWidth, rowHeight(r));
     return QRect();
 }
 

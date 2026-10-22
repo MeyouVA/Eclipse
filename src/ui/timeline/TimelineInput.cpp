@@ -101,10 +101,10 @@ Timeline::Drop Timeline::dropAt(QPoint pos, int& targetLayer) const
     targetLayer = m_rows[row];
     if (targetLayer == m_dragLayer)
         return DropNone;
-    int const within = pos.y() - kRulerHeight + verticalScrollBar()->value() - row * kRowHeight;
-    if (within < kRowHeight / 4)
+    int const within = pos.y() - kRulerHeight + verticalScrollBar()->value() - rowTop(row);
+    if (within < rowHeight(row) / 4)
         return DropAbove;
-    if (within >= kRowHeight - kRowHeight / 4)
+    if (within >= rowHeight(row) - rowHeight(row) / 4)
         return DropBelow;
     // A layer cannot follow itself, directly or through others.
     return scene.isAncestor(m_dragLayer, targetLayer) ? DropNone : DropOnto;
@@ -112,6 +112,10 @@ Timeline::Drop Timeline::dropAt(QPoint pos, int& targetLayer) const
 
 void Timeline::mouseReleaseEvent(QMouseEvent*)
 {
+    if (m_exposureLayer >= 0) {
+        endExposureDrag();
+        return;
+    }
     if (m_dragParamLayer >= 0) {
         m_dragParamLayer = -1;
         if (m_dragParamBegun)
@@ -140,7 +144,8 @@ void Timeline::mouseReleaseEvent(QMouseEvent*)
     if (m_moving) {
         m_moving = false;
         if (m_moveRows || m_moveFrames) {
-            moveSelection(m_moveRows, m_moveFrames, QGuiApplication::keyboardModifiers() & Qt::ControlModifier);
+            Qt::KeyboardModifiers const keys = QGuiApplication::keyboardModifiers();
+            moveSelection(m_moveRows, m_moveFrames, keys & Qt::ControlModifier, keys & Qt::AltModifier);
         } else {
             // Only a click in the block: that cell, and the block is gone.
             int const layer = m_rows[m_moveRow], frame = m_moveFrame;
@@ -243,6 +248,13 @@ void Timeline::mousePressEvent(QMouseEvent* event)
         }
         if (pressSwitch(pos))
             return;
+        bool inBlock = false;
+        if (int const here = rowOfLayer(m_layer); m_extentRow >= 0 && here >= 0 && row >= 0 && pos.x() >= kHeaderWidth) {
+            int const f = frameAt(pos.x());
+            inBlock = row >= std::min(here, m_extentRow) && row <= std::max(here, m_extentRow) && f >= selectionFirstFrame() && f <= selectionLastFrame();
+        }
+        if ((event->modifiers() & Qt::AltModifier) && !inBlock && beginExposureDrag(pos))
+            return;
         bool const shift = event->modifiers() & Qt::ShiftModifier;
         if (pos.x() >= kSwitches && pos.x() < kHeaderWidth && row >= 0) {
             if (event->modifiers() & Qt::ControlModifier) {
@@ -284,6 +296,8 @@ void Timeline::mousePressEvent(QMouseEvent* event)
         }
         clearRange();
         pick(pos, true);
+    } else if (event->button() == Qt::RightButton && pos.x() >= kHeaderWidth && pos.y() < kRulerHeight) {
+        setCurrentCell(m_layer, frameAt(pos.x()));     // the ruler: its menu is for the frame clicked
     } else if (event->button() == Qt::RightButton && pos.x() >= kSwitches) {
         // The menu acts on the block when the pointer is in it; else on the cell under the pointer.
         int const row = rowAt(pos.y());
@@ -328,6 +342,10 @@ void Timeline::dropEvent(QDropEvent* event)
 
 void Timeline::contextMenuEvent(QContextMenuEvent* event)
 {
+    if (event->pos().x() >= kHeaderWidth && event->pos().y() < kRulerHeight) {
+        emit rulerMenuRequested(event->globalPos());
+        return;
+    }
     emit contextMenuRequested(event->globalPos());
 }
 
@@ -341,6 +359,10 @@ void Timeline::deleteSelection()
 
 void Timeline::mouseMoveEvent(QMouseEvent* event)
 {
+    if (m_exposureLayer >= 0) {
+        moveExposureDrag(event->pos());
+        return;
+    }
     if (m_dragParamLayer >= 0) {
         int const moved = event->pos().x() - m_dragParamX;
         if (!m_dragParamBegun && std::abs(moved) < 3)
@@ -404,7 +426,7 @@ void Timeline::mouseMoveEvent(QMouseEvent* event)
     if (!(event->buttons() & Qt::LeftButton))
         return;
     if (m_moving) {
-        int const y = std::clamp(event->pos().y(), int(kRulerHeight), kRulerHeight + int(m_rows.size()) * kRowHeight - verticalScrollBar()->value() - 1);
+        int const y = std::clamp(event->pos().y(), int(kRulerHeight), kRulerHeight + rowTop(int(m_rows.size())) - verticalScrollBar()->value() - 1);
         int const row = rowAt(y);
         m_moveRows = row < 0 ? 0 : row - m_moveRow;
         m_moveFrames = frameAt(std::max(event->pos().x(), int(kHeaderWidth))) - m_moveFrame;
@@ -417,7 +439,7 @@ void Timeline::mouseMoveEvent(QMouseEvent* event)
         setCurrentCell(m_layer, frameAt(std::max(event->pos().x(), int(kHeaderWidth))));
     } else if (m_selecting) {
         // Over the cells: a block from where the drag began to here.
-        int const y = std::clamp(event->pos().y(), int(kRulerHeight), kRulerHeight + int(m_rows.size()) * kRowHeight - verticalScrollBar()->value() - 1);
+        int const y = std::clamp(event->pos().y(), int(kRulerHeight), kRulerHeight + rowTop(int(m_rows.size())) - verticalScrollBar()->value() - 1);
         int const row = rowAt(y);
         if (row >= 0)
             extendSelection(m_rows[row], frameAt(std::max(event->pos().x(), int(kHeaderWidth))));

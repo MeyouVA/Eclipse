@@ -6,6 +6,9 @@
 
 namespace InterfaceColours {
 
+// The colour a drawing's mark is shown in (Drawing::Mark: key, breakdown, in-between; anything else: the default).
+QColor markColour(int mark, QColor const& unmarked);
+
 struct Entry {
     char const* key;
     char const* group;

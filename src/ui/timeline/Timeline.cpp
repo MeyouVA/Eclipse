@@ -77,7 +77,8 @@ void Timeline::rebuildRows()
             continue;
         // A view of some of the layers only (the current one is always among them).
         if (l != m_layer && ((m_viewMode == ShowTagged && !scene.layers[l].tagged) || (m_viewMode == ShowSelected && !m_shownIds.contains(scene.layers[l].id))
-                             || (m_viewMode == ShowControlled && !controlled(l))))
+                             || (m_viewMode == ShowControlled && !controlled(l))
+                             || (m_viewMode == ShowSameGroup && scene.parentIndex(l) != scene.parentIndex(m_layer) && !scene.isAncestor(l, m_layer))))
             continue;
         if (l != m_layer && m_hiddenKinds.contains(int(scene.layers[l].kind)))
             continue;       // a kind of layer that is not shown
@@ -120,6 +121,28 @@ void Timeline::rebuildRows()
                     m_params.push_back(kWarpRows + 2 * p + side);
                 }
     }
+    m_rowTops.clear();
+    int top = 0;
+    for (int row = 0; row < m_rows.size(); ++row) {
+        m_rowTops.push_back(top);
+        top += m_params[row] < 0 && thumbnailsShown(m_rows[row]) ? kThumbRowHeight : kRowHeight;
+    }
+    m_rowTops.push_back(top);
+}
+
+bool Timeline::thumbnailsShown(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    return layer >= 0 && layer < scene.layers.size() && scene.layers[layer].thumbnails && scene.layers[layer].holdsDrawings();
+}
+
+void Timeline::centreOnSelection()
+{
+    int const row = rowOfLayer(m_layer);
+    if (row < 0)
+        return;
+    int const middle = rowTop(row) + rowHeight(row) / 2;
+    verticalScrollBar()->setValue(middle - (viewport()->height() - kRulerHeight) / 2);
 }
 
 void Timeline::setViewMode(ViewMode mode)
@@ -177,8 +200,10 @@ int Timeline::rowAt(int y) const
 {
     if (y < kRulerHeight)
         return -1;
-    int const row = (y - kRulerHeight + verticalScrollBar()->value()) / kRowHeight;
-    return row < m_rows.size() ? row : -1;
+    int const at = y - kRulerHeight + verticalScrollBar()->value();
+    auto const after = std::upper_bound(m_rowTops.cbegin(), m_rowTops.cend(), at);
+    int const row = int(after - m_rowTops.cbegin()) - 1;
+    return row >= 0 && row < m_rows.size() ? row : -1;
 }
 
 int Timeline::frameAt(int x) const
@@ -192,7 +217,7 @@ QRect Timeline::cellRect(int layer, int frame) const
     if (row < 0)
         return QRect();
     return QRect(kHeaderWidth + frame * m_cellWidth - horizontalScrollBar()->value(),
-                 kRulerHeight + row * kRowHeight - verticalScrollBar()->value(), m_cellWidth, kRowHeight);
+                 kRulerHeight + rowTop(row) - verticalScrollBar()->value(), m_cellWidth, rowHeight(row));
 }
 
 QRect Timeline::switchRect(int layer, Switch which) const
@@ -200,7 +225,7 @@ QRect Timeline::switchRect(int layer, Switch which) const
     int const row = rowOfLayer(layer);
     if (row < 0)
         return QRect();
-    return QRect(3 + int(which) * kSwitchWidth, kRulerHeight + row * kRowHeight - verticalScrollBar()->value(), kSwitchWidth, kRowHeight);
+    return QRect(3 + int(which) * kSwitchWidth, kRulerHeight + rowTop(row) - verticalScrollBar()->value(), kSwitchWidth, kRowHeight);
 }
 
 QRect Timeline::foldRect(int layer) const
@@ -209,8 +234,8 @@ QRect Timeline::foldRect(int layer) const
     Scene const& scene = m_document->scene();
     if (row < 0 || !scene.hasChildren(layer))
         return QRect();
-    int const indent = std::min(scene.depth(layer), 6) * 10;
-    return QRect(kSwitches + indent, kRulerHeight + row * kRowHeight - verticalScrollBar()->value(), 12, kRowHeight);
+    int const indent = indentOf(layer);
+    return QRect(kSwitches + indent, kRulerHeight + rowTop(row) - verticalScrollBar()->value(), 12, kRowHeight);
 }
 
 QRect Timeline::nameRect(int layer) const
@@ -218,7 +243,7 @@ QRect Timeline::nameRect(int layer) const
     int const row = rowOfLayer(layer);
     if (row < 0)
         return QRect();
-    return QRect(kSwitches, kRulerHeight + row * kRowHeight - verticalScrollBar()->value(), kHeaderWidth - kParamWidth - kSwitches, kRowHeight);
+    return QRect(kSwitches, kRulerHeight + rowTop(row) - verticalScrollBar()->value(), kHeaderWidth - kParamWidth - kSwitches, kRowHeight);
 }
 
 QRect Timeline::syncMarkRect(int layer) const
@@ -238,6 +263,8 @@ QRect Timeline::headerButtonRect(HeaderButton which) const
 
 QRect Timeline::sceneEndRect() const
 {
+    if (!m_showSceneEnd)
+        return QRect();
     int const x = kHeaderWidth + m_document->scene().frameCount() * m_cellWidth - horizontalScrollBar()->value();
     return QRect(x - 4, 0, 9, kRulerHeight);
 }
@@ -337,6 +364,7 @@ void Timeline::setCurrentCell(int layer, int frame)
 void Timeline::onDocumentChanged()
 {
     closeEntry(false);
+    m_thumbnails.clear();
     rebuildRows();
     updateScrollBars();
     Scene const& scene = m_document->scene();
@@ -360,7 +388,7 @@ void Timeline::updateScrollBars()
     Scene const& scene = m_document->scene();
     // The ruler runs on a little after the scene ends, so that its end can be dragged out.
     int const contentWidth = (scene.frameCount() + kPastEnd) * m_cellWidth;
-    int const contentHeight = int(m_rows.size()) * kRowHeight;
+    int const contentHeight = rowTop(int(m_rows.size()));
     int const viewWidth = viewport()->width() - kHeaderWidth;
     int const viewHeight = viewport()->height() - kRulerHeight;
     horizontalScrollBar()->setRange(0, std::max(0, contentWidth - viewWidth));
@@ -374,4 +402,21 @@ void Timeline::updateScrollBars()
 void Timeline::resizeEvent(QResizeEvent*)
 {
     updateScrollBars();
+}
+
+void Timeline::setShowSceneEnd(bool on)
+{
+    m_showSceneEnd = on;
+    viewport()->update();
+}
+
+void Timeline::setReduceIndentation(bool on)
+{
+    m_reduceIndent = on;
+    viewport()->update();
+}
+
+int Timeline::indentOf(int layer) const
+{
+    return std::min(m_document->scene().depth(layer), 6) * (m_reduceIndent ? 4 : 10);
 }

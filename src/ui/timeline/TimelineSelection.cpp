@@ -53,7 +53,7 @@ void Timeline::clampMove(int& rows, int& frames) const
     frames = std::clamp(frames, -selectionFirstFrame(), m_document->scene().frameCount() - 1 - selectionLastFrame());
 }
 
-void Timeline::moveSelection(int rows, int frames, bool copy)
+void Timeline::moveSelection(int rows, int frames, bool copy, bool alt)
 {
     int const here = rowOfLayer(m_layer);
     if (here < 0)
@@ -71,7 +71,22 @@ void Timeline::moveSelection(int rows, int frames, bool copy)
     }
     int const first = selectionFirstFrame(), last = selectionLastFrame();
     int const extentRow = m_extentRow, extentFrame = m_extentFrame;
-    m_document->moveCells(from, first, last, to, first + frames, copy);
+    bool const gap = alt && !copy && (m_hasPreset ? m_preset.fillGap : m_dragGap);
+    bool const toKey = alt && (m_hasPreset ? m_preset.fillToKey : m_dragToKey);
+    QVector<int> landing;
+    for (int l : std::as_const(to))
+        if (l >= 0)
+            landing.push_back(l);
+    QVector<int> const cut = toKey ? exposuresCut(landing, first + frames + (last - first + 1)) : QVector<int>();
+    if (gap || toKey)
+        m_document->beginMacro(copy ? tr("Copy Cells") : tr("Move Cells"));
+    m_document->moveCells(from, first, last, to, first + frames, copy, !m_overwriteDrop);
+    if (toKey)
+        holdOverCut(landing, cut, first + frames + (last - first + 1));
+    if (gap)
+        fillGap(from, first, last);
+    if (gap || toKey)
+        m_document->endMacro();
     // The block goes with its cells.
     m_extentRow = m_extentFrame = -1;
     setCurrentCell(m_rows[here + rows], m_frame + frames);
@@ -205,7 +220,22 @@ void Timeline::pasteSpecial(PasteOptions const& options)
     block.pastePivot = options.pivot;
     block.offsetKeys = options.offsetKeys;
     block.currentSetOnly = options.currentSetOnly;
+    if (!options.fillToKey) {
+        pasteBlock(block, selectionFirstFrame());
+        return;
+    }
+    // Fill to Next Key Exposure: what was pasted holds on over the rest of the exposure it cut into.
+    QVector<int> const selected = selectedLayers();
+    QVector<int> layers;
+    for (int r = rowOfLayer(selected.first()); r >= 0 && r < m_rows.size() && layers.size() < block.rows.size(); ++r)
+        if (!isParamRow(r))
+            layers.push_back(m_rows[r]);
+    int const end = selectionFirstFrame() + block.frames;
+    QVector<int> const cut = exposuresCut(layers, end);
+    m_document->beginMacro(tr("Paste"));
     pasteBlock(block, selectionFirstFrame());
+    holdOverCut(layers, cut, end);
+    m_document->endMacro();
 }
 
 void Timeline::pasteReversed()

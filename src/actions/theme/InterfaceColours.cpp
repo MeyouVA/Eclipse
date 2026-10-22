@@ -16,6 +16,10 @@ QList<Entry> const& entries()
         {"timelineExposed", "Timeline", "Exposed Cell", QColor(122, 122, 122)},
         {"timelineCurrentFrame", "Timeline", "Current Frame", QColor(224, 36, 36)},
         {"timelineKeyframe", "Timeline", "Motion Keyframe", QColor(255, 190, 70)},
+        {"timelineStopKeyframe", "Timeline", "Stop-Motion Keyframe", QColor(255, 190, 70)},
+        {"timelineKeyMark", "Timeline", "Key Drawing Mark", QColor(232, 76, 61)},
+        {"timelineBreakdownMark", "Timeline", "Breakdown Drawing Mark", QColor(80, 150, 240)},
+        {"timelineInBetweenMark", "Timeline", "In-between Drawing Mark", QColor(90, 200, 110)},
         {"timelineOnionSkin", "Timeline", "Onion Skin Range", QColor(70, 150, 235)},
         {"timelineSelection", "Timeline", "Selection", QColor(42, 155, 176, 95)},
         {"xsheetBackground", "Exposure Sheet", "Background", QColor(72, 72, 72)},
@@ -84,6 +88,12 @@ void set(QString const& key, QColor const& colour)
 void reload()
 {
     fill(cache());
+}
+
+QColor markColour(int mark, QColor const& unmarked)
+{
+    // (1 key, 2 breakdown, 3 in-between, as Drawing::Mark has them.)
+    return mark == 1 ? get("timelineKeyMark") : mark == 2 ? get("timelineBreakdownMark") : mark == 3 ? get("timelineInBetweenMark") : unmarked;
 }
 
 } // namespace InterfaceColours

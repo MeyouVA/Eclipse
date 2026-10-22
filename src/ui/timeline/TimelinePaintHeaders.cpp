@@ -94,7 +94,8 @@ void Timeline::paintRuler(QPainter& p, TimelinePaintSpace const& space)
         p.fillRect(foot < 0 ? x - 4 : x, kRulerHeight - 3, 5, 3, playhead);
     };
     bracket(kHeaderWidth - sx + 1, +1);
-    bracket(sceneEndX, -1);
+    if (m_showSceneEnd)
+        bracket(sceneEndX, -1);
     // playhead
     int const px = kHeaderWidth + m_frame * cw - sx;
     p.fillRect(px, 0, std::max(2, cw - 1), kRulerHeight, QColor(playhead.red(), playhead.green(), playhead.blue(), 150));
@@ -195,15 +196,16 @@ void Timeline::paintHeaders(QPainter& p, TimelinePaintSpace const& space)
     for (int row = 0; row < m_rows.size(); ++row) {
         int const layerIndex = m_rows[row];
         Layer const& layer = scene.layers[layerIndex];
-        int const y = kRulerHeight + row * kRowHeight - sy;
-        if (y + kRowHeight < kRulerHeight || y > h)
+        int const y = kRulerHeight + rowTop(row) - sy;
+        int const rh = rowHeight(row);
+        if (y + rh < kRulerHeight || y > h)
             continue;
         if (isParamRow(row)) {
             // The row of a parameter: its name, set in under the layer, and its value on this frame.
             Parameter const which = Parameter(m_params[row]);
             p.fillRect(0, y, kHeaderWidth, kRowHeight, QColor(60, 60, 60));
             p.setPen(dim);
-            int const nameLeft = kSwitches + std::min(scene.depth(layerIndex), 6) * 10 + 40;
+            int const nameLeft = kSwitches + indentOf(layerIndex) + 40;
             p.drawText(QRect(nameLeft, y, nameEnd - nameLeft - 4, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft, rowName(layerIndex, which));
             QRect const box = parameterValueRect(layerIndex, which);
             p.setRenderHint(QPainter::Antialiasing, false);
@@ -228,10 +230,10 @@ void Timeline::paintHeaders(QPainter& p, TimelinePaintSpace const& space)
             continue;
         }
         if (layerIndex == m_layer)
-            p.fillRect(0, y, kHeaderWidth, kRowHeight, currentRow);
+            p.fillRect(0, y, kHeaderWidth, rh, currentRow);
         else if (m_extraLayers.contains(layerIndex)
                  || (m_extentRow >= 0 && row >= std::min(rowOfLayer(m_layer), m_extentRow) && row <= std::max(rowOfLayer(m_layer), m_extentRow)))
-            p.fillRect(0, y, kHeaderWidth, kRowHeight, mixed(headerBg, QColor(42, 155, 176), 0.45));
+            p.fillRect(0, y, kHeaderWidth, rh, mixed(headerBg, QColor(42, 155, 176), 0.45));
         eye(switchRect(layerIndex, Enable), layer.visible);
         soloMark(switchRect(layerIndex, Solo), layer.solo);
         padlock(switchRect(layerIndex, Lock), layer.locked);
@@ -239,7 +241,7 @@ void Timeline::paintHeaders(QPainter& p, TimelinePaintSpace const& space)
             onionMark(switchRect(layerIndex, Onion), layer.onion);
         swatch(switchRect(layerIndex, Colour), layer.trackColor.isValid() ? layer.trackColor : QColor(120, 120, 120));
 
-        int const indent = std::min(scene.depth(layerIndex), 6) * 10;
+        int const indent = indentOf(layerIndex);
         int textX = kSwitches + indent;
         if (scene.hasChildren(layerIndex)) {
             QPointF const c(textX + 5.5, y + kRowHeight / 2.0);
@@ -359,20 +361,21 @@ void Timeline::paintHeaders(QPainter& p, TimelinePaintSpace const& space)
         p.drawText(QRect(nameEnd + 6, y, kParamWidth - 10, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft, value);
         p.setRenderHint(QPainter::Antialiasing, false);
         p.setPen(line);
-        p.drawLine(0, y + kRowHeight - 1, kHeaderWidth, y + kRowHeight - 1);
+        p.drawLine(0, y + rh - 1, kHeaderWidth, y + rh - 1);
         p.setRenderHint(QPainter::Antialiasing, true);
     }
     p.setRenderHint(QPainter::Antialiasing, false);
     // Where a dragged layer would go.
     if (m_dragging && m_drop != DropNone && m_dropLayer >= 0 && rowOfLayer(m_dropLayer) >= 0) {
-        int const y = kRulerHeight + rowOfLayer(m_dropLayer) * kRowHeight - sy;
+        int const y = kRulerHeight + rowTop(rowOfLayer(m_dropLayer)) - sy;
+        int const rh = rowHeight(rowOfLayer(m_dropLayer));
         QColor const mark(64, 156, 255);
         if (m_drop == DropOnto) {
             p.setPen(QPen(mark, 2));
             p.setBrush(Qt::NoBrush);
-            p.drawRect(kSwitches, y + 1, nameEnd - kSwitches - 3, kRowHeight - 3);
+            p.drawRect(kSwitches, y + 1, nameEnd - kSwitches - 3, rh - 3);
         } else {
-            int const edge = m_drop == DropAbove ? y : y + kRowHeight - 1;
+            int const edge = m_drop == DropAbove ? y : y + rh - 1;
             p.fillRect(0, edge - 1, kHeaderWidth, 3, mark);
         }
     }

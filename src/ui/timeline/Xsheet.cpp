@@ -144,7 +144,7 @@ void Xsheet::paintEvent(QPaintEvent*)
                     // Its mark: K for a key drawing, B for a breakdown, I for an in-between.
                     int const mark = layer.drawings[drawing].mark;
                     if (mark != Drawing::NoMark) {
-                        p.setPen(Drawing::markColour(mark));
+                        p.setPen(InterfaceColours::markColour(mark, Drawing::markColour(Drawing::NoMark)));
                         p.drawText(cell.adjusted(6, 0, -22, 0), Qt::AlignVCenter | Qt::AlignRight,
                                    mark == Drawing::KeyMark ? QStringLiteral("K") : mark == Drawing::BreakdownMark ? QStringLiteral("B") : QStringLiteral("I"));
                         p.setPen(text);

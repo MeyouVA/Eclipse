@@ -13,6 +13,7 @@ struct TimelinePaintSpace;
 #include <QSet>
 #include <QVector>
 #include <QHash>
+#include <QPixmap>
 
 #include <memory>
 
@@ -79,6 +80,14 @@ public:
     double parameter(int layer, Parameter which) const;
     // Lock Timeline Ruler: the end of the scene in the ruler cannot be dragged (the length is not changed by a slip).
     bool rulerLocked() const { return m_rulerLocked; }
+    // Overwrite Exposures and Keyframes During Drag and Drop: off, a block dropped pushes what is there on.
+    bool overwriteDrop() const { return m_overwriteDrop; }
+    void setOverwriteDrop(bool on) { m_overwriteDrop = on; }
+    // Show End of Scene Marker: the bracket at the end of the scene, which can be dragged.
+    void setShowSceneEnd(bool on);
+    // Reduce Indentation: the layers under others set in less far.
+    void setReduceIndentation(bool on);
+    int indentOf(int layer) const;
     void setRulerLocked(bool on) { m_rulerLocked = on; }
     // The layer a parameter row follows (an attribute control of the layer), or -1 when it goes by its own keyframes.
     int drivenBy(int layer, Parameter which) const;
@@ -109,11 +118,17 @@ public:
         bool matchNames = false, pivot = false;
         bool offsetKeys = false;
         bool currentSetOnly = false;
+        // Alt-dragging cells out: the gap they leave holds the drawing before it.
+        bool fillGap = true;
+        // Dropped or pasted into an exposure: the last drawing put down holds on over the rest of it (up to the next key exposure or empty frame).
+        bool fillToKey = false;
     };
     void pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse);
     void pasteSpecial(PasteOptions const& options);
     // A paste preset: the plain Paste pastes as it says (none: as it always does).
     void setPastePreset(PasteOptions const* preset) { m_hasPreset = preset != nullptr; if (preset) m_preset = *preset; }
+    // What an Alt-drag of cells fills in (when no paste preset is in use).
+    void setDragFill(bool gap, bool toKey) { m_dragGap = gap; m_dragToKey = toKey; }
     // These layers picked besides the current one (those that are not it).
     void setExtraLayers(QVector<int> const& layers);
     // Whether sound layers show how loud the sound is along their row.
@@ -123,7 +138,7 @@ public:
     void setOnion(bool on, int previous, int next);
     QRect onionHandleRect(bool before) const;
     // Moves (or copies) the block selected by so many rows and frames; the block stays selected.
-    void moveSelection(int rows, int frames, bool copy);
+    void moveSelection(int rows, int frames, bool copy, bool alt = false);
     void clearRange();
     static bool canPasteCells();
     // A layer dragged in the list and let go above (below) a row: it goes to that row's level, there (see TimelineInput).
@@ -137,7 +152,7 @@ public:
     void pasteCycle(int times, int kind = 0);
     // The cells selected, again and again after themselves: `times` in all.
     void createCycle(int times, int kind = 0);
-    enum ViewMode { ShowAll, ShowSelected, ShowTagged, ShowControlled };
+    enum ViewMode { ShowAll, ShowSelected, ShowTagged, ShowControlled, ShowSameGroup };
     // Whether a layer is among those ShowControlled shows.
     bool controlled(int layer) const;
     ViewMode viewMode() const { return m_viewMode; }
@@ -145,6 +160,10 @@ public:
     // Show: the kinds of layer (Layer::Kind) that have rows.  The current layer always has its row.
     bool kindShown(int kind) const { return !m_hiddenKinds.contains(kind); }
     void setKindShown(int kind, bool shown);
+    // Whether a layer's track shows thumbnails of its drawings (a drawing layer with them on).
+    bool thumbnailsShown(int layer) const;
+    // Scrolls the list so that the current layer's row is in the middle.
+    void centreOnSelection();
     // The layers that have a row, top to bottom.
     QVector<int> rows() const;
 
@@ -178,6 +197,8 @@ signals:
     void currentCellChanged(int layer, int frame);
     void renameLayerRequested(int layer);
     void contextMenuRequested(QPoint const& globalPos);
+    // The ruler right-clicked: its menu (the current frame is the one clicked).
+    void rulerMenuRequested(QPoint const& globalPos);
     void addLayerMenuRequested(QPoint const& globalPos);
     void deleteLayerRequested();
     void addPegRequested();
@@ -207,6 +228,8 @@ private:
     void paintCells(QPainter& p, TimelinePaintSpace const& space);
     void paintRuler(QPainter& p, TimelinePaintSpace const& space);
     void paintHeaders(QPainter& p, TimelinePaintSpace const& space);
+    // The pictures of the drawings along a track that shows thumbnails.
+    void paintThumbnails(QPainter& p, TimelinePaintSpace const& space, int layer, int y, int rowHeight);
     void onDocumentChanged();
     void updateScrollBars();
     void rebuildRows();
@@ -214,10 +237,31 @@ private:
     int layerOfRow(int row) const;
     // The row under a point of the viewport, or -1.
     int rowAt(int y) const;
+    // Where a row starts down the list (not scrolled), and how tall it is; rowTop(rows) is the height of them all.
+    int rowTop(int row) const { return row >= 0 && row < m_rowTops.size() ? m_rowTops[row] : m_rowTops.isEmpty() ? 0 : m_rowTops.last(); }
+    int rowHeight(int row) const { return row >= 0 && row + 1 < m_rowTops.size() ? m_rowTops[row + 1] - m_rowTops[row] : kRowHeight; }
     int frameAt(int x) const;
     void pick(QPoint pos, bool press);
     void pasteBlock(CellBlock const& block, int frame);
     bool pressSwitch(QPoint pos);
+    // Alt-drag in a drawing layer's cells: the exposure under the pointer made longer or shorter to where it is let go.
+    bool beginExposureDrag(QPoint pos);
+    void moveExposureDrag(QPoint pos);
+    void endExposureDrag();
+    int m_exposureLayer = -1;       // the layer whose exposure is dragged
+    int m_exposureStart = 0, m_exposureEnd = 0;   // the exposure, as it was (its last frame + 1)
+    QVector<int> m_exposureCells;   // the layer's cells before the drag
+    bool m_exposureBegun = false;
+    bool m_overwriteDrop = true;
+    bool m_dragGap = true, m_dragToKey = false;
+    // Before cells land on these layers ending before `end`: how far on each the exposure they cut into goes (-1: none is cut).
+    QVector<int> exposuresCut(QVector<int> const& layers, int end) const;
+    // ... and after: the last drawing put down holds on to there.
+    void holdOverCut(QVector<int> const& layers, QVector<int> const& cut, int end);
+    // Cells dragged out of [first, last]: what they left empty holds the drawing before.
+    void fillGap(QVector<int> const& layers, int first, int last);
+    bool m_showSceneEnd = true;
+    bool m_reduceIndent = false;
 
     static constexpr int kHeaderWidth = 460;   // switches, name, parameters
     static constexpr int kSwitchWidth = 16;
@@ -225,6 +269,7 @@ private:
     static constexpr int kParamWidth = 140;
     static constexpr int kRulerHeight = 20;
     static constexpr int kRowHeight = 20;
+    static constexpr int kThumbRowHeight = 48;  // a row showing thumbnails
     static constexpr int kPastEnd = 40;        // frames of ruler shown after the scene ends
 
     enum Drop { DropNone, DropOnto, DropAbove, DropBelow };
@@ -237,6 +282,8 @@ private:
     QVector<int> m_hiddenKinds;
     QVector<int> m_shownIds;     // ShowSelected: the ids of the layers that were selected
     QVector<int> m_params;
+    mutable QHash<quint64, QPixmap> m_thumbnails;   // the pictures of the thumbnails, made again when the scene changes
+    QVector<int> m_rowTops;     // where each row starts, and after the last where they end
     QSet<int> m_open;          // the ids of the layers whose parameters are shown
     QLineEdit* m_entry = nullptr;   // a value being typed
     int m_entryLayer = -1;

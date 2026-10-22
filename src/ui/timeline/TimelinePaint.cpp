@@ -52,27 +52,28 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
     for (int row = 0; row < m_rows.size(); ++row) {
         int const layerIndex = m_rows[row];
         Layer const& layer = scene.layers[layerIndex];
-        int const y = kRulerHeight + row * kRowHeight - sy;
-        if (y + kRowHeight < kRulerHeight || y > h)
+        int const y = kRulerHeight + rowTop(row) - sy;
+        int const rh = rowHeight(row);
+        if (y + rh < kRulerHeight || y > h)
             continue;
         int const rowRight = std::min(w, kHeaderWidth + scene.frameCount() * cw - sx);
         bool const param = isParamRow(row);
         QColor rowColor = param ? QColor(70, 70, 70) : layerIndex == m_layer ? currentRow : (row % 2 ? rowA : rowB);
         if (layer.trackColor.isValid())
             rowColor = mixed(rowColor, layer.trackColor, 0.38);
-        p.fillRect(kHeaderWidth, y, rowRight - kHeaderWidth, kRowHeight, rowColor);
+        p.fillRect(kHeaderWidth, y, rowRight - kHeaderWidth, rh, rowColor);
         for (int f = firstFrame; f <= lastFrame; ++f) {
             int const x = kHeaderWidth + f * cw - sx;
             if (!param && layer.drawingAt(f) != Layer::kNoDrawing) {
-                p.fillRect(x, y + 3, cw, kRowHeight - 6, layerIndex == m_layer ? exposedCurrent : exposed);
+                p.fillRect(x, y + 3, cw, rh - 6, layerIndex == m_layer ? exposedCurrent : exposed);
                 if (layer.isKey(f)) {
-                    p.fillRect(x, y + 3, 1, kRowHeight - 6, line);
+                    p.fillRect(x, y + 3, 1, rh - 6, line);
                     p.setPen(Qt::NoPen);
                     // (In the colour of its mark, when it is marked as a key, a breakdown or an in-between.)
-                    p.setBrush(Drawing::markColour(layer.drawings[layer.drawingAt(f)].mark));
+                    p.setBrush(InterfaceColours::markColour(layer.drawings[layer.drawingAt(f)].mark, Drawing::markColour(Drawing::NoMark)));
                     p.setRenderHint(QPainter::Antialiasing, true);
                     double const r = std::min(3.0, cw / 2.0 - 0.5);
-                    p.drawEllipse(QPointF(x + cw / 2.0, y + kRowHeight / 2.0), r, r);
+                    p.drawEllipse(QPointF(x + cw / 2.0, y + rh / 2.0), r, r);
                     p.setRenderHint(QPainter::Antialiasing, false);
                 }
             }
@@ -82,27 +83,29 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
             // A line between frames where there is room for one; else every fifth.
             if (cw >= 7 || (f + 1) % 5 == 0) {
                 p.setPen(line);
-                p.drawLine(x + cw - 1, y, x + cw - 1, y + kRowHeight - 1);
+                p.drawLine(x + cw - 1, y, x + cw - 1, y + rh - 1);
             }
         }
+        if (!param && thumbnailsShown(layerIndex))
+            paintThumbnails(p, space, layerIndex, y, rh);
         // A sound layer shows its waveform: how loud the sound is, a bar every two pixels.
         if (layer.kind == Layer::Sound && m_waveforms) {
             if (std::shared_ptr<SoundData> const sound = Sound::load(layer.soundFile)) {
                 double const perPixel = double(SoundData::kRate) / scene.fps / cw;  // sample frames
                 int const left = std::max(kHeaderWidth, kHeaderWidth + layer.soundStart * cw - sx);
                 int const right = std::min(w, kHeaderWidth + scene.frameCount() * cw - sx);
-                int const mid = y + kRowHeight / 2;
+                int const mid = y + rh / 2;
                 p.setPen(QColor(120, 200, 150));
                 for (int x = left; x < right; x += 2) {
                     qint64 const first = qint64((x - kHeaderWidth + sx - layer.soundStart * cw) * perPixel);
                     if (first >= sound->frames())
                         break;
-                    int const half = int(sound->peak(first, qint64(perPixel * 2) + 1) * (kRowHeight / 2 - 2) + 0.5);
+                    int const half = int(sound->peak(first, qint64(perPixel * 2) + 1) * (rh / 2 - 2) + 0.5);
                     p.drawLine(x, mid - half, x, mid + half);
                 }
             } else {
                 p.setPen(QColor(220, 120, 100));
-                p.drawText(QRect(kHeaderWidth + 6, y, w - kHeaderWidth - 6, kRowHeight), Qt::AlignVCenter | Qt::AlignLeft,
+                p.drawText(QRect(kHeaderWidth + 6, y, w - kHeaderWidth - 6, rh), Qt::AlignVCenter | Qt::AlignLeft,
                            tr("sound file missing"));
             }
         }
@@ -112,13 +115,13 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
                 double const perPixel = double(SoundData::kRate) / scene.fps / cw;
                 int const left = std::max(kHeaderWidth, kHeaderWidth - sx);
                 int const right = std::min(w, kHeaderWidth + scene.frameCount() * cw - sx);
-                int const mid = y + kRowHeight / 2;
+                int const mid = y + rh / 2;
                 p.setPen(QColor(120, 200, 150, 170));
                 for (int x = left; x < right; x += 2) {
                     qint64 const first = qint64((x - kHeaderWidth + sx) * perPixel);
                     if (first >= sound->frames())
                         break;
-                    int const half = int(sound->peak(first, qint64(perPixel * 2) + 1) * (kRowHeight / 2 - 2) + 0.5);
+                    int const half = int(sound->peak(first, qint64(perPixel * 2) + 1) * (rh / 2 - 2) + 0.5);
                     if (half > 0)
                         p.drawLine(x, mid - half, x, mid + half);
                 }
@@ -131,13 +134,13 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
             lettering.setBold(true);
             p.save();
             p.setFont(lettering);
-            p.setClipRect(kHeaderWidth, y, w - kHeaderWidth, kRowHeight);
+            p.setClipRect(kHeaderWidth, y, w - kHeaderWidth, rh);
             int const firstShown = std::max(0, sx / cw), lastShown = std::min(scene.frameCount() - 1, (sx + w - kHeaderWidth) / cw);
             for (int f = firstShown; f <= lastShown; ++f) {
                 QChar const shape = layer.mouthAt(f);
                 if (shape.isNull() || shape == QLatin1Char('X'))
                     continue;
-                QRect const cell(kHeaderWidth + f * cw - sx, y, cw, kRowHeight);
+                QRect const cell(kHeaderWidth + f * cw - sx, y, cw, rh);
                 p.setPen(QColor(20, 20, 20));
                 p.drawText(cell.translated(1, 1), Qt::AlignCenter, QString(shape));
                 p.setPen(QColor(255, 226, 160));
@@ -164,7 +167,7 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
         }
         // Keyframes: a diamond on the frame, and a line from a motion keyframe to the next.
         QColor const keyColor = InterfaceColours::get("timelineKeyframe");
-        int const ky = layer.holdsDrawings() && !param ? y + kRowHeight - 6 : y + kRowHeight / 2;
+        int const ky = layer.holdsDrawings() && !param ? y + rh - 6 : y + rh / 2;
         bool const effectRow = param && m_params[row] >= ParameterCount && m_params[row] < kBoneRows;
         int const effect = effectRow ? m_params[row] - ParameterCount : -1;
         bool const keyedEffect = effectRow && effect < layer.effects.size() && layer.effects[effect].animated;
@@ -192,7 +195,7 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
                 p.setRenderHint(QPainter::Antialiasing, false);
             }
             p.setPen(line);
-            p.drawLine(kHeaderWidth, y + kRowHeight - 1, rowRight, y + kRowHeight - 1);
+            p.drawLine(kHeaderWidth, y + rh - 1, rowRight, y + rh - 1);
             continue;
         }
         for (int k = 0; k < layer.keys.size(); ++k)
@@ -209,10 +212,11 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
         }
         p.setRenderHint(QPainter::Antialiasing, true);
         p.setPen(QPen(QColor(40, 30, 10), 1));
-        p.setBrush(keyColor);
+        QColor const stopColor = InterfaceColours::get("timelineStopKeyframe");
         double const kd = std::clamp(cw / 2.0, 2.5, 4.5);
         for (int k : std::as_const(mine)) {
             Keyframe const& key = layer.keys[k];
+            p.setBrush(key.tween ? keyColor : stopColor);
             double const x = kHeaderWidth + key.frame * cw - sx + cw / 2.0;
             // (On the layer's row, a keyframe that sets only some of the pose is drawn smaller.)
             double const size = !param && key.parts != Keyframe::AllParts ? kd * 0.6 : kd;
@@ -222,13 +226,13 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
         }
         p.setRenderHint(QPainter::Antialiasing, false);
         p.setPen(line);
-        p.drawLine(kHeaderWidth, y + kRowHeight - 1, rowRight, y + kRowHeight - 1);
+        p.drawLine(kHeaderWidth, y + rh - 1, rowRight, y + rh - 1);
     }
     // the block selected: tinted, with a line round it
     if (int const row = rowOfLayer(m_layer); row >= 0 && m_extentRow >= 0) {
         int const r0 = std::min(row, m_extentRow), r1 = std::max(row, m_extentRow);
-        QRect const block(kHeaderWidth + selectionFirstFrame() * cw - sx, kRulerHeight + r0 * kRowHeight - sy,
-                          (selectionLastFrame() - selectionFirstFrame() + 1) * cw, (r1 - r0 + 1) * kRowHeight);
+        QRect const block(kHeaderWidth + selectionFirstFrame() * cw - sx, kRulerHeight + rowTop(r0) - sy,
+                          (selectionLastFrame() - selectionFirstFrame() + 1) * cw, rowTop(r1) + rowHeight(r1) - rowTop(r0));
         p.fillRect(block, InterfaceColours::get("timelineSelection"));
         p.setPen(QPen(QColor(120, 220, 235), 1));
         p.setBrush(Qt::NoBrush);
@@ -238,8 +242,8 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
     if (int const row = rowOfLayer(m_layer); m_moving && row >= 0 && (m_moveRows || m_moveFrames)) {
         int const r0 = (m_extentRow < 0 ? row : std::min(row, m_extentRow)) + m_moveRows;
         int const r1 = (m_extentRow < 0 ? row : std::max(row, m_extentRow)) + m_moveRows;
-        QRect const block(kHeaderWidth + (selectionFirstFrame() + m_moveFrames) * cw - sx, kRulerHeight + r0 * kRowHeight - sy,
-                          (selectionLastFrame() - selectionFirstFrame() + 1) * cw, (r1 - r0 + 1) * kRowHeight);
+        QRect const block(kHeaderWidth + (selectionFirstFrame() + m_moveFrames) * cw - sx, kRulerHeight + rowTop(r0) - sy,
+                          (selectionLastFrame() - selectionFirstFrame() + 1) * cw, rowTop(r1) + rowHeight(r1) - rowTop(r0));
         p.setPen(QPen(Qt::white, 1, Qt::DashLine));
         p.setBrush(Qt::NoBrush);
         p.drawRect(block.adjusted(0, 0, -1, -1));
@@ -247,10 +251,10 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
     // the selected cell
     if (int const row = rowOfLayer(m_layer); row >= 0) {
         int const x = kHeaderWidth + m_frame * cw - sx;
-        int const y = kRulerHeight + row * kRowHeight - sy;
+        int const y = kRulerHeight + rowTop(row) - sy;
         p.setPen(QPen(Qt::white, 1));
         p.setBrush(Qt::NoBrush);
-        p.drawRect(x, y, std::max(2, cw - 2), kRowHeight - 2);
+        p.drawRect(x, y, std::max(2, cw - 2), rowHeight(row) - 2);
     }
     p.restore();
 
