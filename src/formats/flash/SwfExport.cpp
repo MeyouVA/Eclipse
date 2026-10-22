@@ -1,5 +1,5 @@
 // Eclipse - the Flash movie writer.
-#include "ui/io/SwfExport.h"
+#include "formats/flash/SwfExport.h"
 
 #include <QFile>
 #include <QHash>

@@ -19,22 +19,22 @@ enum Codec { SorensonH263 = 2, ScreenVideo = 3, VP6 = 4, VP6Alpha = 5, ScreenVid
 
 // The frames as an FLV stream of so many frames a second.  `keyframes` (as long as `frames`, or empty: only the first)
 // says which frames stand on their own.
-ECLIPSE_UI_API QByteArray flv(int codec, QVector<QByteArray> const& frames, double fps, QVector<bool> const& keyframes = {});
+ECLIPSE_FORMATS_API QByteArray flv(int codec, QVector<QByteArray> const& frames, double fps, QVector<bool> const& keyframes = {});
 
 // The frames decoded into `folder`, named `<name> 00001.jpg` and on (a frame that could not be decoded has no file); in
 // order of the frames.  Empty, with why, when ffmpeg is not installed or could not decode them.
-ECLIPSE_UI_API QStringList decode(int codec, QVector<QByteArray> const& frames, double fps, QString const& folder, QString const& name,
+ECLIPSE_FORMATS_API QStringList decode(int codec, QVector<QByteArray> const& frames, double fps, QString const& folder, QString const& name,
                                   QVector<bool> const& keyframes = {}, QString* error = nullptr);
 
 // A video file (any ffmpeg reads) decoded into `folder` in the same way, frame by frame.
-ECLIPSE_UI_API QStringList decodeFile(QString const& input, QString const& folder, QString const& name, bool alpha = false, QString* error = nullptr);
+ECLIPSE_FORMATS_API QStringList decodeFile(QString const& input, QString const& folder, QString const& name, bool alpha = false, QString* error = nullptr);
 
 // The MP4 a video item of a .fla holds when it was embedded as H.264 (its file in bin/: 03 08, then the MP4 whole); empty
 // when it is not one.
-ECLIPSE_UI_API QByteArray flaMovie(QByteArray const& data);
+ECLIPSE_FORMATS_API QByteArray flaMovie(QByteArray const& data);
 
 // The frames of a video item of a .fla (its file in bin/: Flash's own form - a table of where each frame lies, then the
 // frames one after another): their data, which stand on their own, and the codec.  False when it is not that form.
-ECLIPSE_UI_API bool flaFrames(QByteArray const& data, int& codec, QVector<QByteArray>& frames, QVector<bool>& keyframes);
+ECLIPSE_FORMATS_API bool flaFrames(QByteArray const& data, int& codec, QVector<QByteArray>& frames, QVector<bool>& keyframes);
 
 }

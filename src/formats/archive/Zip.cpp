@@ -1,5 +1,5 @@
 // Eclipse - the zip reader, with a deflate unpacker of its own.
-#include "ui/io/Zip.h"
+#include "formats/archive/Zip.h"
 
 #include <array>
 #include <vector>

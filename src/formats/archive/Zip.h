@@ -11,8 +11,8 @@
 namespace Zip {
 
 // Every file of the archive by its name (folders as "a/b.xml").  Empty when it is no zip.
-ECLIPSE_UI_API QHash<QString, QByteArray> read(QByteArray const& archive);
+ECLIPSE_FORMATS_API QHash<QString, QByteArray> read(QByteArray const& archive);
 // Raw deflated data (RFC 1951) unpacked; empty, and `ok` false, when it is broken.
-ECLIPSE_UI_API QByteArray inflate(QByteArray const& data, bool* ok = nullptr);
+ECLIPSE_FORMATS_API QByteArray inflate(QByteArray const& data, bool* ok = nullptr);
 
 }

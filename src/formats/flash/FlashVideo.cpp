@@ -1,5 +1,5 @@
 // Eclipse - Flash video decoding.
-#include "ui/io/FlashVideo.h"
+#include "formats/flash/FlashVideo.h"
 
 #include <QCoreApplication>
 #include <QDir>

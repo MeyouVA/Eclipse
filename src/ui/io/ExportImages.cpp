@@ -31,7 +31,7 @@
 #include "ui/canvas/Canvas.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
-#include "ui/io/SwfExport.h"
+#include "formats/flash/SwfExport.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/io/ImportExportPrivate.h"
 

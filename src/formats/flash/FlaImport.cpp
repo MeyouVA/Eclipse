@@ -1,5 +1,5 @@
 // Eclipse - the Flash document reader.
-#include "ui/io/FlaImport.h"
+#include "formats/flash/FlaImport.h"
 
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -27,10 +27,10 @@
 
 #include "model/geometry/Morph.h"
 #include "model/scene/Scene.h"
-#include "ui/io/FlashCut.h"
-#include "ui/io/FlashVideo.h"
-#include "ui/io/SwfImport.h"
-#include "ui/io/Zip.h"
+#include "formats/flash/FlashCut.h"
+#include "formats/flash/FlashVideo.h"
+#include "formats/flash/SwfImport.h"
+#include "formats/archive/Zip.h"
 
 namespace {
 

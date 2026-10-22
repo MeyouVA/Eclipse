@@ -43,8 +43,8 @@
 #include "ui/panels/PalettePanel.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/io/ImportExportPrivate.h"
-#include "ui/io/SwfImport.h"
-#include "ui/io/FlaImport.h"
+#include "formats/flash/SwfImport.h"
+#include "formats/flash/FlaImport.h"
 
 // A sound (or other media) that came inside an imported file, written out as a file of its own: into the folder kept
 // beside the scene (<scene>-media/<what it came from>/), or, for a scene not saved yet, into Eclipse's own folder of

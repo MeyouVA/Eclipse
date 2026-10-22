@@ -1,6 +1,6 @@
 // Eclipse - what each module shows to the others.
 //
-// Eclipse is built as four libraries and a small program that starts them:
+// Eclipse is built as five libraries and a small program that starts them:
 //   EclipseModel    src/model     the scene: layers, drawings, keyframes, and the commands that change them
 //                     scene/        what a scene is made of, and reading and writing it
 //                     document/     the scene in hand, and every change to it as a step that can be undone
@@ -8,6 +8,9 @@
 //   EclipseAudio    src/audio     sound
 //                     sound/        reading, mixing and playing it
 //                     lipsync/      hearing which mouth shape goes with each frame
+//   EclipseFormats  src/formats   other programs' files, read and written without the window
+//                     flash/        Flash: .fla documents and .swf movies in, .swf out; Flash video
+//                     archive/      zip archives
 //   EclipseActions  src/actions   the menus, toolbars and shortcuts read from `resources`, and the look
 //                     manager/      the commands themselves
 //                     dialogs/      changing shortcuts and toolbars
@@ -37,6 +40,12 @@
 #    define ECLIPSE_AUDIO_API Q_DECL_EXPORT
 #else
 #    define ECLIPSE_AUDIO_API Q_DECL_IMPORT
+#endif
+
+#if defined(ECLIPSE_FORMATS_BUILD)
+#    define ECLIPSE_FORMATS_API Q_DECL_EXPORT
+#else
+#    define ECLIPSE_FORMATS_API Q_DECL_IMPORT
 #endif
 
 #if defined(ECLIPSE_ACTIONS_BUILD)

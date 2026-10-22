@@ -23,8 +23,8 @@ struct Report {
 };
 
 // The movie of frames `first` to `last` (-1: to the end) as the bytes of a .swf file.
-ECLIPSE_UI_API QByteArray encode(Scene const& scene, int first = 0, int last = -1, Report* report = nullptr);
+ECLIPSE_FORMATS_API QByteArray encode(Scene const& scene, int first = 0, int last = -1, Report* report = nullptr);
 // Written to `path`; false (and why) when it cannot be.
-ECLIPSE_UI_API bool write(Scene const& scene, QString const& path, QString* error = nullptr, Report* report = nullptr);
+ECLIPSE_FORMATS_API bool write(Scene const& scene, QString const& path, QString* error = nullptr, Report* report = nullptr);
 
 }

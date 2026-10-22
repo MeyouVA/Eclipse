@@ -1,5 +1,5 @@
 // Eclipse - the Flash movie reader.
-#include "ui/io/SwfImport.h"
+#include "formats/flash/SwfImport.h"
 
 #include <QCoreApplication>
 #include <QHash>
@@ -16,9 +16,9 @@
 #include <memory>
 
 #include "model/scene/Scene.h"
-#include "ui/io/FlashCut.h"
-#include "ui/io/FlashVideo.h"
-#include "ui/io/Zip.h"
+#include "formats/flash/FlashCut.h"
+#include "formats/flash/FlashVideo.h"
+#include "formats/archive/Zip.h"
 
 namespace {
 

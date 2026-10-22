@@ -94,7 +94,7 @@ struct Document {
 // `progress`, when given, is told how far the reading has come (so much done of so much in all) now and then; false from
 // it stops the reading (and it fails, as stopped).
 using Progress = std::function<bool(qint64 done, qint64 all)>;
-ECLIPSE_UI_API bool read(QByteArray const& bytes, Document& out, QString* error = nullptr, QString const& mediaFolder = QString(),
+ECLIPSE_FORMATS_API bool read(QByteArray const& bytes, Document& out, QString* error = nullptr, QString const& mediaFolder = QString(),
                          Progress const& progress = {});
 
 }
