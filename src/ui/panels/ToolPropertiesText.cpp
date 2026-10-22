@@ -7,7 +7,7 @@
 #include <QHBoxLayout>
 #include <QSpinBox>
 
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include <QFormLayout>
 
 void ToolProperties::addTextRows()

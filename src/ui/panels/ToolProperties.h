@@ -8,7 +8,7 @@
 #include <QPixmap>
 #include <QWidget>
 
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 class ActionManager;
 class Canvas;

@@ -10,7 +10,7 @@
 
 #include "model/document/Commands.h"
 #include "model/scene/Scene.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 Graph3DView::Graph3DView(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
 {

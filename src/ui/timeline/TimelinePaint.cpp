@@ -1,6 +1,6 @@
 // Eclipse - the Timeline: painting.
 #include "ui/timeline/Timeline.h"
-#include "ui/window/InterfaceColours.h"
+#include "actions/theme/InterfaceColours.h"
 
 #include <QPainter>
 

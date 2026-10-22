@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg PrintSupport Qml)
 
-# Eclipse is six libraries and a small program that starts them (see src/EclipseExport.h).
+# Eclipse is seven libraries and a small program that starts them (see src/EclipseExport.h).
 # Each folder of src is a module, sorted into sub-folders by what the files are for; a source
 # file put anywhere under a module's folder is built into that module.
 # The libraries land beside the programs, where Windows looks for them.
@@ -47,9 +47,13 @@ target_link_libraries(EclipseRender PUBLIC EclipseModel Qt6::Core Qt6::Gui PRIVA
 eclipse_module(EclipseActions actions ECLIPSE_ACTIONS_BUILD)
 target_link_libraries(EclipseActions PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets PRIVATE Qt6::Svg)
 
+# The Camera and Drawing views and their tools.
+eclipse_module(EclipseCanvas canvas ECLIPSE_CANVAS_BUILD)
+target_link_libraries(EclipseCanvas PUBLIC EclipseModel EclipseRender EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets PRIVATE Qt6::Svg)
+
 # The window and all its views.
 eclipse_module(EclipseUi ui ECLIPSE_UI_BUILD)
-target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseFormats EclipseRender EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport winmm)
+target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseFormats EclipseRender EclipseCanvas EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport winmm)
 if(WIN32)
     # Scanning, through Windows Image Acquisition.
     target_link_libraries(EclipseUi PRIVATE wiaguid ole32 oleaut32)

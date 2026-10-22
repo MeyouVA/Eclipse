@@ -16,7 +16,7 @@
 
 #include "actions/manager/ActionManager.h"
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include <QFormLayout>
 
 void ToolProperties::addSelectionRows()

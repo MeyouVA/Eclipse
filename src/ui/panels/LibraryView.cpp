@@ -30,7 +30,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 QString const LibraryView::kSuffix = QStringLiteral("ecltpl");
 QString const LibraryView::kMimeType = QStringLiteral("application/x-eclipse-template");

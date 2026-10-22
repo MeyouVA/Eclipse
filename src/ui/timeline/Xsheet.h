@@ -53,7 +53,7 @@ public:
 
 signals:
     void cellPicked(int layer, int frame);
-    // Paste, with artwork copied last (see Timeline::artworkCopiedLast).
+    // Paste, with artwork copied last (see Canvas::artworkCopiedLast).
     void pasteArtwork();
     void contextMenuRequested(QPoint const& globalPos);
 

@@ -1,6 +1,6 @@
 // Eclipse - the Node View: painted, and the mouse and wheel on it.
 #include "ui/views/NodeView.h"
-#include "ui/window/InterfaceColours.h"
+#include "actions/theme/InterfaceColours.h"
 
 #include <QContextMenuEvent>
 #include <QDragEnterEvent>

@@ -27,8 +27,8 @@
 #include <QSpinBox>
 
 #include "actions/manager/ActionManager.h"
-#include "ui/canvas/Canvas.h"
-#include "ui/canvas/PencilTexture.h"
+#include "canvas/Canvas.h"
+#include "canvas/PencilTexture.h"
 #include "ui/window/MainWindowPrivate.h"
 #include <QFormLayout>
 

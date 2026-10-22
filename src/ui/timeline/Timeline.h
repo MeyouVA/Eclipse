@@ -114,8 +114,6 @@ public:
     void dropLayer(int layer, int target, bool below);
     // The row a layer is listed in (its own row, not one of its parameters'); -1 when it is not listed.
     int rowOfLayer(int layer) const;
-    static bool artworkCopiedLast();
-    static void setArtworkCopiedLast(bool artwork);
     // What was cut or copied last, in this view or in the Xsheet.
     static CellBlock& clipboard();
     // Pastes it from its last frame to its first; or so many times over.

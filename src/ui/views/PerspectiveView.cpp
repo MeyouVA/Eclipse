@@ -10,7 +10,7 @@
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
 #include "model/scene/Scene.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 namespace {
 constexpr double kDefaultYaw = -32.0;

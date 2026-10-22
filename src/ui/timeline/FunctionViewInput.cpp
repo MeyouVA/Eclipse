@@ -11,7 +11,7 @@
 #include <cmath>
 
 #include "model/document/Commands.h"
-#include "ui/window/InterfaceColours.h"
+#include "actions/theme/InterfaceColours.h"
 
 void FunctionGraph::paintEvent(QPaintEvent*)
 {

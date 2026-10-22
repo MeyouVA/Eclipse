@@ -1,6 +1,6 @@
 // Eclipse - Tool Properties: how the form is put together, which rows a tool shows, and the sizes to pick from.
 #include "ui/panels/ToolProperties.h"
-#include "ui/window/InterfaceColours.h"
+#include "actions/theme/InterfaceColours.h"
 
 #include <algorithm>
 #include <cmath>
@@ -18,7 +18,7 @@
 
 #include "actions/manager/ActionManager.h"
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/window/MainWindowPrivate.h"
 #include <QCheckBox>
 #include <QDoubleSpinBox>

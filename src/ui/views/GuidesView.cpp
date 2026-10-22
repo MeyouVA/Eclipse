@@ -16,7 +16,7 @@
 
 #include "model/document/Commands.h"
 #include "model/scene/Scene.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 GuidesView::GuidesView(Document* document, Canvas* canvas, QWidget* parent) : QWidget(parent), m_document(document), m_canvas(canvas)
 {

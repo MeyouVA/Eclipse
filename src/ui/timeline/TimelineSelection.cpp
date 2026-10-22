@@ -1,4 +1,5 @@
 // Eclipse - the Timeline: the block of cells selected - moved, copied, pasted, cycled.
+#include "canvas/Canvas.h"
 #include "ui/timeline/Timeline.h"
 
 #include "audio/sound/Sound.h"
@@ -136,22 +137,10 @@ bool Timeline::canPasteCells()
     return !cellClipboard().isEmpty();
 }
 
-static bool s_artworkLast = false;
-
-bool Timeline::artworkCopiedLast()
-{
-    return s_artworkLast;
-}
-
-void Timeline::setArtworkCopiedLast(bool artwork)
-{
-    s_artworkLast = artwork;
-}
-
 void Timeline::copy()
 {
     cellClipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame());
-    s_artworkLast = false;
+    Canvas::setArtworkCopiedLast(false);
 }
 
 void Timeline::cut()
@@ -162,7 +151,7 @@ void Timeline::cut()
 
 void Timeline::paste()
 {
-    if (s_artworkLast) {
+    if (Canvas::artworkCopiedLast()) {
         emit pasteArtwork();
         return;
     }

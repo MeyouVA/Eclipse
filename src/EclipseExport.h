@@ -1,6 +1,6 @@
 // Eclipse - what each module shows to the others.
 //
-// Eclipse is built as six libraries and a small program that starts them:
+// Eclipse is built as seven libraries and a small program that starts them:
 //   EclipseModel    src/model     the scene: layers, drawings, keyframes, and the commands that change them
 //                     scene/        what a scene is made of, and reading and writing it
 //                     document/     the scene in hand, and every change to it as a step that can be undone
@@ -17,9 +17,9 @@
 //                     manager/      the commands themselves
 //                     dialogs/      changing shortcuts and toolbars
 //                     theme/        colours and icons
+//   EclipseCanvas   src/canvas    the Camera and Drawing views and their tools
 //   EclipseUi       src/ui        the window and all its views
 //                     window/       the main window, its title bars, the Welcome window
-//                     canvas/       the Camera and Drawing views and their tools
 //                     timeline/     the Timeline, the Xsheet, the Function view
 //                     panels/       Tool Properties, Layer Properties, Colour, Drawing Substitution, effects, the Library
 //                     views/        Node View, Top / Side / Perspective, Lip-Sync, and the smaller views
@@ -54,6 +54,12 @@
 #    define ECLIPSE_RENDER_API Q_DECL_EXPORT
 #else
 #    define ECLIPSE_RENDER_API Q_DECL_IMPORT
+#endif
+
+#if defined(ECLIPSE_CANVAS_BUILD)
+#    define ECLIPSE_CANVAS_API Q_DECL_EXPORT
+#else
+#    define ECLIPSE_CANVAS_API Q_DECL_IMPORT
 #endif
 
 #if defined(ECLIPSE_ACTIONS_BUILD)

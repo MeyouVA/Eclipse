@@ -17,7 +17,7 @@
 #include <QLabel>
 
 #include "actions/manager/ActionManager.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/window/MainWindowPrivate.h"
 
 void ToolProperties::addModeRows()

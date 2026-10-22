@@ -16,7 +16,7 @@
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/io/MovieExport.h"
 #include "ui/io/ImportExportPrivate.h"
 

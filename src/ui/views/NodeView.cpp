@@ -1,6 +1,6 @@
 // Eclipse - the Node View: made, groups entered and left, where nodes and cables lie, the navigator, zoom.
 #include "ui/views/NodeView.h"
-#include "ui/window/InterfaceColours.h"
+#include "actions/theme/InterfaceColours.h"
 
 #include <QContextMenuEvent>
 #include <QDragEnterEvent>

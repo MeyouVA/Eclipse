@@ -21,7 +21,7 @@
 #include "actions/dialogs/ShortcutsDialog.h"
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/panels/LayerPanel.h"
 #include "ui/io/MovieExport.h"
 #include "ui/views/NodeView.h"

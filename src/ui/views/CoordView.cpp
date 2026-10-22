@@ -19,7 +19,7 @@
 
 #include "model/document/Commands.h"
 #include "model/scene/Scene.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 namespace {
 // The columns of the table.

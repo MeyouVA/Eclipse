@@ -35,7 +35,7 @@
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/timeline/Xsheet.h"
 #include "ui/timeline/FunctionView.h"
 #include "ui/views/PreviewManagerView.h"
@@ -49,7 +49,7 @@
 #include "ui/panels/PalettePanel.h"
 #include "ui/io/ImportExportPrivate.h"
 #include "ui/views/NodeView.h"
-#include "ui/window/InterfaceColours.h"
+#include "actions/theme/InterfaceColours.h"
 #include <QHeaderView>
 #include <QTreeWidget>
 #include <QLibraryInfo>

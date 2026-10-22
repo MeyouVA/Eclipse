@@ -1,5 +1,6 @@
 #include "ui/timeline/Xsheet.h"
-#include "ui/window/InterfaceColours.h"
+#include "canvas/Canvas.h"
+#include "actions/theme/InterfaceColours.h"
 
 #include <QContextMenuEvent>
 #include <QKeyEvent>
@@ -397,7 +398,7 @@ bool Xsheet::eventFilter(QObject* watched, QEvent* event)
 void Xsheet::copy()
 {
     Timeline::clipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame());
-    Timeline::setArtworkCopiedLast(false);
+    Canvas::setArtworkCopiedLast(false);
 }
 
 void Xsheet::cut()
@@ -408,7 +409,7 @@ void Xsheet::cut()
 
 void Xsheet::paste()
 {
-    if (Timeline::artworkCopiedLast()) {
+    if (Canvas::artworkCopiedLast()) {
         emit pasteArtwork();
         return;
     }

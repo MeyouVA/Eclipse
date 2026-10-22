@@ -10,7 +10,7 @@
 #include <QVBoxLayout>
 
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 static constexpr int kThumbWidth = 80;
 static constexpr int kThumbHeight = 60;

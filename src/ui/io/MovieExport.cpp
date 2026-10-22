@@ -13,7 +13,7 @@
 
 #include "audio/sound/Sound.h"
 #include "model/scene/Scene.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 
 namespace MovieExport {
 

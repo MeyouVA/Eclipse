@@ -37,7 +37,7 @@
 #include "ui/io/Scanner.h"
 #include "model/geometry/Model3D.h"
 #include "model/geometry/Vectorize.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
 #include "ui/panels/PalettePanel.h"

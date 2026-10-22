@@ -14,7 +14,7 @@
 #include "actions/manager/ActionManager.h"
 #include "actions/dialogs/ShortcutsDialog.h"
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/panels/LayerPanel.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/window/ViewTitleBar.h"

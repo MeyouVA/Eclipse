@@ -20,7 +20,7 @@
 #include "actions/manager/ActionManager.h"
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
-#include "ui/canvas/Canvas.h"
+#include "canvas/Canvas.h"
 #include "ui/views/DepthView.h"
 #include "ui/views/PerspectiveView.h"
 #include "ui/io/MovieExport.h"
