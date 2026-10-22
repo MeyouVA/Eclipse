@@ -35,13 +35,13 @@ target_link_libraries(EclipseModel PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets)
 eclipse_module(EclipseAudio audio ECLIPSE_AUDIO_BUILD)
 target_link_libraries(EclipseAudio PUBLIC EclipseModel Qt6::Core PRIVATE winmm)
 
-# Other programs' files, read and written without the window: Flash (.fla, .swf), zip archives.
-eclipse_module(EclipseFormats formats ECLIPSE_FORMATS_BUILD)
-target_link_libraries(EclipseFormats PUBLIC EclipseModel EclipseAudio Qt6::Core Qt6::Gui)
-
 # Making pictures of the scene without the window: the effects of a layer on its picture.
 eclipse_module(EclipseRender render ECLIPSE_RENDER_BUILD)
 target_link_libraries(EclipseRender PUBLIC EclipseModel Qt6::Core Qt6::Gui PRIVATE Qt6::Qml)
+
+# Other programs' files, read and written without the window: Flash (.fla, .swf), zip archives.
+eclipse_module(EclipseFormats formats ECLIPSE_FORMATS_BUILD)
+target_link_libraries(EclipseFormats PUBLIC EclipseModel EclipseAudio EclipseRender Qt6::Core Qt6::Gui)
 
 # The menus, toolbars and shortcuts read from `resources`, and the look of the program.
 eclipse_module(EclipseActions actions ECLIPSE_ACTIONS_BUILD)

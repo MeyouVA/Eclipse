@@ -93,6 +93,7 @@ struct Shape {
     struct Area {
         FillStyle style;
         QVector<QPolygonF> rings;
+        int group = 0;      // which set of styles it is painted in: each set over the ones before
     };
     struct Line {
         QColor colour;
@@ -100,6 +101,7 @@ struct Shape {
         bool keepWidth = false;     // a line that keeps its thickness however the shape is scaled
         int startCap = 0, endCap = 0, join = 0;    // 0: round; 1: none (flat), 2: square - and 0: round, 1: bevel, 2: mitre
         QPolygonF points;
+        int group = 0;
     };
     QVector<Area> areas;
     QVector<Line> lines;

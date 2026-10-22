@@ -350,7 +350,9 @@ public slots:
     // File > Import > SWF: a Flash movie, a layer on a peg for each depth of it (or its frames as the drawings of one layer).
     void onActionImportSwf();
     // The same, from a file; the layer made (the peg over them all, `asLayers`), or -1 (and why).
-    int importSwf(QString const& path, QString* error = nullptr, bool asLayers = false, int* layers = nullptr);
+    int importSwf(QString const& path, QString* error = nullptr, bool asLayers = false, int* layers = nullptr, bool groups = false);
+    // A Flash movie's layers on pegs saved as a template in the Library's folder: the template's file, or empty (and why).
+    QString importSwfToLibrary(QString const& path, QString* error = nullptr, bool groups = false);
     // File > Import > FLA: each layer of a Flash document's main timeline as a layer, frame by frame.
     void onActionImportFla();
     // The same, from a file; how many layers were made, or -1 (and why).

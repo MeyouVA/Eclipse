@@ -80,7 +80,11 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
 - Scenes are saved as `.ecl` files.
 - Imports pictures, movies, sound, 3D models (OBJ), pages from a scanner, Flash movies (SWF) and Flash documents
   (FLA, the XFL kind of Flash CS5 and after: symbols, tweens, masks, text, bitmaps, video and sound come across).
-- Exports movies, picture sequences, animated GIFs and Flash movies (SWF).
+  A Flash movie can come in as a rig - a drawing layer on a peg for each depth of it, its motion as keyframes - or
+  frame by frame on one layer; as layers it can also go into the Library as a template.
+- Exports movies, picture sequences, animated GIFs and Flash movies (SWF): each drawing written once and moved
+  frame by frame, with gradients, pictures, lines, sound, opacity, tints, blurs, glows, shadows, blend modes and
+  cutters (as masks); and a report of anything Flash has no like of.
   Movies and some sound formats are read and written through [FFmpeg](https://ffmpeg.org/),
   which has to be installed and on the `PATH` for those features.
 - Templates can be kept in a Library and dropped into other scenes.

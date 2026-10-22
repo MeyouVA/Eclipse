@@ -62,7 +62,7 @@ QVector<Keyframe> keysFor(QVector<Pose> const& poses, QVector<bool> const& shown
 
 }  // namespace
 
-Scene rig(Movie const& movie, QString const& name, QSize frame)
+Scene rig(Movie const& movie, QString const& name, QSize frame, bool groups)
 {
     Scene piece;
     piece.layers.clear();       // (a new scene starts with a drawing layer)
@@ -133,8 +133,15 @@ Scene rig(Movie const& movie, QString const& name, QSize frame)
             shown[f] = true;
         }
         peg.keys = keysFor(poses, shown, samePlace);
-        pegIds.push_back(peg.id);
-        piece.layers[at].parent = peg.id;
+        int const pegId = peg.id;
+        piece.layers[at].parent = pegId;
+        if (groups) {
+            int const group = piece.addLayer(track.name + QStringLiteral("-G"), -1, Layer::Group);
+            piece.layers[piece.layerIndex(pegId)].parent = piece.layers[group].id;
+            pegIds.push_back(piece.layers[group].id);
+        } else {
+            pegIds.push_back(pegId);
+        }
     }
     // The masks: each layer cut by the drawings of the masks over it.
     for (int i = 0; i < movie.tracks.size(); ++i)

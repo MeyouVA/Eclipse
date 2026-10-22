@@ -51,9 +51,14 @@ QImage Reader::tintedImage(QImage const& image, ColourFx const& fx)
     return made;
 }
 
-void Reader::shapeInto(Shape const& s, QTransform const& place, ColourFx const& fx, Drawing& d, int order)
+void Reader::shapeInto(Shape const& s, QTransform const& place, ColourFx const& fx, Drawing& d, int& next)
 {
+    // Each set of styles of the shape over the one before (a set's lines over its areas, as the same place in the order).
+    int const base = ++next;
+    int order = base;
     for (Shape::Area const& area : s.areas) {
+        order = base + area.group;
+        next = std::max(next, order);
         if (area.style.bitmap >= 0) {
             // Filled with a bitmap: the picture where the fill's matrix puts it, only where the shape is.
             QImage const image = bitmaps.value(area.style.bitmap);
@@ -89,6 +94,8 @@ void Reader::shapeInto(Shape const& s, QTransform const& place, ColourFx const& 
         d.fills.push_back(fill);
     }
     for (Shape::Line const& line : s.lines) {
+        order = base + line.group;
+        next = std::max(next, order);
         Stroke stroke;
         stroke.color = fx.apply(line.colour);
         stroke.order = order;
@@ -165,13 +172,13 @@ void Reader::drawPlaced(Placed const& placed, int frame, Drawing& d, int& order,
 {
     ColourFx const fx = ColourFx::of(placed);
     if (auto const found = shapes.constFind(placed.character); found != shapes.cend()) {
-        shapeInto(*found, placed.matrix, fx, d, ++order);
+        shapeInto(*found, placed.matrix, fx, d, order);
     } else if (auto const m = morphs.constFind(placed.character); m != morphs.cend()) {
         QPair<int, int> const key(placed.character, placed.ratio);
         auto made = morphShapes.constFind(key);
         if (made == morphShapes.cend())
             made = morphShapes.insert(key, morphAt(*m, placed.ratio / 65535.0));
-        shapeInto(*made, placed.matrix, fx, d, ++order);
+        shapeInto(*made, placed.matrix, fx, d, order);
     } else if (auto const sprite = sprites.constFind(placed.character); sprite != sprites.cend()) {
         if (depth > 24 || sprite->isEmpty())
             return;

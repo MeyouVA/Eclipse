@@ -65,8 +65,8 @@ private:
 
     int gradientOf(Swatch const& s);
     QImage tintedImage(QImage const& image, ColourFx const& fx);
-    // A shape drawn into `d`, placed by `place`, coloured by `fx`, at `order` among what is drawn.
-    void shapeInto(Shape const& s, QTransform const& place, ColourFx const& fx, Drawing& d, int order);
+    // A shape drawn into `d`, placed by `place`, coloured by `fx`, over what is drawn (`order` is moved on past it).
+    void shapeInto(Shape const& s, QTransform const& place, ColourFx const& fx, Drawing& d, int& order);
     // A drawing put into another: placed, coloured, over what is there.
     void placeInto(Drawing const& inner, QTransform const& place, ColourFx const& fx, Drawing& d, int& order);
     // What a character looks like where it is placed (in the coordinates of the timeline it is on), on frame `frame` of it.

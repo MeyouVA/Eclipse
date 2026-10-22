@@ -82,7 +82,8 @@ using Progress = std::function<bool(qint64 done, qint64 all)>;
 ECLIPSE_FORMATS_API bool read(QByteArray const& bytes, Movie& out, QString* error = nullptr, QString const& mediaFolder = QString(),
                          Progress const& progress = {}, Layout layout = Layout::Frames);
 
-// A movie read in tracks as a template to put in a scene of that size: a peg fitting it into the frame, a peg a track.
-ECLIPSE_FORMATS_API Scene rig(Movie const& movie, QString const& name, QSize frame);
+// A movie read in tracks as a template to put in a scene of that size: a peg fitting it into the frame, a peg a track
+// (with `groups`, each track and its peg in a group of their own).
+ECLIPSE_FORMATS_API Scene rig(Movie const& movie, QString const& name, QSize frame, bool groups = false);
 
 }

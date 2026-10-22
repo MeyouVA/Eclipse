@@ -100,7 +100,37 @@ static QString saveImportedMedia(QString const& scenePath, QString const& source
     return file.fileName();
 }
 
-int MainWindow::importSwf(QString const& path, QString* error, bool asLayers, int* layers)
+QString MainWindow::importSwfToLibrary(QString const& path, QString* error, bool groups)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (error)
+            *error = file.errorString();
+        return QString();
+    }
+    SwfImport::Movie movie;
+    {
+        ImportProgress shown(this, tr("Reading %1...").arg(QFileInfo(path).fileName()));
+        if (!SwfImport::read(file.readAll(), movie, error, importedMediaFolder(m_path, path), shown.callback(), SwfImport::Layout::Tracks))
+            return QString();
+    }
+    Scene const& scene = m_document->scene();
+    QString const name = QFileInfo(path).completeBaseName();
+    Scene const piece = SwfImport::rig(movie, name, QSize(scene.width, scene.height), groups);
+    QDir const folder(m_library ? m_library->currentFolder() : LibraryView::defaultFolder());
+    QString target = folder.filePath(name + QLatin1Char('.') + LibraryView::kSuffix);
+    for (int n = 2; QFileInfo::exists(target); ++n)
+        target = folder.filePath(QStringLiteral("%1 %2.%3").arg(name).arg(n).arg(LibraryView::kSuffix));
+    if (!QDir().mkpath(folder.absolutePath()) || !piece.save(target, error))
+        return QString();
+    if (m_library) {
+        m_library->refresh();
+        m_library->setCurrentTemplate(target);
+    }
+    return target;
+}
+
+int MainWindow::importSwf(QString const& path, QString* error, bool asLayers, int* layers, bool groups)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -126,7 +156,7 @@ int MainWindow::importSwf(QString const& path, QString* error, bool asLayers, in
     int at = -1;
     if (asLayers) {
         // A template made of it: a peg over it all, a drawing layer on a peg for each depth; the movie's colour behind everything.
-        Scene const piece = SwfImport::rig(movie, QFileInfo(path).completeBaseName(), QSize(scene.width, scene.height));
+        Scene const piece = SwfImport::rig(movie, QFileInfo(path).completeBaseName(), QSize(scene.width, scene.height), groups);
         int const first = m_document->insertTemplate(piece, 0);
         if (first >= 0) {
             at = int(m_document->scene().layers.size()) - 1;
@@ -361,11 +391,23 @@ void MainWindow::onActionImportSwf()
     auto* column = new QVBoxLayout(&ask);
     auto* rigged = new QRadioButton(tr("A layer for each depth of the movie, moved by a peg of its own"), &ask);
     auto* flat = new QRadioButton(tr("One layer, a drawing for each frame"), &ask);
+    auto* grouped = new QCheckBox(tr("Each layer and its peg in a group"), &ask);
+    auto* library = new QCheckBox(tr("Into the Library as a template, not into the scene"), &ask);
     rigged->setObjectName(QStringLiteral("SwfAsLayers"));
     flat->setObjectName(QStringLiteral("SwfAsFrames"));
     bool const wasLayers = settings().value(QStringLiteral("import/swfAsLayers"), true).toBool();
     (wasLayers ? rigged : flat)->setChecked(true);
+    grouped->setChecked(settings().value(QStringLiteral("import/swfGroups"), false).toBool());
+    library->setChecked(settings().value(QStringLiteral("import/swfToLibrary"), false).toBool());
+    auto* rigOptions = new QWidget(&ask);
+    auto* rigColumn = new QVBoxLayout(rigOptions);
+    rigColumn->setContentsMargins(20, 0, 0, 0);
+    rigColumn->addWidget(grouped);
+    rigColumn->addWidget(library);
+    rigOptions->setEnabled(wasLayers);
+    connect(rigged, &QRadioButton::toggled, rigOptions, &QWidget::setEnabled);
     column->addWidget(rigged);
+    column->addWidget(rigOptions);
     column->addWidget(flat);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &ask);
     connect(buttons, &QDialogButtonBox::accepted, &ask, &QDialog::accept);
@@ -375,10 +417,22 @@ void MainWindow::onActionImportSwf()
         return;
     bool const asLayers = rigged->isChecked();
     settings().setValue(QStringLiteral("import/swfAsLayers"), asLayers);
+    settings().setValue(QStringLiteral("import/swfGroups"), grouped->isChecked());
+    settings().setValue(QStringLiteral("import/swfToLibrary"), library->isChecked());
     QString error;
+    if (asLayers && library->isChecked()) {
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        QString const saved = importSwfToLibrary(path, &error, grouped->isChecked());
+        QApplication::restoreOverrideCursor();
+        if (saved.isEmpty())
+            QMessageBox::warning(this, tr("Import SWF"), error);
+        else
+            statusBar()->showMessage(tr("%1: kept in the Library as %2.").arg(QFileInfo(path).fileName(), QFileInfo(saved).completeBaseName()), 10000);
+        return;
+    }
     int tracks = 0;
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    int const at = importSwf(path, &error, asLayers, &tracks);
+    int const at = importSwf(path, &error, asLayers, &tracks, grouped->isChecked());
     QApplication::restoreOverrideCursor();
     if (at < 0) {
         QMessageBox::warning(this, tr("Import SWF"), error);

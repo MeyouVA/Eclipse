@@ -251,6 +251,7 @@ Shape build(QVector<Rec> const& records, QVector<FillStyle> const& fills, QVecto
     int fill0 = 0, fill1 = 0, line = 0, base = 0, lineBase = 0;
     QPointF at;
     int currentLine = -1;
+    QVector<int> groupStarts{0};    // where the fill styles of each set of styles start
     for (Rec const& r : records) {
         if (!r.edge) {
             if (r.move)
@@ -258,6 +259,7 @@ Shape build(QVector<Rec> const& records, QVector<FillStyle> const& fills, QVecto
             if (r.fillBase >= 0) {
                 base = r.fillBase;
                 lineBase = r.lineBase;
+                groupStarts.push_back(r.fillBase);
             }
             if (r.fill0 >= 0)
                 fill0 = r.fill0;
@@ -294,6 +296,7 @@ Shape build(QVector<Rec> const& records, QVector<FillStyle> const& fills, QVecto
                 l.endCap = style.endCap;
                 l.join = style.join;
                 l.points = piece;
+                l.group = int(groupStarts.size()) - 1;
                 out.lines.push_back(l);
                 currentLine = int(out.lines.size()) - 1;
             } else {
@@ -322,6 +325,11 @@ Shape build(QVector<Rec> const& records, QVector<FillStyle> const& fills, QVecto
         QVector<bool> used(pieces.size(), false);
         Shape::Area area;
         area.style = fills[s - 1];
+        for (int g = int(groupStarts.size()) - 1; g >= 0; --g)
+            if (groupStarts[g] <= s - 1) {
+                area.group = g;
+                break;
+            }
         for (int i = 0; i < pieces.size(); ++i) {
             if (used[i])
                 continue;

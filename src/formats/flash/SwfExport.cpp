@@ -1,365 +1,333 @@
-// Eclipse - the Flash movie writer.
+// Eclipse - the Flash movie writer: each layer at depths of its own, its drawing a shape placed (and moved) frame by frame.
 #include "formats/flash/SwfExport.h"
 
 #include <QFile>
-#include <QHash>
-#include <QPolygonF>
-#include <QTransform>
+#include <QMap>
+#include <QObject>
 
 #include <algorithm>
-#include <climits>
 #include <cmath>
 
+#include "formats/flash/SwfExportPrivate.h"
 #include "model/geometry/Deform.h"
 #include "model/scene/Scene.h"
+#include "render/effects/Effects.h"
+
+using namespace swfout;
 
 namespace {
 
-// Bits written one after another, most significant first, as the file's shape records want them.
-class Bits {
-public:
-    void put(quint32 value, int count)
+// What stands at a depth on a frame.
+struct Placement {
+    int character = 0;
+    QTransform matrix;
+    ColourEffect colour;
+    QVector<Flash::Filter> filters;
+    int blend = 0;      // Flash's number (0: normal)
+    int clip = 0;       // a mask: the depth it covers up to
+    bool sameLook(Placement const& o) const
     {
-        for (int i = count - 1; i >= 0; --i) {
-            m_byte = quint8((m_byte << 1) | ((value >> i) & 1u));
-            if (++m_used == 8)
-                flush();
-        }
+        return matrix == o.matrix && colour == o.colour && blend == o.blend && filterList(filters) == filterList(o.filters);
     }
-    void putSigned(qint32 value, int count) { put(quint32(value) & ((count >= 32) ? 0xffffffffu : ((1u << count) - 1u)), count); }
-    // The rest of the last byte filled with noughts.
-    QByteArray bytes()
-    {
-        if (m_used > 0) {
-            m_byte = quint8(m_byte << (8 - m_used));
-            flush();
-        }
-        return m_out;
-    }
-
-private:
-    void flush()
-    {
-        m_out.append(char(m_byte));
-        m_byte = 0;
-        m_used = 0;
-    }
-    QByteArray m_out;
-    quint8 m_byte = 0;
-    int m_used = 0;
 };
 
-// How many bits a signed number takes (with its sign).
-int signedBits(qint32 v)
+int flashBlend(int blend)
 {
-    int n = 1;
-    while (n < 32 && (v < -(qint32(1) << (n - 1)) || v > (qint32(1) << (n - 1)) - 1))
-        ++n;
-    return n;
-}
-
-void u16(QByteArray& out, quint16 v)
-{
-    out.append(char(v & 0xff));
-    out.append(char(v >> 8));
-}
-
-void u32(QByteArray& out, quint32 v)
-{
-    for (int i = 0; i < 4; ++i)
-        out.append(char((v >> (8 * i)) & 0xff));
-}
-
-QByteArray rect(qint32 xmin, qint32 xmax, qint32 ymin, qint32 ymax)
-{
-    int const n = std::max({signedBits(xmin), signedBits(xmax), signedBits(ymin), signedBits(ymax)});
-    Bits bits;
-    bits.put(quint32(n), 5);
-    for (qint32 v : {xmin, xmax, ymin, ymax})
-        bits.putSigned(v, n);
-    return bits.bytes();
-}
-
-QByteArray tag(int code, QByteArray const& body)
-{
-    QByteArray out;
-    if (body.size() < 63) {
-        u16(out, quint16((code << 6) | int(body.size())));
-    } else {
-        u16(out, quint16((code << 6) | 0x3f));
-        u32(out, quint32(body.size()));
+    switch (blend) {
+    case Layer::BlendMultiply: return 3;
+    case Layer::BlendScreen: return 4;
+    case Layer::BlendLighten: return 5;
+    case Layer::BlendDarken: return 6;
+    case Layer::BlendDifference: return 7;
+    case Layer::BlendAdd: return 8;
+    case Layer::BlendOverlay: return 13;
+    case Layer::BlendHardLight: return 14;
+    default: return -1;
     }
-    return out + body;
 }
 
-// One painted thing of a frame: outlines filled odd-even in one colour, in the frame's twips.
-struct Piece {
-    QVector<QVector<QPoint>> rings;
-    QColor colour;
-};
-
-// A shape (DefineShape3) of one piece, its rings turned so that what lies inside an even number of them is filled.
-QByteArray shapeBody(int id, Piece const& piece)
+QByteArray placeTag(int depth, Placement const& p, bool move, bool newCharacter, bool hadLook)
 {
+    bool const look = !p.filters.isEmpty() || p.blend > 1 || hadLook;
     QByteArray body;
-    u16(body, quint16(id));
-    int left = INT_MAX, top = INT_MAX, right = INT_MIN, bottom = INT_MIN;
-    for (auto const& ring : piece.rings)
-        for (QPoint const& p : ring) {
-            left = std::min(left, p.x());
-            right = std::max(right, p.x());
-            top = std::min(top, p.y());
-            bottom = std::max(bottom, p.y());
-        }
-    body += rect(left, right, top, bottom);
-    // One fill style, solid, with its opacity; no line styles.
-    body.append(char(1));
-    body.append(char(0x00));
-    body.append(char(piece.colour.red()));
-    body.append(char(piece.colour.green()));
-    body.append(char(piece.colour.blue()));
-    body.append(char(piece.colour.alpha()));
-    body.append(char(0));
-    Bits bits;
-    bits.put(1, 4);     // fill style bits
-    bits.put(0, 4);     // line style bits
-    // Which rings are holes: those inside an odd number of the others.
-    QVector<QPolygonF> polygons;
-    for (auto const& ring : piece.rings) {
-        QPolygonF p;
-        for (QPoint const& q : ring)
-            p << QPointF(q);
-        polygons.push_back(p);
+    int flags = 0x04 | 0x08;       // a matrix and a colour effect, each time
+    if (move)
+        flags |= 0x01;
+    if (newCharacter)
+        flags |= 0x02;
+    if (p.clip > 0)
+        flags |= 0x40;
+    u8(body, flags);
+    if (look)
+        u8(body, 0x01 | 0x02);     // filters and a blend mode
+    u16(body, quint16(depth));
+    if (newCharacter)
+        u16(body, quint16(p.character));
+    body += matrix(p.matrix);
+    body += colourEffect(p.colour);
+    if (p.clip > 0)
+        u16(body, quint16(p.clip));
+    if (look) {
+        body += filterList(p.filters);
+        u8(body, std::max(1, p.blend));
     }
-    for (int r = 0; r < piece.rings.size(); ++r) {
-        QVector<QPoint> ring = piece.rings[r];
-        if (ring.size() < 3)
-            continue;
-        int inside = 0;
-        for (int o = 0; o < polygons.size(); ++o)
-            if (o != r && polygons[o].containsPoint(polygons[r].first(), Qt::OddEvenFill))
-                ++inside;
-        // The fill on the right of each edge (y down): an outer ring goes clockwise on screen, a hole the other way.
-        double twice = 0.0;
-        for (int i = 0; i < ring.size(); ++i)
-            twice += double(ring[i].x()) * ring[(i + 1) % ring.size()].y() - double(ring[(i + 1) % ring.size()].x()) * ring[i].y();
-        bool const clockwise = twice > 0.0;
-        if (clockwise != (inside % 2 == 0))
-            std::reverse(ring.begin(), ring.end());
-        // Move to the first point, with the fill on the right (fill style 1) and none on the left.
-        bits.put(0, 1);         // a style change
-        bits.put(0, 1);         // no new styles
-        bits.put(0, 1);         // line style: unchanged
-        bits.put(1, 1);         // fill style 1
-        bits.put(1, 1);         // fill style 0
-        bits.put(1, 1);         // move to
-        int const moveBits = std::max(signedBits(ring.first().x()), signedBits(ring.first().y()));
-        bits.put(quint32(moveBits), 5);
-        bits.putSigned(ring.first().x(), moveBits);
-        bits.putSigned(ring.first().y(), moveBits);
-        bits.put(0, 1);         // fill style 0: none
-        bits.put(1, 1);         // fill style 1: the colour
-        QPoint at = ring.first();
-        for (int i = 1; i <= ring.size(); ++i) {
-            QPoint const to = ring[i % ring.size()];
-            // (An edge no longer than a straight edge can say: long ones in pieces.)
-            int const steps = std::max(1, int(std::ceil(std::max(std::abs(to.x() - at.x()), std::abs(to.y() - at.y())) / 60000.0)));
-            QPoint const from = at;
-            for (int s = 1; s <= steps; ++s) {
-                QPoint const next = from + (to - from) * s / steps;
-                int const dx = next.x() - at.x(), dy = next.y() - at.y();
-                if (dx == 0 && dy == 0)
-                    continue;
-                int const n = std::max({signedBits(dx), signedBits(dy), 2});
-                bits.put(1, 1);                     // an edge
-                bits.put(1, 1);                     // straight
-                bits.put(quint32(n - 2), 4);
-                bits.put(1, 1);                     // across and down both
-                bits.putSigned(dx, n);
-                bits.putSigned(dy, n);
-                at = next;
-            }
-        }
-    }
-    bits.put(0, 6);     // the end of the shape
-    return body + bits.bytes();
+    return tag(look ? 70 : 26, body);
 }
 
-struct Collector {
-    Scene const& scene;
-    QVector<Piece> pieces;
-    SwfExport::Report* report = nullptr;
-
-    // Outlines from the layer's own coordinates into the frame's twips.
-    QVector<QVector<QPoint>> twips(QVector<QPolygonF> const& outlines, QTransform const& toFrame) const
-    {
-        QVector<QVector<QPoint>> rings;
-        for (QPolygonF const& outline : outlines) {
-            QVector<QPoint> ring;
-            for (QPointF const& p : outline) {
-                QPointF const q = toFrame.map(p);
-                QPoint const t(int(std::lround(q.x() * 20.0)), int(std::lround(q.y() * 20.0)));
-                if (ring.isEmpty() || ring.last() != t)
-                    ring.push_back(t);
-            }
-            if (ring.size() > 1 && ring.first() == ring.last())
-                ring.removeLast();
-            if (ring.size() >= 3)
-                rings.push_back(ring);
-        }
-        return rings;
+// Can the layer's drawing on that frame be one shape, moved: nothing bends it, and the camera sees it flat?
+bool rigid(Scene const& scene, int l, int frame, Pose const& pose, QTransform const& world)
+{
+    Layer const& layer = scene.layers[l];
+    if (world.type() == QTransform::TxProject || layer.morphing(frame) || layer.bendOnBones)
+        return false;
+    if (!layer.showsSymbol()) {
+        int const index = layer.drawingAt(frame);
+        if (index < 0 || index >= layer.drawings.size() || !layer.drawings[index].model.isEmpty())
+            return false;
+        if (Deform::isWarped(layer.warp, layer.warpClosed, pose.warp) || Deform::isBent(layer.bones, pose.bend))
+            return false;
     }
-
-    void add(QVector<QPolygonF> const& outlines, QColor colour, double opacity, QTransform const& toFrame)
-    {
-        colour.setAlphaF(float(std::clamp(colour.alphaF() * opacity, 0.0, 1.0)));
-        if (colour.alpha() == 0)
-            return;
-        Piece piece;
-        piece.rings = twips(outlines, toFrame);
-        piece.colour = colour;
-        if (!piece.rings.isEmpty())
-            pieces.push_back(piece);
-    }
-
-    void drawing(Drawing const& d, double opacity, QTransform const& toFrame)
-    {
-        if (!d.pictures.isEmpty() && report)
-            report->skippedPictures = true;
-        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
-            struct Item {
-                int order;
-                bool line;
-                int index;
-            };
-            QVector<Item> items;
-            for (int i = 0; i < d.fillsOf(sheet).size(); ++i)
-                items.push_back({d.fillsOf(sheet)[i].order, false, i});
-            for (int i = 0; i < d.strokesOf(sheet).size(); ++i)
-                items.push_back({d.strokesOf(sheet)[i].order, true, i});
-            std::stable_sort(items.begin(), items.end(), [](Item const& a, Item const& b) { return a.order != b.order ? a.order < b.order : (!a.line && b.line); });
-            for (Item const& item : std::as_const(items)) {
-                if (item.line) {
-                    Stroke const& s = d.strokesOf(sheet)[item.index];
-                    add(s.outlinePolygons(), scene.resolve(s.swatch, s.color), opacity, toFrame);
-                } else {
-                    Fill const& f = d.fillsOf(sheet)[item.index];
-                    add(f.outlines, scene.resolve(f.swatch, f.color), opacity, toFrame);
-                }
-            }
-        }
-    }
-
-    void frame(int f)
-    {
-        pieces.clear();
-        QTransform const camera = scene.cameraTransform(f);
-        // The ground of the frame.
-        add({QPolygonF(QRectF(0, 0, scene.width, scene.height))}, scene.background, 1.0, QTransform());
-        for (int l : scene.drawOrder(f)) {
-            Layer const& layer = scene.layers[l];
-            if (!scene.enabled(l))
-                continue;
-            if (layer.kind == Layer::ColourCard) {
-                add({QPolygonF(QRectF(0, 0, scene.width, scene.height))}, layer.cardColor, layer.opacity, QTransform());
-                continue;
-            }
-            int const index = layer.drawingAt(f);
-            if (!layer.holdsDrawings() || index == Layer::kNoDrawing)
-                continue;
-            for (Effect const& e : layer.effects)
-                if (e.enabled && report)
-                    report->skippedEffects = true;
-            Pose const pose = scene.poseOf(l, f);
-            Drawing const shown = layer.showsSymbol() ? scene.symbolPicture(layer.symbolId, index)
-                                                      : Deform::ridden(scene, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose));
-            drawing(shown, layer.opacity * pose.opacity, scene.worldTransform(l, f) * camera);
-        }
-    }
-};
+    for (int a = scene.parentIndex(l), guard = 0; a >= 0 && guard < 64; a = scene.parentIndex(a), ++guard)
+        if (scene.layers[a].hasWarp())
+            return false;
+    return true;
+}
 
 }  // namespace
 
 namespace SwfExport {
 
-QByteArray encode(Scene const& scene, int first, int last, Report* report)
+QByteArray encode(Scene const& scene, Options const& options, Report* report)
 {
     Report local;
     Report& said = report ? *report : local;
     said = Report();
     int const count = scene.frameCount();
-    first = std::clamp(first, 0, std::max(0, count - 1));
-    last = last < 0 ? count - 1 : std::clamp(last, first, count - 1);
+    int const first = std::clamp(options.first, 0, std::max(0, count - 1));
+    int const last = options.last < 0 ? count - 1 : std::clamp(options.last, first, count - 1);
+    double const fps = std::clamp(options.fps > 0.0 ? options.fps : scene.fps, 1.0, 255.0);
+    Shapes shapes(scene, options, said);
+    auto leftOut = [&](QString const& what) { shapes.leftOut(what); };
+    QTransform const twips = QTransform::fromScale(20.0, 20.0), fromTwips = QTransform::fromScale(1.0 / 20.0, 1.0 / 20.0);
+    QRect const frameTwips(0, 0, scene.width * 20, scene.height * 20);
 
     QByteArray tags;
     {
-        // The ground of the movie.
+        QByteArray attributes;
+        u32(attributes, 0);
+        tags += tag(69, attributes);
+    }
+    if (options.protect)
+        tags += tag(24, QByteArray());
+    {
         QByteArray background;
-        background.append(char(scene.background.red()));
-        background.append(char(scene.background.green()));
-        background.append(char(scene.background.blue()));
+        u8(background, scene.background.red());
+        u8(background, scene.background.green());
+        u8(background, scene.background.blue());
         tags += tag(9, background);
     }
-    QHash<QByteArray, int> known;       // a shape already written, by what it is: its id
-    QVector<int> placed;                // the shape at each depth (from 1) on the frame before
-    int nextId = 1;
-    Collector collect{scene};
-    collect.report = &said;
+    SoundStream sound;
+    QString soundProblem;
+    if (options.sound && soundStream(scene, first, last, fps, sound, &soundProblem)) {
+        tags += tag(45, sound.head);
+        said.sound = true;
+        if (!soundProblem.isEmpty())
+            leftOut(soundProblem);
+    }
+
+    QHash<QByteArray, int> rigidShapes;     // a layer's drawing, as it is: its shape
+    QMap<int, Placement> before;            // by depth, on the frame before
     for (int f = first; f <= last; ++f) {
-        collect.frame(f);
-        QVector<int> now;
-        for (Piece const& piece : std::as_const(collect.pieces)) {
-            QByteArray const body = shapeBody(0, piece).mid(2);     // (what it is, without an id)
-            auto found = known.constFind(body);
-            int id;
-            if (found != known.cend()) {
-                id = *found;
+        QTransform const camera = scene.cameraTransform(f);
+        // The shape of what a layer shows on this frame, and where it goes.
+        auto shapeOf = [&](int l, Placement& p) {
+            Layer const& layer = scene.layers[l];
+            int const index = layer.drawingAt(f);
+            Pose const pose = scene.poseOf(l, f);
+            QTransform const world = scene.worldTransform(l, f) * camera;
+            if (rigid(scene, l, f, pose, world)) {
+                double const grows = std::sqrt(std::abs(world.determinant()));
+                QByteArray key = (layer.showsSymbol() ? "s" + QByteArray::number(layer.symbolId) : "l" + QByteArray::number(layer.id)) + ':'
+                                 + QByteArray::number(index);
+                if (options.fixedLineWidth)
+                    key += ':' + QByteArray::number(grows, 'f', 3);
+                auto found = rigidShapes.constFind(key);
+                if (found == rigidShapes.cend()) {
+                    Drawing const d = layer.showsSymbol() ? scene.symbolPicture(layer.symbolId, index) : layer.drawings[index];
+                    found = rigidShapes.insert(key, shapes.drawing(d, twips, grows));
+                }
+                p.character = *found;
+                p.matrix = fromTwips * world * twips;
             } else {
-                id = nextId++;
-                known.insert(body, id);
-                QByteArray withId;
-                u16(withId, quint16(id));
-                tags += tag(32, withId + body);
-                ++said.shapes;
+                // Bent, warped or turned in space: drawn as it shows on this frame, where it shows.
+                Drawing const d = layer.showsSymbol() ? scene.symbolPicture(layer.symbolId, index)
+                                                      : Deform::ridden(scene, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose));
+                p.character = shapes.drawing(d, world * twips, std::sqrt(std::abs(world.determinant())));
+                p.matrix = QTransform();
             }
-            now.push_back(id);
-        }
-        // Each depth shows its shape: put there, or swapped in for the one there was; depths no longer used emptied.
-        for (int d = 0; d < now.size(); ++d) {
-            if (d < placed.size() && placed[d] == now[d])
+            return p.character != 0;
+        };
+
+        QMap<int, Placement> now;
+        int rank = 0;
+        for (int l : scene.drawOrder(f)) {
+            if (!scene.enabled(l))
                 continue;
-            QByteArray place;
-            bool const replace = d < placed.size();
-            place.append(char(replace ? 0x03 : 0x02));      // has a character; (and moves the one at that depth)
-            u16(place, quint16(d + 1));
-            u16(place, quint16(now[d]));
-            tags += tag(26, place);
+            Layer const& layer = scene.layers[l];
+            int const depth = 2 * rank + 2;     // (the depth under it for its mask)
+            ++rank;
+            if (layer.kind == Layer::ColourCard) {
+                Placement p;
+                p.character = shapes.card(layer.cardColor, frameTwips);
+                if (options.transparency)
+                    p.colour.mult[3] = int(std::lround(256.0 * std::clamp(layer.opacity, 0.0, 1.0)));
+                now.insert(depth, p);
+                continue;
+            }
+            if (!layer.holdsDrawings() || layer.drawingAt(f) == Layer::kNoDrawing)
+                continue;
+            Placement p;
+            if (!shapeOf(l, p))
+                continue;
+            Pose const pose = scene.poseOf(l, f);
+            double const opacity = std::clamp(layer.opacity * pose.opacity, 0.0, 1.0);
+            if (opacity < 1.0 && options.transparency)
+                p.colour.mult[3] = int(std::lround(256.0 * opacity));
+            if (layer.blend != Layer::BlendNormal) {
+                int const b = flashBlend(layer.blend);
+                if (!options.blendModes)
+                    leftOut(QObject::tr("blend modes (switched off)"));
+                else if (b < 0)
+                    leftOut(QObject::tr("blend modes Flash does not have"));
+                else
+                    p.blend = b;
+            }
+            bool cut = false;
+            for (int i = 0; i < layer.effects.size(); ++i) {
+                Effect const& e = layer.effects[i];
+                if (!e.enabled)
+                    continue;
+                double const amount = layer.effectAmount(i, pose);
+                auto off = [&](bool on, QString const& what) {
+                    if (!on)
+                        leftOut(QObject::tr("%1 (switched off)").arg(what));
+                    return on;
+                };
+                if (e.type == Effect::Blur) {
+                    if (off(options.blurs, QObject::tr("blurs")))
+                        p.filters.push_back({QStringLiteral("BlurFilter"), amount * 2.0, amount * 2.0, Qt::black, 1.0, 0.0, 45.0, false});
+                } else if (e.type == Effect::Glow) {
+                    if (off(options.glows, QObject::tr("glows")))
+                        p.filters.push_back({QStringLiteral("GlowFilter"), amount * 2.0, amount * 2.0, e.color, 1.0, 0.0, 45.0, false});
+                } else if (e.type == Effect::Shadow) {
+                    if (off(options.shadows, QObject::tr("shadows")))
+                        p.filters.push_back({QStringLiteral("DropShadowFilter"), amount * 2.0, amount * 2.0, e.color, 1.0,
+                                             std::hypot(e.offset.x(), e.offset.y()), std::atan2(e.offset.y(), e.offset.x()) * 180.0 / 3.14159265358979323846, false});
+                } else if (e.type == Effect::Transparency) {
+                    if (off(options.transparency, QObject::tr("transparency")))
+                        p.colour.mult[3] = p.colour.mult[3] * int(std::lround(256.0 * (1.0 - std::clamp(amount, 0.0, 1.0)))) / 256;
+                } else if (e.type == Effect::Tint || e.type == Effect::ColourScale) {
+                    if (!off(options.colourEffects, QObject::tr("colour effects")))
+                        continue;
+                    double const a = std::clamp(amount, 0.0, 1.0);
+                    int const c[3] = {e.color.red(), e.color.green(), e.color.blue()};
+                    ColourEffect fx;
+                    for (int k = 0; k < 3; ++k) {
+                        if (e.type == Effect::Tint) {
+                            // Towards the colour, so far.
+                            fx.mult[k] = int(std::lround(256.0 * (1.0 - a)));
+                            fx.add[k] = int(std::lround(c[k] * a));
+                        } else {
+                            // Each part times the colour's, so far.
+                            fx.mult[k] = int(std::lround(256.0 * (1.0 - a + a * c[k] / 255.0)));
+                        }
+                    }
+                    p.colour = fx.after(p.colour);
+                } else if (e.type == Effect::Cutter && !cut) {
+                    if (!off(options.masks, QObject::tr("cutters")))
+                        continue;
+                    int const matte = scene.layerIndex(e.matte);
+                    if (e.invert) {
+                        leftOut(QObject::tr("inverted cutters"));
+                        continue;
+                    }
+                    // A mask under the layer, covering it alone: the matte's drawing where the matte is.
+                    Placement mask;
+                    if (matte >= 0 && scene.layers[matte].holdsDrawings() && scene.layers[matte].drawingAt(f) != Layer::kNoDrawing && shapeOf(matte, mask)) {
+                        mask.clip = depth;
+                        now.insert(depth - 1, mask);
+                    } else {
+                        p.character = 0;    // cut by nothing: nothing of it shows
+                    }
+                    cut = true;
+                } else if (e.type == Effect::Cutter) {
+                    leftOut(QObject::tr("more than one cutter on a layer"));
+                } else {
+                    leftOut(Effects::name(e, scene));
+                }
+            }
+            if (p.character != 0)
+                now.insert(depth, p);
         }
-        for (int d = int(now.size()); d < placed.size(); ++d) {
+        tags += shapes.take();
+        // The frame's labels.
+        for (Scene::Marker const& m : scene.markers)
+            if (m.frame == f && !m.name.isEmpty())
+                tags += tag(43, m.name.toUtf8() + QByteArray(1, '\0'));
+        // What changed at each depth since the frame before.
+        QList<int> depths = before.keys();
+        for (int d : now.keys())
+            if (!before.contains(d))
+                depths.push_back(d);
+        std::sort(depths.begin(), depths.end());
+        for (int d : std::as_const(depths)) {
+            auto const was = before.constFind(d);
+            auto const is = now.constFind(d);
             QByteArray remove;
-            u16(remove, quint16(d + 1));
-            tags += tag(28, remove);
+            u16(remove, quint16(d));
+            if (is == now.cend()) {
+                tags += tag(28, remove);
+            } else if (was == before.cend()) {
+                tags += placeTag(d, *is, false, true, false);
+            } else if (was->clip != is->clip) {
+                tags += tag(28, remove);
+                tags += placeTag(d, *is, false, true, false);
+            } else if (was->character != is->character || !was->sameLook(*is)) {
+                bool const hadLook = !was->filters.isEmpty() || was->blend > 1;
+                tags += placeTag(d, *is, true, was->character != is->character, hadLook);
+            }
         }
-        placed = now;
-        tags += tag(1, QByteArray());       // the frame shown
+        before = now;
+        if (said.sound && f - first < sound.blocks.size() && !sound.blocks[f - first].isEmpty())
+            tags += tag(19, sound.blocks[f - first]);
+        tags += tag(1, QByteArray());
         ++said.frames;
     }
-    tags += tag(0, QByteArray());           // the end
+    tags += tag(0, QByteArray());
+    said.skippedEffects = !said.leftOut.isEmpty();
 
     QByteArray movie;
     movie += rect(0, scene.width * 20, 0, scene.height * 20);
-    u16(movie, quint16(std::clamp(int(std::lround(scene.fps * 256.0)), 1, 65535)));
-    u16(movie, quint16(said.frames));
+    u16(movie, quint16(std::clamp(int(std::lround(fps * 256.0)), 256, 65535)));
+    u16(movie, quint16(std::min(said.frames, 65535)));
     movie += tags;
-    QByteArray file("FWS");
-    file.append(char(8));
+    QByteArray file(options.compress ? "CWS" : "FWS");
+    u8(file, 10);
     u32(file, quint32(8 + movie.size()));
-    return file + movie;
+    return file + (options.compress ? qCompress(movie, 9).mid(4) : movie);
 }
 
-bool write(Scene const& scene, QString const& path, QString* error, Report* report)
+QByteArray encode(Scene const& scene, int first, int last, Report* report)
 {
-    QByteArray const bytes = encode(scene, 0, -1, report);
+    Options options;
+    options.first = first;
+    options.last = last;
+    return encode(scene, options, report);
+}
+
+bool write(Scene const& scene, QString const& path, Options const& options, QString* error, Report* report)
+{
+    QByteArray const bytes = encode(scene, options, report);
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size()) {
         if (error)
@@ -369,4 +337,9 @@ bool write(Scene const& scene, QString const& path, QString* error, Report* repo
     return true;
 }
 
+bool write(Scene const& scene, QString const& path, QString* error, Report* report)
+{
+    return write(scene, path, Options(), error, report);
 }
+
+}  // namespace SwfExport
