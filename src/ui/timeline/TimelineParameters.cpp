@@ -57,7 +57,7 @@ bool Timeline::hasParameters(int layer) const
     if (layer < 0 || layer >= scene.layers.size())
         return false;
     Layer::Kind const kind = scene.layers[layer].kind;
-    return kind != Layer::Sound && kind != Layer::Group && kind != Layer::ColourCard;
+    return kind != Layer::Sound && kind != Layer::Group && kind != Layer::ColourCard && kind != Layer::Annotation;
 }
 
 bool Timeline::parametersShown(int layer) const
