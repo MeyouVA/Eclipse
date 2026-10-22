@@ -489,6 +489,19 @@ protected:
     void showEvent(QShowEvent* event) override;
 
 private:
+    // The Preferences dialog's pages, each made into the widgets it is read back from.
+    void preferencesGeneral(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesCamera(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesSheet(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesAdvanced(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesTimeline(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesRender(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesTools(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesNodeView(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesOnion(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesSound(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesDrawing(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesColours(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void createViews();
     // The parts of that: a view put in a panel of its own, and the views that take some making.
     QDockWidget* addView(QString const& title, QString const& name, QWidget* content, Qt::DockWidgetArea area);
