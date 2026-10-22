@@ -247,4 +247,83 @@ protected:
     double m_weightStrength = 0.5;
     QPointF m_dragStartScene;
     Drag m_drag = DragNone;
+    QVector<int> m_ikChain;     // the bone taken hold of, then the bones it hangs on, nearest first
+    bool m_ikBegun = false;     // whether anything has been turned yet in this drag
+    QPointer<Canvas> m_leader;     // the view whose tool settings this one follows (none: its own)
+    bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept
+    int m_stencils[3] = {StencilUniform, StencilUniform, StencilUniform};     // the Pencil's, the Line tool's, the Polyline's
+    int m_retouchNow = 0;      // the mode of this rub (Alt turns it round)
+    int m_ceHandleStroke = -1, m_ceHandlePoint = -1;     // -1: the picked point's own handle
+    QPointF m_pan;          // widget-space offset of the centre of the scene from that of the widget
+    bool m_fitted = true;   // keep fitting on resize until the user zooms or pans
+    double m_viewRotation = 0.0;   // degrees, clockwise on the screen
+    bool m_symbolPivots = false;    // the pivot of every layer that shows a symbol is marked
+    mutable Drawing m_artView;   // the colour art of the current drawing, for currentDrawing()
+    mutable Picture const* m_artPictures = nullptr;     // (the pictures it was taken from)
+    mutable Drawing m_bothView;  // the line art and the colour art as one drawing, while both are worked on
+    bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
+    QPointF m_polyHover;         // where its next point would go (layer coordinates)
+    int m_quadCorner = -1;          // the corner of the quadmap being dragged
+    QVector<QPointF> m_dragQuad;    // and where its corners are meanwhile
+    class TextEntry* m_textEntry = nullptr;   // where the Text tool is being typed into
+    QPointF m_textAt;                         // and where the words will stand (layer coordinates)
+    int m_textEdit = -1;                      // the painted area whose words are being changed; -1: new words
+    bool m_tabletActive = false;  // a pen is driving: ignore the mouse events Qt synthesises
+    Stroke m_stroke;        // the stroke being drawn
+    bool m_keepNoPictures = false;      // the drawing being committed has had its last picture taken away
+    bool m_committing = false;    // our own edit is going through: keep the selection
+    QPointF m_dragStart;          // scene position where the drag began
+    QRectF m_dragBounds;          // selection bounds when the drag began
+    QTransform m_dragTransform;   // applied to the selection while dragging
+    QPointF m_guideStart;        // where the line being drawn along the guide began (in the frame)
+    QPointF m_guideWay;          // the way it was settled to run (null until the pen has moved)
+    bool m_guideBends = false;   // ... and, when that way bends (4- and 5-point perspectives), the circle it is part of
+    QPointF m_hoverFrame;        // where the pointer is (in the frame)
+    QVector<Scene::Guide> m_guideEdit;   // the guides while a point of one is dragged
+    int m_guideLine = -1;        // the plain guide being dragged with the Select tool
+    int m_cpKey = -1, m_cpIndex = -1;       // the control point picked
+    QPointF m_cpDragPos;                    // where the pointer has it while it is dragged (view)
+    bool m_cpDepth = false;                 // taken with Alt: dragged up or down, it goes away from the camera or towards it
+    QPointF m_cpPressPos;                   // where it was taken (view)
+    QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)
+    bool m_maintaining = false;         // the move being dragged is Maintain Size
+    bool m_scaleFromPress = false;       // the scale being dragged is counted from where the pen went down
+    bool m_dragLasso = true;      // for the drag going on: Alt gives the other of the two
+    QPolygonF m_lassoPath;        // the shape being drawn round things, in layer coordinates
+    QVector<int> m_ceExtra;   // other points of that curve picked with it (Shift, or a box dragged round them)
+    Drawing m_stamp;             // artwork of the user's own to stamp, about the origin
+    QVector<Drawing> m_stampSet;  // all the drawings of the stamp in hand (m_stamp is the one whose turn it is)
+    QPointF m_hoverWidget;       // where the pointer is (in the view)
+    int m_thickStroke = -1;      // the Pencil Editor: the line and the thickness point of it in hand (in m_eraseArt)
+    QPointF m_thickPos0;         // where on the line that is, and which way its left is
+    QPointF m_thickPress;        // where the pen went down
+    bool m_thickOneSide = false; // Alt: only the side pulled on
+    bool m_thickExisting = false;   // a thickness point that was there (not one put down by this press)
+    bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
+    QPointF m_turnFrom;          // Turn in Space: where the pen went down (in the view)
+    int m_envPicked = -1;       // the point pressed last (its place among the points, times three): its handles show
+    int m_hintMorph = -1;       // the morphing whose hint is being dragged, and which of its hints
+    bool m_hintFar = false;     // on the second drawing: where it goes to
+    QVector<float> m_rawPressure;   // the pen's pressure along the line being drawn (for smoothing with pressure)
+    bool m_singleNow = false;       // for the rub going on (Shift turns it the other way)
+    int m_onlyLine = -1;            // ... the line it keeps to, or the brush shape (-2 - index)
+    QPainterPath m_paintClip;       // while a stroke is painted into pixels: only within this (Overlay Brush Mode)
+    int m_segIndex = -1;            // the Contour Editor: the piece of the line being bent, and where on it it was taken
+    int m_ceBoxCorner = -1;         // the control of that box being dragged (0 to 3 a corner, 4 the knob)
+    QRectF m_ceBoxStart;            // the box when it was taken
+    int m_cutterTip = 1;            // Stroke::FlatCap
+    QVector<float> m_copiedProfile; // Copy Thickness: the profile (shares of the thickest) and how thick the thickest is
+    Drawing m_eraseArt;             // the art being erased, as it is so far in the drag
+    int m_gradStroke = -1;      // a line instead of an area
+    int m_gradHandle = 0;           // 0: drawn out afresh, 1: its start, 2: its end
+    bool m_eraseAny = false;        // whether the drag has taken anything yet
+    int m_ceHandle = -1;      // the handle of that point being dragged: 0 the one before it, 1 the one after, 2 both pulled out of it (Alt)
+    bool m_ceBreak = false;   // Alt: the handle moves alone, and the point becomes a cusp
+    QVector<QPair<int, double>> m_ikHeld;   // IK: the bones holding their orientation, and the angle on screen each keeps
+    QVector<SkinDab> m_weightDabs;      // painted in this stroke, not yet in the scene
+    // transform tool
+    Pose m_poseStart;             // the pose of the layer when the drag began
+    Pose m_dragPose;              // the pose while dragging
+    QPointF m_dragPivot;          // the pivot while dragging it, in layer coordinates
+    QTransform m_world0;          // layer to scene when the drag began
 };

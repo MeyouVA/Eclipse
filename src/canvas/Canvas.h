@@ -13,31 +13,26 @@
 #include <functional>
 #include <QPainterPath>
 
-#include "canvas/CanvasState.h"
+#include "canvas/CanvasSettings.h"
 #include "model/scene/Scene.h"
 
 class Document;
 struct LayerEffectSpace;
 
-class ECLIPSE_CANVAS_API Canvas : public QWidget, public CanvasState {
+class ECLIPSE_CANVAS_API Canvas : public QWidget, public CanvasSettings {
     Q_OBJECT
 
 public:
-    // True for the paint bucket in any of its ways.
-    static bool isPaintTool(Tool tool) { return tool == Paint || tool == PaintUnpainted || tool == Repaint || tool == Unpaint; }
 
     explicit Canvas(Document* document, QWidget* parent = nullptr);
 
-    Art art() const { return m_art; }
     // The hints of the morphing shown on this frame with the Morphing tool, where they are in the view.
     QVector<QPointF> morphHintsInView() const;
     void setArt(Art art);
-    bool previewsAllArt() const { return m_previewAllArt; }
 
     void setTool(Tool tool);
     void setLeader(Canvas* leader);
     void followSettings(Canvas const& leader);
-    Tool tool() const { return m_tool; }
     // The palette swatch new strokes and fills are linked to.
     void setSwatch(int id)
     {
@@ -45,23 +40,10 @@ public:
         if (m_highlightColour)
             update();
     }
-    int swatch() const { return m_swatch; }
-    void setBrushWidth(double width) { m_brushWidth = width; }
     // Preferences: the Brush, the Eraser and the Pencil show a circle as big as what they draw round the pointer.
     void setBrushOutline(bool on);
-    bool brushOutline() const { return m_brushOutline; }
-    double brushWidth() const { return m_brushWidth; }
-    void setStabiliser(int mode) { m_stabiliser = std::clamp(mode, 0, 2); }
-    int stabiliser() const { return m_stabiliser; }
-    // 0 to 100: how far behind the pen the line keeps.
-    void setStabiliserStrength(int strength) { m_stabiliserStrength = std::clamp(strength, 0, 100); }
-    int stabiliserStrength() const { return m_stabiliserStrength; }
     // Where the line goes next, from where it is towards the pen, at that strength.
     static QPointF stabilised(QPointF line, QPointF pen, int strength);
-    void setLineMode(int mode) { m_lineMode = std::clamp(mode, 0, 2); }
-    int lineMode() const { return m_lineMode; }
-    bool bendingLine() const { return m_bending; }
-    static int stencilSlot(int tool) { return tool == Line ? 1 : tool == Polyline ? 2 : 0; }
     void setThicknessStencil(int stencil) { setThicknessStencilOf(m_tool, stencil); }
     void setThicknessStencilOf(int tool, int stencil) { m_stencils[stencilSlot(tool)] = std::clamp(int(stencil), 0, int(StencilCount)); }
     void setCustomStencilOf(int tool, QVector<float> const& profile) { m_customStencils[stencilSlot(tool)] = profile; }
@@ -72,11 +54,6 @@ public:
     static void applyProfile(Stroke& stroke, QVector<float> const& profile);
     // The thickness of the first line selected along its length (32 places), for a stencil of your own; empty with none.
     QVector<float> selectedLineProfile() const;
-    // The Pencil Retouch tool: thicker (0) or thinner (1) where it is rubbed; more solid (2) or fainter (3).
-    void setRetouchMode(int mode) { m_retouchMode = std::clamp(mode, 0, 3); }
-    int retouchMode() const { return m_retouchMode; }
-    // Preferences: how strongly pencil lines show in the views (per cent; what is exported is not changed).
-    void setPencilLinesOpacity(int percent) { m_pencilOpacity = std::clamp(percent, 0, 100); update(); }
     // The lines selected made wiggly: bent this far to each side (scene units), every so far along; one step to undo.
     void wiggleSelectedLines(double amount, double every, quint32 seed);
     int thicknessStencil() const { return thicknessStencilOf(m_tool); }
@@ -84,34 +61,11 @@ public:
     static float stencilThickness(int stencil, double along);
     // The stencil laid on a line: each point as thick as the stencil says at its place along it.
     static void applyStencil(Stroke& stroke, int stencil);
-    void setLineOptions(LineOptions const& options) { m_lineOptions = options; }
-    void setCopyArt(CopyArt const& how) { m_copyArt = how; }
-    CopyArt const& copyArt() const { return m_copyArt; }
     static int addCrossingPoints(QVector<Stroke>& strokes, QVector<int> const& which);
-    bool autoColourArt() const { return m_autoColourArt; }
-    LineOptions const& lineOptions() const { return m_lineOptions; }
     // The steps, for the tests too: on the pen's samples (before they are fitted), and in `art` (the drawing it goes into).
     static void applyTaperAndSpeed(Stroke& stroke, LineOptions const& options, double zoom);
     static bool trimExtra(Stroke& stroke, Drawing const& art, double reach);
     static bool connectEnds(Stroke& stroke, Drawing const& art, double reach);
-    // The Brush and the Pencil: a line whose ends meet is painted inside with the colour in hand.
-    void setLineAutoFill(bool on) { m_lineAutoFill = on; }
-    bool lineAutoFill() const { return m_lineAutoFill; }
-    // The Select tool: lines scaled get thicker or thinner with it (off: they keep their thickness).
-    void setScaleThickness(bool on) { m_scaleThickness = on; }
-    bool scaleThickness() const { return m_scaleThickness; }
-    // The Rectangle and the Ellipse: the inside is painted with the colour in hand as the shape is drawn.
-    void setShapeAutoFill(bool on) { m_shapeAutoFill = on; }
-    bool shapeAutoFill() const { return m_shapeAutoFill; }
-    void setSmoothing(int percent) { m_smoothing = percent; }
-    int minimumBrushSize() const { return m_minSize; }
-    void setMinimumBrushSize(int percent) { m_minSize = percent; }
-    void setBitmapHardness(int percent) { m_bitmapHardness = std::clamp(percent, 0, 100); }
-    void setBitmapFlow(int percent) { m_bitmapFlow = std::clamp(percent, 1, 100); }
-    int bitmapHardness() const { return m_bitmapHardness; }
-    BitmapTip bitmapTip() const { return m_bitmapTip; }
-    void setBitmapTip(BitmapTip tip) { m_bitmapTip = tip; }
-    int bitmapFlow() const { return m_bitmapFlow; }
     // What the tool in hand makes of how hard the pen is pressed (0 to 1).
     float pressureFor(float raw) const
     {
@@ -119,60 +73,26 @@ public:
                             : m_tool == Pencil ? float(m_pencilMinSize) / 100.0f : 0.0f;
         return least + (1.0f - least) * feltPressure(raw);
     }
-    // The Brush with a pen that tells its tilt: the more the pen leans, the thicker the line (Tilt Sensitivity, per cent).
-    void setTiltSensitivity(int percent) { m_tiltSensitivity = std::clamp(percent, 0, 100); }
-    int tiltSensitivity() const { return m_tiltSensitivity; }
     static float tiltedPressure(float pressure, double xTilt, double yTilt, int sensitivity)
     {
         double const lean = std::clamp(std::hypot(xTilt, yTilt) / 60.0, 0.0, 1.0);
         return float(pressure * (1.0 + sensitivity / 100.0 * lean * 1.5));
     }
-    void setPressureFeel(int feel) { m_pressureFeel = std::clamp(feel, 1, 100); }
-    int pressureFeel() const { return m_pressureFeel; }
-    float feltPressure(float raw) const
-    {
-        return std::pow(std::clamp(raw, 0.0f, 1.0f), std::pow(2.0f, (50.0f - float(m_pressureFeel)) / 25.0f));
-    }
-    // Turns sharper than this stay corners; gentler ones are rounded.
-    void setCornerAngle(int degrees) { m_cornerAngle = degrees; }
     void setJoinStyle(int join);
     void setStartCap(int cap);
     void setEndCap(int cap);
     void setLineTexture(int texture);
-    int lineTexture() const { return m_lineTexture; }
     void setLineTextureAmount(int percent);
-    int lineTextureAmount() const { return m_lineTextureAmount; }
     // A crisp edge: the grain frays at the edge of the line but does not fade there, and is not blurred.
     void setLineTextureCrisp(bool crisp);
-    bool lineTextureCrisp() const { return m_lineTextureCrisp; }
     void setBrushTexture(int texture);
-    int brushTexture() const { return m_brushTexture; }
     void setBrushTextureAmount(int percent);
-    int brushTextureAmount() const { return m_brushTextureAmount; }
     void setBrushTextureCrisp(bool crisp);
     // The ramp of the texture, per cent: grain fainter than `low` is no ink, denser than `high` solid ink.
     void setLineTextureRamp(int low, int high);
-    int lineTextureLow() const { return m_lineRampLow; }
-    int lineTextureHigh() const { return m_lineRampHigh; }
     void setBrushTextureRamp(int low, int high);
-    int brushTextureLow() const { return m_brushRampLow; }
-    int brushTextureHigh() const { return m_brushRampHigh; }
-    bool brushTextureCrisp() const { return m_brushTextureCrisp; }
     void setOnionSkin(bool on);
-    bool onionSkin() const { return m_onionSkin; }
-    bool drawingView() const { return m_drawingView; }
     void setDrawingView(bool on);
-    int gridKind() const { return m_gridKind; }
-    // Preferences: how many fields the standard field grid has from the middle to each side, across and down (12 each).
-    void setFieldChart(int across, int down)
-    {
-        m_fieldsAcross = std::clamp(across, 2, 64);
-        m_fieldsDown = std::clamp(down, 2, 64);
-        update();
-    }
-    int fieldsAcross() const { return m_fieldsAcross; }
-    int fieldsDown() const { return m_fieldsDown; }
-    bool backlight() const { return m_backlight; }
     // While playing, nothing but the frame itself is shown (no onion skin, no editing).
     void setPlaying(bool playing);
 
@@ -181,26 +101,11 @@ public:
     QPointF mapFromScene(QPointF scenePos) const { return viewTransform().map(scenePos); }
     QPointF mapToScene(QPointF widgetPos) const { return toScene(widgetPos); }
 
-    // ---- selection (Select tool) --------------------------------------------------------
-    bool hasSelection() const { return !m_selStrokes.isEmpty() || !m_selFills.isEmpty() || !m_selPictures.isEmpty(); }
-    // How many lines and painted areas are selected.
-    int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size() + m_selPictures.size()); }
-    // How many of the things selected are pictures (imported bitmaps: picked with the Select tool on the line art).
-    int selectedPictureCount() const { return int(m_selPictures.size()); }
-    // The Select tool or the Cutter: what is selected can be handled with either.
-    bool selecting() const { return m_tool == Select || m_tool == Cutter || m_tool == Reposition || m_tool == Perspective || m_tool == Envelope; }
     // The points picked with the Contour Editor besides contourPoint(), on the same curve.
     QVector<int> contourPointsPicked() const;
     void clearSelection();
-    int contourStroke() const { return m_ceStroke; }
-    int contourPoint() const { return m_cePoint; }
     QPointF contourHandlePos(int handle) const;
-    bool autoFlatten() const { return m_autoFlatten; }
     void setAutoFlatten(bool on) { m_autoFlatten = on; }
-    bool eraserCuts() const { return m_eraserCuts; }
-    void setEraserCuts(bool on) { m_eraserCuts = on; }
-    // Draw Behind: what the brush draws goes under the artwork already in the drawing.
-    bool drawBehind() const { return m_drawBehind; }
     int removeDirt(double size);
     int closeGaps(double gap);
     bool autoMatte(double radius, int source = Drawing::LineSheet, int destination = Drawing::ColourSheet);
@@ -209,9 +114,6 @@ public:
     void setEraserBothArts(bool on) { m_bothArts = on; }
     // The Select tool and the Cutter take from the line art and the colour art at once.
     Q_INVOKABLE void setSelectBothArts(bool on);
-    bool selectBothArts() const { return m_selectBothArts; }
-    // ... which is so just now (with one of those tools, on one of those two sheets).
-    bool bothArtsNow() const { return m_selectBothArts && (m_tool == Select || m_tool == Cutter) && (m_art == LineArt || m_art == ColourArt); }
     // Pictures lie with the line art: they can be taken when it is (one of) the sheets worked on.
     bool picturesHere() const { return m_art == LineArt || bothArtsNow() || bitmapNow(); }
     // A picture of the current drawing that belongs to the art being worked on (painted pixels belong to one art layer).
@@ -226,43 +128,16 @@ public:
     QPointF controlPointPos(int key, int control) const;
     bool controlPointAt(QPointF widgetPos, int* key, int* control) const;
     QPointF controlPointFromView(int key, int control, QPointF widgetPos) const;
-    // The one picked last (-1, -1: none).
-    int pickedControlKey() const { return m_cpKey; }
-    int pickedControl() const { return m_cpIndex; }
     void pickControlPoint(int key, int control);
     // From the scene to the view (for checking where things are shown).
     QTransform viewTransformForTest() const { return viewTransform(); }
-    bool eraserBothArts() const { return m_bothArts; }
-    // The Envelope tool: how many points the outline round the selection has.
-    int envelopeToolPoints() const { return m_envCount; }
-    void setEnvelopeToolPoints(int count)
-    {
-        m_envCount = count;
-        update();
-    }
-    // ... and how wide a gap in the lines round an area they close of themselves (pixels of the drawing).
-    double closeGapSize() const { return m_gapSize; }
-    void setCloseGapSize(double pixels) { m_gapSize = pixels; }
-    bool paintsAllDrawings() const { return m_paintAll; }
     void setPaintAllLayers(bool on) { m_paintLayers = on; }
-    bool paintsAllLayers() const { return m_paintLayers; }
     void setPermanentSelection(bool on) { m_permanentSelection = on; }
-    bool permanentSelection() const { return m_permanentSelection; }
-    // The Stamp tool: how big the stamp comes out (per cent), and whether it is one of the user's own.
-    int stampScale() const { return m_stampScale; }
     void setStampScale(int percent)
     {
         m_stampScale = percent;
         update();
     }
-    bool hasOwnStamp() const { return m_stampOwn; }
-    // The Stamp tool: each stamp made smaller by up to this much at random (per cent; 0: all as big as the scale says).
-    void setStampRandomSize(int percent) { m_stampRandomSize = std::clamp(percent, 0, 90); }
-    int stampRandomSize() const { return m_stampRandomSize; }
-    // A stamp may hold several drawings: each click puts down the next of them (or any one, at random).
-    int stampDrawingCount() const { return m_stampOwn ? int(std::max<qsizetype>(m_stampSet.size(), 1)) : 1; }
-    int stampTurn() const { return m_stampTurn; }
-    bool stampRandom() const { return m_stampRandom; }
     void setStampRandom(bool on) { m_stampRandom = on; }
     // Makes a stamp of these drawings (each kept about its own middle), and takes it in hand.
     void createStampFrom(QVector<Drawing> const& drawings);
@@ -274,86 +149,23 @@ public:
     void chooseStamp(int index);
     void removeStamp(int index);
     bool keepsColour(int swatch) const;
-    bool respectsProtected() const { return m_respectProtected; }
-    bool proportionGrid() const { return m_proportionGrid; }
-    double nudgeStep() const { return m_nudgeStep; }
-    void setNudgeStep(double pixels) { m_nudgeStep = pixels; }
-    int ikIterations() const { return m_ikIterations; }
-    void setIkIterations(int rounds) { m_ikIterations = std::clamp(rounds, 1, 500); }
-    double ikError() const { return m_ikError; }
-    void setIkError(double units) { m_ikError = std::clamp(units, 0.001, 50.0); }
-    int proportionAcross() const { return m_propAcross; }
-    int proportionDown() const { return m_propDown; }
-    void setProportionParts(int across, int down)
-    {
-        m_propAcross = across;
-        m_propDown = down;
-        update();
-    }
-    double safeMargin() const { return m_safeMargin; }
-    void setSafeMargin(double part)
-    {
-        m_safeMargin = part;
-        update();
-    }
     int removeHair(double length);
-    // The dropper looks at every layer, or only at the one being worked on.
-    bool dropperAllLayers() const { return m_dropperAllLayers; }
     void setDropperAllLayers(bool on) { m_dropperAllLayers = on; }
-    // Everything that is not of the colour in hand shown faint.
-    bool highlightColour() const { return m_highlightColour; }
-    // Weights: the bone (0: the first) whose pull is painted, how big the dab is (scene units), and how strongly each one adds.
-    int weightBone() const { return m_weightBone; }
-    void setWeightBone(int bone) { m_weightBone = std::max(0, bone); update(); }
-    double weightRadius() const { return m_weightRadius; }
     void setWeightRadius(double radius) { m_weightRadius = std::max(1.0, radius); }
-    void setWeightStrength(double strength) { m_weightStrength = std::clamp(strength, 0.01, 1.0); }
-    RigMode rigMode() const { return m_rigMode; }
-    void setRigMode(RigMode mode) { m_rigMode = mode; update(); }
     void setDrawBehind(bool on) { m_drawBehind = on; }
-    bool brushShapes() const { return m_brushShapes; }
     void setBrushShapes(bool on) { m_brushShapes = on; }
-    int contourFill() const { return m_ceFill; }
-    bool lasso() const { return m_lasso; }
-    bool snapsToContour() const { return m_snapContour; }
-    // Guides (Scene::guides): seen and snapped to, or not.
-    bool showsGuides() const { return m_showGuides; }
-    bool guidesLocked() const { return m_guidesLocked; }
-    bool selectsByColour() const { return m_selectByColour; }
-    bool snapsAndAligns() const { return m_snapAlign; }
     // Where a plain guide (a place in Scene::guides) crosses the view, level with `widgetPos`: to take hold of it.
     QPointF guideLineInView(int guide, QPointF widgetPos) const;
-    int activeGuide() const { return m_activeGuide; }
     void setActiveGuide(int index);
     // Where a point of the guide in use is in the view (a null point when there is none).
     QPointF guidePointInView(int point) const;
     void setPreview(QVector<QImage> const& frames);
-    int previewFrames() const { return int(m_preview.size()); }
-    QSize previewSize() const { return m_preview.isEmpty() ? QSize() : m_preview.first().size(); }
-    bool usesPreview() const { return m_usePreview; }
-    ViewMode viewMode() const { return m_viewMode; }
-    void setViewMode(ViewMode mode) { m_viewMode = mode; update(); }
     // The frame as that mode shows it, the size of the scene's frame.
     static QImage modeImage(Scene const& scene, int frame, ViewMode mode);
     // Snapshots: the frame as rendered, kept to compare later work with - shown in the view in place of the frame.
     void takeSnapshot();
-    bool hasSnapshot() const { return !m_snapshot.isNull(); }
-    QImage snapshot() const { return m_snapshot; }
-    bool showsSnapshot() const { return m_showSnapshot; }
     void setShowSnapshot(bool on) { m_showSnapshot = on && hasSnapshot(); update(); }
-    bool snapsToGrid() const { return m_snapGrid; }
-    bool animates() const { return m_animate; }
-    // No Z Dragging: Alt with the Transform tool does not move a layer nearer or further.
-    bool noZDragging() const { return m_noZDrag; }
     Q_INVOKABLE void onActionNoZDragging(bool on) { m_noZDrag = on; }
-    int transformMode() const { return m_transformMode; }
-    void setTransformMode(int mode)
-    {
-        m_transformMode = mode;
-        update();
-    }
-    bool keysFrameOne() const { return m_keyFrameOne; }
-    void setKeysFrameOne(bool on) { m_keyFrameOne = on; }
     void setLasso(bool on);
     // The box round what is selected, in the coordinates of the drawing; null with nothing selected.
     QRectF selectionRect() const { return hasSelection() ? selectionBounds() : QRectF(); }
@@ -371,79 +183,33 @@ public:
     void zoomBy(double factor);
     // Zoom In and Zoom Out: about the pointer when it is over the view and the preferences say so; otherwise about the middle.
     void zoomByShortcut(double factor);
-    bool zoomsOnMouse() const { return m_zoomOnMouse; }
-    void setZoomOnMouse(bool on) { m_zoomOnMouse = on; }
     // The same, keeping the point of the view under `anchor` where it is.
     void zoomAt(QPointF anchor, double factor);
-    double zoom() const { return m_zoom; }
-    double viewRotation() const { return m_viewRotation; }
-    bool viewMirrored() const { return m_mirror; }
     void rotateView(double degrees);
     void setOnionRange(int previous, int next);
-    int onionPrevious() const { return m_onionPrev; }
-    int onionNext() const { return m_onionNext; }
     // How strongly the onion skin shows, 5 to 100 per cent.
     void setOnionOpacity(int percent);
-    int onionOpacity() const { return m_onionOpacity; }
     void setOnionStrength(bool after, int step, int percent);
-    int onionStrength(bool after, int step) const { return step >= 0 && step < kOnionSteps ? m_onionStrength[after ? 1 : 0][step] : 0; }
-    bool showsControl() const { return m_showControl; }
-    bool showsSymbolPivots() const { return m_symbolPivots; }
     // Where the pivot of a layer is in the view on the current frame.
     QPointF pivotInView(int layer) const;
-    // The points of the polyline being laid down (empty when there is none).
-    int polylinePoints() const { return m_polyActive ? int(m_stroke.points.size()) : 0; }
     // Ends the polyline being laid down: kept (when it has two points), or thrown away.
     void finishPolyline(bool keep);
 
-    void setTextFont(QFont const& font) { m_textFont = font; }
-    QFont textFont() const { return m_textFont; }
-    void setTextAlign(int align) { m_textAlign = std::clamp(align, 0, 3); }     // 3: justified
-    int textAlign() const { return m_textAlign; }
-    void setTextLineSpacing(int percent) { m_textSpacing = std::clamp(percent, 20, 1000); }
-    int textLineSpacing() const { return m_textSpacing; }
-    // And how far apart the letters are, likewise.
-    void setTextKerning(int percent) { m_textKerning = std::clamp(percent, 50, 400); }
-    int textKerning() const { return m_textKerning; }
     void setApplyToAllDrawings(bool on) { m_applyAll = on; }
-    bool appliesToAllDrawings() const { return m_applyAll; }
     // Onion skin by frame: the frames just before and after, instead of the neighbouring drawings.
     void setOnionByFrame(bool on);
     // The drawings before and after as outlines only: the edges of their paint and the paths of their lines.
     void setOnionOutlines(bool on);
     // Only the drawings marked so (Drawing::Mark) are shown before and after; NoMark: all of them.
     void setOnionMark(int mark);
-    int onionMark() const { return m_onionMark; }
-    bool onionOutlines() const { return m_onionOutlines; }
-    void setOnionBrightnessAlpha(bool on)
-    {
-        m_onionBrightnessAlpha = on;
-        update();
-    }
-    bool onionBrightnessAlpha() const { return m_onionBrightnessAlpha; }
-    // Preferences: the onion skins over everything rather than under the drawing they are of.
-    void setOnionOver(bool on)
-    {
-        m_onionOver = on;
-        update();
-    }
-    bool onionOver() const { return m_onionOver; }
-    bool onionByFrame() const { return m_onionByFrame; }
     void setOnionColours(QColor const& before, QColor const& after);
-    QColor onionBefore() const { return m_onionBefore; }
-    QColor onionAfter() const { return m_onionAfter; }
     // The colour of the view around the frame of the camera (Preferences > Colours).
     void setBackdrop(QColor const& colour);
-    QColor backdrop() const { return m_backdrop; }
     // The light table: how strongly the layers that are not being drawn on show, 10 to 90 per cent.
     void setLightTableWash(int percent);
-    int lightTableWash() const { return m_lightWash; }
     void setOnionStepColour(bool after, int step, QColor const& colour);
     QColor onionStepColour(bool after, int step) const;
-    bool onionStepHasColour(bool after, int step) const { return step >= 0 && step < kOnionSteps && m_onionStepColour[after ? 1 : 0][step].isValid(); }
     void addText(QPointF layerPos, QString const& text);
-    // The words being changed with the Text tool: which painted area of the drawing (-1: new words).
-    int textEdited() const { return m_textEdit; }
     int gradientPicked() const { return gradientValid() ? m_gradFill : -1; }
     // ... or the line whose gradient it has in hand (-1: none, or an area).
     int gradientLinePicked() const { return gradientValid() ? m_gradStroke : -1; }
@@ -479,75 +245,26 @@ public:
     static quint64 wallsKey(QVector<Stroke> const& walls);
     static QVector<QPolygonF> fineOutlinesOf(Fill const& fill, QVector<Stroke> const& walls, quint64 key);
     static void paintFill(QPainter& painter, Fill const& fill, QBrush const& color);
-    void setTipShape(TipShape const& shape) { m_tipShape = shape; }
-    TipShape const& tipShape() const { return m_tipShape; }
-    // A tip of your own (BitmapImage): a picture whose light parts paint (and whose clear parts do not).
-    void setTipImage(QImage const& image) { m_tipImage = image; }
-    // The dual tip's picture (a dualKind of BitmapImage).
-    void setDualTipImage(QImage const& image) { m_dualImage = image; }
-    QImage const& tipImage() const { return m_tipImage; }
     // The tips of a Photoshop brush file (.abr, versions 6 to 10: its sampled brushes), as pictures; none when it is not one.
     static QVector<QImage> readAbr(QString const& path, QString* why = nullptr);
     static void rasterize(Drawing& drawing, int sheet, Scene const& scene, double fineness, QRectF const& canvas);
     // The painted pixels of a drawing made finer or coarser by `factor` (2: twice as many each way); the picture stays as big.
     static void resampleBitmaps(Drawing& drawing, double factor);
-    void setBitmapCanvas(int percent) { m_bitmapCanvas = std::clamp(percent, 100, 400); }
-    void setBitmapCanvasSize(int widthPercent, int heightPercent)
-    {
-        m_bitmapCanvas = std::clamp(widthPercent, 100, 400);
-        m_bitmapCanvasHeight = std::clamp(heightPercent, 100, 400);
-    }
-    void setBitmapPpi(int ppi) { m_bitmapPpi = std::clamp(ppi, 18, 1200); }
-    void setBitmapCanvasBasis(int basis) { m_bitmapBasis = std::clamp(basis, 0, 2); }
     // Where the pixels of a new bitmap drawing of the current layer lie, on the layer; and how many to a unit of the scene.
     QRectF bitmapArea() const;
     double bitmapFineness() const;
-    void setSnapping(bool on) { m_snapping = on; }
-    bool snapping() const { return m_snapping; }
-    // The Select tool: no box and no handles round what is selected (it is still moved by dragging it, and by the keys).
-    void setHideManipulator(bool on) { m_hideManipulator = on; update(); }
-    bool hidesManipulator() const { return m_hideManipulator; }
-    // The Envelope tool: the handles of the outline's points (its advanced controls), shown and pulled, or not.
-    void setEnvelopeAdvanced(bool on) { m_envAdvanced = on; update(); }
-    bool envelopeAdvanced() const { return m_envAdvanced; }
-    void setContourControls(bool on) { m_ceControls = on; update(); }
-    bool contourControls() const { return m_ceControls; }
     QRectF contourControlBox() const;
     QPointF contourControlInView(int which) const;
-    void setCutterGesture(int gesture) { m_cutterGesture = std::clamp(gesture, 0, 3); }
-    int cutterGesture() const { return m_cutterGesture; }
-    // How the Cutter leaves the ends of a pencil line it cuts: cut square (Stroke::FlatCap, as Harmony's bevel tip) or round.
-    void setCutterTip(int cap) { m_cutterTip = std::clamp(cap, 0, 1); }
-    int cutterTip() const { return m_cutterTip; }
     // The gesture from a to b done on the lines of `drawing` (a CutterGesture); whether anything changed.
     static bool gestureCut(Drawing& drawing, QPointF a, QPointF b, int gesture, int tip);
     // Whether a path drawn with the Cutter is a gesture: long enough on the screen, and near enough straight.
     static bool isGesture(QPolygonF const& path, double zoom);
     void nudgeSelectionThickness(bool thicker, bool more);
-    void setPencilMode(int mode) { m_pencilMode = std::clamp(mode, 0, 2); }
-    int pencilMode() const { return m_pencilMode; }
-    void setPushHighlight(QColor const& colour) { m_pushHighlight = colour; }
-    QColor pushHighlight() const { return m_pushHighlight; }
     static bool pushLine(Drawing& drawing, Stroke const& highlight, int mode, double reach);
-    // The Polyline tool: its lines go under everything else of the art layer (Draw Behind Current Layers).
-    void setPolylineBehind(bool on) { m_polyBehind = on; }
-    bool polylineBehind() const { return m_polyBehind; }
     static void multiplyThickness(Stroke& line, double multiplier, bool tips, double tipExtra);
     static QPointF insideOf(QVector<QPolygonF> const& outlines);
     static bool segmentAt(Stroke const& line, QPointF p, double reach, int& segment, double& t);
     static Stroke bentSegment(Stroke line, int segment, double t, QPointF by);
-    // The Eraser with a pen: how wide it rubs where the pen barely touches, per cent of its size (100: pressure leaves it be).
-    void setEraserMinimumSize(int percent) { m_eraserMinSize = std::clamp(percent, 0, 100); }
-    void setPencilMinimumSize(int percent) { m_pencilMinSize = std::clamp(percent, 0, 100); }
-    int pencilMinimumSize() const { return m_pencilMinSize; }
-    // Whether the tool in hand takes the pen's pressure as how thick it draws.
-    bool pressureThickens() const { return m_tool == Brush || (m_tool == Pencil && m_pencilMinSize < 100); }
-    int eraserMinimumSize() const { return m_eraserMinSize; }
-    void setPressureSmoothing(bool on, int minimumPercent)
-    {
-        m_pressureSmoothing = on;
-        m_minSmoothing = std::clamp(minimumPercent, 0, 100);
-    }
     // The smoothing for a line drawn pressing so hard on the whole (0 to 1).
     int smoothingFor(double pressure) const
     {
@@ -556,20 +273,8 @@ public:
         double const share = m_minSmoothing / 100.0 + (1.0 - m_minSmoothing / 100.0) * std::clamp(pressure, 0.0, 1.0);
         return int(std::lround(m_smoothing * share));
     }
-    void setPencilOpacity(int minimumPercent, int smoothing)
-    {
-        m_pencilMinOpacity = std::clamp(minimumPercent, 0, 100);
-        m_opacitySmoothing = std::clamp(smoothing, 0, 100);
-    }
     static void smoothOpacity(Stroke& line, int percent);
     static QVector<StrokePoint> evenlySampled(QVector<StrokePoint> const& samples, double step);
-    void setSingleStroke(bool on) { m_singleStroke = on; }
-    bool singleStroke() const { return m_singleStroke; }
-    // Edge Type of what the shape tools draw on a bitmap layer: smooth (antialiased) or hard (every pixel all or nothing).
-    void setHardEdges(bool on) { m_hardEdges = on; }
-    bool hardEdges() const { return m_hardEdges; }
-    void setMaskLayers(std::function<QVector<int>()> masks) { m_maskLayers = std::move(masks); }
-    bool overlayBrush() const { return m_overlayBrush; }
     // The artwork of those layers on this frame, on the current layer (empty with none).
     QPainterPath overlayMask() const;
     // What is selected moved by so much, as one step (with Reposition All Drawings: all of every drawing of the layer).
@@ -898,6 +603,7 @@ protected:
     void keyReleaseEvent(QKeyEvent*) override;
 
 private:
+    void settingChanged() override { update(); }
     // One effect of a layer done to its picture (part of paintLayerDrawing).
     static void applyLayerEffect(QImage& image, int i, LayerEffectSpace const& space);
 
@@ -930,8 +636,6 @@ private:
     void ikDown(QPointF widgetPos);
     // The IK tool on rigid bones: the bone in hand and those it hangs on turn so that its tip follows the pointer.
     void boneIkMove(QPointF widgetPos);
-    QVector<int> m_ikChain;     // the bone taken hold of, then the bones it hangs on, nearest first
-    bool m_ikBegun = false;     // whether anything has been turned yet in this drag
     void paintBones(QPainter& painter, QVector<QPointF> const& joints, int picked);
     QRectF subjectBounds() const;
     // The topmost visible drawing layer with artwork under the point, or -1.
@@ -982,11 +686,9 @@ private:
     void paintAt(QPointF scenePos);
     bool fillBitmapAt(QPointF p, bool clear);
     int liftedPieceAt(QPointF p) const;
-    QPointer<Canvas> m_leader;     // the view whose tool settings this one follows (none: its own)
     // The tip pressed along the stroke (its size `share` of the stroke's thickness at each place), in `brush`.
     void stampTip(QPainter& onto, Stroke const& stroke, double share, QBrush const& brush) const;
     void stampDabs(QPainter& onto, QVector<StrokePoint> const& run, Dabs const& dabs, QBrush const& brush, QImage const& picture) const;
-    bool m_bitmapUnchanged = false;     // set while painting into a bitmap: nothing changed, so nothing is kept
     QRectF selectionBounds() const;
     QPointF handlePos(Handle handle, QRectF const& bounds) const;  // in scene coordinates
     Handle handleAt(QPointF widgetPos) const;
@@ -997,8 +699,6 @@ private:
     Document* m_document;
     // A line that fades along its length, painted: solid into a picture of its own, then made fainter there.
     static void paintFadingStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
-    int m_stencils[3] = {StencilUniform, StencilUniform, StencilUniform};     // the Pencil's, the Line tool's, the Polyline's
-    int m_retouchNow = 0;      // the mode of this rub (Alt turns it round)
     // After a line is drawn: the invisible stroke that closes it, and its joining to a line it was built on.
     void finishDrawnLine(double reach);
     // A painted area under `line`, the shape it goes round (one step to undo with what is drawn after it).
@@ -1016,7 +716,6 @@ private:
     QPointF stackedHandleKnob(Drawing const& d, int stroke, int point, int handle) const;
     // The line and point whose handle is in hand.
     Stroke* handleLine(Drawing& d, int& point) const;
-    int m_ceHandleStroke = -1, m_ceHandlePoint = -1;     // -1: the picked point's own handle
     bool joinDroppedEnd(Drawing& edited);
     bool jointDroppedPoint(Drawing& edited);
     // Two joints made one (the points of `from` join `into`).
@@ -1028,17 +727,10 @@ private:
     void textureNewLine(Stroke& stroke) const;
     template <class Change> void restyleSelection(QString const& text, Change change);
 
-    QPointF m_pan;          // widget-space offset of the centre of the scene from that of the widget
     void scaleSelectionThickness(double factor, double set, QString const& text);
     // The Contour Editor's copied points (in the drawing's coordinates), for Paste to add after the picked one.
     static QVector<StrokePoint> s_pointClipboard;
-    bool m_fitted = true;   // keep fitting on resize until the user zooms or pans
-    double m_viewRotation = 0.0;   // degrees, clockwise on the screen
-    bool m_symbolPivots = false;    // the pivot of every layer that shows a symbol is marked
     void paintGrid(QPainter& painter, QRectF const& frameRect) const;
-    mutable Drawing m_artView;   // the colour art of the current drawing, for currentDrawing()
-    mutable Picture const* m_artPictures = nullptr;     // (the pictures it was taken from)
-    mutable Drawing m_bothView;  // the line art and the colour art as one drawing, while both are worked on
     void stepSelection(int direction);
 
     // penUp's parts, one for each kind of drag: true when the pen's work is all done there.
@@ -1060,45 +752,20 @@ private:
     bool penUpPivot(Drag drag);
     bool penUpQuad(Drag drag);
     bool penUpSelection(Drag drag);
-    bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
-    QPointF m_polyHover;         // where its next point would go (layer coordinates)
     void pickColourAt(QPointF widgetPos);
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     // What a symbol shows on one of its frames, painted where the painter stands (the sheet of the layer that shows it).
     static void paintSymbol(QPainter& painter, Scene const& scene, int symbolId, int frame);
     void alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text);
-    int m_quadCorner = -1;          // the corner of the quadmap being dragged
-    QVector<QPointF> m_dragQuad;    // and where its corners are meanwhile
     void paintBoneLayers(QPainter& painter);
     void paintQuadAids(QPainter& painter);
-    class TextEntry* m_textEntry = nullptr;   // where the Text tool is being typed into
-    QPointF m_textAt;                         // and where the words will stand (layer coordinates)
     void beginText(QPointF widgetPos, QPointF layerPos, QString const& words = QString());
-    int m_textEdit = -1;                      // the painted area whose words are being changed; -1: new words
     void endText(bool keep);
     void transformSelection(QTransform const& about, QString const& text);
     void repositionOthers(QTransform const& done, QString const& text);
     void arrangeSelection(bool front);
-    bool m_tabletActive = false;  // a pen is driving: ignore the mouse events Qt synthesises
-    Stroke m_stroke;        // the stroke being drawn
 
-    bool m_keepNoPictures = false;      // the drawing being committed has had its last picture taken away
-    bool m_committing = false;    // our own edit is going through: keep the selection
     QVector<int> drawingShape() const;
-    QPointF m_dragStart;          // scene position where the drag began
-    QRectF m_dragBounds;          // selection bounds when the drag began
-    QTransform m_dragTransform;   // applied to the selection while dragging
-    QPointF m_guideStart;        // where the line being drawn along the guide began (in the frame)
-    QPointF m_guideWay;          // the way it was settled to run (null until the pen has moved)
-    bool m_guideBends = false;   // ... and, when that way bends (4- and 5-point perspectives), the circle it is part of
-    QPointF m_hoverFrame;        // where the pointer is (in the frame)
-    QVector<Scene::Guide> m_guideEdit;   // the guides while a point of one is dragged
-    int m_guideLine = -1;        // the plain guide being dragged with the Select tool
-    int m_cpKey = -1, m_cpIndex = -1;       // the control point picked
-    QPointF m_cpDragPos;                    // where the pointer has it while it is dragged (view)
-    bool m_cpDepth = false;                 // taken with Alt: dragged up or down, it goes away from the camera or towards it
-    QPointF m_cpPressPos;                   // where it was taken (view)
-    QVector<QLineF> m_alignLines;        // what the selection being dragged is in line with (on the layer)
     QPointF aligned(QPointF by);
     QPointF alignedCorner(QPointF corner);     // the same for the corner a selection is scaled by
     int lineGuideAt(QPointF widgetPos) const;
@@ -1113,42 +780,26 @@ private:
     // For a straight line from `fromWidget`: where it ends, kept to the way of the guide nearest to it.
     QPointF guidedFrom(QPointF fromWidget, QPointF widgetPos) const;
     void paintGuide(QPainter& painter);
-    bool m_maintaining = false;         // the move being dragged is Maintain Size
-    bool m_scaleFromPress = false;       // the scale being dragged is counted from where the pen went down
     void paintMotionPath(QPainter& painter);
     QPointF snapped(QPointF p) const;
-    bool m_dragLasso = true;      // for the drag going on: Alt gives the other of the two
-    QPolygonF m_lassoPath;        // the shape being drawn round things, in layer coordinates
     void selectInside(std::function<bool(QPointF)> const& inside, bool add);
     // The Cutter: what lies inside the shape is cut loose from what lies outside, and selected.
     void cutInside(QPolygonF const& shape);
     // The paint bucket dragged: every line and painted area with a point inside is painted (or unpainted).
     void paintInside(std::function<bool(QPointF)> const& inside, QRectF const& reach);
 
-    QVector<int> m_ceExtra;   // other points of that curve picked with it (Shift, or a box dragged round them)
-    Drawing m_stamp;             // artwork of the user's own to stamp, about the origin
-    QVector<Drawing> m_stampSet;  // all the drawings of the stamp in hand (m_stamp is the one whose turn it is)
     void keepStamp(QVector<Drawing> const& drawings);
-    QPointF m_hoverWidget;       // where the pointer is (in the view)
     Drawing stampNow() const;
     void stampAt(QPointF p);
-    int m_thickStroke = -1;      // the Pencil Editor: the line and the thickness point of it in hand (in m_eraseArt)
-    QPointF m_thickPos0;         // where on the line that is, and which way its left is
-    QPointF m_thickPress;        // where the pen went down
-    bool m_thickOneSide = false; // Alt: only the side pulled on
-    bool m_thickExisting = false;   // a thickness point that was there (not one put down by this press)
     // The Line tool and the Polyline: the thickness stencil laid on the line drawn, as its thickness along it.
     void stencilLine(Stroke& line) const;
     void thicknessPointDown(QPointF p, Qt::KeyboardModifiers modifiers);
     void thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
-    bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
     void inkAt(QPointF p);
-    QPointF m_turnFrom;          // Turn in Space: where the pen went down (in the view)
     QPointF splineOffset() const;
     void repaintTo(QPointF p, double tolerance);
     void smoothAt(QPointF p);
     void retouchAt(QPointF p, int mode);
-    int m_envPicked = -1;       // the point pressed last (its place among the points, times three): its handles show
     QVector<QPointF> selectionEnvelope() const;
     bool envelopeDown(QPointF widgetPos);
     void envelopeMove(QPointF p);
@@ -1157,56 +808,31 @@ private:
     void hintDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers);
     void hintUp();
     void paintMorphHints(QPainter& painter);
-    int m_hintMorph = -1;       // the morphing whose hint is being dragged, and which of its hints
-    bool m_hintFar = false;     // on the second drawing: where it goes to
 public:
     // Where a point of that outline is in the view (a null point when there is none): to take hold of it.
     QPointF envelopePointInView(int point) const;
     // A handle of the point of the outline pressed last (the one before it, or the one after); null when none shows.
     QPointF envelopeHandleInView(bool after) const;
 private:
-    QVector<float> m_rawPressure;   // the pen's pressure along the line being drawn (for smoothing with pressure)
-    bool m_singleNow = false;       // for the rub going on (Shift turns it the other way)
-    int m_onlyLine = -1;            // ... the line it keeps to, or the brush shape (-2 - index)
-    QPainterPath m_paintClip;       // while a stroke is painted into pixels: only within this (Overlay Brush Mode)
     QPointF endMagnet(QPointF p) const;
     bool keepJoined(Stroke const& line);
     Drawing followLines(Drawing whole, Drawing const* before, bool quick = false) const;
     bool startBend(Stroke const& line, QPointF p, Qt::KeyboardModifiers modifiers);     // a press on a curve: bent if dragged
-    int m_segIndex = -1;            // the Contour Editor: the piece of the line being bent, and where on it it was taken
     // Auto-Create Colour Art for a line kept by a shape tool or the Polyline: its twin, with no thickness, in the colour art.
     void colourArtTwin(Stroke const& line);
-    int m_ceBoxCorner = -1;         // the control of that box being dragged (0 to 3 a corner, 4 the knob)
-    QRectF m_ceBoxStart;            // the box when it was taken
     QTransform contourBoxTransform() const;     // what the drag does to the points picked
-    int m_cutterTip = 1;            // Stroke::FlatCap
-    QVector<float> m_copiedProfile; // Copy Thickness: the profile (shares of the thickest) and how thick the thickest is
     // Cuts what the eraser passed over (the line `m_stroke`, as thick as the eraser) out of the drawing.
     void cutWithEraser();
     void eraseStretch(int from);    // cuts the eraser's way from that point on out of m_eraseArt
-    Drawing m_eraseArt;             // the art being erased, as it is so far in the drag
-    int m_gradStroke = -1;      // a line instead of an area
-    int m_gradHandle = 0;           // 0: drawn out afresh, 1: its start, 2: its end
     bool gradientValid() const;
     void gradientDown(QPointF widgetPos, QPointF p);
     void paintGradientAids(QPainter& painter);
-    bool m_eraseAny = false;        // whether the drag has taken anything yet
     // The curve the Contour Editor is working on, in a drawing; null when there is none.
     Stroke const* contourLine(Drawing const& drawing) const;
     Stroke* contourLine(Drawing& drawing) const;
     // After that curve was changed: a brush shape draws its outline out again.
     void contourEdited(Drawing& drawing) const;
-    int m_ceHandle = -1;      // the handle of that point being dragged: 0 the one before it, 1 the one after, 2 both pulled out of it (Alt)
     // Alt-pressed on a point: whether the pen has gone far enough from it to pull its handles out (or only clicked).
     bool pulledHandles() const { return std::hypot(m_dragNow.x() - m_dragStart.x(), m_dragNow.y() - m_dragStart.y()) * m_zoom > 3.0; }
-    bool m_ceBreak = false;   // Alt: the handle moves alone, and the point becomes a cusp
 
-    QVector<QPair<int, double>> m_ikHeld;   // IK: the bones holding their orientation, and the angle on screen each keeps
-    QVector<SkinDab> m_weightDabs;      // painted in this stroke, not yet in the scene
-
-    // transform tool
-    Pose m_poseStart;             // the pose of the layer when the drag began
-    Pose m_dragPose;              // the pose while dragging
-    QPointF m_dragPivot;          // the pivot while dragging it, in layer coordinates
-    QTransform m_world0;          // layer to scene when the drag began
 };
