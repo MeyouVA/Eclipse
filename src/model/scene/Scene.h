@@ -8,6 +8,7 @@
 #include "model/scene/NodeGraph.h"
 
 #include <QHash>
+#include <QJsonValue>
 #include <QSet>
 
 class Scene {
@@ -72,10 +73,14 @@ public:
         static constexpr Kind kLastKind = FivePoint;
         Kind kind = Line;
         QVector<QPointF> points;
+        QString name;           // a name of its own; without one it goes by its kind
         bool operator==(Guide const&) const = default;
     };
     QVector<Guide> guides;
     static QString guideName(Guide::Kind kind);
+    // A guide as it is kept in files (the scene's and guide files), and back.
+    static QJsonValue guideToJson(Guide const& guide);
+    static bool guideFromJson(QJsonValue const& value, Guide* guide);
     // A guide of a kind, set out to suit the size of this scene.
     Guide makeGuide(Guide::Kind kind) const;
     // The ways a line may run from a place (each of length one; a line runs either way along it).

@@ -41,17 +41,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.activeCamera = json["camera"].toInt(0);
     scene.display = json["display"].toInt(0);
     for (QJsonValue const& gv : json["guides"].toArray()) {
-        if (gv.isArray() && gv.toArray().size() == 2) {
-            scene.guides.push_back({gv.toArray().at(0).toBool(), gv.toArray().at(1).toDouble()});
-        } else if (gv.isObject()) {
-            // A guide to draw along: its kind and its points.
-            QJsonObject const g = gv.toObject();
-            Guide guide;
-            guide.kind = Guide::Kind(std::clamp(g["kind"].toInt(1), 1, int(Guide::kLastKind)));
-            for (QJsonValue const& pv : g["points"].toArray())
-                guide.points.push_back(QPointF(pv.toArray().at(0).toDouble(), pv.toArray().at(1).toDouble()));
+        Guide guide;
+        if (guideFromJson(gv, &guide))
             scene.guides.push_back(guide);
-        }
     }
     scene.metadata = pairsFromJson(json["metadata"].toArray());
     for (QJsonValue const& rv : json["references"].toArray())

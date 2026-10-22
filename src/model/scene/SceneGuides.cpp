@@ -4,6 +4,8 @@
 #include <cmath>
 
 #include <QCoreApplication>
+#include <QJsonArray>
+#include <QJsonObject>
 
 QString Scene::guideName(Guide::Kind kind)
 {
@@ -19,6 +21,46 @@ QString Scene::guideName(Guide::Kind kind)
     case Guide::FivePoint: return QCoreApplication::translate("Scene", "5-Point Perspective (Fish-Eye)");
     default: return QCoreApplication::translate("Scene", "Line");
     }
+}
+
+QJsonValue Scene::guideToJson(Guide const& guide)
+{
+    // A line across or down: [down, where] (an object when it has a name); a guide to draw along: its kind and its points.
+    if (guide.kind == Guide::Line) {
+        if (guide.name.isEmpty())
+            return QJsonArray{guide.vertical, guide.at};
+        return QJsonObject{{"line", true}, {"vertical", guide.vertical}, {"at", guide.at}, {"name", guide.name}};
+    }
+    QJsonArray points;
+    for (QPointF const& point : guide.points)
+        points.append(QJsonArray{point.x(), point.y()});
+    QJsonObject object{{"kind", int(guide.kind)}, {"points", points}};
+    if (!guide.name.isEmpty())
+        object["name"] = guide.name;
+    return object;
+}
+
+bool Scene::guideFromJson(QJsonValue const& value, Guide* guide)
+{
+    *guide = Guide();
+    if (value.isArray() && value.toArray().size() == 2) {
+        guide->vertical = value.toArray().at(0).toBool();
+        guide->at = value.toArray().at(1).toDouble();
+        return true;
+    }
+    if (!value.isObject())
+        return false;
+    QJsonObject const g = value.toObject();
+    guide->name = g["name"].toString();
+    if (g["line"].toBool()) {
+        guide->vertical = g["vertical"].toBool();
+        guide->at = g["at"].toDouble();
+        return true;
+    }
+    guide->kind = Guide::Kind(std::clamp(g["kind"].toInt(1), 1, int(Guide::kLastKind)));
+    for (QJsonValue const& pv : g["points"].toArray())
+        guide->points.push_back(QPointF(pv.toArray().at(0).toDouble(), pv.toArray().at(1).toDouble()));
+    return true;
 }
 
 Scene::Guide Scene::makeGuide(Guide::Kind kind) const
