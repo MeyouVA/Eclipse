@@ -322,3 +322,34 @@ int Document::recoverColours()
         apply(tr("Recover Colours"), [&](Scene& s) { s.recoverColours(); });
     return count;
 }
+
+QHash<int, int> Document::bringColours(QVector<Swatch> const& colours)
+{
+    QHash<int, int> map;
+    if (colours.isEmpty())
+        return map;
+    apply(tr("Recover Colours"), [&](Scene& s) {
+        int recovered = -1;
+        for (Swatch const& theirs : colours) {
+            int mine = Scene::kNoSwatch;
+            for (Swatch const& have : std::as_const(s.palette))
+                if (have.name == theirs.name && have.color == theirs.color)
+                    mine = have.id;
+            if (mine == Scene::kNoSwatch) {
+                if (recovered < 0) {
+                    recovered = int(s.paletteNames.indexOf(QStringLiteral("Recovered Palette")));
+                    if (recovered < 0) {
+                        s.paletteNames.push_back(QStringLiteral("Recovered Palette"));
+                        recovered = int(s.paletteNames.size()) - 1;
+                    }
+                }
+                mine = s.addSwatch(theirs.name, theirs.color, recovered);
+                for (Swatch& made : s.palette)
+                    if (made.id == mine)
+                        giveValues(made, theirs);
+            }
+            map.insert(theirs.id, mine);
+        }
+    });
+    return map;
+}

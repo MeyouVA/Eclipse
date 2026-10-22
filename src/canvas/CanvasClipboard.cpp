@@ -2,6 +2,7 @@
 #include "canvas/Canvas.h"
 
 #include <QHash>
+#include <QMessageBox>
 
 #include <cmath>
 #include <numeric>
@@ -12,6 +13,8 @@
 
 // What Copy put aside: shared by every canvas, lost when the program closes.
 static Drawing s_clipboard;
+// The colours it was drawn in, as the scene it was copied from had them: to find or make them again where it is pasted.
+static QVector<Swatch> s_clipboardColours;
 
 void Canvas::deleteSelection()
 {
@@ -184,6 +187,16 @@ void Canvas::copySelection()
         for (int i : m_selPictures)
             if (i >= 0 && i < d->pictures.size())
                 s_clipboard.pictures.push_back(d->pictures[i]);
+    s_clipboardColours.clear();
+    Scene const& scene = m_document->scene();
+    auto keep = [&](int id) {
+        if (Swatch const* const s = scene.findSwatch(id); s && std::none_of(s_clipboardColours.begin(), s_clipboardColours.end(), [id](Swatch const& k) { return k.id == id; }))
+            s_clipboardColours.push_back(*s);
+    };
+    for (Stroke const& stroke : std::as_const(s_clipboard.strokes))
+        keep(stroke.swatch);
+    for (Fill const& fill : std::as_const(s_clipboard.fills))
+        keep(fill.swatch);
 }
 
 void Canvas::cutSelection()
@@ -304,9 +317,74 @@ void Canvas::paste()
             merged.pictures.push_back(picture);
         }
     }
+    // Colours this scene does not have (the artwork came from another): recovered, or left to the artwork's own values.
+    QHash<int, int> const recovered = recoverPastedColours(placed);
+    auto relink = [&](int& swatch, QColor& colour) {
+        auto const found = recovered.constFind(swatch);
+        if (found == recovered.constEnd())
+            return;
+        swatch = found.value();
+        if (swatch == Scene::kNoSwatch && Scene::replacementColour().isValid())
+            colour = Scene::replacementColour();
+    };
+    for (int i : std::as_const(fills))
+        relink(merged.fills[i].swatch, merged.fills[i].color);
+    for (int i : std::as_const(strokes))
+        relink(merged.strokes[i].swatch, merged.strokes[i].color);
     commitDrawing(merged, tr("Paste"));
+    if (!recovered.isEmpty())
+        m_document->endMacro();
     if (selecting())
         setSelection(strokes, fills, pictures);
+}
+
+QHash<int, int> Canvas::recoverPastedColours(Drawing const& placed)
+{
+    Scene const& scene = m_document->scene();
+    // A colour is missing when this scene has no colour of that id, or one of another name (the id is another scene's).
+    QVector<Swatch> missing;
+    QVector<int> unknown;
+    auto look = [&](int id, QColor const& colour) {
+        if (id == Scene::kNoSwatch || unknown.contains(id))
+            return;
+        Swatch const* const here = scene.findSwatch(id);
+        auto theirs = std::find_if(s_clipboardColours.begin(), s_clipboardColours.end(), [id](Swatch const& k) { return k.id == id; });
+        if (here && (theirs == s_clipboardColours.end() || theirs->name == here->name))
+            return;
+        Swatch lost = theirs != s_clipboardColours.end() ? *theirs : Swatch();
+        if (theirs == s_clipboardColours.end()) {
+            lost.id = id;
+            lost.name = tr("Colour %1").arg(id);
+            lost.color = colour;
+        }
+        unknown.push_back(id);
+        missing.push_back(lost);
+    };
+    for (Stroke const& stroke : placed.strokes)
+        look(stroke.swatch, stroke.color);
+    for (Fill const& fill : placed.fills)
+        look(fill.swatch, fill.color);
+    QHash<int, int> map;
+    if (missing.isEmpty())
+        return map;
+    bool recover = s_colourRecovery;
+    if (recover && s_interactiveRecovery) {
+        QStringList names;
+        for (Swatch const& s : std::as_const(missing))
+            names << s.name;
+        recover = QMessageBox::question(this, tr("Colour Recovery"), tr("The following colours were not found.\nDo you want to perform colour recovery?") + QStringLiteral("\n\n") + names.join(QStringLiteral(", ")))
+                  == QMessageBox::Yes;
+    }
+    m_document->beginMacro(tr("Paste"));
+    if (recover) {
+        map = m_document->bringColours(missing);
+        emit message(tr("%n colour(s) recovered.", nullptr, int(missing.size())));
+    } else {
+        // Unlinked: what is pasted keeps its values (or takes the replacement colour of Preferences).
+        for (Swatch const& s : std::as_const(missing))
+            map.insert(s.id, Scene::kNoSwatch);
+    }
+    return map;
 }
 
 QVector<StrokePoint> Canvas::s_pointClipboard;

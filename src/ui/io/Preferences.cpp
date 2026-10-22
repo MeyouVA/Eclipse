@@ -77,6 +77,15 @@ void MainWindow::applyPreferences()
     m_canvas->setBitmapPpi(s.value(QStringLiteral("prefs/bitmapPpi"), 72).toInt());
     m_canvas->setBitmapCanvasBasis(s.value(QStringLiteral("prefs/bitmapCanvasBasis"), 0).toInt());
     m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
+    // Palettes: element palettes shown, the Colour view's background, colour recovery and what pasted templates do with colours.
+    bool const recovery = s.value(QStringLiteral("prefs/colourRecovery"), true).toBool();
+    Canvas::s_colourRecovery = recovery;
+    Canvas::s_interactiveRecovery = s.value(QStringLiteral("prefs/interactiveRecovery"), false).toBool();
+    Scene::setReplacementColour(recovery ? QColor() : s.value(QStringLiteral("prefs/replacementColour"), QColor(255, 0, 0)).value<QColor>());
+    Scene::setPasteColours(s.value(QStringLiteral("prefs/pasteColours"), 0).toInt());
+    m_palette->setElementPalettesShown(s.value(QStringLiteral("prefs/advancedPalettes"), true).toBool());
+    m_palette->setListBackground(s.value(QStringLiteral("prefs/paletteBackground"), QColor()).value<QColor>());
+    m_palette->setSwatchGrid(s.value(QStringLiteral("colour/grid"), false).toBool());
     bool const moreArt = s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool();
     for (char const* id : {"SetOverlayArt", "SetUnderlayArt"}) {
         if (QAction* const a = m_actions->action(QLatin1String(id)))
@@ -244,6 +253,7 @@ void MainWindow::onActionPreferences()
     preferencesSound(w, s, dialog);
     preferencesDrawing(w, s, dialog);
     preferencesColours(w, s, dialog);
+    preferencesPalettes(w, s, dialog);
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -284,7 +294,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {w.general, w.camera, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.renderPage, w.soundPage, w.advanced}) {
+    for (QGroupBox* const page : {w.general, w.camera, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.soundPage, w.advanced}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -401,6 +411,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionFade"), w.onionFade->isChecked());
     s.setValue(QStringLiteral("prefs/onionNearest"), w.onionNearest->value());
     s.setValue(QStringLiteral("prefs/onionFurthest"), w.onionFurthest->value());
+    savePalettePreferences(w, s);
     s.sync();
     applyPreferences();
 }

@@ -53,12 +53,36 @@ int PalettePanel::pickPalette(QString const& title, QString const& label, bool e
 
 void PalettePanel::onActionNewPalette()
 {
+    // By Preferences, a new palette is the current layer's own.
+    Scene const& scene = m_document->scene();
+    if (m_elementPalettes && settings().value(QStringLiteral("prefs/elementPalettesDefault"), false).toBool() && m_layer >= 0 && m_layer < scene.layers.size()
+        && scene.layers[m_layer].holdsDrawings()) {
+        onActionNewElementPalette();
+        return;
+    }
     addPalette();
+}
+
+void PalettePanel::setElementPalettesShown(bool on)
+{
+    if (on == m_elementPalettes)
+        return;
+    m_elementPalettes = on;
+    rebuild();
+}
+
+void PalettePanel::setListBackground(QColor const& colour)
+{
+    m_list->setStyleSheet(colour.isValid() ? QStringLiteral("QListWidget#ColourList { background-color: %1; }").arg(colour.name()) : QString());
 }
 
 void PalettePanel::onActionNewElementPalette()
 {
     Scene const& scene = m_document->scene();
+    if (!m_elementPalettes) {
+        QMessageBox::information(this, tr("Create Element Palette"), tr("Element palettes are off: Preferences > Palettes > Advanced Palette Lists."));
+        return;
+    }
     if (m_layer < 0 || m_layer >= scene.layers.size() || !scene.layers[m_layer].holdsDrawings()) {
         QMessageBox::information(this, tr("Create Element Palette"), tr("Choose a drawing layer first: an element palette belongs to a layer."));
         return;

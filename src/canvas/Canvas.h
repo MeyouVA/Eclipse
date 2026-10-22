@@ -234,6 +234,9 @@ public:
     static void paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
     // How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
     static inline double s_lineOpacity = 1.0;
+    // Pasted artwork in colours the scene lacks: those colours made again (colour recovery), asking first when interactive.
+    static inline bool s_colourRecovery = true;
+    static inline bool s_interactiveRecovery = false;
     // Whether artwork (not cells) was copied last.
     static bool artworkCopiedLast();
     static void setArtworkCopiedLast(bool artwork);
@@ -603,6 +606,8 @@ protected:
     void keyReleaseEvent(QKeyEvent*) override;
 
 private:
+    // The colours of pasted artwork this scene lacks, recovered or unlinked (a macro is left open when any): theirs -> here.
+    QHash<int, int> recoverPastedColours(Drawing const& placed);
     void settingChanged() override { update(); }
     // One effect of a layer done to its picture (part of paintLayerDrawing).
     static void applyLayerEffect(QImage& image, int i, LayerEffectSpace const& space);

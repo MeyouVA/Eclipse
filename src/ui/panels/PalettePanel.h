@@ -63,6 +63,11 @@ public:
     bool showsValues() const { return m_values; }
     // The palette list over the colours shown or hidden.
     bool showsPaletteList() const;
+    // Element palettes (a layer's own) listed and made (Preferences: Advanced Palette Lists).
+    void setElementPalettesShown(bool on);
+    bool elementPalettesShown() const { return m_elementPalettes; }
+    // The colour behind the colours (Preferences); invalid: the theme's.
+    void setListBackground(QColor const& colour);
 
 public slots:
     // Edit menu, while the Colour view is in use.
@@ -152,6 +157,7 @@ private:
     bool m_rebuilding = false;
     int m_layer = -1;
     bool m_values = false;
+    bool m_elementPalettes = true;
     std::function<QVector<int>()> m_selectedLayers;
     QWidget* m_paletteHeader = nullptr;
     // Colours taken out; when drawings use them, asked first whether to recolour those, unpaint them or keep their look.

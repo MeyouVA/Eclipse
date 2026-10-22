@@ -111,6 +111,8 @@ public:
     bool setColourValues(QVector<int> const& targets, QVector<Swatch> const& values);
     bool setPaletteOverrides(int layer, QVector<int> const& palettes);
     int recoverColours();
+    // Colours of another scene found here (by name and value) or made again in "Recovered Palette": their id -> id here.
+    QHash<int, int> bringColours(QVector<Swatch> const& colours);
 
     // ---- exposure -----------------------------------------------------------------------
     // A new empty drawing starting at `frame` (the rest of the old exposure keeps its drawing).

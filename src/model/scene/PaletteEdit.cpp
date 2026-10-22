@@ -6,6 +6,7 @@
 namespace {
 
 QColor s_replacement;
+int s_pasteColours = Scene::ReuseColours;
 
 // Every line and area of a drawing, on every sheet.
 template <typename Fn>
@@ -188,4 +189,62 @@ int Scene::recoverColours()
                 swatch = found.value();
             });
     return count;
+}
+
+void Scene::setPasteColours(int mode)
+{
+    s_pasteColours = std::clamp(mode, int(ReuseColours), int(NewColours));
+}
+
+int Scene::pasteColours()
+{
+    return s_pasteColours;
+}
+
+int Scene::takeColour(Scene const& piece, int swatch, QColor const& colour, QHash<int, int>& map)
+{
+    Q_UNUSED(colour);
+    if (swatch == kNoSwatch)
+        return kNoSwatch;
+    if (auto known = map.constFind(swatch); known != map.constEnd())
+        return known.value();
+    Swatch const* const theirs = piece.findSwatch(swatch);
+    if (!theirs)
+        return kNoSwatch;   // a colour the piece itself did not know: the artwork keeps its own
+    // Where a new colour goes: the scene's first palette, or (copying palettes) one named as theirs.
+    int place = 0;
+    if (s_pasteColours == CopyPalettes) {
+        QString const name = piece.paletteNames.value(theirs->palette, QStringLiteral("Palette"));
+        place = int(paletteNames.indexOf(name));
+        if (place < 0) {
+            paletteNames.push_back(name);
+            place = int(paletteNames.size()) - 1;
+        }
+    }
+    int mine = kNoSwatch;
+    for (Swatch const& have : std::as_const(palette)) {
+        bool const same = s_pasteColours == UpdateColours ? have.name == theirs->name
+                          : s_pasteColours == CopyPalettes ? have.palette == place && have.name == theirs->name && have.color == theirs->color
+                          : s_pasteColours == ReuseColours ? have.name == theirs->name && have.color == theirs->color
+                                                            : false;
+        if (same) {
+            mine = have.id;
+            break;
+        }
+    }
+    bool const fresh = mine == kNoSwatch;
+    if (fresh)
+        mine = addSwatch(theirs->name, theirs->color, place);
+    if (fresh || s_pasteColours == UpdateColours)
+        for (Swatch& s : palette)
+            if (s.id == mine) {
+                s.color = theirs->color;
+                s.kind = theirs->kind;
+                s.stops = theirs->stops;
+                s.texture = theirs->texture;
+                if (fresh)
+                    s.isProtected = theirs->isProtected;
+            }
+    map.insert(swatch, mine);
+    return mine;
 }

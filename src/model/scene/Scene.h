@@ -128,6 +128,12 @@ public:
     // Colours the artwork of the scene is linked to that the scene does not have: each made again, from what was
     // drawn with it, in a palette "Recovered Palette".  How many.
     int recoverColours();
+    // What becomes of the colours of a template brought in (Preferences > Library).
+    enum PasteColours { ReuseColours, CopyPalettes, UpdateColours, NewColours };
+    static void setPasteColours(int mode);
+    static int pasteColours();
+    // A colour of `piece` (by id) as a colour of this scene, made or found as setPasteColours says; `map` remembers it.
+    int takeColour(Scene const& piece, int swatch, QColor const& colour, QHash<int, int>& map);
     QJsonObject paletteJson(int which) const;
     bool takePaletteJson(int which, QJsonObject const& root);
     bool writePaletteFile(int which, QString const& path) const;

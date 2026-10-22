@@ -279,11 +279,12 @@ void PalettePanel::rebuild()
             currentRow = m_palettes->count() - 1;
     };
     headingRow(tr("Scene Palettes"));
+    // (Element palettes off: every palette is listed as the scene's.)
     for (int i = 0; i < scene.paletteNames.size(); ++i)
-        if (scene.paletteIsScene(i))
+        if (scene.paletteIsScene(i) || !m_elementPalettes)
             paletteRow(i);
     bool element = false;
-    for (int i = 0; i < scene.paletteNames.size(); ++i)
+    for (int i = 0; i < scene.paletteNames.size() && m_elementPalettes; ++i)
         element = element || (!scene.paletteIsScene(i) && (scene.paletteOwner(i) == owner || i == m_palette));
     if (element) {
         headingRow(tr("Element Palettes"));

@@ -105,35 +105,7 @@ int Scene::pasteOnto(Scene const& piece, int frame, bool drawings, bool keys)
         setFrameCount(frame + piece.frameCount());
     // The colours, as when a piece is brought in as layers of its own.
     QHash<int, int> swatchOf;
-    for (Swatch const& theirs : piece.palette) {
-        int mine = kNoSwatch;
-        for (Swatch const& have : palette)
-            if (have.name == theirs.name && have.color == theirs.color)
-                mine = have.id;
-        swatchOf.insert(theirs.id, mine);
-    }
-    auto relink = [&](int& swatch, QColor const& colour) {
-        if (swatch == kNoSwatch)
-            return;
-        auto found = swatchOf.find(swatch);
-        if (found == swatchOf.end()) {
-            swatch = kNoSwatch;
-            return;
-        }
-        if (found.value() == kNoSwatch) {
-            Swatch const* const theirs = piece.findSwatch(swatch);
-            found.value() = addSwatch(theirs ? theirs->name : QStringLiteral("Colour"), theirs ? theirs->color : colour, 0);
-            // A gradient or a texture comes as it is.
-            if (theirs)
-                for (Swatch& mine : palette)
-                    if (mine.id == found.value()) {
-                        mine.kind = theirs->kind;
-                        mine.stops = theirs->stops;
-                        mine.texture = theirs->texture;
-                    }
-        }
-        swatch = found.value();
-    };
+    auto relink = [&](int& swatch, QColor const& colour) { swatch = takeColour(piece, swatch, colour, swatchOf); };
     int const count = piece.frameCount();
     for (int i = 0; i < piece.layers.size(); ++i) {
         Layer const& theirs = piece.layers[i];
@@ -199,37 +171,9 @@ int Scene::insert(Scene const& piece, int frame)
         return -1;
     if (frame + piece.frameCount() > m_frameCount)
         setFrameCount(frame + piece.frameCount());
-    // The colours: those the scene has already, by name and colour; the others are added.
+    // The colours: as Preferences say (by default those the scene has already, by name and colour; the others added).
     QHash<int, int> swatchOf;
-    for (Swatch const& theirs : piece.palette) {
-        int mine = kNoSwatch;
-        for (Swatch const& have : palette)
-            if (have.name == theirs.name && have.color == theirs.color)
-                mine = have.id;
-        swatchOf.insert(theirs.id, mine);   // kNoSwatch: added below, if anything uses it
-    }
-    auto relink = [&](int& swatch, QColor const& colour) {
-        if (swatch == kNoSwatch)
-            return;
-        auto found = swatchOf.find(swatch);
-        if (found == swatchOf.end()) {
-            swatch = kNoSwatch;     // a colour the piece itself did not know: the artwork keeps its own
-            return;
-        }
-        if (found.value() == kNoSwatch) {
-            Swatch const* const theirs = piece.findSwatch(swatch);
-            found.value() = addSwatch(theirs ? theirs->name : QStringLiteral("Colour"), theirs ? theirs->color : colour, 0);
-            // A gradient or a texture comes as it is.
-            if (theirs)
-                for (Swatch& mine : palette)
-                    if (mine.id == found.value()) {
-                        mine.kind = theirs->kind;
-                        mine.stops = theirs->stops;
-                        mine.texture = theirs->texture;
-                    }
-        }
-        swatch = found.value();
-    };
+    auto relink = [&](int& swatch, QColor const& colour) { swatch = takeColour(piece, swatch, colour, swatchOf); };
 
     // The symbols of the piece become symbols of the scene, under numbers (and, where need be, names) of their own.
     QHash<int, int> symbolOf;

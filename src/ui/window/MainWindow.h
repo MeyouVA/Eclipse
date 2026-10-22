@@ -507,6 +507,8 @@ private:
     void preferencesSound(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesDrawing(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesColours(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesPalettes(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void savePalettePreferences(struct PreferenceWidgets& w, class QSettings& s);
     void createViews();
     // The parts of that: a view put in a panel of its own, and the views that take some making.
     QDockWidget* addView(QString const& title, QString const& name, QWidget* content, Qt::DockWidgetArea area);

@@ -123,7 +123,7 @@ void PalettePanel::onActionNewColour()
 {
     // A new colour starts as the colour in hand (or as the default colour, by Preferences).
     Swatch const* const now = m_document->scene().findSwatch(m_current);
-    bool const byDefault = settings().value(QStringLiteral("colour/newUsesDefault"), false).toBool();
+    bool const byDefault = settings().value(QStringLiteral("prefs/newColourUsesDefault"), false).toBool();
     if (byDefault || !now) {
         onActionNewDefaultColour();
         return;
@@ -138,7 +138,7 @@ void PalettePanel::onActionNewColour()
 
 void PalettePanel::onActionNewDefaultColour()
 {
-    QColor const colour = settings().value(QStringLiteral("colour/defaultNew"), QColor(Qt::black)).value<QColor>();
+    QColor const colour = settings().value(QStringLiteral("prefs/newColourDefault"), QColor(Qt::black)).value<QColor>();
     int const id = m_document->addSwatch(tr("New"), colour.isValid() ? colour : QColor(Qt::black), m_palette);
     setCurrentSwatch(id);
 }
