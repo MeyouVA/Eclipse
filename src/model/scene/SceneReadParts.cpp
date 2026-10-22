@@ -379,6 +379,32 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         layer.paletteOverrides.push_back(pv.toInt());
     layer.tagged = lo["tagged"].toBool(false);
     layer.thumbnails = lo["thumbnails"].toBool(false);
+    layer.columnHidden = lo["columnHidden"].toBool(false);
+    layer.columnWidth = std::clamp(lo["columnWidth"].toInt(0), 0, 1000);
+    layer.columnCollapsed = lo["columnCollapsed"].toBool(false);
+    for (QJsonValue const& nv : lo["notes"].toArray())
+        if (QJsonArray const note = nv.toArray(); note.size() == 2 && note.at(0).toInt(-1) >= 0)
+            layer.notes.insert(note.at(0).toInt(), note.at(1).toString());
+    for (QJsonValue const& iv : lo["ink"].toArray()) {
+        QJsonObject const io = iv.toObject();
+        AnnotationInk mark;
+        mark.colour = QColor(io["colour"].toString("#ff000000"));
+        mark.width = std::clamp(io["width"].toDouble(2.0), 0.5, 50.0);
+        QJsonArray const points = io["points"].toArray();
+        for (int i = 0; i + 1 < points.size(); i += 2)
+            mark.points.push_back(QPointF(points.at(i).toDouble(), points.at(i + 1).toDouble()));
+        if (!mark.points.isEmpty())
+            layer.ink.push_back(mark);
+    }
+    for (QJsonValue const& pv : lo["pictures"].toArray()) {
+        QJsonObject const po = pv.toObject();
+        AnnotationPicture picture;
+        picture.frame = std::max(0, po["frame"].toInt(0));
+        picture.frames = std::clamp(po["frames"].toInt(4), 1, 100000);
+        picture.png = QByteArray::fromBase64(po["png"].toString().toLatin1());
+        if (!picture.png.isEmpty())
+            layer.pictures.push_back(picture);
+    }
     for (QJsonValue const& mv : lo["frameMarks"].toArray()) {
         QColor const colour(mv.toArray().at(1).toString());
         if (colour.isValid() && mv.toArray().at(0).toInt(-1) >= 0)
@@ -449,7 +475,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.kind = kind == QLatin1String("peg") ? Layer::Peg : kind == QLatin1String("camera") ? Layer::Camera
                  : kind == QLatin1String("sound") ? Layer::Sound : kind == QLatin1String("card") ? Layer::ColourCard
                  : kind == QLatin1String("group") ? Layer::Group : kind == QLatin1String("bone") ? Layer::Bone
-                 : kind == QLatin1String("quadmap") ? Layer::Quadmap : Layer::DrawingLayer;
+                 : kind == QLatin1String("quadmap") ? Layer::Quadmap : kind == QLatin1String("annotation") ? Layer::Annotation : Layer::DrawingLayer;
     if (QString const card = lo["cardColor"].toString(); !card.isEmpty())
         layer.cardColor = QColor(card);
     layer.boneLength = std::max(1.0, lo["boneLength"].toDouble(200.0));

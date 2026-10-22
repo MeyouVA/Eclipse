@@ -7,6 +7,55 @@
 
 using namespace commands_cells_shared;
 
+// Frames put in at `at`: what an annotation column holds from there on goes down with them.
+static void shiftAnnotation(Layer& layer, int at, int count)
+{
+    QMap<int, QString> notes;
+    for (auto it = layer.notes.constBegin(); it != layer.notes.constEnd(); ++it)
+        notes.insert(it.key() >= at ? it.key() + count : it.key(), it.value());
+    layer.notes = notes;
+    for (AnnotationInk& mark : layer.ink)
+        for (QPointF& p : mark.points)
+            if (p.y() >= at)
+                p.ry() += count;
+    for (AnnotationPicture& picture : layer.pictures)
+        if (picture.frame >= at)
+            picture.frame += count;
+}
+
+// Frames taken out: what was on them goes too, what was below comes up.
+static void cutAnnotation(Layer& layer, int first, int last)
+{
+    int const count = last - first + 1;
+    QMap<int, QString> notes;
+    for (auto it = layer.notes.constBegin(); it != layer.notes.constEnd(); ++it)
+        if (it.key() < first || it.key() > last)
+            notes.insert(it.key() > last ? it.key() - count : it.key(), it.value());
+    layer.notes = notes;
+    QVector<AnnotationInk> ink;
+    for (AnnotationInk mark : std::as_const(layer.ink)) {
+        bool gone = false;
+        for (QPointF& p : mark.points) {
+            if (p.y() >= first && p.y() < last + 1)
+                gone = true;
+            else if (p.y() >= last + 1)
+                p.ry() -= count;
+        }
+        if (!gone)
+            ink.push_back(mark);
+    }
+    layer.ink = ink;
+    QVector<AnnotationPicture> pictures;
+    for (AnnotationPicture picture : std::as_const(layer.pictures)) {
+        if (picture.frame >= first && picture.frame <= last)
+            continue;
+        if (picture.frame > last)
+            picture.frame -= count;
+        pictures.push_back(picture);
+    }
+    layer.pictures = pictures;
+}
+
 void Document::insertFrames(int at, int count)
 {
     if (count < 1 || at < 0 || at > m_scene.frameCount())
@@ -29,6 +78,13 @@ void Document::insertFrames(int at, int count)
             for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)
                 shifted.insert(it.key() >= at ? it.key() + count : it.key(), it.value());
             layer.frameMarks = shifted;
+            shiftAnnotation(layer, at, count);
+        }
+        for (Scene::SheetMarker& m : s.sheetMarkers) {
+            if (m.frame >= at)
+                m.frame += count;
+            else if (m.frame + m.length > at)
+                m.length += count;
         }
         for (Scene::Marker& m : s.markers) {
             if (m.frame >= at)
@@ -82,7 +138,17 @@ void Document::removeFrames(int first, int last)
                 if (it.key() < first || it.key() > last)
                     left.insert(it.key() > last ? it.key() - count : it.key(), it.value());
             layer.frameMarks = left;
+            cutAnnotation(layer, first, last);
         }
+        for (Scene::SheetMarker& m : s.sheetMarkers) {
+            int const end = m.frame + m.length;
+            int const newStart = m.frame > last ? m.frame - count : std::min(m.frame, first);
+            int const newEnd = end > last + 1 ? end - count : std::min(end, first);
+            m.frame = newStart;
+            m.length = newEnd - newStart;
+        }
+        s.sheetMarkers.erase(std::remove_if(s.sheetMarkers.begin(), s.sheetMarkers.end(), [](Scene::SheetMarker const& m) { return m.length < 1; }),
+                             s.sheetMarkers.end());
         for (Scene::Marker& m : s.markers) {
             // What is left of the marker once the frames are gone.
             int const end = m.frame + m.length;

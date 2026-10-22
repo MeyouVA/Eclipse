@@ -175,6 +175,8 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"height", height},
                        {"fps", fps},
                        {"soloMode", soloMode},
+                       {"framesPerBeat", framesPerBeat},
+                       {"beatsPerBar", beatsPerBar},
                        {"orthographic", orthographic},
                        {"fovAcross", fovAcross},
                        {"fov", fov},
@@ -193,6 +195,12 @@ QJsonObject Scene::toJson(QString const& folder) const
         whole["images"] = images;
     if (!graph.isEmpty())
         whole["graph"] = graphToJson(graph);
+    if (!sheetMarkers.isEmpty()) {
+        QJsonArray sheet;
+        for (SheetMarker const& m : sheetMarkers)
+            sheet.append(QJsonObject{{"layer", m.layer}, {"frame", m.frame}, {"length", m.length}, {"colour", m.colour}});
+        whole["sheetMarkers"] = sheet;
+    }
     return whole;
 }
 

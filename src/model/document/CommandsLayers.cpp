@@ -74,6 +74,18 @@ void Document::setActiveCamera(int layer)
     apply(tr("Choose Camera"), [&](Scene& s) { s.activeCamera = s.layers[layer].id; });
 }
 
+int Document::addAnnotation(int above)
+{
+    int at = -1;
+    apply(tr("Add Annotation Column"), [&](Scene& s) { at = s.addLayer(QStringLiteral("Annotation"), above + 1, Layer::Annotation); });
+    return at;
+}
+
+void Document::editScene(QString const& text, std::function<void(Scene&)> const& change)
+{
+    apply(text, [&](Scene& s) { change(s); });
+}
+
 int Document::addPeg(int above)
 {
     int at = -1;

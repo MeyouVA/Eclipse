@@ -37,6 +37,17 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.fps = std::clamp(json["fps"].toDouble(24.0), 1.0, 240.0);
     scene.orthographic = json["orthographic"].toBool(false);
     scene.soloMode = json["soloMode"].toBool(true);
+    scene.framesPerBeat = std::clamp(json["framesPerBeat"].toInt(0), 0, 1000);
+    scene.beatsPerBar = std::clamp(json["beatsPerBar"].toInt(0), 0, 1000);
+    for (QJsonValue const& mv : json["sheetMarkers"].toArray()) {
+        QJsonObject const mo = mv.toObject();
+        SheetMarker m;
+        m.layer = mo["layer"].toInt(0);
+        m.frame = std::max(0, mo["frame"].toInt(0));
+        m.length = std::max(1, mo["length"].toInt(1));
+        m.colour = std::clamp(mo["colour"].toInt(0), 0, 2);
+        scene.sheetMarkers.push_back(m);
+    }
     scene.fovAcross = json["fovAcross"].toBool(false);
     scene.fov = std::clamp(json["fov"].toDouble(Layer::kDefaultFov), 1.0, 170.0);
     scene.activeCamera = json["camera"].toInt(0);

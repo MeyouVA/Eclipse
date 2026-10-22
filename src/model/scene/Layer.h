@@ -40,10 +40,26 @@ struct Driver {
     static void write(Pose& pose, int value, double v);
 };
 
+// A mark drawn with the pen in an annotation column: x across the column (0..1), y down it in frames.
+struct AnnotationInk {
+    QVector<QPointF> points;
+    QColor colour = Qt::black;
+    double width = 2.0;
+    bool operator==(AnnotationInk const&) const = default;
+};
+
+// A picture put into an annotation column: from a frame, so many frames tall.
+struct AnnotationPicture {
+    int frame = 0;
+    int frames = 4;
+    QByteArray png;
+    bool operator==(AnnotationPicture const&) const = default;
+};
+
 struct Layer {
     static constexpr int kNoDrawing = -1;
 
-    enum Kind { DrawingLayer, Peg, Camera, Sound, ColourCard, Group, Bone, Quadmap };
+    enum Kind { DrawingLayer, Peg, Camera, Sound, ColourCard, Group, Bone, Quadmap, Annotation };
     bool holdsDrawings() const { return kind == DrawingLayer; }
 
     int id = 0;  // unique in the scene and never reused: what `parent` refers to
@@ -149,8 +165,16 @@ struct Layer {
     void shiftKeyExposures(int at, int delta);
     // The layers attached to this one are folded away in the Timeline.
     bool collapsed = false;
-    // The colour of the layer's row in the Timeline; invalid for the usual grey.
+    // The colour of the layer's row in the Timeline and of its column in the Xsheet; invalid for the usual grey.
     QColor trackColor;
+    // Its column in the Xsheet: hidden, as wide as so many pixels (0: the usual width), folded to a narrow strip.
+    bool columnHidden = false;
+    int columnWidth = 0;
+    bool columnCollapsed = false;
+    // An annotation column: notes typed in from a frame on, marks drawn with the pen and pictures put in.
+    QMap<int, QString> notes;
+    QVector<AnnotationInk> ink;
+    QVector<AnnotationPicture> pictures;
     double opacity = 1.0;
     QVector<Drawing> drawings;
     QVector<int> cells;  // one per frame: index into drawings, or kNoDrawing

@@ -465,7 +465,7 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         bones.append(joint.x());
         bones.append(joint.y());
     }
-    static char const* const kKinds[] = {"drawing", "peg", "camera", "sound", "card", "group", "bone", "quadmap"};
+    static char const* const kKinds[] = {"drawing", "peg", "camera", "sound", "card", "group", "bone", "quadmap", "annotation"};
     QJsonArray quad;
     for (QPointF const& corner : layer.quad) {
         quad.append(corner.x());
@@ -532,6 +532,36 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
     }
     if (layer.showsSymbol())
         layerObject["symbol"] = layer.symbolId;
+    if (layer.columnHidden)
+        layerObject["columnHidden"] = true;
+    if (layer.columnWidth > 0)
+        layerObject["columnWidth"] = layer.columnWidth;
+    if (layer.columnCollapsed)
+        layerObject["columnCollapsed"] = true;
+    if (!layer.notes.isEmpty()) {
+        QJsonArray notes;
+        for (auto it = layer.notes.constBegin(); it != layer.notes.constEnd(); ++it)
+            notes.append(QJsonArray{it.key(), it.value()});
+        layerObject["notes"] = notes;
+    }
+    if (!layer.ink.isEmpty()) {
+        QJsonArray ink;
+        for (AnnotationInk const& mark : layer.ink) {
+            QJsonArray points;
+            for (QPointF const& p : mark.points) {
+                points.append(p.x());
+                points.append(p.y());
+            }
+            ink.append(QJsonObject{{"colour", mark.colour.name(QColor::HexArgb)}, {"width", mark.width}, {"points", points}});
+        }
+        layerObject["ink"] = ink;
+    }
+    if (!layer.pictures.isEmpty()) {
+        QJsonArray pictures;
+        for (AnnotationPicture const& picture : layer.pictures)
+            pictures.append(QJsonObject{{"frame", picture.frame}, {"frames", picture.frames}, {"png", QString::fromLatin1(picture.png.toBase64())}});
+        layerObject["pictures"] = pictures;
+    }
     if (layer.syncGroup != 0)
         layerObject["sync"] = layer.syncGroup;
     if (layer.cloneGroup != 0)

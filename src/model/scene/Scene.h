@@ -28,6 +28,19 @@ public:
         bool operator==(Marker const&) const = default;
     };
     QVector<Marker> markers;    // sorted by frame
+    // Brackets drawn down a column of the Xsheet over a run of frames (by layer id); black, white or grey.
+    struct SheetMarker {
+        int layer = 0;
+        int frame = 0;
+        int length = 1;
+        enum Colour { Black, White, Grey };
+        int colour = Black;
+        bool operator==(SheetMarker const&) const = default;
+    };
+    QVector<SheetMarker> sheetMarkers;
+    // Tempo lines across the Xsheet: one every so many frames (a beat), a stronger one every so many beats (a bar); 0: none.
+    int framesPerBeat = 0;
+    int beatsPerBar = 0;
     // Toggle Solo Mode: off, the solo layers are not singled out (their switches are kept).
     bool soloMode = true;
     struct Controller {

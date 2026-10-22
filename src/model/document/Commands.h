@@ -268,6 +268,8 @@ public:
     int addBone(int current);
     // A quadmap just above `above`, its corners those of the frame.
     int addQuadmap(int above);
+    // An annotation column: notes and pen marks down the Xsheet; nothing in the picture.
+    int addAnnotation(int above);
     void setCardColor(int layer, QColor const& color);
     void setBoneLength(int layer, double length);
     int addSyncedLayer(int layer);
@@ -344,6 +346,8 @@ public:
     void moveCells(QVector<int> const& from, int first, int last, QVector<int> const& to, int frame, bool copy, bool insert = false);
     // One change made to several layers, as one undo step.
     void editLayers(QVector<int> const& layers, QString const& text, std::function<void(Layer&)> const& change);
+    // Any change to the scene as a whole, as one step to undo.
+    void editScene(QString const& text, std::function<void(Scene&)> const& change);
     void removeLayers(QVector<int> const& layers);
 
     // ---- exposure, moving what follows --------------------------------------------------

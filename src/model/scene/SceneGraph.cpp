@@ -189,7 +189,7 @@ NodeGraph Scene::graphFromLayers() const
     QVector<int> shown;
     for (int l = 0; l < layers.size(); ++l)
         if (layers[l].kind != Layer::Peg && layers[l].kind != Layer::Camera && layers[l].kind != Layer::Sound && layers[l].kind != Layer::Group
-            && layers[l].kind != Layer::Bone)
+            && layers[l].kind != Layer::Bone && layers[l].kind != Layer::Annotation)
             shown.push_back(l);
     // (The pegs and groups above the rest, cabled to nothing.)
     double px = 0.0;

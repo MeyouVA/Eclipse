@@ -195,7 +195,7 @@ void Scene::graphLayerAdded(int layer)
     if (graph.isEmpty() || layer < 0 || layer >= layers.size())
         return;
     Layer const& added = layers[layer];
-    if (added.kind == Layer::Camera || added.kind == Layer::Sound || added.kind == Layer::Bone)
+    if (added.kind == Layer::Camera || added.kind == Layer::Sound || added.kind == Layer::Bone || added.kind == Layer::Annotation)
         return;     // (no picture of its own, nor anything to hang from it in the graph)
     GraphNode n;
     n.id = graph.nextId();
