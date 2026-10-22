@@ -53,6 +53,7 @@
    </menu>
    <separator/>
    <item id="Print" icon="file/print" text="&amp;Print..." responder="window" slot="onActionPrint()"/>
+   <item id="PrintXsheet"/>
    <separator/>
    <item id="Exit" icon="file/quit" text="&amp;Quit" shortcut="shortcut.quit" responder="window" slot="close()"/>
   </menu>
@@ -194,6 +195,7 @@
    <item id="InsertGroup" icon="timeline/addgroup" text="&amp;Group" responder="window" slot="onActionAddGroup()"/>
    <item id="InsertBone" icon="timeline/addbone" text="Game &amp;Bone" responder="window" slot="onActionAddBone()"/>
    <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" responder="window" slot="onActionAddQuadmap()"/>
+   <item id="InsertAnnotation" icon="xsheet/annotation" text="&amp;Annotation Column" responder="window" slot="onActionAddAnnotationColumn()"/>
    <separator/>
    <item id="InsertKeyframe" icon="timeline/addkey" text="&amp;Keyframe" shortcut="shortcut.insertKeyframe" responder="window" slot="onActionInsertKeyframe()"/>
    <item id="InsertControlPoint" icon="anim/controlpoint" text="C&amp;ontrol Point" responder="window" slot="onActionInsertControlPoint()"/>
@@ -793,6 +795,7 @@
    <item id="InsertGroup"/>
    <item id="InsertBone"/>
    <item id="InsertQuadmap"/>
+   <item id="InsertAnnotation"/>
    <item id="ImportSound"/>
   </menu>
   <item id="CreateTemplate" icon="misc/templatecreate" text="Create Template from Selection..." responder="window" slot="onActionCreateTemplate()"/>
@@ -807,6 +810,7 @@
   <item id="MergeLayers" icon="timeline/mergelayers" text="Merge Selected Layers" shortcut="shortcut.mergeLayers" responder="window" slot="onActionMergeLayers()"/>
   <item id="RenameLayer" icon="timeline/renamelayer" text="Rename Layer..." responder="window" slot="onActionRenameLayer()"/>
   <item id="ColumnProperties" icon="timeline/columnprops" text="Column Properties..." responder="window" slot="onActionColumnProperties()"/>
+  <item id="ColumnEditor"/>
   <item id="MoveLayerUp" icon="timeline/layerup" text="Move Layer Up" shortcut="shortcut.moveLayerUp" responder="window" slot="onActionMoveLayerUp()"/>
   <item id="MoveLayerDown" icon="timeline/layerdown" text="Move Layer Down" shortcut="shortcut.moveLayerDown" responder="window" slot="onActionMoveLayerDown()"/>
   <item id="AttachLayer"/>
@@ -1115,13 +1119,84 @@
  </menu>
 
  <menu id="menu.xsheet" text="Xsheet Menu">
-  <item id="ColumnProperties"/>
-  <item id="PreviousColumn" icon="timeline/prevlayer" text="Go to Pre&amp;vious Column" shortcut="shortcut.prevColumn" responder="window" slot="onActionPreviousColumn()"/>
-  <item id="NextColumn" icon="timeline/nextlayer" text="Go to Ne&amp;xt Column" shortcut="shortcut.nextColumn" responder="window" slot="onActionNextColumn()"/>
-  <menu id="XsheetDrawings" text="Drawings">
+  <menu id="XsheetEdit" text="&amp;Edit">
+   <item id="EditCut"/>
+   <item id="EditCopy"/>
+   <item id="EditPaste"/>
+   <item id="EditDelete"/>
+   <separator/>
+   <item id="SelectSyncedLayers"/>
+   <separator/>
+   <item id="XsheetGesturalDrag" icon="xsheet/gestural" text="&amp;Gestural Drag Mode" shortcut="shortcut.xsheetGestural" checkable="true" responder="window" slot="onActionXsheetGesturalDrag(bool)"/>
+  </menu>
+  <menu id="XsheetViewMenu" text="&amp;View">
+   <item id="ColumnProperties"/>
+   <item id="ChangeColumnsColour" icon="timeline/trackcolour" text="Change Columns &amp;Colour..." responder="window" slot="onActionChangeColumnsColour()"/>
+   <item id="DefaultColumnsColour" icon="timeline/defaulttrackcolour" text="&amp;Default Columns Colour" responder="window" slot="onActionDefaultColumnsColour()"/>
+   <separator/>
+   <item id="HideSelectedColumns" icon="xsheet/hidecolumns" text="&amp;Hide Selected Columns" shortcut="shortcut.xsheetHideColumns" responder="window" slot="onActionHideSelectedColumns()"/>
+   <item id="UnhideAllColumns" text="&amp;Unhide All Columns" responder="window" slot="onActionUnhideAllColumns()"/>
+   <item id="ShowHiddenColumns" icon="xsheet/showhidden" text="&amp;Show Hidden Columns..." shortcut="shortcut.xsheetShowHidden" responder="window" slot="onActionShowHiddenColumns()"/>
+   <separator/>
+   <item id="XsheetThumbnails" icon="xsheet/thumbnails" text="Show &amp;Thumbnails" shortcut="shortcut.xsheetThumbnails" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="thumbnails"/>
+   <item id="SetColumnsWidth" text="Set Columns &amp;Width..." responder="window" slot="onActionSetColumnsWidth()"/>
+   <item id="DefaultColumnsWidth" text="All Columns to Default &amp;Width" responder="window" slot="onActionDefaultColumnsWidth()"/>
+   <separator/>
+   <item id="XsheetZoomIn" icon="view/zoomin" text="Zoom &amp;In" responder="window" slot="onActionXsheetView(QString)" itemParameter="zoomIn"/>
+   <item id="XsheetZoomOut" icon="view/zoomout" text="Zoom &amp;Out" responder="window" slot="onActionXsheetView(QString)" itemParameter="zoomOut"/>
+   <item id="XsheetResetZoom" icon="view/resetzoom" text="Reset &amp;Zoom" responder="window" slot="onActionXsheetView(QString)" itemParameter="resetZoom"/>
+   <item id="XsheetResetPan" icon="view/resetpan" text="Reset &amp;Pan" responder="window" slot="onActionXsheetView(QString)" itemParameter="resetPan"/>
+   <item id="XsheetResetView" icon="view/resetview" text="&amp;Reset View" responder="window" slot="onActionXsheetView(QString)" itemParameter="resetView"/>
+   <item id="XsheetZoomExtents" text="Zoom &amp;Extents" shortcut="shortcut.xsheetZoomExtents" responder="window" slot="onActionXsheetView(QString)" itemParameter="extents"/>
+   <separator/>
+   <item id="XsheetShowSelection" text="Show &amp;Selection" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="selection"/>
+   <item id="XsheetPreviewSelected" icon="play/play" text="Preview Selected &amp;Drawings" responder="window" slot="onActionXsheetPreview()"/>
+   <separator/>
+   <menu id="XsheetHeld" text="Held E&amp;xposures">
+    <item id="XsheetHeldLine" text="&amp;Line" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="heldLine"/>
+    <item id="XsheetHeldValue" text="&amp;Value" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="heldValue"/>
+   </menu>
+   <menu id="XsheetRowUnits" text="Row &amp;Units">
+    <item id="XsheetUnitsFrames" text="&amp;Frames" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="frames"/>
+    <item id="XsheetUnitsFeet" text="F&amp;eet" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="feet"/>
+   </menu>
+   <separator/>
+   <item id="XsheetColumnList" icon="xsheet/columnlist" text="Show Column &amp;List" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="columnList"/>
+   <item id="XsheetColumnTypes" icon="xsheet/columntypes" text="Show Column T&amp;ypes..." shortcut="shortcut.xsheetColumnTypes" responder="window" slot="onActionXsheetColumnTypes()"/>
+   <item id="XsheetShowDrawingColumns" icon="xsheet/drawingcolumns" text="Toggle Show &amp;Drawing Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="drawingColumns"/>
+   <item id="XsheetShowGrouping" text="Show &amp;Grouping" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="grouping"/>
+   <item id="XsheetMinimalHeaders" text="&amp;Minimal Headers" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="minimal"/>
+   <item id="TempoMarks" icon="xsheet/tempo" text="&amp;Tempo Marks..." responder="window" slot="onActionTempoMarks()"/>
+  </menu>
+  <menu id="XsheetColumns" text="&amp;Columns">
+   <item id="AddColumns" icon="xsheet/addcolumns" text="&amp;Add Columns..." shortcut="shortcut.xsheetAddColumns" responder="window" slot="onActionAddColumns()"/>
+   <item id="AddDrawingColumn" icon="timeline/adddrawing" text="Add D&amp;rawing Column" shortcut="shortcut.xsheetAddDrawingColumn" responder="window" slot="onActionAddDrawingColumn()"/>
+   <item id="DeleteColumns" icon="xsheet/deletecolumns" text="&amp;Delete Columns" shortcut="shortcut.xsheetDeleteColumns" responder="window" slot="onActionDeleteLayer()"/>
+   <separator/>
+   <item id="CloneColumns" text="&amp;Clone Selected Columns: Drawings Only" shortcut="shortcut.xsheetCloneColumns" responder="window" slot="onActionCloneLayer()"/>
+   <item id="CloneColumnsTiming" text="Clone Selected Columns: Drawings and &amp;Timing" responder="window" slot="onActionCloneLayerTiming()"/>
+   <item id="DuplicateColumns" icon="timeline/duplicatelayer" text="D&amp;uplicate Selected Columns" shortcut="shortcut.xsheetDuplicateColumns" responder="window" slot="onActionDuplicateLayer()"/>
+   <item id="MergeColumns" icon="timeline/mergelayers" text="&amp;Merge Selected Columns" shortcut="shortcut.xsheetMergeColumns" responder="window" slot="onActionMergeLayers()"/>
+   <separator/>
+   <item id="AddSyncedLayer"/>
+   <item id="SyncLayerWith"/>
+   <item id="UnsyncLayer"/>
+   <separator/>
+   <item id="RenameColumn" icon="timeline/renamelayer" text="Re&amp;name..." responder="window" slot="onActionRenameLayer()"/>
+   <item id="ColumnEditor" icon="timeline/columnprops" text="Column &amp;Editor..." responder="window" slot="onActionColumnEditor()"/>
+  </menu>
+  <menu id="XsheetFrames" text="&amp;Frames">
+   <item id="AddFramesAtStart"/>
+   <item id="AddFramesAtEnd"/>
+   <item id="AddFramesBeforeSelection"/>
+   <item id="AddFramesAfterSelection"/>
+   <item id="RemoveSelectedFrames"/>
+  </menu>
+  <menu id="XsheetDrawings" text="&amp;Drawings">
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>
    <item id="DeleteDrawing"/>
+   <item id="DeleteSelectedDrawings"/>
    <separator/>
    <item id="RenameDrawing"/>
    <item id="RenameWithPrefix"/>
@@ -1138,20 +1213,186 @@
    <item id="SendToDesk"/>
    <item id="AddToDesk"/>
   </menu>
-  <menu id="XsheetExposure" text="Exposure">
+  <menu id="XsheetExposure" text="E&amp;xposure">
    <item id="ExtendExposure"/>
    <item id="ClearExposure"/>
+   <separator/>
+   <item id="FillSelection"/>
+   <item id="SequenceFill"/>
+   <item id="FillCellsRandomly"/>
+   <separator/>
+   <item id="XsheetInsertMode" icon="xsheet/insertmode" text="&amp;Insert/Overwrite Mode" shortcut="shortcut.xsheetInsert" checkable="true" responder="window" slot="onActionXsheetInsertMode(bool)"/>
+   <separator/>
+   <item id="PasteReverse"/>
+   <item id="PasteCycle"/>
   </menu>
+  <menu id="XsheetCollapseMenu" text="Collapse/&amp;Hide">
+   <item id="XsheetCollapseSelection" icon="xsheet/collapse" text="&amp;Collapse Selection" shortcut="shortcut.xsheetCollapse" responder="window" slot="onActionXsheetView(QString)" itemParameter="collapse"/>
+   <item id="XsheetExpandSelection" icon="xsheet/expand" text="&amp;Expand Selection" shortcut="shortcut.xsheetExpand" responder="window" slot="onActionXsheetView(QString)" itemParameter="expand"/>
+   <item id="XsheetCollapseAll" icon="timeline/collapseall" text="Collapse &amp;All" shortcut="shortcut.xsheetCollapseAll" responder="window" slot="onActionXsheetView(QString)" itemParameter="collapseAll"/>
+   <item id="XsheetExpandAll" icon="timeline/expandall" text="E&amp;xpand All" shortcut="shortcut.xsheetExpandAll" responder="window" slot="onActionXsheetView(QString)" itemParameter="expandAll"/>
+  </menu>
+  <menu id="XsheetMarkers" text="&amp;Timesheet Markers">
+   <item id="AddSheetMarker" icon="xsheet/sheetmarker" text="&amp;Add Timesheet Marker" responder="window" slot="onActionAddSheetMarker()"/>
+   <item id="DeleteSheetMarker" text="&amp;Delete Timesheet Marker" responder="window" slot="onActionDeleteSheetMarker()"/>
+   <menu id="XsheetMarkerColour" text="Change Marker Colo&amp;r">
+    <item id="SheetMarkerBlack" text="&amp;Black" responder="window" slot="onActionSheetMarkerColour(QString)" itemParameter="black"/>
+    <item id="SheetMarkerWhite" text="&amp;White" responder="window" slot="onActionSheetMarkerColour(QString)" itemParameter="white"/>
+    <item id="SheetMarkerGrey" text="&amp;Gray" responder="window" slot="onActionSheetMarkerColour(QString)" itemParameter="grey"/>
+   </menu>
+  </menu>
+  <menu id="XsheetAnnotation" text="&amp;Annotation">
+   <item id="InsertAnnotation"/>
+   <separator/>
+   <item id="AnnotationDrawing" icon="xsheet/annotation" text="&amp;Enable Drawing" checkable="true" responder="window" slot="onActionAnnotation(QString)" itemParameter="pen"/>
+   <item id="AnnotationPenColour" text="Change Pen &amp;Colour..." responder="window" slot="onActionAnnotation(QString)" itemParameter="colour"/>
+   <menu id="AnnotationPenWidthMenu" text="Pen &amp;Width">
+    <item id="AnnotationPenWidth" text="&amp;Change Current..." responder="window" slot="onActionAnnotation(QString)" itemParameter="width"/>
+   </menu>
+   <item id="AnnotationText" text="Edit &amp;Text" responder="window" slot="onActionAnnotation(QString)" itemParameter="text"/>
+   <item id="AnnotationPicture" text="Add &amp;Picture..." responder="window" slot="onActionAnnotation(QString)" itemParameter="picture"/>
+   <separator/>
+   <item id="AnnotationEraseAll" text="Erase &amp;All" responder="window" slot="onActionAnnotation(QString)" itemParameter="eraseAll"/>
+   <item id="AnnotationEraseImages" text="Erase Selected &amp;Images" responder="window" slot="onActionAnnotation(QString)" itemParameter="eraseImages"/>
+   <item id="AnnotationEraseTexts" text="Erase Selected &amp;Texts" responder="window" slot="onActionAnnotation(QString)" itemParameter="eraseTexts"/>
+  </menu>
+  <separator/>
+  <item id="PreviousColumn"/>
+  <item id="NextColumn"/>
   <separator/>
   <item id="InsertKeyframe"/>
   <item id="DeleteKeyframe"/>
   <separator/>
-  <menu id="XsheetInsert" text="Insert">
+  <menu id="XsheetInsert" text="&amp;Insert">
    <item id="InsertDrawing"/>
    <item id="InsertPeg"/>
+   <item id="InsertAnnotation"/>
   </menu>
-  <item id="DeleteLayers"/>
-  <item id="RenameLayer"/>
+  <separator/>
+  <item id="XsheetPreview" icon="play/play" text="&amp;Preview" shortcut="shortcut.xsheetPreview" responder="window" slot="onActionXsheetPreview()"/>
+  <menu id="XsheetFile" text="F&amp;ile">
+   <item id="PrintXsheet" icon="xsheet/print" text="Print &amp;Xsheet..." responder="window" slot="onActionPrintXsheet()"/>
+  </menu>
+ </menu>
+
+ <menu id="menu.xsheetPopup" text="Xsheet Popup Menu">
+  <item id="EditCut"/>
+  <item id="EditCopy"/>
+  <item id="EditPaste"/>
+  <item id="PasteReverse"/>
+  <item id="EditDelete"/>
+  <item id="ClearExposure"/>
+  <separator/>
+  <item id="XsheetGesturalDrag"/>
+  <separator/>
+  <menu id="XsheetPopupDrawings" text="&amp;Drawings">
+   <item id="DeleteSelectedDrawings"/>
+   <item id="RenameByFrame"/>
+   <item id="CreateEmptyDrawing"/>
+   <item id="DuplicateDrawing"/>
+  </menu>
+  <menu id="XsheetPopupFrames" text="&amp;Frames">
+   <item id="AddFramesAtStart"/>
+   <item id="AddFramesAtEnd"/>
+   <item id="AddFramesBeforeSelection"/>
+   <item id="AddFramesAfterSelection"/>
+   <item id="RemoveSelectedFrames"/>
+  </menu>
+  <menu id="XsheetPopupView" text="&amp;View">
+   <item id="XsheetZoomIn"/>
+   <item id="XsheetZoomOut"/>
+   <item id="XsheetResetZoom"/>
+   <item id="XsheetResetPan"/>
+   <item id="XsheetResetView"/>
+   <separator/>
+   <item id="XsheetThumbnails"/>
+  </menu>
+  <menu id="XsheetPopupCollapse" text="Collapse/&amp;Hide">
+   <item id="XsheetCollapseSelection"/>
+   <item id="XsheetExpandSelection"/>
+   <item id="XsheetCollapseAll"/>
+   <item id="XsheetExpandAll"/>
+   <separator/>
+   <item id="HideSelectedColumns"/>
+   <item id="ShowHiddenColumns"/>
+  </menu>
+  <menu id="XsheetPopupColumns" text="&amp;Columns">
+   <item id="AddColumns"/>
+   <item id="DeleteColumns"/>
+   <item id="CloneColumns"/>
+   <item id="CloneColumnsTiming"/>
+   <item id="DuplicateColumns"/>
+  </menu>
+  <menu id="XsheetPopupMarkers" text="&amp;Timesheet Markers">
+   <item id="AddSheetMarker"/>
+  </menu>
+  <menu id="XsheetPopupAnnotation" text="&amp;Annotation">
+   <item id="InsertAnnotation"/>
+   <separator/>
+   <item id="AnnotationDrawing"/>
+   <item id="AnnotationPenColour"/>
+   <menu id="AnnotationPenWidthMenu" text="Pen &amp;Width">
+    <item id="AnnotationPenWidth"/>
+   </menu>
+   <item id="AnnotationText"/>
+   <item id="AnnotationPicture"/>
+   <separator/>
+   <item id="AnnotationEraseAll"/>
+   <item id="AnnotationEraseImages"/>
+   <item id="AnnotationEraseTexts"/>
+  </menu>
+ </menu>
+
+ <menu id="menu.xsheetHeader" text="Xsheet Header Menu">
+  <item id="AddColumns"/>
+  <item id="DeleteColumns"/>
+  <item id="CloneColumns"/>
+  <item id="CloneColumnsTiming"/>
+  <item id="DuplicateColumns"/>
+  <item id="MergeColumns"/>
+  <separator/>
+  <item id="ColumnEditor"/>
+  <item id="ColumnProperties"/>
+  <separator/>
+  <item id="HideSelectedColumns"/>
+  <item id="ShowHiddenColumns"/>
+  <menu id="XsheetHeaderColour" text="C&amp;olour">
+   <item id="ChangeColumnsColour"/>
+   <item id="DefaultColumnsColour"/>
+  </menu>
+  <separator/>
+  <item id="AddSyncedLayer"/>
+  <item id="SyncLayerWith"/>
+  <item id="UnsyncLayer"/>
+  <separator/>
+  <menu id="XsheetHeaderEdit" text="&amp;Edit">
+   <item id="EditCut"/>
+   <item id="EditCopy"/>
+   <item id="EditPaste"/>
+   <item id="PasteReverse"/>
+  </menu>
+  <menu id="XsheetHeaderCollapse" text="E&amp;xpand/Collapse">
+   <item id="XsheetCollapseSelection"/>
+   <item id="XsheetExpandSelection"/>
+   <item id="XsheetCollapseAll"/>
+   <item id="XsheetExpandAll"/>
+  </menu>
+  <menu id="XsheetHeaderView" text="&amp;View">
+   <item id="XsheetResetZoom"/>
+   <item id="XsheetResetPan"/>
+   <item id="XsheetResetView"/>
+   <separator/>
+   <item id="XsheetThumbnails"/>
+  </menu>
+ </menu>
+
+ <menu id="menu.xsheetMarker" text="Xsheet Timesheet Marker Color Menu">
+  <menu id="XsheetMarkerColourMenu" text="Change Marker Colo&amp;r">
+   <item id="SheetMarkerBlack"/>
+   <item id="SheetMarkerWhite"/>
+   <item id="SheetMarkerGrey"/>
+  </menu>
+  <item id="DeleteSheetMarker"/>
  </menu>
 
  <menu id="menu.nodeView" text="Node View Menu">

@@ -67,7 +67,7 @@ void Graph3DView::rebuild()
         return text == QLatin1String("-0") ? QStringLiteral("0") : text;
     };
     static char const* const kKinds[] = {QT_TR_NOOP("drawing"), QT_TR_NOOP("peg"), QT_TR_NOOP("camera"), QT_TR_NOOP("sound"),
-                                         QT_TR_NOOP("colour-card"), QT_TR_NOOP("group"), QT_TR_NOOP("bone"), QT_TR_NOOP("quadmap")};
+                                         QT_TR_NOOP("colour-card"), QT_TR_NOOP("group"), QT_TR_NOOP("bone"), QT_TR_NOOP("quadmap"), QT_TR_NOOP("annotation")};
     QVector<int> shape;
     for (Layer const& layer : scene.layers)
         shape << layer.id << layer.parent;
@@ -109,7 +109,7 @@ void Graph3DView::rebuild()
         item->setText(0, tr("%1  (%2)").arg(layer.name, tr(kKinds[layer.kind])));
         if (item->checkState(0) != (layer.visible ? Qt::Checked : Qt::Unchecked))
             item->setCheckState(0, layer.visible ? Qt::Checked : Qt::Unchecked);
-        bool const placed = layer.kind != Layer::Sound && layer.kind != Layer::Group && layer.kind != Layer::ColourCard;
+        bool const placed = layer.kind != Layer::Sound && layer.kind != Layer::Group && layer.kind != Layer::ColourCard && layer.kind != Layer::Annotation;
         item->setText(1, placed ? number(pose.x) : QString());
         item->setText(2, placed ? number(pose.y) : QString());
         item->setText(3, placed ? number(pose.z) : QString());

@@ -116,7 +116,7 @@ QString ScriptLayers::name(int layer) const
 
 QString ScriptLayers::kind(int layer) const
 {
-    static char const* const kKinds[] = {"drawing", "peg", "camera", "sound", "colour-card", "group", "bone", "quadmap"};
+    static char const* const kKinds[] = {"drawing", "peg", "camera", "sound", "colour-card", "group", "bone", "quadmap", "annotation"};
     return has(layer) ? QLatin1String(kKinds[m_document->scene().layers[layer].kind]) : QString();
 }
 

@@ -148,6 +148,41 @@
   <item id="ResetTransformation" visible="false"/>
  </toolbar>
 
+ <!-- Belongs to the Xsheet view and sits inside it. -->
+ <toolbar id="XsheetViewToolbar" text="Xsheet View">
+  <item id="AddColumns" toolbarText="Add Columns"/>
+  <item id="DeleteColumns" toolbarText="Delete Columns"/>
+  <item id="CloneColumns" toolbarText="Clone"/>
+  <item id="CloneColumnsTiming" toolbarText="Clone + Timing"/>
+  <item id="DuplicateColumns" toolbarText="Duplicate"/>
+  <separator/>
+  <item id="AddFramesAfterSelection" toolbarText="Add Frames"/>
+  <item id="RemoveSelectedFrames" toolbarText="Remove Frames"/>
+  <item id="DeleteSelectedDrawings" toolbarText="Delete Drawings"/>
+  <separator/>
+  <item id="HideSelectedColumns" toolbarText="Hide"/>
+  <item id="ShowHiddenColumns" toolbarText="Show Hidden"/>
+  <item id="XsheetShowDrawingColumns" toolbarText="Drawing Columns"/>
+  <item id="XsheetThumbnails" toolbarText="Thumbnails"/>
+  <item id="XsheetColumnList" toolbarText="Column List"/>
+  <item id="XsheetColumnTypes" toolbarText="Column Types"/>
+  <separator/>
+  <item id="XsheetGesturalDrag" toolbarText="Gestural Drag"/>
+  <item id="FillSelection" toolbarText="Fill"/>
+  <item id="EditCut" visible="false"/>
+  <item id="EditCopy" visible="false"/>
+  <item id="EditPaste" visible="false"/>
+  <item id="EditDelete" visible="false"/>
+  <item id="XsheetCollapseSelection" visible="false"/>
+  <item id="XsheetExpandSelection" visible="false"/>
+  <item id="XsheetCollapseAll" visible="false"/>
+  <item id="XsheetExpandAll" visible="false"/>
+  <item id="AddToDesk" visible="false"/>
+  <item id="SendToDesk" visible="false"/>
+  <item id="XsheetInsertMode" visible="false"/>
+  <item id="AddSheetMarker" visible="false"/>
+ </toolbar>
+
  <!-- Belongs to the Camera view. -->
  <toolbar id="DrawingViewToolbar" text="Drawing View">
   <item id="ShowGrid" toolbarText="Grid"/>

@@ -68,6 +68,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     m_actions->populateMenuBar(QStringLiteral("menu.main"), menuBar());
     createToolbars();
     m_actions->installShortcuts(this);
+    connectXsheetToggles();
 
     // Right-click menus of the views.
     m_canvas->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -129,7 +130,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         }
     });
     connect(m_xsheet, &Xsheet::contextMenuRequested, this, [this](QPoint const& globalPos) {
-        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.xsheet"), this)) {
+        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.xsheetPopup"), this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
             menu->popup(globalPos);
         }

@@ -183,7 +183,13 @@ void MainWindow::stepColumn(int direction)
         stepLayer(direction);
         return;
     }
-    int const column = m_xsheet->columnOfLayer(layer()) + direction;
+    int column = m_xsheet->columnOfLayer(layer());
+    if (column < 0)
+        return;
+    // (A layer's value columns come after its own: they are passed over.)
+    do
+        column += direction;
+    while (column >= 0 && m_xsheet->layerOfColumn(column) == layer());
     int const to = column >= 0 ? m_xsheet->layerOfColumn(column) : -1;
     if (to >= 0)
         m_timeline->setCurrentCell(to, frame());
@@ -386,7 +392,7 @@ void MainWindow::onActionColumnProperties()
     QLineEdit* const name = new QLineEdit(was.name, &dialog);
     name->setObjectName(QStringLiteral("ColumnName"));
     static char const* const kKinds[] = {QT_TR_NOOP("Drawing"), QT_TR_NOOP("Peg"), QT_TR_NOOP("Camera"), QT_TR_NOOP("Sound"),
-                                         QT_TR_NOOP("Colour-Card"), QT_TR_NOOP("Group"), QT_TR_NOOP("Bone"), QT_TR_NOOP("Quadmap")};
+                                         QT_TR_NOOP("Colour-Card"), QT_TR_NOOP("Group"), QT_TR_NOOP("Bone"), QT_TR_NOOP("Quadmap"), QT_TR_NOOP("Annotation")};
     QLabel* const kind = new QLabel(tr(kKinds[was.kind]) + (was.showsSymbol() ? tr(" (shows a symbol)") : QString()), &dialog);
     kind->setObjectName(QStringLiteral("ColumnKind"));
     QColor colour = was.trackColor;
@@ -473,11 +479,30 @@ void MainWindow::onActionColumnProperties()
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (m_columnEditorNext) {
+        // The Column Editor: Apply/Next keeps what was changed and goes on to the next column.
+        dialog.setWindowTitle(tr("Column Editor"));
+        QPushButton* const next = buttons->addButton(tr("Apply/Next"), QDialogButtonBox::ApplyRole);
+        next->setObjectName(QStringLiteral("ColumnApplyNext"));
+        connect(next, &QPushButton::clicked, &dialog, [&dialog] { dialog.done(2); });
+    }
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addLayout(form);
     layout->addWidget(buttons);
-    if (dialog.exec() != QDialog::Accepted)
+    int const result = dialog.exec();
+    if (result == QDialog::Rejected)
         return;
+    struct Next {
+        MainWindow* window;
+        bool go;
+        ~Next()
+        {
+            if (go) {
+                window->columnEditorNext();
+                window->onActionColumnProperties();
+            }
+        }
+    } const next{this, result == 2};
     QColor const newColour = defaultColour->isChecked() ? QColor() : colour;
     bool const nameChanged = !name->text().trimmed().isEmpty() && name->text().trimmed() != was.name;
     bool const rest = newColour != was.trackColor || enabled->isChecked() != was.visible || locked->isChecked() != was.locked

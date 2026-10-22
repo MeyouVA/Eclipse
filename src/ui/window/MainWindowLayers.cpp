@@ -267,7 +267,7 @@ void MainWindow::onActionTimelineShowKind(QString const& which)
         {"sound", "TimelineShowSound", {int(Layer::Sound)}},
         {"groups", "TimelineShowGroups", {int(Layer::Group)}},
         {"cameras", "TimelineShowCameras", {int(Layer::Camera)}},
-        {"others", "TimelineShowOthers", {int(Layer::ColourCard), int(Layer::Bone), int(Layer::Quadmap)}},
+        {"others", "TimelineShowOthers", {int(Layer::ColourCard), int(Layer::Bone), int(Layer::Quadmap), int(Layer::Annotation)}},
     };
     for (Entry const& entry : entries) {
         if (which != QLatin1String(entry.name))

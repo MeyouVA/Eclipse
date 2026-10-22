@@ -215,6 +215,7 @@ void MainWindow::applyPreferences()
         xsheet->setCentreOnFrame(s.value(QStringLiteral("prefs/xsheetCentre"), false).toBool());
         xsheet->setDefaultHold(s.value(QStringLiteral("prefs/xsheetHold"), 1).toInt());
     }
+    applySheetPreferences(s, !m_preferencesApplied);
     // (These two set how things start: the toggles in the menus change them afterwards.)
     if (!m_preferencesApplied) {
         bool const loop = s.value(QStringLiteral("prefs/loop"), true).toBool();
@@ -451,6 +452,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionNearest"), w.onionNearest->value());
     s.setValue(QStringLiteral("prefs/onionFurthest"), w.onionFurthest->value());
     savePalettePreferences(w, s);
+    saveSheetPreferences(w, s);
     s.sync();
     applyPreferences();
 }

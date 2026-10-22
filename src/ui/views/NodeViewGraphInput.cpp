@@ -281,7 +281,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
     }
     QMenu* const layerMenu = add->addMenu(tr("Layer"));
     for (Layer const& layer : scene.layers) {
-        if (layer.kind == Layer::Peg || layer.kind == Layer::Camera || layer.kind == Layer::Sound || layer.kind == Layer::Group || layer.kind == Layer::Bone)
+        if (layer.kind == Layer::Peg || layer.kind == Layer::Camera || layer.kind == Layer::Sound || layer.kind == Layer::Group || layer.kind == Layer::Bone || layer.kind == Layer::Annotation)
             continue;
         if (g.layerNode(layer.id))
             continue;   // (a layer has one node)

@@ -203,6 +203,26 @@
   <shortcut id="shortcut.resetAll" text="Reset All" value=""/>
   <shortcut id="shortcut.resetTransformation" text="Reset Transformation" value=""/>
  </category>
+ <category id="Exposure Sheet" text="Exposure Sheet">
+  <shortcut id="shortcut.xsheetGestural" text="Gestural Drag Mode" value=""/>
+  <shortcut id="shortcut.xsheetInsert" text="Insert/Overwrite Mode" value=""/>
+  <shortcut id="shortcut.xsheetHideColumns" text="Hide Selected Columns" value=""/>
+  <shortcut id="shortcut.xsheetShowHidden" text="Show Hidden Columns" value=""/>
+  <shortcut id="shortcut.xsheetThumbnails" text="Thumbnails" value=""/>
+  <shortcut id="shortcut.xsheetZoomExtents" text="Zoom Extents" value=""/>
+  <shortcut id="shortcut.xsheetColumnTypes" text="Show Column Types" value=""/>
+  <shortcut id="shortcut.xsheetAddColumns" text="Add Columns" value=""/>
+  <shortcut id="shortcut.xsheetAddDrawingColumn" text="Add Drawing Column" value=""/>
+  <shortcut id="shortcut.xsheetDeleteColumns" text="Delete Selected Columns" value=""/>
+  <shortcut id="shortcut.xsheetCloneColumns" text="Clone Selected Columns: Drawings Only" value=""/>
+  <shortcut id="shortcut.xsheetDuplicateColumns" text="Duplicate Selected Columns" value=""/>
+  <shortcut id="shortcut.xsheetMergeColumns" text="Merge Selected Columns" value=""/>
+  <shortcut id="shortcut.xsheetCollapse" text="Collapse" value=""/>
+  <shortcut id="shortcut.xsheetExpand" text="Expand" value=""/>
+  <shortcut id="shortcut.xsheetCollapseAll" text="Collapse All" value=""/>
+  <shortcut id="shortcut.xsheetExpandAll" text="Expand All" value=""/>
+  <shortcut id="shortcut.xsheetPreview" text="Preview" value=""/>
+ </category>
  <category id="Drawing Mode" text="Drawing Mode">
   <shortcut id="shortcut.smooth" text="Smooth" value="Alt+Shift+S"/>
   <shortcut id="shortcut.createEmptyDrawing" text="Create Empty Drawing" value="Alt+Shift+R"/>

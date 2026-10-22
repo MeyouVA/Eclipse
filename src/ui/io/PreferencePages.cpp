@@ -294,6 +294,7 @@ void MainWindow::preferencesSheet(PreferenceWidgets& w, QSettings& s, QDialog& d
     w.xsheetHold->setToolTip(tr("A drawing typed into a cell of the Xsheet fills so many frames; the next is typed below them."));
     w.xsheetHold->setValue(s.value(QStringLiteral("prefs/xsheetHold"), 1).toInt());
     w.sheetLayout->addRow(tr("Default hold"), w.xsheetHold);
+    preferencesSheetMore(w, s, dialog);
 
     Q_UNUSED(s);
     Q_UNUSED(dialog);

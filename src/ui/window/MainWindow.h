@@ -487,6 +487,31 @@ public slots:
     void onActionShowManager();
     void onActionRippleMarkers(bool on);
     void onActionOverwriteDrop(bool on);
+    // The Xsheet view (MainWindowXsheet).
+    void onActionXsheetGesturalDrag(bool on);
+    void onActionXsheetInsertMode(bool on);
+    void onActionXsheetView(QString const& what);
+    void onActionXsheetColumnTypes();
+    void onActionHideSelectedColumns();
+    void onActionUnhideAllColumns();
+    void onActionShowHiddenColumns();
+    void onActionChangeColumnsColour();
+    void onActionDefaultColumnsColour();
+    void onActionSetColumnsWidth();
+    void onActionDefaultColumnsWidth();
+    void onActionAddColumns();
+    void onActionAddDrawingColumn();
+    void onActionAddAnnotationColumn();
+    void onActionColumnEditor();
+    void onActionAddSheetMarker();
+    void onActionSheetMarkerColour(QString const& colour);
+    void onActionDeleteSheetMarker();
+    void onActionTempoMarks();
+    void onActionAnnotation(QString const& what);
+    void onActionPrintXsheet();
+    void onActionXsheetPreview();
+    // So many columns of a kind (Layer::Kind): 0 right of the current column, 1 left of it, 2 at the start, 3 at the end. The last added.
+    int addXsheetColumns(int kind, QString const& name, int count, int where);
     void onActionLayerPrefixSuffix();
     void onActionDeleteSelectedDrawings();
     void onActionRenameWithPrefix();
@@ -539,6 +564,9 @@ private:
     void preferencesGeneral(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesCamera(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesSheet(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void preferencesSheetMore(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void saveSheetPreferences(struct PreferenceWidgets& w, class QSettings& s);
+    void applySheetPreferences(class QSettings const& s, bool starting);
     void preferencesAdvanced(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesTimeline(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesRender(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
@@ -697,6 +725,13 @@ private:
     void stepDrawing(int direction);
     void stepKeyframe(int direction);
     void renameLayer(int layer);
+    void createXsheetView();
+    void connectXsheetToggles();
+    void syncXsheetChecks();
+    void refreshXsheetList();
+    // The layers of the columns selected in the Xsheet (the current one when none).
+    QVector<int> xsheetColumnLayers() const;
+    void columnEditorNext();
     void setLocked(bool locked);
     void pickTrackColour(int layer);
 
@@ -716,6 +751,9 @@ private:
     bool m_persistWorkspaces = false;  // set once the saved arrangement has been restored
     QComboBox* m_workspaceBox = nullptr;
     Xsheet* m_xsheet = nullptr;
+    class QListWidget* m_xsheetList = nullptr;
+    bool m_xsheetMirroring = false;     // the Xsheet is setting the Timeline's cell or block
+    bool m_columnEditorNext = false;    // Column Properties opened as the Column Editor (with Apply/Next)
     LayerPanel* m_layerPanel = nullptr;
     NodeView* m_nodeView = nullptr;
     SubstitutionPanel* m_substitution = nullptr;

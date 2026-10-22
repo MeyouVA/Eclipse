@@ -169,8 +169,7 @@ void MainWindow::createViews()
     m_palette = new PalettePanel(m_document, this);
     addView(tr("Colour"), QStringLiteral("ColourDock"), m_palette, Qt::RightDockWidgetArea);
 
-    m_xsheet = new Xsheet(m_document, this);
-    addView(tr("Xsheet"), QStringLiteral("XsheetDock"), m_xsheet, Qt::RightDockWidgetArea);
+    createXsheetView();
 
     // ---- views that are not in the usual arrangement: opened from the Windows menu ----
     createWindowsMenuViews();

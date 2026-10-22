@@ -411,7 +411,7 @@ void LayerPanel::refresh()
     if (!m_name->hasFocus() || m_name->text().isEmpty())
         m_name->setText(layer.name);
     static char const* const kKinds[] = {QT_TR_NOOP("Drawing"), QT_TR_NOOP("Peg"), QT_TR_NOOP("Camera"), QT_TR_NOOP("Sound"),
-                                         QT_TR_NOOP("Colour-Card"), QT_TR_NOOP("Group"), QT_TR_NOOP("Bone"), QT_TR_NOOP("Quadmap")};
+                                         QT_TR_NOOP("Colour-Card"), QT_TR_NOOP("Group"), QT_TR_NOOP("Bone"), QT_TR_NOOP("Quadmap"), QT_TR_NOOP("Annotation")};
     m_kind->setText(tr(kKinds[layer.kind]));
     m_form->setRowVisible(m_card, layer.kind == Layer::ColourCard);
     m_form->setRowVisible(m_length, layer.kind == Layer::Bone);
