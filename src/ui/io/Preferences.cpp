@@ -173,6 +173,7 @@ void MainWindow::applyPreferences()
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
     m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
+    m_canvas->setOnionEnhanced(s.value(QStringLiteral("prefs/onionEnhanced"), false).toBool());
     m_canvas->setIkIterations(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
     m_document->setSubstitutionCycles(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
     m_canvas->setFieldChart(s.value(QStringLiteral("prefs/fieldsAcross"), 12).toInt(), s.value(QStringLiteral("prefs/fieldsDown"), 12).toInt());
@@ -398,6 +399,7 @@ void MainWindow::onActionPreferences()
     m_canvas->setOnionOriginal(w.onionStyle->currentIndex() == 1);
     m_canvas->setOnionOutlines(w.onionStyle->currentIndex() == 2);
     m_canvas->setOnionOthers(w.onionOthers->isChecked());
+    s.setValue(QStringLiteral("prefs/onionEnhanced"), w.onionEnhanced->isChecked());
     s.setValue(QStringLiteral("prefs/selectLasso"), w.selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/showStrokes"), w.showStrokes->isChecked());
     s.setValue(QStringLiteral("prefs/drawingCycle"), w.drawingCycle->isChecked());

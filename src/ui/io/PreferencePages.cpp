@@ -554,6 +554,11 @@ void MainWindow::preferencesOnion(PreferenceWidgets& w, QSettings& s, QDialog& d
     w.onionOthers->setToolTip(tr("Layers added to the onion skin (Timeline) show theirs too; off, only the layer worked on does."));
     w.onionOthers->setChecked(m_canvas->onionOthers());
     w.onionLayout->addRow(w.onionOthers);
+    w.onionEnhanced = new QCheckBox(tr("Shows Auto Light Table on Every Drawing Visible in the Onion Skin"), w.onionPage);
+    w.onionEnhanced->setObjectName(QStringLiteral("PrefOnionEnhanced"));
+    w.onionEnhanced->setToolTip(tr("With the light table on, every layer it shows has its onion skin too, not only the layer worked on and those added to the onion skin."));
+    w.onionEnhanced->setChecked(s.value(QStringLiteral("prefs/onionEnhanced"), false).toBool());
+    w.onionLayout->addRow(w.onionEnhanced);
 
     Q_UNUSED(s);
     Q_UNUSED(dialog);

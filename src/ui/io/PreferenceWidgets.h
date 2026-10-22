@@ -100,6 +100,7 @@ struct PreferenceWidgets {
     QCheckBox* lightShadeCamera = nullptr;
     QCheckBox* gridOnDefault = nullptr;
     QCheckBox* onionOthers = nullptr;
+    QCheckBox* onionEnhanced = nullptr;
     QGroupBox* soundPage = nullptr;
     QCheckBox* soundOn = nullptr;
     QCheckBox* scrub = nullptr;

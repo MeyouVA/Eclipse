@@ -246,7 +246,7 @@ void Canvas::paintView()
     };
     auto onionsOf = [&](int l) {
         Layer const& layer = scene.layers[l];
-        if (!m_onionSkin || m_playing || (l != m_layer && (!layer.onion || !m_onionOthers)))
+        if (!m_onionSkin || m_playing || (l != m_layer && (!layer.onion || !m_onionOthers) && !(m_onionEnhanced && m_lightTable)))
             return;
         // Each is shown where the layer is on its own frame; the further off, the fainter.
         double const strength = m_onionOpacity / 100.0;

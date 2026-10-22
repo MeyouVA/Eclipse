@@ -126,6 +126,7 @@ protected:
     bool m_onionOver = false;
     bool m_onionOriginal = false;   // the onion skins in the drawings' own colours, not tinted
     bool m_onionOthers = true;      // other layers added to the onion skin show theirs too
+    bool m_onionEnhanced = false;   // with the light table on, every layer it shows has its onion skin too
     bool m_applyOnion = false;      // the Select tool's changes also made in the drawings the onion skin shows
     int m_onionMark = 0;
     QColor m_onionBefore = QColor(220, 60, 60);

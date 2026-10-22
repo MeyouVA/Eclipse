@@ -290,6 +290,8 @@ public:
     bool onionOver() const { return m_onionOver; }
     bool onionOriginal() const { return m_onionOriginal; }
     bool onionOthers() const { return m_onionOthers; }
+    void setOnionEnhanced(bool on) { m_onionEnhanced = on; }
+    bool onionEnhanced() const { return m_onionEnhanced; }
     bool appliesToOnionRange() const { return m_applyOnion; }
     bool onionByFrame() const { return m_onionByFrame; }
     QColor onionBefore() const { return m_onionBefore; }
