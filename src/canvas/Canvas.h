@@ -1028,6 +1028,8 @@ private:
     void paintMarquee(QPainter& painter);
     void paintView();
     // Its parts: the frame's edge, grids, guides and each tool's aids (true when nothing more is to be painted), then the selection's.
+    void paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, QTransform const& view, bool transforming, bool erasing,
+                        std::function<void(int)> const& onionsOf);
     bool paintViewAids(QPainter& painter, QRectF const& frameRect, QTransform const& view);
     void paintSelectionAids(QPainter& painter);
     bool contourValid() const;
