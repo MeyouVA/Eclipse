@@ -16,6 +16,7 @@
 #include "model/scene/Scene.h"
 
 class Document;
+struct LayerEffectSpace;
 
 class ECLIPSE_CANVAS_API Canvas : public QWidget {
     Q_OBJECT
@@ -980,6 +981,8 @@ protected:
     void keyReleaseEvent(QKeyEvent*) override;
 
 private:
+    // One effect of a layer done to its picture (part of paintLayerDrawing).
+    static void applyLayerEffect(QImage& image, int i, LayerEffectSpace const& space);
     enum Handle { NoHandle, TopLeft, TopRight, BottomRight, BottomLeft, Rotate };
 
     // From the picture (what the camera sees) to the widget: the zoom and pan of the view.
