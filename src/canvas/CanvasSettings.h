@@ -90,6 +90,8 @@ public:
     int fieldsDown() const { return m_fieldsDown; }
     bool backlight() const { return m_backlight; }
     // ---- selection (Select tool) --------------------------------------------------------
+    QVector<int> const& selectedStrokes() const { return m_selStrokes; }
+    QVector<int> const& selectedFills() const { return m_selFills; }
     bool hasSelection() const { return !m_selStrokes.isEmpty() || !m_selFills.isEmpty() || !m_selPictures.isEmpty(); }
     // How many lines and painted areas are selected.
     int selectionCount() const { return int(m_selStrokes.size() + m_selFills.size() + m_selPictures.size()); }
@@ -121,6 +123,36 @@ public:
     // ... and how wide a gap in the lines round an area they close of themselves (pixels of the drawing).
     double closeGapSize() const { return m_gapSize; }
     void setCloseGapSize(double pixels) { m_gapSize = pixels; }
+    // Gap closing measured on the screen (so it closes the same gaps on screen at any zoom), else in drawing units.
+    void setCloseGapInPixels(bool on) { m_gapInPixels = on; }
+    bool closeGapInPixels() const { return m_gapInPixels; }
+    double gapNow() const { return m_gapInPixels ? m_gapSize / std::max(m_zoom, 1e-6) : m_gapSize; }
+    // The Paint tool: new paint left selected; textured areas painted plain; gradients laid as the last one placed.
+    void setPaintSelectNew(bool on) { m_paintSelectNew = on; }
+    bool paintSelectNew() const { return m_paintSelectNew; }
+    void setPaintOverTexture(bool on) { m_paintOverTexture = on; }
+    bool paintOverTexture() const { return m_paintOverTexture; }
+    void setUseStoredGradient(bool on) { m_useStoredGradient = on; }
+    bool useStoredGradient() const { return m_useStoredGradient; }
+    bool hasStoredGradient() const { return m_hasStoredGradient; }
+    // The Dropper: unseen lines and areas passed over; not sticky, the tool before it comes back once a colour is taken.
+    void setDropperNoTransparency(bool on) { m_dropperNoTransparency = on; }
+    bool dropperNoTransparency() const { return m_dropperNoTransparency; }
+    void setStickyDropper(bool on) { m_stickyDropper = on; }
+    bool stickyDropper() const { return m_stickyDropper; }
+    // The Ink tool's options (Tool Properties); the order: 0 left as is, 1 over the rest, 2 under it.
+    void setInkShowInkable(bool on) { m_inkShowInkable = on; settingChanged(); }
+    bool inkShowInkable() const { return m_inkShowInkable; }
+    void setInkSelectNew(bool on) { m_inkSelectNew = on; }
+    bool inkSelectNew() const { return m_inkSelectNew; }
+    void setInkSmart(bool on) { m_inkSmart = on; }
+    bool inkSmart() const { return m_inkSmart; }
+    void setInkSelectionMode(bool on) { m_inkSelectionMode = on; }
+    bool inkSelectionMode() const { return m_inkSelectionMode; }
+    void setInkJoinChange(bool on) { m_inkJoinChange = on; }
+    bool inkJoinChange() const { return m_inkJoinChange; }
+    void setInkOrder(int order) { m_inkOrder = std::clamp(order, 0, 2); }
+    int inkOrder() const { return m_inkOrder; }
     bool paintsAllDrawings() const { return m_paintAll; }
     bool paintsAllLayers() const { return m_paintLayers; }
     bool permanentSelection() const { return m_permanentSelection; }

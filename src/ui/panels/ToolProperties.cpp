@@ -228,6 +228,7 @@ ToolProperties::ToolProperties(Document* document, Canvas* canvas, ActionManager
     addTextRows();
     addSelectionRows();
     addMorphRows();
+    addPaintRows();
     addPresetRows();
 
     connect(m_canvas, &Canvas::toolChanged, this, [this](int tool) { showFor(tool); });
@@ -335,7 +336,7 @@ void ToolProperties::showFor(int tool)
                                       "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D", "ToolPencilRetouch"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
-    bool const any = draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Reposition || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
+    bool const any = tool == T::Ink || draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Reposition || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
     m_form->setRowVisible(m_morphLayers, tool == T::Morphing);
     m_form->setRowVisible(m_morphButtons, tool == T::Morphing);
@@ -404,6 +405,12 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_paraRow, text);
     m_form->setRowVisible(m_applyAll, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
+    for (QWidget* const row : std::as_const(m_paintRows))
+        m_form->setRowVisible(row, Canvas::isPaintTool(Canvas::Tool(tool)));
+    for (QWidget* const row : std::as_const(m_inkRows))
+        m_form->setRowVisible(row, tool == T::Ink);
+    for (QWidget* const row : std::as_const(m_dropperRows))
+        m_form->setRowVisible(row, tool == T::Dropper);
     m_form->setRowVisible(m_byColour, tool == T::Select);
     m_form->setRowVisible(m_paintAll, tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_paintLayers, Canvas::isPaintTool(Canvas::Tool(tool)));

@@ -183,6 +183,25 @@ protected:
     bool m_autoFlatten = false;
     bool m_drawBehind = false;
     bool m_dropperAllLayers = true;
+    // V2 stage 9: the paint tools' options (the Paint and Ink tool properties), the dropper's, and gap closing.
+    bool m_paintSelectNew = false;
+    bool m_paintOverTexture = false;
+    bool m_useStoredGradient = false;
+    bool m_hasStoredGradient = false;
+    QPointF m_storedGradFrom, m_storedGradTo;
+    bool m_gapInPixels = false;
+    bool m_dropperNoTransparency = false;
+    bool m_stickyDropper = false;
+    int m_toolBeforeDropper = -1;
+    bool m_inkShowInkable = false;
+    bool m_inkSelectNew = false;
+    bool m_inkSmart = false;
+    bool m_inkSelectionMode = false;
+    bool m_inkJoinChange = false;
+    int m_inkOrder = 0;
+    int m_inkOrderNow = 0;
+    bool m_dropperTexture = false;
+    QVector<int> m_inkedNow;
     bool m_highlightColour = false;
     bool m_respectProtected = true;
     bool m_proportionGrid = false;

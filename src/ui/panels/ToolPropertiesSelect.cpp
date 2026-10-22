@@ -328,6 +328,12 @@ void ToolProperties::addLineShapeRows()
     };
     list();
     connect(m_canvas, &Canvas::texturesChanged, this, list);
+    connect(m_canvas, &Canvas::lineTextureTaken, this, [this, list, amount] {
+        list();
+        QSignalBlocker const block(amount);
+        amount->setValue(m_canvas->lineTextureAmount());
+        settings().setValue(QStringLiteral("tools/lineTexture"), m_canvas->lineTexture());
+    });
     connect(texture, &QComboBox::currentIndexChanged, this, [this, texture, amount](int) {
         int const kind = texture->currentData().toInt();
         m_canvas->setLineTexture(kind);

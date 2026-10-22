@@ -85,6 +85,21 @@ void MainWindow::preferencesPalettes(PreferenceWidgets& w, QSettings& s, QDialog
     w.pasteColours->setCurrentIndex(std::max(0, w.pasteColours->findData(s.value(QStringLiteral("prefs/pasteColours"), 0).toInt())));
     w.pasteColours->setToolTip(tr("What becomes of the colours of a template brought into the scene."));
     form->addRow(tr("Templates pasted: their colours"), w.pasteColours);
+
+    form->addRow(new QLabel(QStringLiteral("<b>%1</b>").arg(tr("Paint Tools")), w.palettes));
+    w.stickyDropper = check("PrefStickyDropper", tr("Sticky Eye Dropper"), QStringLiteral("prefs/stickyDropper"), false,
+                            tr("The Dropper stays the tool until another is chosen. Off: once a colour is taken, the tool before it comes back."));
+    w.gapOnStartup = new QComboBox(w.palettes);
+    w.gapOnStartup->setObjectName(QStringLiteral("PrefGapOnStartup"));
+    w.gapOnStartup->addItem(tr("As last used"), -1);
+    w.gapOnStartup->addItem(tr("Disabled"), 0);
+    w.gapOnStartup->addItem(tr("Close Small Gap"), 3);
+    w.gapOnStartup->addItem(tr("Close Medium Gap"), 8);
+    w.gapOnStartup->addItem(tr("Close Large Gap"), 16);
+    w.gapOnStartup->setCurrentIndex(std::max(0, w.gapOnStartup->findData(s.value(QStringLiteral("prefs/gapOnStartup"), -1).toInt())));
+    form->addRow(tr("Auto Gap Closing on Startup"), w.gapOnStartup);
+    w.gapInPixels = check("PrefGapInPixels", tr("Auto Gap Closing in Pixel Units"), QStringLiteral("prefs/gapInPixels"), false,
+                          tr("The gap closed is measured on the screen (it depends on the zoom); off: in drawing units."));
 }
 
 void MainWindow::savePalettePreferences(PreferenceWidgets& w, QSettings& s)
@@ -101,4 +116,7 @@ void MainWindow::savePalettePreferences(PreferenceWidgets& w, QSettings& s)
     s.setValue(QStringLiteral("prefs/replacementColour"), w.replacement->property("colour").value<QColor>());
     s.setValue(QStringLiteral("prefs/pasteColours"), w.pasteColours->currentData().toInt());
     s.setValue(QStringLiteral("prefs/paletteBackground"), w.paletteBackground->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/stickyDropper"), w.stickyDropper->isChecked());
+    s.setValue(QStringLiteral("prefs/gapOnStartup"), w.gapOnStartup->currentData().toInt());
+    s.setValue(QStringLiteral("prefs/gapInPixels"), w.gapInPixels->isChecked());
 }

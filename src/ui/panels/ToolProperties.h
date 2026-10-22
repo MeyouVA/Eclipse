@@ -77,6 +77,9 @@ private:
     void addSelectionRows();
     void addPresetRows();
     void addMorphRows();
+    // The Paint, Ink and Dropper tools' own options.
+    void addPaintRows();
+    QVector<QWidget*> m_paintRows, m_inkRows, m_dropperRows;
     void refreshMorphLayers();
     // A slider with a box beside it, under a label.
     QLayout* addSetting(QString const& label, QString const& tip, int min, int max, int value, QString const& suffix, std::function<void(int)> apply);

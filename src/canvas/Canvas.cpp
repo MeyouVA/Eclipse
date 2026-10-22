@@ -62,6 +62,10 @@ void Canvas::setTool(Tool tool)
 {
     bool const changed = tool != m_tool;
     if (changed) {
+        // The tool to come back to once the Dropper has taken a colour (unless it is sticky).
+        if (tool == Dropper)
+            m_toolBeforeDropper = int(m_tool);
+        m_dropperTexture = false;
         finishPolyline(true);
         endText(true);
         if (m_bending) {        // a curve of the Line tool not put down yet: it goes

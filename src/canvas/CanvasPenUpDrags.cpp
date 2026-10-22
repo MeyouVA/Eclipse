@@ -90,9 +90,14 @@ if (drag == DragRepaint) {
 if (drag == DragInk || drag == DragSmooth || drag == DragRetouch) {
     m_drag = DragNone;
     if (m_inked) {
-        Drawing const art = m_eraseArt;
+        Drawing art = m_eraseArt;
+        if (drag == DragInk)
+            finishInk(art, m_inkOrderNow);
         commitDrawing(art, drag == DragInk ? tr("Ink") : drag == DragRetouch ? tr("Pencil Retouch") : tr("Smooth"));
+        if (drag == DragInk && m_inkSelectNew)
+            setSelection(m_inkedNow, {});
     }
+    m_inkedNow.clear();
     m_eraseArt = Drawing();
     m_inked = false;
     update();
@@ -122,6 +127,12 @@ if (drag == DragThickness) {
 }
 if (drag == DragGradient) {
     m_drag = DragNone;
+    // Kept, for Use Stored Colour Gradient: new paint in a gradient lies the same way.
+    if (m_gradMoved) {
+        m_storedGradFrom = m_gradFrom;
+        m_storedGradTo = m_gradTo;
+        m_hasStoredGradient = true;
+    }
     Drawing const* const d = currentDrawing();
     if (m_gradMoved && d && m_gradStroke >= 0 && m_gradStroke < d->strokes.size() && m_gradStroke < m_eraseArt.strokes.size()) {
         Stroke const& was = d->strokes[m_gradStroke];

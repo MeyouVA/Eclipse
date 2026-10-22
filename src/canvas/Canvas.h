@@ -17,6 +17,7 @@
 #include "model/scene/Scene.h"
 
 class Document;
+class QMenu;
 struct LayerEffectSpace;
 
 class ECLIPSE_CANVAS_API Canvas : public QWidget, public CanvasSettings {
@@ -544,6 +545,14 @@ public slots:
     void onActionRemoveArtOutside();
     void onActionSelectionArt(QString const& how);
     void onActionRespectProtected(bool on);
+    // V2 stage 9: Auto Gap Closing (off, small, medium, large), Paint and Remove Line Texture, pencil textures set and taken.
+    void onActionAutoGap(QString const& size);
+    void onShowAutoGapMenu(QMenu* menu);
+    void onActionPaintOverTexture(bool on);
+    void onActionSetPencilTexture();
+    void onActionSetPencilTextureAll();
+    void onActionPencilTextureNone();
+    void onActionPencilTextureEyedropper();
     void onActionCloseGaps();
     void onActionStrokesToPencil();
     void onActionCreateStamp();
@@ -587,6 +596,9 @@ signals:
     void morphHereChanged();
     // Something the user should know (shown in the status bar).
     void message(QString const& text);
+    // The gap closed by the paint tools changed (from the Auto Gap Closing menu); a pencil texture taken by the eyedropper.
+    void closeGapChanged(double size);
+    void lineTextureTaken(int texture);
     void stampsChanged();
 
 protected:
@@ -608,6 +620,12 @@ protected:
 private:
     // The colours of pasted artwork this scene lacks, recovered or unlinked (a macro is left open when any): theirs -> here.
     QHash<int, int> recoverPastedColours(Drawing const& placed);
+    // The lines just inked put over or under the others (Ink tool properties); m_inkedNow follows them.
+    void finishInk(Drawing& art, int order);
+    // A colour taken by the Dropper: told, and (not sticky) the tool before it back.
+    void tookColour(int swatch, QColor const& colour);
+    // The Pencil Texture Eyedropper: the texture of the pencil line clicked taken into hand.
+    bool takeTextureAt(QPointF widgetPos);
     void settingChanged() override { update(); }
     // One effect of a layer done to its picture (part of paintLayerDrawing).
     static void applyLayerEffect(QImage& image, int i, LayerEffectSpace const& space);

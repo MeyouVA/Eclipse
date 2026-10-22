@@ -288,7 +288,30 @@
     <item id="RepaintOutside" icon="anim/repaintout" text="Repaint Ou&amp;tside Selection" shortcut="shortcut.repaintOutside" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="repaintOutside"/>
     <item id="RepaintOutsideAll" icon="anim/repaintout" text="Repaint Outside Selection on All Drawings" shortcut="shortcut.repaintOutsideAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="repaintOutsideAll"/>
     <separator/>
-    <item id="RespectProtected" icon="anim/respectprotected" text="Respect &amp;Protected Colour" shortcut="shortcut.respectProtected" checkable="true" checked="true" responder="camera" slot="onActionRespectProtected(bool)"/>
+    <item id="PaintOverTexture" text="Paint and Remove Line &amp;Texture" checkable="true" responder="camera" slot="onActionPaintOverTexture(bool)"/>
+    <separator/>
+    <menu id="DrawingPaintMode" text="Paint &amp;Mode">
+     <item id="ToolPaint"/>
+     <item id="ToolPaintUnpainted"/>
+     <item id="ToolRepaint"/>
+     <item id="ToolUnpaint"/>
+    </menu>
+    <menu id="DrawingAutoGap" text="&amp;Auto Gap Closing" responder="camera" aboutToShowSlot="onShowAutoGapMenu(QMenu*)">
+     <item id="AutoGapOff" text="&amp;Disabled" checkable="true" responder="camera" slot="onActionAutoGap(QString)" itemParameter="off"/>
+     <separator/>
+     <item id="AutoGapSmall" text="Close &amp;Small Gap" checkable="true" responder="camera" slot="onActionAutoGap(QString)" itemParameter="small"/>
+     <item id="AutoGapMedium" text="Close &amp;Medium Gap" checkable="true" responder="camera" slot="onActionAutoGap(QString)" itemParameter="medium"/>
+     <item id="AutoGapLarge" text="Close &amp;Large Gap" checkable="true" responder="camera" slot="onActionAutoGap(QString)" itemParameter="large"/>
+    </menu>
+    <menu id="DrawingColourProtection" text="&amp;Colour Protection">
+     <item id="RespectProtected" icon="anim/respectprotected" text="Respect &amp;Protected Colour" shortcut="shortcut.respectProtected" checkable="true" checked="true" responder="camera" slot="onActionRespectProtected(bool)"/>
+     <item id="ToggleColourProtection" text="&amp;Toggle Current Colour Protection" shortcut="shortcut.toggleColourProtection" responder="paletteView" slot="onActionProtectColour()"/>
+    </menu>
+    <separator/>
+    <item id="SetPencilTexture" text="Set &amp;Pencil Texture" responder="camera" slot="onActionSetPencilTexture()"/>
+    <item id="SetPencilTextureAll" text="Set Pencil Texture On &amp;All Drawings" responder="camera" slot="onActionSetPencilTextureAll()"/>
+    <item id="PencilTextureNone" text="Set Current Pencil Texture to &amp;None" responder="camera" slot="onActionPencilTextureNone()"/>
+    <item id="PencilTextureEyedropper" text="Pencil Texture &amp;Eyedropper" shortcut="shortcut.textureEyedropper" responder="camera" slot="onActionPencilTextureEyedropper()"/>
    </menu>
    <menu id="DrawingCleanUp" text="C&amp;lean Up">
     <item id="RemoveDirt" icon="anim/removedirt" text="Remove &amp;Dirt..." shortcut="shortcut.removeDirt" responder="camera" slot="onActionRemoveDirt()"/>

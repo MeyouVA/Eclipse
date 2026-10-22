@@ -64,13 +64,24 @@ void ToolProperties::addSizeRows()
     addBitmapBrushRows();
     // The paint tools: gaps in the lines round an area, up to this wide, are closed of themselves.
     {
-        int const kept = std::clamp(settings().value(QStringLiteral("tools/closeGap"), 2).toInt(), 0, 40);
+        // (Preferences: Auto Gap Closing on Startup, else as last used.)
+        int const startup = settings().value(QStringLiteral("prefs/gapOnStartup"), -1).toInt();
+        int const kept = std::clamp(startup >= 0 ? startup : settings().value(QStringLiteral("tools/closeGap"), 2).toInt(), 0, 40);
         m_canvas->setCloseGapSize(kept);
         m_gapRow = addSetting(tr("Close Gap"), tr("A gap this wide or less in the lines round an area does not let the paint out. 0: only areas that are closed are painted."),
                 0, 40, kept, QStringLiteral(" px"), [this](int v) {
                     m_canvas->setCloseGapSize(v);
                     settings().setValue(QStringLiteral("tools/closeGap"), v);
                 });
+        // Set from the Auto Gap Closing menu: the number follows.
+        connect(m_canvas, &Canvas::closeGapChanged, this, [this](double size) {
+            for (int i = 0; i < m_gapRow->count(); ++i)
+                if (QSpinBox* const spin = qobject_cast<QSpinBox*>(m_gapRow->itemAt(i)->widget())) {
+                    QSignalBlocker const block(spin);
+                    spin->setValue(int(std::lround(size)));
+                }
+            settings().setValue(QStringLiteral("tools/closeGap"), int(std::lround(size)));
+        });
     }
     // The Envelope tool: how many points there are to pull.
     m_envToolRow = addSetting(tr("Points"), tr("How many points the outline round the selection has."), 4, 32, m_canvas->envelopeToolPoints(), QString(),

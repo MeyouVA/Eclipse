@@ -86,6 +86,8 @@ void MainWindow::applyPreferences()
     m_palette->setElementPalettesShown(s.value(QStringLiteral("prefs/advancedPalettes"), true).toBool());
     m_palette->setListBackground(s.value(QStringLiteral("prefs/paletteBackground"), QColor()).value<QColor>());
     m_palette->setSwatchGrid(s.value(QStringLiteral("colour/grid"), false).toBool());
+    m_canvas->setStickyDropper(s.value(QStringLiteral("prefs/stickyDropper"), false).toBool());
+    m_canvas->setCloseGapInPixels(s.value(QStringLiteral("prefs/gapInPixels"), false).toBool());
     bool const moreArt = s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool();
     for (char const* id : {"SetOverlayArt", "SetUnderlayArt"}) {
         if (QAction* const a = m_actions->action(QLatin1String(id)))

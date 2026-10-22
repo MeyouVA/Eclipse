@@ -1,6 +1,6 @@
 // Eclipse - the Camera view: paint that follows its lines.  An area painted with the paint bucket (or filled under a line
 // drawn round it) is the area its lines close round: when those lines are moved, bent or reshaped, it is found again from
-// them - so the paint goes wherever the lines go, 
+// them - so the paint goes wherever the lines go.
 #include "canvas/Canvas.h"
 
 #include <algorithm>
@@ -184,8 +184,8 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
         Drawing bounded;
         bounded.strokes = lines;
         QRectF const area = FillRegion::paintArea(bounded);
-        double const room = m_gapSize + 4.0;
-        double const near = m_gapSize + 3.0;
+        double const room = gapNow() + 4.0;
+        double const near = gapNow() + 3.0;
         // Which line each line was: one just as it was is that one; with as many lines as before, the one in its place.
         QVector<int> now(linesBefore.size(), -1);
         {
@@ -318,7 +318,7 @@ Drawing Canvas::followLines(Drawing whole, Drawing const* before, bool quick) co
                 if (known)
                     continue;
                 QVector<QPolygonF> outlines;
-                if (FillRegion::compute(bounded, within, from, m_gapSize, outlines) != FillRegion::Ok || outlines.isEmpty())
+                if (FillRegion::compute(bounded, within, from, gapNow(), outlines) != FillRegion::Ok || outlines.isEmpty())
                     continue;
                 underShapes(outlines, bounded);
                 found.push_back(outlines);

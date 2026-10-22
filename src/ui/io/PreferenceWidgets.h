@@ -129,6 +129,9 @@ struct PreferenceWidgets {
     QPushButton* replacement = nullptr;
     QComboBox* pasteColours = nullptr;
     QPushButton* paletteBackground = nullptr;
+    QCheckBox* stickyDropper = nullptr;
+    QComboBox* gapOnStartup = nullptr;
+    QCheckBox* gapInPixels = nullptr;
     QFormLayout* coloursLayout = nullptr;
     QPushButton* backdrop = nullptr;
     QPushButton* onionBefore = nullptr;

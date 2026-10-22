@@ -411,6 +411,28 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         painter.drawEllipse(m_hoverWidget, radius, radius);
         painter.restore();
     }
+    if (l == m_layer && m_tool == Ink && m_inkShowInkable && !m_playing && layer.holdsDrawings()) {
+        // Show Inkable Lines: each line the Ink tool would change, traced over in a dashed light line.
+        if (Drawing const* const d = currentDrawing()) {
+            QColor const colour = m_document->scene().resolve(m_swatch, Qt::black);
+            QTransform const where = layerViewTransform();
+            painter.save();
+            painter.resetTransform();
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setBrush(Qt::NoBrush);
+            QPen dashed(QColor(80, 220, 255, 220), 1.5, Qt::DashLine);
+            painter.setPen(dashed);
+            for (Stroke const& stroke : d->strokes) {
+                if (stroke.width <= 0.0f || keepsColour(stroke.swatch) || (stroke.swatch == m_swatch && stroke.color == colour))
+                    continue;
+                QPolygonF centre;
+                for (StrokePoint const& sp : stroke.path())
+                    centre << where.map(sp.pos);
+                painter.drawPolyline(centre);
+            }
+            painter.restore();
+        }
+    }
     if (l == m_layer && m_tool == SmoothEditor && m_hoverKnown && !m_playing && layer.holdsDrawings()) {
         // The smoothing tool's brush, round the pointer, in its colour (Preferences > Colours).
         QTransform const where = layerViewTransform();

@@ -81,7 +81,10 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
     if (m_tool == Dropper) {
-        pickColourAt(widgetPos);
+        if (m_dropperTexture)
+            takeTextureAt(widgetPos);
+        else
+            pickColourAt(widgetPos);
         return;
     }
     // A control point of the motion path, taken hold of with the Transform tool: it is picked, and dragged.
@@ -217,6 +220,9 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         if (Drawing const* const d = currentDrawing()) {
             m_eraseArt = *d;
             m_inked = false;
+            m_inkedNow.clear();
+            // Alt turns over and under the other way.
+            m_inkOrderNow = (modifiers & Qt::AltModifier) && m_inkOrder != 0 ? 3 - m_inkOrder : m_inkOrder;
             m_drag = DragInk;
             inkAt(p);
         }
@@ -410,6 +416,21 @@ void Canvas::followSettings(Canvas const& leader)
     m_autoFlatten = leader.m_autoFlatten;
     m_eraserCuts = leader.m_eraserCuts;
     m_gapSize = leader.m_gapSize;
+    m_gapInPixels = leader.m_gapInPixels;
+    m_paintSelectNew = leader.m_paintSelectNew;
+    m_paintOverTexture = leader.m_paintOverTexture;
+    m_useStoredGradient = leader.m_useStoredGradient;
+    m_hasStoredGradient = leader.m_hasStoredGradient;
+    m_storedGradFrom = leader.m_storedGradFrom;
+    m_storedGradTo = leader.m_storedGradTo;
+    m_dropperNoTransparency = leader.m_dropperNoTransparency;
+    m_stickyDropper = leader.m_stickyDropper;
+    m_inkShowInkable = leader.m_inkShowInkable;
+    m_inkSelectNew = leader.m_inkSelectNew;
+    m_inkSmart = leader.m_inkSmart;
+    m_inkSelectionMode = leader.m_inkSelectionMode;
+    m_inkJoinChange = leader.m_inkJoinChange;
+    m_inkOrder = leader.m_inkOrder;
     m_paintAll = leader.m_paintAll;
     m_bothArts = leader.m_bothArts;
     m_lasso = leader.m_lasso;

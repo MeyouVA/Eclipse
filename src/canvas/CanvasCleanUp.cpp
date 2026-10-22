@@ -2,6 +2,8 @@
 // not), in this drawing or in every drawing of the layer; closing gaps; strokes made pencil lines.
 #include "canvas/Canvas.h"
 
+#include <QApplication>
+
 #include <cmath>
 
 #include <QRandomGenerator>
@@ -252,14 +254,63 @@ void Canvas::inkAt(QPointF p)
     QColor const colour = m_document->scene().resolve(m_swatch, Qt::black);
     // A few pixels either side of the line will do: the tool is for lines, and nothing else is in its way.
     double const reach = 4.0 / std::max(m_zoom, 1e-6);
-    for (Stroke& stroke : m_eraseArt.strokes) {
-        if (stroke.width <= 0.0f || (stroke.swatch == m_swatch && stroke.color == colour) || keepsColour(stroke.swatch) || !stroke.hit(p, reach))
+    QVector<Stroke>& lines = m_eraseArt.strokes;
+    // Selection mode (Ctrl the other way): the selected lines; else those under the pen.
+    bool const selected = m_inkSelectionMode != bool(QApplication::keyboardModifiers() & Qt::ControlModifier);
+    QVector<int> hits;
+    for (int i = 0; i < lines.size(); ++i)
+        if (selected ? m_selStrokes.contains(i) : lines[i].hit(p, reach))
+            hits.push_back(i);
+    // Be Smart on Connecting Lines: lines joined end to end with those are inked with them.
+    for (int grown = 0; m_inkSmart && grown < hits.size(); ++grown) {
+        Stroke const& from = lines[hits[grown]];
+        if (from.points.isEmpty())
+            continue;
+        for (int j = 0; j < lines.size(); ++j) {
+            if (hits.contains(j) || lines[j].points.isEmpty())
+                continue;
+            bool joined = false;
+            for (StrokePoint const& a : {from.points.first(), from.points.last()})
+                for (StrokePoint const& b : {lines[j].points.first(), lines[j].points.last()})
+                    joined = joined || (a.joint != 0 && a.joint == b.joint) || QLineF(a.pos, b.pos).length() <= reach * 0.5;
+            if (joined)
+                hits.push_back(j);
+        }
+    }
+    for (int i : std::as_const(hits)) {
+        Stroke& stroke = lines[i];
+        if (stroke.width <= 0.0f || keepsColour(stroke.swatch))
+            continue;
+        bool const recolour = stroke.swatch != m_swatch || stroke.color != colour;
+        bool const rejoin = m_inkJoinChange && stroke.join != m_join;
+        if (!recolour && !rejoin)
             continue;
         stroke.swatch = m_swatch;
         stroke.color = colour;
+        if (m_inkJoinChange)
+            stroke.join = m_join;
         m_inked = true;
+        if (!m_inkedNow.contains(i))
+            m_inkedNow.push_back(i);
     }
     update();
+}
+
+void Canvas::finishInk(Drawing& art, int order)
+{
+    // The inked lines over the other lines (1) or under them (2); where they end up, for the selection.
+    QVector<int> placed = m_inkedNow;
+    std::sort(placed.begin(), placed.end());
+    if (order != 0 && !placed.isEmpty()) {
+        QVector<Stroke> inked, rest;
+        for (int i = 0; i < art.strokes.size(); ++i)
+            (placed.contains(i) ? inked : rest).push_back(art.strokes[i]);
+        art.strokes = order == 1 ? rest + inked : inked + rest;
+        int const first = order == 1 ? int(rest.size()) : 0;
+        for (int k = 0; k < placed.size(); ++k)
+            placed[k] = first + k;
+    }
+    m_inkedNow = placed;
 }
 
 void Canvas::repaintTo(QPointF p, double tolerance)

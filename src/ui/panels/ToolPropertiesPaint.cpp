@@ -1,0 +1,61 @@
+// Eclipse - Tool Properties: the options of the Paint tools, the Ink tool and the Dropper.
+#include "ui/panels/ToolProperties.h"
+
+#include <QCheckBox>
+#include <QComboBox>
+#include <QFormLayout>
+
+#include "actions/theme/AppSettings.h"
+
+void ToolProperties::addPaintRows()
+{
+    // A tick box kept between runs (tools/<key>), set on the canvas when changed.
+    auto box = [this](QVector<QWidget*>& rows, char const* name, QString const& text, QString const& tip, QString const& key, bool usual,
+                      std::function<void(bool)> apply) {
+        QCheckBox* const check = new QCheckBox(text, this);
+        check->setObjectName(QLatin1String(name));
+        check->setToolTip(tip);
+        bool const on = settings().value(QStringLiteral("tools/") + key, usual).toBool();
+        check->setChecked(on);
+        apply(on);
+        connect(check, &QCheckBox::toggled, this, [apply, key](bool now) {
+            apply(now);
+            settings().setValue(QStringLiteral("tools/") + key, now);
+        });
+        m_form->addRow(check);
+        rows.push_back(check);
+    };
+    box(m_paintRows, "PaintSelectNew", tr("Select Newly Painted Zones"), tr("Keeps a selection round the latest painted zone."), QStringLiteral("paintSelectNew"), false,
+        [this](bool on) { m_canvas->setPaintSelectNew(on); });
+    box(m_paintRows, "PaintOverTexture", tr("Paint and Remove Texture"), tr("Painting a textured zone makes it one plain colour."), QStringLiteral("paintOverTexture"), false,
+        [this](bool on) { m_canvas->setPaintOverTexture(on); });
+    box(m_paintRows, "PaintStoredGradient", tr("Use Stored Colour Gradient"),
+        tr("A gradient colour is laid as the gradient last placed with Edit Gradient, so every new zone has the same gradient position."),
+        QStringLiteral("paintStoredGradient"), false, [this](bool on) { m_canvas->setUseStoredGradient(on); });
+
+    box(m_inkRows, "InkShowInkable", tr("Show Inkable Lines"), tr("The lines the Ink tool would change are traced over."), QStringLiteral("inkShowInkable"), false,
+        [this](bool on) { m_canvas->setInkShowInkable(on); });
+    box(m_inkRows, "InkSelectNew", tr("Select Newly Inked Lines"), tr("Keeps the lines just inked selected."), QStringLiteral("inkSelectNew"), false,
+        [this](bool on) { m_canvas->setInkSelectNew(on); });
+    box(m_inkRows, "InkSmart", tr("Be Smart on Connecting Lines"), tr("Lines joined end to end with the one inked are inked with it."), QStringLiteral("inkSmart"), false,
+        [this](bool on) { m_canvas->setInkSmart(on); });
+    box(m_inkRows, "InkSelectionMode", tr("Use Selection Mode"), tr("Ink the selected lines instead of those under the pen. Press Ctrl to toggle."),
+        QStringLiteral("inkSelectionMode"), false, [this](bool on) { m_canvas->setInkSelectionMode(on); });
+    box(m_inkRows, "InkJoinChange", tr("Change Inked Lines Join Type"), tr("Inked lines take the join chosen for new lines."), QStringLiteral("inkJoinChange"), false,
+        [this](bool on) { m_canvas->setInkJoinChange(on); });
+    QComboBox* const order = new QComboBox(this);
+    order->setObjectName(QStringLiteral("InkOrder"));
+    order->addItems({tr("Ink lines where they are"), tr("Bring ink lines on top"), tr("Send ink lines under")});
+    order->setToolTip(tr("Where inked lines go among the others. Press Alt to toggle on top and under."));
+    order->setCurrentIndex(std::clamp(settings().value(QStringLiteral("tools/inkOrder"), 0).toInt(), 0, 2));
+    m_canvas->setInkOrder(order->currentIndex());
+    connect(order, &QComboBox::currentIndexChanged, this, [this](int at) {
+        m_canvas->setInkOrder(at);
+        settings().setValue(QStringLiteral("tools/inkOrder"), at);
+    });
+    m_form->addRow(order);
+    m_inkRows.push_back(order);
+
+    box(m_dropperRows, "DropperNoTransparency", tr("Do Not Pick Transparency"), tr("Lines and zones that cannot be seen are passed over."),
+        QStringLiteral("dropperNoTransparency"), false, [this](bool on) { m_canvas->setDropperNoTransparency(on); });
+}

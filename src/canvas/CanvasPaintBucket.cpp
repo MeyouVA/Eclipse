@@ -76,7 +76,7 @@ void Canvas::paintAt(QPointF p)
             if (line.points.size() < 2)
                 continue;
             // (Ends meeting: within half the line's thickness, and any gap the Close Gap option closes.)
-            double const reach = line.width / 2.0 + m_gapSize;
+            double const reach = line.width / 2.0 + gapNow();
             bool painted = false;
             for (Fill const& f : std::as_const(edited.fills))
                 painted = painted || (line.link != 0 && f.link == line.link);
@@ -134,7 +134,7 @@ void Canvas::paintAt(QPointF p)
                 reachOf.addPolygon(round);
                 reachOf.closeSubpath();
                 QPainterPathStroker widen;
-                widen.setWidth(line.width + 2.0 * (m_gapSize + 2.0));
+                widen.setWidth(line.width + 2.0 * (gapNow() + 2.0));
                 reachOf = reachOf.united(widen.createStroke(reachOf));
                 reachOf.setFillRule(Qt::WindingFill);
                 for (int i = int(edited.fills.size()) - 1; i >= 0; --i) {
@@ -186,11 +186,16 @@ void Canvas::paintAt(QPointF p)
                 emit message(kept);
                 return;
             }
-            if (edited.fills[i].swatch == m_swatch && edited.fills[i].color == color)
+            bool const textured = m_paintOverTexture && edited.fills[i].texture != 0;
+            if (edited.fills[i].swatch == m_swatch && edited.fills[i].color == color && !textured)
                 return;
             edited.fills[i].swatch = m_swatch;
             edited.fills[i].color = color;
+            if (textured)
+                edited.fills[i].texture = 0;    // Paint and Remove Texture: one plain colour now
             commitDrawing(edited, tr("Paint"));
+            if (m_paintSelectNew)
+                setSelection({}, {i});
             return;
         }
     }
@@ -207,7 +212,7 @@ void Canvas::paintAt(QPointF p)
                 bounded.fills.push_back(shape);
     }
     // (Wherever the artwork is - beside the frame too, or on a layer the camera sees moved.)
-    switch (FillRegion::compute(bounded, FillRegion::paintArea(bounded), p, m_gapSize, outlines)) {
+    switch (FillRegion::compute(bounded, FillRegion::paintArea(bounded), p, gapNow(), outlines)) {
     case FillRegion::Ok: {
         underShapes(outlines, bounded);
         Fill fill;
@@ -216,8 +221,16 @@ void Canvas::paintAt(QPointF p)
         fill.seed = p;
         fill.swatch = m_swatch;
         fill.color = color;
-        edited.fills.insert(underIndex(edited), fill);
+        if (Swatch const* const sw = scene.findSwatch(m_swatch); m_useStoredGradient && m_hasStoredGradient && sw && sw->isPlaced()) {
+            fill.gradPlaced = true;
+            fill.gradFrom = m_storedGradFrom;
+            fill.gradTo = m_storedGradTo;
+        }
+        int const at = underIndex(edited);
+        edited.fills.insert(at, fill);
         commitDrawing(edited, tr("Paint"));
+        if (m_paintSelectNew)
+            setSelection({}, {at});
         break;
     }
     case FillRegion::NotClosed:
@@ -234,6 +247,10 @@ void Canvas::pickColourAt(QPointF widgetPos)
     Scene const& scene = m_document->scene();
     QPointF const at = toScene(widgetPos);
     QVector<int> const order = scene.drawOrder(m_frame);
+    // Do Not Pick Transparency: lines unpainted and colours that cannot be seen are passed over.
+    auto seen = [&](int swatch, QColor const& colour, float width) {
+        return !m_dropperNoTransparency || (width > 0.0f && scene.resolve(swatch, colour).alpha() > 0);
+    };
     for (int place = int(order.size()) - 1; place >= 0; --place) {
         int const l = order[place];
         Layer const& layer = scene.layers[l];
@@ -243,45 +260,53 @@ void Canvas::pickColourAt(QPointF widgetPos)
         QPointF const p = scene.worldTransform(l, m_frame).inverted().map(at);
         Drawing const& drawing = layer.drawings[index];
         for (int i = int(drawing.strokes.size()) - 1; i >= 0; --i) {
-            if (drawing.strokes[i].hit(p, 2.0 / m_zoom)) {
-                emit colourPicked(drawing.strokes[i].swatch, scene.resolve(drawing.strokes[i].swatch, drawing.strokes[i].color));
+            if (drawing.strokes[i].hit(p, 2.0 / m_zoom) && seen(drawing.strokes[i].swatch, drawing.strokes[i].color, drawing.strokes[i].width)) {
+                tookColour(drawing.strokes[i].swatch, scene.resolve(drawing.strokes[i].swatch, drawing.strokes[i].color));
                 return;
             }
         }
         for (int i = int(drawing.fills.size()) - 1; i >= 0; --i) {
-            if (drawing.fills[i].contains(p)) {
-                emit colourPicked(drawing.fills[i].swatch, scene.resolve(drawing.fills[i].swatch, drawing.fills[i].color));
+            if (drawing.fills[i].contains(p) && seen(drawing.fills[i].swatch, drawing.fills[i].color, 1.0f)) {
+                tookColour(drawing.fills[i].swatch, scene.resolve(drawing.fills[i].swatch, drawing.fills[i].color));
                 return;
             }
         }
         for (int sheet : {int(Drawing::OverlaySheet), int(Drawing::UnderlaySheet)}) {
             for (int i = int(drawing.strokesOf(sheet).size()) - 1; i >= 0; --i) {
                 Stroke const& stroke = drawing.strokesOf(sheet)[i];
-                if (stroke.hit(p, 2.0 / m_zoom)) {
-                    emit colourPicked(stroke.swatch, scene.resolve(stroke.swatch, stroke.color));
+                if (stroke.hit(p, 2.0 / m_zoom) && seen(stroke.swatch, stroke.color, stroke.width)) {
+                    tookColour(stroke.swatch, scene.resolve(stroke.swatch, stroke.color));
                     return;
                 }
             }
             for (int i = int(drawing.fillsOf(sheet).size()) - 1; i >= 0; --i) {
                 Fill const& fill = drawing.fillsOf(sheet)[i];
-                if (fill.contains(p)) {
-                    emit colourPicked(fill.swatch, scene.resolve(fill.swatch, fill.color));
+                if (fill.contains(p) && seen(fill.swatch, fill.color, 1.0f)) {
+                    tookColour(fill.swatch, scene.resolve(fill.swatch, fill.color));
                     return;
                 }
             }
         }
         for (int i = int(drawing.colourStrokes.size()) - 1; i >= 0; --i) {
-            if (drawing.colourStrokes[i].hit(p, 2.0 / m_zoom)) {
-                emit colourPicked(drawing.colourStrokes[i].swatch, scene.resolve(drawing.colourStrokes[i].swatch, drawing.colourStrokes[i].color));
+            if (drawing.colourStrokes[i].hit(p, 2.0 / m_zoom) && seen(drawing.colourStrokes[i].swatch, drawing.colourStrokes[i].color, drawing.colourStrokes[i].width)) {
+                tookColour(drawing.colourStrokes[i].swatch, scene.resolve(drawing.colourStrokes[i].swatch, drawing.colourStrokes[i].color));
                 return;
             }
         }
         for (int i = int(drawing.colourFills.size()) - 1; i >= 0; --i) {
-            if (drawing.colourFills[i].contains(p)) {
-                emit colourPicked(drawing.colourFills[i].swatch, scene.resolve(drawing.colourFills[i].swatch, drawing.colourFills[i].color));
+            if (drawing.colourFills[i].contains(p) && seen(drawing.colourFills[i].swatch, drawing.colourFills[i].color, 1.0f)) {
+                tookColour(drawing.colourFills[i].swatch, scene.resolve(drawing.colourFills[i].swatch, drawing.colourFills[i].color));
                 return;
             }
         }
     }
     emit message(tr("There is nothing there to take a colour from."));
+}
+
+void Canvas::tookColour(int swatch, QColor const& colour)
+{
+    emit colourPicked(swatch, colour);
+    // Not sticky: the tool before the Dropper comes back.
+    if (!m_stickyDropper && m_tool == Dropper && m_toolBeforeDropper >= 0 && m_toolBeforeDropper != int(Dropper))
+        QMetaObject::invokeMethod(this, [this] { setTool(Tool(m_toolBeforeDropper)); }, Qt::QueuedConnection);
 }
