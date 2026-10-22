@@ -229,6 +229,7 @@ ToolProperties::ToolProperties(Document* document, Canvas* canvas, ActionManager
     addSelectionRows();
     addMorphRows();
     addPaintRows();
+    addZoomRows();
     addPresetRows();
 
     connect(m_canvas, &Canvas::toolChanged, this, [this](int tool) { showFor(tool); });
@@ -413,6 +414,8 @@ void ToolProperties::showFor(int tool)
         m_form->setRowVisible(row, tool == T::Ink);
     for (QWidget* const row : std::as_const(m_dropperRows))
         m_form->setRowVisible(row, tool == T::Dropper);
+    for (QWidget* const row : std::as_const(m_zoomRows))
+        m_form->setRowVisible(row, tool == T::Zoom);
     m_form->setRowVisible(m_byColour, tool == T::Select);
     m_form->setRowVisible(m_paintAll, tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_paintLayers, Canvas::isPaintTool(Canvas::Tool(tool)));

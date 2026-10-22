@@ -238,6 +238,17 @@ public:
     bool zoomsOnMouse() const { return m_zoomOnMouse; }
     void setZoomOnMouse(bool on) { m_zoomOnMouse = on; }
     double zoom() const { return m_zoom; }
+    void setZoomLimits(int leastPercent, int mostPercent) { m_zoomMin = std::clamp(leastPercent, 1, 100) / 100.0; m_zoomMax = std::clamp(mostPercent, 100, 25600) / 100.0; }
+    double zoomMin() const { return m_zoomMin; }
+    double zoomMax() const { return m_zoomMax; }
+    void setDefaultZoom(int percent) { m_defaultZoom = std::clamp(percent, 1, 25600); }
+    int defaultZoom() const { return m_defaultZoom; }
+    void setZoomToolOut(bool out) { m_zoomToolOut = out; }
+    bool zoomToolOut() const { return m_zoomToolOut; }
+    void setQuickCloseUpFactor(double factor) { m_quickFactor = std::clamp(factor, 1.1, 16.0); }
+    double quickCloseUpFactor() const { return m_quickFactor; }
+    void setPaperZoom(bool on, int screenPpi) { m_paperZoom = on; m_screenPpi = std::clamp(screenPpi, 30, 600); }
+    bool paperZoom() const { return m_paperZoom; }
     double viewRotation() const { return m_viewRotation; }
     bool viewMirrored() const { return m_mirror; }
     int onionPrevious() const { return m_onionPrev; }

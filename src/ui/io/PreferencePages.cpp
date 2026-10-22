@@ -9,6 +9,9 @@
 #include <QCheckBox>
 #include "ui/panels/ColourEditor.h"
 #include <QTabWidget>
+#include <QDoubleSpinBox>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -216,6 +219,43 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.zoomOnMouse->setToolTip(tr("The zoom shortcuts zoom about where the pointer is over the view, instead of about its middle."));
     w.zoomOnMouse->setChecked(m_canvas->zoomsOnMouse());
     w.cameraLayout->addRow(w.zoomOnMouse);
+    // Zoom Settings.
+    auto percentBox = [&](char const* name, int low, int high, int value) {
+        QSpinBox* const box = new QSpinBox(w.camera);
+        box->setObjectName(QLatin1String(name));
+        box->setRange(low, high);
+        box->setSuffix(tr(" %"));
+        box->setValue(std::clamp(value, low, high));
+        return box;
+    };
+    w.defaultZoom = percentBox("PrefDefaultZoom", 1, 25600, s.value(QStringLiteral("prefs/defaultZoom"), 100).toInt());
+    w.defaultZoom->setToolTip(tr("The zoom View > Reset Zoom goes to."));
+    w.cameraLayout->addRow(tr("Camera View Default Zoom"), w.defaultZoom);
+    w.zoomMin = percentBox("PrefZoomMin", 1, 100, s.value(QStringLiteral("prefs/zoomMin"), 2).toInt());
+    w.cameraLayout->addRow(tr("Minimum Zoom Level"), w.zoomMin);
+    w.zoomMax = percentBox("PrefZoomMax", 100, 25600, s.value(QStringLiteral("prefs/zoomMax"), 6400).toInt());
+    w.cameraLayout->addRow(tr("Maximum Zoom Level"), w.zoomMax);
+    w.quickCloseUp = new QDoubleSpinBox(w.camera);
+    w.quickCloseUp->setObjectName(QStringLiteral("PrefQuickCloseUp"));
+    w.quickCloseUp->setRange(1.1, 16.0);
+    w.quickCloseUp->setSingleStep(0.5);
+    w.quickCloseUp->setPrefix(QStringLiteral("x"));
+    w.quickCloseUp->setValue(s.value(QStringLiteral("prefs/quickCloseUp"), 4.0).toDouble());
+    w.quickCloseUp->setToolTip(tr("View > Quick Close-up: how much closer it goes, about the pointer."));
+    w.cameraLayout->addRow(tr("Quick Close Up Zoom Factor"), w.quickCloseUp);
+    w.paperZoom = new QCheckBox(tr("Enable Paper Zoom"), w.camera);
+    w.paperZoom->setObjectName(QStringLiteral("PrefPaperZoom"));
+    w.paperZoom->setToolTip(tr("Zoom levels are of the frame's real size: at 100 % its twelve fields are twelve inches wide on this screen."));
+    w.paperZoom->setChecked(s.value(QStringLiteral("prefs/paperZoom"), false).toBool());
+    w.cameraLayout->addRow(w.paperZoom);
+    w.screenPpi = new QSpinBox(w.camera);
+    w.screenPpi->setObjectName(QStringLiteral("PrefScreenPpi"));
+    w.screenPpi->setRange(30, 600);
+    w.screenPpi->setValue(s.value(QStringLiteral("prefs/screenPpi"), qRound(QGuiApplication::primaryScreen() ? QGuiApplication::primaryScreen()->physicalDotsPerInchX() : 96.0)).toInt());
+    w.screenPpi->setToolTip(tr("How many pixels of this screen make an inch, for paper zoom."));
+    w.screenPpi->setEnabled(w.paperZoom->isChecked());
+    connect(w.paperZoom, &QCheckBox::toggled, w.screenPpi, &QWidget::setEnabled);
+    w.cameraLayout->addRow(tr("Number of Pixels per Inch"), w.screenPpi);
 
     Q_UNUSED(s);
     Q_UNUSED(dialog);

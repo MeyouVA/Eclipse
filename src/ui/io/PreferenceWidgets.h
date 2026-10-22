@@ -35,6 +35,12 @@ struct PreferenceWidgets {
     QHBoxLayout* gridParts = nullptr;
     QSpinBox* safe = nullptr;
     QCheckBox* zoomOnMouse = nullptr;
+    QSpinBox* defaultZoom = nullptr;
+    QSpinBox* zoomMin = nullptr;
+    QSpinBox* zoomMax = nullptr;
+    QDoubleSpinBox* quickCloseUp = nullptr;
+    QCheckBox* paperZoom = nullptr;
+    QSpinBox* screenPpi = nullptr;
     QGroupBox* sheet = nullptr;
     QCheckBox* extend = nullptr;
     QFormLayout* sheetLayout = nullptr;

@@ -145,7 +145,7 @@ void Canvas::wheelEvent(QWheelEvent* event)
     QPointF const anchor = event->position();
     QPointF const scenePoint = toScene(anchor);
     double const factor = std::pow(1.0015, event->angleDelta().y());
-    m_zoom = std::clamp(m_zoom * factor, 0.02, 64.0);
+    m_zoom = std::clamp(m_zoom * factor, m_zoomMin, m_zoomMax);
     emit zoomChanged();
     m_fitted = false;
     QPointF const moved = viewTransform().map(scenePoint);

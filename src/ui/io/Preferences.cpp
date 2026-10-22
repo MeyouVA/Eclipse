@@ -116,8 +116,14 @@ void MainWindow::applyPreferences()
     m_timeline->setCellWidth(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
     m_timeline->setRulerLocked(s.value(QStringLiteral("prefs/lockTimelineRuler"), false).toBool());
     m_loopPause = std::clamp(s.value(QStringLiteral("prefs/loopPause"), 0).toInt(), 0, 5000);
-    for (Canvas* const view : findChildren<Canvas*>())
+    for (Canvas* const view : findChildren<Canvas*>()) {
         view->setZoomOnMouse(s.value(QStringLiteral("prefs/zoomOnMouse"), false).toBool());
+        view->setZoomLimits(s.value(QStringLiteral("prefs/zoomMin"), 2).toInt(), s.value(QStringLiteral("prefs/zoomMax"), 6400).toInt());
+        view->setDefaultZoom(s.value(QStringLiteral("prefs/defaultZoom"), 100).toInt());
+        view->setQuickCloseUpFactor(s.value(QStringLiteral("prefs/quickCloseUp"), 4.0).toDouble());
+        view->setPaperZoom(s.value(QStringLiteral("prefs/paperZoom"), false).toBool(), s.value(QStringLiteral("prefs/screenPpi"), 96).toInt());
+        emit view->zoomChanged();
+    }
     m_actions->setChecked(QStringLiteral("LockTimelineRuler"), m_timeline->rulerLocked());
     if (PreviewManagerView* const preview = findChild<PreviewManagerView*>()) {
         preview->setSizePercent(s.value(QStringLiteral("prefs/previewSize"), 50).toInt());
@@ -354,6 +360,12 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());
     s.setValue(QStringLiteral("prefs/zoomOnMouse"), w.zoomOnMouse->isChecked());
+    s.setValue(QStringLiteral("prefs/defaultZoom"), w.defaultZoom->value());
+    s.setValue(QStringLiteral("prefs/zoomMin"), w.zoomMin->value());
+    s.setValue(QStringLiteral("prefs/zoomMax"), w.zoomMax->value());
+    s.setValue(QStringLiteral("prefs/quickCloseUp"), w.quickCloseUp->value());
+    s.setValue(QStringLiteral("prefs/paperZoom"), w.paperZoom->isChecked());
+    s.setValue(QStringLiteral("prefs/screenPpi"), w.screenPpi->value());
     s.setValue(QStringLiteral("prefs/pressureFeel"), w.pressureFeel->value());
     s.setValue(QStringLiteral("prefs/nameByFrame"), w.byFrame->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), w.gridAcross->value());

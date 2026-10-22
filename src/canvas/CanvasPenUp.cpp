@@ -311,6 +311,10 @@ void Canvas::fillUnder(Stroke& line)
 void Canvas::penUp()
 {
     Drag const drag = m_drag;
+    if (drag == DragZoom) {
+        zoomToolUp();
+        return;
+    }
     if (penUpTool(drag))
         return;
     if (drag == DragDraw) {

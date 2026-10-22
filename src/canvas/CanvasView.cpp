@@ -123,7 +123,7 @@ void Canvas::quickCloseupAt(QPointF pointer)
     m_closeup = true;
     m_closeupZoom = m_zoom;
     m_closeupPan = m_pan;
-    zoomAt(pointer, 4.0);
+    zoomAt(pointer, m_quickFactor);
     m_pan += QPointF(width() / 2.0, height() / 2.0) - pointer;
     update();
 }

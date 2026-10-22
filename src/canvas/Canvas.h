@@ -339,7 +339,12 @@ public slots:
     void onActionRotateViewCCW() { rotateView(-30.0); }
     void onActionMirrorView(bool on);
     void onActionResetRotation() { rotateView(-m_viewRotation); }
-    void onActionResetZoom() { zoomBy(1.0 / m_zoom); }
+    void onActionResetZoom() { setZoomPercent(m_defaultZoom); }
+    // The zoom as shown (per cent): of the frame's real size when paper zoom is on.
+    double zoomPercent() const;
+    void setZoomPercent(double percent);
+    double zoomUnit() const;
+    void onActionPerformZoom(QString const& way) { zoomBy(way == QLatin1String("out") ? 1.0 / 1.5 : 1.5); }
     void onActionResetPan();
     void onActionSmoothFast();
     void onActionPumpThickness();
@@ -696,6 +701,9 @@ private:
     void penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers);
     void penUp();
     void updateCursor();
+    void zoomToolDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers);
+    void zoomToolMove(QPointF widgetPos);
+    void zoomToolUp();
     QCursor toolCursor() const;
     void onDocumentChanged();
 

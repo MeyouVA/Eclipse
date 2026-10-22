@@ -332,7 +332,7 @@ void MainWindow::createCameraView()
         zoomMenu->addSeparator();
         for (int percent : {25, 50, 75, 100, 150, 200, 400, 800})
             connect(zoomMenu->addAction(QStringLiteral("%1%").arg(percent)), &QAction::triggered, this,
-                    [this, percent] { m_canvas->zoomBy(percent / 100.0 / m_canvas->zoom()); });
+                    [this, percent] { m_canvas->setZoomPercent(percent); });
         m_zoomLabel->setMenu(zoomMenu);
     }
     m_messageLabel = new QLabel(status);
@@ -413,7 +413,7 @@ void MainWindow::createCameraView()
         updateStatus();
     });
     panel->layout()->addWidget(status);
-    connect(m_canvas, &Canvas::zoomChanged, this, [this] { m_zoomLabel->setText(QStringLiteral("%1%").arg(qRound(m_canvas->zoom() * 100.0))); });
+    connect(m_canvas, &Canvas::zoomChanged, this, [this] { m_zoomLabel->setText(QStringLiteral("%1%").arg(qRound(m_canvas->zoomPercent()))); });
     layout->addWidget(viewFrame(panel, camera), 1);
     // The middle of the window holds it; it can be taken out into a window of its own, or closed.
     QWidget* const holder = new QWidget(this);

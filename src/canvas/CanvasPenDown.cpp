@@ -43,13 +43,18 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         update();
         return;
     }
+    // Override Zoom In and Out: Ctrl or Alt held with the space bar, a click zooms whatever the tool.
+    if (m_spaceDown && (modifiers & (Qt::ControlModifier | Qt::AltModifier))) {
+        zoomAt(widgetPos, modifiers & Qt::AltModifier ? 1.0 / 1.5 : 1.5);
+        return;
+    }
     if (panning || m_spaceDown || m_tool == Hand) {
         m_drag = DragPan;
         updateCursor();
         return;
     }
     if (m_tool == Zoom) {
-        zoomAt(widgetPos, modifiers & Qt::AltModifier ? 1.0 / 1.5 : 1.5);
+        zoomToolDown(widgetPos, modifiers);
         return;
     }
     if (m_tool == Turn3D) {

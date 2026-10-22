@@ -149,6 +149,16 @@ protected:
     bool m_marqueeAdds = false;
     bool m_lasso = true;
     bool m_zoomOnMouse = false;
+    // Zoom: its limits, the zoom Reset Zoom goes to, the Zoom tool's way, Quick Close Up, paper zoom (100 %: the frame its real size).
+    double m_zoomMin = 0.02, m_zoomMax = 64.0;
+    int m_defaultZoom = 100;
+    bool m_zoomToolOut = false;
+    double m_quickFactor = 4.0;
+    bool m_paperZoom = false;
+    int m_screenPpi = 96;
+    QPointF m_zoomFrom;
+    double m_zoomStart = 1.0;
+    bool m_zoomMoved = false, m_zoomOutClick = false;
     bool m_snapContour = false;
     bool m_showGuides = true;
     int m_activeGuide = -1;
