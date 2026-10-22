@@ -346,7 +346,8 @@ bool Canvas::penUpSelection(Drag drag)
         Drawing const edited = previewDrawing();
         m_drag = DragNone;
         QString const text = drag == DragMove ? tr("Move") : drag == DragScale ? (m_tool == Perspective ? tr("Perspective") : tr("Scale")) : tr("Rotate");
-        bool const everywhere = m_applyAll && m_tool == Select;
+        bool const everywhere = (m_applyAll || m_applyOnion) && m_tool == Select;
+        QSet<int> const onion = m_applyAll ? QSet<int>() : onionDrawings();
         QRectF const region = everywhere ? selectionBounds() : QRectF();
         QTransform const done = m_dragTransform;
         bool const all = m_tool == Reposition;
@@ -358,7 +359,7 @@ bool Canvas::penUpSelection(Drag drag)
             m_document->endMacro();
         }
         if (everywhere) {
-            alsoInOtherDrawings(region, &done, text);
+            alsoInOtherDrawings(region, &done, text, m_applyAll ? nullptr : &onion);
             m_document->endMacro();
         }
     }

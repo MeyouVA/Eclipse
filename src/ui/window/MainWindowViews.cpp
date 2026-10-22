@@ -231,7 +231,8 @@ void MainWindow::createViews()
         QString const own = d->windowTitle() == tr("Timeline") ? QStringLiteral("menu.timeline")
                             : d->windowTitle() == tr("Xsheet") ? QStringLiteral("menu.xsheet")
                             : d->windowTitle() == tr("Node View") ? QStringLiteral("menu.nodeView")
-                            : d->windowTitle() == tr("Colour") ? QStringLiteral("menu.colourView") : QString();
+                            : d->windowTitle() == tr("Colour") ? QStringLiteral("menu.colourView")
+                            : d->windowTitle() == tr("Onion Skin") ? QStringLiteral("menu.onionSkinView") : QString();
         if (!own.isEmpty())
             bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
     }

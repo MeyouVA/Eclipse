@@ -490,6 +490,17 @@ void MainWindow::preferencesOnion(PreferenceWidgets& w, QSettings& s, QDialog& d
     w.onionOver->setToolTip(tr("The onion skins are shown on top of everything, rather than underneath the drawing being worked on."));
     w.onionOver->setChecked(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
     w.onionLayout->addRow(w.onionOver);
+    w.onionStyle = new QComboBox(w.onionPage);
+    w.onionStyle->setObjectName(QStringLiteral("PrefOnionStyle"));
+    w.onionStyle->addItems({tr("Tinted"), tr("Original Colours"), tr("Outlines")});
+    w.onionStyle->setToolTip(tr("How the drawings before and after are shown: washed with the onion skin colours, in their own colours, or as outlines."));
+    w.onionStyle->setCurrentIndex(m_canvas->onionOutlines() ? 2 : m_canvas->onionOriginal() ? 1 : 0);
+    w.onionLayout->addRow(tr("Onion Skin Render Style"), w.onionStyle);
+    w.onionOthers = new QCheckBox(tr("Enable Onion Skin for Other Elements"), w.onionPage);
+    w.onionOthers->setObjectName(QStringLiteral("PrefOnionOthers"));
+    w.onionOthers->setToolTip(tr("Layers added to the onion skin (Timeline) show theirs too; off, only the layer worked on does."));
+    w.onionOthers->setChecked(m_canvas->onionOthers());
+    w.onionLayout->addRow(w.onionOthers);
 
     Q_UNUSED(s);
     Q_UNUSED(dialog);

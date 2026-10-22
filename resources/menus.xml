@@ -627,6 +627,8 @@
   <separator/>
   <item id="OnionByFrames" icon="view/onionbyframe" text="Onion Skin by &amp;Frames" shortcut="shortcut.onionByFrames" responder="camera" slot="onActionOnionBy(QString)" itemParameter="frames"/>
   <item id="OnionByDrawings" icon="view/onionbydrawing" text="Onion Skin by &amp;Drawings" shortcut="shortcut.onionByDrawings" responder="camera" slot="onActionOnionBy(QString)" itemParameter="drawings"/>
+  <item id="OnionOthers" text="Enable Onion Skin for &amp;Other Elements" shortcut="shortcut.onionOthers" checkable="true" checked="true" responder="camera" slot="onActionOnionOthers(bool)"/>
+  <item id="ApplyToOnionRange" text="&amp;Apply Tool to Onion Skin Range" shortcut="shortcut.applyOnionRange" checkable="true" responder="camera" slot="onActionApplyToOnionRange(bool)"/>
   <separator/>
   <item id="OnionAddLayers" icon="timeline/onionlayer" text="Add to Onion Skin" shortcut="shortcut.onionAddLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="add"/>
   <item id="OnionRemoveLayers" icon="timeline/onionlayer" text="Remove from Onion Skin" shortcut="shortcut.onionRemoveLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="remove"/>
@@ -635,6 +637,15 @@
   <item id="OnionRemoveAllLayers" icon="timeline/onionlayer" text="Remove All from Onion Skin" shortcut="shortcut.onionRemoveAllLayers" responder="window" slot="onActionOnionLayers(QString)" itemParameter="removeAll"/>
   <separator/>
   <item id="TopLight" icon="view/toplight" text="&amp;Top Light..." shortcut="shortcut.topLight" responder="window" slot="onActionTopLight()"/>
+ </menu>
+
+ <menu id="menu.onionSkinView" text="Onion Skin View Menu">
+  <item id="OnionAdvanced" text="A&amp;dvanced Onion Skin" checkable="true" checked="true" responder="window" slot="onActionOnionAdvanced(bool)"/>
+  <separator/>
+  <item id="OnionByFrames"/>
+  <item id="OnionByDrawings"/>
+  <separator/>
+  <item id="OnionOthers"/>
  </menu>
 
  <!-- Right-click menus of the views. -->

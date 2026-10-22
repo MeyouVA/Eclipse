@@ -459,6 +459,7 @@ public slots:
     void onActionPasteSpecialAgain();
     void onActionRenameWithPrefix();
     void onActionOnionLayers(QString const& which);
+    void onActionOnionAdvanced(bool on);
     void onActionTransformMode(QString const& mode);
     void onActionRenderAndPlay();
     void onActionMiniPlayback();

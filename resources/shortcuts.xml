@@ -229,6 +229,8 @@
   <shortcut id="shortcut.onionThreeNext" text="Onion Skin: Next Three Drawings" value="Ctrl+3"/>
   <shortcut id="shortcut.onionByFrames" text="Onion Skin by Frames" value=""/>
   <shortcut id="shortcut.onionByDrawings" text="Onion Skin by Drawings" value=""/>
+  <shortcut id="shortcut.onionOthers" text="Enable Onion Skin for Other Elements" value=""/>
+  <shortcut id="shortcut.applyOnionRange" text="Apply Tool to Onion Skin Range" value=""/>
   <shortcut id="shortcut.onionAddLayers" text="Add to Onion Skin" value=""/>
   <shortcut id="shortcut.onionRemoveLayers" text="Remove from Onion Skin" value=""/>
   <shortcut id="shortcut.onionRemoveUnselected" text="Remove Unselected from Onion Skin" value=""/>

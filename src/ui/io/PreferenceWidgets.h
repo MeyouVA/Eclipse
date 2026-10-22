@@ -86,6 +86,8 @@ struct PreferenceWidgets {
     QSpinBox* onionFurthest = nullptr;
     QCheckBox* onionBrightness = nullptr;
     QCheckBox* onionOver = nullptr;
+    QComboBox* onionStyle = nullptr;
+    QCheckBox* onionOthers = nullptr;
     QGroupBox* soundPage = nullptr;
     QCheckBox* soundOn = nullptr;
     QCheckBox* scrub = nullptr;

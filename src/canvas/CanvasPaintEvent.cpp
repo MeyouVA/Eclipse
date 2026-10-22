@@ -33,11 +33,11 @@ void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& dr
                 s.swatch = -1;
             }
         }
-        paintDrawing(painter, scene, faded, opacity, &tint);
+        paintDrawing(painter, scene, faded, opacity, m_onionOriginal ? nullptr : &tint);
         return;
     }
     if (!m_onionOutlines) {
-        paintDrawing(painter, scene, drawing, opacity, &tint);
+        paintDrawing(painter, scene, drawing, opacity, m_onionOriginal ? nullptr : &tint);
         return;
     }
     painter.save();
@@ -239,7 +239,7 @@ void Canvas::paintView()
     // Onion skin: the neighbouring drawings of the layer being edited, tinted - underneath it, or (Preferences) over everything.
     auto onionsOf = [&](int l) {
         Layer const& layer = scene.layers[l];
-        if (!m_onionSkin || m_playing || (l != m_layer && !layer.onion))
+        if (!m_onionSkin || m_playing || (l != m_layer && (!layer.onion || !m_onionOthers)))
             return;
         // Each is shown where the layer is on its own frame; the further off, the fainter.
         double const strength = m_onionOpacity / 100.0;

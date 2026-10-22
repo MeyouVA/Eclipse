@@ -373,6 +373,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/initialTool"), w.initialTool->currentData().toString());
     s.setValue(QStringLiteral("prefs/scalePencilThickness"), w.scalePencil->isChecked());
     s.setValue(QStringLiteral("prefs/onionOver"), w.onionOver->isChecked());
+    s.setValue(QStringLiteral("prefs/onionOriginal"), w.onionStyle->currentIndex() == 1);
+    m_canvas->setOnionOriginal(w.onionStyle->currentIndex() == 1);
+    m_canvas->setOnionOutlines(w.onionStyle->currentIndex() == 2);
+    m_canvas->setOnionOthers(w.onionOthers->isChecked());
     s.setValue(QStringLiteral("prefs/selectLasso"), w.selectLasso->isChecked());
     s.setValue(QStringLiteral("prefs/showStrokes"), w.showStrokes->isChecked());
     s.setValue(QStringLiteral("prefs/drawingCycle"), w.drawingCycle->isChecked());

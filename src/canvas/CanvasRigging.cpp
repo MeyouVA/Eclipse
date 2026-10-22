@@ -429,7 +429,7 @@ QColor Canvas::onionStepColour(bool after, int step) const
     return after ? m_onionAfter : m_onionBefore;
 }
 
-void Canvas::alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text)
+void Canvas::alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text, QSet<int> const* only)
 {
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size() || region.isNull())
@@ -445,7 +445,7 @@ void Canvas::alsoInOtherDrawings(QRectF const& region, QTransform const* transfo
     m_committing = true;
     for (int f = 0; f < cells.size(); ++f) {
         int const index = cells[f];
-        if (index < 0 || index >= drawings.size() || done[index])
+        if (index < 0 || index >= drawings.size() || done[index] || (only && !only->contains(index)))
             continue;
         done[index] = true;
         Drawing whole = drawings[index];

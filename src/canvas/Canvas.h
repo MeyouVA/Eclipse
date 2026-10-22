@@ -201,6 +201,11 @@ public:
     void setOnionByFrame(bool on);
     // The drawings before and after as outlines only: the edges of their paint and the paths of their lines.
     void setOnionOutlines(bool on);
+    void setOnionOriginal(bool on);
+    void setOnionOthers(bool on);
+    void setApplyToOnionRange(bool on);
+    // The drawings of the layer worked on that the onion skin shows now (by index in the layer).
+    QSet<int> onionDrawings() const;
     // Only the drawings marked so (Drawing::Mark) are shown before and after; NoMark: all of them.
     void setOnionMark(int mark);
     void setOnionColours(QColor const& before, QColor const& after);
@@ -419,6 +424,8 @@ public slots:
     void onActionOnionNext(QString const& count) { setOnionRange(m_onionPrev, count.toInt()); }
     // "frames" or "drawings": what counts as the one before.
     void onActionOnionBy(QString const& what) { setOnionByFrame(what == QLatin1String("frames")); }
+    void onActionOnionOthers(bool on) { setOnionOthers(on); }
+    void onActionApplyToOnionRange(bool on) { setApplyToOnionRange(on); }
     void onActionOnionReducePrevious() { setOnionRange(m_onionPrev - 1, m_onionNext); }
     void onActionOnionReduceNext() { setOnionRange(m_onionPrev, m_onionNext - 1); }
     void onActionOnionAddNext() { setOnionRange(m_onionPrev, m_onionNext + 1); }
@@ -780,7 +787,7 @@ private:
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint) const;
     // What a symbol shows on one of its frames, painted where the painter stands (the sheet of the layer that shows it).
     static void paintSymbol(QPainter& painter, Scene const& scene, int symbolId, int frame);
-    void alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text);
+    void alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text, QSet<int> const* only = nullptr);
     void paintBoneLayers(QPainter& painter);
     void paintQuadAids(QPainter& painter);
     void beginText(QPointF widgetPos, QPointF layerPos, QString const& words = QString());

@@ -405,6 +405,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_textRow, text);
     m_form->setRowVisible(m_paraRow, text);
     m_form->setRowVisible(m_applyAll, tool == T::Select);
+    m_form->setRowVisible(m_applyOnion, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
     for (QWidget* const row : std::as_const(m_paintRows))
         m_form->setRowVisible(row, Canvas::isPaintTool(Canvas::Tool(tool)));

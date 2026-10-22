@@ -186,14 +186,18 @@ QWidget* MainWindow::createOnionSkinView()
         previous->setValue(m_canvas->onionPrevious());
         next->setValue(m_canvas->onionNext());
         opacity->setValue(m_canvas->onionOpacity());
-        // The command in the menus and on the toolbar is ticked with it.
+        // The commands in the menus and on the toolbar are ticked with it.
         m_actions->setChecked(QStringLiteral("OnionSkinToggle"), m_canvas->onionSkin());
+        m_actions->setChecked(QStringLiteral("OnionOthers"), m_canvas->onionOthers());
+        m_actions->setChecked(QStringLiteral("ApplyToOnionRange"), m_canvas->appliesToOnionRange());
     };
     follow();
     {
         QSettings const s = settings();
         m_canvas->setOnionByFrame(s.value(QStringLiteral("onion/byFrame"), false).toBool());
         m_canvas->setOnionOutlines(s.value(QStringLiteral("onion/outlines"), false).toBool());
+        m_canvas->setOnionOthers(s.value(QStringLiteral("onion/others"), true).toBool());
+        m_canvas->setOnionOriginal(s.value(QStringLiteral("prefs/onionOriginal"), false).toBool());
         m_canvas->setOnionColours(QColor(s.value(QStringLiteral("onion/before"), m_canvas->onionBefore().name()).toString()),
                                   QColor(s.value(QStringLiteral("onion/after"), m_canvas->onionAfter().name()).toString()));
         QStringList const kept = s.value(QStringLiteral("onion/strengths")).toString().split(QLatin1Char(','), Qt::SkipEmptyParts);
@@ -211,6 +215,7 @@ QWidget* MainWindow::createOnionSkinView()
         QSettings s = settings();
         s.setValue(QStringLiteral("onion/byFrame"), m_canvas->onionByFrame());
         s.setValue(QStringLiteral("onion/outlines"), m_canvas->onionOutlines());
+        s.setValue(QStringLiteral("onion/others"), m_canvas->onionOthers());
         s.setValue(QStringLiteral("onion/before"), m_canvas->onionBefore().name());
         s.setValue(QStringLiteral("onion/after"), m_canvas->onionAfter().name());
         QStringList strengths;
@@ -230,7 +235,17 @@ QWidget* MainWindow::createOnionSkinView()
     connect(previous, &QSpinBox::valueChanged, this, [this](int v) { m_canvas->setOnionRange(v, m_canvas->onionNext()); });
     connect(next, &QSpinBox::valueChanged, this, [this](int v) { m_canvas->setOnionRange(m_canvas->onionPrevious(), v); });
     connect(opacity, &QSlider::valueChanged, m_canvas, &Canvas::setOnionOpacity);
+    onActionOnionAdvanced(settings().value(QStringLiteral("onion/advanced"), true).toBool());
     return onion;
+}
+
+void MainWindow::onActionOnionAdvanced(bool on)
+{
+    // Advanced Onion Skin: the strength and colour of each drawing before and after, one by one.
+    if (QWidget* const bank = findChild<QWidget*>(QStringLiteral("OnionBank")))
+        bank->setVisible(on);
+    m_actions->setChecked(QStringLiteral("OnionAdvanced"), on);
+    settings().setValue(QStringLiteral("onion/advanced"), on);
 }
 
 // Message Log: what the program has said, with the time it said it.

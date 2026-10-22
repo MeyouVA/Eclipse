@@ -113,13 +113,15 @@ void Canvas::deleteSelection()
             if (!m_selPictures.contains(i))
                 kept.pictures.push_back(d->pictures[i]);
     QRectF const region = selectionBounds();
-    if (m_applyAll && m_tool == Select)
+    bool const everywhere = (m_applyAll || m_applyOnion) && m_tool == Select;
+    QSet<int> const onion = m_applyAll ? QSet<int>() : onionDrawings();
+    if (everywhere)
         m_document->beginMacro(tr("Delete"));
     m_keepNoPictures = picturesGo;
     commitDrawing(kept, tr("Delete"));
     m_keepNoPictures = false;
-    if (m_applyAll && m_tool == Select) {
-        alsoInOtherDrawings(region, nullptr, tr("Delete"));
+    if (everywhere) {
+        alsoInOtherDrawings(region, nullptr, tr("Delete"), m_applyAll ? nullptr : &onion);
         m_document->endMacro();
     }
     setSelection({}, {});

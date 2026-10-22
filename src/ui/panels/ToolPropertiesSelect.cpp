@@ -101,6 +101,15 @@ void ToolProperties::addSelectRows()
                               "in the other drawings, whatever lies within the place the selection had."));
     connect(m_applyAll, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToAllDrawings);
     m_form->addRow(m_applyAll);
+    m_applyOnion = new QCheckBox(tr("Apply to Onion Skin Range"), this);
+    m_applyOnion->setObjectName(QStringLiteral("SelectOnionRange"));
+    m_applyOnion->setToolTip(tr("What you move, scale, turn or delete is changed the same way in the drawings the onion skin shows."));
+    connect(m_applyOnion, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToOnionRange);
+    connect(m_canvas, &Canvas::onionChanged, m_applyOnion, [this] {
+        QSignalBlocker const quiet(m_applyOnion);
+        m_applyOnion->setChecked(m_canvas->appliesToOnionRange());
+    });
+    m_form->addRow(m_applyOnion);
     // The Stamp tool: how big the stamp comes out.
     m_canvas->loadStamp();
     m_stampScale = new QSpinBox(this);
