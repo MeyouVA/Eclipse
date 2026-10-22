@@ -9,7 +9,7 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 // What Copy put aside: shared by every canvas, lost when the program closes.
 static Drawing s_clipboard;

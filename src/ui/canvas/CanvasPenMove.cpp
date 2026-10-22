@@ -6,7 +6,7 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers)
 {

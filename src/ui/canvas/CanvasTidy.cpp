@@ -13,7 +13,7 @@
 #include <numeric>
 
 #include "model/document/Commands.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 #include "ui/window/MainWindowPrivate.h"
 #include <QCheckBox>
 #include <QComboBox>

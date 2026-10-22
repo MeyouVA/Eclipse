@@ -18,7 +18,7 @@
 #include <QSettings>
 
 #include "model/document/Commands.h"
-#include "ui/panels/Effects.h"
+#include "ui/panels/EffectsPanel.h"
 
 QDoubleSpinBox* LayerPanel::number(double min, double max, double step, int decimals)
 {

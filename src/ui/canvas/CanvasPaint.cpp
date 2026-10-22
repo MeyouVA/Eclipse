@@ -17,7 +17,7 @@
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
 #include "ui/canvas/PencilTexture.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill const& fill, QBrush const& color)
 {

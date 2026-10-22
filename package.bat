@@ -29,10 +29,11 @@ rem The libraries the program is made of: they must stay beside it.
 copy /y out\EclipseModel.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseAudio.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseFormats.dll Release.new\ >nul || exit /b 1
+copy /y out\EclipseRender.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseActions.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseUi.dll Release.new\ >nul || exit /b 1
 xcopy /e /i /q /y resources Release.new\resources >nul || exit /b 1
-"%QT_ROOT%\bin\windeployqt.exe" --release --no-translations Release.new\Eclipse.exe Release.new\EclipseUi.dll Release.new\EclipseActions.dll Release.new\EclipseFormats.dll Release.new\EclipseAudio.dll Release.new\EclipseModel.dll >nul || exit /b 1
+"%QT_ROOT%\bin\windeployqt.exe" --release --no-translations Release.new\Eclipse.exe Release.new\EclipseUi.dll Release.new\EclipseActions.dll Release.new\EclipseFormats.dll Release.new\EclipseRender.dll Release.new\EclipseAudio.dll Release.new\EclipseModel.dll >nul || exit /b 1
 
 if exist Release rmdir /s /q Release
 if exist Release (

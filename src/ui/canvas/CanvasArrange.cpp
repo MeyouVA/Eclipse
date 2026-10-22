@@ -7,7 +7,7 @@
 #include <numeric>
 
 #include "model/document/Commands.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 int Canvas::pointThickness() const
 {

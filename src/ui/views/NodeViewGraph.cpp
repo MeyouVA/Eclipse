@@ -22,7 +22,7 @@
 #include <functional>
 
 #include "model/document/Commands.h"
-#include "ui/panels/Effects.h"
+#include "ui/panels/EffectsPanel.h"
 
 namespace {
 

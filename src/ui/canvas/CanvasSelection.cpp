@@ -5,7 +5,7 @@
 #include <numeric>
 
 #include "model/document/Commands.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 void Canvas::setSelection(QVector<int> const& strokes, QVector<int> const& fills, QVector<int> const& pictures)
 {

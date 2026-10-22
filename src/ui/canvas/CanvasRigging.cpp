@@ -10,7 +10,7 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 // ---- bones --------------------------------------------------------------------------------
 // The rigging tool lays the chain out on the artwork at rest: each click adds a joint (and

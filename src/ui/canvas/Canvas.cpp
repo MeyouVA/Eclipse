@@ -9,7 +9,7 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
 {

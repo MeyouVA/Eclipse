@@ -13,7 +13,7 @@
 #include <cmath>
 
 #include "model/document/Commands.h"
-#include "ui/panels/Effects.h"
+#include "render/effects/Effects.h"
 
 NodeView::NodeView(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
 {
