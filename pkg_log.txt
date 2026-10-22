@@ -1,0 +1,9 @@
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Configuring done (1.1s)
+-- Generating done (0.3s)
+-- Build files have been written to: U:/Programs/AI/Claude/Eclipse/out
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+Release folder ready: U:\Programs\AI\Claude\Eclipse\Release

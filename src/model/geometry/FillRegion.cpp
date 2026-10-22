@@ -39,7 +39,9 @@ static void rasterWalls(QPainter& painter, QVector<Stroke> const& strokes, doubl
             continue;
         Wall w;
         w.line = stroke.path();
-        w.closed = stroke.closed;
+        // A line with paint of its own inside (Auto Fill) is a closed shape: its paint goes round from its end back to its
+        // start, so that is walled too (nothing leaks in where its ends only nearly meet).
+        w.closed = stroke.closed || stroke.link != 0;
         w.width = std::max(0.0, double(stroke.width));
         w.roundStart = stroke.capStart == Stroke::RoundCap;
         w.roundEnd = stroke.capEnd == Stroke::RoundCap;
@@ -162,7 +164,7 @@ public:
         for (Stroke const& stroke : strokes) {
             QVector<StrokePoint> const run = stroke.path();
             int const count = int(run.size());
-            int const pieces = count - 1 + (stroke.closed && count > 2 ? 1 : 0);
+            int const pieces = count - 1 + ((stroke.closed || stroke.link != 0) && count > 2 ? 1 : 0);
             for (int i = 0; i < pieces; ++i) {
                 QLineF const piece(run[i].pos, run[(i + 1) % count].pos);
                 int const index = int(m_pieces.size());

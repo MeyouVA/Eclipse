@@ -566,10 +566,22 @@ void Canvas::penUp()
         if (finishing)
             m_document->beginMacro(tr("Draw Stroke"));
         // Auto Fill: a line whose ends meet is painted inside.
+        // (However thin the shape - a lid, a teardrop - as long as it goes round some room of its own.)
         double const reach = m_stroke.width / 2.0 + 8.0 / std::max(m_zoom, 1e-6);
         QRectF const box = m_stroke.bounds();
+        double room = 0.0;
+        {
+            QVector<StrokePoint> const run = m_stroke.path();
+            for (int i = 0; i < run.size(); ++i) {
+                QPointF const a = run[i].pos, b = run[(i + 1) % run.size()].pos;
+                room += a.x() * b.y() - b.x() * a.y();
+            }
+            room = std::abs(room) / 2.0;
+        }
+        double const least = std::max(double(m_stroke.width), 2.0 / std::max(m_zoom, 1e-6));
         if (m_lineAutoFill && (m_tool == Brush || m_tool == Pencil) && m_stroke.points.size() >= 3 && !bitmapNow()
-            && QLineF(m_stroke.points.first().pos, m_stroke.points.last().pos).length() <= reach && std::min(box.width(), box.height()) > reach * 2.0) {
+            && QLineF(m_stroke.points.first().pos, m_stroke.points.last().pos).length() <= reach && std::max(box.width(), box.height()) > reach * 2.0
+            && room > least * least * 4.0) {
             m_document->beginMacro(tr("Draw Stroke"));
             fillUnder(m_stroke);
             keepStroke(m_stroke, true, tolerance);
