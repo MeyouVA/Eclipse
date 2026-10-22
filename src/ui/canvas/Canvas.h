@@ -1021,6 +1021,9 @@ private:
     void paintContourAids(QPainter& painter);
     void paintMarquee(QPainter& painter);
     void paintView();
+    // Its parts: the frame's edge, grids, guides and each tool's aids (true when nothing more is to be painted), then the selection's.
+    bool paintViewAids(QPainter& painter, QRectF const& frameRect, QTransform const& view);
+    void paintSelectionAids(QPainter& painter);
     bool contourValid() const;
     void paintTransformAids(QPainter& painter);
     void penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);
