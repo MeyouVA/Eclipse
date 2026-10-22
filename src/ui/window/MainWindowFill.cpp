@@ -92,10 +92,7 @@ void MainWindow::onActionSequenceFill()
 
 void MainWindow::onActionHoldExposure()
 {
-    bool ok = false;
-    int const length = QInputDialog::getInt(this, tr("Hold Exposure"), tr("Frames the drawing is held for:"), 2, 1, 999, 1, &ok);
-    if (ok)
-        onActionSetExposure(length);
+    onActionHoldCells(QStringLiteral("ask"));
 }
 
 void MainWindow::onActionUngroupLayers()

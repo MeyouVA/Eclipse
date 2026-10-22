@@ -31,7 +31,7 @@ class QToolBar;
 class SubstitutionPanel;
 class PalettePanel;
 class ColourEditor;
-class Timeline;
+#include "ui/timeline/Timeline.h"
 class ViewTitleBar;
 
 struct MovieChoices {
@@ -442,6 +442,11 @@ public slots:
     void onActionFillSelection();
     void onActionSequenceFill();
     void onActionHoldExposure();
+    void onActionSetExposureAsk();
+    void onActionHoldCells(QString const& every);
+    void onActionFillCellsRandomly();
+    void onActionExtendExposureTo();
+    void onActionExtendExposureToEnd();
     // Quick ease on the keyframes of the layers and frames selected: "in", "out", "both" or "none".
     void onActionSetEase(QString const& which);
     void onActionShowLayerProperties();
@@ -457,6 +462,9 @@ public slots:
     void onActionMarkFrame(QString const& colour);
     void onActionLayerKeys(QString const& how);
     void onActionPasteSpecialAgain();
+    void onActionEditExposurePreset();
+    void onActionPasteModeExposure(bool on);
+    void onActionPasteModeCycle();
     void onActionRenameWithPrefix();
     void onActionOnionLayers(QString const& which);
     void onActionOnionAdvanced(bool on);
@@ -597,6 +605,13 @@ private:
     void askImportImages(bool linked, QStringList const& files = {});
     QWidget* makeReferenceView();
     QListWidget* m_references = nullptr;
+    // The frames an exposure command works on, for a layer.
+    void cellRange(int layer, int* first, int* last) const;
+public:
+    int holdCells(int every);
+    bool fillCellsRandomly(int layer, int first, int last, int shortest, int longest, quint32 seed);
+    bool extendExposureTo(int layer, int from, int to);
+private:
     QListWidget* m_desk = nullptr;
     int m_deskThumbnails = 2;
     QWidget* createDeskView();
@@ -611,8 +626,9 @@ private:
     void playFrameSound(int frame);
     int m_envelopePoints = 8;      // how many points Create Envelope puts round a drawing
     // Paste Special as it was last asked for (Paste Special Again does the same without asking).
-    bool m_pasteDrawings = true, m_pasteKeys = true, m_pasteReverse = false;
-    int m_pasteCycles = 1;
+    Timeline::PasteOptions m_paste, m_pasteExposure;
+    bool m_pasteExposuresOnly = false;
+    bool pasteDialog(Timeline::PasteOptions& options, QString const& title);
     bool m_envelopeOutline = true; // ... round the outline of the artwork itself, not the hull round it
     QStringList m_referenceFiles;
     // Brings a view up: back where it was, or as a tab behind Tool Properties.

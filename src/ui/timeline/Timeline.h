@@ -100,7 +100,18 @@ public:
     void extendSelection(int layer, int frame);
     // A layer picked on its own with Ctrl, besides the block: in or out.
     void toggleLayer(int layer);
+    struct PasteOptions {
+        bool drawings = true, keyframes = true;
+        int cycles = 1;
+        bool reverse = false;
+        int drawingMode = -1;       // CellBlock::DrawingMode
+        int parts = 1023;           // Keyframe::Part
+        bool matchNames = false, pivot = false;
+    };
     void pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse);
+    void pasteSpecial(PasteOptions const& options);
+    // A paste preset: the plain Paste pastes as it says (none: as it always does).
+    void setPastePreset(PasteOptions const* preset) { m_hasPreset = preset != nullptr; if (preset) m_preset = *preset; }
     // These layers picked besides the current one (those that are not it).
     void setExtraLayers(QVector<int> const& layers);
     // Whether sound layers show how loud the sound is along their row.
@@ -251,7 +262,9 @@ private:
     int m_markerGrab = 0;      // how many frames into it it was taken hold of
     int m_markerFrame = 0;     // where it starts as it is dragged
     bool m_dragEnd = false;    // the end of the scene is being dragged
-    bool m_rulerLocked = false;    // Lock Timeline Ruler: the end of the scene stays where it is
+    bool m_rulerLocked = false;
+    bool m_hasPreset = false;
+    PasteOptions m_preset;    // Lock Timeline Ruler: the end of the scene stays where it is
     // The far corner of the block selected, from the current cell; -1 when there is none.
     int m_extentRow = -1;
     int m_extentFrame = -1;

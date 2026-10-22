@@ -155,6 +155,10 @@ void Timeline::paste()
         emit pasteArtwork();
         return;
     }
+    if (m_hasPreset) {
+        pasteSpecial(m_preset);
+        return;
+    }
     pasteBlock(cellClipboard(), selectionFirstFrame());
 }
 
@@ -174,17 +178,31 @@ void Timeline::pasteBlock(CellBlock const& block, int frame)
 
 void Timeline::pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse)
 {
+    PasteOptions options;
+    options.drawings = drawings;
+    options.keyframes = keyframes;
+    options.cycles = cycles;
+    options.reverse = reverse;
+    pasteSpecial(options);
+}
+
+void Timeline::pasteSpecial(PasteOptions const& options)
+{
     CellBlock block = cellClipboard();
-    if (block.isEmpty() || (!drawings && !keyframes))
+    if (block.isEmpty() || (!options.drawings && !options.keyframes))
         return;
-    if (reverse)
+    if (options.reverse)
         block = block.reversed();
-    if (cycles > 1)
-        block = block.repeated(cycles);
-    if (!drawings)
+    if (options.cycles > 1)
+        block = block.repeated(options.cycles);
+    if (!options.drawings)
         for (CellBlock::Row& row : block.rows)
             row.holdsDrawings = false;      // the cells where it lands keep what they show
-    block.leaveKeys = !keyframes;
+    block.leaveKeys = !options.keyframes;
+    block.drawingMode = options.drawingMode;
+    block.keyParts = options.parts;
+    block.matchNames = options.matchNames;
+    block.pastePivot = options.pivot;
     pasteBlock(block, selectionFirstFrame());
 }
 

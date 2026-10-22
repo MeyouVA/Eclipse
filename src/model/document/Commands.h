@@ -20,7 +20,17 @@ struct CellBlock {
         QVector<Drawing> drawings;
         QVector<int> cells;        // one per frame of the block: index into `drawings`, or -1
         QVector<Keyframe> keys;    // their frames count from the start of the block
+        QStringList labels;        // what each of `drawings` went by in its layer
+        QString layerName;
+        QPointF pivot;
     };
+    // Paste Special: what becomes of the drawings (-1: copies, as a plain paste makes) ...
+    enum DrawingMode { CopyDrawings = -1, TimingOnly, CreateMissing, CreateOverwrite, CreateRenamed };
+    int drawingMode = CopyDrawings;
+    // ... the parts of the keyframes pasted (Keyframe::Part), the layers met by name, the pivot taken along.
+    int keyParts = 1023;
+    bool matchNames = false;
+    bool pastePivot = false;
     int frames = 0;
     QVector<Row> rows;
     bool isEmpty() const { return frames <= 0 || rows.isEmpty(); }

@@ -253,6 +253,23 @@
   <shortcut id="shortcut.toolPerspective" text="Perspective Tool" value="Alt+0"/>
   <shortcut id="shortcut.toolPencilEditor" text="Pencil Editor Tool" value=""/>
   <shortcut id="shortcut.toolPencilRetouch" text="Pencil Retouch Tool" value=""/>
+  <shortcut id="shortcut.setExposure1" text="Set Exposure to 1" value=""/>
+  <shortcut id="shortcut.setExposure2" text="Set Exposure to 2" value=""/>
+  <shortcut id="shortcut.setExposure3" text="Set Exposure to 3" value=""/>
+  <shortcut id="shortcut.setExposure4" text="Set Exposure to 4" value=""/>
+  <shortcut id="shortcut.setExposure5" text="Set Exposure to 5" value=""/>
+  <shortcut id="shortcut.setExposure6" text="Set Exposure to 6" value=""/>
+  <shortcut id="shortcut.setExposure7" text="Set Exposure to 7" value=""/>
+  <shortcut id="shortcut.setExposure8" text="Set Exposure to 8" value=""/>
+  <shortcut id="shortcut.setExposure9" text="Set Exposure to 9" value=""/>
+  <shortcut id="shortcut.setExposure" text="Set Exposure" value=""/>
+  <shortcut id="shortcut.hold1" text="Set Hold 1 Cell" value=""/>
+  <shortcut id="shortcut.hold2" text="Set Hold 2 Cells" value=""/>
+  <shortcut id="shortcut.hold3" text="Set Hold 3 Cells" value=""/>
+  <shortcut id="shortcut.hold4" text="Set Hold 4 Cells" value=""/>
+  <shortcut id="shortcut.holdCustom" text="Set Custom Hold Cell" value=""/>
+  <shortcut id="shortcut.pasteModeExposure" text="Paste mode: Set exposures only" value=""/>
+  <shortcut id="shortcut.pasteModeCycle" text="Paste mode: Cycle through presets" value=""/>
   <shortcut id="shortcut.toolShiftTrace" text="Shift and Trace Tool" value=""/>
   <shortcut id="shortcut.shiftTraceToggleView" text="Desk: Shift Trace Toggle View" value=""/>
   <shortcut id="shortcut.shiftTraceManipulator" text="Desk: Shift Trace Toggle Manipulator" value=""/>

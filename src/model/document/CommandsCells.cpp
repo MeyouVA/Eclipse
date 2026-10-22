@@ -64,6 +64,7 @@ CellBlock Document::copyCells(QVector<int> const& layers, int first, int last) c
                 seen.push_back(index);
                 row.drawings.push_back(layer.drawings[index]);
                 row.drawings.last().pinned = false;
+                row.labels.push_back(layer.drawingLabel(index));
             }
             row.cells.push_back(at);
         }
@@ -73,6 +74,8 @@ CellBlock Document::copyCells(QVector<int> const& layers, int first, int last) c
             key.frame -= first;
             row.keys.push_back(key);
         }
+        row.layerName = layer.name;
+        row.pivot = layer.pivot;
         block.rows.push_back(row);
     }
     return block;
