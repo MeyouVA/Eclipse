@@ -8,7 +8,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -131,7 +131,7 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     };
     showPaper(QColor(255, 255, 255));
     connect(paper, &QPushButton::clicked, &dialog, [paper, showPaper, &dialog] {
-        QColor const chosen = QColorDialog::getColor(paper->property("colour").value<QColor>(), &dialog, tr("Paper"));
+        QColor const chosen = ColourEditor::getColour(paper->property("colour").value<QColor>(), &dialog, tr("Paper"));
         if (chosen.isValid())
             showPaper(chosen);
     });

@@ -6,7 +6,7 @@
 
 #include <QAction>
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -49,7 +49,7 @@ void ToolProperties::addModeRows()
         m_canvas->setPushHighlight(kept.isValid() ? kept : QColor(255, 140, 0));
         show(m_canvas->pushHighlight());
         connect(colour, &QPushButton::clicked, this, [this, show] {
-            QColor const chosen = QColorDialog::getColor(m_canvas->pushHighlight(), this, tr("Highlight Colour"));
+            QColor const chosen = ColourEditor::getColour(m_canvas->pushHighlight(), this, tr("Highlight Colour"));
             if (!chosen.isValid())
                 return;
             m_canvas->setPushHighlight(chosen);

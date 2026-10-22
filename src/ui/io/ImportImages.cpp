@@ -8,7 +8,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>

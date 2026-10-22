@@ -14,7 +14,7 @@
 #include <QRadioButton>
 #include <QVBoxLayout>
 
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QInputDialog>
 #include <QMessageBox>
 
@@ -98,7 +98,7 @@ void MainWindow::pickTrackColour(int l)
     if (l < 0 || l >= m_document->scene().layers.size())
         return;
     QColor const now = m_document->scene().layers[l].trackColor;
-    QColor const chosen = QColorDialog::getColor(now.isValid() ? now : QColor(120, 120, 120), this, tr("Track Colour"));
+    QColor const chosen = ColourEditor::getColour(now.isValid() ? now : QColor(120, 120, 120), this, tr("Track Colour"));
     if (!chosen.isValid())
         return;
     // The layers selected with it take the colour too.
@@ -380,7 +380,7 @@ void MainWindow::onActionColumnProperties()
     defaultColour->setChecked(!colour.isValid());
     connect(defaultColour, &QCheckBox::toggled, &dialog, showColour);
     connect(colourButton, &QPushButton::clicked, &dialog, [&] {
-        QColor const chosen = QColorDialog::getColor(colour.isValid() ? colour : QColor(90, 120, 160), &dialog, tr("Track Colour"));
+        QColor const chosen = ColourEditor::getColour(colour.isValid() ? colour : QColor(90, 120, 160), &dialog, tr("Track Colour"));
         if (chosen.isValid())
             colour = chosen;
         showColour();

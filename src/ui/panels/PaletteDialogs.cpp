@@ -3,7 +3,7 @@
 #include "ui/panels/PalettePanel.h"
 
 #include <QButtonGroup>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -173,7 +173,7 @@ void PalettePanel::onActionTintPanel()
     auto showTint = [&] { colour->setIcon(patch(tint)); colour->setText(tint.name()); };
     showTint();
     connect(colour, &QPushButton::clicked, &panel, [&] {
-        QColor const chosen = QColorDialog::getColor(tint, &panel, tr("Tint Colour"));
+        QColor const chosen = ColourEditor::getColour(tint, &panel, tr("Tint Colour"));
         if (chosen.isValid()) {
             tint = chosen;
             showTint();

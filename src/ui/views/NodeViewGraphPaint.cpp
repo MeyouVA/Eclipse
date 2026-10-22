@@ -2,7 +2,7 @@
 #include "ui/views/NodeView.h"
 
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -69,7 +69,7 @@ void NodeView::editGraphNode(int id)
     if (takesColour(e.type)) {
         colour = new QPushButton(e.color.name(), &dialog);
         connect(colour, &QPushButton::clicked, &dialog, [&] {
-            QColor const picked = QColorDialog::getColor(e.color, &dialog, tr("Colour"), QColorDialog::ShowAlphaChannel);
+            QColor const picked = ColourEditor::getColour(e.color, &dialog, tr("Colour"));
             if (picked.isValid()) {
                 e.color = picked;
                 colour->setText(picked.name());

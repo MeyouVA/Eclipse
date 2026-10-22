@@ -6,7 +6,7 @@
 #include <QVector>
 
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -91,7 +91,7 @@ QWidget* MainWindow::createOnionSkinView()
             column->addWidget(colour, 0, Qt::AlignHCenter);
             stepColours[after ? 1 : 0][step] = colour;
             connect(colour, &QToolButton::clicked, this, [this, after, step] {
-                QColor const chosen = QColorDialog::getColor(m_canvas->onionStepColour(after, step), this, tr("Onion Skin: Drawing %1").arg(step + 1));
+                QColor const chosen = ColourEditor::getColour(m_canvas->onionStepColour(after, step), this, tr("Onion Skin: Drawing %1").arg(step + 1));
                 if (chosen.isValid())
                     m_canvas->setOnionStepColour(after, step, chosen);
             });
@@ -142,12 +142,12 @@ QWidget* MainWindow::createOnionSkinView()
     onionForm->addRow(tr("Colour after"), afterColour);
     connect(mode, &QComboBox::currentIndexChanged, this, [this](int index) { m_canvas->setOnionByFrame(index == 1); });
     connect(beforeColour, &QPushButton::clicked, this, [this] {
-        QColor const chosen = QColorDialog::getColor(m_canvas->onionBefore(), this, tr("Onion Skin: Before"));
+        QColor const chosen = ColourEditor::getColour(m_canvas->onionBefore(), this, tr("Onion Skin: Before"));
         if (chosen.isValid())
             m_canvas->setOnionColours(chosen, m_canvas->onionAfter());
     });
     connect(afterColour, &QPushButton::clicked, this, [this] {
-        QColor const chosen = QColorDialog::getColor(m_canvas->onionAfter(), this, tr("Onion Skin: After"));
+        QColor const chosen = ColourEditor::getColour(m_canvas->onionAfter(), this, tr("Onion Skin: After"));
         if (chosen.isValid())
             m_canvas->setOnionColours(m_canvas->onionBefore(), chosen);
     });

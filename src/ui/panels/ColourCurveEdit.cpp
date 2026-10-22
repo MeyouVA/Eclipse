@@ -2,7 +2,7 @@
 #include "ui/panels/EffectsPanel.h"
 
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>

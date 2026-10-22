@@ -10,7 +10,7 @@
 #include <QTimer>
 #include <QPlainTextEdit>
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QTabWidget>
 #include <QComboBox>
 #include <QDialog>

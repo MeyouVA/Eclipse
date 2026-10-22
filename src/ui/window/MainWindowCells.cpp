@@ -3,7 +3,7 @@
 #include "model/geometry/Deform.h"
 
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -173,7 +173,7 @@ void MainWindow::onActionEditSceneMarker()
     QString const name = QInputDialog::getText(this, tr("Edit Scene Marker"), tr("Name:"), QLineEdit::Normal, scene.markers[index].name, &ok);
     if (!ok)
         return;
-    QColor const colour = QColorDialog::getColor(scene.markers[index].color, this, tr("Marker Colour"));
+    QColor const colour = ColourEditor::getColour(scene.markers[index].color, this, tr("Marker Colour"));
     m_document->editMarker(index, name, colour);
 }
 

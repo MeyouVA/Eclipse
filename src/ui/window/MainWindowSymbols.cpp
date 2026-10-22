@@ -14,7 +14,7 @@
 #include <QRadioButton>
 #include <QVBoxLayout>
 
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QInputDialog>
 #include <QMessageBox>
 

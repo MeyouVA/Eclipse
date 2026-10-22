@@ -30,7 +30,7 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QCloseEvent>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QDateTime>
 #include <QRegularExpression>
 #include <QDialog>

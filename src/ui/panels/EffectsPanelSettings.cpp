@@ -3,7 +3,7 @@
 #include "ui/panels/EffectsPanelEdit.h"
 
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
@@ -244,7 +244,7 @@ void EffectsPanel::addParticleSettings(QVBoxLayout* layout)
         if (m_layer < 0 || m_layer >= scene.layers.size() || row < 0 || row >= scene.layers[m_layer].effects.size())
             return;
         QColor const was = scene.layers[m_layer].effects[row].endColor;
-        QColor const chosen = QColorDialog::getColor(was.isValid() ? was : QColor(255, 140, 40), this, tr("Particle Colour at the End"));
+        QColor const chosen = ColourEditor::getColour(was.isValid() ? was : QColor(255, 140, 40), this, tr("Particle Colour at the End"));
         if (chosen.isValid())
             edit([chosen](Effect& e) { e.endColor = chosen; });
     });
@@ -310,7 +310,7 @@ void EffectsPanel::connectEditors()
         int const row = m_list->currentRow();
         if (m_layer < 0 || m_layer >= scene.layers.size() || row < 0 || row >= scene.layers[m_layer].effects.size())
             return;
-        QColor const chosen = QColorDialog::getColor(scene.layers[m_layer].effects[row].color, this, tr("Effect Colour"), QColorDialog::ShowAlphaChannel);
+        QColor const chosen = ColourEditor::getColour(scene.layers[m_layer].effects[row].color, this, tr("Effect Colour"));
         if (chosen.isValid())
             edit([chosen](Effect& e) { e.color = chosen; });
     });
@@ -319,7 +319,7 @@ void EffectsPanel::connectEditors()
         int const row = m_list->currentRow();
         if (m_layer < 0 || m_layer >= scene.layers.size() || row < 0 || row >= scene.layers[m_layer].effects.size())
             return;
-        QColor const chosen = QColorDialog::getColor(scene.layers[m_layer].effects[row].endColor, this, tr("Gradient: To"));
+        QColor const chosen = ColourEditor::getColour(scene.layers[m_layer].effects[row].endColor, this, tr("Gradient: To"));
         if (chosen.isValid())
             edit([chosen](Effect& e) { e.endColor = chosen; });
     });

@@ -2,7 +2,7 @@
 #include "ui/panels/PalettePanel.h"
 #include "ui/panels/GradientBar.h"
 
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QFileDialog>
 
 #include <algorithm>
@@ -20,17 +20,12 @@
 
 void PalettePanel::addSwatch()
 {
-    QColor const color = QColorDialog::getColor(Qt::gray, this, tr("New Colour"), QColorDialog::ShowAlphaChannel);
-    if (!color.isValid())
-        return;
-    m_current = m_document->addSwatch(tr("Colour %1").arg(m_document->scene().palette.size() + 1), color, m_palette);
-    rebuild();
+    onActionNewColour();
 }
 
 void PalettePanel::removeSwatch()
 {
-    if (QListWidgetItem* const item = m_list->currentItem())
-        m_document->removeSwatch(item->data(Qt::UserRole).toInt());
+    deleteSelection();
 }
 
 void PalettePanel::editColor(QListWidgetItem* item)
@@ -52,10 +47,9 @@ void PalettePanel::editColor(QListWidgetItem* item)
             m_document->setSwatchTexture(id, picture);
         return;
     }
-    QString const name = swatch->name;
-    QColor const color = QColorDialog::getColor(swatch->color, this, tr("Colour"), QColorDialog::ShowAlphaChannel);
-    if (color.isValid())
-        m_document->editSwatch(id, name, color);
+    // A plain colour: in the Colour Editor, which changes it as you go.
+    m_current = id;
+    emit colourEditorWanted();
 }
 
 void PalettePanel::itemRenamed(QListWidgetItem* item)
@@ -117,7 +111,7 @@ void PalettePanel::editGradient(int id)
     QPushButton* const remove = new QPushButton(tr("Remove Colour"), &dialog);
     remove->setObjectName(QStringLiteral("GradientRemove"));
     connect(colour, &QPushButton::clicked, &dialog, [bar, &dialog] {
-        QColor const chosen = QColorDialog::getColor(bar->stops().value(bar->selected()).color, &dialog, tr("Colour"), QColorDialog::ShowAlphaChannel);
+        QColor const chosen = ColourEditor::getColour(bar->stops().value(bar->selected()).color, &dialog, tr("Colour"));
         bar->setSelectedColour(chosen);
     });
     connect(remove, &QPushButton::clicked, bar, [bar] { bar->removeSelected(); });

@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QPlainTextEdit>
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QTabWidget>
 #include <QComboBox>
 #include <QDialog>
@@ -212,7 +212,7 @@ void MainWindow::preferencesColours(PreferenceWidgets& w, QSettings& s, QDialog&
         };
         show(now);
         connect(button, &QPushButton::clicked, &dialog, [button, show, title, &dialog] {
-            QColor const chosen = QColorDialog::getColor(button->property("colour").value<QColor>(), &dialog, title);
+            QColor const chosen = ColourEditor::getColour(button->property("colour").value<QColor>(), &dialog, title);
             if (chosen.isValid())
                 show(chosen);
         });
@@ -265,7 +265,7 @@ void MainWindow::preferencesColours(PreferenceWidgets& w, QSettings& s, QDialog&
     connect(w.viewColours, &QTreeWidget::itemDoubleClicked, &dialog, [showColour, &dialog](QTreeWidgetItem* item) {
         if (item->data(0, Qt::UserRole).toString().isEmpty())
             return;
-        QColor const chosen = QColorDialog::getColor(item->data(1, Qt::UserRole).value<QColor>(), &dialog, item->text(0), QColorDialog::ShowAlphaChannel);
+        QColor const chosen = ColourEditor::getColour(item->data(1, Qt::UserRole).value<QColor>(), &dialog, item->text(0));
         if (chosen.isValid())
             showColour(item, chosen);
     });

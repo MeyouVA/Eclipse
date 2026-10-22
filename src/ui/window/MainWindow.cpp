@@ -16,6 +16,7 @@
 #include "ui/panels/LayerPanel.h"
 #include "ui/io/MovieExport.h"
 #include "ui/views/NodeView.h"
+#include "ui/panels/ColourEditor.h"
 #include "ui/panels/PalettePanel.h"
 #include "ui/panels/SubstitutionPanel.h"
 #include "ui/timeline/Timeline.h"
@@ -94,6 +95,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     // The Colour view: the layer worked on (for its element palettes and overrides), and its menus.
     connect(m_timeline, &Timeline::currentCellChanged, m_palette, [this](int layer, int) { m_palette->setCurrentLayer(layer); });
     m_palette->setSelectedLayers([this] { return m_timeline->selectedLayers(); });
+    connect(m_palette, &PalettePanel::colourEditorWanted, this, &MainWindow::showColourEditor);
+    connect(m_palette, &PalettePanel::currentSwatchChanged, this, [this](int id) {
+        if (m_colourEditor && m_colourEditor->swatch() != id)
+            m_colourEditor->setSwatch(id);
+    });
     connect(m_palette, &PalettePanel::menuWanted, this, [this](QString const& id, QPoint const& globalPos) {
         if (QMenu* const menu = m_actions->createMenu(id, this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
@@ -279,4 +285,17 @@ void MainWindow::autoSaveNow()
         && QMessageBox::question(this, tr("Save"), tr("Save %1 now?").arg(QFileInfo(m_path).fileName()), QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
         return;
     saveTo(m_path);
+}
+
+void MainWindow::showColourEditor()
+{
+    // One editor, kept: it follows the colour in hand.
+    if (!m_colourEditor) {
+        m_colourEditor = new ColourEditor(m_document, this);
+        m_colourEditor->setModal(false);
+    }
+    m_colourEditor->setSwatch(m_palette->currentSwatch());
+    m_colourEditor->show();
+    m_colourEditor->raise();
+    m_colourEditor->activateWindow();
 }

@@ -30,6 +30,7 @@ class QSpinBox;
 class QToolBar;
 class SubstitutionPanel;
 class PalettePanel;
+class ColourEditor;
 class Timeline;
 class ViewTitleBar;
 
@@ -185,6 +186,8 @@ public:
     int lipSyncFromWords(int soundLayer, QString const& words);
 
 public slots:
+    // The Colour Editor, on the colour in hand (Palettes > Colour Editor, or a double click on a colour).
+    void showColourEditor();
     // ---- File ----
     void onActionNewScene();
     void onActionOpenScene();
@@ -633,6 +636,7 @@ private:
     Canvas* m_canvas;
     Timeline* m_timeline;
     PalettePanel* m_palette = nullptr;
+    ColourEditor* m_colourEditor = nullptr;
     QString m_path;
     QList<QDockWidget*> m_docks;
     QList<ViewTitleBar*> m_titleBars;

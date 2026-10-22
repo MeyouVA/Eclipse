@@ -2,7 +2,7 @@
 #include "ui/views/NodeView.h"
 
 #include <QCheckBox>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>

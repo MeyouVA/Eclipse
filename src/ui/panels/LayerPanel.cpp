@@ -7,7 +7,7 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
-#include <QColorDialog>
+#include "ui/panels/ColourEditor.h"
 #include <QLabel>
 #include <QPushButton>
 #include <QLineEdit>
@@ -263,7 +263,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     connect(m_card, &QPushButton::clicked, this, [this] {
         if (m_layer < 0 || m_layer >= m_document->scene().layers.size())
             return;
-        QColor const chosen = QColorDialog::getColor(m_document->scene().layers[m_layer].cardColor, this, tr("Colour-Card"), QColorDialog::ShowAlphaChannel);
+        QColor const chosen = ColourEditor::getColour(m_document->scene().layers[m_layer].cardColor, this, tr("Colour-Card"));
         if (chosen.isValid())
             m_document->setCardColor(m_layer, chosen);
     });
