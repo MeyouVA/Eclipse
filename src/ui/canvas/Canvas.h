@@ -1220,6 +1220,25 @@ private:
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
         DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment
     } m_drag = DragNone;
+    // penUp's parts, one for each kind of drag: true when the pen's work is all done there.
+    bool penUpTool(Drag drag);
+    bool penUpDraw(Drag drag);
+    bool penUpShape(Drag drag);
+    bool penUpSegment(Drag drag);
+    bool penUpContourBox(Drag drag);
+    bool penUpPoint(Drag drag);
+    bool penUpBothHandles(Drag drag);
+    bool penUpHandle(Drag drag);
+    bool penUpPaint(Drag drag);
+    bool penUpPointMarquee(Drag drag);
+    bool penUpMarquee(Drag drag);
+    bool penUpWeights(Drag drag);
+    bool penUpJoint(Drag drag);
+    bool penUpWarpRest(Drag drag);
+    bool penUpPose(Drag drag);
+    bool penUpPivot(Drag drag);
+    bool penUpQuad(Drag drag);
+    bool penUpSelection(Drag drag);
     bool m_spaceDown = false;
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
     QPointF m_polyHover;         // where its next point would go (layer coordinates)
