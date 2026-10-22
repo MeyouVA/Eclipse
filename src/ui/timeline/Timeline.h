@@ -108,6 +108,7 @@ public:
         int parts = 1023;           // Keyframe::Part
         bool matchNames = false, pivot = false;
         bool offsetKeys = false;
+        bool currentSetOnly = false;
     };
     void pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse);
     void pasteSpecial(PasteOptions const& options);

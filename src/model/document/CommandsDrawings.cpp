@@ -425,3 +425,41 @@ bool Document::setDrawingSet(int layer, int frame, QString const& set)
     apply(tr("Set Drawing Layer"), [&](Scene& s) { s.layers[layer].drawings[index].set = clean; });
     return true;
 }
+
+int Document::insertInbetweenDrawing(int layer, int frame)
+{
+    // The exposure the frame is in, held two frames or more: its second half shows a new empty drawing, named between the two either side.
+    if (!validCell(m_scene, layer, frame))
+        return -1;
+    Layer const& l = m_scene.layers[layer];
+    int const shown = l.cells[frame];
+    if (shown == Layer::kNoDrawing)
+        return -1;
+    int start = frame, end = frame + 1;
+    while (start > 0 && l.cells[start - 1] == shown && !l.keyExposures.contains(start))
+        --start;
+    while (end < l.cells.size() && l.cells[end] == shown && !l.keyExposures.contains(end))
+        ++end;
+    if (end - start < 2)
+        return -1;
+    int const middle = start + (end - start) / 2;
+    QString const before = l.drawingLabel(shown);
+    QString const after = end < l.cells.size() && l.cells[end] != Layer::kNoDrawing ? l.drawingLabel(l.cells[end]) : QString();
+    QString name = after.isEmpty() ? before + QStringLiteral("+") : before + QStringLiteral("+") + after;
+    for (int d = 0; d < l.drawings.size(); ++d)
+        if (l.drawingLabel(d) == name)
+            name += QLatin1Char('_');
+    int made = -1;
+    apply(tr("Insert Action Inbetween Drawing"), [&](Scene& s) {
+        Layer& edited = s.layers[layer];
+        Drawing inbetween;
+        inbetween.name = name;
+        inbetween.set = edited.drawings[shown].set;
+        inbetween.mark = Drawing::InBetweenMark;
+        made = int(edited.drawings.size());
+        edited.drawings.push_back(inbetween);
+        for (int f = middle; f < end; ++f)
+            edited.cells[f] = made;
+    });
+    return made;
+}

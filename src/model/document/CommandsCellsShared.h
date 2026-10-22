@@ -89,6 +89,9 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
         if (block.pastePivot)
             layer.pivot = row.pivot;
         if (layer.holdsDrawings() && row.holdsDrawings) {
+            // Synced layers: the drawings of the other drawing layers left out.
+            QString const set = layer.drawingAt(begin) != Layer::kNoDrawing ? layer.drawings[layer.drawingAt(begin)].set : QString();
+            auto other = [&](int cell) { return block.currentSetOnly && cell >= 0 && cell < row.drawings.size() && row.drawings[cell].set != set; };
             QVector<int> place;
             if (block.drawingMode == CellBlock::CopyDrawings) {
                 int const base = int(layer.drawings.size());
@@ -100,6 +103,8 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
             }
             for (int f = begin; f < end; ++f) {
                 int const cell = row.cells[f - frame];
+                if (other(cell))
+                    continue;
                 if (cell >= 0 && place.value(cell, -1) < 0 && block.drawingMode == CellBlock::TimingOnly)
                     continue;       // no drawing of that name here: the cell is left as it is
                 layer.cells[f] = cell < 0 ? Layer::kNoDrawing : place.value(cell, Layer::kNoDrawing);

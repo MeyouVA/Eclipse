@@ -96,6 +96,11 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     offset->setToolTip(tr("Offsets the target keyframe values by the amount of the source keyframe values."));
     offset->setChecked(options.offsetKeys);
     more->addRow(offset);
+    QCheckBox* const synced = new QCheckBox(tr("Paste Only Drawings from the Current Synced Layer"), advanced);
+    synced->setObjectName(QStringLiteral("PasteCurrentSet"));
+    synced->setToolTip(tr("When pasting from a source synced layer onto a target synced layer do not paste the drawings from the other source synced layers."));
+    synced->setChecked(options.currentSetOnly);
+    more->addRow(synced);
     tabs->addTab(advanced, tr("Advanced"));
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -116,6 +121,7 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     options.pivot = pivot->isChecked();
     options.matchNames = names->isChecked();
     options.offsetKeys = offset->isChecked();
+    options.currentSetOnly = synced->isChecked();
     return true;
 }
 

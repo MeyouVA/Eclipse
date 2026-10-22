@@ -33,6 +33,8 @@ struct CellBlock {
     bool pastePivot = false;
     // The keyframes pasted added to what the layer pasted onto has there (Offset Keyframes).
     bool offsetKeys = false;
+    // Only the drawings of the drawing layer the layer pasted onto shows where the paste begins (synced layers).
+    bool currentSetOnly = false;
     int frames = 0;
     QVector<Row> rows;
     bool isEmpty() const { return frames <= 0 || rows.isEmpty(); }
@@ -158,6 +160,8 @@ public:
     bool moveDrawing(int layer, int drawing, int direction);
     // Substitute Frame: the cell takes the drawing of the exposure after (or before) its own.
     void stepFrameSubstitution(int layer, int frame, int direction);
+    // Insert Action Inbetween Drawing: an empty drawing, marked in-between, over the second half of the exposure at `frame`.
+    int insertInbetweenDrawing(int layer, int frame);
     // The drawing after (+1) or before (-1) the one shown, going round at the ends.
     void stepSubstitution(int layer, int frame, int direction);
     // Substitute Drawing Next / Previous [Same Layer]: the next drawing (or the one before) of the same drawing layer.

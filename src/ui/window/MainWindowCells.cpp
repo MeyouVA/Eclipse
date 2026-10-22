@@ -238,3 +238,9 @@ void MainWindow::onActionGoToDrawing(QString const& which)
     }
     statusBar()->showMessage(tr("The layer shows fewer than %1 drawings.").arg(which), 3000);
 }
+
+void MainWindow::onActionInsertInbetween()
+{
+    if (m_document->insertInbetweenDrawing(layer(), frame()) < 0)
+        statusBar()->showMessage(tr("Insert Action Inbetween Drawing: choose a drawing held two frames or more."), 4000);
+}

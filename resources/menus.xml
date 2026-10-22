@@ -477,6 +477,7 @@
    <separator/>
    <item id="SubstitutePrevious" icon="anim/substituteprev" text="Substitute Drawing Pre&amp;vious" shortcut="shortcut.substitutePrev" responder="window" slot="onActionSubstitutePrevious()"/>
    <item id="SubstituteNext" icon="anim/substitutenext" text="Substitute Drawing Ne&amp;xt" shortcut="shortcut.substituteNext" responder="window" slot="onActionSubstituteNext()"/>
+   <item id="InsertInbetween" text="Insert Action &amp;Inbetween Drawing" shortcut="shortcut.insertInbetween" responder="window" slot="onActionInsertInbetween()"/>
    <item id="SubstituteFramePrevious" text="Substitute Frame Previous" shortcut="shortcut.substituteFramePrevious" responder="window" slot="onActionSubstituteFrame(QString)" itemParameter="-1"/>
    <item id="SubstituteFrameNext" text="Substitute Frame Next" shortcut="shortcut.substituteFrameNext" responder="window" slot="onActionSubstituteFrame(QString)" itemParameter="1"/>
    <item id="SubstituteSameSetPrevious" icon="anim/substituteprev" text="Substitute Drawing Previous [Same Layer]" responder="window" slot="onActionSubstituteSameSet(QString)" itemParameter="-1"/>

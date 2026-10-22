@@ -269,6 +269,7 @@
   <shortcut id="shortcut.hold4" text="Set Hold 4 Cells" value=""/>
   <shortcut id="shortcut.holdCustom" text="Set Custom Hold Cell" value=""/>
   <shortcut id="shortcut.easyFlip" text="Easy Flip" value=""/>
+  <shortcut id="shortcut.insertInbetween" text="Insert Action Inbetween Drawing" value=""/>
   <shortcut id="shortcut.substituteFramePrevious" text="Substitute Frame Previous" value=""/>
   <shortcut id="shortcut.substituteFrameNext" text="Substitute Frame Next" value=""/>
   <shortcut id="shortcut.goToDrawing1" text="Go to the First Drawing in Drawing View" value=""/>

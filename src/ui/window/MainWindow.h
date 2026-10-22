@@ -446,6 +446,7 @@ public slots:
     void onActionHoldExposure();
     void onActionSetExposureAsk();
     void onActionEasyFlip(bool on);
+    void onActionInsertInbetween();
     void onActionSubstituteFrame(QString const& direction);
     void onActionGoToDrawing(QString const& which);
     bool cycleDialog(QString const& title, QString const& label, int least, int* times, int* kind);

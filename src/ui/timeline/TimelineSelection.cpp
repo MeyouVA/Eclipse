@@ -204,6 +204,7 @@ void Timeline::pasteSpecial(PasteOptions const& options)
     block.matchNames = options.matchNames;
     block.pastePivot = options.pivot;
     block.offsetKeys = options.offsetKeys;
+    block.currentSetOnly = options.currentSetOnly;
     pasteBlock(block, selectionFirstFrame());
 }
 
