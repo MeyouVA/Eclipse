@@ -216,7 +216,7 @@ void MainWindow::onActionToolPreset(QString const& which)
     QListWidgetItem* const item = list->item(row);
     list->setCurrentItem(item);
     emit list->itemClicked(item);
-    statusBar()->showMessage(tr("Preset: %1").arg(item->text()), 2000);
+    statusBar()->showMessage(tr("Preset: %1").arg(item->toolTip()), 2000);
 }
 
 void MainWindow::onActionChangeBrushSize(QString const& way)

@@ -274,7 +274,7 @@ void ToolProperties::addPresetRows()
     m_presets->setMinimumHeight(150);
     m_form->addRow(m_presetsTitle);
     m_form->addRow(m_presets);
-    setPresetView(std::clamp(settings().value(QStringLiteral("tools/presetView"), 0).toInt(), 0, 2));
+    setPresetView(std::clamp(settings().value(QStringLiteral("tools/presetView"), 0).toInt(), 0, 4));
     // Right-click: how the list is shown, and the user's own preset updated to the settings now in hand.
     m_presets->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_presets, &QWidget::customContextMenuRequested, this, [this](QPoint const& at) {
@@ -283,16 +283,17 @@ void ToolProperties::addPresetRows()
         QAction* const update = menu.addAction(tr("Update Preset"));
         update->setEnabled(item && item->data(Qt::UserRole + 4).isValid());
         menu.addSeparator();
-        QAction* const views[3] = {menu.addAction(tr("Small Thumbnail")), menu.addAction(tr("Large Thumbnail")), menu.addAction(tr("Detail View"))};
+        QAction* const views[5] = {menu.addAction(tr("Small Thumbnail")), menu.addAction(tr("Large Thumbnail")), menu.addAction(tr("Detail View")),
+                                   menu.addAction(tr("Swatch Mode")), menu.addAction(tr("Swatch Mode (Small)"))};
         int const now = settings().value(QStringLiteral("tools/presetView"), 0).toInt();
-        for (int v = 0; v < 3; ++v) {
+        for (int v = 0; v < 5; ++v) {
             views[v]->setCheckable(true);
             views[v]->setChecked(v == now);
         }
         QAction* const chosen = menu.exec(m_presets->viewport()->mapToGlobal(at));
         if (chosen == update && item)
             updatePreset(item->data(Qt::UserRole + 4).toInt());
-        for (int v = 0; v < 3; ++v)
+        for (int v = 0; v < 5; ++v)
             if (chosen == views[v])
                 setPresetView(v);
     });
@@ -503,15 +504,30 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
             item->setData(Qt::UserRole + 4, index);       // one of the user's own: which
         }
     }
+    setPresetView(settings().value(QStringLiteral("tools/presetView"), 0).toInt());
 }
 
 void ToolProperties::setPresetView(int view)
 {
-    // 0: small pictures of the stroke; 1: large ones; 2: the names alone.
-    view = std::clamp(view, 0, 2);
+    // 0: small pictures of the stroke; 1: large ones; 2: the names alone; 3 and 4: swatches, pictures alone in a grid (names in their tips).
+    view = std::clamp(view, 0, 4);
     settings().setValue(QStringLiteral("tools/presetView"), view);
-    m_presets->setIconSize(view == 0 ? QSize(120, 26) : view == 1 ? QSize(180, 40) : QSize(0, 0));
+    bool const swatches = view >= 3;
+    m_presets->setViewMode(swatches ? QListView::IconMode : QListView::ListMode);
+    m_presets->setMovement(QListView::Static);
+    m_presets->setResizeMode(QListView::Adjust);
+    m_presets->setWrapping(swatches);
+    QSize const icon = view == 0 ? QSize(120, 26) : view == 1 ? QSize(180, 40) : view == 3 ? QSize(60, 26) : view == 4 ? QSize(36, 16) : QSize(0, 0);
+    m_presets->setIconSize(icon);
+    m_presets->setGridSize(swatches ? icon + QSize(8, 8) : QSize());
     m_presets->setProperty("presetView", view);
+    for (int row = 0; row < m_presets->count(); ++row) {
+        QListWidgetItem* const item = m_presets->item(row);
+        if (!item->data(Qt::UserRole + 6).isValid())
+            item->setData(Qt::UserRole + 6, item->text());
+        item->setText(swatches ? QString() : item->data(Qt::UserRole + 6).toString());
+        item->setToolTip(item->data(Qt::UserRole + 6).toString());
+    }
 }
 
 bool ToolProperties::updatePreset(int index)
