@@ -1,0 +1,393 @@
+// Eclipse - envelope deformers: warp lines, their points and handles, outer edges, envelopes round artwork, drawings warped.
+#include "model/geometry/Deform.h"
+
+#include "model/geometry/Model3D.h"
+
+#include <QPainterPath>
+#include <QPainterPathStroker>
+#include <QTransform>
+#include <QVarLengthArray>
+
+#include <algorithm>
+#include <cmath>
+#include "model/geometry/DeformShared.h"
+
+namespace Deform {
+
+namespace {
+
+double cross(QPointF a, QPointF b) { return a.x() * b.y() - a.y() * b.x(); }
+double dot(QPointF a, QPointF b) { return a.x() * b.x() + a.y() * b.y(); }
+double length(QPointF a) { return std::hypot(a.x(), a.y()); }
+
+// What a deformer does to a point, worked out once for a whole drawing.
+struct Warper {
+    bool closed = false;
+    QPolygonF rest, posed;          // the curve at rest and under the pose, piece for piece
+    QVector<QTransform> pieces;     // an open curve: what each piece does to what lies beside it
+
+    Warper(QVector<QPointF> const& restPoints, bool isClosed, QVector<QPointF> const& moved) : closed(isClosed)
+    {
+        rest = warpLine(restPoints, closed);
+        posed = warpLine(posedWarp(restPoints, moved), closed);
+        if (closed)
+            return;
+        for (int i = 0; i + 1 < rest.size(); ++i) {
+            QPointF const a = rest[i + 1] - rest[i], b = posed[i + 1] - posed[i];
+            double const la = length(a), lb = length(b);
+            if (la < 1e-9 || lb < 1e-9) {
+                pieces.push_back(QTransform::fromTranslate(posed[i].x() - rest[i].x(), posed[i].y() - rest[i].y()));
+                continue;
+            }
+            QPointF const ta = a / la, tb = b / lb;
+            double const stretch = lb / la;
+            // Columns: where the unit vector along the rest piece goes, and the one to its side.
+            QTransform const fromRest(ta.x(), -ta.y(), ta.y(), ta.x(), 0, 0);       // into (along, side)
+            QTransform const toPosed(tb.x() * stretch, tb.y() * stretch, -tb.y(), tb.x(), 0, 0);
+            pieces.push_back(QTransform::fromTranslate(-rest[i].x(), -rest[i].y()) * fromRest * toPosed
+                             * QTransform::fromTranslate(posed[i].x(), posed[i].y()));
+        }
+    }
+
+    QPointF map(QPointF p) const { return closed ? inside(p) : beside(p); }
+
+    QPointF beside(QPointF p) const
+    {
+        if (pieces.isEmpty())
+            return p;
+        double total = 0.0;
+        QPointF sum;
+        for (int i = 0; i < pieces.size(); ++i) {
+            double const d = distanceToSegment(p, rest[i], rest[i + 1]);
+            double const w = 1.0 / ((d * d + 1.0) * (d * d + 1.0));
+            total += w;
+            sum += pieces[i].map(p) * w;
+        }
+        return sum / total;
+    }
+
+    QPointF inside(QPointF p) const
+    {
+        int const n = int(rest.size());
+        if (n < 3 || posed.size() != n)
+            return p;
+        QVarLengthArray<QPointF, 256> s(n);
+        QVarLengthArray<double, 256> r(n);
+        for (int i = 0; i < n; ++i) {
+            s[i] = rest[i] - p;
+            r[i] = length(s[i]);
+            if (r[i] < 1e-9)
+                return posed[i];
+        }
+        QVarLengthArray<double, 256> area(n), along(n);
+        for (int i = 0; i < n; ++i) {
+            int const j = (i + 1) % n;
+            area[i] = cross(s[i], s[j]) * 0.5;
+            along[i] = dot(s[i], s[j]);
+            if (std::abs(area[i]) < 1e-9 && along[i] < 0.0) {
+                // On the outline itself, between two of its points.
+                double const u = r[i] / (r[i] + r[j]);
+                return posed[i] + (posed[j] - posed[i]) * u;
+            }
+        }
+        double total = 0.0;
+        QPointF sum;
+        for (int i = 0; i < n; ++i) {
+            int const before = (i + n - 1) % n, after = (i + 1) % n;
+            double w = 0.0;
+            if (std::abs(area[before]) > 1e-9)
+                w += (r[before] - along[before] / r[i]) / area[before];
+            if (std::abs(area[i]) > 1e-9)
+                w += (r[after] - along[i] / r[i]) / area[i];
+            total += w;
+            sum += posed[i] * w;
+        }
+        return std::abs(total) > 1e-12 ? sum / total : p;
+    }
+};
+
+}
+
+bool isWarped(QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved)
+{
+    if (rest.size() / 3 < (closed ? 3 : 2))
+        return false;
+    for (int i = 0; i < moved.size() && i < rest.size(); ++i)
+        if (!moved[i].isNull())
+            return true;
+    return false;
+}
+
+QVector<QPointF> posedWarp(QVector<QPointF> const& rest, QVector<QPointF> const& moved)
+{
+    QVector<QPointF> out = rest;
+    for (int i = 0; i < moved.size() && i < out.size(); ++i)
+        out[i] += moved[i];
+    return out;
+}
+
+QPolygonF warpLine(QVector<QPointF> const& points, bool closed, int perSegment)
+{
+    QPolygonF line;
+    int const n = int(points.size()) / 3;
+    if (n < 2)
+        return line;
+    perSegment = std::max(perSegment, 1);
+    int const stretches = closed ? n : n - 1;
+    for (int i = 0; i < stretches; ++i) {
+        int const j = (i + 1) % n;
+        QPointF const p0 = points[i * 3], p1 = p0 + points[i * 3 + 2];
+        QPointF const p3 = points[j * 3], p2 = p3 + points[j * 3 + 1];
+        for (int k = 0; k < perSegment; ++k) {
+            double const t = double(k) / perSegment, u = 1.0 - t;
+            line.push_back(p0 * (u * u * u) + p1 * (3 * u * u * t) + p2 * (3 * u * t * t) + p3 * (t * t * t));
+        }
+    }
+    if (!closed)
+        line.push_back(points[(n - 1) * 3]);
+    return line;
+}
+
+void smoothWarpHandles(QVector<QPointF>& points, bool closed, int index)
+{
+    int const n = int(points.size()) / 3;
+    if (index < 0 || index >= n)
+        return;
+    QPointF const here = points[index * 3];
+    bool const hasBefore = closed ? n >= 2 : index > 0, hasAfter = closed ? n >= 2 : index + 1 < n;
+    QPointF const before = hasBefore ? points[((index + n - 1) % n) * 3] : here;
+    QPointF const after = hasAfter ? points[((index + 1) % n) * 3] : here;
+    QPointF in, out;
+    if (hasBefore && hasAfter && n > 2) {
+        QPointF const through = after - before;
+        double const l = length(through);
+        if (l > 1e-9) {
+            in = -through / l * (length(before - here) / 3.0);
+            out = through / l * (length(after - here) / 3.0);
+        }
+    } else {
+        if (hasBefore)
+            in = (before - here) / 3.0;
+        if (hasAfter)
+            out = (after - here) / 3.0;
+    }
+    points[index * 3 + 1] = in;
+    points[index * 3 + 2] = out;
+}
+
+int insertWarpPoint(QVector<QPointF>& points, bool closed, QPointF near, double within, double* along)
+{
+    int const n = int(points.size()) / 3;
+    if (n < 2)
+        return -1;
+    int const stretches = closed && n >= 2 ? n : n - 1;
+    int best = -1;
+    double bestT = 0.0, nearest = within;
+    auto at = [&](int i, double t) {
+        int const j = (i + 1) % n;
+        QPointF const p0 = points[i * 3], p1 = p0 + points[i * 3 + 2], p3 = points[j * 3], p2 = p3 + points[j * 3 + 1];
+        double const u = 1.0 - t;
+        return p0 * (u * u * u) + p1 * (3 * u * u * t) + p2 * (3 * u * t * t) + p3 * (t * t * t);
+    };
+    for (int i = 0; i < stretches; ++i) {
+        for (int k = 1; k < 64; ++k) {
+            double const t = k / 64.0, d = length(at(i, t) - near);
+            if (d < nearest) {
+                nearest = d;
+                best = i;
+                bestT = t;
+            }
+        }
+    }
+    if (best < 0)
+        return -1;
+    // The stretch cut in two where the point goes: each half is the same curve as before.
+    int const i = best, j = (i + 1) % n;
+    double const t = bestT;
+    QPointF const p0 = points[i * 3], p1 = p0 + points[i * 3 + 2], p3 = points[j * 3], p2 = p3 + points[j * 3 + 1];
+    QPointF const a = p0 + (p1 - p0) * t, b = p1 + (p2 - p1) * t, c = p2 + (p3 - p2) * t;
+    QPointF const d = a + (b - a) * t, e = b + (c - b) * t, f = d + (e - d) * t;
+    points[i * 3 + 2] = a - p0;
+    points[j * 3 + 1] = c - p3;
+    int const place = i + 1;
+    points.insert(place * 3, 3, QPointF());
+    points[place * 3] = f;
+    points[place * 3 + 1] = d - f;
+    points[place * 3 + 2] = e - f;
+    if (along)
+        *along = t;
+    return place;
+}
+
+QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet, double grow)
+{
+    // All that the artwork covers, as one area.
+    QPainterPath all;
+    all.setFillRule(Qt::WindingFill);
+    for (int s = 0; s < Drawing::SheetCount; ++s) {
+        if (sheet >= 0 && s != sheet)
+            continue;
+        for (Stroke const& stroke : drawing.strokesOf(s)) {
+            QVector<StrokePoint> const line = stroke.path();
+            if (line.size() < 2)
+                continue;
+            QPainterPath centre;
+            float widest = 0.0f;
+            centre.moveTo(line.first().pos);
+            for (StrokePoint const& point : line) {
+                centre.lineTo(point.pos);
+                widest = std::max(widest, point.pressure);
+            }
+            if (stroke.closed) {
+                centre.closeSubpath();
+                QPainterPath inside = centre;
+                inside.setFillRule(Qt::WindingFill);
+                all = all.united(inside);       // what a closed line goes round is inside the drawing
+            }
+            if (stroke.width > 0.0f) {
+                QPainterPathStroker stroker;
+                stroker.setWidth(std::max(0.1, double(stroke.width) * widest));
+                stroker.setJoinStyle(Qt::RoundJoin);
+                stroker.setCapStyle(Qt::RoundCap);
+                all = all.united(stroker.createStroke(centre));
+            }
+        }
+        for (Fill const& fill : drawing.fillsOf(s)) {
+            QPainterPath area;
+            for (QPolygonF const& outline : fill.outlines)
+                area.addPolygon(outline);
+            area.closeSubpath();
+            all = all.united(area);
+        }
+    }
+    if (grow > 0.0) {
+        // A band round it, twice as wide as it is to grow: half of that is outside.
+        QPainterPathStroker band;
+        band.setWidth(grow * 2.0);
+        band.setJoinStyle(Qt::RoundJoin);
+        all = all.united(band.createStroke(all));
+    }
+    // Its outer edges only.
+    QList<QPolygonF> const edges = all.simplified().toSubpathPolygons();
+    QVector<QPolygonF> outer;
+    for (int i = 0; i < edges.size(); ++i) {
+        if (edges[i].size() < 3)
+            continue;
+        bool inner = false;
+        for (int k = 0; k < edges.size() && !inner; ++k)
+            inner = k != i && edges[k].size() >= 3 && edges[k].boundingRect().contains(edges[i].boundingRect())
+                    && edges[k].containsPoint(edges[i].first(), Qt::OddEvenFill);
+        if (!inner)
+            outer.push_back(edges[i]);
+    }
+    return outer;
+}
+
+QVector<QPointF> envelopeAround(Drawing const& drawing, int count, double margin, bool followOutline)
+{
+    // Every point of the artwork; then the hull round them all.
+    QVector<QPointF> all;
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        for (Fill const& fill : drawing.fillsOf(sheet))
+            for (QPolygonF const& outline : fill.outlines)
+                for (QPointF const& p : outline)
+                    all.push_back(p);
+        for (Stroke const& stroke : drawing.strokesOf(sheet)) {
+            double const half = stroke.width / 2.0;
+            for (StrokePoint const& p : stroke.path())
+                for (QPointF const& side : {QPointF(-half, -half), QPointF(half, -half), QPointF(half, half), QPointF(-half, half)})
+                    all.push_back(p.pos + side);
+        }
+    }
+    for (Picture const& picture : drawing.pictures)
+        for (QPointF const& p : QPolygonF(picture.bounds()))
+            all.push_back(p);
+    if (all.size() < 3 || count < 3)
+        return {};
+    std::sort(all.begin(), all.end(), [](QPointF const& p, QPointF const& q) { return p.x() < q.x() || (p.x() == q.x() && p.y() < q.y()); });
+    QVector<QPointF> hull;
+    for (int pass = 0; pass < 2; ++pass) {
+        int const start = int(hull.size());
+        for (int k = 0; k < all.size(); ++k) {
+            QPointF const& p = pass == 0 ? all[k] : all[all.size() - 1 - k];
+            while (hull.size() >= start + 2 && cross(hull[hull.size() - 1] - hull[hull.size() - 2], p - hull[hull.size() - 1]) <= 0)
+                hull.removeLast();
+            hull.push_back(p);
+        }
+        hull.removeLast();
+    }
+    if (hull.size() < 3)
+        return {};
+    bool outline = false;
+    if (followOutline) {
+        // Round the biggest piece of the artwork itself, instead of the hull.
+        QPolygonF biggest;
+        for (QPolygonF const& edge : outerEdges(drawing)) {
+            QRectF const box = edge.boundingRect(), had = biggest.boundingRect();
+            if (box.width() * box.height() > had.width() * had.height())
+                biggest = edge;
+        }
+        if (biggest.size() > 1 && biggest.first() == biggest.last())
+            biggest.removeLast();
+        if (biggest.size() >= 3) {
+            hull = biggest;
+            outline = true;
+        }
+    }
+    // Which way round it goes says which side of an edge is outside.
+    double turned = 0.0;
+    for (int i = 0; i < hull.size(); ++i)
+        turned += cross(hull[i], hull[(i + 1) % hull.size()]);
+    double around = 0.0;
+    QPointF middle;
+    for (int i = 0; i < hull.size(); ++i) {
+        around += length(hull[(i + 1) % hull.size()] - hull[i]);
+        middle += hull[i];
+    }
+    middle /= double(hull.size());
+    if (around < 1e-6)
+        return {};
+    // So many points, evenly spaced round the hull, each pushed out a little from the middle.
+    QVector<QPointF> points;
+    int edge = 0;
+    double walked = 0.0;
+    for (int k = 0; k < count; ++k) {
+        double const wanted = around * k / count;
+        while (edge < hull.size() - 1 && walked + length(hull[(edge + 1) % hull.size()] - hull[edge]) < wanted) {
+            walked += length(hull[(edge + 1) % hull.size()] - hull[edge]);
+            ++edge;
+        }
+        QPointF const from = hull[edge], to = hull[(edge + 1) % hull.size()];
+        double const side = length(to - from);
+        QPointF p = side > 1e-9 ? from + (to - from) * std::clamp((wanted - walked) / side, 0.0, 1.0) : from;
+        // Pushed out a little: from the middle for a hull; for an outline, square off its edge.
+        QPointF out = p - middle;
+        if (outline && side > 1e-9) {
+            QPointF const along = (to - from) / side;
+            out = turned > 0.0 ? QPointF(along.y(), -along.x()) : QPointF(-along.y(), along.x());
+        }
+        if (length(out) > 1e-9)
+            p += out / length(out) * margin;
+        points << p << QPointF() << QPointF();
+    }
+    for (int k = 0; k < count; ++k)
+        smoothWarpHandles(points, true, k);
+    return points;
+}
+
+QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved)
+{
+    if (!isWarped(rest, closed, moved))
+        return p;
+    return Warper(rest, closed, moved).map(p);
+}
+
+Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved)
+{
+    if (!isWarped(rest, closed, moved))
+        return drawing;
+    Warper const warper(rest, closed, moved);
+    return mapped(drawing, [&warper](QPointF p) { return warper.map(p); });
+}
+
+}  // namespace Deform
