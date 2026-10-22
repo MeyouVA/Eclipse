@@ -70,9 +70,13 @@
    <item id="PasteSpecial" icon="edit/pastespecial" text="Paste &amp;Special..." responder="window" slot="onActionPasteSpecial()"/>
    <item id="PasteSpecialAgain" icon="edit/pastespecialagain" text="Paste Special A&amp;gain" shortcut="shortcut.pasteSpecialAgain" responder="window" slot="onActionPasteSpecialAgain()"/>
    <menu id="EditPastePresets" text="Modify Paste Pre&amp;sets">
+    <item id="EditAllPreset" text="&amp;All..." responder="window" slot="onActionEditPastePreset(QString)" itemParameter="all"/>
     <item id="EditExposurePreset" text="&amp;Exposure..." responder="window" slot="onActionEditExposurePreset()"/>
+    <item id="EditKeysPreset" text="&amp;Key Frame..." responder="window" slot="onActionEditPastePreset(QString)" itemParameter="keys"/>
    </menu>
+   <item id="PasteModeAll" text="Paste Mode: A&amp;ll" shortcut="shortcut.pasteModeAll" checkable="true" checked="true" responder="window" slot="onActionPasteMode(QString)" itemParameter="all"/>
    <item id="PasteModeExposure" text="Paste Mode: E&amp;xposures Only" shortcut="shortcut.pasteModeExposure" checkable="true" responder="window" slot="onActionPasteModeExposure(bool)"/>
+   <item id="PasteModeKeys" text="Paste Mode: &amp;Key Frames Only" shortcut="shortcut.pasteModeKeys" checkable="true" responder="window" slot="onActionPasteMode(QString)" itemParameter="keys"/>
    <item id="PasteReverse" icon="edit/pastereverse" text="Paste &amp;Reverse" shortcut="shortcut.pasteReverse" responder="window" slot="onActionPasteReverse()"/>
    <item id="EditDelete" icon="edit/delete" text="&amp;Delete" shortcut="shortcut.delete" responder="focus,camera" slot="deleteSelection()"/>
    <separator/>
@@ -807,6 +811,23 @@
   <item id="MoveLayerDown" icon="timeline/layerdown" text="Move Layer Down" shortcut="shortcut.moveLayerDown" responder="window" slot="onActionMoveLayerDown()"/>
   <item id="AttachLayer"/>
   <item id="DetachLayer"/>
+  <item id="LayerPrefixSuffix" icon="timeline/renamelayer" text="Add Prefix/Suffix..." responder="window" slot="onActionLayerPrefixSuffix()"/>
+  <menu id="TimelineSync" text="Clone and Sync">
+   <item id="CloneLayer"/>
+   <item id="CloneLayerTiming"/>
+   <separator/>
+   <item id="AddSyncedLayer"/>
+   <item id="SyncLayerWith"/>
+   <item id="UnsyncLayer" icon="timeline/syncwith" text="Unsync Layer" responder="window" slot="onActionUnsyncLayer()"/>
+   <item id="SelectSyncedLayers" icon="timeline/syncwith" text="Select Synced Layers" shortcut="shortcut.selectSyncedLayers" responder="window" slot="onActionSelectSyncedLayers()"/>
+  </menu>
+  <menu id="TimelineSelect" text="Select">
+   <item id="SelectParent"/>
+   <item id="SelectChild"/>
+   <item id="SelectChildren"/>
+   <item id="SelectPreviousSibling"/>
+   <item id="SelectNextSibling"/>
+  </menu>
   <separator/>
   <menu id="TimelineCollapse" text="Collapse/Expand">
    <item id="CollapseExpand" icon="timeline/collapseexpand" text="Collapse/Expand" responder="window" slot="onActionCollapseExpand()"/>
@@ -814,18 +835,45 @@
    <item id="ExpandAll" icon="timeline/expandall" text="Expand All" responder="window" slot="onActionExpandAll()"/>
   </menu>
   <menu id="TimelineMarkFrame" text="Mark Frame">
-   <item id="MarkFrameRed" icon="timeline/markframered" text="Red" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#e0453a"/>
-   <item id="MarkFrameOrange" icon="timeline/markframeorange" text="Orange" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f08c2e"/>
-   <item id="MarkFrameYellow" icon="timeline/markframeyellow" text="Yellow" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f0d43a"/>
-   <item id="MarkFrameGreen" icon="timeline/markframegreen" text="Green" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#4fbf5a"/>
-   <item id="MarkFrameCyan" icon="timeline/markframecyan" text="Cyan" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#3cc8d2"/>
-   <item id="MarkFrameBlue" icon="timeline/markframeblue" text="Blue" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#3a78e0"/>
-   <item id="MarkFramePurple" icon="timeline/markframepurple" text="Purple" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#9a58d8"/>
-   <item id="MarkFramePink" icon="timeline/markframepink" text="Pink" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f07ab4"/>
-   <item id="MarkFrameWhite" icon="timeline/markframewhite" text="White" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f4f4f4"/>
-   <item id="MarkFrameBlack" icon="timeline/markframeblack" text="Black" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#141414"/>
+   <item id="MarkFrameRed" icon="timeline/markframered" text="Red" shortcut="shortcut.markFrameRed" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#e0453a"/>
+   <item id="MarkFrameOrange" icon="timeline/markframeorange" text="Orange" shortcut="shortcut.markFrameOrange" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f08c2e"/>
+   <item id="MarkFrameYellow" icon="timeline/markframeyellow" text="Yellow" shortcut="shortcut.markFrameYellow" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f0d43a"/>
+   <item id="MarkFrameGreen" icon="timeline/markframegreen" text="Green" shortcut="shortcut.markFrameGreen" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#4fbf5a"/>
+   <item id="MarkFrameCyan" icon="timeline/markframecyan" text="Cyan" shortcut="shortcut.markFrameCyan" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#3cc8d2"/>
+   <item id="MarkFrameBlue" icon="timeline/markframeblue" text="Blue" shortcut="shortcut.markFrameBlue" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#3a78e0"/>
+   <item id="MarkFramePurple" icon="timeline/markframepurple" text="Purple" shortcut="shortcut.markFramePurple" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#9a58d8"/>
+   <item id="MarkFramePink" icon="timeline/markframepink" text="Pink" shortcut="shortcut.markFramePink" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f07ab4"/>
+   <item id="MarkFrameWhite" icon="timeline/markframewhite" text="White" shortcut="shortcut.markFrameWhite" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#f4f4f4"/>
+   <item id="MarkFrameBlack" icon="timeline/markframeblack" text="Black" shortcut="shortcut.markFrameBlack" responder="window" slot="onActionMarkFrame(QString)" itemParameter="#141414"/>
    <separator/>
-   <item id="MarkFrameNone" icon="timeline/markframenone" text="Remove Frame Marker" responder="window" slot="onActionMarkFrame(QString)" itemParameter="none"/>
+   <item id="MarkFrameNone" icon="timeline/markframenone" text="Remove Frame Marker" shortcut="shortcut.removeFrameMark" responder="window" slot="onActionMarkFrame(QString)" itemParameter="none"/>
+   <separator/>
+   <menu id="TimelineGotoNextMark" text="Go to Next...">
+    <item id="GotoNextFrameMark" icon="timeline/markframenone" text="Frame Marker" shortcut="shortcut.gotonextFrameMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next"/>
+    <item id="GotoNextRedMark" icon="timeline/markframered" text="Red Frame Marker" shortcut="shortcut.gotonextRedMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:red"/>
+    <item id="GotoNextOrangeMark" icon="timeline/markframeorange" text="Orange Frame Marker" shortcut="shortcut.gotonextOrangeMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:orange"/>
+    <item id="GotoNextYellowMark" icon="timeline/markframeyellow" text="Yellow Frame Marker" shortcut="shortcut.gotonextYellowMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:yellow"/>
+    <item id="GotoNextGreenMark" icon="timeline/markframegreen" text="Green Frame Marker" shortcut="shortcut.gotonextGreenMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:green"/>
+    <item id="GotoNextCyanMark" icon="timeline/markframecyan" text="Cyan Frame Marker" shortcut="shortcut.gotonextCyanMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:cyan"/>
+    <item id="GotoNextBlueMark" icon="timeline/markframeblue" text="Blue Frame Marker" shortcut="shortcut.gotonextBlueMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:blue"/>
+    <item id="GotoNextPurpleMark" icon="timeline/markframepurple" text="Purple Frame Marker" shortcut="shortcut.gotonextPurpleMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:purple"/>
+    <item id="GotoNextPinkMark" icon="timeline/markframepink" text="Pink Frame Marker" shortcut="shortcut.gotonextPinkMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:pink"/>
+    <item id="GotoNextWhiteMark" icon="timeline/markframewhite" text="White Frame Marker" shortcut="shortcut.gotonextWhiteMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:white"/>
+    <item id="GotoNextBlackMark" icon="timeline/markframeblack" text="Black Frame Marker" shortcut="shortcut.gotonextBlackMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="next:black"/>
+   </menu>
+   <menu id="TimelineGotoPreviousMark" text="Go to Previous...">
+    <item id="GotoPreviousFrameMark" icon="timeline/markframenone" text="Frame Marker" shortcut="shortcut.gotopreviousFrameMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous"/>
+    <item id="GotoPreviousRedMark" icon="timeline/markframered" text="Red Frame Marker" shortcut="shortcut.gotopreviousRedMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:red"/>
+    <item id="GotoPreviousOrangeMark" icon="timeline/markframeorange" text="Orange Frame Marker" shortcut="shortcut.gotopreviousOrangeMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:orange"/>
+    <item id="GotoPreviousYellowMark" icon="timeline/markframeyellow" text="Yellow Frame Marker" shortcut="shortcut.gotopreviousYellowMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:yellow"/>
+    <item id="GotoPreviousGreenMark" icon="timeline/markframegreen" text="Green Frame Marker" shortcut="shortcut.gotopreviousGreenMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:green"/>
+    <item id="GotoPreviousCyanMark" icon="timeline/markframecyan" text="Cyan Frame Marker" shortcut="shortcut.gotopreviousCyanMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:cyan"/>
+    <item id="GotoPreviousBlueMark" icon="timeline/markframeblue" text="Blue Frame Marker" shortcut="shortcut.gotopreviousBlueMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:blue"/>
+    <item id="GotoPreviousPurpleMark" icon="timeline/markframepurple" text="Purple Frame Marker" shortcut="shortcut.gotopreviousPurpleMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:purple"/>
+    <item id="GotoPreviousPinkMark" icon="timeline/markframepink" text="Pink Frame Marker" shortcut="shortcut.gotopreviousPinkMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:pink"/>
+    <item id="GotoPreviousWhiteMark" icon="timeline/markframewhite" text="White Frame Marker" shortcut="shortcut.gotopreviousWhiteMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:white"/>
+    <item id="GotoPreviousBlackMark" icon="timeline/markframeblack" text="Black Frame Marker" shortcut="shortcut.gotopreviousBlackMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:black"/>
+   </menu>
   </menu>
   <menu id="TimelineKeyframes" text="Keyframes of the Layer">
    <item id="LayerStopMotionKeys" icon="timeline/stopmotionkey" text="Set Stop-Motion Keyframes" responder="window" slot="onActionLayerKeys(QString)" itemParameter="stop"/>
@@ -836,6 +884,7 @@
    <item id="TagLayers" icon="timeline/tag" text="Tag Selected Layers" shortcut="shortcut.tagLayers" responder="window" slot="onActionTagLayers(QString)" itemParameter="tag"/>
    <item id="UntagLayers" icon="timeline/untag" text="Untag Selected Layers" shortcut="shortcut.untagLayers" responder="window" slot="onActionTagLayers(QString)" itemParameter="untag"/>
    <item id="UntagAllLayers" icon="timeline/untag" text="Untag All Layers" responder="window" slot="onActionTagLayers(QString)" itemParameter="untagAll"/>
+   <item id="UntagAllOthers" icon="timeline/untag" text="Untag All Others" responder="window" slot="onActionTagLayers(QString)" itemParameter="untagOthers"/>
   </menu>
   <item id="HideSelection" icon="timeline/viewselected" text="&amp;Hide Selection" shortcut="shortcut.hideSelection" responder="window" slot="onActionHideSelection()"/>
   <item id="ShowSelectionHideOthers" icon="timeline/viewselected" text="Show Selection And Hide All &amp;Others" shortcut="shortcut.showSelectionHideOthers" responder="window" slot="onActionShowSelectionHideOthers()"/>
@@ -844,6 +893,15 @@
    <item id="TimelineViewSelected" icon="timeline/viewselected" text="View Selection Only" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="selected"/>
    <item id="TimelineViewTagged" icon="timeline/viewtagged" text="View Tagged Layers" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="tagged"/>
    <item id="TimelineViewControlled" icon="timeline/viewselected" text="View Controlled Layers" checkable="true" group="timelineView" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="controlled"/>
+   <item id="TimelineViewGroup" icon="timeline/viewselected" text="Show Layers in Same Group" checkable="true" group="timelineView" shortcut="shortcut.viewSameGroup" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="group"/>
+   <separator/>
+   <item id="NextViewMode" icon="timeline/viewall" text="Cycle to Next View Mode" shortcut="shortcut.nextViewMode" responder="window" slot="onActionNextViewMode()"/>
+   <item id="CentreOnSelection" icon="timeline/viewselected" text="Centre on Selection" shortcut="shortcut.centreOnSelection" responder="window" slot="onActionCentreOnSelection()"/>
+  </menu>
+  <menu id="TimelineThumbnails" text="Thumbnails">
+   <item id="ToggleThumbnails" icon="timeline/viewall" text="Show/Hide Thumbnails" shortcut="shortcut.toggleThumbnails" responder="window" slot="onActionThumbnails(QString)" itemParameter="toggle"/>
+   <item id="ShowAllThumbnails" icon="timeline/viewall" text="Show All Thumbnails" shortcut="shortcut.showAllThumbnails" responder="window" slot="onActionThumbnails(QString)" itemParameter="all"/>
+   <item id="HideAllThumbnails" icon="timeline/viewall" text="Hide All Thumbnails" shortcut="shortcut.hideAllThumbnails" responder="window" slot="onActionThumbnails(QString)" itemParameter="none"/>
   </menu>
   <menu id="TimelineShow" text="Show">
    <item id="TimelineShowDrawings" icon="timeline/viewall" text="Show &amp;Drawings" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="drawings"/>
@@ -852,6 +910,9 @@
    <item id="TimelineShowGroups" icon="timeline/viewall" text="Show &amp;Groups" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="groups"/>
    <item id="TimelineShowCameras" icon="timeline/viewall" text="Show &amp;Cameras" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="cameras"/>
    <item id="TimelineShowOthers" icon="timeline/viewall" text="Show &amp;Other Layers" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="others"/>
+   <separator/>
+   <item id="ShowFunctions" icon="timeline/viewall" text="Show/Hide &amp;Functions" shortcut="shortcut.showFunctions" responder="window" slot="onActionShowFunctions()"/>
+   <item id="ShowManager" icon="timeline/viewall" text="Show &amp;Manager..." shortcut="shortcut.showManager" responder="window" slot="onActionShowManager()"/>
   </menu>
   <menu id="TimelineLock" text="Lock">
    <item id="LockLayer" icon="timeline/lock" text="Lock" responder="window" slot="onActionLockLayer()"/>
@@ -866,7 +927,11 @@
    <item id="ToggleLayerEnabled" icon="timeline/enable" text="Enable/Disable" responder="window" slot="onActionToggleLayerEnabled()"/>
    <item id="EnableAll" icon="timeline/enableall" text="Enable All" responder="window" slot="onActionEnableAll()"/>
    <item id="DisableAllOthers" icon="timeline/disableothers" text="Disable All Others" responder="window" slot="onActionDisableAllOthers()"/>
-   <item id="ToggleSolo" icon="timeline/solo" text="Solo On/Off" responder="window" slot="onActionToggleSolo()"/>
+   <item id="ToggleSolo" icon="timeline/solo" text="Solo On/Off" shortcut="shortcut.toggleSolo" responder="window" slot="onActionToggleSolo()"/>
+   <item id="SoloMode" icon="timeline/solo" text="Solo Mode" checkable="true" checked="true" shortcut="shortcut.soloMode" responder="window" slot="onActionSoloMode()"/>
+   <separator/>
+   <item id="EnableLayers" icon="timeline/enable" text="Enable Layers" shortcut="shortcut.enableLayers" responder="window" slot="onActionEnableLayers(QString)" itemParameter="enable"/>
+   <item id="DisableLayers" icon="timeline/disableothers" text="Disable Layers" shortcut="shortcut.disableLayers" responder="window" slot="onActionEnableLayers(QString)" itemParameter="disable"/>
   </menu>
   <item id="ChangeTrackColour" icon="timeline/trackcolour" text="Change Track Colour..." responder="window" slot="onActionChangeTrackColour()"/>
   <item id="DefaultTrackColour" icon="timeline/defaulttrackcolour" text="Default Track Colour" responder="window" slot="onActionDefaultTrackColour()"/>
@@ -875,6 +940,7 @@
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>
    <item id="DeleteDrawing"/>
+   <item id="DeleteSelectedDrawings" icon="edit/delete" text="Delete Selected Drawings" responder="window" slot="onActionDeleteSelectedDrawings()"/>
    <separator/>
    <item id="RenameDrawing"/>
    <item id="RenameWithPrefix"/>
@@ -955,15 +1021,32 @@
   </menu>
   <separator/>
   <item id="ShowWaveforms" icon="timeline/waveforms" text="Show Sound Waveforms" checkable="true" checked="true" responder="window" slot="onActionToggleWaveforms(bool)"/>
+  <item id="OverwriteDrop" icon="timeline/viewall" text="Overwrite Exposures and Keyframes During Drag and Drop" checkable="true" checked="true" shortcut="shortcut.overwriteDrop" responder="window" slot="onActionOverwriteDrop(bool)"/>
   <menu id="TimelineMarkers" text="Scene Markers">
    <item id="CreateSceneMarker" icon="timeline/markeradd" text="Create Scene Marker..." responder="window" slot="onActionCreateSceneMarker()"/>
    <item id="EditSceneMarker" icon="timeline/markeredit" text="Edit Scene Marker..." responder="window" slot="onActionEditSceneMarker()"/>
    <item id="DeleteSceneMarker" icon="timeline/markerdelete" text="Delete Scene Marker" responder="window" slot="onActionDeleteSceneMarker()"/>
+   <item id="MarkCurrentFrame" icon="timeline/markeradd" text="Mark Current Frame" shortcut="shortcut.markCurrentFrame" responder="window" slot="onActionMarkCurrentFrame()"/>
+   <item id="RippleSceneMarkers" icon="timeline/markeredit" text="Ripple Scene Markers" checkable="true" shortcut="shortcut.rippleMarkers" responder="window" slot="onActionRippleMarkers(bool)"/>
   </menu>
   <item id="ToggleLayerOnion" icon="timeline/onionlayer" text="Onion Skin on Selected Layers" responder="window" slot="onActionToggleLayerOnion()"/>
   <item id="PlayGotoFrame"/>
   <item id="PlaybackStartFrame" icon="play/startframe" text="Playback Start Frame..." responder="window" slot="onActionPlaybackStartFrame()"/>
   <item id="PlaybackStopFrame" icon="play/stopframe" text="Playback Stop Frame..." responder="window" slot="onActionPlaybackStopFrame()"/>
+ </menu>
+
+ <menu id="menu.timelineRuler" text="Timeline Ruler Menu">
+  <item id="PlayGotoFrame"/>
+  <item id="LockTimelineRuler"/>
+  <separator/>
+  <item id="CreateSceneMarker"/>
+  <item id="EditSceneMarker"/>
+  <item id="DeleteSceneMarker"/>
+  <item id="MarkCurrentFrame"/>
+  <item id="RippleSceneMarkers"/>
+  <separator/>
+  <item id="PlaybackStartFrame"/>
+  <item id="PlaybackStopFrame"/>
  </menu>
 
  <menu id="menu.colours" text="Colours" responder="paletteView" aboutToShowSlot="onShowColoursMenu(QMenu*)">

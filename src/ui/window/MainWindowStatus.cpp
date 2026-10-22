@@ -46,6 +46,7 @@ void MainWindow::updateActionStates()
     if (l < 0 || l >= scene.layers.size())
         return;
     Layer const& current = scene.layers[l];
+    m_actions->setChecked(QStringLiteral("SoloMode"), scene.soloMode);
     auto set = [this](char const* id, bool enabled) {
         if (QAction* const a = m_actions->action(QLatin1String(id)))
             a->setEnabled(enabled);

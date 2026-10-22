@@ -170,6 +170,12 @@ void MainWindow::applyPreferences()
     m_timeline->setKindShown(Layer::Sound, s.value(QStringLiteral("prefs/timelineSound"), true).toBool());
     m_timeline->setKindShown(Layer::Group, s.value(QStringLiteral("prefs/timelineGroups"), true).toBool());
     m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
+    m_timeline->setShowSceneEnd(s.value(QStringLiteral("prefs/timelineSceneEnd"), true).toBool());
+    m_timeline->setReduceIndentation(s.value(QStringLiteral("prefs/timelineReduceIndent"), false).toBool());
+    m_timeline->setOverwriteDrop(s.value(QStringLiteral("prefs/overwriteDrop"), true).toBool());
+    m_actions->setChecked(QStringLiteral("OverwriteDrop"), m_timeline->overwriteDrop());
+    m_document->setRippleMarkers(s.value(QStringLiteral("prefs/rippleMarkers"), false).toBool());
+    m_actions->setChecked(QStringLiteral("RippleSceneMarkers"), m_document->rippleMarkers());
     m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
     m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
     m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
@@ -379,6 +385,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/timelineSound"), w.showSound->isChecked());
     s.setValue(QStringLiteral("prefs/timelineWaveforms"), w.waveforms->isChecked());
     s.setValue(QStringLiteral("prefs/timelineGroups"), w.showGroups->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineSceneEnd"), w.sceneEnd->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineReduceIndent"), w.reduceIndent->isChecked());
     s.setValue(QStringLiteral("prefs/preroll"), w.preroll->value());
     s.setValue(QStringLiteral("prefs/nodeDoubleClick"), w.nodeDoubleClick->currentIndex());
     s.setValue(QStringLiteral("prefs/brushOutline"), w.brushOutline->isChecked());

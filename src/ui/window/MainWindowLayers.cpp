@@ -89,7 +89,12 @@ void MainWindow::onActionAddDrawingLayer()
     wholeScene->setObjectName(QStringLiteral("LayerWholeScene"));
     wholeScene->setToolTip(tr("The layer starts with an empty drawing held from the first frame to the last."));
     QFormLayout* const form = new QFormLayout;
+    QSpinBox* const number = new QSpinBox(&dialog);
+    number->setObjectName(QStringLiteral("LayerNumber"));
+    number->setRange(1, 100);
+    number->setToolTip(tr("How many layers are added: the name of each after the first ends in a number."));
     form->addRow(tr("Name:"), name);
+    form->addRow(tr("Number:"), number);
     form->addRow(tr("Line Art"), kinds("LayerLineArt", true));
     form->addRow(tr("Colour Art"), kinds("LayerColourArt", false));
     form->addRow(wholeScene);
@@ -108,12 +113,14 @@ void MainWindow::onActionAddDrawingLayer()
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
     layout->addLayout(form);
     layout->addLayout(buttons);
-    auto addOne = [this, name, wholeScene, &dialog] {
+    auto addOne = [this, name, number, wholeScene, &dialog] {
         QRadioButton* const bitmap = dialog.findChild<QRadioButton*>(QStringLiteral("LayerLineArtBitmap"));
         m_document->beginMacro(tr("Add Drawing Layer"));
-        int const at = addDrawingLayer(name->text(), wholeScene->isChecked());
-        if (bitmap && bitmap->isChecked())
-            m_document->setLayerBitmap(at, true);
+        for (int n = 0; n < number->value(); ++n) {
+            int const at = addDrawingLayer(n == 0 ? name->text() : QStringLiteral("%1_%2").arg(name->text().trimmed()).arg(n + 1), wholeScene->isChecked());
+            if (bitmap && bitmap->isChecked())
+                m_document->setLayerBitmap(at, true);
+        }
         m_document->endMacro();
         name->setFocus();
         name->selectAll();
@@ -213,10 +220,11 @@ void MainWindow::onActionTagLayers(QString const& how)
 {
     bool const on = how == QLatin1String("tag");
     QVector<int> layers = m_timeline->selectedLayers();
-    if (how == QLatin1String("untagAll")) {
+    if (how == QLatin1String("untagAll") || how == QLatin1String("untagOthers")) {
+        QVector<int> const keep = how == QLatin1String("untagOthers") ? layers : QVector<int>();
         layers.clear();
         for (int l = 0; l < m_document->scene().layers.size(); ++l)
-            if (m_document->scene().layers[l].tagged)
+            if (m_document->scene().layers[l].tagged && !keep.contains(l))
                 layers.push_back(l);
     }
     bool any = false;
@@ -240,7 +248,9 @@ void MainWindow::onActionLockTimelineRuler()
 void MainWindow::onActionTimelineViewMode(QString const& mode)
 {
     m_timeline->setViewMode(mode == QLatin1String("selected") ? Timeline::ShowSelected : mode == QLatin1String("tagged") ? Timeline::ShowTagged
-                            : mode == QLatin1String("controlled") ? Timeline::ShowControlled : Timeline::ShowAll);
+                            : mode == QLatin1String("controlled") ? Timeline::ShowControlled
+                            : mode == QLatin1String("group")      ? Timeline::ShowSameGroup
+                                                                  : Timeline::ShowAll);
 }
 
 // Timeline > Show: a kind of layer gets its rows, or loses them (the layers are in the scene all the same).

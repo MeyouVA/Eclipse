@@ -106,29 +106,6 @@ void MainWindow::onActionCreateCycle()
         m_timeline->createCycle(times, kind);
 }
 
-void MainWindow::onActionCreateSceneMarker()
-{
-    // Over the frames selected in the Timeline.
-    bool ok = false;
-    QString const name = QInputDialog::getText(this, tr("Create Scene Marker"), tr("Name:"), QLineEdit::Normal, QString(), &ok);
-    if (ok)
-        m_document->addMarker(m_timeline->selectionFirstFrame(), m_timeline->selectionLastFrame() - m_timeline->selectionFirstFrame() + 1, name, QColor());
-}
-
-void MainWindow::onActionEditSceneMarker()
-{
-    Scene const& scene = m_document->scene();
-    int const index = scene.markerAt(frame());
-    if (index < 0)
-        return;
-    bool ok = false;
-    QString const name = QInputDialog::getText(this, tr("Edit Scene Marker"), tr("Name:"), QLineEdit::Normal, scene.markers[index].name, &ok);
-    if (!ok)
-        return;
-    QColor const colour = ColourEditor::getColour(scene.markers[index].color, this, tr("Marker Colour"));
-    m_document->editMarker(index, name, colour);
-}
-
 // What there is to remember about the marker on the current frame.
 void MainWindow::onActionSceneMarkerNote()
 {

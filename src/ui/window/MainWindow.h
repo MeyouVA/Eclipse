@@ -472,6 +472,23 @@ public slots:
     void onActionEditExposurePreset();
     void onActionPasteModeExposure(bool on);
     void onActionPasteModeCycle();
+    void onActionPasteMode(QString const& mode);
+    void onActionEditPastePreset(QString const& which);
+    // The Timeline's own commands (MainWindowTimeline.cpp).
+    void onActionThumbnails(QString const& which);
+    void onActionCentreOnSelection();
+    void onActionNextViewMode();
+    void onActionGotoFrameMark(QString const& which);
+    void onActionEnableLayers(QString const& how);
+    void onActionSoloMode();
+    void onActionSelectSyncedLayers();
+    void onActionUnsyncLayer();
+    void onActionShowFunctions();
+    void onActionShowManager();
+    void onActionRippleMarkers(bool on);
+    void onActionOverwriteDrop(bool on);
+    void onActionLayerPrefixSuffix();
+    void onActionDeleteSelectedDrawings();
     void onActionRenameWithPrefix();
     void onActionOnionLayers(QString const& which);
     void onActionOnionAdvanced(bool on);
@@ -645,8 +662,11 @@ private:
     void playFrameSound(int frame);
     int m_envelopePoints = 8;      // how many points Create Envelope puts round a drawing
     // Paste Special as it was last asked for (Paste Special Again does the same without asking).
-    Timeline::PasteOptions m_paste, m_pasteExposure;
-    bool m_pasteExposuresOnly = false;
+    Timeline::PasteOptions m_paste, m_pasteExposure, m_pasteAll, m_pasteKeys;
+    // The paste mode: 0 all, 1 exposures only, 2 keyframes only; the All preset counts once it has been edited.
+    int m_pasteMode = 0;
+    bool m_pasteAllEdited = false;
+    void setPasteMode(int mode);
     bool pasteDialog(Timeline::PasteOptions& options, QString const& title);
     bool m_envelopeOutline = true; // ... round the outline of the artwork itself, not the hull round it
     QStringList m_referenceFiles;

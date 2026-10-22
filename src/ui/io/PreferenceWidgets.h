@@ -60,6 +60,8 @@ struct PreferenceWidgets {
     QCheckBox* showSound = nullptr;
     QCheckBox* waveforms = nullptr;
     QCheckBox* showGroups = nullptr;
+    QCheckBox* sceneEnd = nullptr;
+    QCheckBox* reduceIndent = nullptr;
     QSpinBox* preroll = nullptr;
     QCheckBox* loopAtStart = nullptr;
     QCheckBox* functionGrid = nullptr;

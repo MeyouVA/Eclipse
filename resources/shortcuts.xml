@@ -269,6 +269,57 @@
   <shortcut id="shortcut.hold4" text="Set Hold 4 Cells" value=""/>
   <shortcut id="shortcut.holdCustom" text="Set Custom Hold Cell" value=""/>
   <shortcut id="shortcut.easyFlip" text="Easy Flip" value=""/>
+  <shortcut id="shortcut.gotonextFrameMark" text="Go to Next Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousFrameMark" text="Go to Previous Frame Mark" value=""/>
+  <shortcut id="shortcut.gotonextRedMark" text="Go to Next Red Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousRedMark" text="Go to Previous Red Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameRed" text="Mark Frame Red" value=""/>
+  <shortcut id="shortcut.gotonextOrangeMark" text="Go to Next Orange Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousOrangeMark" text="Go to Previous Orange Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameOrange" text="Mark Frame Orange" value=""/>
+  <shortcut id="shortcut.gotonextYellowMark" text="Go to Next Yellow Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousYellowMark" text="Go to Previous Yellow Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameYellow" text="Mark Frame Yellow" value=""/>
+  <shortcut id="shortcut.gotonextGreenMark" text="Go to Next Green Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousGreenMark" text="Go to Previous Green Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameGreen" text="Mark Frame Green" value=""/>
+  <shortcut id="shortcut.gotonextCyanMark" text="Go to Next Cyan Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousCyanMark" text="Go to Previous Cyan Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameCyan" text="Mark Frame Cyan" value=""/>
+  <shortcut id="shortcut.gotonextBlueMark" text="Go to Next Blue Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousBlueMark" text="Go to Previous Blue Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameBlue" text="Mark Frame Blue" value=""/>
+  <shortcut id="shortcut.gotonextPurpleMark" text="Go to Next Purple Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousPurpleMark" text="Go to Previous Purple Frame Mark" value=""/>
+  <shortcut id="shortcut.markFramePurple" text="Mark Frame Purple" value=""/>
+  <shortcut id="shortcut.gotonextPinkMark" text="Go to Next Pink Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousPinkMark" text="Go to Previous Pink Frame Mark" value=""/>
+  <shortcut id="shortcut.markFramePink" text="Mark Frame Pink" value=""/>
+  <shortcut id="shortcut.gotonextWhiteMark" text="Go to Next White Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousWhiteMark" text="Go to Previous White Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameWhite" text="Mark Frame White" value=""/>
+  <shortcut id="shortcut.gotonextBlackMark" text="Go to Next Black Frame Mark" value=""/>
+  <shortcut id="shortcut.gotopreviousBlackMark" text="Go to Previous Black Frame Mark" value=""/>
+  <shortcut id="shortcut.markFrameBlack" text="Mark Frame Black" value=""/>
+  <shortcut id="shortcut.removeFrameMark" text="Remove Frame Marker" value=""/>
+  <shortcut id="shortcut.nextViewMode" text="View Mode Next" value=""/>
+  <shortcut id="shortcut.centreOnSelection" text="Centre On Selection" value=""/>
+  <shortcut id="shortcut.toggleThumbnails" text="Show or Hide Thumbnails" value=""/>
+  <shortcut id="shortcut.showAllThumbnails" text="Show All Thumbnails" value=""/>
+  <shortcut id="shortcut.hideAllThumbnails" text="Hide All Thumbnails" value=""/>
+  <shortcut id="shortcut.showFunctions" text="Show/Hide Functions" value=""/>
+  <shortcut id="shortcut.showManager" text="Show Manager" value=""/>
+  <shortcut id="shortcut.toggleSolo" text="Toggle Current Layer Solo Mode" value=""/>
+  <shortcut id="shortcut.soloMode" text="Toggle Solo Mode On or Off" value=""/>
+  <shortcut id="shortcut.enableLayers" text="Enable Layers" value=""/>
+  <shortcut id="shortcut.disableLayers" text="Disable Layers" value=""/>
+  <shortcut id="shortcut.selectSyncedLayers" text="Select Synced Layers" value=""/>
+  <shortcut id="shortcut.overwriteDrop" text="Toggle Override Exposure and Keyframe During Drag and Drop" value=""/>
+  <shortcut id="shortcut.markCurrentFrame" text="Mark Current Frame" value=""/>
+  <shortcut id="shortcut.rippleMarkers" text="Ripple Scene Markers" value=""/>
+  <shortcut id="shortcut.pasteModeAll" text="Paste mode: Set all" value=""/>
+  <shortcut id="shortcut.pasteModeKeys" text="Paste mode: Set key frames only" value=""/>
+  <shortcut id="shortcut.viewSameGroup" text="Show Layers in Same Group" value=""/>
   <shortcut id="shortcut.insertInbetween" text="Insert Action Inbetween Drawing" value=""/>
   <shortcut id="shortcut.substituteFramePrevious" text="Substitute Frame Previous" value=""/>
   <shortcut id="shortcut.substituteFrameNext" text="Substitute Frame Next" value=""/>

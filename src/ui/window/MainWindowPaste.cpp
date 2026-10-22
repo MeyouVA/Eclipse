@@ -101,6 +101,17 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     synced->setToolTip(tr("When pasting from a source synced layer onto a target synced layer do not paste the drawings from the other source synced layers."));
     synced->setChecked(options.currentSetOnly);
     more->addRow(synced);
+    QCheckBox* const gap = new QCheckBox(tr("Fill Gap with Previous Drawing"), advanced);
+    gap->setObjectName(QStringLiteral("PasteFillGap"));
+    gap->setToolTip(tr("Applies when dragging with the Alt key. Fill the gaps left on the source when dragging out frames."));
+    gap->setChecked(options.fillGap);
+    more->addRow(gap);
+    QCheckBox* const toKey = new QCheckBox(tr("Fill to Next Key Exposure"), advanced);
+    toKey->setObjectName(QStringLiteral("PasteFillToKey"));
+    toKey->setToolTip(tr("When used with Alt dragging, extend the exposure of the drawing of the previous frame up to the next key exposure or empty frame. "
+                         "When used with paste, extend the exposure of the dropped drawing up to the next key exposure or empty frame."));
+    toKey->setChecked(options.fillToKey);
+    more->addRow(toKey);
     tabs->addTab(advanced, tr("Advanced"));
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -122,6 +133,9 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     options.matchNames = names->isChecked();
     options.offsetKeys = offset->isChecked();
     options.currentSetOnly = synced->isChecked();
+    options.fillGap = gap->isChecked();
+    options.fillToKey = toKey->isChecked();
+    m_timeline->setDragFill(options.fillGap, options.fillToKey);
     return true;
 }
 
@@ -147,29 +161,68 @@ void MainWindow::onActionPasteSpecialAgain()
 
 void MainWindow::onActionEditExposurePreset()
 {
-    // Edit > Modify Paste Presets > Exposure: how Paste pastes in the Exposures Only mode.
+    onActionEditPastePreset(QStringLiteral("exposure"));
+}
+
+void MainWindow::onActionEditPastePreset(QString const& which)
+{
+    // Edit > Modify Paste Presets: how Paste pastes in each paste mode.
+    if (which == QLatin1String("all")) {
+        if (pasteDialog(m_pasteAll, tr("Edit All Paste Preset"))) {
+            m_pasteAllEdited = true;
+            setPasteMode(m_pasteMode);
+        }
+        return;
+    }
+    if (which == QLatin1String("keys")) {
+        if (m_pasteKeys.drawings) {
+            m_pasteKeys.drawings = false;
+            m_pasteKeys.keyframes = true;
+        }
+        if (pasteDialog(m_pasteKeys, tr("Edit Key Frame Paste Preset")))
+            setPasteMode(m_pasteMode);
+        return;
+    }
     if (m_pasteExposure.keyframes && m_pasteExposure.drawingMode == -1) {
         m_pasteExposure.keyframes = false;
         m_pasteExposure.drawingMode = CellBlock::CreateMissing;
     }
-    if (pasteDialog(m_pasteExposure, tr("Edit Exposure Paste Preset")) && m_pasteExposuresOnly)
-        m_timeline->setPastePreset(&m_pasteExposure);
+    if (pasteDialog(m_pasteExposure, tr("Edit Exposure Paste Preset")))
+        setPasteMode(m_pasteMode);
+}
+
+void MainWindow::setPasteMode(int mode)
+{
+    // All: as Paste always pastes (or as its preset says, once edited); Exposures Only: no keyframes; Key Frames Only: no drawings.
+    m_pasteMode = std::clamp(mode, 0, 2);
+    if (m_pasteMode == 1 && m_pasteExposure.keyframes && m_pasteExposure.drawingMode == -1) {
+        m_pasteExposure.keyframes = false;
+        m_pasteExposure.drawingMode = CellBlock::CreateMissing;
+    }
+    if (m_pasteMode == 2 && m_pasteKeys.drawings) {
+        m_pasteKeys.drawings = false;
+        m_pasteKeys.keyframes = true;
+    }
+    m_timeline->setPastePreset(m_pasteMode == 1 ? &m_pasteExposure : m_pasteMode == 2 ? &m_pasteKeys : m_pasteAllEdited ? &m_pasteAll : nullptr);
+    m_actions->setChecked(QStringLiteral("PasteModeAll"), m_pasteMode == 0);
+    m_actions->setChecked(QStringLiteral("PasteModeExposure"), m_pasteMode == 1);
+    m_actions->setChecked(QStringLiteral("PasteModeKeys"), m_pasteMode == 2);
 }
 
 void MainWindow::onActionPasteModeExposure(bool on)
 {
-    // Paste Mode: Exposures Only - the plain Paste pastes as the Exposure preset says (no keyframes, by default).
-    if (on && m_pasteExposure.keyframes && m_pasteExposure.drawingMode == -1) {
-        m_pasteExposure.keyframes = false;
-        m_pasteExposure.drawingMode = CellBlock::CreateMissing;
-    }
-    m_pasteExposuresOnly = on;
-    m_timeline->setPastePreset(on ? &m_pasteExposure : nullptr);
-    m_actions->setChecked(QStringLiteral("PasteModeExposure"), on);
+    setPasteMode(on ? 1 : 0);
     statusBar()->showMessage(on ? tr("Paste Mode: Exposures Only") : tr("Paste Mode: Normal"), 3000);
+}
+
+void MainWindow::onActionPasteMode(QString const& mode)
+{
+    int const which = mode == QLatin1String("exposure") ? 1 : mode == QLatin1String("keys") ? 2 : 0;
+    setPasteMode(which);
+    statusBar()->showMessage(which == 1 ? tr("Paste Mode: Exposures Only") : which == 2 ? tr("Paste Mode: Key Frames Only") : tr("Paste Mode: All"), 3000);
 }
 
 void MainWindow::onActionPasteModeCycle()
 {
-    onActionPasteModeExposure(!m_pasteExposuresOnly);
+    onActionPasteMode(QLatin1String(m_pasteMode == 0 ? "exposure" : m_pasteMode == 1 ? "keys" : "all"));
 }

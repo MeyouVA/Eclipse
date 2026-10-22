@@ -357,6 +357,16 @@ void MainWindow::preferencesTimeline(PreferenceWidgets& w, QSettings& s, QDialog
     w.showGroups->setObjectName(QStringLiteral("PrefShowGroups"));
     w.showGroups->setChecked(s.value(QStringLiteral("prefs/timelineGroups"), true).toBool());
     w.timelineLayout->addRow(w.showGroups);
+    w.sceneEnd = new QCheckBox(tr("Show End of Scene Marker"), w.timelinePage);
+    w.sceneEnd->setObjectName(QStringLiteral("PrefSceneEnd"));
+    w.sceneEnd->setToolTip(tr("A draggable end of scene marker is displayed on the timeline, allowing the user to modify the scene length."));
+    w.sceneEnd->setChecked(s.value(QStringLiteral("prefs/timelineSceneEnd"), true).toBool());
+    w.timelineLayout->addRow(w.sceneEnd);
+    w.reduceIndent = new QCheckBox(tr("Reduce Indentation"), w.timelinePage);
+    w.reduceIndent->setObjectName(QStringLiteral("PrefReduceIndent"));
+    w.reduceIndent->setToolTip(tr("Reduce the indentation of the timeline."));
+    w.reduceIndent->setChecked(s.value(QStringLiteral("prefs/timelineReduceIndent"), false).toBool());
+    w.timelineLayout->addRow(w.reduceIndent);
     w.preroll = new QSpinBox(w.timelinePage);
     w.preroll->setObjectName(QStringLiteral("PrefPreroll"));
     w.preroll->setRange(0, 1000);

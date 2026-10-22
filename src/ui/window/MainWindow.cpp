@@ -84,6 +84,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         }
     });
 
+    connect(m_timeline, &Timeline::rulerMenuRequested, this, [this](QPoint const& globalPos) {
+        if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.timelineRuler"), this)) {
+            menu->setAttribute(Qt::WA_DeleteOnClose);
+            menu->popup(globalPos);
+        }
+    });
     connect(m_timeline, &Timeline::currentCellChanged, m_canvas, &Canvas::setCurrentCell);
     rememberToggles();
     // Paste in the Timeline or the Xsheet with artwork copied last: into the drawing at the current cell.
