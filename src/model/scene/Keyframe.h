@@ -42,9 +42,24 @@ struct Pose {
     static Pose lerp(Pose const& a, Pose const& b, double t);
 };
 
+// One value's own curve through a keyframe, as the Function view shapes it: its two handles and how it goes on.
+struct ValueCurve {
+    int value = 0;          // which (Driver::Value, the order of Keyframe::Part)
+    QPointF in, out;        // the handles, in frames and value from the keyframe: `in` reaches back, `out` on
+    bool corner = false;    // the handles turned apart (off: one straight line through the keyframe)
+    enum Segment { Curved, Straight, Held };
+    int after = Curved;     // on to the next keyframe: a curve, a straight line, or this value held (stepped)
+    bool operator==(ValueCurve const&) const = default;
+};
+
 struct Keyframe {
     int frame = 0;
     Pose pose;
+    // The values with a curve of their own here (sorted by value); the rest go as the ease below has them.
+    QVector<ValueCurve> curves;
+    ValueCurve const* curveOf(int value) const;
+    void setCurve(ValueCurve const& curve);
+    void dropCurve(int value);
     enum Part { PartX = 1, PartY = 2, PartScaleX = 4, PartScaleY = 8, PartAngle = 16, PartOpacity = 32, PartZ = 64, PartSkew = 128,
                 PartFov = 256, PartRest = 512, AllParts = 1023 };
     int parts = AllParts;

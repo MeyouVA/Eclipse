@@ -65,9 +65,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     m_actions->registerResponder(QStringLiteral("paletteView"), m_palette);
     m_actions->registerResponder(QStringLiteral("xsheetView"), m_xsheet);
     m_actions->registerResponder(QStringLiteral("nodeView"), m_nodeView);
+    if (FunctionView* const function = findChild<FunctionView*>(QStringLiteral("FunctionView")))
+        m_actions->registerResponder(QStringLiteral("functionView"), function);
     m_actions->populateMenuBar(QStringLiteral("menu.main"), menuBar());
     createToolbars();
     m_actions->installShortcuts(this);
+    if (FunctionView* const function = findChild<FunctionView*>(QStringLiteral("FunctionView")))
+        function->setActions(m_actions);
     connectXsheetToggles();
 
     // Right-click menus of the views.

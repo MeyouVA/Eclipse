@@ -163,7 +163,12 @@ void MainWindow::createWindowsMenuViews()
     // Function: the animated values of the current layer as curves.
     FunctionView* const function = new FunctionView(m_document, this);
     function->setObjectName(QStringLiteral("FunctionView"));
-    connect(m_timeline, &Timeline::currentCellChanged, function, &FunctionView::setCurrentCell);
+    connect(m_timeline, &Timeline::currentCellChanged, function, [this, function](int layer, int frame) {
+        // (Another current layer changes what is selected without the Timeline saying so.)
+        if (layer != function->graph()->currentLayer())
+            function->setOtherLayers(m_timeline->selectedLayers());
+        function->setCurrentCell(layer, frame);
+    });
     connect(m_timeline, &Timeline::selectionChanged, function, [this, function] { function->setOtherLayers(m_timeline->selectedLayers()); });
     connect(function, &FunctionView::framePicked, m_timeline, &Timeline::setCurrentFrame);
     addView(tr("Function"), QStringLiteral("FunctionDock"), function, Qt::BottomDockWidgetArea)->hide();

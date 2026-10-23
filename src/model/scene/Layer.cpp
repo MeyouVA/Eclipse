@@ -225,6 +225,30 @@ Pose Layer::poseAt(int frame) const
 
 Pose Layer::keyedPoseAt(int frame) const
 {
+    Pose pose = tweenedPoseAt(frame);
+    // The values with curves of their own (the Function view): shaped by them, unless a motion path takes the layer there.
+    bool shaped = false;
+    for (Keyframe const& k : keys)
+        shaped = shaped || !k.curves.isEmpty();
+    if (!shaped)
+        return pose;
+    for (int value = 0; value < Driver::ValueCount; ++value) {
+        QVector<int> const through = keysOf(value);
+        int i = -1;
+        for (int n = 0; n + 1 < through.size(); ++n)
+            if (keys[through[n]].frame <= frame && frame < keys[through[n + 1]].frame)
+                i = n;
+        if (i < 0 || (!keys[through[i]].curveOf(value) && !keys[through[i + 1]].curveOf(value)))
+            continue;
+        if ((value == Driver::X || value == Driver::Y || value == Driver::Z) && !keys[through[i]].controls.isEmpty())
+            continue;
+        Driver::write(pose, value, curveValue(value, through, frame));
+    }
+    return pose;
+}
+
+Pose Layer::tweenedPoseAt(int frame) const
+{
     bool whole = true;
     for (Keyframe const& k : keys)
         whole = whole && k.parts == Keyframe::AllParts;
@@ -242,7 +266,10 @@ Pose Layer::keyedPoseAt(int frame) const
     Pose pose = poseOfKeys(rest.isEmpty() ? keys : rest, frame);
     for (int bit = 0; bit < 9; ++bit) {
         QVector<Keyframe> const some = setting(1 << bit);
-        if (some.isEmpty() || some.size() == rest.size())
+        bool same = some.size() == rest.size();
+        for (int k = 0; same && k < some.size(); ++k)
+            same = some[k].frame == rest[k].frame;
+        if (some.isEmpty() || same)
             continue;   // (set by none: what the rest has; by just the keyframes that set the rest: as they have it)
         Pose const own = poseOfKeys(some, frame);
         switch (1 << bit) {

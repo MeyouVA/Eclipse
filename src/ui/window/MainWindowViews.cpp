@@ -235,7 +235,8 @@ void MainWindow::createViews()
                             : d->windowTitle() == tr("Colour") ? QStringLiteral("menu.colourView")
                             : d->windowTitle() == tr("Onion Skin") ? QStringLiteral("menu.onionSkinView")
                             : d->windowTitle() == tr("Reference") ? QStringLiteral("menu.referenceView")
-                            : d->windowTitle() == tr("Desk") ? QStringLiteral("menu.deskView") : QString();
+                            : d->windowTitle() == tr("Desk") ? QStringLiteral("menu.deskView")
+                            : d->windowTitle() == tr("Function") ? QStringLiteral("menu.functionView") : QString();
         if (!own.isEmpty())
             bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
     }

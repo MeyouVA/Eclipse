@@ -206,6 +206,24 @@ public:
     void setKeyTween(int layer, int frame, bool tween);
     void clearKeyframes(int layer);
     void setKeyEase(int layer, int frame, double easeIn, double easeOut, double liftIn = 0.0, double liftOut = 0.0);
+    // The Function view.  Values' own curves at keyframes, set or dropped (`drop`), as one step.
+    struct CurveChange {
+        int frame = 0;
+        ValueCurve curve;
+        bool drop = false;
+    };
+    void setValueCurves(int layer, QVector<CurveChange> const& changes, QString const& text);
+    // Values (Driver::Value) set on frames: on the keyframes there, or on new ones that set just those values.
+    struct ValueChange {
+        int frame = 0;
+        int value = 0;
+        double to = 0.0;
+    };
+    void setKeyValues(int layer, QVector<ValueChange> const& changes, QString const& text);
+    // Some values' points (frame, Keyframe::Part bits) moved by `by` frames, the rest of their keyframes staying (see devnotes).
+    bool moveValuePoints(int layer, QVector<QPair<int, int>> const& points, int by, QString const& text);
+    // Values taken out of keyframes (frame, Keyframe::Part bits): a keyframe left setting nothing goes.
+    void removeKeyValues(int layer, QVector<QPair<int, int>> const& points, QString const& text);
     void setEffects(int layer, QVector<Effect> const& effects, QString const& text);
     // Takes effect `index` out, and its amounts out of the keyframes.
     void removeEffect(int layer, int index);

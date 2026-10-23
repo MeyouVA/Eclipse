@@ -613,6 +613,18 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         key.easeOut = std::clamp(ko["eout"].toDouble(0.0), 0.0, 1.0);
         key.liftIn = std::clamp(ko["lin"].toDouble(0.0), -2.0, 2.0);
         key.liftOut = std::clamp(ko["lout"].toDouble(0.0), -2.0, 2.0);
+        for (QJsonValue const& cv : ko["curves"].toArray()) {
+            QJsonArray const c = cv.toArray();
+            if (c.size() < 7 || c[0].toInt(-1) < 0 || c[0].toInt() >= Driver::ValueCount)
+                continue;
+            ValueCurve curve;
+            curve.value = c[0].toInt();
+            curve.in = QPointF(std::min(0.0, c[1].toDouble()), c[2].toDouble());
+            curve.out = QPointF(std::max(0.0, c[3].toDouble()), c[4].toDouble());
+            curve.corner = c[5].toBool();
+            curve.after = std::clamp(c[6].toInt(), 0, int(ValueCurve::Held));
+            key.setCurve(curve);
+        }
         QJsonArray const controls = ko["controls"].toArray();
         for (int i = 0; i + 1 < controls.size(); i += 2)
             key.controls.push_back(QPointF(controls[i].toDouble(), controls[i + 1].toDouble()));

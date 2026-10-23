@@ -1486,4 +1486,74 @@
   <item id="NodeViewWireGraph" text="Wire the Graph by Hand" responder="nodeView" slot="onActionWireGraph()"/>
  </menu>
 
+ <menu id="menu.functionView" text="Function View Menu">
+  <menu id="FunctionEditMenu" text="Edit">
+   <item id="FunctionCut" icon="edit/cut" text="Cut" responder="functionView" slot="onActionCut()"/>
+   <item id="FunctionCopy" icon="edit/copy" text="Copy" responder="functionView" slot="onActionCopy()"/>
+   <item id="FunctionPaste" icon="edit/paste" text="Paste" responder="functionView" slot="onActionPaste()"/>
+   <item id="FunctionDelete" icon="edit/delete" text="Delete" responder="functionView" slot="onActionDelete()"/>
+   <separator/>
+   <item id="FunctionSelectLeftHandle" text="Select Left Handle" responder="functionView" slot="onActionSelectLeftHandle()"/>
+   <item id="FunctionSelectRightHandle" text="Select Right Handle" responder="functionView" slot="onActionSelectRightHandle()"/>
+  </menu>
+  <menu id="FunctionViewMenu" text="View">
+   <item id="FunctionShowCurrentFrame" text="Show Current Frame" checkable="true" checked="true" responder="functionView" slot="onActionShowCurrentFrame(bool)"/>
+   <item id="FunctionToggleGrid" icon="view/grid" text="Toggle Grid" responder="functionView" slot="onActionToggleGrid()"/>
+   <separator/>
+   <item id="FunctionResetZoom" icon="view/resetzoom" text="Reset Zoom" responder="functionView" slot="onActionResetZoom()"/>
+   <item id="FunctionResetPan" icon="view/resetpan" text="Reset Pan" responder="functionView" slot="onActionResetPan()"/>
+   <item id="FunctionResetView" icon="view/resetview" text="Reset View" responder="functionView" slot="onActionResetView()"/>
+  </menu>
+  <menu id="FunctionListMenu" text="Function List">
+   <item id="FunctionAutoLoad" text="Auto Load Selection" checkable="true" checked="true" responder="functionView" slot="onActionAutoLoad(bool)"/>
+   <item id="FunctionClearList" text="Clear" responder="functionView" slot="onActionClearList()"/>
+   <item id="FunctionLoadSelection" text="Load Selection" responder="functionView" slot="onActionLoadSelection()"/>
+   <item id="FunctionAddSelection" text="Add Selection" responder="functionView" slot="onActionAddSelection()"/>
+   <item id="FunctionRemoveSelection" text="Remove Selection" responder="functionView" slot="onActionRemoveSelection()"/>
+   <menu id="FunctionShowMenu" text="Show">
+    <item id="FunctionShowMotion" icon="function/motion" text="Show Motion" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="motion"/>
+    <item id="FunctionShowRotation" icon="function/rotation" text="Show Rotation" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="rotation"/>
+    <item id="FunctionShowScale" icon="function/scale" text="Show Scale" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="scale"/>
+    <item id="FunctionShowOther" icon="function/other" text="Show Other" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="other"/>
+    <item id="FunctionShowAll" icon="function/all" text="Show All" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="all"/>
+   </menu>
+  </menu>
+  <separator/>
+  <item id="FunctionSelectPreviousKey" icon="timeline/prevkey" text="Select Previous KeyFrame" responder="functionView" slot="onActionSelectPreviousKey()"/>
+  <item id="FunctionSelectNextKey" icon="timeline/nextkey" text="Select Next KeyFrame" responder="functionView" slot="onActionSelectNextKey()"/>
+  <item id="FunctionStepped" icon="function/stepped" text="Constant Segment" responder="functionView" slot="onActionStepped()"/>
+  <item id="FunctionStraight" icon="function/straight" text="Linear Segment" responder="functionView" slot="onActionStraight()"/>
+  <item id="FunctionCurved" icon="function/curved" text="Curved Segment" responder="functionView" slot="onActionCurved()"/>
+  <item id="FunctionSmooth" icon="function/smooth" text="Smooth Point" responder="functionView" slot="onActionSmooth()"/>
+  <item id="FunctionCorner" icon="function/corner" text="Corner Point" responder="functionView" slot="onActionCorner()"/>
+  <item id="FunctionInsertPoint" icon="function/insertpoint" text="Insert Point" responder="functionView" slot="onActionInsertPoint()"/>
+ </menu>
+
+ <menu id="menu.functionCanvas" text="Function View Canvas Menu">
+  <item id="FunctionCut"/>
+  <item id="FunctionCopy"/>
+  <item id="FunctionPaste"/>
+  <item id="FunctionDelete"/>
+  <separator/>
+  <item id="FunctionSelectNextKey"/>
+  <item id="FunctionSelectPreviousKey"/>
+  <item id="FunctionSelectLeftHandle"/>
+  <item id="FunctionSelectRightHandle"/>
+  <item id="FunctionSelectAll" icon="edit/selectall" text="Select All" responder="functionView" slot="onActionSelectAll()"/>
+  <item id="FunctionDeselectAll" icon="edit/deselectall" text="Deselect All" responder="functionView" slot="onActionDeselectAll()"/>
+  <separator/>
+  <menu id="FunctionCanvasView" text="View">
+   <item id="FunctionZoomOut" icon="view/zoomout" text="Zoom Out" responder="functionView" slot="onActionZoomOut()"/>
+   <item id="FunctionZoomIn" icon="view/zoomin" text="Zoom In" responder="functionView" slot="onActionZoomIn()"/>
+   <item id="FunctionZoomOutX" text="Zoom Out X" responder="functionView" slot="onActionZoomOutX()"/>
+   <item id="FunctionZoomInX" text="Zoom In X" responder="functionView" slot="onActionZoomInX()"/>
+   <item id="FunctionZoomOutY" text="Zoom Out Y" responder="functionView" slot="onActionZoomOutY()"/>
+   <item id="FunctionZoomInY" text="Zoom In Y" responder="functionView" slot="onActionZoomInY()"/>
+   <separator/>
+   <item id="FunctionResetZoom"/>
+   <item id="FunctionResetPan"/>
+   <item id="FunctionResetView"/>
+  </menu>
+ </menu>
+
 </menus>

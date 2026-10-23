@@ -366,6 +366,12 @@ if (!k.controls.isEmpty()) {
 }
 if (k.liftOut != 0.0)
     key["lout"] = k.liftOut;
+if (!k.curves.isEmpty()) {
+    QJsonArray curves;
+    for (ValueCurve const& c : k.curves)
+        curves.append(QJsonArray{c.value, c.in.x(), c.in.y(), c.out.x(), c.out.y(), c.corner, c.after});
+    key["curves"] = curves;
+}
 if (k.pose.opacity != 1.0)
     key["op"] = k.pose.opacity;
 if (k.pose.z != 0.0)

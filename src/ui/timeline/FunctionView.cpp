@@ -1,256 +1,404 @@
-// Eclipse - the Function view: its graph - what it shows, fitting, zoom, where things are on it; the view round it.
+// Eclipse - the Function view: the list of the layers loaded and their values, the boxes and buttons over the graph.
 #include "ui/timeline/FunctionView.h"
 
-#include <QWheelEvent>
-
+#include <QDoubleSpinBox>
 #include <QHBoxLayout>
-#include <QListWidget>
-#include <QMouseEvent>
-#include <QPainter>
+#include <QHeaderView>
+#include <QLabel>
+#include <QSignalBlocker>
+#include <QToolButton>
+#include <QTreeWidget>
+#include <QVBoxLayout>
 
-#include <cmath>
-
+#include "actions/manager/ActionManager.h"
 #include "model/document/Commands.h"
-#include "actions/theme/InterfaceColours.h"
 
-FunctionGraph::FunctionGraph(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
-{
-    setObjectName(QStringLiteral("FunctionGraph"));
-    setMinimumSize(160, 100);
-    connect(m_document, &Document::changed, this, [this] {
-        fit();
-        update();
-    });
-    fit();
-}
+namespace {
 
-QColor FunctionGraph::colourOf(Timeline::Parameter which)
+// The kinds of value the buttons under the list tick at once.
+QVector<Timeline::Parameter> kindOf(QString const& kind)
 {
-    // Across, down and depth are the user's (the Colours page); the others are fixed.
-    if (which == Timeline::PosX)
-        return InterfaceColours::get("functionCurveX");
-    if (which == Timeline::PosY)
-        return InterfaceColours::get("functionCurveY");
-    if (which == Timeline::PosZ)
-        return InterfaceColours::get("functionCurveZ");
-    static QColor const colours[Timeline::ParameterCount] = {QColor(232, 96, 84),  QColor(110, 200, 120), QColor(240, 170, 70),
-                                                             QColor(100, 170, 240), QColor(200, 130, 230), QColor(210, 210, 210),
-                                                             QColor(90, 210, 200), QColor(180, 190, 90), QColor(230, 120, 170)};
-    return colours[which];
-}
-
-void FunctionGraph::setCurrentCell(int layer, int frame)
-{
-    if (layer == m_layer && frame == m_frame)
-        return;
-    bool const other = layer != m_layer;
-    m_layer = layer;
-    m_frame = frame;
-    if (other)
-        fit();
-    update();
-}
-
-void FunctionGraph::setShown(Timeline::Parameter which, bool shown)
-{
-    if (m_shown[which] == shown)
-        return;
-    m_shown[which] = shown;
-    fit();
-    update();
-}
-
-double FunctionGraph::valueAt(Timeline::Parameter which, int frame) const
-{
-    Scene const& scene = m_document->scene();
-    if (m_layer < 0 || m_layer >= scene.layers.size())
-        return 0.0;
-    if (which == Timeline::Fov)
-        return scene.layers[m_layer].fovAt(frame);
-    double const value = Timeline::parameterOf(scene.layers[m_layer].poseAt(frame), which);
-    return which == Timeline::Opacity ? value * 100.0 : value;
-}
-
-int FunctionGraph::firstShown() const
-{
+    if (kind == QLatin1String("motion"))
+        return {Timeline::PosX, Timeline::PosY, Timeline::PosZ};
+    if (kind == QLatin1String("rotation"))
+        return {Timeline::Angle};
+    if (kind == QLatin1String("scale"))
+        return {Timeline::ScaleX, Timeline::ScaleY};
+    if (kind == QLatin1String("other"))
+        return {Timeline::Skew, Timeline::Opacity, Timeline::Fov};
+    QVector<Timeline::Parameter> all;
     for (int which = 0; which < Timeline::ParameterCount; ++which)
-        if (m_shown[which])
-            return which;
-    return -1;
+        all.push_back(Timeline::Parameter(which));
+    return all;
 }
 
-QPointF FunctionGraph::easeHandleOf(Layer const& layer, int key, bool out) const
-{
-    int const which = firstShown();
-    int const other = out ? key + 1 : key - 1;
-    if (which < 0 || key < 0 || key >= layer.keys.size() || other < 0 || other >= layer.keys.size())
-        return QPointF();
-    double const ease = std::clamp(m_easeDrag == (out ? 1 : 2) && m_easeKey == key ? m_easeValue : out ? layer.keys[key].easeOut : layer.keys[key].easeIn, 0.0, 1.0);
-    double const from = xOfFrame(layer.keys[key].frame), to = xOfFrame(layer.keys[other].frame);
-    double const scale = which == Timeline::Opacity ? 100.0 : 1.0;
-    double const value = Timeline::parameterOf(layer.keys[key].pose, Timeline::Parameter(which)) * scale;
-    double const beyond = Timeline::parameterOf(layer.keys[other].pose, Timeline::Parameter(which)) * scale;
-    double const lift = m_easeDrag == (out ? 1 : 2) && m_easeKey == key ? m_liftValue : out ? layer.keys[key].liftOut : layer.keys[key].liftIn;
-    // (Out: that share of the way on to the next value.  In: that share of the way come, carried on past this one.)
-    double const lifted = out ? value + (beyond - value) * lift : value + (value - beyond) * lift;
-    return QPointF(from + (to - from) * (0.1 + 0.4 * ease), yOfValue(lifted));
-}
+// The order the values are listed in under a layer.
+Timeline::Parameter const kListed[] = {Timeline::PosX, Timeline::PosY, Timeline::PosZ, Timeline::ScaleX, Timeline::ScaleY,
+                                       Timeline::Angle, Timeline::Skew, Timeline::Opacity, Timeline::Fov};
 
-QPointF FunctionGraph::easeHandle(bool out) const
-{
-    Scene const& scene = m_document->scene();
-    if (m_layer < 0 || m_layer >= scene.layers.size())
-        return QPointF();
-    return easeHandleOf(scene.layers[m_layer], scene.layers[m_layer].keyIndex(m_frame), out);
-}
+}  // namespace
 
-void FunctionGraph::setOtherLayers(QVector<int> const& layers)
-{
-    QVector<int> others;
-    for (int l : layers)
-        if (l != m_layer && l >= 0 && l < m_document->scene().layers.size() && !others.contains(l))
-            others.push_back(l);
-    if (others == m_others)
-        return;
-    m_others = others;
-    fit();
-    update();
-}
-
-void FunctionGraph::fit()
-{
-    if (m_zoomed)
-        return;     // the values were chosen by hand
-    // From the lowest to the highest value any curve shown takes, with room above and below.
-    Scene const& scene = m_document->scene();
-    bool any = false;
-    double low = 0.0, high = 0.0;
-    for (int which = 0; which < Timeline::ParameterCount; ++which) {
-        if (!m_shown[which])
-            continue;
-        for (int f = 0; f < scene.frameCount(); ++f) {
-            double const v = valueAt(Timeline::Parameter(which), f);
-            low = any ? std::min(low, v) : v;
-            high = any ? std::max(high, v) : v;
-            any = true;
-            // ... and any curve of the other layers shown with it.
-            if (which == Timeline::Fov)
-                continue;
-            for (int other : m_others) {
-                if (other == m_layer || other >= scene.layers.size())
-                    continue;
-                double const o = Timeline::parameterOf(scene.layers[other].poseAt(f), Timeline::Parameter(which)) * (which == Timeline::Opacity ? 100.0 : 1.0);
-                low = std::min(low, o);
-                high = std::max(high, o);
-            }
-        }
-    }
-    double const room = std::max((high - low) * 0.15, std::max(std::abs(high), std::abs(low)) * 0.05 + 1.0);
-    m_low = low - room;
-    m_high = high + room;
-}
-
-double FunctionGraph::frameSpan() const
-{
-    return m_span > 0.0 ? m_span : std::max(2, m_document->scene().frameCount()) - 1.0;
-}
-
-void FunctionGraph::resetView()
-{
-    m_first = 0.0;
-    m_span = 0.0;
-    m_zoomed = false;
-    fit();
-    update();
-}
-
-void FunctionGraph::wheelEvent(QWheelEvent* event)
-{
-    QRectF const r = plot();
-    double const factor = std::pow(1.2, -event->angleDelta().y() / 120.0);     // rolled away: closer
-    if (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) {
-        // Along the values, about the one under the pointer.
-        double const at = valueOfY(event->position().y());
-        double const span = std::clamp((m_high - m_low) * factor, 1e-3, 1e9);
-        double const share = (at - m_low) / (m_high - m_low);
-        m_low = at - span * share;
-        m_high = m_low + span;
-        m_zoomed = true;
-    } else {
-        // Along the frames, about the one under the pointer; never further out than the whole scene.
-        double const whole = std::max(2, m_document->scene().frameCount()) - 1.0;
-        double const at = m_first + (event->position().x() - r.left()) * frameSpan() / r.width();
-        double const span = std::clamp(frameSpan() * factor, 2.0, whole);
-        m_first = std::clamp(at - (event->position().x() - r.left()) * span / r.width(), 0.0, whole - span);
-        m_span = span >= whole - 1e-9 ? 0.0 : span;
-        if (m_span == 0.0)
-            m_first = 0.0;
-    }
-    update();
-    event->accept();
-}
-
-QRectF FunctionGraph::plot() const
-{
-    return QRectF(46, 8, std::max(10, width() - 54), std::max(10, height() - 28));
-}
-
-double FunctionGraph::xOfFrame(double frame) const
-{
-    QRectF const r = plot();
-    return r.left() + (frame - m_first) * r.width() / frameSpan();
-}
-
-int FunctionGraph::frameOfX(double x) const
-{
-    QRectF const r = plot();
-    return std::clamp(int(std::lround(m_first + (x - r.left()) * frameSpan() / r.width())), 0, m_document->scene().frameCount() - 1);
-}
-
-double FunctionGraph::yOfValue(double value) const
-{
-    QRectF const r = plot();
-    return r.bottom() - (value - m_low) * r.height() / (m_high - m_low);
-}
-
-double FunctionGraph::valueOfY(double y) const
-{
-    QRectF const r = plot();
-    return m_low + (r.bottom() - y) * (m_high - m_low) / r.height();
-}
-
-QPointF FunctionGraph::pointAt(Timeline::Parameter which, int frame) const
-{
-    return QPointF(xOfFrame(frame), yOfValue(valueAt(which, frame)));
-}
-
-void FunctionGraph::setGridShown(bool on)
-{
-    m_grid = on;
-    update();
-}
-
-FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent)
+FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
 {
     m_graph = new FunctionGraph(document, this);
-    m_list = new QListWidget(this);
+    m_list = new QTreeWidget(this);
     m_list->setObjectName(QStringLiteral("FunctionList"));
-    m_list->setFixedWidth(110);
-    for (int which = 0; which < Timeline::ParameterCount; ++which) {
-        Timeline::Parameter const param = Timeline::Parameter(which);
-        QPixmap swatch(12, 12);
-        swatch.fill(FunctionGraph::colourOf(param));
-        QListWidgetItem* const item = new QListWidgetItem(QIcon(swatch), Timeline::parameterName(param), m_list);
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-        item->setCheckState(m_graph->isShown(param) ? Qt::Checked : Qt::Unchecked);
-    }
-    connect(m_list, &QListWidget::itemChanged, this, [this](QListWidgetItem* item) {
-        m_graph->setShown(Timeline::Parameter(m_list->row(item)), item->checkState() == Qt::Checked);
+    m_list->setHeaderHidden(true);
+    m_list->setFixedWidth(150);
+    m_list->setRootIsDecorated(true);
+    m_list->setIndentation(12);
+    connect(m_list, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem* item) {
+        if (m_filling)
+            return;
+        bool const on = item->checkState(0) == Qt::Checked;
+        if (!item->parent()) {
+            // A layer: its curves drawn or not.
+            int const index = m_document->scene().layerIndex(item->data(0, Qt::UserRole).toInt());
+            if (index >= 0)
+                m_graph->setLayerHidden(index, !on);
+            return;
+        }
+        // A value: drawn for every layer loaded, and ticked under each.
+        Timeline::Parameter const which = Timeline::Parameter(item->data(0, Qt::UserRole).toInt());
+        m_graph->setShown(which, on);
+        QSignalBlocker block(m_list);
+        for (int i = 0; i < m_list->topLevelItemCount(); ++i)
+            for (int c = 0; c < m_list->topLevelItem(i)->childCount(); ++c) {
+                QTreeWidgetItem* const child = m_list->topLevelItem(i)->child(c);
+                if (child->data(0, Qt::UserRole).toInt() == which)
+                    child->setCheckState(0, on ? Qt::Checked : Qt::Unchecked);
+            }
+        syncKinds();
     });
-    connect(m_graph, &FunctionGraph::framePicked, this, &FunctionView::framePicked);
+    connect(m_list, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem* item) {
+        // A value clicked: its points selected (the curve to work on).
+        if (!item->parent())
+            return;
+        int const index = m_document->scene().layerIndex(item->parent()->data(0, Qt::UserRole).toInt());
+        int const which = item->data(0, Qt::UserRole).toInt();
+        if (index < 0 || !m_graph->isShown(Timeline::Parameter(which)))
+            return;
+        QVector<FunctionPoint> chosen;
+        for (FunctionPoint const& p : m_graph->points())
+            if (p.layer == index && p.value == which)
+                chosen.push_back(p);
+        m_graph->setSelection(chosen);
+    });
+
+    // Under the list: the kinds of value, ticked at once.
+    QWidget* const kinds = new QWidget(this);
+    QHBoxLayout* const kindRow = new QHBoxLayout(kinds);
+    kindRow->setContentsMargins(2, 2, 2, 2);
+    kindRow->setSpacing(2);
+    for (QString const& kind : {QStringLiteral("motion"), QStringLiteral("rotation"), QStringLiteral("scale"), QStringLiteral("other"), QStringLiteral("all")}) {
+        QToolButton* const button = new QToolButton(kinds);
+        button->setObjectName(QStringLiteral("FunctionKind_") + kind);
+        button->setAutoRaise(true);
+        button->setProperty("kind", kind);
+        kindRow->addWidget(button);
+        m_kindButtons.push_back(button);
+    }
+    kindRow->addStretch(1);
+    QWidget* const left = new QWidget(this);
+    QVBoxLayout* const leftColumn = new QVBoxLayout(left);
+    leftColumn->setContentsMargins(0, 0, 0, 0);
+    leftColumn->setSpacing(0);
+    leftColumn->addWidget(m_list, 1);
+    leftColumn->addWidget(kinds);
+    left->setFixedWidth(150);
+
+    // Over the graph: the frame and value of the point selected, and the buttons.
+    m_strip = new QWidget(this);
+    m_strip->setObjectName(QStringLiteral("FunctionStrip"));
+    QHBoxLayout* const strip = new QHBoxLayout(m_strip);
+    strip->setContentsMargins(4, 2, 4, 2);
+    strip->setSpacing(4);
+    m_frameBox = new QDoubleSpinBox(m_strip);
+    m_frameBox->setObjectName(QStringLiteral("FunctionFrame"));
+    m_frameBox->setDecimals(4);
+    m_frameBox->setRange(-100000.0, 100000.0);
+    m_frameBox->setKeyboardTracking(false);
+    m_valueBox = new QDoubleSpinBox(m_strip);
+    m_valueBox->setObjectName(QStringLiteral("FunctionValue"));
+    m_valueBox->setDecimals(4);
+    m_valueBox->setRange(-1e9, 1e9);
+    m_valueBox->setKeyboardTracking(false);
+    strip->addWidget(new QLabel(tr("Frame"), m_strip));
+    strip->addWidget(m_frameBox);
+    strip->addWidget(new QLabel(tr("Value"), m_strip));
+    strip->addWidget(m_valueBox);
+    strip->addStretch(1);
+    auto typed = [this] {
+        if (!m_filling)
+            m_graph->setSelectedSpot(m_frameBox->value(), m_valueBox->value());
+    };
+    connect(m_frameBox, &QDoubleSpinBox::editingFinished, this, typed);
+    connect(m_valueBox, &QDoubleSpinBox::editingFinished, this, typed);
+
+    QWidget* const right = new QWidget(this);
+    QVBoxLayout* const rightColumn = new QVBoxLayout(right);
+    rightColumn->setContentsMargins(0, 0, 0, 0);
+    rightColumn->setSpacing(0);
+    rightColumn->addWidget(m_strip);
+    rightColumn->addWidget(m_graph, 1);
+
     QHBoxLayout* const layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-    layout->addWidget(m_list);
-    layout->addWidget(m_graph, 1);
+    layout->addWidget(left);
+    layout->addWidget(right, 1);
+
+    connect(m_graph, &FunctionGraph::framePicked, this, &FunctionView::framePicked);
+    connect(m_graph, &FunctionGraph::selectionChanged, this, &FunctionView::showSpot);
+    connect(m_document, &Document::changed, this, [this] {
+        rebuildList();
+        showSpot();
+    });
+    rebuildList();
+    showSpot();
+}
+
+void FunctionView::setActions(ActionManager* actions)
+{
+    m_actions = actions;
+    m_graph->setActions(actions);
+    if (!actions)
+        return;
+    QHBoxLayout* const strip = static_cast<QHBoxLayout*>(m_strip->layout());
+    auto add = [&](QString const& id, bool forPoints) {
+        QAction* const action = actions->action(id);
+        if (!action)
+            return;
+        QToolButton* const button = new QToolButton(m_strip);
+        button->setObjectName(QStringLiteral("FunctionButton_") + id);
+        button->setDefaultAction(action);
+        button->setAutoRaise(true);
+        button->setIconSize(QSize(18, 18));
+        strip->addWidget(button);
+        if (forPoints)
+            m_pointButtons.push_back(button);
+    };
+    add(QStringLiteral("FunctionSelectPreviousKey"), false);
+    add(QStringLiteral("FunctionSelectNextKey"), false);
+    add(QStringLiteral("FunctionStepped"), true);
+    add(QStringLiteral("FunctionStraight"), true);
+    add(QStringLiteral("FunctionCurved"), true);
+    add(QStringLiteral("FunctionSmooth"), true);
+    add(QStringLiteral("FunctionCorner"), true);
+    add(QStringLiteral("FunctionInsertPoint"), false);
+    add(QStringLiteral("FunctionToggleGrid"), false);
+    add(QStringLiteral("FunctionResetView"), false);
+    for (QToolButton* button : std::as_const(m_kindButtons)) {
+        QString const kind = button->property("kind").toString();
+        QString const id = QStringLiteral("FunctionShow") + kind.left(1).toUpper() + kind.mid(1);
+        if (QAction* const action = actions->action(id)) {
+            button->setDefaultAction(action);
+            button->setIconSize(QSize(16, 16));
+        }
+    }
+    actions->setChecked(QStringLiteral("FunctionAutoLoad"), m_autoLoad);
+    actions->setChecked(QStringLiteral("FunctionShowCurrentFrame"), m_graph->currentFrameShown());
+    syncKinds();
+    showSpot();
+}
+
+QVector<int> FunctionView::selectedIds() const
+{
+    Scene const& scene = m_document->scene();
+    QVector<int> ids;
+    if (m_current >= 0 && m_current < scene.layers.size())
+        ids.push_back(scene.layers[m_current].id);
+    for (int l : m_timelineSelection)
+        if (l >= 0 && l < scene.layers.size() && !ids.contains(scene.layers[l].id))
+            ids.push_back(scene.layers[l].id);
+    return ids;
+}
+
+void FunctionView::setCurrentCell(int layer, int frame)
+{
+    m_current = layer;
+    if (m_autoLoad) {
+        QVector<int> const ids = selectedIds();
+        if (ids != m_loaded) {
+            m_loaded = ids;
+            m_graph->setCurrentCell(layer, frame);
+            loadIntoGraph();
+            return;
+        }
+        m_graph->setCurrentCell(layer, frame);
+        return;
+    }
+    int const first = m_loaded.isEmpty() ? -1 : m_document->scene().layerIndex(m_loaded.first());
+    m_graph->setCurrentCell(first, frame);
+}
+
+void FunctionView::setOtherLayers(QVector<int> const& layers)
+{
+    m_timelineSelection = layers;
+    if (!m_autoLoad)
+        return;
+    QVector<int> const ids = selectedIds();
+    if (ids == m_loaded)
+        return;
+    m_loaded = ids;
+    loadIntoGraph();
+}
+
+void FunctionView::loadIntoGraph()
+{
+    Scene const& scene = m_document->scene();
+    QVector<int> indices;
+    for (int id : std::as_const(m_loaded))
+        if (int const index = scene.layerIndex(id); index >= 0)
+            indices.push_back(index);
+    int const first = indices.isEmpty() ? -1 : indices.first();
+    if (first != m_graph->currentLayer())
+        m_graph->setCurrentCell(first, m_graph->currentFrame());
+    m_graph->setOtherLayers(indices.mid(1));
+    rebuildList();
+}
+
+QTreeWidgetItem* FunctionView::valueItem(int layer, Timeline::Parameter which) const
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size())
+        return nullptr;
+    for (int i = 0; i < m_list->topLevelItemCount(); ++i) {
+        QTreeWidgetItem* const top = m_list->topLevelItem(i);
+        if (top->data(0, Qt::UserRole).toInt() != scene.layers[layer].id)
+            continue;
+        for (int c = 0; c < top->childCount(); ++c)
+            if (top->child(c)->data(0, Qt::UserRole).toInt() == which)
+                return top->child(c);
+    }
+    return nullptr;
+}
+
+void FunctionView::rebuildList()
+{
+    Scene const& scene = m_document->scene();
+    // Only when what it lists has changed (its names, its kinds), so that it keeps where it is scrolled to.
+    QStringList shape;
+    for (int id : std::as_const(m_loaded))
+        if (int const index = scene.layerIndex(id); index >= 0)
+            shape << QString::number(id) + QLatin1Char(':') + QString::number(scene.layers[index].kind) + QLatin1Char(':') + scene.layers[index].name;
+    QString const signature = shape.join(QLatin1Char('|'));
+    if (m_list->property("signature").toString() == signature && m_list->topLevelItemCount() == shape.size())
+        return;
+    m_list->setProperty("signature", signature);
+    m_filling = true;
+    QSignalBlocker block(m_list);
+    m_list->clear();
+    QVector<int> const drawn = m_graph->layersDrawn();
+    for (int id : std::as_const(m_loaded)) {
+        int const index = scene.layerIndex(id);
+        if (index < 0)
+            continue;
+        Layer const& l = scene.layers[index];
+        QTreeWidgetItem* const top = new QTreeWidgetItem(m_list, {l.name});
+        top->setData(0, Qt::UserRole, id);
+        top->setFlags(top->flags() | Qt::ItemIsUserCheckable);
+        top->setCheckState(0, drawn.contains(index) ? Qt::Checked : Qt::Unchecked);
+        for (Timeline::Parameter which : kListed) {
+            if (!Timeline::parameterFor(l.kind, which))
+                continue;
+            QPixmap swatch(10, 10);
+            swatch.fill(FunctionGraph::colourOf(which));
+            QTreeWidgetItem* const child = new QTreeWidgetItem(top, {Timeline::parameterName(which)});
+            child->setIcon(0, QIcon(swatch));
+            child->setData(0, Qt::UserRole, int(which));
+            child->setFlags(child->flags() | Qt::ItemIsUserCheckable);
+            child->setCheckState(0, m_graph->isShown(which) ? Qt::Checked : Qt::Unchecked);
+        }
+        top->setExpanded(true);
+    }
+    m_filling = false;
+}
+
+void FunctionView::showSpot()
+{
+    double frame = 0.0, value = 0.0;
+    bool const any = m_graph->selectedSpot(frame, value);
+    m_filling = true;
+    m_frameBox->setEnabled(any);
+    m_valueBox->setEnabled(any);
+    if (any) {
+        m_frameBox->setValue(frame);
+        m_valueBox->setValue(value);
+    } else {
+        m_frameBox->clear();
+        m_valueBox->clear();
+    }
+    m_filling = false;
+    // The buttons for the shape of a curve, only while there are points to give it to.
+    for (QToolButton* button : std::as_const(m_pointButtons))
+        button->setVisible(any);
+}
+
+void FunctionView::syncKinds()
+{
+    if (!m_actions)
+        return;
+    for (QString const& kind : {QStringLiteral("motion"), QStringLiteral("rotation"), QStringLiteral("scale"), QStringLiteral("other"), QStringLiteral("all")}) {
+        bool all = true;
+        for (Timeline::Parameter which : kindOf(kind))
+            all = all && m_graph->isShown(which);
+        m_actions->setChecked(QStringLiteral("FunctionShow") + kind.left(1).toUpper() + kind.mid(1), all);
+    }
+}
+
+void FunctionView::onActionShowKind(QString const& kind)
+{
+    // All of that kind ticked; or, when they all are already, none of them.
+    QVector<Timeline::Parameter> const values = kindOf(kind);
+    bool all = true;
+    for (Timeline::Parameter which : values)
+        all = all && m_graph->isShown(which);
+    for (Timeline::Parameter which : values)
+        m_graph->setShown(which, !all);
+    m_list->setProperty("signature", QString());
+    rebuildList();
+    syncKinds();
+}
+
+void FunctionView::onActionAutoLoad(bool on)
+{
+    m_autoLoad = on;
+    if (m_actions)
+        m_actions->setChecked(QStringLiteral("FunctionAutoLoad"), on);
+    if (on) {
+        m_loaded = selectedIds();
+        loadIntoGraph();
+    }
+}
+
+void FunctionView::onActionClearList()
+{
+    onActionAutoLoad(false);
+    m_loaded.clear();
+    loadIntoGraph();
+}
+
+void FunctionView::onActionLoadSelection()
+{
+    onActionAutoLoad(false);
+    m_loaded = selectedIds();
+    loadIntoGraph();
+}
+
+void FunctionView::onActionAddSelection()
+{
+    onActionAutoLoad(false);
+    for (int id : selectedIds())
+        if (!m_loaded.contains(id))
+            m_loaded.push_back(id);
+    loadIntoGraph();
+}
+
+void FunctionView::onActionRemoveSelection()
+{
+    onActionAutoLoad(false);
+    for (int id : selectedIds())
+        m_loaded.removeAll(id);
+    loadIntoGraph();
 }

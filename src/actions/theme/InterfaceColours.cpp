@@ -69,6 +69,8 @@ QList<Entry> const& entries()
         {"functionCurveX", "Function Editors", "X Curve", QColor(232, 96, 84)},
         {"functionCurveY", "Function Editors", "Y Curve", QColor(110, 200, 120)},
         {"functionCurveZ", "Function Editors", "Z Curve", QColor(90, 210, 200)},
+        {"functionSelected", "Function Editors", "Point Selected", QColor(235, 60, 60)},
+        {"functionHandle", "Function Editors", "Handles", QColor(240, 210, 70)},
     };
     return all;
 }

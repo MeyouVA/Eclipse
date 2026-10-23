@@ -133,6 +133,19 @@ struct Layer {
     // The pose at a frame: that of the keyframes, tweened where they ask for it.
     Pose poseAt(int frame) const;
     Pose keyedPoseAt(int frame) const;  // (without the angle limits)
+    Pose tweenedPoseAt(int frame) const;  // (... and without the values' own curves)
+    // The keyframes (their places in `keys`) a value's curve goes through (Driver::Value).
+    QVector<int> keysOf(int value) const;
+    // The handles of a value's curve from keyframe `from` to the next that sets it, `to`: their own, or as the ease makes them.
+    void segmentHandles(int value, int from, int to, QPointF& out, QPointF& in) const;
+    // The value on `frame` through the keyframes `through` (keysOf), shaped by their curves.
+    double curveValue(int value, QVector<int> const& through, double frame) const;
+    // Some values' points (frame, Keyframe::Part bits) moved by `by` frames, the rest of their keyframes staying (see devnotes).
+    bool moveValues(QVector<QPair<int, int>> const& points, int by, int last);
+    // Values taken out of keyframes (frame, bits): a keyframe left setting nothing goes.
+    void removeValues(QVector<QPair<int, int>> const& points);
+    // The keyframes a value goes through all say so (before one stops setting it, which would leave it to the rest).
+    void spellOut(int bits);
     // The index of the keyframe at exactly `frame`, or -1.
     int keyIndex(int frame) const;
     int previousKeyFrame(int frame) const;  // -1 when there is none

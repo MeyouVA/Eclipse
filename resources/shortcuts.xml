@@ -242,6 +242,15 @@
   <shortcut id="shortcut.xsheetExpandAll" text="Expand All" value=""/>
   <shortcut id="shortcut.xsheetPreview" text="Preview" value=""/>
  </category>
+ <category id="Function Editor" text="Function Editor">
+  <shortcut id="shortcut.feLockPoint" text="Lock/Unlock Point" value=""/>
+  <shortcut id="shortcut.feZoomInX" text="Zoom In X" value="4"/>
+  <shortcut id="shortcut.feZoomInY" text="Zoom In Y" value="6"/>
+  <shortcut id="shortcut.feZoomOutX" text="Zoom Out X" value="3"/>
+  <shortcut id="shortcut.feZoomOutY" text="Zoom Out Y" value="5"/>
+  <shortcut id="shortcut.feToggleGrid" text="Toggle Grid" value="G"/>
+  <shortcut id="shortcut.feInsertPoint" text="Insert Point" value="I"/>
+ </category>
  <category id="Drawing Mode" text="Drawing Mode">
   <shortcut id="shortcut.smooth" text="Smooth" value="Alt+Shift+S"/>
   <shortcut id="shortcut.createEmptyDrawing" text="Create Empty Drawing" value="Alt+Shift+R"/>
