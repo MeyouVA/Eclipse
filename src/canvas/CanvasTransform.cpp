@@ -9,6 +9,7 @@
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
 #include "render/effects/Effects.h"
+#include "actions/theme/InterfaceColours.h"
 
 // ---- transform tool -----------------------------------------------------------------------
 // Moves, scales and turns a whole layer - and with a peg, everything attached to it - by
@@ -19,10 +20,23 @@ QRectF Canvas::subjectBounds() const
     Scene const& scene = m_document->scene();
     if (scene.layers[m_layer].kind == Layer::Camera)
         return QRectF(0, 0, scene.width, scene.height);  // what it sees
-    QTransform const inv = scene.worldTransform(m_layer, m_frame).inverted();
+    QRectF const r = layerBounds(m_layer);
+    if (!r.isNull())
+        return r;
+    // Nothing to show on this frame: a small box about the pivot, to have handles at all.
+    QPointF const pivot = scene.pivotOf(m_layer, m_frame);
+    return QRectF(pivot.x() - 60, pivot.y() - 60, 120, 120);
+}
+
+QRectF Canvas::layerBounds(int layerIndex) const
+{
+    Scene const& scene = m_document->scene();
+    if (layerIndex < 0 || layerIndex >= scene.layers.size())
+        return QRectF();
+    QTransform const inv = scene.worldTransform(layerIndex, m_frame).inverted();
     QRectF r;
     for (int l = 0; l < scene.layers.size(); ++l) {
-        if (l != m_layer && !scene.isAncestor(m_layer, l))
+        if (l != layerIndex && !scene.isAncestor(layerIndex, l))
             continue;
         int const index = scene.layers[l].drawingAt(m_frame);
         if (index == Layer::kNoDrawing || scene.layers[l].drawings[index].isEmpty())
@@ -33,11 +47,6 @@ QRectF Canvas::subjectBounds() const
         QRectF const own = sub.bones.size() >= 2 || sub.hasWarp() ? Deform::shown(sub.drawings[index], sub, sub.poseAt(m_frame)).bounds() : sub.drawings[index].bounds();
         QRectF const b = toSubject.map(QPolygonF(own)).boundingRect();
         r = r.isNull() ? b : r.united(b);
-    }
-    if (r.isNull()) {
-        // Nothing to show on this frame: a small box about the pivot, to have handles at all.
-        QPointF const pivot = scene.layers[m_layer].pivot;
-        r = QRectF(pivot.x() - 60, pivot.y() - 60, 120, 120);
     }
     return r;
 }
@@ -128,9 +137,19 @@ void Canvas::paintBoneLayers(QPainter& painter)
     }
 }
 
-void Canvas::transformDown(QPointF widgetPos)
+void Canvas::transformDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers)
 {
     Scene const& scene = m_document->scene();
+    // A layer the animation tools pass by (or a drawing, in peg selection mode): the peg above it is worked on.
+    if (int const target = animationTarget(m_layer); target != m_layer) {
+        if (target < 0) {
+            emit message(tr("This layer is not animated with the animation tools (Layer Properties > Animate Using Animation Tools). Attach it to a peg to move it."));
+            return;
+        }
+        emit layerPicked(target);
+        if (m_layer != target)
+            return;
+    }
     if (scene.layers[m_layer].kind == Layer::Group || scene.layers[m_layer].kind == Layer::ColourCard) {
         emit message(scene.layers[m_layer].kind == Layer::Group
                          ? tr("A group has no position of its own. Put it under a peg to move what is in it.")
@@ -156,28 +175,29 @@ void Canvas::transformDown(QPointF widgetPos)
     auto begin = [&] {
         Layer const& layer = m_document->scene().layers[m_layer];
         m_poseStart = m_dragPose = layer.poseAt(m_frame);
-        m_dragPivot = layer.pivot;
+        m_dragPivot = m_document->scene().pivotOf(m_layer, m_frame);
         m_world0 = m_document->scene().worldTransform(m_layer, m_frame);
         m_dragBounds = subjectBounds();
         m_dragStartScene = toScene(widgetPos);
     };
     begin();
+    TransformOptions const& o = m_tx;
+    double const reach = std::max(4.0, o.pointSize / 2.0 + 1.0);
     QTransform const toWidget = m_world0 * viewTransform();
     auto isAt = [&](QPointF layerPos) {
         QPointF const w = toWidget.map(layerPos);
-        return std::abs(w.x() - widgetPos.x()) <= 7 && std::abs(w.y() - widgetPos.y()) <= 7;
+        return std::abs(w.x() - widgetPos.x()) <= reach && std::abs(w.y() - widgetPos.y()) <= reach;
     };
-    // The knob stands a fixed distance on screen above the middle of the top edge.
-    QPointF const top = toWidget.map(QPointF(m_dragBounds.center().x(), m_dragBounds.top()));
-    QPointF const centre = toWidget.map(m_dragBounds.center());
-    QPointF up = top - centre;
-    double const len = std::hypot(up.x(), up.y());
-    up = len > 1e-6 ? up / len : QPointF(0, -1);
-    // The frame of a camera fills the view, so its knob stands inside the frame, where it can be reached.
-    QPointF const knob = top + up * (m_document->scene().layers[m_layer].kind == Layer::Camera ? -28.0 : 28.0);
+    Layer const& current = scene.layers[m_layer];
+    auto canSkew = [&] {
+        if (current.separateScale)
+            return true;
+        emit message(tr("To skew with the Transform tool, set the Scale option to Separate in the Layer Properties."));
+        return false;
+    };
 
-    if (scene.layers[m_layer].bones.size() >= 2) {
-        QVector<QPointF> const posed = Deform::posedJoints(scene.layers[m_layer].bones, m_dragPose.bend);
+    if (!o.hideControls && current.bones.size() >= 2) {
+        QVector<QPointF> const posed = Deform::posedJoints(current.bones, m_dragPose.bend);
         for (int j = int(posed.size()) - 1; j >= 1; --j) {
             if (isAt(posed[j])) {
                 m_bone = j - 1;
@@ -187,15 +207,19 @@ void Canvas::transformDown(QPointF widgetPos)
         }
     }
     // A point or a handle of the deformer: pull it, and the artwork is reshaped.
-    if (scene.layers[m_layer].hasWarp()) {
-        int const at = warpAt(Deform::posedWarp(scene.layers[m_layer].warp, m_dragPose.warp), widgetPos);
+    if (!o.hideControls && current.hasWarp()) {
+        int const at = warpAt(Deform::posedWarp(current.warp, m_dragPose.warp), widgetPos);
         if (at >= 0) {
             m_warpIndex = at;
             m_drag = DragWarp;
             return;
         }
     }
-    if (isAt(scene.layers[m_layer].pivot)) {
+    if (!o.hideControls && !o.pivotFixed && o.pivotDraggable && isAt(m_dragPivot)) {
+        if (m_dragPivot != current.pivot) {
+            emit message(tr("The pivot comes from the drawing: move it with the Drawing Pivot tool."));
+            return;
+        }
         m_drag = DragPivot;
         return;
     }
@@ -215,7 +239,8 @@ void Canvas::transformDown(QPointF widgetPos)
         return;
     }
     if (m_transformMode == SkewOnly) {
-        m_drag = DragPoseSkew;
+        if (canSkew())
+            m_drag = DragPoseSkew;
         return;
     }
     if (m_transformMode == ScaleOnly) {
@@ -224,27 +249,103 @@ void Canvas::transformDown(QPointF widgetPos)
         m_drag = DragPoseScale;
         return;
     }
-    if (std::abs(knob.x() - widgetPos.x()) <= 7 && std::abs(knob.y() - widgetPos.y()) <= 7) {
-        m_drag = DragPoseRotate;
-        return;
-    }
-    for (Handle h : {TopLeft, TopRight, BottomRight, BottomLeft}) {
-        if (isAt(handlePos(h, m_dragBounds))) {
-            m_dragHandle = h;
-            m_drag = DragPoseScale;
-            return;
+    if (!o.hideControls) {
+        if (o.rotationLever) {
+            QPointF const knob = transformKnob(m_dragBounds, toWidget);
+            if (std::abs(knob.x() - widgetPos.x()) <= reach && std::abs(knob.y() - widgetPos.y()) <= reach) {
+                m_drag = DragPoseRotate;
+                return;
+            }
+        }
+        for (Handle h : {TopLeft, TopRight, BottomRight, BottomLeft, TopSide, RightSide, BottomSide, LeftSide}) {
+            if (isAt(handlePos(h, m_dragBounds))) {
+                m_dragHandle = h;
+                m_drag = DragPoseScale;
+                return;
+            }
+        }
+        QPolygonF const box = toWidget.map(QPolygonF(m_dragBounds));
+        if (!o.rotationLever && !box.containsPoint(widgetPos, Qt::OddEvenFill)) {
+            // Just outside a corner: turning.
+            for (Handle h : {TopLeft, TopRight, BottomRight, BottomLeft}) {
+                QPointF const corner = toWidget.map(handlePos(h, m_dragBounds));
+                double const away = std::hypot(corner.x() - widgetPos.x(), corner.y() - widgetPos.y());
+                if (away > reach && away <= reach + 16.0) {
+                    m_drag = DragPoseRotate;
+                    return;
+                }
+            }
+        }
+        if (o.allowSkew && box.size() >= 4) {
+            // On the top or bottom edge, between the handles: leaning.
+            for (int edge : {0, 2}) {
+                QPointF const from = box[edge], along = box[edge + 1] - box[edge];
+                double const length = std::hypot(along.x(), along.y());
+                if (length < 1.0)
+                    continue;
+                QPointF const off = widgetPos - from;
+                double const t = (off.x() * along.x() + off.y() * along.y()) / (length * length);
+                double const distance = std::abs(off.x() * along.y() - off.y() * along.x()) / length;
+                if (t > 0.0 && t < 1.0 && distance <= 3.5) {
+                    if (canSkew())
+                        m_drag = DragPoseSkew;
+                    return;
+                }
+            }
         }
     }
     int const hit = layerUnder(m_dragStartScene);
-    if (hit >= 0 && hit != m_layer && !scene.isAncestor(m_layer, hit)) {
-        emit layerPicked(hit);  // comes back through setCurrentCell
-        if (m_layer != hit)
+    bool const inBox = m_dragBounds.contains(m_world0.inverted().map(m_dragStartScene));
+    bool const ours = hit == m_layer || (hit >= 0 && scene.isAncestor(m_layer, hit)) || (hit >= 0 && m_transformLayers.contains(animationTarget(hit)));
+    if (o.lockSelection) {
+        // The selection stays as it is: only what is picked can be dragged.
+        if (ours || inBox)
+            m_drag = DragPoseMove;
+        return;
+    }
+    if (hit >= 0 && (modifiers & Qt::ShiftModifier)) {
+        // Shift and a click: that layer is picked as well (or no longer).
+        int const target = animationTarget(hit);
+        if (target >= 0 && target != m_layer) {
+            QVector<int> more = m_transformLayers;
+            if (more.contains(target))
+                more.removeAll(target);
+            else
+                more.push_back(target);
+            setTransformLayers(more);
+        }
+        return;
+    }
+    if (hit >= 0 && !ours) {
+        int const target = animationTarget(hit);
+        if (target < 0) {
+            emit message(tr("This layer is not animated with the animation tools (Layer Properties > Animate Using Animation Tools). Attach it to a peg to move it."));
+            return;
+        }
+        emit layerPicked(target);  // comes back through setCurrentCell
+        if (m_layer != target)
             return;
         begin();
         m_drag = DragPoseMove;
-    } else if (hit >= 0 || m_dragBounds.contains(m_world0.inverted().map(m_dragStartScene))) {
+    } else if (hit >= 0 || inBox) {
         m_drag = DragPoseMove;
+    } else {
+        // Empty space: a lasso (or a box) round the layers to pick.
+        m_layerPick = QPolygonF() << widgetPos;
+        m_drag = DragLayerPick;
     }
+}
+
+QPointF Canvas::transformKnob(QRectF const& bounds, QTransform const& toWidget) const
+{
+    // The lever stands a fixed distance on screen above the middle of the top edge (inside the frame for a camera, where it can be reached).
+    QPointF const top = toWidget.map(QPointF(bounds.center().x(), bounds.top()));
+    QPointF const centre = toWidget.map(bounds.center());
+    QPointF up = top - centre;
+    double const len = std::hypot(up.x(), up.y());
+    up = len > 1e-6 ? up / len : QPointF(0, -1);
+    bool const camera = m_layer >= 0 && m_layer < m_document->scene().layers.size() && m_document->scene().layers[m_layer].kind == Layer::Camera;
+    return top + up * (camera ? -28.0 : 28.0);
 }
 
 void Canvas::paintTransformAids(QPainter& painter)
@@ -252,42 +353,98 @@ void Canvas::paintTransformAids(QPainter& painter)
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
-    QColor const accent(255, 170, 40);
-    // While dragging, the box is the one the drag began with, carried by the new pose.
-    QRectF const bounds = m_drag == DragNone || m_drag == DragPan ? subjectBounds() : m_dragBounds;
-    QTransform const toWidget = layerViewTransform();
+    TransformOptions const& o = m_tx;
     painter.resetTransform();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    QColor const accent = InterfaceColours::get("transformTool");
+    QColor const handle = InterfaceColours::get("transformHandle");
+    if (m_drag == DragLayerPick && m_layerPick.size() >= 2) {
+        QPen pick(accent);
+        pick.setStyle(Qt::DashLine);
+        painter.setPen(pick);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPolygon(o.lasso ? m_layerPick : QPolygonF(QRectF(m_layerPick.first(), m_layerPick.last()).normalized()));
+    }
+    // The other layers picked: a box round each.
+    for (int other : m_transformLayers) {
+        if (other < 0 || other >= scene.layers.size() || other == m_layer)
+            continue;
+        QRectF const b = layerBounds(other);
+        if (b.isNull())
+            continue;
+        QPen box(accent.lighter(130));
+        box.setStyle(Qt::DotLine);
+        painter.setPen(box);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPolygon((worldOf(other, m_frame) * viewTransform()).map(QPolygonF(b)));
+    }
+    if (o.hideControls)
+        return;
+    // While dragging, the box is the one the drag began with, carried by the new pose.
+    QRectF const bounds = m_drag == DragNone || m_drag == DragPan || m_drag == DragLayerPick ? subjectBounds() : m_dragBounds;
+    if (!o.showOnEmpty && layerBounds(m_layer).isNull())
+        return;
+    QTransform const toWidget = layerViewTransform();
     QPen box(accent);
     box.setStyle(Qt::DashLine);
     painter.setPen(box);
     painter.setBrush(Qt::NoBrush);
     painter.drawPolygon(toWidget.map(QPolygonF(bounds)));
 
+    double const half = std::max(2.5, o.pointSize / 3.0);
     painter.setPen(QPen(accent));
-    painter.setBrush(Qt::white);
-    for (Handle h : {TopLeft, TopRight, BottomRight, BottomLeft}) {
+    painter.setBrush(handle);
+    for (Handle h : {TopLeft, TopRight, BottomRight, BottomLeft, TopSide, RightSide, BottomSide, LeftSide}) {
         QPointF const p = toWidget.map(handlePos(h, bounds));
-        painter.drawRect(QRectF(p.x() - 4, p.y() - 4, 8, 8));
+        double const r = h >= TopSide ? half * 0.75 : half;
+        painter.drawRect(QRectF(p.x() - r, p.y() - r, 2 * r, 2 * r));
     }
-    QPointF const top = toWidget.map(QPointF(bounds.center().x(), bounds.top()));
-    QPointF const centre = toWidget.map(bounds.center());
-    QPointF up = top - centre;
-    double const len = std::hypot(up.x(), up.y());
-    up = len > 1e-6 ? up / len : QPointF(0, -1);
-    // The frame of a camera fills the view, so its knob stands inside the frame, where it can be reached.
-    QPointF const knob = top + up * (m_document->scene().layers[m_layer].kind == Layer::Camera ? -28.0 : 28.0);
-    painter.drawLine(top, knob);
-    painter.drawEllipse(knob, 5, 5);
+    if (o.rotationLever) {
+        QPointF const top = toWidget.map(QPointF(bounds.center().x(), bounds.top()));
+        QPointF const knob = transformKnob(bounds, toWidget);
+        painter.drawLine(top, knob);
+        painter.drawEllipse(knob, half + 1, half + 1);
+    }
 
-    // The pivot: a ring with a cross.
-    QPointF const pivot = toWidget.map(m_drag == DragPivot ? m_dragPivot : scene.layers[m_layer].pivot);
+    // The pivot: a ring with a cross (hollow in the middle, as a donut, when Preferences say so).
+    bool const peg = scene.layers[m_layer].kind == Layer::Peg;
+    QColor const dark = InterfaceColours::get(peg ? "pegPivotDark" : "pivotDark");
+    QColor const light = InterfaceColours::get(peg ? "pegPivotLight" : "pivotLight");
+    QPointF const pivot = toWidget.map(m_drag == DragPivot ? m_dragPivot : scene.pivotOf(m_layer, m_frame));
+    double const ring = std::max(3.0, o.pointSize / 2.0);
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(QPen(QColor(20, 20, 20), 3));
-    painter.drawEllipse(pivot, 6, 6);
-    painter.setPen(QPen(accent, 1.5));
-    painter.drawEllipse(pivot, 6, 6);
-    painter.drawLine(pivot - QPointF(10, 0), pivot + QPointF(10, 0));
-    painter.drawLine(pivot - QPointF(0, 10), pivot + QPointF(0, 10));
+    painter.setPen(QPen(dark, 3));
+    painter.drawEllipse(pivot, ring, ring);
+    painter.setPen(QPen(light, 1.5));
+    painter.drawEllipse(pivot, ring, ring);
+    if (o.donutPivot) {
+        painter.setPen(QPen(dark, 1));
+        painter.drawEllipse(pivot, ring * 0.45, ring * 0.45);
+    } else {
+        painter.setPen(QPen(dark, 3));
+        painter.drawLine(pivot - QPointF(ring * 1.7, 0), pivot + QPointF(ring * 1.7, 0));
+        painter.drawLine(pivot - QPointF(0, ring * 1.7), pivot + QPointF(0, ring * 1.7));
+        painter.setPen(QPen(light, 1.5));
+        painter.drawLine(pivot - QPointF(ring * 1.7, 0), pivot + QPointF(ring * 1.7, 0));
+        painter.drawLine(pivot - QPointF(0, ring * 1.7), pivot + QPointF(0, ring * 1.7));
+    }
+    // The tools that do one thing: a circle of their size about the pivot, coloured for what they do; the angle turned so far.
+    if (m_transformMode == RotateOnly || m_transformMode == ScaleOnly || m_transformMode == SkewOnly || m_drag == DragPoseRotate) {
+        double const radius = o.toolSize * std::clamp(o.rotationControl, 0.05, 2.0);
+        QColor const colour = m_transformMode == ScaleOnly ? InterfaceColours::get("scaleControl")
+                              : m_transformMode == SkewOnly ? InterfaceColours::get("skewControl") : InterfaceColours::get("rotationControl1");
+        painter.setPen(QPen(colour, 1.2));
+        painter.drawEllipse(pivot, radius, radius);
+        if (m_drag == DragPoseRotate) {
+            double const turned = m_dragPose.rotation - m_poseStart.rotation;
+            QColor fill = InterfaceColours::get("rotationControl2");
+            fill.setAlpha(70);
+            painter.setBrush(fill);
+            painter.setPen(Qt::NoPen);
+            // (Up the picture is down the numbers: a turn the clock's way is drawn so.)
+            painter.drawPie(QRectF(pivot - QPointF(radius, radius), QSizeF(2 * radius, 2 * radius)), 90 * 16, int(-turned * 16.0));
+        }
+    }
 
     if (scene.layers[m_layer].bones.size() >= 2)
         paintBones(painter, Deform::posedJoints(scene.layers[m_layer].bones, poseOf(m_layer, m_frame).bend), m_drag == DragBone ? m_bone + 1 : -1);

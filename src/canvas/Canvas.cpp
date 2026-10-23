@@ -151,6 +151,17 @@ void Canvas::setCurrentCell(int layer, int frame)
         m_ceStroke = m_cePoint = m_ceFill = -1;
         emit pointPicked(-1);
     }
+    if (layer != m_layer && !m_transformLayers.isEmpty()) {
+        // Another of those picked with the Transform tool made the current one: the one it was stays picked with them.
+        QVector<int> others = m_transformLayers;
+        if (others.removeAll(layer) > 0) {
+            others.push_back(m_layer);
+        } else {
+            others.clear();
+        }
+        m_transformLayers = others;
+        emit transformLayersChanged(m_transformLayers);
+    }
     m_layer = layer;
     m_frame = frame;
     if (m_tool == Reposition)

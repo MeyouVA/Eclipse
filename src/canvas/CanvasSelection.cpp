@@ -97,6 +97,14 @@ QPointF Canvas::handlePos(Handle handle, QRectF const& b) const
         return b.bottomLeft();
     case Rotate:
         return QPointF(b.center().x(), b.top() - 28.0 / m_zoom);  // a fixed distance on screen
+    case TopSide:
+        return QPointF(b.center().x(), b.top());
+    case RightSide:
+        return QPointF(b.right(), b.center().y());
+    case BottomSide:
+        return QPointF(b.center().x(), b.bottom());
+    case LeftSide:
+        return QPointF(b.left(), b.center().y());
     default:
         return b.center();
     }

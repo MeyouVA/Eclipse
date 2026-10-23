@@ -42,6 +42,8 @@ struct CanvasTypes {
         PencilRetouch,
         // Shift and Trace: the onion-skinned drawings and those on the Desk moved, turned or scaled to trace from.
         ShiftTrace,
+        // Click in the drawing: its own pivot goes there (used where the layer says so).
+        DrawingPivot,
     };
     // Which sheet of the drawing the tools work on.
     enum Art { LineArt, ColourArt, OverlayArt, UnderlayArt };
@@ -64,6 +66,26 @@ struct CanvasTypes {
     enum BitmapTip { BitmapRound, BitmapSquare, BitmapChisel, BitmapSpray, BitmapImage };
     enum RigMode { RigBones, RigCurve, RigEnvelope, RigWeights };
     enum ViewMode { ViewNormal, ViewRender, ViewMatte, ViewDepth };
+    // The Transform tool: its options and the preferences that say how it looks and works.
+    struct TransformOptions {
+        bool pegSelection = false;      // a drawing clicked: the peg it is attached to is picked
+        bool lockSelection = false;     // clicks in the view do not change which layers are picked
+        bool hideControls = false;
+        bool pivotFixed = false;        // Disable Pivot Manipulator
+        bool pivotDraggable = true;
+        bool rotationLever = false;     // one lever to turn by, instead of turning from outside the corners
+        bool allowSkew = true;          // the top and bottom edges of the box lean the layer
+        bool donutPivot = false;
+        bool lasso = true;              // dragged in empty space: a lasso (else a box) picks the layers in it
+        bool showOnEmpty = true;
+        bool allKeys = true;            // a keyframe sets every value, not just the ones changed
+        bool snapKeyframe = false;
+        bool controlPointsOnSelected = false;
+        int pointSize = 12;             // of pivots and control points, in pixels
+        int toolSize = 200;             // the rotate and scale tools' circle, in pixels
+        double rotationControl = 0.5;
+        double nudge = 1.0;
+    };
     enum TransformMode { TransformAll, TranslateOnly, RotateOnly, ScaleOnly, SkewOnly, MaintainSize };
     static constexpr int kOnionSteps = 6;
     static constexpr char16_t kLineBreak = 0x21B5;
@@ -95,7 +117,7 @@ struct CanvasTypes {
     enum CanvasBasis { CanvasScene, CanvasCamera, CanvasCameraMove };
     enum CutterGesture { GestureOff, GestureSingle, GestureMultiple, GestureBreak };
     enum PencilMode { PencilDraw, PencilPush, PencilThicken };
-    enum Handle { NoHandle, TopLeft, TopRight, BottomRight, BottomLeft, Rotate };
+    enum Handle { NoHandle, TopLeft, TopRight, BottomRight, BottomLeft, Rotate, TopSide, RightSide, BottomSide, LeftSide };
     // The dabs of a tip along a stroke (the stroke's own tip, or the dual one): `size` the width of the line, the rest as TipShape.
     struct Dabs {
         int kind = 0, roundness = 100, angle = 0, count = 1, spacing = 0;
@@ -106,6 +128,6 @@ struct CanvasTypes {
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom, DragTrace
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom, DragTrace, DragLayerPick
     };
 };

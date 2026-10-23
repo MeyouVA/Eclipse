@@ -167,6 +167,31 @@ public:
     void takeSnapshot();
     void setShowSnapshot(bool on) { m_showSnapshot = on && hasSnapshot(); update(); }
     Q_INVOKABLE void onActionNoZDragging(bool on) { m_noZDrag = on; }
+    // The Transform tool: its options and preferences; the other layers it works on along with the current one.
+    TransformOptions const& transformOptions() const { return m_tx; }
+    void setTransformOptions(TransformOptions const& options) { m_tx = options; update(); }
+    QVector<int> transformLayers() const { return m_transformLayers; }
+    void setTransformLayers(QVector<int> const& layers);
+    // The layer the animation tools move for `layer`: the peg above it in Peg Selection Mode, or when it is not to be animated (-1: none).
+    int animationTarget(int layer) const;
+    static int changedParts(Pose const& a, Pose const& b);
+    Q_INVOKABLE void onActionPegSelectionMode(bool on);
+    Q_INVOKABLE void onActionLockSelection(bool on);
+    Q_INVOKABLE void onActionShowTransformControls(bool on);
+    Q_INVOKABLE void onActionDisablePivotManipulator(bool on);
+    Q_INVOKABLE void onActionMovePivotToCursor();
+    Q_INVOKABLE void onActionResetDrawingPivot();
+    void nudgeLayer(QPointF direction, bool far);
+    // The Drawing Pivot tool sets the pivot of every drawing of the layer, not just the current one.
+    void setPivotAllDrawings(bool on) { m_pivotAllDrawings = on; }
+    // Reposition Drawing: the Reposition tool moves the current drawing only, not every drawing of the layer.
+    void setRepositionCurrent(bool on) { m_repositionCurrent = on; }
+    bool pivotAllDrawings() const { return m_pivotAllDrawings; }
+    // The keyframe or control point before or after the one picked on the motion path: picked, and the frame it is on.
+    bool stepPathPoint(int direction, int* frame);
+    bool pickNearestControlPoint();
+    int pickedControlKey() const { return m_cpKey; }
+    int pickedControlIndex() const { return m_cpIndex; }
     void setLasso(bool on);
     // The box round what is selected, in the coordinates of the drawing; null with nothing selected.
     QRectF selectionRect() const { return hasSelection() ? selectionBounds() : QRectF(); }
@@ -524,6 +549,8 @@ public slots:
         emit animateChanged(false);
     }
     bool animatesOnionRange() const { return m_animateRange; }
+    bool animatesCurrentFrame() const { return m_animate; }
+    QPointF sceneAtWidget(QPointF widgetPos) const { return toScene(widgetPos); }
     // Each thing selected (a group counts as one) goes to a layer of its own, attached to this one.
     void onActionDistributeToLayers();
     void onActionUngroupArtwork();
@@ -602,6 +629,7 @@ signals:
     void pointerMoved(QPointF scenePos);
     // The transform tool was pressed on the artwork of another layer.
     void layerPicked(int layer);
+    void transformLayersChanged(QVector<int> const& layers);
     void colourPicked(int swatch, QColor const& colour);
     // A point was picked with the Contour Editor, or none is any more (-1).
     void pointPicked(int thicknessPercent);
@@ -693,7 +721,13 @@ private:
     QRectF subjectBounds() const;
     // The topmost visible drawing layer with artwork under the point, or -1.
     int layerUnder(QPointF scenePos) const;
-    void transformDown(QPointF widgetPos);
+    void transformDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers);
+    QRectF layerBounds(int layer) const;   // its artwork and that hung under it, in its own space; null with none
+    QPointF transformKnob(QRectF const& bounds, QTransform const& toWidget) const;
+    QVector<QPair<int, Pose>> posedOthers() const;
+    bool penUpLayerPick();
+    void drawingPivotDown(QPointF widgetPos);
+    void paintDrawingPivot(QPainter& painter);
     // The line, rectangle or ellipse from where the drag began to `p`.
     void updateShape(QPointF p, Qt::KeyboardModifiers modifiers);
     void contourDown(QPointF p, Qt::KeyboardModifiers modifiers);

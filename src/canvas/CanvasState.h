@@ -332,6 +332,11 @@ protected:
     QVector<Scene::Guide> m_guideEdit;   // the guides while a point of one is dragged
     int m_guideLine = -1;        // the plain guide being dragged with the Select tool
     int m_cpKey = -1, m_cpIndex = -1;       // the control point picked
+    TransformOptions m_tx;
+    QVector<int> m_transformLayers;         // picked along with the current layer
+    QPolygonF m_layerPick;                  // the lasso (or the box's two corners) round the layers being picked
+    bool m_pivotAllDrawings = false;
+    bool m_repositionCurrent = false;
     QPointF m_cpDragPos;                    // where the pointer has it while it is dragged (view)
     bool m_cpDepth = false;                 // taken with Alt: dragged up or down, it goes away from the camera or towards it
     QPointF m_cpPressPos;                   // where it was taken (view)

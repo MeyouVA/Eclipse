@@ -97,7 +97,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         return;
     }
     // A control point of the motion path, taken hold of with the Transform tool: it is picked, and dragged.
-    if (m_tool == Transform && m_showControl && !m_drawingView) {
+    if (m_tool == Transform && (m_showControl || m_tx.controlPointsOnSelected) && !m_drawingView) {
         int key = -1, control = -1;
         if (controlPointAt(widgetPos, &key, &control)) {
             pickControlPoint(key, control);
@@ -140,8 +140,12 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
     }
     beginGuidedStroke(widgetPos);
     if (m_tool == Transform) {
-        transformDown(widgetPos);
+        transformDown(widgetPos, modifiers);
         update();
+        return;
+    }
+    if (m_tool == DrawingPivot) {
+        drawingPivotDown(widgetPos);
         return;
     }
     if (m_tool == IK) {

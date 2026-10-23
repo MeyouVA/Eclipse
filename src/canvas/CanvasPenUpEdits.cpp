@@ -287,7 +287,7 @@ bool Canvas::penUpWarpRest(Drag drag)
 
 bool Canvas::penUpPose(Drag drag)
 {
-    Q_UNUSED(drag);
+    QVector<QPair<int, Pose>> const others = posedOthers();
     m_drag = DragNone;
     {
         // What was changed of a value that follows another layer does not show: say why.
@@ -301,25 +301,41 @@ bool Canvas::penUpPose(Drag drag)
             }
         }
     }
-    if (!(m_dragPose == m_poseStart) && !m_animate)
-        m_document->shiftPoses(m_layer, m_frame, m_poseStart, m_dragPose,
-                               drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
-                               : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer")
-                               : drag == DragPoseTurn ? tr("Turn Layer in Space") : tr("Rotate Layer"),
-                               m_animateRange ? std::max(0, m_frame - m_onionPrev) : -1, m_animateRange ? m_frame + m_onionNext : -1);
-    else if (!(m_dragPose == m_poseStart) && m_keyFrameOne && m_frame > 0 && m_document->scene().layers[m_layer].keys.isEmpty()) {
-        // Its first keyframe, and not on the first frame: the first frame gets one too, of the layer as it was.
-        QString const text = drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer") : drag == DragPoseRotate ? tr("Rotate Layer")
-                             : drag == DragPoseTurn ? tr("Turn Layer in Space")
-                             : drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : tr("Turn Bone");
-        m_document->beginMacro(text);
-        m_document->setKeyframe(m_layer, 0, m_poseStart, text);
-        m_document->setKeyframe(m_layer, m_frame, m_dragPose, text);
-        m_document->endMacro();
-    } else if (!(m_dragPose == m_poseStart))
-        m_document->setKeyframe(m_layer, m_frame, m_dragPose,
-                                drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone") : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer")
-                                : drag == DragPoseScale ? tr("Scale Layer") : drag == DragPoseTurn ? tr("Turn Layer in Space") : tr("Rotate Layer"));
+    if (m_dragPose == m_poseStart)
+        return false;
+    QString const text = drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
+                         : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer")
+                         : drag == DragPoseTurn ? tr("Turn Layer in Space") : tr("Rotate Layer");
+    m_document->beginMacro(text);
+    int const first = m_animateRange ? std::max(0, m_frame - m_onionPrev) : -1, last = m_animateRange ? m_frame + m_onionNext : -1;
+    // A keyframe here of the layer as posed: of every value, or (as Preferences may say) only of those changed.
+    auto keyHere = [this, &text](int layer, Pose const& was, Pose const& now) {
+        int const parts = Canvas::changedParts(was, now);
+        if (!m_tx.allKeys && parts != 0 && m_document->scene().layers[layer].keyIndex(m_frame) < 0)
+            m_document->setPartKeyframe(layer, m_frame, parts, now, text);
+        else
+            m_document->setKeyframe(layer, m_frame, now, text);
+    };
+    Layer const before = m_document->scene().layers[m_layer];
+    if (!m_animate) {
+        m_document->shiftPoses(m_layer, m_frame, m_poseStart, m_dragPose, text, first, last);
+    } else {
+        if (m_keyFrameOne && m_frame > 0 && before.keys.isEmpty())
+            m_document->setKeyframe(m_layer, 0, m_poseStart, text);    // its first keyframe, not on the first frame: the first frame gets one too
+        keyHere(m_layer, m_poseStart, m_dragPose);
+        // Snap Keyframe: a stop-motion keyframe changed, the next one that held the same values follows it.
+        int const at = before.keyIndex(m_frame);
+        if (m_tx.snapKeyframe && at >= 0 && !before.keys[at].tween && at + 1 < before.keys.size() && before.keys[at + 1].pose == before.keys[at].pose)
+            m_document->setKeyframe(m_layer, before.keys[at + 1].frame, m_dragPose, text);
+    }
+    for (auto const& [other, pose] : others) {
+        Pose const was = m_document->scene().layers[other].poseAt(m_frame);
+        if (!m_animate)
+            m_document->shiftPoses(other, m_frame, was, pose, text, first, last);
+        else
+            keyHere(other, was, pose);
+    }
+    m_document->endMacro();
     return false;
 }
 
@@ -350,7 +366,7 @@ bool Canvas::penUpSelection(Drag drag)
         QSet<int> const onion = m_applyAll ? QSet<int>() : onionDrawings();
         QRectF const region = everywhere ? selectionBounds() : QRectF();
         QTransform const done = m_dragTransform;
-        bool const all = m_tool == Reposition;
+        bool const all = m_tool == Reposition && !m_repositionCurrent;
         if (everywhere || all)
             m_document->beginMacro(text);
         commitDrawing(edited, text);

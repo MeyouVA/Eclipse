@@ -232,6 +232,7 @@ PoseOverride Canvas::dragged() const
         over.layer = m_layer;
         over.frame = m_frame;
         over.pose = m_dragPose;
+        over.others = posedOthers();
     } else if (m_drag == DragSplineOffset) {
         // The layer where its moved path has it on this frame.
         over.layer = m_layer;

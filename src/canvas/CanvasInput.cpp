@@ -188,6 +188,13 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         transformSelection(QTransform::fromTranslate(by.x(), by.y()), tr("Nudge"));
         return;
     }
+    // With the Transform tool, they nudge the layer (and the others picked with it).
+    if (m_tool == Transform && m_drag == DragNone && !m_drawingView && !(event->modifiers() & (Qt::ControlModifier | Qt::AltModifier))
+        && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right || event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)) {
+        nudgeLayer(QPointF(event->key() == Qt::Key_Left ? -1.0 : event->key() == Qt::Key_Right ? 1.0 : 0.0,
+                           event->key() == Qt::Key_Up ? -1.0 : event->key() == Qt::Key_Down ? 1.0 : 0.0), event->modifiers() & Qt::ShiftModifier);
+        return;
+    }
     QWidget::keyPressEvent(event);
 }
 

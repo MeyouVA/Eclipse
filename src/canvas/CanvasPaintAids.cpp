@@ -108,20 +108,26 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
             painter.restore();
         }
         paintMorphHints(painter);
+    if (m_tool == DrawingPivot && !m_playing && !m_drawingView) {
+        paintDrawingPivot(painter);
+        return true;
+    }
     if (m_tool == Transform && !m_playing) {
         if (m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].kind == Layer::Quadmap)
             paintQuadAids(painter);
         else
             paintTransformAids(painter);
+        if (m_showControl || m_tx.controlPointsOnSelected)
+            paintMotionPath(painter);
         return true;
     }
-    if (m_showControl && !m_playing && m_layer >= 0 && m_layer < scene.layers.size()) {
+    if ((m_showControl || m_tx.controlPointsOnSelected) && !m_playing && m_layer >= 0 && m_layer < scene.layers.size()) {
         // The pivot of the current layer, and its bones, whatever tool is in hand.
         Layer const& layer = scene.layers[m_layer];
         QTransform const toWidget = worldOf(m_layer, m_frame) * viewTransform();
         painter.resetTransform();
         painter.setRenderHint(QPainter::Antialiasing, true);
-        QPointF const pivot = toWidget.map(layer.pivot);
+        QPointF const pivot = toWidget.map(scene.pivotOf(m_layer, m_frame));
         painter.setBrush(Qt::NoBrush);
         painter.setPen(QPen(QColor(20, 20, 20), 3));
         painter.drawEllipse(pivot, 6, 6);

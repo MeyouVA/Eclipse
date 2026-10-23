@@ -19,6 +19,14 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         return;
     }
+    if (m_drag == DragLayerPick) {
+        if (m_tx.lasso)
+            m_layerPick << widgetPos;
+        else
+            m_layerPick = QPolygonF() << m_layerPick.first() << widgetPos;
+        update();
+        return;
+    }
     if (m_drag == DragSplineOffset) {
         m_splineNow = widgetPos;
         update();
@@ -134,7 +142,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     }
     case DragPoseRotate: {
-        QPointF const c = m_world0.map(m_document->scene().layers[m_layer].pivot);
+        QPointF const c = m_world0.map(m_dragPivot);
         QPointF const now = toScene(widgetPos);
         double const a0 = std::atan2(m_dragStartScene.y() - c.y(), m_dragStartScene.x() - c.x());
         double const a1 = std::atan2(now.y() - c.y(), now.x() - c.x());
@@ -144,19 +152,30 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         if (modifiers & Qt::ShiftModifier)
             degrees = std::round(degrees / 15.0) * 15.0;
         m_dragPose = m_poseStart;
-        m_dragPose.rotation += degrees;
+        m_dragPose.rotation = m_document->scene().layers[m_layer].limitedAngle(m_poseStart.rotation + degrees);
         update();
         break;
     }
     case DragPoseScale: {
         // Measured in the layer as it was when the drag began, from the pivot.
-        QPointF const pivot = m_document->scene().layers[m_layer].pivot;
+        QPointF const pivot = m_dragPivot;
         QTransform const inv = m_world0.inverted();
         QPointF const from = (m_scaleFromPress ? inv.map(m_dragStartScene) : handlePos(m_dragHandle, m_dragBounds)) - pivot;
         QPointF const to = inv.map(toScene(widgetPos)) - pivot;
         double sx = std::abs(from.x()) > 1e-6 ? to.x() / from.x() : 1.0;
         double sy = std::abs(from.y()) > 1e-6 ? to.y() / from.y() : 1.0;
-        if (modifiers & Qt::ShiftModifier) {
+        // A side: that way only.
+        if (m_dragHandle == TopSide || m_dragHandle == BottomSide)
+            sx = 1.0;
+        if (m_dragHandle == LeftSide || m_dragHandle == RightSide)
+            sy = 1.0;
+        bool const locked = !m_document->scene().layers[m_layer].separateScale;
+        if (locked) {
+            // Locked scale: in proportion, as far as the side or corner was pulled.
+            double const s = m_dragHandle == TopSide || m_dragHandle == BottomSide ? sy : m_dragHandle == LeftSide || m_dragHandle == RightSide ? sx
+                             : (std::abs(sx) >= std::abs(sy) ? sx : sy);
+            sx = sy = s;
+        } else if (modifiers & Qt::ShiftModifier) {
             double const s = std::max(std::abs(sx), std::abs(sy));
             sx = sx < 0 ? -s : s;
             sy = sy < 0 ? -s : s;

@@ -319,6 +319,10 @@ void Canvas::penUp()
         traceUp();
         return;
     }
+    if (drag == DragLayerPick) {
+        penUpLayerPick();
+        return;
+    }
     if (penUpTool(drag))
         return;
     if (drag == DragDraw) {

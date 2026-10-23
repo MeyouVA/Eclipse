@@ -11,6 +11,7 @@
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
 #include "render/effects/Effects.h"
+#include "actions/theme/InterfaceColours.h"
 
 QVector<QPointF> Canvas::weightJoints() const
 {
@@ -128,12 +129,13 @@ void Canvas::paintMotionPath(QPainter& painter)
     painter.setPen(QPen(QColor(120, 200, 255), 1.4));
     painter.drawPolyline(path);
     // A tick on each frame, so that the speed can be read off; a square on each keyframe.
+    QColor const keyColour = InterfaceColours::get("cameraKeyframe"), pointColour = InterfaceColours::get("controlPoint");
     painter.setPen(QPen(QColor(120, 200, 255), 1));
     for (QPointF const& at : std::as_const(path))
         painter.drawEllipse(at, 1.5, 1.5);
     for (QPointF const& at : std::as_const(keys)) {
         painter.setPen(QPen(QColor(20, 20, 20), 1));
-        painter.setBrush(QColor(120, 200, 255));
+        painter.setBrush(keyColour);
         painter.drawRect(QRectF(at - QPointF(3.5, 3.5), QSizeF(7, 7)));
     }
     // A ring on each control point; the one picked is filled.
@@ -144,8 +146,8 @@ void Canvas::paintMotionPath(QPainter& painter)
             painter.setPen(QPen(QColor(20, 20, 20), 3));
             painter.setBrush(Qt::NoBrush);
             painter.drawEllipse(at, 4.5, 4.5);
-            painter.setPen(QPen(QColor(255, 190, 70), 1.6));
-            painter.setBrush(picked ? QBrush(QColor(255, 190, 70)) : QBrush(Qt::NoBrush));
+            painter.setPen(QPen(pointColour, 1.6));
+            painter.setBrush(picked ? QBrush(pointColour) : QBrush(Qt::NoBrush));
             painter.drawEllipse(at, 4.5, 4.5);
         }
     }
