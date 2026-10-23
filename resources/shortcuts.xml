@@ -163,6 +163,22 @@
   <shortcut id="shortcut.underlayArt" text="Underlay Art" value=""/>
   <shortcut id="shortcut.resetView" text="Reset View" value="Shift+M"/>
   <shortcut id="shortcut.onionSkin" text="Show Onion Skin" value="Alt+O"/>
+   <shortcut id="shortcut.insertPositionKeyframe" text="Insert Position Keyframe" value=""/>
+  <shortcut id="shortcut.toggleLineCurve" text="Toggle Between Line and Curve" value=""/>
+  <shortcut id="shortcut.toggleSnapKeyframe" text="Toggle Snap Keyframe" value=""/>
+  <shortcut id="shortcut.toolRepositionDrawing" text="Reposition Drawing Tool" value=""/>
+  <shortcut id="shortcut.flipScaleX" text="Flip Scale X" value=""/>
+  <shortcut id="shortcut.flipScaleY" text="Flip Scale Y" value=""/>
+  <shortcut id="shortcut.selectPrevKeyframePoint" text="Select Previous Keyframe/Point" value=""/>
+  <shortcut id="shortcut.selectNextKeyframePoint" text="Select Next Keyframe/Point" value=""/>
+  <shortcut id="shortcut.pegSelectionMode" text="Peg Selection Mode" value=""/>
+  <shortcut id="shortcut.lockSelection" text="Lock Selection" value=""/>
+  <shortcut id="shortcut.toggleTransformControls" text="Show/Hide Transform Tool Controls" value=""/>
+  <shortcut id="shortcut.movePivotToCursor" text="Move Element or Peg Pivot to Cursor" value=""/>
+  <shortcut id="shortcut.selectControlPoint" text="Select Control Point" value=""/>
+  <shortcut id="shortcut.selectPrevControlPoint" text="Select Previous Control Point" value=""/>
+  <shortcut id="shortcut.selectNextControlPoint" text="Select Next Control Point" value=""/>
+  <shortcut id="shortcut.toolDrawingPivot" text="Drawing Pivot Tool" value=""/>
  </category>
  <category id="Timeline" text="Timeline">
   <shortcut id="shortcut.addDrawing" text="Add Drawing Layer" value="Ctrl+R"/>
@@ -202,6 +218,7 @@
   <shortcut id="shortcut.selectNextSibling" text="Select Next Sibling" value=""/>
   <shortcut id="shortcut.resetAll" text="Reset All" value=""/>
   <shortcut id="shortcut.resetTransformation" text="Reset Transformation" value=""/>
+  <shortcut id="shortcut.stopMotionMode" text="Stop-Motion Keyframe Mode" value=""/>
  </category>
  <category id="Exposure Sheet" text="Exposure Sheet">
   <shortcut id="shortcut.xsheetGestural" text="Gestural Drag Mode" value=""/>

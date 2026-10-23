@@ -304,7 +304,13 @@ void MainWindow::onActionChooseTool(QString const& name)
         {QStringLiteral("unpaint"), Canvas::Unpaint}, {QStringLiteral("text"), Canvas::Text},
         {QStringLiteral("rotateview"), Canvas::RotateView}, {QStringLiteral("cutter"), Canvas::Cutter},
         {QStringLiteral("stroke"), Canvas::StrokeTool}, {QStringLiteral("closegap"), Canvas::CloseGap},
-        {QStringLiteral("gradient"), Canvas::EditGradient}, {QStringLiteral("reposition"), Canvas::Reposition}, {QStringLiteral("stamp"), Canvas::Stamp}, {QStringLiteral("pencileditor"), Canvas::PencilEditor}, {QStringLiteral("perspective"), Canvas::Perspective}, {QStringLiteral("ink"), Canvas::Ink}, {QStringLiteral("pencilretouch"), Canvas::PencilRetouch}, {QStringLiteral("smootheditor"), Canvas::SmoothEditor}, {QStringLiteral("envelope"), Canvas::Envelope}, {QStringLiteral("morphing"), Canvas::Morphing}, {QStringLiteral("repaintbrush"), Canvas::RepaintBrush}, {QStringLiteral("splineoffset"), Canvas::SplineOffset}, {QStringLiteral("turn3d"), Canvas::Turn3D}, {QStringLiteral("shifttrace"), Canvas::ShiftTrace}};
+        {QStringLiteral("gradient"), Canvas::EditGradient}, {QStringLiteral("reposition"), Canvas::Reposition}, {QStringLiteral("stamp"), Canvas::Stamp}, {QStringLiteral("pencileditor"), Canvas::PencilEditor}, {QStringLiteral("perspective"), Canvas::Perspective}, {QStringLiteral("ink"), Canvas::Ink}, {QStringLiteral("pencilretouch"), Canvas::PencilRetouch}, {QStringLiteral("smootheditor"), Canvas::SmoothEditor}, {QStringLiteral("envelope"), Canvas::Envelope}, {QStringLiteral("morphing"), Canvas::Morphing}, {QStringLiteral("repaintbrush"), Canvas::RepaintBrush}, {QStringLiteral("splineoffset"), Canvas::SplineOffset}, {QStringLiteral("turn3d"), Canvas::Turn3D}, {QStringLiteral("shifttrace"), Canvas::ShiftTrace}, {QStringLiteral("drawingpivot"), Canvas::DrawingPivot}};
+    m_canvas->setRepositionCurrent(name == QLatin1String("repositiondrawing"));
+    if (name == QLatin1String("repositiondrawing")) {
+        m_canvas->setTool(Canvas::Reposition);
+        statusBar()->showMessage(tr("Reposition Drawing: drag to move the whole of the current drawing within its layer."), 5000);
+        return;
+    }
     if (tools.contains(name)) {
         m_canvas->setTransformMode(Canvas::TransformAll);       // the Transform tool itself does everything
         m_canvas->setTool(tools.value(name));

@@ -80,7 +80,10 @@ private:
     // The Paint, Ink and Dropper tools' own options.
     void addPaintRows();
     void addZoomRows();
-    QVector<QWidget*> m_paintRows, m_inkRows, m_dropperRows, m_zoomRows;
+    void addTransformRows();
+    void fillTransformRows();
+    bool m_transformFilled = false;
+    QVector<QWidget*> m_paintRows, m_inkRows, m_dropperRows, m_zoomRows, m_transformRows, m_pivotRows;
     void refreshMorphLayers();
     // A slider with a box beside it, under a label.
     QLayout* addSetting(QString const& label, QString const& tip, int min, int max, int value, QString const& suffix, std::function<void(int)> apply);

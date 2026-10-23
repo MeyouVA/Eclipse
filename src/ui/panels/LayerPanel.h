@@ -31,6 +31,8 @@ private:
     void applyPose();
     void applyPivot();
     void applyEase();
+    void buildTransformOptions();
+    void refreshTransformOptions(struct Layer const& layer);
 public:
     // Attribute Controls: a window to set which values of the current layer follow values of other layers.
     void editDrivers();
@@ -81,6 +83,15 @@ private:
     QCheckBox* m_ikLimited = nullptr;
     QDoubleSpinBox* m_ikMin = nullptr;
     QDoubleSpinBox* m_ikMax = nullptr;
+    QWidget* m_transformRow = nullptr;      // separate or locked values, angle limits, the drawing pivot
+    QCheckBox* m_separatePosition = nullptr;
+    QCheckBox* m_separateScale = nullptr;
+    QCheckBox* m_ignoreParentScale = nullptr;
+    QCheckBox* m_animatable = nullptr;
+    QCheckBox* m_angleLimited = nullptr;
+    QDoubleSpinBox* m_minAngle = nullptr;
+    QDoubleSpinBox* m_maxAngle = nullptr;
+    QComboBox* m_embeddedPivot = nullptr;
     class QFormLayout* m_form;
     EffectsPanel* m_effects;
 };

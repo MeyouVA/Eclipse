@@ -81,7 +81,22 @@
   <item id="ToolIK"/>
   <item id="ToolSplineOffset"/>
   <item id="ToolTurn3D"/>
+  <item id="ToolDrawingPivot"/>
   <item id="OnionSkinToggle" toolbarText="Onion"/>
+ </toolbar>
+
+ <toolbar id="AdvancedAnimationToolbar" text="Advanced Animation">
+  <item id="ToolTranslate"/>
+  <item id="ToolRotate"/>
+  <item id="ToolScale"/>
+  <item id="ToolSkew"/>
+  <item id="ToolMaintainSize"/>
+  <item id="ToolSplineOffset"/>
+  <item id="ToolRepositionDrawing"/>
+  <item id="CaptureMotion"/>
+  <separator/>
+  <item id="AnimateCurrentFrame"/>
+  <item id="AnimateOff"/>
  </toolbar>
 
  <toolbar id="PlaybackToolbar" text="Playback">
@@ -119,6 +134,7 @@
   <item id="GotoNextKeyframe" toolbarText="Key &gt;"/>
   <item id="SetMotionKeyframe" toolbarText="Motion"/>
   <item id="SetStopMotionKeyframe" toolbarText="Stop-Motion"/>
+  <item id="StopMotionKeyframeMode" toolbarText="Stop-Motion Mode"/>
   <separator/>
   <item id="PasteSpecial" toolbarText="Paste Special"/>
   <item id="ImportMovie" visible="false"/>

@@ -230,6 +230,7 @@ ToolProperties::ToolProperties(Document* document, Canvas* canvas, ActionManager
     addMorphRows();
     addPaintRows();
     addZoomRows();
+    addTransformRows();
     addPresetRows();
 
     connect(m_canvas, &Canvas::toolChanged, this, [this](int tool) { showFor(tool); });
@@ -335,10 +336,10 @@ void ToolProperties::showFor(int tool)
                                       "ToolPencil", "ToolLine",      "ToolRectangle", "ToolEllipse", "ToolContourEditor",
                                       "ToolRigging", "ToolIK", "ToolDropper", "ToolZoom", "ToolPolyline",
                                       "ToolPaintUnpainted", "ToolRepaint", "ToolUnpaint", "ToolText", "ToolRotateView", "ToolCutter", "ToolStroke", "ToolCloseGap",
-                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D", "ToolPencilRetouch", "ToolShiftTrace"};
+                                      "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D", "ToolPencilRetouch", "ToolShiftTrace", "ToolDrawingPivot"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
-    bool const any = tool == T::Ink || draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Reposition || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
+    bool const any = tool == T::Transform || tool == T::DrawingPivot || tool == T::Ink || draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Reposition || tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
     m_form->setRowVisible(m_morphLayers, tool == T::Morphing);
     m_form->setRowVisible(m_morphButtons, tool == T::Morphing);
@@ -416,6 +417,12 @@ void ToolProperties::showFor(int tool)
         m_form->setRowVisible(row, tool == T::Dropper);
     for (QWidget* const row : std::as_const(m_zoomRows))
         m_form->setRowVisible(row, tool == T::Zoom);
+    if (tool == T::Transform)
+        fillTransformRows();
+    for (QWidget* const row : std::as_const(m_transformRows))
+        m_form->setRowVisible(row, tool == T::Transform);
+    for (QWidget* const row : std::as_const(m_pivotRows))
+        m_form->setRowVisible(row, tool == T::DrawingPivot);
     m_form->setRowVisible(m_byColour, tool == T::Select);
     m_form->setRowVisible(m_paintAll, tool == T::Eraser || Canvas::isPaintTool(Canvas::Tool(tool)));
     m_form->setRowVisible(m_paintLayers, Canvas::isPaintTool(Canvas::Tool(tool)));

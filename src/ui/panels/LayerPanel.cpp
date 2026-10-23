@@ -249,6 +249,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("Ease"), ease);
     form->addRow(QString(), m_key);
     form->addRow(m_effects);
+    buildTransformOptions();
 
     connect(m_fov, &QDoubleSpinBox::valueChanged, this, [this](double degrees) {
         if (!m_refreshing)
@@ -463,6 +464,7 @@ void LayerPanel::refresh()
     m_ikMax->setValue(layer.ikMax);
     m_ikMin->setEnabled(layer.ikLimited);
     m_ikMax->setEnabled(layer.ikLimited);
+    refreshTransformOptions(layer);
     // Ease belongs to a keyframe: there is something to set only on one.
     int const key = layer.keyIndex(m_frame);
     m_easeIn->setEnabled(key >= 0);
@@ -520,6 +522,10 @@ void LayerPanel::applyPose()
     take(pose.rotation, seen.rotation, m_angle->value(), 0.006);
     take(pose.skew, seen.skew, m_skew->value(), 0.006);
     take(pose.opacity, seen.opacity, m_opacity->value() / 100.0, 0.006);
+    Layer const& layer = scene.layers[m_layer];
+    if (!layer.separateScale && pose.scaleX != now.scaleX)
+        pose.scaleY = now.scaleY * pose.scaleX / now.scaleX;    // locked: in proportion
+    pose.rotation = layer.limitedAngle(pose.rotation);
     if (pose == now)
         return;
     if (m_animate)

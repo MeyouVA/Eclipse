@@ -198,6 +198,7 @@
    <item id="InsertAnnotation" icon="xsheet/annotation" text="&amp;Annotation Column" responder="window" slot="onActionAddAnnotationColumn()"/>
    <separator/>
    <item id="InsertKeyframe" icon="timeline/addkey" text="&amp;Keyframe" shortcut="shortcut.insertKeyframe" responder="window" slot="onActionInsertKeyframe()"/>
+   <item id="InsertPositionKeyframe" icon="timeline/addkey" text="Posi&amp;tion Keyframe" shortcut="shortcut.insertPositionKeyframe" responder="window" slot="onActionInsertPositionKeyframe()"/>
    <item id="InsertControlPoint" icon="anim/controlpoint" text="C&amp;ontrol Point" responder="window" slot="onActionInsertControlPoint()"/>
    <item id="InsertKeyframeAndDuplicate" icon="timeline/keyandduplicate" text="Keyframe and D&amp;uplicate Drawing" shortcut="shortcut.keyframeAndDuplicate" responder="window" slot="onActionKeyframeAndDuplicate()"/>
   </menu>
@@ -390,6 +391,7 @@
   <menu id="Animation" text="&amp;Animation">
    <item id="LinearMotion" icon="anim/easenone" text="&amp;Linear Motion" responder="window" slot="onActionSetEase(QString)" itemParameter="none"/>
    <item id="LockInTime" icon="anim/lockintime" text="Lock in &amp;Time" responder="camera" slot="onActionLockInTime()"/>
+   <item id="ToggleLineCurve" icon="anim/easenone" text="Toggle Between Line and Cur&amp;ve" shortcut="shortcut.toggleLineCurve" responder="window" slot="onActionToggleLineCurve()"/>
    <item id="RemoveControlPoint" icon="anim/controlremove" text="Remove Control &amp;Point" responder="camera" slot="onActionRemoveControlPoint()"/>
    <item id="NoZDragging" icon="anim/nozdrag" text="No &amp;Z Dragging" shortcut="shortcut.noZDragging" checkable="true" responder="camera" slot="onActionNoZDragging(bool)"/>
    <menu id="AnimationAnimate" text="A&amp;nimate">
@@ -399,6 +401,8 @@
    </menu>
    <item id="SetStopMotionKeyframe" icon="timeline/stopmotionkey" text="&amp;Stop-Motion Keyframe" shortcut="shortcut.stopMotionKeyframe" responder="window" slot="onActionSetStopMotionKeyframe()"/>
    <item id="SetMotionKeyframe" icon="timeline/motionkey" text="Set &amp;Motion Keyframe" shortcut="shortcut.motionKeyframe" responder="window" slot="onActionSetMotionKeyframe()"/>
+   <item id="StopMotionKeyframeMode" icon="timeline/stopmotionkey" text="Stop-Motion Keyframe M&amp;ode" shortcut="shortcut.stopMotionMode" checkable="true" responder="window" slot="onActionStopMotionMode(bool)"/>
+   <item id="SnapKeyframe" text="Snap &amp;Keyframe" shortcut="shortcut.toggleSnapKeyframe" checkable="true" responder="window" slot="onActionSnapKeyframe(bool)"/>
    <item id="DeleteKeyframe" icon="timeline/deletekey" text="&amp;Delete Keyframe" shortcut="shortcut.deleteKeyframe" responder="window" slot="onActionDeleteKeyframe()"/>
    <separator/>
    <menu id="AnimationTools" text="&amp;Tools">
@@ -410,6 +414,8 @@
     <item id="ToolMaintainSize" icon="tool/maintainsize" text="&amp;Maintain Size" shortcut="shortcut.toolMaintainSize" responder="window" slot="onActionTransformMode(QString)" itemParameter="maintain"/>
     <item id="ToolIK" icon="tool/ik" text="&amp;Inverse Kinematics" shortcut="shortcut.toolIk" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="ik"/>
     <item id="ToolSplineOffset" icon="tool/splineoffset" text="S&amp;pline Offset" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="splineoffset"/>
+    <item id="ToolRepositionDrawing" icon="tool/reposition" text="Reposition &amp;Drawing" shortcut="shortcut.toolRepositionDrawing" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="repositiondrawing"/>
+    <item id="CaptureMotion" icon="anim/animateon" text="Capture &amp;Motion..." responder="window" slot="onActionCaptureMotion()"/>
     <item id="ToolTurn3D" icon="tool/turn3d" text="Turn in Spa&amp;ce" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="turn3d"/>
    </menu>
    <menu id="AnimationCell" text="&amp;Cell">
@@ -478,6 +484,8 @@
    </menu>
    <menu id="AnimationFlip" text="&amp;Flip">
     <item id="FlipHorizontalAnimation" icon="anim/fliphanim" text="Flip &amp;Horizontal" shortcut="shortcut.flipHAnimation" responder="window" slot="onActionFlipHorizontalAnimation()"/>
+    <item id="FlipScaleX" icon="anim/fliphanim" text="Flip Scale &amp;X" shortcut="shortcut.flipScaleX" responder="window" slot="onActionFlipScale(QString)" itemParameter="x"/>
+    <item id="FlipScaleY" icon="anim/flipvanim" text="Flip Scale &amp;Y" shortcut="shortcut.flipScaleY" responder="window" slot="onActionFlipScale(QString)" itemParameter="y"/>
     <item id="FlipVerticalAnimation" icon="anim/flipvanim" text="Flip &amp;Vertical" shortcut="shortcut.flipVAnimation" responder="window" slot="onActionFlipVerticalAnimation()"/>
    </menu>
    <separator/>
@@ -494,6 +502,19 @@
    <item id="BakeDrivers" icon="anim/substitutenext" text="Bake Attribute Controls" responder="window" slot="onActionBakeDrivers()"/>
    <item id="GotoPrevKeyframe" icon="timeline/prevkey" text="Go to &amp;Previous Keyframe" shortcut="shortcut.prevKeyframe" responder="window" slot="onActionGotoPreviousKeyframe()"/>
    <item id="GotoNextKeyframe" icon="timeline/nextkey" text="Go to &amp;Next Keyframe" shortcut="shortcut.nextKeyframe" responder="window" slot="onActionGotoNextKeyframe()"/>
+   <item id="SelectPrevKeyframePoint" icon="timeline/prevkey" text="Select Previous Keyframe/Poin&amp;t" shortcut="shortcut.selectPrevKeyframePoint" responder="window" slot="onActionSelectPathPoint(QString)" itemParameter="previous"/>
+   <item id="SelectNextKeyframePoint" icon="timeline/nextkey" text="Select Next Keyframe/P&amp;oint" shortcut="shortcut.selectNextKeyframePoint" responder="window" slot="onActionSelectPathPoint(QString)" itemParameter="next"/>
+   <menu id="AnimationTransformOptions" text="Transform Tool O&amp;ptions">
+    <item id="PegSelectionMode" text="&amp;Peg Selection Mode" shortcut="shortcut.pegSelectionMode" checkable="true" responder="camera" slot="onActionPegSelectionMode(bool)"/>
+    <item id="LockSelection" text="&amp;Lock Selection" shortcut="shortcut.lockSelection" checkable="true" responder="camera" slot="onActionLockSelection(bool)"/>
+    <item id="ShowTransformControls" text="Show/Hide Transform Tool &amp;Controls" shortcut="shortcut.toggleTransformControls" checkable="true" checked="true" responder="camera" slot="onActionShowTransformControls(bool)"/>
+    <item id="DisablePivotManipulator" text="&amp;Disable Pivot Manipulator" checkable="true" responder="camera" slot="onActionDisablePivotManipulator(bool)"/>
+    <item id="MovePivotToCursor" text="&amp;Move Element or Peg Pivot to Cursor" shortcut="shortcut.movePivotToCursor" responder="camera" slot="onActionMovePivotToCursor()"/>
+    <separator/>
+    <item id="SelectControlPoint" text="&amp;Select Control Point" shortcut="shortcut.selectControlPoint" responder="window" slot="onActionSelectPathPoint(QString)" itemParameter="nearest"/>
+    <item id="SelectPrevControlPoint" text="Select Pre&amp;vious Control Point" shortcut="shortcut.selectPrevControlPoint" responder="window" slot="onActionSelectPathPoint(QString)" itemParameter="previousControl"/>
+    <item id="SelectNextControlPoint" text="Select Ne&amp;xt Control Point" shortcut="shortcut.selectNextControlPoint" responder="window" slot="onActionSelectPathPoint(QString)" itemParameter="nextControl"/>
+   </menu>
    <separator/>
    <item id="SelectChildSkippingEffects" icon="anim/selectchild" text="Select Child Skipping E&amp;ffects" responder="window" slot="onActionSelectChild()"/>
    <item id="SelectChild" icon="anim/selectchild" text="Select C&amp;hild" shortcut="shortcut.selectChild" responder="window" slot="onActionSelectChild()"/>
@@ -598,6 +619,14 @@
  </menu>
  <menu id="menu.animationTools" text="Animation Tools">
   <item id="ToolTransform"/>
+  <item id="ToolTranslate"/>
+  <item id="ToolRotate"/>
+  <item id="ToolScale"/>
+  <item id="ToolSkew"/>
+  <item id="ToolMaintainSize"/>
+  <item id="ToolSplineOffset"/>
+  <item id="ToolRepositionDrawing"/>
+  <item id="ToolDrawingPivot"/>
   <item id="ToolRigging"/>
   <item id="ToolIK"/>
  </menu>
@@ -607,6 +636,7 @@
   <item id="ToolPerspective" icon="tool/perspective" text="Perspecti&amp;ve" shortcut="shortcut.toolPerspective" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="perspective"/>
   <item id="ToolEnvelope" icon="tool/envelope" text="E&amp;nvelope" shortcut="shortcut.toolEnvelope" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="envelope"/>
   <item id="ToolMorphing" icon="tool/morphing" text="&amp;Morphing" shortcut="shortcut.toolMorphing" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="morphing"/>
+  <item id="ToolDrawingPivot" icon="view/symbolpivot" text="Drawing Pi&amp;vot" shortcut="shortcut.toolDrawingPivot" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="drawingpivot"/>
   <item id="ToolReposition" icon="tool/reposition" text="Reposition All Dra&amp;wings" shortcut="shortcut.toolReposition" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="reposition"/>
 <item id="ToolContourEditor" icon="tool/contour" text="&amp;Contour Editor" shortcut="shortcut.toolContour" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="contour"/>
   <item id="ToolSmoothEditor" icon="tool/smootheditor" text="Smoot&amp;h Editor" shortcut="shortcut.toolSmoothEditor" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="smootheditor"/>
@@ -757,6 +787,17 @@
   <submenu id="menu.animationTools" text="Animation Tools"/>
   <submenu id="menu.drawingTools" text="Drawing Tools"/>
   <separator/>
+  <menu id="CameraAnimate" text="Animate">
+   <item id="AnimateCurrentFrame"/>
+   <item id="AnimateOnionRange"/>
+   <item id="AnimateOff"/>
+  </menu>
+  <item id="InsertKeyframe"/>
+  <item id="SetStopMotionKeyframe"/>
+  <item id="SetMotionKeyframe"/>
+  <item id="SelectPrevKeyframePoint"/>
+  <item id="SelectNextKeyframePoint"/>
+  <separator/>
   <item id="EditCut"/>
   <item id="EditCopy"/>
   <item id="EditPaste"/>
@@ -878,6 +919,16 @@
     <item id="GotoPreviousWhiteMark" icon="timeline/markframewhite" text="White Frame Marker" shortcut="shortcut.gotopreviousWhiteMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:white"/>
     <item id="GotoPreviousBlackMark" icon="timeline/markframeblack" text="Black Frame Marker" shortcut="shortcut.gotopreviousBlackMark" responder="window" slot="onActionGotoFrameMark(QString)" itemParameter="previous:black"/>
    </menu>
+  </menu>
+  <menu id="TimelineMotion" text="Motion">
+   <item id="InsertKeyframe"/>
+   <item id="InsertPositionKeyframe"/>
+   <item id="DeleteKeyframe"/>
+   <item id="GotoPrevKeyframe"/>
+   <item id="GotoNextKeyframe"/>
+   <item id="SetStopMotionKeyframe"/>
+   <item id="SetMotionKeyframe"/>
+   <item id="StopMotionKeyframeMode"/>
   </menu>
   <menu id="TimelineKeyframes" text="Keyframes of the Layer">
    <item id="LayerStopMotionKeys" icon="timeline/stopmotionkey" text="Set Stop-Motion Keyframes" responder="window" slot="onActionLayerKeys(QString)" itemParameter="stop"/>
@@ -1270,6 +1321,14 @@
   </menu>
   <separator/>
   <item id="XsheetPreview" icon="play/play" text="&amp;Preview" shortcut="shortcut.xsheetPreview" responder="window" slot="onActionXsheetPreview()"/>
+  <menu id="XsheetMotion" text="&amp;Motion">
+   <item id="InsertKeyframe"/>
+   <item id="DeleteKeyframe"/>
+   <item id="GotoPrevKeyframe"/>
+   <item id="GotoNextKeyframe"/>
+   <item id="SetStopMotionKeyframe"/>
+   <item id="SetMotionKeyframe"/>
+  </menu>
   <menu id="XsheetFile" text="F&amp;ile">
    <item id="PrintXsheet" icon="xsheet/print" text="Print &amp;Xsheet..." responder="window" slot="onActionPrintXsheet()"/>
   </menu>
@@ -1284,6 +1343,9 @@
   <item id="ClearExposure"/>
   <separator/>
   <item id="XsheetGesturalDrag"/>
+  <separator/>
+  <item id="SetSelectionAsKeyframes" icon="timeline/addkey" text="Set Selection as &amp;Keyframes" responder="window" slot="onActionSelectionKeyframes(QString)" itemParameter="set"/>
+  <item id="ClearKeyframesInSelection" icon="timeline/deletekey" text="C&amp;lear Keyframes in Selection" responder="window" slot="onActionSelectionKeyframes(QString)" itemParameter="clear"/>
   <separator/>
   <menu id="XsheetPopupDrawings" text="&amp;Drawings">
    <item id="DeleteSelectedDrawings"/>
@@ -1354,6 +1416,11 @@
   <item id="ColumnEditor"/>
   <item id="ColumnProperties"/>
   <separator/>
+  <menu id="XsheetHeaderMotion" text="&amp;Motion">
+   <item id="DeleteKeyframe"/>
+   <item id="SetStopMotionKeyframe"/>
+   <item id="SetMotionKeyframe"/>
+  </menu>
   <item id="HideSelectedColumns"/>
   <item id="ShowHiddenColumns"/>
   <menu id="XsheetHeaderColour" text="C&amp;olour">

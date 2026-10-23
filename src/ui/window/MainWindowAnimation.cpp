@@ -42,6 +42,10 @@ void MainWindow::onActionInsertKeyframe()
 void MainWindow::onActionInsertControlPoint()
 {
     if (m_document->insertControlPoint(layer(), frame()) < 0) {
+        if (layer() >= 0 && layer() < m_document->scene().layers.size() && m_document->scene().layers[layer()].separatePosition) {
+            statusBar()->showMessage(tr("This layer's position is Separate: it has no path to bend. Turn Separate Position off in the Layer Properties."), 8000);
+            return;
+        }
         statusBar()->showMessage(tr("A control point goes on a frame between two keyframes that the layer glides between."), 6000);
         return;
     }

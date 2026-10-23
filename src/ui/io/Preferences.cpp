@@ -216,6 +216,7 @@ void MainWindow::applyPreferences()
         xsheet->setDefaultHold(s.value(QStringLiteral("prefs/xsheetHold"), 1).toInt());
     }
     applySheetPreferences(s, !m_preferencesApplied);
+    applyAnimationPreferences(s, !m_preferencesApplied);
     // (These two set how things start: the toggles in the menus change them afterwards.)
     if (!m_preferencesApplied) {
         bool const loop = s.value(QStringLiteral("prefs/loop"), true).toBool();
@@ -264,6 +265,7 @@ void MainWindow::onActionPreferences()
     preferencesGeneral(w, s, dialog);
     preferencesCamera(w, s, dialog);
     preferencesSheet(w, s, dialog);
+    preferencesAnimation(w, s, dialog);
     preferencesAdvanced(w, s, dialog);
     preferencesTimeline(w, s, dialog);
     preferencesRender(w, s, dialog);
@@ -314,7 +316,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {w.general, w.camera, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.soundPage, w.advanced}) {
+    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.soundPage, w.advanced}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -453,6 +455,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionFurthest"), w.onionFurthest->value());
     savePalettePreferences(w, s);
     saveSheetPreferences(w, s);
+    saveAnimationPreferences(w, s);
     s.sync();
     applyPreferences();
 }

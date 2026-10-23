@@ -271,6 +271,8 @@ void MainWindow::createToolbars()
     add("FileToolbar", Qt::TopToolBarArea);
     add("EditToolbar", Qt::TopToolBarArea);
     add("DrawingToolToolbar", Qt::LeftToolBarArea);
+    if (QToolBar* const advanced = add("AdvancedAnimationToolbar", Qt::TopToolBarArea))
+        advanced->hide();       // (shown from Windows > Toolbars)
 
     QToolBar* const workspace = new QToolBar(tr("Workspace"), this);
     workspace->setObjectName(QStringLiteral("WorkspaceToolbar"));

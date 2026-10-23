@@ -42,6 +42,8 @@ struct PreferenceWidgets {
     QCheckBox* paperZoom = nullptr;
     QSpinBox* screenPpi = nullptr;
     QGroupBox* sheet = nullptr;
+    QGroupBox* animationPage = nullptr;
+    QHash<QString, QWidget*> animation;     // the Animation page's settings, by key
     QCheckBox* extend = nullptr;
     QFormLayout* sheetLayout = nullptr;
     QCheckBox* byFrame = nullptr;

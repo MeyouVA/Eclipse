@@ -238,6 +238,14 @@ public slots:
     void onActionCloneLayer();
     void onActionCloneLayerTiming();
     void onActionInsertControlPoint();
+    void onActionInsertPositionKeyframe();
+    void onActionFlipScale(QString const& axis);
+    void onActionStopMotionMode(bool on);
+    void onActionSnapKeyframe(bool on);
+    void onActionToggleLineCurve();
+    void onActionSelectPathPoint(QString const& which);
+    void onActionSelectionKeyframes(QString const& what);
+    void onActionCaptureMotion();
     void onActionColumnProperties();
     void onShowDisplays(QMenu* menu);
     // Runs a script kept by the Script Editor, by name.
@@ -560,6 +568,7 @@ protected:
     void showEvent(QShowEvent* event) override;
 
 private:
+    void startCaptureMotion(int target, int first, int last, int countdown, int fps);
     // The Preferences dialog's pages, each made into the widgets it is read back from.
     void preferencesGeneral(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesCamera(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
@@ -567,6 +576,9 @@ private:
     void preferencesSheetMore(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void saveSheetPreferences(struct PreferenceWidgets& w, class QSettings& s);
     void applySheetPreferences(class QSettings const& s, bool starting);
+    void preferencesAnimation(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void saveAnimationPreferences(struct PreferenceWidgets& w, class QSettings& s);
+    void applyAnimationPreferences(class QSettings const& s, bool starting);
     void preferencesAdvanced(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesTimeline(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesRender(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
