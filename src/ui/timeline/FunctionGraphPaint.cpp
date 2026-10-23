@@ -58,16 +58,22 @@ void FunctionGraph::paintEvent(QPaintEvent*)
     int const between = std::clamp(int(pixelsPerFrame / 4.0), 1, 16);
     int const firstFrame = std::max(0, int(std::floor(m_first)) - 1), lastFrame = std::min(frames - 1, int(std::ceil(m_first + frameSpan())) + 1);
     QVector<int> const drawn = layersDrawn();
+    int curves = 0;
     // The other layers first, under the edited one: fainter and dashed.
     for (int n = int(drawn.size()) - 1; n >= 0; --n) {
         int const layer = drawn[n];
-        bool const main = layer == m_layer;
+        bool const main = layer == m_layer || layer < 0;
         Layer const& l = layerOf(layer);
         for (int which = 0; which < Timeline::ParameterCount; ++which) {
             Timeline::Parameter const param = Timeline::Parameter(which);
-            if (!m_shown[which] || !Timeline::parameterFor(l.kind, param) || (!main && which == Timeline::Fov))
+            // (A column loaded by itself: its one curve.)
+            if (layer < 0 ? which != Driver::X : !m_shown[which] || !Timeline::parameterFor(l.kind, param) || (!main && which == Timeline::Fov))
                 continue;
-            QColor colour = colourOf(param);
+            // (Preferences: no more curves than so many.)
+            if (++curves > m_loadLimit)
+                break;
+            QPair<int, int> const source = sourceOf(layer, which);
+            QColor colour = source.first < 0 ? InterfaceColours::get("functionColumn") : colourOf(param);
             bool const follows = driven(layer, which);
             QPolygonF curve;
             for (int f = firstFrame; f <= lastFrame; ++f)
@@ -86,9 +92,13 @@ void FunctionGraph::paintEvent(QPaintEvent*)
             p.drawPolyline(curve);
             if (follows)
                 continue;
-            // A square on each point; red when selected.
-            for (int k : l.keysOf(which)) {
-                FunctionPoint const point{layer, which, l.keys[k].frame};
+            // A square on each point (of the column it is linked to, if it is); red when selected.
+            if (source.first < 0 && m_document->scene().functions[-1 - source.first].kind != FunctionColumn::Bezier
+                && m_document->scene().functions[-1 - source.first].kind != FunctionColumn::Ease)
+                continue;
+            Layer const& points = layerOf(source.first);
+            for (int k : points.keysOf(source.second)) {
+                FunctionPoint const point{source.first, source.second, points.keys[k].frame};
                 bool const chosen = m_selection.contains(point);
                 p.setPen(QPen(QColor(24, 24, 24), 1));
                 p.setBrush(chosen ? InterfaceColours::get("functionSelected") : main ? colour : colour.darker(130));

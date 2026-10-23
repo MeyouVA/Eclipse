@@ -207,8 +207,14 @@ void MainWindow::applyPreferences()
         if (m_substitution)
             m_substitution->setThumbnailScale(thumbnails);
     }
-    if (FunctionView* const function = findChild<FunctionView*>())
+    if (FunctionView* const function = findChild<FunctionView*>()) {
         function->graph()->setGridShown(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
+        function->graph()->setLoadLimit(s.value(QStringLiteral("prefs/functionLoadLimit"), 50).toInt());
+    }
+    m_editorsOnTop = s.value(QStringLiteral("prefs/editorsOnTop"), true).toBool();
+    FunctionColumn::defaultBezier = s.value(QStringLiteral("prefs/defaultBezier"), true).toBool();
+    FunctionColumn::defaultBezierVelocity = s.value(QStringLiteral("prefs/defaultBezierVelocity"), true).toBool();
+    FunctionColumn::defaultConstantZ = s.value(QStringLiteral("prefs/pathConstantZ"), false).toBool();
     if (Xsheet* const xsheet = findChild<Xsheet*>())
         xsheet->setColumnWidth(s.value(QStringLiteral("prefs/xsheetColumnWidth"), 78).toInt());
     if (Xsheet* const xsheet = findChild<Xsheet*>()) {
@@ -448,6 +454,11 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/performanceReport"), w.performance->isChecked());
     s.setValue(QStringLiteral("prefs/modelScale"), w.modelScale->value());
     s.setValue(QStringLiteral("prefs/functionGrid"), w.functionGrid->isChecked());
+    s.setValue(QStringLiteral("prefs/functionLoadLimit"), w.functionLoadLimit->value());
+    s.setValue(QStringLiteral("prefs/pathConstantZ"), w.pathConstantZ->isChecked());
+    s.setValue(QStringLiteral("prefs/editorsOnTop"), w.editorsOnTop->isChecked());
+    s.setValue(QStringLiteral("prefs/defaultBezier"), w.defaultBezier->isChecked());
+    s.setValue(QStringLiteral("prefs/defaultBezierVelocity"), w.defaultBezierVelocity->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), w.columnWidth->value());
     s.setValue(QStringLiteral("prefs/drawingOnTop"), w.onTop->isChecked());
     s.setValue(QStringLiteral("prefs/onionFade"), w.onionFade->isChecked());

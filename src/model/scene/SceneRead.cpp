@@ -232,6 +232,32 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             images.insert(it.key(), image);
         }
     }
+    scene.nextFunctionId = 1;
+    for (QJsonValue const& fv : json["functions"].toArray()) {
+        QJsonObject const fo = fv.toObject();
+        FunctionColumn c;
+        c.id = fo["id"].toInt(0);
+        c.name = fo["name"].toString();
+        c.kind = std::clamp(fo["kind"].toInt(0), 0, int(FunctionColumn::KindCount) - 1);
+        if (c.id <= 0 || scene.function(c.id) || c.name.isEmpty())
+            continue;
+        c.curve.cells.clear();
+        c.velocity.cells.clear();
+        keysFromJson(fo["points"].toArray(), c.curve, scene.frameCount());
+        keysFromJson(fo["velocity"].toArray(), c.velocity, scene.frameCount());
+        c.expression = fo["expression"].toString();
+        for (QJsonValue const& pv : fo["path"].toArray()) {
+            QJsonArray const p = pv.toArray();
+            if (p.size() < 7)
+                continue;
+            c.path.push_back({p[0].toDouble(), p[1].toDouble(), p[2].toDouble(), std::max(-1, p[3].toInt(-1)), std::clamp(p[4].toDouble(), -1.0, 1.0),
+                              std::clamp(p[5].toDouble(), -1.0, 1.0), std::clamp(p[6].toDouble(), -1.0, 1.0)});
+        }
+        c.constantZ = fo["constantZ"].toBool(false);
+        c.shown = fo["shown"].toBool(true);
+        scene.nextFunctionId = std::max(scene.nextFunctionId, c.id + 1);
+        scene.functions.push_back(c);
+    }
     for (QJsonValue const& lv : json["layers"].toArray())
         scene.layers.push_back(layerFromJson(lv.toObject(), folder, images, scene.m_frameCount, scene.width, scene.height));
     // Ids: keep those of the file where they are usable, hand out new ones for the rest.

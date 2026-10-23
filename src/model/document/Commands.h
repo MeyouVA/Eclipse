@@ -232,6 +232,18 @@ public:
         QPointF leave, arrive;
     };
     void setSegmentEases(QVector<SegmentEase> const& eases, QString const& text);
+    // Function columns.  A new one (its name made unique): its id.  Changed as a whole (found by its id); taken away (the
+    // values linked to it go back to their keyframes); renamed.
+    int addFunction(FunctionColumn column, QString const& text);
+    void setFunction(FunctionColumn const& column, QString const& text);
+    void removeFunction(int id);
+    bool renameFunction(int id, QString const& name);
+    // A value of a layer linked to a column (0: back to its own keyframes).
+    void linkValue(int layer, int value, int function, QString const& text);
+    // A layer value's animation made into a new column of that kind, linked to it: the column's id (0: none made).
+    int storeAsFunction(int layer, int value, int kind);
+    // A column made another kind, its values kept (sampled on each frame when they must be); in a new column when `intoNew`.
+    int convertFunction(int id, int kind, bool intoNew);
     void setEffects(int layer, QVector<Effect> const& effects, QString const& text);
     // Takes effect `index` out, and its amounts out of the keyframes.
     void removeEffect(int layer, int index);

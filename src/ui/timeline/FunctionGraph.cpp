@@ -91,47 +91,94 @@ void FunctionGraph::setLayerHidden(int layer, bool hidden)
 QVector<int> FunctionGraph::layersDrawn() const
 {
     QVector<int> out;
-    int const count = int(m_document->scene().layers.size());
+    Scene const& scene = m_document->scene();
+    int const count = int(scene.layers.size());
     if (m_layer >= 0 && m_layer < count && !m_hidden.contains(m_layer))
         out.push_back(m_layer);
     for (int l : m_others)
         if (l >= 0 && l < count && !m_hidden.contains(l) && !out.contains(l))
             out.push_back(l);
+    for (int c : m_columnsShown)
+        if (c >= 0 && c < scene.functions.size() && !m_hidden.contains(-1 - c) && !out.contains(-1 - c))
+            out.push_back(-1 - c);
     return out;
+}
+
+void FunctionGraph::setColumns(QVector<int> const& columns)
+{
+    if (columns == m_columnsShown)
+        return;
+    m_columnsShown = columns;
+    pruneSelection();
+    fit();
+    update();
+}
+
+Layer const& FunctionGraph::sourceLayer(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    return layer >= 0 ? scene.layers[layer] : scene.functions[-1 - layer].curve;
 }
 
 Layer const& FunctionGraph::layerOf(int layer) const
 {
     int const i = int(m_previewLayers.indexOf(layer));
-    return i >= 0 ? m_preview[i] : m_document->scene().layers[layer];
+    return i >= 0 ? m_preview[i] : sourceLayer(layer);
+}
+
+QPair<int, int> FunctionGraph::sourceOf(int layer, int value) const
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size())
+        return {layer, layer < 0 ? int(Driver::X) : value};
+    int const index = scene.functionIndex(scene.layers[layer].linkOf(value));
+    if (index >= 0 && (scene.functions[index].kind == FunctionColumn::Bezier || scene.functions[index].kind == FunctionColumn::Ease))
+        return {-1 - index, int(Driver::X)};
+    return {layer, value};
 }
 
 bool FunctionGraph::driven(int layer, int value) const
 {
     Scene const& scene = m_document->scene();
+    if (layer < 0)
+        return false;
     for (Driver const& d : scene.layers[layer].drivers)
         if (d.value == value && scene.layerIndex(d.source) >= 0)
             return true;
-    return false;
+    // Linked to a column with no points to take hold of (an expression, a velocity, a 3D path).
+    int const index = scene.functionIndex(scene.layers[layer].linkOf(value));
+    return index >= 0 && sourceOf(layer, value).first == layer;
 }
 
 double FunctionGraph::valueOf(int layer, int value, double frame) const
 {
     Scene const& scene = m_document->scene();
-    if (layer < 0 || layer >= scene.layers.size())
+    if (layer >= scene.layers.size() || (layer < 0 && -1 - layer >= scene.functions.size()))
         return 0.0;
+    if (layer < 0) {
+        // A column: its points' curve (as the drag would leave it), or what it works out.
+        FunctionColumn const& column = scene.functions[-1 - layer];
+        if (column.kind != FunctionColumn::Bezier && column.kind != FunctionColumn::Ease)
+            return column.valueAt(frame, &scene);
+        Layer const& l = layerOf(layer);
+        return l.keys.isEmpty() ? 0.0 : l.curveValue(Driver::X, l.keysOf(Driver::X), frame);
+    }
+    QPair<int, int> const source = sourceOf(layer, value);
+    if (source.first != layer)
+        return valueOf(source.first, source.second, frame);
     Layer const& l = layerOf(layer);
+    bool const follows = driven(layer, value);
     auto onFrame = [&](int f) {
-        if (driven(layer, value))
+        if (follows)
             return Driver::read(scene.poseOf(layer, f), value);
         return value == Timeline::Fov ? l.fovAt(f) : Driver::read(l.poseAt(f), value);
     };
     int const whole = int(std::floor(frame));
-    if (frame - whole < 1e-9 || driven(layer, value))
+    if (frame - whole < 1e-9)
         return onFrame(int(std::lround(frame))) * unitOf(value);
     // Between two frames: on the curve itself where the value has a shape of its own there, else straight across.
     QVector<int> const through = l.keysOf(value);
-    for (int n = 0; n + 1 < through.size(); ++n) {
+    for (int n = 0; !follows && n + 1 < through.size(); ++n) {
         Keyframe const& a = l.keys[through[n]];
         Keyframe const& b = l.keys[through[n + 1]];
         if (a.frame <= frame && frame < b.frame && (a.curveOf(value) || b.curveOf(value)) && a.controls.isEmpty() && value != Timeline::Fov)
@@ -149,13 +196,27 @@ double FunctionGraph::valueAt(Timeline::Parameter which, int frame) const
 QVector<FunctionPoint> FunctionGraph::points() const
 {
     QVector<FunctionPoint> out;
+    int curves = 0;
     for (int layer : layersDrawn()) {
-        Layer const& l = layerOf(layer);
         for (int value = 0; value < Timeline::ParameterCount; ++value) {
-            if (!m_shown[value] || !Timeline::parameterFor(l.kind, Timeline::Parameter(value)) || driven(layer, value))
+            if (layer >= 0 && (!m_shown[value] || !Timeline::parameterFor(layerOf(layer).kind, Timeline::Parameter(value)) || driven(layer, value)))
                 continue;
-            for (int k : l.keysOf(value))
-                out.push_back({layer, value, l.keys[k].frame});
+            if (layer < 0 && value != Driver::X)
+                continue;
+            if (++curves > m_loadLimit)
+                return out;     // (Preferences: no more curves than so many)
+            QPair<int, int> const source = sourceOf(layer, value);
+            if (source.first < 0) {
+                FunctionColumn const& column = m_document->scene().functions[-1 - source.first];
+                if (column.kind != FunctionColumn::Bezier && column.kind != FunctionColumn::Ease)
+                    continue;
+            }
+            Layer const& l = layerOf(source.first);
+            for (int k : l.keysOf(source.second)) {
+                FunctionPoint const p{source.first, source.second, l.keys[k].frame};
+                if (!out.contains(p))
+                    out.push_back(p);
+            }
         }
     }
     return out;
@@ -433,5 +494,12 @@ void FunctionGraph::setGridShown(bool on)
 void FunctionGraph::setCurrentFrameShown(bool on)
 {
     m_currentShown = on;
+    update();
+}
+
+void FunctionGraph::setLoadLimit(int curves)
+{
+    m_loadLimit = std::max(1, curves);
+    pruneSelection();
     update();
 }

@@ -92,6 +92,14 @@ Pose poseFor(Scene const& scene, int layer, int frame, PoseOverride const* over)
     Pose const* const other = over ? over->otherPose(layer, frame) : nullptr;
     Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : other ? *other : scene.layers[layer].poseAt(frame);
     Layer const& l = scene.layers[layer];
+    // The values linked to function columns: as the columns have them.
+    for (ValueLink const& link : l.links)
+        if (FunctionColumn const* column = scene.function(link.function)) {
+            double v = column->valueFor(link.value, frame, scene);
+            if (link.value == Driver::Opacity)
+                v = std::clamp(v, 0.0, 1.0);
+            Driver::write(pose, link.value, v);
+        }
     if (l.drivers.isEmpty())
         return pose;
     // The values that follow other layers.  (A loop of layers following one another goes no deeper than a few rounds.)

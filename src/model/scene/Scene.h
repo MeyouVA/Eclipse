@@ -5,6 +5,7 @@
 // over several frames is simply the same index repeated, as on a paper exposure sheet.
 #pragma once
 
+#include "model/scene/FunctionColumn.h"
 #include "model/scene/NodeGraph.h"
 
 #include <QHash>
@@ -122,6 +123,12 @@ public:
     int markerAt(int frame) const;
     QColor background = Qt::white;
     QVector<Layer> layers;  // index 0 is the back
+    // Function columns (the values linked to them: Layer::links) and the id the next one gets.
+    QVector<FunctionColumn> functions;
+    int nextFunctionId = 1;
+    int functionIndex(int id) const;            // -1 when there is no such column
+    FunctionColumn const* function(int id) const;
+    QString uniqueFunctionName(QString const& base) const;
     QVector<Swatch> palette;
     bool orthographic = false;
     // The camera's angle of view is measured from side to side (horizontal fit) rather than from top to bottom.

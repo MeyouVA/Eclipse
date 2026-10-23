@@ -32,7 +32,7 @@ void FunctionGraph::boundsOfSelection(int& low, int& high) const
     for (FunctionPoint const& p : m_selection) {
         low = std::max(low, -p.frame);
         high = std::min(high, scene.frameCount() - 1 - p.frame);
-        Layer const& l = scene.layers[p.layer];
+        Layer const& l = sourceLayer(p.layer);
         for (int k : l.keysOf(p.value)) {
             int const f = l.keys[k].frame;
             if (m_selection.contains(FunctionPoint{p.layer, p.value, f}))
@@ -55,7 +55,7 @@ void FunctionGraph::makePreview()
             if (!which.contains(p.layer))
                 which.push_back(p.layer);
         for (int layer : which) {
-            Layer copy = scene.layers[layer];
+            Layer copy = sourceLayer(layer);
             QVector<QPair<int, int>> moving;
             for (FunctionPoint const& p : std::as_const(m_selection)) {
                 if (p.layer != layer)
@@ -75,7 +75,7 @@ void FunctionGraph::makePreview()
             layers.push_back(copy);
         }
     } else if (m_drag == Handle) {
-        Layer copy = scene.layers[m_grip.layer];
+        Layer copy = sourceLayer(m_grip.layer);
         int const k = copy.keyIndex(m_grip.frame);
         if (k >= 0)
             copy.keys[k].setCurve(m_dragCurve);
@@ -110,7 +110,7 @@ void FunctionGraph::commitMove(int by, double delta)
             if (delta == 0.0)
                 continue;
             // (The angle of view: the other keyframes keep the angle they stood for.)
-            if (p.value == Timeline::Fov && scene.layers[layer].kind == Layer::Camera)
+            if (p.value == Timeline::Fov && layer >= 0 && scene.layers[layer].kind == Layer::Camera)
                 m_document->setFov(layer, v, p.frame);
             else
                 changes.push_back({p.frame, p.value, v});
@@ -130,8 +130,7 @@ void FunctionGraph::commitMove(int by, double delta)
 
 ValueCurve FunctionGraph::pulledCurve(FunctionPoint const& p, bool out, QPointF to, bool breaking) const
 {
-    Scene const& scene = m_document->scene();
-    Layer const& l = scene.layers[p.layer];
+    Layer const& l = sourceLayer(p.layer);
     ValueCurve curve = curveAt(p);
     curve.value = p.value;
     QVector<int> const through = l.keysOf(p.value);
@@ -211,13 +210,12 @@ void FunctionGraph::copySelection()
     for (FunctionPoint const& p : std::as_const(m_selection))
         first = std::min(first, p.frame);
     m_copied.clear();
-    Scene const& scene = m_document->scene();
     for (FunctionPoint const& p : std::as_const(m_selection)) {
         Copied c;
         c.value = p.value;
         c.offset = p.frame - first;
         c.v = valueOf(p.layer, p.value, p.frame) / unitOf(p.value);
-        Layer const& l = scene.layers[p.layer];
+        Layer const& l = sourceLayer(p.layer);
         if (ValueCurve const* own = l.keys[l.keyIndex(p.frame)].curveOf(p.value)) {
             c.hasCurve = true;
             c.curve = *own;
@@ -282,21 +280,20 @@ void FunctionGraph::setSegment(int segment)
 {
     if (m_selection.isEmpty())
         return;
-    Scene const& scene = m_document->scene();
     QMap<int, QVector<Document::CurveChange>> byLayer;
     QVector<QPair<int, int>> tweening;      // stop-motion keyframes that tween again (layer, frame)
     for (FunctionPoint const& p : std::as_const(m_selection)) {
         ValueCurve c = curveAt(p);
         c.after = segment;
         byLayer[p.layer].push_back({p.frame, c});
-        Layer const& l = scene.layers[p.layer];
+        Layer const& l = sourceLayer(p.layer);
         int const k = l.keyIndex(p.frame);
         if (segment != ValueCurve::Held && k >= 0 && !l.keys[k].tween && !tweening.contains(QPair<int, int>(p.layer, p.frame)))
             tweening.push_back({p.layer, p.frame});
     }
     // A stop-motion keyframe made to tween for these values: its other values stay held.
     for (QPair<int, int> const& t : std::as_const(tweening)) {
-        Layer const& l = scene.layers[t.first];
+        Layer const& l = sourceLayer(t.first);
         int const k = l.keyIndex(t.second);
         for (int value = 0; value < Timeline::ParameterCount; ++value) {
             FunctionPoint const other{t.first, value, t.second};
@@ -365,7 +362,7 @@ void FunctionGraph::insertPoint()
     QMap<int, QVector<Document::CurveChange>> shapes;
     QVector<FunctionPoint> made;
     for (QPair<int, int> const& c : std::as_const(curves)) {
-        Layer const& l = scene.layers[c.first];
+        Layer const& l = sourceLayer(c.first);
         QVector<int> const through = l.keysOf(c.second);
         bool there = false;
         for (int k : through)

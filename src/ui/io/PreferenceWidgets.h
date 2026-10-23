@@ -82,6 +82,11 @@ struct PreferenceWidgets {
     QSpinBox* preroll = nullptr;
     QCheckBox* loopAtStart = nullptr;
     QCheckBox* functionGrid = nullptr;
+    QSpinBox* functionLoadLimit = nullptr;
+    QCheckBox* pathConstantZ = nullptr;
+    QCheckBox* editorsOnTop = nullptr;
+    QCheckBox* defaultBezier = nullptr;
+    QCheckBox* defaultBezierVelocity = nullptr;
     QGroupBox* renderPage = nullptr;
     QComboBox* previewSize = nullptr;
     QCheckBox* autoRender = nullptr;

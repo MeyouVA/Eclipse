@@ -470,6 +470,20 @@ void Xsheet::setFunctionValue(int layer, int function, int frame, double value)
     for (Driver const& d : scene.layers[layer].drivers)
         if (d.value == function)
             return;         // it follows another layer: nothing to type in
+    // Linked to a function column: the column's point on this frame; an expression (a velocity, a path) cannot be typed in.
+    if (int const index = scene.functionIndex(scene.layers[layer].linkOf(function)); index >= 0) {
+        FunctionColumn const& column = scene.functions[index];
+        if (column.kind != FunctionColumn::Bezier && column.kind != FunctionColumn::Ease) {
+            emit message(column.kind == FunctionColumn::Expression
+                             ? tr("Unable to set value of the expression column at a given frame - the expression must be changed instead.")
+                             : tr("Unable to set value of the %1 column at a given frame - its points must be changed instead.").arg(FunctionColumn::kindName(column.kind)));
+            return;
+        }
+        if (function == Timeline::Opacity)
+            value = std::clamp(value, 0.0, 1.0);
+        m_document->setKeyValues(-1 - index, {{frame, Driver::X, value}}, tr("Set Xsheet Entry"));
+        return;
+    }
     if (function == Timeline::Fov) {
         if (scene.layers[layer].kind == Layer::Camera)
             m_document->setFov(layer, value, frame);

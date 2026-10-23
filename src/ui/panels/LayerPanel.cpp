@@ -10,6 +10,7 @@
 #include "ui/panels/ColourEditor.h"
 #include <QLabel>
 #include <QPushButton>
+#include <QToolButton>
 #include <QLineEdit>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -40,7 +41,9 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     m_bone = new QComboBox(this);
     m_bone->setToolTip(tr("The bone of the layer this one is attached to that it moves with."));
     m_x = number(-100000, 100000, 1.0, 2);
+    m_x->setObjectName(QStringLiteral("LayerX"));
     m_y = number(-100000, 100000, 1.0, 2);
+    m_y->setObjectName(QStringLiteral("LayerY"));
     m_z = number(-100000, 100000, 10.0, 2);
     m_z->setObjectName(QStringLiteral("LayerDepth"));
     m_z->setToolTip(tr("How far the layer stands towards the camera (positive: forward) or away from it (negative: back).\n"
@@ -207,12 +210,23 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     m_easeIn->setToolTip(tr("How gently the motion arrives at the keyframe on this frame."));
     m_easeOut->setToolTip(tr("How gently the motion leaves the keyframe on this frame."));
 
-    auto pair = [this](QDoubleSpinBox* a, QDoubleSpinBox* b) {
+    // (A value that can be animated has its function button after it.)
+    auto pair = [this](QDoubleSpinBox* a, QDoubleSpinBox* b, int va = -1, int vb = -1) {
         QHBoxLayout* const row = new QHBoxLayout;
         row->addWidget(new QLabel(tr("X"), this));
         row->addWidget(a, 1);
+        if (va >= 0)
+            row->addWidget(functionButton(va));
         row->addWidget(new QLabel(tr("Y"), this));
         row->addWidget(b, 1);
+        if (vb >= 0)
+            row->addWidget(functionButton(vb));
+        return row;
+    };
+    auto single = [this](QDoubleSpinBox* box, int value) {
+        QHBoxLayout* const row = new QHBoxLayout;
+        row->addWidget(box, 1);
+        row->addWidget(functionButton(value));
         return row;
     };
     QFormLayout* const form = new QFormLayout(this);
@@ -229,21 +243,22 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(tr("Rides on"), m_bone);
     form->addRow(QString(), m_bend);
     form->addRow(tr("Joint Smoothness"), m_smooth);
-    form->addRow(tr("Position"), pair(m_x, m_y));
-    form->addRow(tr("Depth (Z)"), m_z);
+    form->addRow(tr("Position"), pair(m_x, m_y, Driver::X, Driver::Y));
+    form->addRow(tr("Depth (Z)"), single(m_z, Driver::Z));
     m_turnRow = pair(m_rotX, m_rotY);
     form->addRow(tr("Turn in Space"), m_turnRow);
-    form->addRow(tr("Field of View"), m_fov);
-    form->addRow(tr("Scale"), pair(m_scaleX, m_scaleY));
-    form->addRow(tr("Angle"), m_angle);
-    form->addRow(tr("Skew"), m_skew);
+    m_fovRow = single(m_fov, Driver::Fov);
+    form->addRow(tr("Field of View"), m_fovRow);
+    form->addRow(tr("Scale"), pair(m_scaleX, m_scaleY, Driver::ScaleX, Driver::ScaleY));
+    form->addRow(tr("Angle"), single(m_angle, Driver::Angle));
+    form->addRow(tr("Skew"), single(m_skew, Driver::Skew));
     form->addRow(tr("Pivot"), pair(m_pivotX, m_pivotY));
     QHBoxLayout* const ease = new QHBoxLayout;
     ease->addWidget(new QLabel(tr("In"), this));
     ease->addWidget(m_easeIn, 1);
     ease->addWidget(new QLabel(tr("Out"), this));
     ease->addWidget(m_easeOut, 1);
-    form->addRow(tr("Opacity"), m_opacity);
+    form->addRow(tr("Opacity"), single(m_opacity, Driver::Opacity));
     form->addRow(tr("Blend Mode"), m_blend);
     form->addRow(tr("Attribute Controls"), m_drivers);
     form->addRow(tr("Ease"), ease);
@@ -404,10 +419,16 @@ void LayerPanel::refresh()
         for (Driver const& d : layer.drivers)
             if (d.value >= 0 && d.value < Driver::ValueCount && scene.layerIndex(d.source) >= 0)
                 driven[d.value] = true;
+        // (Linked to a column that has no points to set - an expression, a velocity, a 3D path: it shows the column's value.)
+        for (ValueLink const& link : layer.links)
+            if (FunctionColumn const* column = scene.function(link.function))
+                if (column->kind != FunctionColumn::Bezier && column->kind != FunctionColumn::Ease)
+                    driven[link.value] = true;
         for (int v = 0; v < Driver::ValueCount; ++v) {
             boxes[v]->setEnabled(!driven[v]);
             boxes[v]->setProperty("driven", driven[v]);
         }
+        refreshFunctionButtons(layer);
     }
     if (!m_name->hasFocus() || m_name->text().isEmpty())
         m_name->setText(layer.name);
@@ -416,7 +437,7 @@ void LayerPanel::refresh()
     m_kind->setText(tr(kKinds[layer.kind]));
     m_form->setRowVisible(m_card, layer.kind == Layer::ColourCard);
     m_form->setRowVisible(m_length, layer.kind == Layer::Bone);
-    m_form->setRowVisible(m_fov, layer.kind == Layer::Camera);
+    m_form->setRowVisible(m_fovRow, layer.kind == Layer::Camera);
     m_fov->setValue(m_fov->property("driven").toBool() ? pose.fov : layer.fovAt(m_frame));
     // A camera is not turned in space (it looks straight at the scene).
     m_form->setRowVisible(m_turnRow, layer.kind != Layer::Camera);
@@ -526,6 +547,25 @@ void LayerPanel::applyPose()
     if (!layer.separateScale && pose.scaleX != now.scaleX)
         pose.scaleY = now.scaleY * pose.scaleX / now.scaleX;    // locked: in proportion
     pose.rotation = layer.limitedAngle(pose.rotation);
+    // The values linked to bezier or ease columns: set on the column, on this frame.
+    QVector<QPair<int, Document::ValueChange>> columns;
+    for (ValueLink const& link : layer.links) {
+        int const index = scene.functionIndex(link.function);
+        double const v = Driver::read(pose, link.value);
+        if (index >= 0 && v != Driver::read(now, link.value)) {
+            columns.push_back({-1 - index, {m_frame, Driver::X, v}});
+            Driver::write(pose, link.value, Driver::read(now, link.value));
+        }
+    }
+    if (!columns.isEmpty()) {
+        m_document->beginMacro(tr("Change Layer Properties"));
+        for (auto const& c : std::as_const(columns))
+            m_document->setKeyValues(c.first, {c.second}, tr("Change Layer Properties"));
+        if (!(pose == now))
+            m_document->setKeyframe(m_layer, m_frame, pose, tr("Change Layer Properties"));
+        m_document->endMacro();
+        return;
+    }
     if (pose == now)
         return;
     if (m_animate)

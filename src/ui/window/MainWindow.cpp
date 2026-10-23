@@ -73,6 +73,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     if (FunctionView* const function = findChild<FunctionView*>(QStringLiteral("FunctionView")))
         function->setActions(m_actions);
     connectXsheetToggles();
+    connectFunctionColumns();
 
     // Right-click menus of the views.
     m_canvas->setContextMenuPolicy(Qt::CustomContextMenu);

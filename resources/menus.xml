@@ -1199,6 +1199,8 @@
    <separator/>
    <item id="SelectSyncedLayers"/>
    <separator/>
+   <item id="SendToFunctionView" icon="function/all" text="Send to &amp;Function View" responder="window" slot="onActionSendToFunctionView()"/>
+   <separator/>
    <item id="XsheetGesturalDrag" icon="xsheet/gestural" text="&amp;Gestural Drag Mode" shortcut="shortcut.xsheetGestural" checkable="true" responder="window" slot="onActionXsheetGesturalDrag(bool)"/>
   </menu>
   <menu id="XsheetViewMenu" text="&amp;View">
@@ -1236,6 +1238,8 @@
    <item id="XsheetColumnList" icon="xsheet/columnlist" text="Show Column &amp;List" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="columnList"/>
    <item id="XsheetColumnTypes" icon="xsheet/columntypes" text="Show Column T&amp;ypes..." shortcut="shortcut.xsheetColumnTypes" responder="window" slot="onActionXsheetColumnTypes()"/>
    <item id="XsheetShowDrawingColumns" icon="xsheet/drawingcolumns" text="Toggle Show &amp;Drawing Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="drawingColumns"/>
+   <item id="XsheetShowFunctionColumns" icon="function/curved" text="Toggle Show &amp;Function Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="functionColumns"/>
+   <item id="XsheetShowPathColumns" icon="function/motion" text="Toggle Show 3D&amp;Path Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="pathColumns"/>
    <item id="XsheetShowGrouping" text="Show &amp;Grouping" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="grouping"/>
    <item id="XsheetMinimalHeaders" text="&amp;Minimal Headers" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="minimal"/>
    <item id="TempoMarks" icon="xsheet/tempo" text="&amp;Tempo Marks..." responder="window" slot="onActionTempoMarks()"/>
@@ -1427,6 +1431,20 @@
  </menu>
 
  <menu id="menu.xsheetHeader" text="Xsheet Header Menu">
+  <item id="SendToFunctionView"/>
+  <item id="OpenFunctionEditor" icon="function/curved" text="Function &amp;Editor..." responder="window" slot="onActionOpenFunctionEditor()"/>
+  <menu id="XsheetConvertVeloBased" text="Co&amp;nversion">
+   <item id="ConvertToBezier" text="Convert to bezier" responder="window" slot="onActionConvertFunction(QString)" itemParameter="bezier"/>
+   <item id="ConvertToEase" text="Convert to ease" responder="window" slot="onActionConvertFunction(QString)" itemParameter="ease"/>
+   <item id="ConvertToNewBezier" text="Create to a new unused bezier column" responder="window" slot="onActionConvertFunction(QString)" itemParameter="newBezier"/>
+   <item id="ConvertToNewEase" text="Create to a new unused ease column" responder="window" slot="onActionConvertFunction(QString)" itemParameter="newEase"/>
+  </menu>
+  <menu id="XsheetHeaderTag" text="&amp;Tag">
+   <item id="FunctionColumnsVisible" text="Function Columns Visible" responder="window" slot="onActionFunctionColumnsTag(QString)" itemParameter="visible"/>
+   <item id="FunctionColumnsInvisible" text="Function Columns Invisible" responder="window" slot="onActionFunctionColumnsTag(QString)" itemParameter="invisible"/>
+   <item id="HideOtherFunctionColumns" text="Hide All Other Function Columns" responder="window" slot="onActionFunctionColumnsTag(QString)" itemParameter="hideOthers"/>
+  </menu>
+  <separator/>
   <item id="AddColumns"/>
   <item id="DeleteColumns"/>
   <item id="CloneColumns"/>

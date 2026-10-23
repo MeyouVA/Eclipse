@@ -185,6 +185,8 @@
   <item id="HideSelectedColumns" toolbarText="Hide"/>
   <item id="ShowHiddenColumns" toolbarText="Show Hidden"/>
   <item id="XsheetShowDrawingColumns" toolbarText="Drawing Columns"/>
+  <item id="XsheetShowFunctionColumns" toolbarText="Function Columns" visible="false"/>
+  <item id="XsheetShowPathColumns" toolbarText="3D Path Columns" visible="false"/>
   <item id="XsheetThumbnails" toolbarText="Thumbnails"/>
   <item id="XsheetColumnList" toolbarText="Column List"/>
   <item id="XsheetColumnTypes" toolbarText="Column Types"/>

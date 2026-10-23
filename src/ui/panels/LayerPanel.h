@@ -21,6 +21,12 @@ class ECLIPSE_UI_API LayerPanel : public QWidget {
 public:
     explicit LayerPanel(Document* document, QWidget* parent = nullptr);
 
+signals:
+    // A value's function button: clicked (show it in the Function view), Alt-clicked (its column in the Function Editor).
+    void functionShown(int layer, int value);
+    void functionEditorWanted(int column);
+    void message(QString const& text);
+
 public slots:
     void setCurrentCell(int layer, int frame);
     // Animating off: a number typed moves the layer as a whole, in all its keyframes alike.
@@ -38,6 +44,10 @@ public:
     void editDrivers();
 private:
     QDoubleSpinBox* number(double min, double max, double step, int decimals);
+    // The button beside a value (Driver::Value) that shows its function and links it to a column.
+    class QToolButton* functionButton(int value);
+    void fillFunctionMenu(class QMenu* menu, int value);
+    void refreshFunctionButtons(struct Layer const& layer);
 
     Document* m_document;
     int m_layer = 0;
@@ -58,6 +68,8 @@ private:
     QDoubleSpinBox* m_rotY;
     class QLayout* m_turnRow = nullptr;
     QDoubleSpinBox* m_fov;          // a camera: the angle it sees
+    class QLayout* m_fovRow = nullptr;
+    class QToolButton* m_functionButtons[9] = {};
     QDoubleSpinBox* m_scaleX;
     QDoubleSpinBox* m_scaleY;
     QDoubleSpinBox* m_skew = nullptr;

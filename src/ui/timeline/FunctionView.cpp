@@ -11,6 +11,7 @@
 #include <QVBoxLayout>
 
 #include "actions/manager/ActionManager.h"
+#include "actions/theme/InterfaceColours.h"
 #include "model/document/Commands.h"
 
 namespace {
@@ -51,6 +52,13 @@ FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent
         if (m_filling)
             return;
         bool const on = item->checkState(0) == Qt::Checked;
+        if (!item->parent() && item->data(0, Qt::UserRole + 1).toBool()) {
+            // A function column: its curve drawn or not.
+            int const index = m_document->scene().functionIndex(item->data(0, Qt::UserRole).toInt());
+            if (index >= 0)
+                m_graph->setLayerHidden(-1 - index, !on);
+            return;
+        }
         if (!item->parent()) {
             // A layer: its curves drawn or not.
             int const index = m_document->scene().layerIndex(item->data(0, Qt::UserRole).toInt());
@@ -71,16 +79,26 @@ FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent
         syncKinds();
     });
     connect(m_list, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem* item) {
-        // A value clicked: its points selected (the curve to work on).
+        // A value clicked: its points selected (the curve to work on).  A column: its points.
+        if (!item->parent() && item->data(0, Qt::UserRole + 1).toBool()) {
+            int const index = m_document->scene().functionIndex(item->data(0, Qt::UserRole).toInt());
+            QVector<FunctionPoint> chosen;
+            for (FunctionPoint const& p : m_graph->points())
+                if (p.layer == -1 - index)
+                    chosen.push_back(p);
+            m_graph->setSelection(chosen);
+            return;
+        }
         if (!item->parent())
             return;
         int const index = m_document->scene().layerIndex(item->parent()->data(0, Qt::UserRole).toInt());
         int const which = item->data(0, Qt::UserRole).toInt();
         if (index < 0 || !m_graph->isShown(Timeline::Parameter(which)))
             return;
+        QPair<int, int> const source = m_graph->sourceOf(index, which);
         QVector<FunctionPoint> chosen;
         for (FunctionPoint const& p : m_graph->points())
-            if (p.layer == index && p.value == which)
+            if (p.layer == source.first && p.value == source.second)
                 chosen.push_back(p);
         m_graph->setSelection(chosen);
     });
@@ -151,7 +169,11 @@ FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent
     connect(m_graph, &FunctionGraph::framePicked, this, &FunctionView::framePicked);
     connect(m_graph, &FunctionGraph::selectionChanged, this, &FunctionView::showSpot);
     connect(m_document, &Document::changed, this, [this] {
-        rebuildList();
+        // (Columns are kept by id: their places may have changed.)
+        if (!m_loadedColumns.isEmpty())
+            loadIntoGraph();
+        else
+            rebuildList();
         showSpot();
     });
     rebuildList();
@@ -255,7 +277,42 @@ void FunctionView::loadIntoGraph()
     if (first != m_graph->currentLayer())
         m_graph->setCurrentCell(first, m_graph->currentFrame());
     m_graph->setOtherLayers(indices.mid(1));
+    QVector<int> columns;
+    for (int id : std::as_const(m_loadedColumns))
+        if (int const index = scene.functionIndex(id); index >= 0)
+            columns.push_back(index);
+    m_graph->setColumns(columns);
     rebuildList();
+}
+
+void FunctionView::loadColumn(int id)
+{
+    if (!m_document->scene().function(id))
+        return;
+    if (!m_loadedColumns.contains(id))
+        m_loadedColumns.push_back(id);
+    loadIntoGraph();
+}
+
+void FunctionView::sendToFunctionView(int layer, int value)
+{
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size())
+        return;
+    if (int const id = scene.layers[layer].linkOf(value))
+        loadColumn(id);
+    if (value < 0 || value >= Timeline::ParameterCount)
+        return;
+    m_graph->setShown(Timeline::Parameter(value), true);
+    m_list->setProperty("signature", QString());
+    rebuildList();
+    syncKinds();
+    QPair<int, int> const source = m_graph->sourceOf(layer, value);
+    QVector<FunctionPoint> chosen;
+    for (FunctionPoint const& p : m_graph->points())
+        if (p.layer == source.first && p.value == source.second)
+            chosen.push_back(p);
+    m_graph->setSelection(chosen);
 }
 
 QTreeWidgetItem* FunctionView::valueItem(int layer, Timeline::Parameter which) const
@@ -281,7 +338,11 @@ void FunctionView::rebuildList()
     QStringList shape;
     for (int id : std::as_const(m_loaded))
         if (int const index = scene.layerIndex(id); index >= 0)
-            shape << QString::number(id) + QLatin1Char(':') + QString::number(scene.layers[index].kind) + QLatin1Char(':') + scene.layers[index].name;
+            shape << QString::number(id) + QLatin1Char(':') + QString::number(scene.layers[index].kind) + QLatin1Char(':') + scene.layers[index].name
+                         + QString::number(scene.layers[index].links.size());
+    for (int id : std::as_const(m_loadedColumns))
+        if (FunctionColumn const* column = scene.function(id))
+            shape << QStringLiteral("f") + QString::number(id) + column->name;
     QString const signature = shape.join(QLatin1Char('|'));
     if (m_list->property("signature").toString() == signature && m_list->topLevelItemCount() == shape.size())
         return;
@@ -304,13 +365,30 @@ void FunctionView::rebuildList()
                 continue;
             QPixmap swatch(10, 10);
             swatch.fill(FunctionGraph::colourOf(which));
-            QTreeWidgetItem* const child = new QTreeWidgetItem(top, {Timeline::parameterName(which)});
+            // (Linked to a function column: its name after the value's.)
+            QString text = Timeline::parameterName(which);
+            if (FunctionColumn const* column = scene.function(l.linkOf(which)))
+                text += QStringLiteral(" (") + column->name + QLatin1Char(')');
+            QTreeWidgetItem* const child = new QTreeWidgetItem(top, {text});
             child->setIcon(0, QIcon(swatch));
             child->setData(0, Qt::UserRole, int(which));
             child->setFlags(child->flags() | Qt::ItemIsUserCheckable);
             child->setCheckState(0, m_graph->isShown(which) ? Qt::Checked : Qt::Unchecked);
         }
         top->setExpanded(true);
+    }
+    for (int id : std::as_const(m_loadedColumns)) {
+        FunctionColumn const* column = scene.function(id);
+        if (!column)
+            continue;
+        QTreeWidgetItem* const top = new QTreeWidgetItem(m_list, {column->name + QStringLiteral(" [") + FunctionColumn::kindName(column->kind) + QLatin1Char(']')});
+        top->setData(0, Qt::UserRole, id);
+        top->setData(0, Qt::UserRole + 1, true);
+        top->setFlags(top->flags() | Qt::ItemIsUserCheckable);
+        top->setCheckState(0, drawn.contains(-1 - scene.functionIndex(id)) ? Qt::Checked : Qt::Unchecked);
+        QPixmap swatch(10, 10);
+        swatch.fill(InterfaceColours::get("functionColumn"));
+        top->setIcon(0, QIcon(swatch));
     }
     m_filling = false;
 }
@@ -376,6 +454,7 @@ void FunctionView::onActionClearList()
 {
     onActionAutoLoad(false);
     m_loaded.clear();
+    m_loadedColumns.clear();
     loadIntoGraph();
 }
 

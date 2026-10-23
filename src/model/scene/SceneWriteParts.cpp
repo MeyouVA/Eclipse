@@ -602,6 +602,14 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["bendOnBones"] = true;
     if (layer.jointSmoothness > 0.0)
         layerObject["jointSmooth"] = layer.jointSmoothness;
+    if (layer.hiddenFunctions != 0)
+        layerObject["hiddenFunctions"] = layer.hiddenFunctions;
+    if (!layer.links.isEmpty()) {
+        QJsonArray links;
+        for (ValueLink const& link : layer.links)
+            links.append(QJsonArray{link.value, link.function});
+        layerObject["links"] = links;
+    }
     if (!layer.drivers.isEmpty()) {
         QJsonArray drivers;
         for (Driver const& d : layer.drivers)

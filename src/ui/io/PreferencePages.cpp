@@ -93,6 +93,21 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));
     w.keepBackup->setChecked(s.value(QStringLiteral("prefs/keepBackup"), true).toBool());
     w.generalLayout->addRow(w.keepBackup);
+    w.editorsOnTop = new QCheckBox(tr("Editors always on top"), w.general);
+    w.editorsOnTop->setObjectName(QStringLiteral("PrefEditorsOnTop"));
+    w.editorsOnTop->setToolTip(tr("Function editors are always on top of the main window."));
+    w.editorsOnTop->setChecked(s.value(QStringLiteral("prefs/editorsOnTop"), true).toBool());
+    w.generalLayout->addRow(w.editorsOnTop);
+    w.defaultBezier = new QCheckBox(tr("Default Bezier"), w.general);
+    w.defaultBezier->setObjectName(QStringLiteral("PrefDefaultBezier"));
+    w.defaultBezier->setToolTip(tr("Create a bezier or an ease when creating a function column."));
+    w.defaultBezier->setChecked(s.value(QStringLiteral("prefs/defaultBezier"), true).toBool());
+    w.generalLayout->addRow(w.defaultBezier);
+    w.defaultBezierVelocity = new QCheckBox(tr("Default Bezier Velocity"), w.general);
+    w.defaultBezierVelocity->setObjectName(QStringLiteral("PrefDefaultBezierVelocity"));
+    w.defaultBezierVelocity->setToolTip(tr("Create a bezier or an ease when creating the velocity of a 3D path."));
+    w.defaultBezierVelocity->setChecked(s.value(QStringLiteral("prefs/defaultBezierVelocity"), true).toBool());
+    w.generalLayout->addRow(w.defaultBezierVelocity);
     w.compress = new QCheckBox(tr("Compress scene files on save"), w.general);
     w.compress->setObjectName(QStringLiteral("PrefCompressScenes"));
     w.compress->setToolTip(tr("Scene files are written packed: smaller, and read just the same."));
@@ -384,6 +399,18 @@ void MainWindow::preferencesTimeline(PreferenceWidgets& w, QSettings& s, QDialog
     w.functionGrid->setObjectName(QStringLiteral("PrefFunctionGrid"));
     w.functionGrid->setChecked(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
     w.timelineLayout->addRow(w.functionGrid);
+    // Function Editors.
+    w.functionLoadLimit = new QSpinBox(w.timelinePage);
+    w.functionLoadLimit->setObjectName(QStringLiteral("PrefFunctionLoadLimit"));
+    w.functionLoadLimit->setRange(1, 1000);
+    w.functionLoadLimit->setToolTip(tr("Controls the number of functions to display in the function editor."));
+    w.functionLoadLimit->setValue(s.value(QStringLiteral("prefs/functionLoadLimit"), 50).toInt());
+    w.timelineLayout->addRow(tr("Number of functions displayed in the canvas"), w.functionLoadLimit);
+    w.pathConstantZ = new QCheckBox(tr("3D Path Constant Z Default"), w.timelinePage);
+    w.pathConstantZ->setObjectName(QStringLiteral("PrefPathConstantZ"));
+    w.pathConstantZ->setToolTip(tr("Sets On or Off the Constant Z attribute of new 3D path function columns."));
+    w.pathConstantZ->setChecked(s.value(QStringLiteral("prefs/pathConstantZ"), false).toBool());
+    w.timelineLayout->addRow(w.pathConstantZ);
 
     Q_UNUSED(s);
     Q_UNUSED(dialog);

@@ -185,6 +185,7 @@ signals:
     void columnsChanged();
     void renameRequested(int layer);
     void statusChanged();
+    void message(QString const& text);
     // Remove Selected Frames asked for, from Delete with every column selected.
     void removeFramesRequested(int first, int last);
 

@@ -5,9 +5,9 @@
 
 void Document::setValueCurves(int layer, QVector<CurveChange> const& changes, QString const& text)
 {
-    if (layer < 0 || layer >= m_scene.layers.size() || changes.isEmpty())
+    if (!hasCurve(m_scene, layer) || changes.isEmpty())
         return;
-    Layer const& l = m_scene.layers[layer];
+    Layer const& l = curveLayer(m_scene, layer);
     bool differs = false;
     for (CurveChange const& c : changes) {
         int const k = l.keyIndex(c.frame);
@@ -19,7 +19,7 @@ void Document::setValueCurves(int layer, QVector<CurveChange> const& changes, QS
     if (!differs)
         return;
     apply(text, [&](Scene& s) {
-        Layer& to = s.layers[layer];
+        Layer& to = curveLayer(s, layer);
         for (CurveChange const& c : changes) {
             Keyframe& key = to.keys[to.keyIndex(c.frame)];
             if (c.drop) {
@@ -36,12 +36,12 @@ void Document::setValueCurves(int layer, QVector<CurveChange> const& changes, QS
 
 void Document::setKeyValues(int layer, QVector<ValueChange> const& changes, QString const& text)
 {
-    if (layer < 0 || layer >= m_scene.layers.size() || changes.isEmpty())
+    if (!hasCurve(m_scene, layer) || changes.isEmpty())
         return;
-    Layer const& l = m_scene.layers[layer];
+    Layer const& l = curveLayer(m_scene, layer);
     bool differs = false;
     for (ValueChange const& c : changes) {
-        if (!validCell(m_scene, layer, c.frame) || c.value < 0 || c.value >= Driver::ValueCount)
+        if (c.frame < 0 || c.frame >= m_scene.frameCount() || c.value < 0 || c.value >= Driver::ValueCount)
             return;
         int const k = l.keyIndex(c.frame);
         differs = differs || k < 0 || Driver::read(l.keys[k].pose, c.value) != c.to || !l.keys[k].sets(1 << c.value);
@@ -54,7 +54,7 @@ void Document::setKeyValues(int layer, QVector<ValueChange> const& changes, QStr
         if (l.keyIndex(c.frame) < 0 && !made.contains(c.frame))
             made.insert(c.frame, l.poseAt(c.frame));
     apply(text, [&](Scene& s) {
-        Layer& to = s.layers[layer];
+        Layer& to = curveLayer(s, layer);
         for (auto it = made.cbegin(); it != made.cend(); ++it) {
             int bits = 0;
             for (ValueChange const& c : changes)
@@ -76,37 +76,37 @@ void Document::setKeyValues(int layer, QVector<ValueChange> const& changes, QStr
 
 bool Document::moveValuePoints(int layer, QVector<QPair<int, int>> const& points, int by, QString const& text)
 {
-    if (layer < 0 || layer >= m_scene.layers.size() || points.isEmpty() || by == 0)
+    if (!hasCurve(m_scene, layer) || points.isEmpty() || by == 0)
         return false;
-    Layer trial = m_scene.layers[layer];
+    Layer trial = curveLayer(m_scene, layer);
     if (!trial.moveValues(points, by, m_scene.frameCount() - 1))
         return false;
-    apply(text, [&](Scene& s) { s.layers[layer].moveValues(points, by, m_scene.frameCount() - 1); });
+    apply(text, [&](Scene& s) { curveLayer(s, layer).moveValues(points, by, m_scene.frameCount() - 1); });
     return true;
 }
 
 void Document::removeKeyValues(int layer, QVector<QPair<int, int>> const& points, QString const& text)
 {
-    if (layer < 0 || layer >= m_scene.layers.size() || points.isEmpty())
+    if (!hasCurve(m_scene, layer) || points.isEmpty())
         return;
-    Layer trial = m_scene.layers[layer];
+    Layer trial = curveLayer(m_scene, layer);
     trial.removeValues(points);
-    QVector<Keyframe> const& now = m_scene.layers[layer].keys;
+    QVector<Keyframe> const& now = curveLayer(m_scene, layer).keys;
     bool same = trial.keys.size() == now.size();
     for (int k = 0; same && k < now.size(); ++k)
         same = trial.keys[k].parts == now[k].parts && trial.keys[k].curves == now[k].curves;
     if (same)
         return;
-    apply(text, [&](Scene& s) { s.layers[layer].removeValues(points); });
+    apply(text, [&](Scene& s) { curveLayer(s, layer).removeValues(points); });
 }
 
 void Document::setSegmentEases(QVector<SegmentEase> const& eases, QString const& text)
 {
     QVector<SegmentEase> valid;
     for (SegmentEase const& e : eases) {
-        if (e.layer < 0 || e.layer >= m_scene.layers.size() || e.value < 0 || e.value >= Driver::ValueCount)
+        if (!hasCurve(m_scene, e.layer) || e.value < 0 || e.value >= Driver::ValueCount)
             continue;
-        Layer const& l = m_scene.layers[e.layer];
+        Layer const& l = curveLayer(m_scene, e.layer);
         if (l.keyIndex(e.from) >= 0 && l.keyIndex(e.to) > l.keyIndex(e.from))
             valid.push_back(e);
     }
@@ -114,7 +114,7 @@ void Document::setSegmentEases(QVector<SegmentEase> const& eases, QString const&
         return;
     apply(text, [&](Scene& s) {
         for (SegmentEase const& e : valid) {
-            Layer& l = s.layers[e.layer];
+            Layer& l = curveLayer(s, e.layer);
             l.shapeSegment(e.value, l.keyIndex(e.from), l.keyIndex(e.to), e.leave, e.arrive);
         }
     });

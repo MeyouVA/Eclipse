@@ -73,7 +73,9 @@ void Xsheet::rebuildColumns()
             int const kind = p == Timeline::PosX || p == Timeline::PosY || p == Timeline::PosZ ? ShowPaths : p == Timeline::Angle ? ShowRotations : ShowFunctions;
             if (!(m_show & kind))
                 continue;
-            bool animated = false;
+            if (layer.hiddenFunctions & (1 << p))
+                continue;           // (Tag > Function Columns Invisible)
+            bool animated = layer.linkOf(p) != 0;
             for (Driver const& d : layer.drivers)
                 animated = animated || d.value == p;
             double first = 0.0;

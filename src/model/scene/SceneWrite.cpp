@@ -189,6 +189,33 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"frames", m_frameCount},
                        {"background", background.name()},
                        {"layers", layerArray}};
+    if (!functions.isEmpty()) {
+        QJsonArray columns;
+        for (FunctionColumn const& c : functions) {
+            QJsonArray keys, path, velocity;
+            for (Keyframe const& k : c.curve.keys)
+                keys.append(keyToJson(k));
+            for (FunctionColumn::PathPoint const& p : c.path)
+                path.append(QJsonArray{p.x, p.y, p.z, p.frame, p.tension, p.continuity, p.bias});
+            for (Keyframe const& k : c.velocity.keys)
+                velocity.append(keyToJson(k));
+            QJsonObject column{{"id", c.id}, {"name", c.name}, {"kind", c.kind}};
+            if (!keys.isEmpty())
+                column["points"] = keys;
+            if (!c.expression.isEmpty())
+                column["expression"] = c.expression;
+            if (!path.isEmpty())
+                column["path"] = path;
+            if (!velocity.isEmpty())
+                column["velocity"] = velocity;
+            if (c.constantZ)
+                column["constantZ"] = true;
+            if (!c.shown)
+                column["shown"] = false;
+            columns.append(column);
+        }
+        whole["functions"] = columns;
+    }
     if (!textureArray.isEmpty())
         whole["textures"] = textureArray;
     if (!images.isEmpty())

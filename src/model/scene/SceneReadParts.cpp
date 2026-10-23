@@ -435,6 +435,13 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.bitmapArt = lo["bitmapArt"].toInt(0) & 11;
     layer.bendOnBones = lo["bendOnBones"].toBool(false);
     layer.jointSmoothness = std::clamp(lo["jointSmooth"].toDouble(0.0), 0.0, 1000.0);
+    layer.hiddenFunctions = lo["hiddenFunctions"].toInt(0) & 511;
+    for (QJsonValue const& lv : lo["links"].toArray()) {
+        QJsonArray const link = lv.toArray();
+        int const value = link.at(0).toInt(-1), function = link.at(1).toInt(0);
+        if (value >= 0 && value < Driver::ValueCount && function > 0 && layer.linkOf(value) == 0)
+            layer.links.push_back({value, function});
+    }
     for (QJsonValue const& dv : lo["drivers"].toArray()) {
         QJsonObject const d = dv.toObject();
         Driver driver;
@@ -558,7 +565,18 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         if (morph.from >= 0)
             layer.morphs.push_back(morph);
     }
-    for (QJsonValue const& kv : lo["keys"].toArray()) {
+    keysFromJson(lo["keys"].toArray(), layer, frameCount);
+    if (!layer.holdsDrawings()) {
+        layer.drawings.clear();
+        layer.cells.fill(Layer::kNoDrawing);
+    }
+    return layer;
+}
+
+void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount)
+{
+    auto scale = [](double v) { return std::abs(v) < 0.001 ? (v < 0 ? -0.001 : 0.001) : v; };
+    for (QJsonValue const& kv : array) {
         QJsonObject const ko = kv.toObject();
         int const frame = ko["frame"].toInt(-1);
         if (frame < 0 || frame >= frameCount)
@@ -640,11 +658,6 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
             key.tension = key.continuity = key.bias = 0.0;     // (not the defaults for new keyframes)
         }
     }
-    if (!layer.holdsDrawings()) {
-        layer.drawings.clear();
-        layer.cells.fill(Layer::kNoDrawing);
-    }
-    return layer;
 }
 
 }  // namespace scene_read

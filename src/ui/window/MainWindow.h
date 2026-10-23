@@ -476,6 +476,13 @@ public slots:
     void onActionSetEaseMultiple();
     void onActionApplyEaseToSelection();
     void onActionVelocityEditor(bool on);
+    // Function columns: the Xsheet's current value column sent to the Function view, its column in the Function Editor,
+    // converted; a layer's function columns shown or hidden in the Xsheet.
+    void onActionSendToFunctionView();
+    void onActionOpenFunctionEditor();
+    void onActionConvertFunction(QString const& how);
+    void onActionFunctionColumnsTag(QString const& how);
+    void openFunctionEditor(int column);
     // The ease of the Set Ease for Multiple Parameters dialog given to the moves selected, for the kinds of value named.
     int easeSelection(QStringList const& kinds, QPointF leave, QPointF arrive);
     // The ease of the keyframes on the frames and layers selected (0 to 1 each; below 0: left as it is).  How many were changed.
@@ -733,6 +740,11 @@ private:
     QPointF m_easeLeave{0.5, 0.0}, m_easeArrive{0.5, 1.0};
     QStringList m_easeKinds;
     QPointer<QWidget> m_velocityEditor;
+    // Preferences: the Function Editors stay in front of the window.
+    bool m_editorsOnTop = true;
+    void connectFunctionColumns();
+    // The value column the Xsheet is on (layer, value); value -1 when it is on a layer's own column.
+    QPair<int, int> xsheetValueColumn() const;
     bool m_focusOnEnter = false;
     Q_INVOKABLE void shuttleStep();     // one tick of the shuttle
 

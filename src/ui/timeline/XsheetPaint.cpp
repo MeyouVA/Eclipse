@@ -30,6 +30,10 @@ QColor Xsheet::columnColour(Layer const& layer, int function) const
         for (Driver const& d : layer.drivers)
             if (d.value == function)
                 return InterfaceColours::get("xsheetExpressionColumn");
+        if (FunctionColumn const* column = m_document->scene().function(layer.linkOf(function))) {
+            static char const* const kColours[] = {"xsheetBezierColumn", "xsheetEaseColumn", "xsheetVeloColumn", "xsheetExpressionColumn", "xsheetPathColumn"};
+            return InterfaceColours::get(kColours[std::clamp(column->kind, 0, 4)]);
+        }
         return InterfaceColours::get("xsheetFunctionColumn");
     }
     switch (layer.kind) {
@@ -54,7 +58,7 @@ QString Xsheet::functionText(int layer, int function, int frame) const
     bool driven = false;
     for (Driver const& d : l.drivers)
         driven = driven || d.value == function;
-    if (driven)
+    if (driven || l.linkOf(function) != 0)
         value = Driver::read(scene.poseOf(layer, frame), function);
     else if (function == Timeline::Fov)
         value = l.fovAt(frame);
@@ -497,8 +501,11 @@ void Xsheet::paintHeaders(QPainter& p)
         p.fillRect(x, band, column.width - 1, 4, columnColour(layer, column.function));
         if (!layer.columnCollapsed) {
             int const nameHeight = m_minimal ? hh - band - 4 : 16;
-            QString const name = column.function >= 0 ? Timeline::parameterName(Timeline::Parameter(column.function)).section(QLatin1String(": "), -1)
-                                                      : layer.name;
+            // (A value linked to a function column goes by the column's name.)
+            FunctionColumn const* linked = column.function >= 0 ? m_document->scene().function(layer.linkOf(column.function)) : nullptr;
+            QString const name = linked ? linked->name
+                                 : column.function >= 0 ? Timeline::parameterName(Timeline::Parameter(column.function)).section(QLatin1String(": "), -1)
+                                                        : layer.name;
             p.setFont(normal);
             p.setPen(column.function >= 0 ? QColor(190, 190, 190) : layer.kind == Layer::Peg ? InterfaceColours::get("xsheetKeyframe")
                      : layer.kind == Layer::Camera ? QColor(111, 168, 232) : (layer.visible ? kText : QColor(130, 130, 130)));

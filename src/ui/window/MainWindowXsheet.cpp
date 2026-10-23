@@ -142,6 +142,8 @@ void MainWindow::syncXsheetChecks()
     m_actions->setChecked(QStringLiteral("XsheetThumbnails"), m_xsheet->thumbnails());
     m_actions->setChecked(QStringLiteral("XsheetColumnList"), m_xsheetList && !m_xsheetList->isHidden());
     m_actions->setChecked(QStringLiteral("XsheetShowDrawingColumns"), shown & Xsheet::ShowDrawings);
+    m_actions->setChecked(QStringLiteral("XsheetShowFunctionColumns"), shown & Xsheet::ShowFunctions);
+    m_actions->setChecked(QStringLiteral("XsheetShowPathColumns"), shown & Xsheet::ShowPaths);
     m_actions->setChecked(QStringLiteral("XsheetShowSelection"), m_xsheet->selectionOnly());
     m_actions->setChecked(QStringLiteral("XsheetShowGrouping"), m_xsheet->grouping());
     m_actions->setChecked(QStringLiteral("XsheetMinimalHeaders"), m_xsheet->minimalHeaders());
@@ -213,6 +215,10 @@ void MainWindow::onActionXsheetView(QString const& what)
         m_xsheet->setMinimalHeaders(!m_xsheet->minimalHeaders());
     else if (what == QLatin1String("drawingColumns"))
         m_xsheet->setShown(m_xsheet->shown() ^ Xsheet::ShowDrawings);
+    else if (what == QLatin1String("functionColumns"))
+        m_xsheet->setShown(m_xsheet->shown() ^ (Xsheet::ShowFunctions | Xsheet::ShowRotations));
+    else if (what == QLatin1String("pathColumns"))
+        m_xsheet->setShown(m_xsheet->shown() ^ Xsheet::ShowPaths);
     else if (what == QLatin1String("columnList")) {
         m_xsheetList->setVisible(m_xsheetList->isHidden());
         refreshXsheetList();

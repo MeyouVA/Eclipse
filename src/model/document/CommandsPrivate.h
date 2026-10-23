@@ -34,6 +34,20 @@ template <class Edit> void Document::apply(QString const& text, Edit edit)
     m_undo.push(new SceneStateCommand(this, m_scene, std::move(after), text));
 }
 
+// The points a curve command works on: a layer's (0 and up), or a function column's (-1 the first column, -2 the next ...).
+inline bool hasCurve(Scene const& scene, int layer)
+{
+    return layer >= 0 ? layer < scene.layers.size() : -1 - layer < scene.functions.size();
+}
+inline Layer const& curveLayer(Scene const& scene, int layer)
+{
+    return layer >= 0 ? scene.layers[layer] : scene.functions[-1 - layer].curve;
+}
+inline Layer& curveLayer(Scene& scene, int layer)
+{
+    return layer >= 0 ? scene.layers[layer] : scene.functions[-1 - layer].curve;
+}
+
 inline bool validCell(Scene const& scene, int layer, int frame)
 {
     return layer >= 0 && layer < scene.layers.size() && frame >= 0 && frame < scene.frameCount();

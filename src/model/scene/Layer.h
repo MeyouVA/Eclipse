@@ -30,6 +30,13 @@ struct SkinDab {
     bool operator==(SkinDab const&) const = default;
 };
 
+// A value of a layer's pose (Driver::Value) that takes a function column's value instead of its keyframes'.
+struct ValueLink {
+    int value = 0;
+    int function = 0;       // the column's id
+    bool operator==(ValueLink const&) const = default;
+};
+
 struct Driver {
     enum Value { X, Y, ScaleX, ScaleY, Angle, Opacity, Z, Skew, Fov, ValueCount };
     int value = Angle;          // what of this layer's pose follows
@@ -196,6 +203,11 @@ struct Layer {
     QVector<SkinDab> skin;
     // Values of its pose that follow other layers' (attribute controls): these take the place of its keyframes for them.
     QVector<Driver> drivers;
+    // Values linked to function columns (one link a value at most).
+    QVector<ValueLink> links;
+    // Its function columns hidden in the Xsheet (a bit for each Driver::Value).
+    int hiddenFunctions = 0;
+    int linkOf(int value) const;        // the column's id, or 0
     enum Blend { BlendNormal, BlendMultiply, BlendScreen, BlendOverlay, BlendDarken, BlendLighten, BlendColourDodge, BlendColourBurn,
                  BlendHardLight, BlendSoftLight, BlendDifference, BlendExclusion, BlendAdd, BlendCount };
     int blend = BlendNormal;

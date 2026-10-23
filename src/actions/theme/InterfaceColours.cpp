@@ -70,6 +70,11 @@ QList<Entry> const& entries()
         {"functionCurveY", "Function Editors", "Y Curve", QColor(110, 200, 120)},
         {"functionCurveZ", "Function Editors", "Z Curve", QColor(90, 210, 200)},
         {"functionSelected", "Function Editors", "Point Selected", QColor(235, 60, 60)},
+        {"xsheetBezierColumn", "Exposure Sheet", "Bezier Column Colour", QColor(214, 120, 70)},
+        {"xsheetEaseColumn", "Exposure Sheet", "Ease Column Colour", QColor(120, 190, 110)},
+        {"xsheetVeloColumn", "Exposure Sheet", "Velobased Column Colour", QColor(200, 110, 200)},
+        {"xsheetPathColumn", "Exposure Sheet", "3D Path Column Colour", QColor(90, 180, 220)},
+        {"functionColumn", "Function Editors", "Function Column Curve", QColor(240, 200, 90)},
         {"functionHandle", "Function Editors", "Handles", QColor(240, 210, 70)},
     };
     return all;

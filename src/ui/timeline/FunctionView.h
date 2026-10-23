@@ -41,12 +41,20 @@ public:
     void setGridShown(bool on);
     bool gridShown() const { return m_grid; }
     void setCurrentFrameShown(bool on);
+    // Preferences: how many curves are drawn at most.
+    void setLoadLimit(int curves);
+    int loadLimit() const { return m_loadLimit; }
     bool currentFrameShown() const { return m_currentShown; }
     // The other layers whose curves are drawn with the current one's (fainter); and the ones of them hidden.
     void setOtherLayers(QVector<int> const& layers);
     QVector<int> otherLayers() const { return m_others; }
     void setLayerHidden(int layer, bool hidden);
+    // Function columns drawn as well (places in Scene::functions); in the graph each is the layer -1 - its place.
+    void setColumns(QVector<int> const& columns);
+    QVector<int> columns() const { return m_columnsShown; }
     QVector<int> layersDrawn() const;
+    // Where a value's points are: the layer itself, or the bezier or ease column it is linked to (-1 - its place, pos x).
+    QPair<int, int> sourceOf(int layer, int value) const;
     static QColor colourOf(Timeline::Parameter which);
     // What a value is shown in: opacity in percent, the rest as they are.
     static double unitOf(int value) { return value == Timeline::Opacity ? 100.0 : 1.0; }
@@ -126,6 +134,7 @@ private:
     QRectF plot() const;
     // The layer as it is, or as it would be with the drag under way.
     Layer const& layerOf(int layer) const;
+    Layer const& sourceLayer(int layer) const;     // (without the drag)
     void makePreview();
     bool driven(int layer, int value) const;
     // The point under the pointer, or the handle (of a point selected): false for none.
@@ -148,6 +157,7 @@ private:
     int m_frame = 0;
     QVector<int> m_others;
     QVector<int> m_hidden;
+    QVector<int> m_columnsShown;
     // The position - across, down and in depth - to begin with.
     bool m_shown[Timeline::ParameterCount] = {true, true, false, false, false, false, true, false, false};
     double m_first = 0.0;       // the frame at the left edge
@@ -156,6 +166,7 @@ private:
     double m_low = -1.0, m_high = 1.0;
     bool m_grid = true;
     bool m_currentShown = true;
+    int m_loadLimit = 50;
     QVector<FunctionPoint> m_selection;
     int m_handle = 0;
     // What the mouse is doing.
@@ -194,8 +205,12 @@ public:
     void setActions(ActionManager* actions);
     // Auto Load Selection: the list follows the layers selected (on to begin with).
     bool autoLoads() const { return m_autoLoad; }
-    // The layers loaded (ids, the first the one edited).
+    // The layers loaded (ids, the first the one edited), and the function columns loaded by themselves (ids).
     QVector<int> loadedLayers() const { return m_loaded; }
+    QVector<int> loadedColumns() const { return m_loadedColumns; }
+    void loadColumn(int id);
+    // Send to Function View: a value of a layer (its column, when it is linked to one) shown, its points selected.
+    void sendToFunctionView(int layer, int value);
     // The item of a value of a layer loaded in the list; null when it is not there.
     QTreeWidgetItem* valueItem(int layer, Timeline::Parameter which) const;
 
@@ -258,6 +273,7 @@ private:
     QPointer<ActionManager> m_actions;
     bool m_autoLoad = true;
     QVector<int> m_loaded;                      // ids
+    QVector<int> m_loadedColumns;               // ids
     int m_current = 0;                          // the layer and the layers the Timeline has selected (places)
     QVector<int> m_timelineSelection;
     bool m_filling = false;
