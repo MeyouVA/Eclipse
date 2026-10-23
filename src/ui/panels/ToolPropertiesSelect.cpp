@@ -215,6 +215,10 @@ void ToolProperties::addSelectRows()
             action->setChecked(m_canvas->scaleThickness());
         if (m_ceControls)
             m_ceControls->setChecked(m_canvas->contourControls());
+        if (m_cePoints) {
+            QSignalBlocker const quiet(m_cePoints);
+            m_cePoints->setChecked(m_canvas->animatesPoints());
+        }
         if (m_lineFill)
             m_lineFill->setChecked(m_canvas->lineAutoFill());
         settings().setValue(QStringLiteral("tools/lineAutoFill"), m_canvas->lineAutoFill());

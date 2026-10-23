@@ -281,6 +281,10 @@ bool Document::moveDrawing(int layer, int drawing, int direction)
         edited.drawings.swapItemsAt(drawing, other);
         for (int& cell : edited.cells)
             cell = cell == drawing ? other : cell == other ? drawing : cell;
+        QVector<int> remap(count);
+        for (int i = 0; i < count; ++i)
+            remap[i] = i == drawing ? other : i == other ? drawing : i;
+        edited.renumberMoves(remap);
         for (Scene::DeskItem& item : s.desk)
             if (item.layer == id)
                 item.drawing = item.drawing == drawing ? other : item.drawing == other ? drawing : item.drawing;

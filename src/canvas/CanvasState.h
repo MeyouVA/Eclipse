@@ -308,6 +308,12 @@ protected:
     bool m_fitted = true;   // keep fitting on resize until the user zooms or pans
     double m_viewRotation = 0.0;   // degrees, clockwise on the screen
     bool m_symbolPivots = false;    // the pivot of every layer that shows a symbol is marked
+    bool m_animatePoints = false;
+    // The current drawing with its points moved as this frame has them (Animate Points), and what it was made from.
+    mutable Drawing m_pointView;
+    mutable int m_pointViewLayer = -1, m_pointViewIndex = -1;
+    mutable QVector<void const*> m_pointViewRest;
+    mutable QVector<PointMove> m_pointViewMoves;
     mutable Drawing m_artView;   // the colour art of the current drawing, for currentDrawing()
     mutable Picture const* m_artPictures = nullptr;     // (the pictures it was taken from)
     mutable Drawing m_bothView;  // the line art and the colour art as one drawing, while both are worked on

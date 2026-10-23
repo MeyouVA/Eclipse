@@ -156,6 +156,7 @@ private:
     QCheckBox* m_snapMaster = nullptr;
     QCheckBox* m_hideManipulator = nullptr;
     QCheckBox* m_ceControls = nullptr;
+    QCheckBox* m_cePoints = nullptr;
     QCheckBox* m_envAdvanced = nullptr;
     QWidget* m_cutterRow = nullptr;
     QWidget* m_repositionRow = nullptr;

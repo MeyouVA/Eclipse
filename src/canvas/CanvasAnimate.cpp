@@ -22,7 +22,7 @@ int Canvas::changedParts(Pose const& a, Pose const& b)
     if (differs(a.opacity, b.opacity)) parts |= Keyframe::PartOpacity;
     if (differs(a.skew, b.skew)) parts |= Keyframe::PartSkew;
     if (differs(a.fov, b.fov)) parts |= Keyframe::PartFov;
-    if (differs(a.rotX, b.rotX) || differs(a.rotY, b.rotY) || a.quad != b.quad || a.bend != b.bend || a.warp != b.warp || a.fx != b.fx)
+    if (differs(a.rotX, b.rotX) || differs(a.rotY, b.rotY) || a.quad != b.quad || a.bend != b.bend || a.warp != b.warp || a.fx != b.fx || a.points != b.points)
         parts |= Keyframe::PartRest;
     return parts;
 }

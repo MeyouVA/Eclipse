@@ -142,13 +142,19 @@ void Document::insertWarpPoint(int layer, QVector<QPointF> const& points, int in
 
 bool Document::convertDeformed(int layer)
 {
-    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].hasWarp())
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return false;
+    bool movesPoints = false;
+    for (Keyframe const& k : m_scene.layers[layer].keys)
+        movesPoints = movesPoints || !k.pose.points.isEmpty();
+    if (!m_scene.layers[layer].hasWarp() && !movesPoints)
         return false;
     apply(tr("Convert Deformed Drawings"), [&](Scene& s) {
         Layer& l = s.layers[layer];
         struct Made {
             int source;
             QVector<QPointF> moved;
+            QVector<PointMove> points;
             int index;
         };
         QVector<Made> made;
@@ -161,15 +167,20 @@ bool Document::convertDeformed(int layer)
                 continue;
             used[source] = true;
             Pose const pose = l.poseAt(f);
-            QVector<QPointF> const moved = Deform::isWarped(l.warp, l.warpClosed, pose.warp) ? pose.warp : QVector<QPointF>();
+            QVector<QPointF> const moved = l.hasWarp() && Deform::isWarped(l.warp, l.warpClosed, pose.warp) ? pose.warp : QVector<QPointF>();
+            QVector<PointMove> points;
+            for (PointMove const& m : pose.points)
+                if (m.drawing == source)
+                    points.push_back(m);
             int found = -1;
             for (Made const& m : made)
-                if (m.source == source && m.moved == moved)
+                if (m.source == source && m.moved == moved && m.points == points)
                     found = m.index;
             if (found < 0) {
                 found = int(drawings.size());
-                drawings.push_back(Deform::warp(l.drawings[source], l.warp, l.warpClosed, moved));
-                made.push_back({source, moved, found});
+                Drawing const reshaped = Deform::movedPoints(l.drawings[source], source, points);
+                drawings.push_back(moved.isEmpty() ? reshaped : Deform::warp(reshaped, l.warp, l.warpClosed, moved));
+                made.push_back({source, moved, points, found});
             }
             cells[f] = found;
         }
@@ -181,8 +192,10 @@ bool Document::convertDeformed(int layer)
         l.cells = cells;
         l.warp.clear();
         l.warpClosed = false;
-        for (Keyframe& k : l.keys)
+        for (Keyframe& k : l.keys) {
             k.pose.warp.clear();
+            k.pose.points.clear();
+        }
     });
     return true;
 }

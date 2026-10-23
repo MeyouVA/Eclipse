@@ -345,6 +345,18 @@ void ToolProperties::addSnapRows()
             action->setChecked(on);
     });
     m_form->addRow(m_ceControls);
+    // Animate Points: the points moved on keyframes (with Animate on), the drawing left as it is.
+    m_cePoints = new QCheckBox(tr("Animate Points"), this);
+    m_cePoints->setObjectName(QStringLiteral("ContourAnimatePoints"));
+    m_cePoints->setToolTip(tr("With Animate on, moving points and handles sets a keyframe on this frame instead of changing the drawing: "
+                              "every frame shares the same lines, and the frames between keyframes are made from them."));
+    connect(m_cePoints, &QCheckBox::toggled, this, [this](bool on) {
+        if (QAction* const action = m_actions->action(QStringLiteral("AnimatePoints")); action && action->isChecked() != on)
+            action->trigger();
+        else if (!action)
+            m_canvas->onActionAnimatePoints(on);
+    });
+    m_form->addRow(m_cePoints);
     // The Envelope tool: the handles of its points.
     m_envAdvanced = new QCheckBox(tr("Show Advanced Controls"), this);
     m_envAdvanced->setObjectName(QStringLiteral("EnvelopeAdvanced"));

@@ -169,6 +169,7 @@ public:
     Q_INVOKABLE void onActionNoZDragging(bool on) { m_noZDrag = on; }
     // The Transform tool: its options and preferences; the other layers it works on along with the current one.
     TransformOptions const& transformOptions() const { return m_tx; }
+    bool animatesPoints() const { return m_animatePoints; }
     void setTransformOptions(TransformOptions const& options) { m_tx = options; update(); }
     QVector<int> transformLayers() const { return m_transformLayers; }
     void setTransformLayers(QVector<int> const& layers);
@@ -319,6 +320,9 @@ public:
     void moveSelectionBy(QPointF by, QString const& text) { transformSelection(QTransform::fromTranslate(by.x(), by.y()), text); }
 
 public slots:
+    // Rigging > Deformation > Animate Points: with Animate on, the Contour Editor moves the drawing's own points on a keyframe of this frame.
+    void onActionAnimatePoints(bool on);
+    void onActionResetPoints();
     // View > Show Contour Editor Controls.
     void onActionShowContourControls(bool on)
     {
@@ -760,6 +764,14 @@ private:
 
     // The whole drawing shown in the current cell (both sheets), or null.
     Drawing const* realDrawing() const;
+    // The Contour Editor works on the points as this frame has them moved (Animate Points, with Animate on).
+    bool pointAnimating() const;
+    // A drawing of a layer as the current frame is worked on: with its moved points when they are being animated.
+    Drawing const& layerDrawing(int layer, int index) const;
+    void commitPointMoves(Drawing const& whole, QString const& text);
+    Drawing const* pointViewOf(Drawing const& rest, int index) const;
+    // What a drag on the current drawing shows: the paint following its lines (as the keyframe will have it, while points are animated).
+    Drawing followedPreview() const;
     Drawing const* currentDrawing() const;
     // The whole drawing with the sheet worked on replaced by `art`.
     Drawing withArt(Drawing const& art) const;

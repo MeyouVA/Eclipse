@@ -229,7 +229,10 @@ Drawing const* Canvas::realDrawing() const
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return nullptr;
     int const index = scene.layers[m_layer].drawingAt(m_frame);
-    return index == Layer::kNoDrawing ? nullptr : &scene.layers[m_layer].drawings[index];
+    if (index == Layer::kNoDrawing)
+        return nullptr;
+    Drawing const& rest = scene.layers[m_layer].drawings[index];
+    return pointAnimating() ? pointViewOf(rest, index) : &rest;
 }
 
 // The sheet of a drawing an art layer of the view stands for.

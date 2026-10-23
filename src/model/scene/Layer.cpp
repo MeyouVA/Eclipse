@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tuple>
 #include <cstdio>
 #include "model/scene/LayerShared.h"
 
@@ -177,7 +178,25 @@ Pose Pose::lerp(Pose const& a, Pose const& b, double t)
         QPointF const to = i < b.warp.size() ? b.warp[i] : QPointF();
         p.warp.push_back(from + (to - from) * t);
     }
+    // Moved points: a point only one keyframe moves is at rest on the other.
+    for (int i = 0, j = 0; i < a.points.size() || j < b.points.size();) {
+        bool const takeA = j >= b.points.size() || (i < a.points.size() && !b.points[j].comesBefore(a.points[i]));
+        bool const takeB = i >= a.points.size() || (j < b.points.size() && !a.points[i].comesBefore(b.points[j]));
+        PointMove m = takeA ? a.points[i] : b.points[j];
+        PointMove const from = takeA ? a.points[i] : PointMove(), to = takeB ? b.points[j] : PointMove();
+        m.by = from.by + (to.by - from.by) * t;
+        m.in = from.in + (to.in - from.in) * t;
+        m.out = from.out + (to.out - from.out) * t;
+        p.points.push_back(m);
+        i += takeA;
+        j += takeB;
+    }
     return p;
+}
+
+bool PointMove::comesBefore(PointMove const& o) const
+{
+    return std::tie(drawing, sheet, fill, line, point) < std::tie(o.drawing, o.sheet, o.fill, o.line, o.point);
 }
 
 double Layer::effectAmount(int index, Pose const& pose) const

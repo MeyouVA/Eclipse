@@ -132,8 +132,17 @@ Drawing ridden(Scene const& scene, int layer, int frame, Drawing const& drawing)
     return out;
 }
 
-Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose)
+Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose, int index)
 {
+    if (!pose.points.isEmpty()) {
+        if (index < 0 && &drawing >= layer.drawings.constData() && &drawing < layer.drawings.constData() + layer.drawings.size())
+            index = int(&drawing - layer.drawings.constData());
+        if (movesPoints(pose.points, index)) {
+            Pose rest = pose;
+            rest.points.clear();
+            return shown(movedPoints(drawing, index, pose.points), layer, rest);
+        }
+    }
     if (!drawing.model.isEmpty()) {
         // A 3D model: a picture of it, turned as the layer is, under whatever is drawn over it.
         Drawing out = drawing;

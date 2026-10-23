@@ -406,6 +406,12 @@ if (!k.pose.warp.isEmpty()) {
     }
     key["warp"] = warp;
 }
+if (!k.pose.points.isEmpty()) {
+    QJsonArray points;
+    for (PointMove const& m : k.pose.points)
+        points.append(QJsonArray{m.drawing, m.sheet, m.fill, m.line, m.point, m.by.x(), m.by.y(), m.in.x(), m.in.y(), m.out.x(), m.out.y()});
+    key["points"] = points;
+}
     return key;
 }
 

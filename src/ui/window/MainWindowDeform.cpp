@@ -105,7 +105,7 @@ void MainWindow::onActionCreateEnvelope()
 void MainWindow::onActionConvertDeformed()
 {
     if (!m_document->convertDeformed(layer()))
-        statusBar()->showMessage(tr("This layer has no curve or envelope deformer."), 5000);
+        statusBar()->showMessage(tr("This layer has no curve or envelope deformer and no animated points."), 5000);
 }
 
 void MainWindow::onActionResetDeformer()

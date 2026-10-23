@@ -98,6 +98,8 @@
   <shortcut id="shortcut.toggleStabilizer" text="Toggle Stabilizer On/Off" value=""/>
   <shortcut id="shortcut.newToolPreset" text="New Tool Preset" value=""/>
   <shortcut id="shortcut.showContourControls" text="Show/Hide Contour Editor Controls" value=""/>
+  <shortcut id="shortcut.animatePoints" text="Animate Points" value=""/>
+  <shortcut id="shortcut.resetPoints" text="Reset Animated Points" value=""/>
   <shortcut id="shortcut.copyThickness" text="Copy Thickness" value=""/>
   <shortcut id="shortcut.overlayBrushMode" text="Overlay Brush Mode" value=""/>
   <shortcut id="shortcut.toolPreset1" text="Tool Preset Shortcut #1" value=""/>

@@ -240,6 +240,8 @@ struct Layer {
     int nextDrawingFrame(int frame) const;
     // Drops drawings no cell refers to (unless pinned) and renumbers the cells.
     void compact();
+    // The keyframes' moved points follow their drawings to new places (`remap[old]`; kNoDrawing: gone).
+    void renumberMoves(QVector<int> const& remap);
     void substitute(int frame, int drawing);
 };
 

@@ -4,6 +4,19 @@
 #include "EclipseExport.h"
 #include "model/scene/Drawing.h"
 
+// One point of a drawing moved on a keyframe (point animation): how far, and how far its two handles turn.
+struct PointMove {
+    int drawing = 0;
+    int sheet = 2;
+    int fill = -1;      // the painted area whose contour holds the point; -1: a line
+    int line = 0;       // the line, or the contour of that area
+    int point = 0;
+    QPointF by, in, out;
+    bool operator==(PointMove const&) const = default;
+    bool samePoint(PointMove const& o) const { return drawing == o.drawing && sheet == o.sheet && fill == o.fill && line == o.line && point == o.point; }
+    bool comesBefore(PointMove const& o) const;
+};
+
 struct Pose {
     double x = 0.0;
     double y = 0.0;
@@ -22,6 +35,8 @@ struct Pose {
     // How opaque the layer is (0..1): keyframed like the rest, so that it can fade.
     double opacity = 1.0;
     QVector<double> fx;
+    // Point animation: the points of the drawings moved (in their order; see PointMove::comesBefore).
+    QVector<PointMove> points;
 
     bool operator==(Pose const&) const = default;
     static Pose lerp(Pose const& a, Pose const& b, double t);

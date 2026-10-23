@@ -140,6 +140,10 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
         if (!d->strokes[i].hit(p, 4.0 / m_zoom))
             continue;
         if (i == m_ceStroke && (modifiers & Qt::ControlModifier)) {
+            if (pointAnimating()) {
+                emit message(tr("Animate Points only moves the points a drawing has: turn it off to add, delete or join points."));
+                return;
+            }
             Drawing edited = *d;
             int const added = edited.strokes[i].insertPoint(p);
             if (added < 0)
@@ -178,6 +182,10 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
             }
         }
         if (i == m_ceFill && nearest == m_ceContour && (modifiers & Qt::ControlModifier) && nearestDistance <= 6.0 / m_zoom) {
+            if (pointAnimating()) {
+                emit message(tr("Animate Points only moves the points a drawing has: turn it off to add, delete or join points."));
+                return;
+            }
             // A new point on the contour; the shape keeps its outline.
             Drawing edited = *d;
             int const added = edited.fills[i].contours[nearest].insertPoint(p);

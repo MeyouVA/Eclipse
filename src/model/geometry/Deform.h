@@ -55,7 +55,17 @@ QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet = -1, double gro
 Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);
 QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);
 
-Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose);
+// `index`: which of the layer's drawings it is, for its moved points (-1: found from where `drawing` lies, if it is one of them).
+Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose, int index = -1);
+
+// ---- point animation (see PointMove) ------------------------------------------------------
+// The drawing with the points the moves give it moved; paint that has no contour of its own follows the lines round it.
+Drawing movedPoints(Drawing const& drawing, int index, QVector<PointMove> const& moves);
+bool movesPoints(QVector<PointMove> const& moves, int index);
+// How each point of `moved` lies from where it is in `rest`; false when the two do not have the same lines and points.
+bool pointMoves(Drawing const& rest, Drawing const& moved, int index, QVector<PointMove>& out);
+// `all` with the moves of drawing `index` put in place of those it had.
+QVector<PointMove> withMoves(QVector<PointMove> const& all, int index, QVector<PointMove> const& mine);
 
 Drawing ridden(Scene const& scene, int layer, int frame, Drawing const& drawing);
 Drawing bentOnBones(Scene const& scene, int layer, int frame, Drawing const& drawing);

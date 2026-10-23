@@ -433,6 +433,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_snapMaster, tool == T::Select || contour || tool == T::Envelope || tool == T::Perspective);
     m_form->setRowVisible(m_hideManipulator, tool == T::Select);
     m_form->setRowVisible(m_ceControls, contour);
+    m_form->setRowVisible(m_cePoints, contour);
     m_form->setRowVisible(m_envAdvanced, tool == T::Envelope);
     m_form->setRowVisible(m_cutterRow, tool == T::Cutter);
     m_form->setRowVisible(m_repositionRow, tool == T::Reposition);

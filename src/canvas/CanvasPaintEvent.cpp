@@ -343,10 +343,10 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
     if (index != Layer::kNoDrawing && !m_playing && m_backlight) {
         // Backlight: everything drawn as one dark shape, as if lit from behind.
         static QColor const dark(34, 34, 38);
-        paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? followLines(withArt(previewDrawing()), realDrawing(), true) : layer.drawings[index]), 1.0, &dark);
+        paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? followedPreview() : layerDrawing(l, index)), 1.0, &dark);
     } else if (index != Layer::kNoDrawing && !m_playing && m_outlineLocked && layer.locked) {
         // A locked layer as outlines: the edges of its paint and the paths of its lines.
-        Drawing const lines = shown(l, m_frame, layer.drawings[index]);
+        Drawing const lines = shown(l, m_frame, layerDrawing(l, index));
         QPen edge(layer.trackColor.isValid() ? layer.trackColor : QColor(200, 70, 60));
         edge.setCosmetic(true);
         painter.setPen(edge);
@@ -366,10 +366,10 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
                     painter.drawPolyline(centre);
             }
     } else if (l == m_layer && transforming)
-        paintLayerDrawing(painter, scene, l, m_frame, followLines(withArt(previewDrawing()), realDrawing(), true), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
+        paintLayerDrawing(painter, scene, l, m_frame, followedPreview(), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
     else if (index != Layer::kNoDrawing && l == m_layer && !m_previewAllArt && !m_playing) {
         // Only the sheet being worked on.
-        Drawing one = erasing ? withArt(m_eraseArt) : layer.drawings[index];
+        Drawing one = erasing ? withArt(m_eraseArt) : layerDrawing(l, index);
         for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
             if (sheet != sheetOf(m_art) && !(bothArtsNow() && (sheet == Drawing::LineSheet || sheet == Drawing::ColourSheet))) {
                 one.fillsOf(sheet).clear();
@@ -378,18 +378,18 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         }
         paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, view, true);
     } else if (index != Layer::kNoDrawing)
-        paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layer.drawings[index]),
+        paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layerDrawing(l, index)),
                           layer.opacity * poseOf(l, m_frame).opacity * faint
                               * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), view);
     if (index != Layer::kNoDrawing && faint < 1.0 && m_lightWhite > 0 && !m_backlight && !(l == m_layer && transforming)) {
         // The light table's wash: the other layers' colours taken toward white.
         static QColor const white(255, 255, 255);
         painter.setTransform(worldOf(l, m_frame) * view);
-        paintDrawing(painter, scene, shown(l, m_frame, layer.drawings[index]), layer.opacity * m_lightWhite / 100.0, &white);
+        paintDrawing(painter, scene, shown(l, m_frame, layerDrawing(l, index)), layer.opacity * m_lightWhite / 100.0, &white);
     }
     if ((m_showStrokes || m_tool == StrokeTool || m_tool == CloseGap) && !m_playing && l == m_layer && index != Layer::kNoDrawing) {
         // Where the pen went, and the edges of the painted areas: hair lines over the artwork.
-        Drawing const lines = erasing ? withArt(m_eraseArt) : transforming ? previewDrawing() : layer.drawings[index];
+        Drawing const lines = erasing ? withArt(m_eraseArt) : transforming ? previewDrawing() : layerDrawing(l, index);
         QPen hair(QColor(40, 200, 235));
         hair.setCosmetic(true);
         painter.setPen(hair);

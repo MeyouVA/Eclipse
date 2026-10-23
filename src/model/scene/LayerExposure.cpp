@@ -212,6 +212,7 @@ void Layer::compact()
                 cell = remap[cell];
         drawings = kept;
         oneNameEach(drawings);
+        renumberMoves(remap);
         return;
     }
     for (int& cell : cells) {
@@ -225,4 +226,20 @@ void Layer::compact()
     }
     drawings = kept;
     oneNameEach(drawings);
+    renumberMoves(remap);
+}
+
+void Layer::renumberMoves(QVector<int> const& remap)
+{
+    for (Keyframe& k : keys) {
+        QVector<PointMove> kept;
+        for (PointMove m : std::as_const(k.pose.points)) {
+            if (m.drawing < 0 || m.drawing >= remap.size() || remap[m.drawing] == kNoDrawing)
+                continue;
+            m.drawing = remap[m.drawing];
+            kept.push_back(m);
+        }
+        std::sort(kept.begin(), kept.end(), [](PointMove const& a, PointMove const& b) { return a.comesBefore(b); });
+        k.pose.points = kept;
+    }
 }

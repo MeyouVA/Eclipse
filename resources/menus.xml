@@ -381,6 +381,9 @@
     <item id="ResetDeformer" icon="anim/deformreset" text="&amp;Reset Deformer" responder="window" slot="onActionResetDeformer()"/>
     <item id="RemoveDeformer" icon="anim/deformremove" text="Re&amp;move Deformer" responder="window" slot="onActionRemoveDeformer()"/>
     <separator/>
+    <item id="AnimatePoints" text="&amp;Animate Points" shortcut="shortcut.animatePoints" checkable="true" responder="camera" slot="onActionAnimatePoints(bool)"/>
+    <item id="ResetPoints" text="Reset Animated &amp;Points" shortcut="shortcut.resetPoints" responder="camera" slot="onActionResetPoints()"/>
+    <separator/>
     <item id="ConvertDeformed" icon="anim/deformconvert" text="&amp;Convert Deformed Drawings to Drawings" responder="window" slot="onActionConvertDeformed()"/>
    </menu>
    <menu id="RiggingEnvelopeCreator" text="&amp;Envelope Creator">

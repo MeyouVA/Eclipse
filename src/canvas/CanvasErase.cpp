@@ -334,6 +334,10 @@ void Canvas::cutWithEraser()
 
 void Canvas::commitDrawing(Drawing const& drawing, QString const& text)
 {
+    if (pointAnimating()) {
+        commitPointMoves(withArt(drawing), text);
+        return;
+    }
     m_committing = true;
     m_document->setDrawing(m_layer, m_frame, followLines(withArt(drawing), realDrawing()), text);
     m_committing = false;

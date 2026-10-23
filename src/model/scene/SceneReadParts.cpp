@@ -587,6 +587,22 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
             for (int i = 0; i + 1 < moved.size(); i += 2)
                 pose.warp.push_back(QPointF(moved[i].toDouble(), moved[i + 1].toDouble()));
         }
+        for (QJsonValue const& pv : ko["points"].toArray()) {
+            QJsonArray const v = pv.toArray();
+            if (v.size() < 11)
+                continue;
+            PointMove m;
+            m.drawing = v[0].toInt();
+            m.sheet = std::clamp(v[1].toInt(), 0, int(Drawing::SheetCount) - 1);
+            m.fill = v[2].toInt(-1);
+            m.line = v[3].toInt();
+            m.point = v[4].toInt();
+            m.by = QPointF(v[5].toDouble(), v[6].toDouble());
+            m.in = QPointF(v[7].toDouble(), v[8].toDouble());
+            m.out = QPointF(v[9].toDouble(), v[10].toDouble());
+            pose.points.push_back(m);
+        }
+        std::sort(pose.points.begin(), pose.points.end(), [](PointMove const& a, PointMove const& b) { return a.comesBefore(b); });
         layer.setKey(frame, pose);
         Keyframe& key = layer.keys[layer.keyIndex(frame)];
         key.tween = ko["tween"].toBool(true);
