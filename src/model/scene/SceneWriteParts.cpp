@@ -335,6 +335,8 @@ if (d.mark != Drawing::NoMark)
     drawing["mark"] = d.mark;
 if (!d.trace.isIdentity())
     drawing["trace"] = QJsonArray{d.trace.m11(), d.trace.m12(), d.trace.m21(), d.trace.m22(), d.trace.dx(), d.trace.dy()};
+if (d.pivotSet)
+    drawing["pivot"] = QJsonArray{d.pivot.x(), d.pivot.y()};
     return drawing;
 }
 
@@ -532,6 +534,18 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
     }
     if (layer.showsSymbol())
         layerObject["symbol"] = layer.symbolId;
+    if (layer.embeddedPivot != Layer::PivotNotUsed)
+        layerObject["embeddedPivot"] = layer.embeddedPivot;
+    if (layer.separatePosition)
+        layerObject["separatePosition"] = true;
+    if (!layer.separateScale)
+        layerObject["separateScale"] = false;
+    if (layer.ignoreParentScale)
+        layerObject["ignoreParentScale"] = true;
+    if (layer.angleLimited)
+        layerObject["angleLimits"] = QJsonArray{layer.minAngle, layer.maxAngle};
+    if (!layer.animatable)
+        layerObject["animatable"] = false;
     if (layer.columnHidden)
         layerObject["columnHidden"] = true;
     if (layer.columnWidth > 0)

@@ -178,6 +178,15 @@ int Scene::addLayer(QString const& name, int at, Layer::Kind kind)
     layer.cells.fill(Layer::kNoDrawing, m_frameCount);
     if (kind == Layer::Camera)
         layer.fov = fov;
+    if (kind == Layer::Peg || kind == Layer::DrawingLayer) {
+        bool const peg = kind == Layer::Peg;
+        layer.separatePosition = peg ? Layer::newLayers.pegSeparatePosition : Layer::newLayers.elementSeparatePosition;
+        layer.separateScale = peg ? Layer::newLayers.pegSeparateScale : Layer::newLayers.elementSeparateScale;
+        if (!peg) {
+            layer.animatable = Layer::newLayers.animatable;
+            layer.embeddedPivot = Layer::newLayers.embeddedPivot;
+        }
+    }
     if (kind == Layer::Quadmap) {
         // Nothing pulled yet: the corners are those of the frame.
         layer.quadSize = QSizeF(width, height);

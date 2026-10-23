@@ -238,7 +238,7 @@ int Scene::drawingsSource(int layer) const
 
 int Scene::insertControlPoint(int layer, int frame)
 {
-    if (layer < 0 || layer >= layers.size())
+    if (layer < 0 || layer >= layers.size() || layers[layer].separatePosition)
         return -1;
     Layer& l = layers[layer];
     for (int k = 0; k + 1 < l.keys.size(); ++k) {

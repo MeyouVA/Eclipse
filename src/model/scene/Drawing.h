@@ -92,6 +92,9 @@ struct Drawing {
     int mark = NoMark;
     // Shift and Trace: where the drawing is shown while tracing from it (its lines stay where they are).
     QTransform trace;
+    // Its own pivot (Drawing Pivot tool), used where the layer says so.
+    bool pivotSet = false;
+    QPointF pivot;
     static QColor markColour(int mark)
     {
         return mark == KeyMark ? QColor(232, 76, 61) : mark == BreakdownMark ? QColor(80, 150, 240) : mark == InBetweenMark ? QColor(90, 200, 110) : QColor(24, 24, 24);

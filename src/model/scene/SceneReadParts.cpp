@@ -321,6 +321,10 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
     d.mark = std::clamp(dv.toObject()["mark"].toInt(0), 0, int(Drawing::InBetweenMark));
     if (QJsonArray const t = dv.toObject()["trace"].toArray(); t.size() == 6)
         d.trace = QTransform(t[0].toDouble(), t[1].toDouble(), t[2].toDouble(), t[3].toDouble(), t[4].toDouble(), t[5].toDouble());
+    if (QJsonArray const p = dv.toObject()["pivot"].toArray(); p.size() == 2) {
+        d.pivotSet = true;
+        d.pivot = QPointF(p[0].toDouble(), p[1].toDouble());
+    }
     for (QJsonValue const& pv : dv.toObject()["pictures"].toArray()) {
         QJsonObject const po = pv.toObject();
         Picture p;
@@ -379,6 +383,16 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         layer.paletteOverrides.push_back(pv.toInt());
     layer.tagged = lo["tagged"].toBool(false);
     layer.thumbnails = lo["thumbnails"].toBool(false);
+    layer.embeddedPivot = std::clamp(lo["embeddedPivot"].toInt(0), 0, int(Layer::PivotOnParentPeg));
+    layer.separatePosition = lo["separatePosition"].toBool(false);
+    layer.separateScale = lo["separateScale"].toBool(true);
+    layer.ignoreParentScale = lo["ignoreParentScale"].toBool(false);
+    if (QJsonArray const limits = lo["angleLimits"].toArray(); limits.size() == 2) {
+        layer.angleLimited = true;
+        layer.minAngle = limits[0].toDouble();
+        layer.maxAngle = limits[1].toDouble();
+    }
+    layer.animatable = lo["animatable"].toBool(true);
     layer.columnHidden = lo["columnHidden"].toBool(false);
     layer.columnWidth = std::clamp(lo["columnWidth"].toInt(0), 0, 1000);
     layer.columnCollapsed = lo["columnCollapsed"].toBool(false);
@@ -594,6 +608,8 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
             key.tension = std::clamp(tcb[0].toDouble(), -1.0, 1.0);
             key.continuity = std::clamp(tcb[1].toDouble(), -1.0, 1.0);
             key.bias = std::clamp(tcb[2].toDouble(), -1.0, 1.0);
+        } else {
+            key.tension = key.continuity = key.bias = 0.0;     // (not the defaults for new keyframes)
         }
     }
     if (!layer.holdsDrawings()) {

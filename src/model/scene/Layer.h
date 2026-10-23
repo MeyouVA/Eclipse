@@ -3,6 +3,8 @@
 
 #include "model/scene/Effect.h"
 
+#include <algorithm>
+
 struct Morph {
     int from = 0;
     // How gently the change leaves the first drawing and arrives at the second (0..1 each).
@@ -102,10 +104,35 @@ struct Layer {
         return kind == Sound && at >= 0 && at < lipsync.size() ? lipsync[at] : QChar();
     }
     QPointF pivot;            // the point scaling and rotation happen about, in layer coordinates
+    // A drawing's own pivot: not used, used by this layer, or used by the peg it hangs on.
+    enum EmbeddedPivot { PivotNotUsed, PivotOnLayer, PivotOnParentPeg };
+    int embeddedPivot = PivotNotUsed;
+    // Separate: x, y and z go each their own way between keyframes, with no path of control points.
+    bool separatePosition = false;
+    // Separate: width and height are scaled each on its own; locked, they keep in proportion (and the layer cannot be skewed).
+    bool separateScale = true;
+    bool ignoreParentScale = false;
+    bool angleLimited = false;
+    double minAngle = -180.0;
+    double maxAngle = 180.0;
+    // Off: the animation tools pass it by and move the peg above it.
+    bool animatable = true;
+    // On: the angle limits hold for every frame, not only while the tools turn the layer.
+    ECLIPSE_MODEL_API static bool enforceAngleLimits;
+    // What new layers start with (Preferences).
+    struct NewLayerDefaults {
+        bool pegSeparatePosition = false, elementSeparatePosition = false;
+        bool pegSeparateScale = true, elementSeparateScale = true;
+        bool animatable = true;
+        int embeddedPivot = PivotNotUsed;
+    };
+    ECLIPSE_MODEL_API static NewLayerDefaults newLayers;
+    double limitedAngle(double angle) const { return angleLimited ? std::clamp(angle, std::min(minAngle, maxAngle), std::max(minAngle, maxAngle)) : angle; }
     QVector<Keyframe> keys;   // sorted by frame; empty means the layer never moves
 
     // The pose at a frame: that of the keyframes, tweened where they ask for it.
     Pose poseAt(int frame) const;
+    Pose keyedPoseAt(int frame) const;  // (without the angle limits)
     // The index of the keyframe at exactly `frame`, or -1.
     int keyIndex(int frame) const;
     int previousKeyFrame(int frame) const;  // -1 when there is none
@@ -117,6 +144,7 @@ struct Layer {
     // From layer coordinates to those of the parent.
     QTransform localTransform(int frame) const { return matrixFor(poseAt(frame)); }
     QTransform matrixFor(Pose const& pose) const;
+    QTransform matrixFor(Pose const& pose, QPointF about) const;
 
     QString name;
     // Names and values kept with the layer, for whoever wants to note something about it.
@@ -221,4 +249,15 @@ struct PoseOverride {
     Pose pose;
     bool hasMatrix = false;
     QTransform matrix;
+    // Other layers posed along with it, on the same frame.
+    QVector<QPair<int, Pose>> others;
+    Pose const* otherPose(int l, int f) const
+    {
+        if (f != frame)
+            return nullptr;
+        for (auto const& o : others)
+            if (o.first == l)
+                return &o.second;
+        return nullptr;
+    }
 };

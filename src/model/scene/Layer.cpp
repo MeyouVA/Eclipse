@@ -190,7 +190,21 @@ double Layer::effectAmount(int index, Pose const& pose) const
 // The pose on `frame` of keyframes that set all of it (in order of frame).
 static Pose poseOfKeys(QVector<Keyframe> const& keys, int frame);
 
+bool Layer::enforceAngleLimits = false;
+Layer::NewLayerDefaults Layer::newLayers;
+double Keyframe::defaultTension = 0.0;
+double Keyframe::defaultContinuity = 0.0;
+double Keyframe::defaultBias = 0.0;
+
 Pose Layer::poseAt(int frame) const
+{
+    Pose pose = keyedPoseAt(frame);
+    if (angleLimited && enforceAngleLimits)
+        pose.rotation = limitedAngle(pose.rotation);
+    return pose;
+}
+
+Pose Layer::keyedPoseAt(int frame) const
 {
     bool whole = true;
     for (Keyframe const& k : keys)
@@ -437,11 +451,16 @@ QVector<QPointF> Layer::quadAt(Pose const& pose) const
 
 QTransform Layer::matrixFor(Pose const& pose) const
 {
+    return matrixFor(pose, pivot);
+}
+
+QTransform Layer::matrixFor(Pose const& pose, QPointF about) const
+{
     if (kind == Group || kind == ColourCard)
         return QTransform();
     if (kind == Quadmap)
-        return quadWarp(quadSize, quadAt(pose)) * matrix(pose, pivot);
-    return matrix(pose, pivot);
+        return quadWarp(quadSize, quadAt(pose)) * matrix(pose, about);
+    return matrix(pose, about);
 }
 
 double easedProgress(double t, double easeOut, double easeIn, double liftOut, double liftIn)

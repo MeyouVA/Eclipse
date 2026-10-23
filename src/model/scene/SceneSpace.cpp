@@ -89,7 +89,8 @@ struct Mat4 {
 
 Pose poseFor(Scene const& scene, int layer, int frame, PoseOverride const* over)
 {
-    Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : scene.layers[layer].poseAt(frame);
+    Pose const* const other = over ? over->otherPose(layer, frame) : nullptr;
+    Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : other ? *other : scene.layers[layer].poseAt(frame);
     Layer const& l = scene.layers[layer];
     if (l.drivers.isEmpty())
         return pose;
@@ -113,7 +114,16 @@ QTransform localFor(Scene const& scene, int layer, int frame, PoseOverride const
 {
     if (over && over->layer == layer && over->frame == frame && over->hasMatrix)
         return over->matrix;
-    return scene.layers[layer].matrixFor(poseFor(scene, layer, frame, over));
+    return scene.layers[layer].matrixFor(poseFor(scene, layer, frame, over), scene.pivotOf(layer, frame));
+}
+
+// A parent's matrix without its scaling: turned and moved only.
+QTransform withoutScale(QTransform const& m)
+{
+    double const sx = std::hypot(m.m11(), m.m12()), sy = std::hypot(m.m21(), m.m22());
+    if (sx < 1e-12 || sy < 1e-12)
+        return QTransform::fromTranslate(m.dx(), m.dy());
+    return QTransform(m.m11() / sx, m.m12() / sx, m.m21() / sy, m.m22() / sy, m.dx(), m.dy());
 }
 
 // From a layer to the scene, in space.
@@ -343,8 +353,35 @@ QTransform Scene::flatTransform(int layer, int frame, PoseOverride const* over) 
         int const parent = parentIndex(layer);
         if (parent >= 0 && layers[layer].parentBone >= 0)
             t = t * Deform::boneTransform(layers[parent].bones, poseFor(*this, parent, frame, over).bend, layers[layer].parentBone);
+        if (parent >= 0 && layers[layer].ignoreParentScale)
+            return t * withoutScale(flatTransform(parent, frame, over));
     }
     return t;
+}
+
+QPointF Scene::pivotOf(int layer, int frame) const
+{
+    if (layer < 0 || layer >= layers.size())
+        return QPointF();
+    Layer const& l = layers[layer];
+    auto drawingPivot = [this, frame](int at, QPointF* p) {
+        Layer const& d = layers[at];
+        int const index = d.holdsDrawings() ? d.drawingAt(frame) : Layer::kNoDrawing;
+        if (index < 0 || index >= d.drawings.size() || !d.drawings[index].pivotSet)
+            return false;
+        *p = d.drawings[index].pivot;
+        return true;
+    };
+    QPointF p;
+    if (l.embeddedPivot == Layer::PivotOnLayer && drawingPivot(layer, &p))
+        return p;
+    if (l.kind == Layer::Peg) {
+        // A drawing hung right on the peg that gives it its pivot: where that is, in the peg's own space.
+        for (int c = 0; c < layers.size(); ++c)
+            if (layers[c].parent == l.id && layers[c].embeddedPivot == Layer::PivotOnParentPeg && drawingPivot(c, &p))
+                return layers[c].matrixFor(layers[c].poseAt(frame), layers[c].pivot).map(p);
+    }
+    return l.pivot;
 }
 
 double Driver::read(Pose const& pose, int value)

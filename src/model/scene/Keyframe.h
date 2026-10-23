@@ -1,6 +1,7 @@
 // Eclipse - a pose and the keyframes that hold one, and how a tween eases between them.
 #pragma once
 
+#include "EclipseExport.h"
 #include "model/scene/Drawing.h"
 
 struct Pose {
@@ -42,9 +43,11 @@ struct Keyframe {
     QVector<double> controlsZ;
     // The depth of the way `along` (0..1), through the control points' depths at the places `controlsAt` gives them.
     double pathDepth(double fromZ, double toZ, double along, QVector<double> const& controlsAt) const;
-    double tension = 0.0;
-    double continuity = 0.0;
-    double bias = 0.0;
+    double tension = defaultTension;
+    double continuity = defaultContinuity;
+    double bias = defaultBias;
+    // What new keyframes and control points start with (Preferences, -1..1).
+    ECLIPSE_MODEL_API static double defaultTension, defaultContinuity, defaultBias;
     QVector<QPointF> pathLine(QPointF from, QPointF to, QVector<double>* controlsAt = nullptr) const;
     // The place `along` (0..1) of the way.
     QPointF pathPoint(QPointF from, QPointF to, double along) const;
