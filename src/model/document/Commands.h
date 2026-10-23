@@ -224,6 +224,14 @@ public:
     bool moveValuePoints(int layer, QVector<QPair<int, int>> const& points, int by, QString const& text);
     // Values taken out of keyframes (frame, Keyframe::Part bits): a keyframe left setting nothing goes.
     void removeKeyValues(int layer, QVector<QPair<int, int>> const& points, QString const& text);
+    // Values' curves from one keyframe to the next shaped as an ease (Layer::shapeSegment), as one step.
+    struct SegmentEase {
+        int layer = 0;
+        int value = 0;
+        int from = 0, to = 0;       // the frames of the two keyframes
+        QPointF leave, arrive;
+    };
+    void setSegmentEases(QVector<SegmentEase> const& eases, QString const& text);
     void setEffects(int layer, QVector<Effect> const& effects, QString const& text);
     // Takes effect `index` out, and its amounts out of the keyframes.
     void removeEffect(int layer, int index);

@@ -471,6 +471,13 @@ public slots:
     void onActionHelp();
     void onActionSceneMarkerNote();
     void onActionSetEaseDialog();
+    // Quick Ease (in and out), Quick Ease In, Quick Ease Out: 33 % on the keyframes selected.
+    void onActionQuickEase(QString const& which);
+    void onActionSetEaseMultiple();
+    void onActionApplyEaseToSelection();
+    void onActionVelocityEditor(bool on);
+    // The ease of the Set Ease for Multiple Parameters dialog given to the moves selected, for the kinds of value named.
+    int easeSelection(QStringList const& kinds, QPointF leave, QPointF arrive);
     // The ease of the keyframes on the frames and layers selected (0 to 1 each; below 0: left as it is).  How many were changed.
     int setEaseOnSelection(double easeIn, double easeOut);
     bool applyBreakdown(double percent);
@@ -722,6 +729,10 @@ private:
     bool refuseUnlessModel(QString const& what);
     // Floating panels and toolbars kept hidden until the window is first shown (see restoreWorkspace).
     QVector<QPointer<QWidget>> m_heldBack;
+    // The ease last given with Set Ease for Multiple Parameters (Apply Ease to Selection gives it again).
+    QPointF m_easeLeave{0.5, 0.0}, m_easeArrive{0.5, 1.0};
+    QStringList m_easeKinds;
+    QPointer<QWidget> m_velocityEditor;
     bool m_focusOnEnter = false;
     Q_INVOKABLE void shuttleStep();     // one tick of the shuttle
 

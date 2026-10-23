@@ -137,6 +137,12 @@
   <item id="StopMotionKeyframeMode" toolbarText="Stop-Motion Mode"/>
   <separator/>
   <item id="PasteSpecial" toolbarText="Paste Special"/>
+  <item id="SetEaseDialog" visible="false"/>
+  <item id="QuickEase" visible="false"/>
+  <item id="QuickEaseIn" visible="false"/>
+  <item id="QuickEaseOut" visible="false"/>
+  <item id="SetEaseMultiple" visible="false"/>
+  <item id="ApplyEaseToSelection" visible="false"/>
   <item id="ImportMovie" visible="false"/>
   <item id="EditCut" visible="false"/>
   <item id="EditCopy" visible="false"/>

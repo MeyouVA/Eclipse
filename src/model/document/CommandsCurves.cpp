@@ -99,3 +99,23 @@ void Document::removeKeyValues(int layer, QVector<QPair<int, int>> const& points
         return;
     apply(text, [&](Scene& s) { s.layers[layer].removeValues(points); });
 }
+
+void Document::setSegmentEases(QVector<SegmentEase> const& eases, QString const& text)
+{
+    QVector<SegmentEase> valid;
+    for (SegmentEase const& e : eases) {
+        if (e.layer < 0 || e.layer >= m_scene.layers.size() || e.value < 0 || e.value >= Driver::ValueCount)
+            continue;
+        Layer const& l = m_scene.layers[e.layer];
+        if (l.keyIndex(e.from) >= 0 && l.keyIndex(e.to) > l.keyIndex(e.from))
+            valid.push_back(e);
+    }
+    if (valid.isEmpty())
+        return;
+    apply(text, [&](Scene& s) {
+        for (SegmentEase const& e : valid) {
+            Layer& l = s.layers[e.layer];
+            l.shapeSegment(e.value, l.keyIndex(e.from), l.keyIndex(e.to), e.leave, e.arrive);
+        }
+    });
+}

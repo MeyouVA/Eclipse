@@ -27,6 +27,7 @@
   <shortcut id="shortcut.ungroup" text="Ungroup Selected Layers" value="Ctrl+Shift+G"/>
   <shortcut id="shortcut.editShortcuts" text="Keyboard Shortcuts" value=""/>
   <shortcut id="shortcut.toggleFullscreen" text="Toggle Full Screen" value="Ctrl+F"/>
+  <shortcut id="shortcut.velocityEditor" text="Toggle Velocity Editor" value="Shift+V"/>
  </category>
  <category id="Playback" text="Playback">
   <shortcut id="shortcut.togglePlayback" text="Toggle Playback" value="Return"/>
@@ -221,6 +222,11 @@
   <shortcut id="shortcut.resetAll" text="Reset All" value=""/>
   <shortcut id="shortcut.resetTransformation" text="Reset Transformation" value=""/>
   <shortcut id="shortcut.stopMotionMode" text="Stop-Motion Keyframe Mode" value=""/>
+  <shortcut id="shortcut.quickEase" text="Quick Ease" value=""/>
+  <shortcut id="shortcut.quickEaseIn" text="Quick Ease In" value=""/>
+  <shortcut id="shortcut.quickEaseOut" text="Quick Ease Out" value=""/>
+  <shortcut id="shortcut.setEaseMultiple" text="Set Ease for Multiple Parameters..." value=""/>
+  <shortcut id="shortcut.applyEase" text="Apply Ease to Selection" value=""/>
  </category>
  <category id="Exposure Sheet" text="Exposure Sheet">
   <shortcut id="shortcut.xsheetGestural" text="Gestural Drag Mode" value=""/>

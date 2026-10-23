@@ -140,6 +140,12 @@ struct Layer {
     void segmentHandles(int value, int from, int to, QPointF& out, QPointF& in) const;
     // The value on `frame` through the keyframes `through` (keysOf), shaped by their curves.
     double curveValue(int value, QVector<int> const& through, double frame) const;
+    // A value's curve through keyframe `key`: its own, or as the ease makes it (no handle on a side with no next point).
+    ValueCurve curveAt(int value, int key) const;
+    // The keyframe's ease given to the values with curves of their own too (their handles made as the ease has them).
+    void easeCurves(int key);
+    // A value's curve between keyframes `from` and `to` shaped as an ease: handles as shares (0..1) of the way in time and value.
+    void shapeSegment(int value, int from, int to, QPointF leave, QPointF arrive);
     // Some values' points (frame, Keyframe::Part bits) moved by `by` frames, the rest of their keyframes staying (see devnotes).
     bool moveValues(QVector<QPair<int, int>> const& points, int by, int last);
     // Values taken out of keyframes (frame, bits): a keyframe left setting nothing goes.

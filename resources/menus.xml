@@ -462,6 +462,14 @@
     <item id="EaseOut" icon="anim/easeout" text="Ease &amp;Out" responder="window" slot="onActionSetEase(QString)" itemParameter="out"/>
     <item id="EaseBoth" icon="anim/easeboth" text="Ease In &amp;and Out" responder="window" slot="onActionSetEase(QString)" itemParameter="both"/>
     <item id="EaseNone" icon="anim/easenone" text="&amp;No Ease" responder="window" slot="onActionSetEase(QString)" itemParameter="none"/>
+    <separator/>
+    <item id="QuickEase"/>
+    <item id="QuickEaseIn"/>
+    <item id="QuickEaseOut"/>
+    <item id="SetEaseMultiple"/>
+    <item id="ApplyEaseToSelection"/>
+    <separator/>
+    <item id="VelocityEditor" icon="anim/easeset" text="&amp;Velocity Editor" shortcut="shortcut.velocityEditor" checkable="true" responder="window" slot="onActionVelocityEditor(bool)"/>
    </menu>
    <menu id="AnimationMorphing" text="&amp;Morphing">
     <item id="CreateMorphing" icon="anim/morphcreate" text="&amp;Create Morphing" shortcut="shortcut.createMorphing" responder="window" slot="onActionCreateMorphing()"/>
@@ -795,6 +803,9 @@
    <item id="AnimateOnionRange"/>
    <item id="AnimateOff"/>
   </menu>
+  <menu id="CameraAnimation" text="Animation">
+   <item id="SetEaseMultiple"/>
+  </menu>
   <item id="InsertKeyframe"/>
   <item id="SetStopMotionKeyframe"/>
   <item id="SetMotionKeyframe"/>
@@ -932,6 +943,13 @@
    <item id="SetStopMotionKeyframe"/>
    <item id="SetMotionKeyframe"/>
    <item id="StopMotionKeyframeMode"/>
+   <separator/>
+   <item id="SetEaseDialog"/>
+   <item id="QuickEase" icon="anim/easeboth" text="Quick Ease" shortcut="shortcut.quickEase" responder="window" slot="onActionQuickEase(QString)" itemParameter="both"/>
+   <item id="QuickEaseIn" icon="anim/easein" text="Quick Ease In" shortcut="shortcut.quickEaseIn" responder="window" slot="onActionQuickEase(QString)" itemParameter="in"/>
+   <item id="QuickEaseOut" icon="anim/easeout" text="Quick Ease Out" shortcut="shortcut.quickEaseOut" responder="window" slot="onActionQuickEase(QString)" itemParameter="out"/>
+   <item id="SetEaseMultiple" icon="anim/easeset" text="Set Ease for Multiple Parameters..." shortcut="shortcut.setEaseMultiple" responder="window" slot="onActionSetEaseMultiple()"/>
+   <item id="ApplyEaseToSelection" icon="anim/easeset" text="Apply Ease to Selection" shortcut="shortcut.applyEase" responder="window" slot="onActionApplyEaseToSelection()"/>
   </menu>
   <menu id="TimelineKeyframes" text="Keyframes of the Layer">
    <item id="LayerStopMotionKeys" icon="timeline/stopmotionkey" text="Set Stop-Motion Keyframes" responder="window" slot="onActionLayerKeys(QString)" itemParameter="stop"/>

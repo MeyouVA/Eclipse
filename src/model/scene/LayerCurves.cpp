@@ -228,3 +228,56 @@ void Layer::removeValues(QVector<QPair<int, int>> const& points)
             keys.removeAt(k);
     }
 }
+
+ValueCurve Layer::curveAt(int value, int key) const
+{
+    ValueCurve curve;
+    curve.value = value;
+    QVector<int> const through = keysOf(value);
+    int const at = int(through.indexOf(key));
+    if (key < 0 || key >= keys.size() || at < 0)
+        return curve;
+    if (ValueCurve const* own = keys[key].curveOf(value))
+        return *own;
+    QPointF unused;
+    if (at > 0)
+        segmentHandles(value, through[at - 1], key, unused, curve.in);
+    if (at + 1 < through.size())
+        segmentHandles(value, key, through[at + 1], curve.out, unused);
+    curve.corner = at > 0 && at + 1 < through.size() && (keys[key].easeIn > 0.0 || keys[key].easeOut > 0.0);
+    curve.after = keys[key].tween ? ValueCurve::Curved : ValueCurve::Held;
+    return curve;
+}
+
+void Layer::easeCurves(int key)
+{
+    if (key < 0 || key >= keys.size())
+        return;
+    QVector<ValueCurve> const own = keys[key].curves;
+    keys[key].curves.clear();
+    for (ValueCurve c : own) {
+        // Curved on and smooth: nothing the ease does not do.  Straight or held on: kept, with the handles of the ease.
+        if (c.after == ValueCurve::Curved)
+            continue;
+        ValueCurve const eased = curveAt(c.value, key);
+        c.in = eased.in;
+        c.out = eased.out;
+        keys[key].setCurve(c);
+    }
+}
+
+void Layer::shapeSegment(int value, int from, int to, QPointF leave, QPointF arrive)
+{
+    if (from < 0 || to <= from || to >= keys.size())
+        return;
+    double const span = keys[to].frame - keys[from].frame;
+    double const way = Driver::read(keys[to].pose, value) - Driver::read(keys[from].pose, value);
+    ValueCurve a = curveAt(value, from), b = curveAt(value, to);
+    a.out = QPointF(std::clamp(leave.x(), 0.0, 1.0) * span, leave.y() * way);
+    a.after = ValueCurve::Curved;
+    a.corner = true;
+    b.in = QPointF((std::clamp(arrive.x(), 0.0, 1.0) - 1.0) * span, (arrive.y() - 1.0) * way);
+    b.corner = true;
+    keys[from].setCurve(a);
+    keys[to].setCurve(b);
+}

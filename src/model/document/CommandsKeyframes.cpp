@@ -251,13 +251,15 @@ void Document::setKeyEase(int layer, int frame, double easeIn, double easeOut, d
     if (index < 0)
         return;
     Keyframe const& now = m_scene.layers[layer].keys[index];
-    if (now.easeIn == easeIn && now.easeOut == easeOut && now.liftIn == liftIn && now.liftOut == liftOut)
+    if (now.easeIn == easeIn && now.easeOut == easeOut && now.liftIn == liftIn && now.liftOut == liftOut && now.curves.isEmpty())
         return;
     apply(tr("Set Ease"), [&](Scene& s) {
         s.layers[layer].keys[index].easeIn = easeIn;
         s.layers[layer].keys[index].easeOut = easeOut;
         s.layers[layer].keys[index].liftIn = liftIn;
         s.layers[layer].keys[index].liftOut = liftOut;
+        // (The values with curves of their own take the ease as well.)
+        s.layers[layer].easeCurves(index);
     });
 }
 

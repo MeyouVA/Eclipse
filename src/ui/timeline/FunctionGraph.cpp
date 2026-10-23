@@ -226,25 +226,7 @@ void FunctionGraph::selectNeighbour(bool next)
 ValueCurve FunctionGraph::curveAt(FunctionPoint const& p) const
 {
     Layer const& l = layerOf(p.layer);
-    QVector<int> const through = l.keysOf(p.value);
-    int const k = l.keyIndex(p.frame);
-    int const at = int(through.indexOf(k));
-    ValueCurve curve;
-    curve.value = p.value;
-    if (k < 0 || at < 0)
-        return curve;
-    if (ValueCurve const* own = l.keys[k].curveOf(p.value))
-        return *own;
-    QPointF out, in, unused;
-    if (at > 0)
-        l.segmentHandles(p.value, through[at - 1], k, unused, in);
-    if (at + 1 < through.size())
-        l.segmentHandles(p.value, k, through[at + 1], out, unused);
-    curve.in = in;
-    curve.out = out;
-    curve.corner = at > 0 && at + 1 < through.size() && (l.keys[k].easeIn > 0.0 || l.keys[k].easeOut > 0.0);
-    curve.after = l.keys[k].tween ? ValueCurve::Curved : ValueCurve::Held;
-    return curve;
+    return l.curveAt(p.value, l.keyIndex(p.frame));
 }
 
 QPointF FunctionGraph::handleAt(FunctionPoint const& p, bool out) const
