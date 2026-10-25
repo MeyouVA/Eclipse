@@ -246,6 +246,17 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.defaultZoom = percentBox("PrefDefaultZoom", 1, 25600, s.value(QStringLiteral("prefs/defaultZoom"), 100).toInt());
     w.defaultZoom->setToolTip(tr("The zoom View > Reset Zoom goes to."));
     w.cameraLayout->addRow(tr("Camera View Default Zoom"), w.defaultZoom);
+    w.planningDefaultZoom = percentBox("PrefPlanningDefaultZoom", 20, 4000, s.value(QStringLiteral("prefs/planningDefaultZoom"), 100).toInt());
+    w.planningDefaultZoom->setToolTip(tr("Initial and reset zoom for the Top and Side views. A saved project's view takes precedence when opened."));
+    w.cameraLayout->addRow(tr("Top/Side View Default Zoom"), w.planningDefaultZoom);
+    w.planningThumbnailSize = new QSpinBox(w.camera);
+    w.planningThumbnailSize->setObjectName(QStringLiteral("PrefPlanningThumbnailSize"));
+    w.planningThumbnailSize->setRange(0, 256);
+    w.planningThumbnailSize->setSuffix(tr(" px"));
+    w.planningThumbnailSize->setSpecialValueText(tr("Hidden"));
+    w.planningThumbnailSize->setValue(std::clamp(s.value(QStringLiteral("prefs/planningThumbnailSize"), 64).toInt(), 0, 256));
+    w.planningThumbnailSize->setToolTip(tr("Drawing thumbnail size in Top and Side views. Set to zero to hide thumbnails."));
+    w.cameraLayout->addRow(tr("Top/Side Thumbnail Size"), w.planningThumbnailSize);
     w.zoomMin = percentBox("PrefZoomMin", 1, 100, s.value(QStringLiteral("prefs/zoomMin"), 2).toInt());
     w.cameraLayout->addRow(tr("Minimum Zoom Level"), w.zoomMin);
     w.zoomMax = percentBox("PrefZoomMax", 100, 25600, s.value(QStringLiteral("prefs/zoomMax"), 6400).toInt());

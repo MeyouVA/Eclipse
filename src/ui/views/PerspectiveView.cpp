@@ -11,6 +11,7 @@
 #include "model/geometry/Deform.h"
 #include "model/scene/Scene.h"
 #include "canvas/Canvas.h"
+#include "actions/theme/InterfaceColours.h"
 
 namespace {
 constexpr double kDefaultYaw = -32.0;
@@ -159,7 +160,7 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     }
     QPointF const middle = fromPicture.map(QPointF(scene.width / 2.0, scene.height / 2.0));
     QPointF const eye = project(middle.x(), middle.y(), cameraDepth + distance);
-    QColor const blue(111, 168, 232);
+    QColor const blue = InterfaceColours::get("planningCamera");
 
     // What is drawn, the furthest from the eye first: the layers, and the frame among them.
     struct Item {

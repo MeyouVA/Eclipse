@@ -36,6 +36,8 @@ struct PreferenceWidgets {
     QSpinBox* safe = nullptr;
     QCheckBox* zoomOnMouse = nullptr;
     QSpinBox* defaultZoom = nullptr;
+    QSpinBox* planningDefaultZoom = nullptr;
+    QSpinBox* planningThumbnailSize = nullptr;
     QSpinBox* zoomMin = nullptr;
     QSpinBox* zoomMax = nullptr;
     QDoubleSpinBox* quickCloseUp = nullptr;

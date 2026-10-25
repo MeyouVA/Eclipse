@@ -7,6 +7,8 @@
 #include "EclipseExport.h"
 
 #include <QWidget>
+#include <QHash>
+#include <QImage>
 #include <algorithm>
 
 class Document;
@@ -26,6 +28,8 @@ public:
     QPointF pan() const { return m_pan; }
     void restoreView(double zoom, QPointF pan) { m_zoom = std::clamp(zoom, 0.2, 40.0); m_pan = pan; update(); }
     void resetView();
+    void setPlanningPreferences(double defaultZoom, int thumbnailSize);
+    int thumbnailSize() const { return m_thumbnailSize; }
     void setAnimationCanvas(Canvas* canvas) { m_canvas = canvas; }
     int currentFrame() const { return m_frame; }
     QSize sizeHint() const override { return QSize(320, 260); }
@@ -34,7 +38,7 @@ public slots:
     void setCurrentCell(int layer, int frame);
     void onActionZoomIn() { m_zoom = std::min(m_zoom * 1.25, 40.0); update(); }
     void onActionZoomOut() { m_zoom = std::max(m_zoom / 1.25, 0.2); update(); }
-    void onActionResetZoom() { m_zoom = 1.0; update(); }
+    void onActionResetZoom() { m_zoom = m_defaultZoom; update(); }
     void onActionResetPan() { m_pan = QPointF(); update(); }
     void onActionResetView() { resetView(); }
     void onActionFrameSelected();
@@ -73,11 +77,16 @@ private:
     // The place in the view as it is fitted, before zoom and pan.
     QPointF fitted(QPointF widgetPos) const;
     int markAt(QPointF widgetPos) const;
+    QRectF thumbnailRect(QPointF a, QPointF b) const;
+    QImage thumbnail(int layer);
 
     Document* m_document;
     Canvas* m_canvas = nullptr;
     Mode m_mode;
     double m_zoom = 1.0;
+    double m_defaultZoom = 1.0;
+    int m_thumbnailSize = 64;
+    QHash<int, QImage> m_thumbnails;
     QPointF m_pan;
     bool m_panning = false;
     bool m_cameraCone = true;

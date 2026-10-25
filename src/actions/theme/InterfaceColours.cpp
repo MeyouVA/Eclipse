@@ -9,6 +9,7 @@ QList<Entry> const& entries()
 {
     static QList<Entry> const all = {
         {"canvasGrid", "Views", "Grid", QColor(30, 30, 30, 190)},
+        {"planningCamera", "Scene Planning", "Camera Cone", QColor(111, 168, 232)},
         {"brushPreview", "Views", "Brush Preview Background", QColor(228, 228, 226)},
         {"smoothBrush", "Views", "Smoothing Tool Brush", QColor(255, 150, 40, 80)},
         {"transformTool", "Camera", "Transform Tool", QColor(255, 170, 40)},

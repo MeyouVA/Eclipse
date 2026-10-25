@@ -3,6 +3,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QWheelEvent>
+#include <QSettings>
 
 #include <algorithm>
 #include <cmath>
@@ -10,6 +11,7 @@
 #include "model/document/Commands.h"
 #include "model/scene/Scene.h"
 #include "canvas/Canvas.h"
+#include "actions/theme/InterfaceColours.h"
 
 namespace {
 constexpr double kMargin = 26.0;
@@ -20,11 +22,17 @@ DepthView::DepthView(Document* document, Mode mode, QWidget* parent) : QWidget(p
     setMinimumSize(160, 120);
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(false);
-    connect(m_document, &Document::changed, this, qOverload<>(&QWidget::update));
+    QSettings const settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    setPlanningPreferences(settings.value(QStringLiteral("prefs/planningDefaultZoom"), 100).toDouble() / 100.0,
+                           settings.value(QStringLiteral("prefs/planningThumbnailSize"), 64).toInt());
+    m_zoom = m_defaultZoom;
+    connect(m_document, &Document::changed, this, [this] { m_thumbnails.clear(); update(); });
 }
 
 void DepthView::setCurrentCell(int layer, int frame)
 {
+    if (m_frame != frame)
+        m_thumbnails.clear();
     m_layer = layer;
     m_frame = frame;
     update();
@@ -200,18 +208,21 @@ void DepthView::paintEvent(QPaintEvent*)
     };
     QPolygonF cone;
     cone << eye << edgeAt(0.0, back) << edgeAt(extent, back);
-    painter.setPen(QPen(QColor(111, 168, 232), 1.2));
-    painter.setBrush(QColor(111, 168, 232, 26));
+    QColor const cameraColour = InterfaceColours::get("planningCamera");
+    QColor coneFill = cameraColour;
+    coneFill.setAlphaF(coneFill.alphaF() * 0.1);
+    painter.setPen(QPen(cameraColour, 1.2));
+    painter.setBrush(coneFill);
     if (m_cameraCone)
         painter.drawPolygon(cone);
     // The frame itself, where the cone crosses that plane.
-    painter.setPen(QPen(QColor(111, 168, 232), 2.2));
+    painter.setPen(QPen(cameraColour, 2.2));
     painter.drawLine(place(0.0, cameraDepth, back, front), place(extent, cameraDepth, back, front));
     // The camera: a small body behind the point of the cone.
     {
         bool const current = cameraLayer >= 0 && cameraLayer == m_layer;
         painter.setPen(QPen(QColor(20, 30, 44), 1));
-        painter.setBrush(current ? QColor(255, 255, 255) : QColor(111, 168, 232));
+        painter.setBrush(current ? QColor(255, 255, 255) : cameraColour);
         QPointF const away = m_mode == Top ? QPointF(0, 1) : QPointF(-1, 0);
         QPointF const side = m_mode == Top ? QPointF(1, 0) : QPointF(0, 1);
         QPolygonF body;
@@ -240,6 +251,14 @@ void DepthView::paintEvent(QPaintEvent*)
         painter.drawLine(a, b);
         painter.setPen(QPen(colour, current ? 3.5 : 2.5, Qt::SolidLine, Qt::RoundCap));
         painter.drawLine(a, b);
+        if (m_thumbnailSize > 0) {
+            QRectF const box = thumbnailRect(a, b);
+            painter.fillRect(box, QColor(45, 45, 45));
+            painter.drawImage(box, thumbnail(mark.layer));
+            painter.setPen(QPen(colour, current ? 2.0 : 1.0));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawRect(box);
+        }
         painter.setPen(current ? QColor(255, 220, 150) : QColor(190, 190, 190));
         QString const label = depth == 0.0 ? scene.layers[mark.layer].name
                                             : tr("%1  (%2 %3)").arg(scene.layers[mark.layer].name).arg(QString::number(std::abs(depth), 'f', 0), depth > 0 ? tr("F") : tr("B"));
@@ -265,7 +284,7 @@ QPointF DepthView::fitted(QPointF widgetPos) const
 
 void DepthView::resetView()
 {
-    m_zoom = 1.0;
+    m_zoom = m_defaultZoom;
     m_pan = QPointF();
     update();
 }
@@ -309,6 +328,13 @@ int DepthView::markAt(QPointF at) const
             d = std::hypot(at.x() - eye.x(), at.y() - eye.y()) - 6.0;
         } else {
             QPointF const a = place(mark.from, mark.depthFrom, back, front), b = place(mark.to, mark.depthTo, back, front);
+            if (m_thumbnailSize > 0 && thumbnailRect(a, b).contains(at)) {
+                if (picked < 0 || nearest > 0.0 || mark.layer == m_layer) {
+                    nearest = 0.0;
+                    picked = mark.layer;
+                }
+                continue;
+            }
             if (mark.depthFrom != mark.depthTo) {
                 // At a slant: how far from the line itself.
                 QPointF const ab = b - a, ap = at - a;

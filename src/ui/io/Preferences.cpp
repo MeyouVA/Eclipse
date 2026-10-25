@@ -49,6 +49,7 @@
 #include "ui/panels/PalettePanel.h"
 #include "ui/io/ImportExportPrivate.h"
 #include "ui/views/NodeView.h"
+#include "ui/views/DepthView.h"
 #include "actions/theme/InterfaceColours.h"
 #include <QHeaderView>
 #include <QTreeWidget>
@@ -68,6 +69,9 @@ void MainWindow::applyPreferences()
     QSettings const s = preferences();
     // The colours the views paint with: read again, and every view painted with them.
     InterfaceColours::reload();
+    for (DepthView* view : findChildren<DepthView*>())
+        view->setPlanningPreferences(s.value(QStringLiteral("prefs/planningDefaultZoom"), 100).toDouble() / 100.0,
+                                     s.value(QStringLiteral("prefs/planningThumbnailSize"), 64).toInt());
     for (QWidget* const w : findChildren<QWidget*>())
         w->update();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
@@ -254,6 +258,8 @@ void MainWindow::applyPreferences()
 
 void MainWindow::placeCameraView()
 {
+    for (DepthView* view : findChildren<DepthView*>())
+        view->resetView();
     // As the preferences say: the whole frame in the view, or at its own size.
     m_canvas->fitToWindow();
     if (preferences().value(QStringLiteral("prefs/cameraZoom"), 0).toInt() == 1)
@@ -378,6 +384,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());
     s.setValue(QStringLiteral("prefs/zoomOnMouse"), w.zoomOnMouse->isChecked());
     s.setValue(QStringLiteral("prefs/defaultZoom"), w.defaultZoom->value());
+    s.setValue(QStringLiteral("prefs/planningDefaultZoom"), w.planningDefaultZoom->value());
+    s.setValue(QStringLiteral("prefs/planningThumbnailSize"), w.planningThumbnailSize->value());
     s.setValue(QStringLiteral("prefs/zoomMin"), w.zoomMin->value());
     s.setValue(QStringLiteral("prefs/zoomMax"), w.zoomMax->value());
     s.setValue(QStringLiteral("prefs/quickCloseUp"), w.quickCloseUp->value());
