@@ -390,7 +390,6 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
     QSettings s = settings();
     s.setValue(QStringLiteral("window/sessionUi"), QJsonDocument(closingUi).toJson(QJsonDocument::Compact));
-    s.setValue(QStringLiteral("window/lastProject"), m_path);
     s.setValue(QStringLiteral("window/geometry"), saveGeometry());
     s.setValue(QStringLiteral("window/workspace"), m_workspace);
     saveCurrentWorkspace();

@@ -1,6 +1,5 @@
 #include "ui/window/WelcomeDialog.h"
 
-#include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -131,11 +130,6 @@ static void saveCustom(QVector<Resolution> const& all)
     settings().setValue(QStringLiteral("resolutions/custom"), lines);
 }
 
-bool WelcomeDialog::shownAtStartup()
-{
-    return !settings().value(QStringLiteral("welcome/hide"), false).toBool();
-}
-
 WelcomeDialog::WelcomeDialog(QString const& resourceDirectory, QWidget* parent, bool newSceneOnly) : QDialog(parent), m_resources(resourceDirectory)
 {
     setWindowTitle(tr("Welcome to Eclipse"));
@@ -245,30 +239,21 @@ WelcomeDialog::WelcomeDialog(QString const& resourceDirectory, QWidget* parent, 
     openLayout->addWidget(m_recent, 1);
     openLayout->addWidget(openButton, 0, Qt::AlignRight);
 
-    m_hide = new QCheckBox(tr("Do not show this window at startup"), this);
-    m_hide->setObjectName(QStringLiteral("HideAtStartup"));
-    m_hide->setChecked(!shownAtStartup());
-
     QHBoxLayout* const boxes = new QHBoxLayout;
     boxes->setContentsMargins(8, 8, 8, 0);
     boxes->addWidget(createBox, 1);
     boxes->addWidget(openBox);
-    QVBoxLayout* const bottom = new QVBoxLayout;
-    bottom->setContentsMargins(10, 4, 8, 8);
-    bottom->addWidget(m_hide);
     QVBoxLayout* const all = new QVBoxLayout(this);
     all->setContentsMargins(0, 0, 0, 0);
     all->setSpacing(0);
     if (newSceneOnly) {
         setWindowTitle(tr("New Scene"));
         openBox->hide();
-        m_hide->hide();
         boxes->setContentsMargins(8, 8, 8, 8);
     } else {
         all->addWidget(new Banner(this));
     }
     all->addLayout(boxes, 1);
-    all->addLayout(bottom);
 
     QString defaultName;
     m_resolutions = resolutions(m_resources, &defaultName);
@@ -281,7 +266,6 @@ WelcomeDialog::WelcomeDialog(QString const& resourceDirectory, QWidget* parent, 
     connect(createButton, &QPushButton::clicked, this, [this] { create(); });
     connect(openButton, &QPushButton::clicked, this, [this] { openOther(); });
     connect(m_recent, &QListWidget::itemActivated, this, [this](QListWidgetItem* item) { openRecent(m_recent->row(item)); });
-    connect(m_hide, &QCheckBox::toggled, this, [](bool hide) { settings().setValue(QStringLiteral("welcome/hide"), hide); });
 
     m_name->selectAll();
     m_name->setFocus();

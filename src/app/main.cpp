@@ -44,14 +44,10 @@ int main(int argc, char** argv)
     if (args.size() > 1) {
         window.show();
         window.openFile(args[1]);
-    } else if (window.reopenLastProject()) {
-        window.show();
-    } else if (WelcomeDialog::shownAtStartup()) {
+    } else {
         window.onActionShowWelcome();  // shows the window once a scene is made or chosen
         if (!window.isVisible())
             return 0;  // the welcome window was closed: nothing was started
-    } else {
-        window.show();
     }
     return QApplication::exec();
 }

@@ -7,7 +7,6 @@
 #include <QDialog>
 #include <QVector>
 
-class QCheckBox;
 class QComboBox;
 class QLineEdit;
 class QListWidget;
@@ -40,9 +39,6 @@ public:
     QString path() const { return m_path; }
     Resolution resolution() const;
 
-    // Whether the window is to be shown when the program starts.
-    static bool shownAtStartup();
-
     // The sizes that come with the program, then the user's own.
     static QVector<Resolution> resolutions(QString const& resourceDirectory, QString* defaultName = nullptr);
 
@@ -70,5 +66,4 @@ private:
     QLineEdit* m_fps;
     QLineEdit* m_fov;
     QListWidget* m_recent;
-    QCheckBox* m_hide;
 };

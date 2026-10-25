@@ -271,9 +271,3 @@ void MainWindow::saveProjectUi()
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
         statusBar()->showMessage(tr("Could not save the project layout: %1").arg(file.errorString()), 8000);
 }
-
-bool MainWindow::reopenLastProject()
-{
-    QString const path = settings().value(QStringLiteral("window/lastProject")).toString();
-    return !path.isEmpty() && QFileInfo::exists(path) && openFile(path);
-}

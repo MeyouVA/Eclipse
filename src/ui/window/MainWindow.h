@@ -56,7 +56,6 @@ public:
     ~MainWindow() override;
 
     bool openFile(QString const& path);
-    bool reopenLastProject();
     QJsonObject projectUiState() const;
     void restoreProjectUi(QJsonObject const& state);
     // The frames playback runs between (the first is 0).  `stop` -1 is the end of the scene.
