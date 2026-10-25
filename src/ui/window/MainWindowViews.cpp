@@ -216,7 +216,7 @@ void MainWindow::createViews()
             m_document->setNodePos(layer(), graphPos);
         m_document->endMacro();
     });
-    addView(tr("Node View"), QStringLiteral("NodeViewDock"), m_nodeView, Qt::RightDockWidgetArea);
+    addView(tr("Node View"), QStringLiteral("NodeViewDock"), viewPanel(m_actions->createToolbar(QStringLiteral("NodeViewToolbar"), this), m_nodeView, this), Qt::RightDockWidgetArea);
 
     // Views dropped on one another share a frame, with a tab each.
     setDockNestingEnabled(true);

@@ -30,6 +30,8 @@ NodeView::NodeView(Document* document, QWidget* parent) : QWidget(parent), m_doc
             m_graphGroup = 0;
         if (m_graphNode && !g.node(m_graphNode))
             m_graphNode = 0;
+        m_graphPicked.removeIf([&](int id) { auto const* node = g.node(id); return !node || node->group != m_graphGroup; });
+        m_layerPicked.removeIf([&](int id) { return m_document->scene().layerIndex(id) < 0; });
         update();
     });
     m_search = new QLineEdit(this);
@@ -49,6 +51,25 @@ void NodeView::resizeEvent(QResizeEvent*)
 int NodeView::find(QString const& text)
 {
     Scene const& scene = m_document->scene();
+    if (graphMode()) {
+        QString const wanted = text.trimmed();
+        if (wanted.isEmpty())
+            return -1;
+        int const count = int(scene.graph.nodes.size());
+        int const start = scene.graph.nodeIndex(m_graphNode);
+        for (int offset = 1; offset <= count; ++offset) {
+            GraphNode const& node = scene.graph.nodes[(std::max(-1, start) + offset) % count];
+            if (!graphNodeName(node).contains(wanted, Qt::CaseInsensitive))
+                continue;
+            int const id = node.id, group = node.group;
+            if (group != m_graphGroup)
+                enterGraphGroup(group);
+            pickGraphNode(id);
+            onActionCentreOnSelection();
+            return id;
+        }
+        return -1;
+    }
     int const n = int(scene.layers.size());
     QString const wanted = text.trimmed();
     if (wanted.isEmpty() || n == 0)
@@ -58,6 +79,12 @@ int NodeView::find(QString const& text)
         if (!scene.layers[i].name.contains(wanted, Qt::CaseInsensitive))
             continue;
         m_layer = i;
+        int group = -1;
+        for (int up = scene.parentIndex(i), guard = 0; up >= 0 && guard < 256 && group < 0; up = scene.parentIndex(up), ++guard)
+            if (scene.layers[up].kind == Layer::Group)
+                group = up;
+        m_groupId = group < 0 ? 0 : scene.layers[group].id;
+        m_layerPicked = {scene.layers[i].id};
         // Its node in the middle of the view.
         QPointF const middle = positions()[i] + QPointF(kNodeWidth / 2.0, kNodeHeight / 2.0);
         m_pan = QPointF(width() / 2.0, height() / 2.0) - middle * m_zoom;
@@ -100,7 +127,9 @@ void NodeView::setCurrentCell(int layer, int frame)
         m_layer = layer;
         // A layer chosen elsewhere that is not on show: the view goes to the level it is on.
         Scene const& scene = m_document->scene();
-        if (layer >= 0 && layer < scene.layers.size() && layer != enteredGroup() && !nodeShown(layer)) {
+        if (layer >= 0 && layer < scene.layers.size() && !m_layerPicked.contains(scene.layers[layer].id))
+            m_layerPicked = {scene.layers[layer].id};
+        if (!graphMode() && layer >= 0 && layer < scene.layers.size() && layer != enteredGroup() && !nodeShown(layer)) {
             int group = -1;
             for (int up = scene.parentIndex(layer), guard = 0; up >= 0 && guard < 256 && group < 0; up = scene.parentIndex(up), ++guard)
                 if (scene.layers[up].kind == Layer::Group)
@@ -138,12 +167,18 @@ void NodeView::enterGroup(int layer)
     if (layer < 0 || layer >= scene.layers.size() || scene.layers[layer].kind != Layer::Group)
         return;
     m_groupId = scene.layers[layer].id;
+    m_layerPicked.clear();
     m_cable = -1;
     onActionResetView();
 }
 
 void NodeView::leaveGroup()
 {
+    if (graphMode()) {
+        GraphNode const* const node = m_document->scene().graph.node(m_graphGroup);
+        enterGraphGroup(node ? node->group : 0);
+        return;
+    }
     Scene const& scene = m_document->scene();
     int const inside = enteredGroup();
     if (inside < 0) {
@@ -155,13 +190,20 @@ void NodeView::leaveGroup()
         if (scene.layers[up].kind == Layer::Group)
             group = up;
     m_groupId = group >= 0 ? scene.layers[group].id : 0;
+    m_layerPicked.clear();
     m_cable = -1;
     onActionResetView();
 }
 
 void NodeView::onActionEnterGroup()
 {
-    enterGroup(m_layer);
+    if (graphMode()) {
+        GraphNode const* const node = m_document->scene().graph.node(m_graphNode);
+        if (node && node->kind == GraphNode::Group)
+            enterGraphGroup(node->id);
+    } else {
+        enterGroup(m_layer);
+    }
 }
 
 QString NodeView::pathText() const
@@ -363,7 +405,8 @@ QRectF NodeView::graphBounds() const
 
 QRectF NodeView::navigatorRect() const
 {
-    return QRectF(width() - 136.0, 6.0, 130.0, 84.0);
+    return QRectF(m_navigatorCorner == 0 || m_navigatorCorner == 3 ? 6.0 : width() - 136.0,
+                  m_navigatorCorner >= 2 ? std::max(6.0, height() - m_search->height() - 102.0) : 6.0, 130.0, 84.0);
 }
 
 QPointF NodeView::navigatorPoint(QPointF graph) const
@@ -398,6 +441,7 @@ void NodeView::zoomBy(double factor)
 
 void NodeView::onActionResetPan()
 {
-    m_pan = QPointF(width() / 2.0, height() / 2.0) - graphBounds().center() * m_zoom;
+    m_pan = QPointF(width() / 2.0, height() / 2.0) - (graphMode() ? graphLevelBounds() : graphBounds()).center() * m_zoom;
+    m_centred = true;
     update();
 }

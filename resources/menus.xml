@@ -1519,13 +1519,17 @@
  </menu>
 
  <menu id="menu.nodeView" text="Node View Menu">
+  <item id="EditSelectAll"/>
+  <item id="EditDeselectAll"/>
+  <item id="NodeViewInvertSelection" text="Invert Selection" responder="nodeView" slot="onActionInvertSelection()"/>
+  <item id="EditDelete"/>
+  <separator/>
   <menu id="NodeViewInsert" text="Insert">
    <item id="InsertDrawing"/>
    <item id="InsertPeg"/>
    <item id="InsertParentPeg"/>
    <item id="InsertCamera"/>
   </menu>
-  <item id="DeleteLayers"/>
   <item id="RenameLayer"/>
   <separator/>
   <item id="AttachLayer"/>
@@ -1535,6 +1539,19 @@
   <item id="NodeViewExitGroup" icon="view/groupexit" text="Exit Group" responder="nodeView" slot="onActionExitGroup()"/>
   <separator/>
   <item id="NodeViewResetView" icon="view/resetview" text="Reset View" responder="nodeView" slot="onActionResetView()"/>
+  <item id="NodeViewCentreOnSelection" icon="timeline/viewselected" text="Centre on Selection (O)" responder="nodeView" slot="onActionCentreOnSelection()"/>
+  <item id="NodeViewShowAll" text="Show All Nodes" responder="nodeView" slot="onActionResetView()"/>
+  <menu id="NodeViewNavigator" text="Navigator">
+   <item id="NodeViewNavigatorHide" text="Hide Navigator" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="hide"/>
+   <item id="NodeViewNavigatorTopLeft" text="Top Left" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="0"/>
+   <item id="NodeViewNavigatorTopRight" text="Top Right" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="1"/>
+   <item id="NodeViewNavigatorBottomRight" text="Bottom Right" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="2"/>
+   <item id="NodeViewNavigatorBottomLeft" text="Bottom Left" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="3"/>
+  </menu>
+  <menu id="NodeViewCableStyle" text="Cable Style">
+   <item id="NodeViewCableLine" text="Line" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="line"/>
+   <item id="NodeViewCableBezier" text="Bezier" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="bezier"/>
+  </menu>
   <separator/>
   <item id="NodeViewWireGraph" text="Wire the Graph by Hand" responder="nodeView" slot="onActionWireGraph()"/>
  </menu>

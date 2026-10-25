@@ -285,6 +285,7 @@ void NodeView::enterGraphGroup(int id)
     m_graphGroup = n && n->kind == GraphNode::Group ? id : 0;
     m_graphNode = 0;
     m_graphCable = -1;
+    m_graphPicked.clear();
     resetGraphView();
 }
 
@@ -341,6 +342,7 @@ void NodeView::onActionStackLayers()
     m_graphGroup = 0;
     m_graphNode = 0;
     m_graphCable = -1;
+    m_graphPicked.clear();
     m_document->setGraph(NodeGraph(), tr("Stack the Layers Again"));
     update();
 }

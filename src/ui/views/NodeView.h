@@ -12,10 +12,12 @@
 #include <QRectF>
 #include <QVector>
 #include <QWidget>
+#include <QJsonObject>
 #include <algorithm>
 
 class Document;
 class QLineEdit;
+class QMenu;
 struct GraphNode;
 
 class ECLIPSE_UI_API NodeView : public QWidget {
@@ -48,7 +50,12 @@ public:
     QPointF graphPoint(QPointF widgetPos) const { return toGraph(widgetPos); }
     double zoom() const { return m_zoom; }
     QPointF pan() const { return m_pan; }
-    void restoreView(double zoom, QPointF pan) { m_zoom = std::clamp(zoom, 0.1, 4.0); m_pan = pan; update(); }
+    void restoreView(double zoom, QPointF pan) { m_zoom = std::clamp(zoom, 0.1, 4.0); m_pan = pan; m_centred = true; update(); }
+    QJsonObject viewState() const;
+    void restoreViewState(QJsonObject const& state);
+    QVector<int> pickedLayers() const;
+    void setNavigatorCorner(int corner);
+    int navigatorCorner() const { return m_navigatorCorner; }
     // Larger or smaller about the middle of the view.
     void zoomBy(double factor);
     // Preferences: the small map in the corner shown or not; cables drawn straight from port to port, or as curves.
@@ -88,6 +95,12 @@ public:
     int groupGraphNodes(QVector<int> const& ids);
 
 public slots:
+    void onActionNavigator(QString const& position);
+    void onActionCableStyle(QString const& style);
+    void selectAll();
+    void deselectAll();
+    void onActionInvertSelection();
+    void onActionCentreOnSelection();
     void setCurrentCell(int layer, int frame);
     void deleteSelection();
     void onActionResetView();
@@ -112,6 +125,10 @@ signals:
     void nodeDropped(QString const& what, QPointF graphPos);
 
 protected:
+    bool event(QEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
     void paintEvent(QPaintEvent*) override;
     void resizeEvent(QResizeEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
@@ -140,6 +157,15 @@ private:
     bool m_navigator = true;
     bool m_straight = false;
     bool m_doubleClickEdits = false;
+    int m_navigatorCorner = 2;
+    bool m_spacePan = false;
+    QVector<int> m_layerPicked;
+    QVector<int> m_boxBefore;
+    Qt::KeyboardModifiers m_boxModifiers = Qt::NoModifier;
+    void startBoxSelection(QMouseEvent* event);
+    void updateBoxSelection();
+    void paintBoxSelection(QPainter& painter);
+    void movePickedNodes(QPointF delta);
 
     Document* m_document;
     QLineEdit* m_search = nullptr;     // along the bottom: type a name, Enter goes to the next node of it
@@ -150,13 +176,14 @@ private:
     QPointF m_pan = QPointF(40, 150);
     bool m_centred = false;   // the graph is brought into view the first time it is shown
 
-    enum Drag { DragNone, DragNode, DragCable, DragPan, DragWire, DragGraphNode, DragPeg } m_drag = DragNone;
+    enum Drag { DragNone, DragNode, DragCable, DragPan, DragWire, DragGraphNode, DragPeg, DragBox, DragDisconnect } m_drag = DragNone;
 
     // The graph, wired by hand: drawn and worked with in the widget.
     int m_graphGroup = 0;
     int m_graphNode = 0;
     int m_graphCable = -1;
     int m_wireFrom = 0, m_wireFromPort = 0;     // a cable being pulled out of this output
+    bool m_wireReverse = false;
     int m_unplugged = -1;                       // a cable taken off an input to be plugged in elsewhere (its place)
     QVector<int> m_graphPicked;                 // the nodes picked together
     int m_pegFrom = 0, m_pegChild = 0;          // a parenting cable pulled out of this node (taken off this child)
@@ -181,6 +208,7 @@ private:
     void deleteGraphSelection();
     void editGraphNode(int id);
     void resetGraphView();
+    void addNavigationMenu(QMenu& menu);
     int m_dragLayer = -1;
     QPointF m_pressPos;       // widget
     QPointF m_dragNow;        // widget

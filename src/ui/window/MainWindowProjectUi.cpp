@@ -112,7 +112,7 @@ QJsonObject MainWindow::projectUiState() const
         views[widgetKey(view, this)] = QJsonObject{{"zoom", view->zoom()}, {"x", view->pan().x()}, {"y", view->pan().y()},
                                                  {"yaw", view->yaw()}, {"pitch", view->pitch()}};
     for (NodeView* view : findChildren<NodeView*>())
-        views[widgetKey(view, this)] = QJsonObject{{"zoom", view->zoom()}, {"x", view->pan().x()}, {"y", view->pan().y()}};
+        views[widgetKey(view, this)] = view->viewState();
     for (QDockWidget* dock : m_docks)
         titles[dock->objectName()] = dock->windowTitle();
     for (QAction* action : m_actions->findChildren<QAction*>())
@@ -205,7 +205,7 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
     for (NodeView* view : findChildren<NodeView*>()) {
         QJsonObject const v = views[widgetKey(view, this)].toObject();
         if (!v.isEmpty())
-            view->restoreView(v["zoom"].toDouble(1), QPointF(v["x"].toDouble(), v["y"].toDouble()));
+            view->restoreViewState(v);
     }
     if (QAction* tool = m_actions->action(state["tool"].toString()); tool && tool->isEnabled())
         tool->trigger();

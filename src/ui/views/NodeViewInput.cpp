@@ -32,8 +32,9 @@ void NodeView::paintEvent(QPaintEvent*)
     }
     QVector<QPointF> pos = positions();
     // A node being dragged is drawn where the pointer has it, cables and all.
-    if (m_drag == DragNode && m_moved && m_dragLayer >= 0 && m_dragLayer < pos.size())
-        pos[m_dragLayer] = m_nodeStart + (m_dragNow - m_pressPos) / m_zoom;
+    if (m_drag == DragNode && m_moved)
+        for (int layer : pickedLayers())
+            pos[layer] += (m_dragNow - m_pressPos) / m_zoom;
     auto rectOf = [&](QPointF graph) { return QRectF(toWidget(graph), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom)); };
     auto cable = [&](QPointF from, QPointF to, QColor const& color, double width) {
         QVector<QPointF> const pts = cablePoints(from, to);
@@ -126,7 +127,7 @@ void NodeView::paintEvent(QPaintEvent*)
         QRectF const r = rectOf(pos[l]);
         QColor const color = layer.kind == Layer::Peg ? InterfaceColours::get("nodePeg") : layer.kind == Layer::Camera ? InterfaceColours::get("nodeCamera")
                              : layer.kind == Layer::Sound ? InterfaceColours::get("nodeSound") : layer.kind == Layer::Group ? InterfaceColours::get("nodeGroup") : InterfaceColours::get("nodeDrawing");
-        node(r, layer.name, color, l == m_layer, !layer.visible);
+        node(r, layer.name, color, m_layerPicked.contains(layer.id), !layer.visible);
         if (layer.kind == Layer::Group) {
             // A group can be gone into: a small arrow at its right end says so.
             QPointF const tip(r.right() - 10 * m_zoom, r.center().y() + 4 * m_zoom);
@@ -200,10 +201,16 @@ void NodeView::paintEvent(QPaintEvent*)
         p.drawRect(QRectF(navigatorPoint(toGraph(QPointF(0, 0))), navigatorPoint(toGraph(QPointF(width(), height())))));
         p.setClipping(false);
     }
+    paintBoxSelection(p);
 }
 
 void NodeView::mousePressEvent(QMouseEvent* event)
 {
+    if (event->button() == Qt::LeftButton && m_spacePan) {
+        m_pressPos = m_dragNow = event->position();
+        m_drag = DragPan;
+        return;
+    }
     if (graphMode()) {
         graphPress(event);
         return;
@@ -251,6 +258,17 @@ void NodeView::mousePressEvent(QMouseEvent* event)
             m_document->setLayerVisible(hit, !scene.layers[hit].visible);
             return;
         }
+        int const id = scene.layers[hit].id;
+        if (event->modifiers() & Qt::ControlModifier) {
+            if (m_layerPicked.contains(id))
+                m_layerPicked.removeAll(id);
+            else
+                m_layerPicked << id;
+            update();
+            return;
+        }
+        if (!m_layerPicked.contains(id))
+            m_layerPicked = {id};
         emit layerPicked(hit);
         if (event->button() == Qt::LeftButton) {
             m_drag = DragNode;
@@ -262,7 +280,7 @@ void NodeView::mousePressEvent(QMouseEvent* event)
     }
     m_cable = cableAt(m_pressPos);
     if (m_cable < 0 && event->button() == Qt::LeftButton)
-        m_drag = DragPan;  // empty space: move the view
+        startBoxSelection(event);
     update();
 }
 
@@ -279,6 +297,8 @@ void NodeView::mouseMoveEvent(QMouseEvent* event)
         m_moved = m_moved || (now - m_pressPos).manhattanLength() >= 4.0;
     }
     m_dragNow = now;
+    if (m_drag == DragBox)
+        updateBoxSelection();
     if (m_drag != DragNone)
         update();
 }
@@ -293,16 +313,20 @@ void NodeView::mouseReleaseEvent(QMouseEvent* event)
     int const layer = m_dragLayer;
     m_drag = DragNone;
     m_dragLayer = -1;
+    if (drag == DragBox) {
+        m_dragNow = event->position();
+        updateBoxSelection();
+    }
     if (drag == DragNode && m_moved) {
         Scene const& scene = m_document->scene();
         // Dropped on a group: it goes into the group.  Dropped on the way along the top (inside a group): out to the level above.
         int const onto = nodeAt(event->position());
-        if (onto >= 0 && onto != layer && scene.layers[onto].kind == Layer::Group && scene.parentIndex(layer) != onto) {
+        if (pickedLayers().size() == 1 && onto >= 0 && onto != layer && scene.layers[onto].kind == Layer::Group && scene.parentIndex(layer) != onto) {
             m_document->setParent(layer, onto);
         } else if (enteredGroup() >= 0 && pathRect().contains(event->position())) {
             m_document->setParent(layer, scene.parentIndex(enteredGroup()));
         } else {
-            m_document->setNodePos(layer, m_nodeStart + (event->position() - m_pressPos) / m_zoom);
+            movePickedNodes((event->position() - m_pressPos) / m_zoom);
         }
     } else if (drag == DragCable) {
         // Dropped on a node: that layer is attached to the one the cable came from.
@@ -360,5 +384,16 @@ void NodeView::deleteSelection()
         m_document->setParent(child, -1);
         return;
     }
-    m_document->removeLayer(m_layer);
+    QVector<int> layers = pickedLayers();
+    std::sort(layers.begin(), layers.end(), std::greater<int>());
+    if (!layers.isEmpty()) {
+        QVector<int> ids;
+        for (int layer : layers)
+            ids << m_document->scene().layers[layer].id;
+        m_document->beginMacro(tr("Delete Nodes"));
+        for (int id : ids)
+            if (int const layer = m_document->scene().layerIndex(id); layer >= 0)
+                m_document->removeLayer(layer);
+        m_document->endMacro();
+    }
 }

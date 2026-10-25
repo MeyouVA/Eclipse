@@ -28,7 +28,8 @@ void NodeView::graphPress(QMouseEvent* event)
 {
     m_pressPos = m_dragNow = event->position();
     m_moved = false;
-    if (event->button() == Qt::MiddleButton) {
+    m_wireReverse = false;
+    if (event->button() == Qt::MiddleButton || (event->button() == Qt::LeftButton && m_spacePan)) {
         m_drag = DragPan;
         return;
     }
@@ -94,6 +95,13 @@ void NodeView::graphPress(QMouseEvent* event)
                 update();
                 return;
             }
+        m_drag = DragWire;
+        m_wireFrom = port.node;
+        m_wireFromPort = port.port;
+        m_unplugged = -1;
+        m_wireReverse = true;
+        update();
+        return;
     }
     if (int const hit = graphNodeAt(m_pressPos)) {
         if (event->modifiers() & Qt::ControlModifier) {
@@ -109,12 +117,10 @@ void NodeView::graphPress(QMouseEvent* event)
     }
     if (int const c = graphCableAt(m_pressPos); c >= 0) {
         pickGraphCable(c);
+        m_drag = DragDisconnect;
         return;
     }
-    m_graphNode = 0;
-    m_graphCable = -1;
-    m_graphPicked.clear();
-    m_drag = DragPan;     // empty space: move the view
+    startBoxSelection(event);
     update();
 }
 
@@ -126,6 +132,8 @@ void NodeView::graphMove(QMouseEvent* event)
     else if (m_drag == DragGraphNode)
         m_moved = m_moved || (now - m_pressPos).manhattanLength() >= 4.0;
     m_dragNow = now;
+    if (m_drag == DragBox)
+        updateBoxSelection();
     if (m_drag != DragNone)
         update();
 }
@@ -135,6 +143,22 @@ void NodeView::graphRelease(QMouseEvent* event)
     Drag const drag = m_drag;
     m_drag = DragNone;
     QPointF const at = event->position();
+    if (drag == DragWire && m_wireReverse) {
+        m_wireReverse = false;
+        GraphPort const port = graphPortAt(at);
+        if (port.node && port.out)
+            connectGraph(port.node, port.port, m_wireFrom, m_wireFromPort);
+        update();
+        return;
+    }
+    if (drag == DragDisconnect && QLineF(m_pressPos, at).length() >= 4 && !graphNodeAt(at) && graphCableAt(at) < 0) {
+        deleteGraphSelection();
+        return;
+    }
+    if (drag == DragBox) {
+        m_dragNow = at;
+        updateBoxSelection();
+    }
     if (drag == DragGraphNode && m_moved) {
         NodeGraph g = m_document->scene().graph;
         QVector<int> moving = m_graphPicked;
@@ -150,7 +174,8 @@ void NodeView::graphRelease(QMouseEvent* event)
         GraphNode const* const from = g.node(m_pegFrom);
         GraphNode const* const onto = g.node(graphNodeAt(at));
         int const parent = from ? scene.layerIndex(from->layer) : -1;
-        int const was = m_pegChild ? scene.layerIndex(g.node(m_pegChild)->layer) : -1;
+        GraphNode const* const child = g.node(m_pegChild);
+        int const was = child ? scene.layerIndex(child->layer) : -1;
         int const target = onto && onto->kind == GraphNode::LayerNode && onto->id != m_pegFrom ? scene.layerIndex(onto->layer) : -1;
         m_pegChild = 0;
         if (target >= 0 && parent >= 0) {
@@ -251,7 +276,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
     NodeGraph const& g = scene.graph;
     QPointF const graphPos = toGraph(widgetPos);
     int const hit = graphNodeAt(widgetPos);
-    if (hit)
+    if (hit && !m_graphPicked.contains(hit))
         pickGraphNode(hit);
     QMenu menu(this);
     QMenu* const add = menu.addMenu(tr("Add Node"));
@@ -340,6 +365,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
             enterGraphGroup(at ? at->group : 0);
         });
     connect(menu.addAction(tr("Reset View")), &QAction::triggered, this, [this] { resetGraphView(); });
+    addNavigationMenu(menu);
     connect(menu.addAction(tr("Stack the Layers Again")), &QAction::triggered, this, &NodeView::onActionStackLayers);
     menu.exec(globalPos);
 }

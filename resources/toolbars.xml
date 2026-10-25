@@ -4,6 +4,13 @@
      (right-click the toolbar, Customize).  `customizable="false"` fixes a toolbar.
      A multibutton shows one of its tools and offers the others in a menu. -->
 <toolbars>
+ <toolbar id="NodeViewToolbar" text="Node View">
+  <item id="NodeViewCentreOnSelection" toolbarText="Centre"/>
+  <item id="NodeViewShowAll" toolbarText="Show All"/>
+  <separator/>
+  <item id="NodeViewEnterGroup" toolbarText="Enter Group"/>
+  <item id="NodeViewExitGroup" toolbarText="Exit Group"/>
+ </toolbar>
 
  <toolbar id="FileToolbar" text="File">
   <item id="New" toolbarText="New"/>

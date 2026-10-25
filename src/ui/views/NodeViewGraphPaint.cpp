@@ -201,8 +201,12 @@ void NodeView::paintGraphMode(QPainter& p)
         cable(graphOutPort(k.from, k.fromPort) + shift(k.from), graphInPort(k.to, k.toPort) + shift(k.to), c == m_graphCable ? picked : imageCable,
               c == m_graphCable ? 2.6 : 1.8);
     }
-    if (m_drag == DragWire)
-        cable(graphOutPort(m_wireFrom, m_wireFromPort), m_dragNow, picked, 1.8);
+    if (m_drag == DragWire) {
+        if (m_wireReverse)
+            cable(m_dragNow, graphInPort(m_wireFrom, m_wireFromPort), picked, 1.8);
+        else
+            cable(graphOutPort(m_wireFrom, m_wireFromPort), m_dragNow, picked, 1.8);
+    }
     // ---- the parenting of the layers: from a node's right end to the left end of each node that hangs from it ----
     {
         QPen pegPen(QColor(230, 160, 60), 1.6, Qt::DashLine);
@@ -303,6 +307,7 @@ void NodeView::paintGraphMode(QPainter& p)
         p.drawRect(QRectF(onMap(toGraph(QPointF(0, 0))), onMap(toGraph(QPointF(width(), height())))));
         p.setClipping(false);
     }
+    paintBoxSelection(p);
     // Inside a group: the way here along the top; a click on it goes out one level.
     if (QRectF const path = graphPathRect(); !path.isNull()) {
         QStringList names;
