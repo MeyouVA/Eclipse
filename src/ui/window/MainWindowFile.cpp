@@ -15,6 +15,7 @@
 #include <QProgressDialog>
 #include <QSettings>
 #include <QSpinBox>
+#include <QCheckBox>
 #include <QJsonDocument>
 #include "model/scene/AtomicFile.h"
 
@@ -275,10 +276,17 @@ void MainWindow::onActionExportMovie()
     codec->setObjectName(QStringLiteral("MovieCodec"));
     codec->addItem(tr("H.264 (plays everywhere)"), 0);
     codec->addItem(tr("H.265 / HEVC (smaller file)"), 1);
-    if (movieKind == QLatin1String("mov"))
+    if (movieKind == QLatin1String("mov")) {
         codec->addItem(tr("ProRes 422 HQ (for editing)"), 2);
+        codec->addItem(tr("ProRes 4444 (supports transparency)"), 3);
+        codec->setCurrentIndex(codec->findData(3));
+    }
     codec->setEnabled(movieKind == QLatin1String("mp4") || movieKind == QLatin1String("mov"));
-    connect(codec, &QComboBox::currentIndexChanged, quality, [codec, quality] { quality->setEnabled(codec->currentData().toInt() != 2); });
+    QCheckBox* const transparent = new QCheckBox(tr("Transparent background"), &dialog);
+    transparent->setObjectName(QStringLiteral("MovieTransparentBackground"));
+    transparent->setChecked(movieKind == QLatin1String("mov"));
+    transparent->setVisible(movieKind == QLatin1String("mov"));
+    transparent->setToolTip(tr("Keeps empty areas transparent and preserves layer translucency."));
     QComboBox* const speed = new QComboBox(&dialog);
     speed->setObjectName(QStringLiteral("MovieSpeed"));
     speed->addItem(tr("Fast"), 0);
@@ -292,12 +300,22 @@ void MainWindow::onActionExportMovie()
         audio->addItem(tr("%1 kb/s").arg(kbps), kbps);
     audio->setCurrentIndex(1);
     audio->setEnabled(movieKind != QLatin1String("gif"));
+    auto codecChanged = [codec, quality, speed, audio, transparent, movieKind] {
+        bool const prores = movieKind == QLatin1String("mov") && codec->currentData().toInt() >= 2;
+        quality->setEnabled(!prores && movieKind != QLatin1String("gif"));
+        speed->setEnabled(!prores && movieKind != QLatin1String("gif"));
+        audio->setEnabled(!prores && movieKind != QLatin1String("gif"));
+        transparent->setEnabled(movieKind == QLatin1String("mov") && codec->currentData().toInt() == 3);
+    };
+    connect(codec, &QComboBox::currentIndexChanged, &dialog, codecChanged);
+    codecChanged();
     form->addRow(tr("From frame"), first);
     form->addRow(tr("To frame"), last);
     form->addRow(tr("Size"), size);
     form->addRow(tr("Custom size"), custom);
     form->addRow(tr("Quality"), quality);
     form->addRow(tr("Codec"), codec);
+    form->addRow(transparent);
     form->addRow(tr("Encoding"), speed);
     form->addRow(tr("Sound"), audio);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -316,6 +334,7 @@ void MainWindow::onActionExportMovie()
     choices.codec = codec->currentData().toInt();
     choices.speed = speed->currentData().toInt();
     choices.audioKbps = audio->currentData().toInt();
+    choices.transparentBackground = transparent->isEnabled() && transparent->isChecked();
     exportMovieTo(path, &choices);
 }
 
@@ -332,6 +351,7 @@ void MainWindow::exportMovieTo(QString const& path, MovieChoices const* choices)
         options.codec = choices->codec;
         options.speed = choices->speed;
         options.audioKbps = choices->audioKbps;
+        options.transparentBackground = choices->transparentBackground;
     }
     QProgressDialog progress(tr("Exporting movie..."), tr("Stop"), 0, scene.frameCount(), this);
     progress.setWindowModality(Qt::WindowModal);

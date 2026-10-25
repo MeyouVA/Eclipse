@@ -17,11 +17,12 @@ struct Options {
     int last = -1;          // the last; -1: to the end of the scene
     double scale = 1.0;     // the size of the picture, as a share of the scene's
     int quality = 18;       // for the movies that have one: lower is finer (18 fine, 23 medium, 28 small)
-    // .mp4 and .mov: the video codec - 0 H.264, 1 H.265 (HEVC), 2 ProRes 422 HQ (a .mov only; it has no quality).
-    int codec = 0;
+    // Automatic: ProRes 4444 for MOV, H.264 elsewhere; explicit codecs are 0 H.264, 1 HEVC, 2 ProRes 422 HQ, 3 ProRes 4444.
+    int codec = -1;
     // How long the encoder takes over it: 0 fast, 1 medium, 2 slow (a smaller file for the same quality).
     int speed = 1;
     int audioKbps = 192;    // the sound's bit rate
+    bool transparentBackground = false;
 };
 
 // What ffmpeg is told about the encoding of a movie of that kind (by its extension), with sound or without.

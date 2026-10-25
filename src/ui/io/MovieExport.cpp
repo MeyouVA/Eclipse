@@ -26,6 +26,8 @@ QStringList encoderArguments(QString const& suffix, Options const& options, bool
     QString const audio = QString::number(std::clamp(options.audioKbps, 32, 512)) + QLatin1Char('k');
     static char const* const kSpeeds[3] = {"veryfast", "medium", "slow"};
     QString const speed = QLatin1String(kSpeeds[std::clamp(options.speed, 0, 2)]);
+    int const codec = options.codec < 0 ? (kind == QLatin1String("mov") ? 3 : 0) : options.codec;
+    bool const alpha = kind == QLatin1String("mov") && (codec == 3 || options.transparentBackground);
     if (kind == QLatin1String("gif")) {
         args << QStringLiteral("-vf") << QStringLiteral("split[a][b];[a]palettegen[p];[b][p]paletteuse");
         return args;
@@ -39,9 +41,16 @@ QStringList encoderArguments(QString const& suffix, Options const& options, bool
             args << QStringLiteral("-c:a") << QStringLiteral("libopus") << QStringLiteral("-b:a") << audio;
         return args;
     }
-    // The others want even sizes.
+    if (alpha) {
+        args << QStringLiteral("-c:v") << QStringLiteral("prores_ks") << QStringLiteral("-profile:v") << QStringLiteral("4")
+             << QStringLiteral("-pix_fmt") << QStringLiteral("yuva444p10le") << QStringLiteral("-alpha_bits") << QStringLiteral("16");
+        if (sound)
+            args << QStringLiteral("-c:a") << QStringLiteral("pcm_s16le");
+        return args;
+    }
+    // Subsampled video formats need even dimensions.
     args << QStringLiteral("-vf") << QStringLiteral("pad=ceil(iw/2)*2:ceil(ih/2)*2");
-    if (options.codec == 2 && kind == QLatin1String("mov")) {
+    if (codec == 2 && kind == QLatin1String("mov")) {
         // ProRes 422 HQ: for editing further; it keeps everything, and has no quality to choose.
         args << QStringLiteral("-c:v") << QStringLiteral("prores_ks") << QStringLiteral("-profile:v") << QStringLiteral("3")
              << QStringLiteral("-pix_fmt") << QStringLiteral("yuv422p10le");
@@ -49,7 +58,7 @@ QStringList encoderArguments(QString const& suffix, Options const& options, bool
             args << QStringLiteral("-c:a") << QStringLiteral("pcm_s16le");
         return args;
     }
-    if (options.codec == 1) {
+    if (codec == 1) {
         // H.265: the same picture in about half the file; tagged so that players on every system take it.
         args << QStringLiteral("-c:v") << QStringLiteral("libx265") << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
              << QStringLiteral("-crf") << QString::number(std::clamp(quality + 4, 0, 51)) << QStringLiteral("-preset") << speed
@@ -79,6 +88,14 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     // The sound goes to ffmpeg as a file beside the frames, which go down a pipe.
     QTemporaryDir scratch;
     QString const suffix = QFileInfo(path).suffix().toLower();
+    if (options.transparentBackground && suffix != QLatin1String("mov"))
+        return fail(QStringLiteral("A transparent movie background requires MOV export."));
+    bool const alpha = suffix == QLatin1String("mov") && (options.codec < 0 || options.codec == 3 || options.transparentBackground);
+    Scene rendered = scene;
+    if (options.transparentBackground)
+        rendered.background = Qt::transparent;
+    else if (!alpha && suffix != QLatin1String("gif"))
+        rendered.background.setAlpha(255);
     QString const generated = scratch.filePath(QStringLiteral("output.") + suffix);
     if (!scratch.isValid())
         return fail(QStringLiteral("No temporary folder for the export."));
@@ -118,11 +135,12 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     for (int f = first; f <= last; ++f) {
         if (progress && !progress(f))
             return abandon(QStringLiteral("Stopped."));
+        image.fill(Qt::transparent);
         {
             QPainter painter(&image);
             painter.setRenderHint(QPainter::Antialiasing, true);
             painter.scale(double(wide) / scene.width, double(high) / scene.height);
-            Canvas::paintFrame(painter, scene, f);
+            Canvas::paintFrame(painter, rendered, f);
         }
         // The lines of an image may be padded: send them one by one.
         for (int y = 0; y < image.height(); ++y)
