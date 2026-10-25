@@ -12,8 +12,50 @@ CellBlock CellBlock::reversed() const
     CellBlock out = *this;
     for (Row& row : out.rows) {
         std::reverse(row.cells.begin(), row.cells.end());
-        for (Keyframe& key : row.keys)
+        QVector<Keyframe> const original = row.keys;
+        Layer source;
+        source.keys = original;
+        for (int i = 0; i < row.keys.size(); ++i) {
+            Keyframe& key = row.keys[i];
             key.frame = frames - 1 - key.frame;
+            std::swap(key.easeIn, key.easeOut);
+            std::swap(key.liftIn, key.liftOut);
+            key.curves.clear();
+            for (int value = 0; value < Driver::ValueCount; ++value) {
+                ValueCurve curve = source.curveAt(value, i);
+                std::swap(curve.in, curve.out);
+                curve.in.rx() = -curve.in.x();
+                curve.out.rx() = -curve.out.x();
+                if (i > 0)
+                    curve.after = source.curveAt(value, i - 1).after;
+                key.setCurve(curve);
+            }
+            if (i > 0) {
+                key.tween = original[i - 1].tween;
+                key.controls = original[i - 1].controls;
+                key.controlsZ = original[i - 1].controlsZ;
+                std::reverse(key.controls.begin(), key.controls.end());
+                std::reverse(key.controlsZ.begin(), key.controlsZ.end());
+            } else {
+                key.controls.clear();
+                key.controlsZ.clear();
+            }
+        }
+        for (int i = 0; i + 1 < original.size(); ++i) {
+            int parts = original[i].tween ? 0 : original[i].parts;
+            for (ValueCurve const& curve : original[i].curves)
+                if (curve.after == ValueCurve::Held)
+                    parts |= 1 << curve.value;
+            int const at = frames - original[i + 1].frame;
+            if (!parts || at >= frames - 1 - original[i].frame)
+                continue;
+            Keyframe step;
+            step.frame = at;
+            step.parts = parts;
+            step.pose = original[i].pose;
+            step.tween = false;
+            row.keys << step;
+        }
         std::sort(row.keys.begin(), row.keys.end(), [](Keyframe const& a, Keyframe const& b) { return a.frame < b.frame; });
     }
     return out;
@@ -110,6 +152,9 @@ CellBlock Document::copyCells(QVector<int> const& layers, int first, int last) c
             if (key.frame < first || key.frame > last)
                 continue;
             key.frame -= first;
+            for (PointMove& point : key.pose.points)
+                point.drawing = int(seen.indexOf(point.drawing));
+            key.pose.points.removeIf([](PointMove const& point) { return point.drawing < 0; });
             row.keys.push_back(key);
         }
         row.layerName = layer.name;

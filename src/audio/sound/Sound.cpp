@@ -1,6 +1,7 @@
 #include "audio/sound/Sound.h"
 
 #include <QDataStream>
+#include <QCryptographicHash>
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
@@ -121,10 +122,16 @@ static bool readWav(QString const& path, QVector<qint16>& out, QString* error)
 
 std::shared_ptr<SoundData> load(QString const& path, QString* error)
 {
-    static QHash<QString, std::shared_ptr<SoundData>> cache;
+    struct Cached { QByteArray hash; std::shared_ptr<SoundData> data; };
+    static QHash<QString, Cached> cache;
     QString const key = QFileInfo(path).absoluteFilePath();
-    if (auto const found = cache.constFind(key); found != cache.constEnd())
-        return *found;
+    QFile source(key);
+    QCryptographicHash content(QCryptographicHash::Sha256);
+    bool const readable = source.open(QIODevice::ReadOnly) && content.addData(&source);
+    QByteArray const hash = readable ? content.result() : QByteArray();
+    source.close();
+    if (auto const found = cache.constFind(key); readable && found != cache.constEnd() && found->hash == hash)
+        return found->data;
     if (!QFileInfo::exists(key)) {
         if (error)
             *error = QStringLiteral("The sound file is missing: %1").arg(path);
@@ -141,7 +148,7 @@ std::shared_ptr<SoundData> load(QString const& path, QString* error)
             *error = why.isEmpty() ? QStringLiteral("The file holds no sound.") : why;
         return nullptr;
     }
-    cache.insert(key, data);
+    cache.insert(key, Cached{hash, data});
     return data;
 }
 
@@ -154,8 +161,9 @@ QVector<qint16> mix(Scene const& scene)
     bool any = false;
     // Where in the sound a frame of the scene starts.
     auto at = [&scene](double frame) { return qint64(std::llround(frame / scene.fps * SoundData::kRate)); };
-    for (Layer const& layer : scene.layers) {
-        if (layer.kind != Layer::Sound || !layer.visible)
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        Layer const& layer = scene.layers[l];
+        if (layer.kind != Layer::Sound || !scene.enabled(l))
             continue;
         std::shared_ptr<SoundData> const data = load(layer.soundFile);
         if (!data)
@@ -172,8 +180,11 @@ QVector<qint16> mix(Scene const& scene)
     std::function<void(QVector<Layer> const&, QVector<int> const&, int)> inside = [&](QVector<Layer> const& layers, QVector<int> const& shown, int depth) {
         if (depth > Scene::kSymbolDepth)
             return;
-        for (Layer const& layer : layers) {
-            if (!layer.visible)
+        Scene nestedScene = scene;
+        nestedScene.layers = layers;
+        for (int l = 0; l < layers.size(); ++l) {
+            Layer const& layer = layers[l];
+            if (!nestedScene.enabled(l))
                 continue;
             if (layer.kind == Layer::Sound && depth > 0) {
                 std::shared_ptr<SoundData> const data = load(layer.soundFile);

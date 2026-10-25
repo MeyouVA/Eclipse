@@ -13,6 +13,7 @@
 
 #include "audio/sound/Sound.h"
 #include "model/scene/Scene.h"
+#include "model/scene/AtomicFile.h"
 #include "canvas/Canvas.h"
 
 namespace MovieExport {
@@ -78,6 +79,9 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     // The sound goes to ffmpeg as a file beside the frames, which go down a pipe.
     QTemporaryDir scratch;
     QString const suffix = QFileInfo(path).suffix().toLower();
+    QString const generated = scratch.filePath(QStringLiteral("output.") + suffix);
+    if (!scratch.isValid())
+        return fail(QStringLiteral("No temporary folder for the export."));
     bool const gif = suffix == QLatin1String("gif");
     int const first = std::clamp(options.first, 0, scene.frameCount() - 1);
     int const last = options.last < 0 ? scene.frameCount() - 1 : std::clamp(options.last, first, scene.frameCount() - 1);
@@ -97,7 +101,7 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
         args << QStringLiteral("-ss") << QString::number(first / scene.fps, 'f', 4) << QStringLiteral("-t")
              << QString::number((last - first + 1) / scene.fps, 'f', 4) << QStringLiteral("-i") << wav;
     args << encoderArguments(suffix, options, !sound.isEmpty());
-    args << QDir::toNativeSeparators(path);
+    args << QDir::toNativeSeparators(generated);
 
     QProcess process;
     process.setProcessChannelMode(QProcess::SeparateChannels);
@@ -108,7 +112,6 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     auto abandon = [&](QString const& why) {
         process.kill();
         process.waitForFinished(5000);
-        QFile::remove(path);
         return fail(why);
     };
     QImage image(wide, high, QImage::Format_RGBA8888);
@@ -132,7 +135,7 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     process.closeWriteChannel();
     if (!process.waitForFinished(600000) || process.exitCode() != 0)
         return abandon(QStringLiteral("ffmpeg failed: %1").arg(QString::fromLocal8Bit(process.readAllStandardError()).trimmed()));
-    return true;
+    return AtomicFile::replaceFrom(generated, path, error);
 }
 
 }

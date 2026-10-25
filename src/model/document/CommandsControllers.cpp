@@ -130,7 +130,7 @@ static Scene::Controller::State stateAt(Scene const& scene, Scene::Controller co
     Scene::Controller::State state;
     for (int id : c.layers) {
         int const l = scene.layerIndex(id);
-        state.poses.push_back(l >= 0 ? scene.layers[l].poseAt(frame) : Pose());
+        state.poses.push_back(l >= 0 ? scene.poseOf(l, frame) : Pose());
         state.drawings.push_back(l >= 0 && scene.layers[l].holdsDrawings() ? scene.layers[l].drawingAt(frame) : -1);
     }
     return state;

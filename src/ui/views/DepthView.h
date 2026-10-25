@@ -24,6 +24,7 @@ public:
     double depthAt(QPointF widgetPos) const;
     double zoom() const { return m_zoom; }
     QPointF pan() const { return m_pan; }
+    void restoreView(double zoom, QPointF pan) { m_zoom = std::clamp(zoom, 0.2, 40.0); m_pan = pan; update(); }
     void resetView();
     void setAnimationCanvas(Canvas* canvas) { m_canvas = canvas; }
     int currentFrame() const { return m_frame; }

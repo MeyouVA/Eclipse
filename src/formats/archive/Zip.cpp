@@ -138,6 +138,10 @@ QByteArray inflate(QByteArray const& data, bool* ok)
                 break;
             }
             int const length = le16(data, in.pos);
+            if ((length ^ le16(data, in.pos + 2)) != 0xffff) {
+                good = false;
+                break;
+            }
             in.pos += 4;
             if (in.pos + length > data.size()) {
                 good = false;
@@ -215,6 +219,54 @@ QByteArray inflate(QByteArray const& data, bool* ok)
 QHash<QString, QByteArray> read(QByteArray const& archive)
 {
     QHash<QString, QByteArray> files;
+    auto crc32 = [](QByteArray const& bytes) {
+        quint32 crc = 0xffffffffu;
+        for (char byte : bytes) {
+            crc ^= quint8(byte);
+            for (int bit = 0; bit < 8; ++bit)
+                crc = (crc >> 1) ^ ((crc & 1u) ? 0xedb88320u : 0u);
+        }
+        return ~crc;
+    };
+    qsizetype directoryEnd = archive.lastIndexOf(QByteArray("PK\x05\x06", 4));
+    while (directoryEnd >= 0 && (directoryEnd + 22 > archive.size()
+           || directoryEnd + 22 + le16(archive, directoryEnd + 20) != archive.size()))
+        directoryEnd = directoryEnd == 0 ? -1 : archive.lastIndexOf(QByteArray("PK\x05\x06", 4), directoryEnd - 1);
+    if (directoryEnd >= 0 && directoryEnd + 22 <= archive.size()) {
+        if (le16(archive, directoryEnd + 4) || le16(archive, directoryEnd + 6))
+            return {};
+        qsizetype directory = le32(archive, directoryEnd + 16);
+        qsizetype const length = le32(archive, directoryEnd + 12);
+        if (directory > directoryEnd || length > directoryEnd - directory)
+            return {};
+        int const entries = le16(archive, directoryEnd + 10);
+        for (int entry = 0; entry < entries; ++entry) {
+            if (directory + 46 > directoryEnd || le32(archive, directory) != 0x02014b50u)
+                return {};
+            quint16 const flags = le16(archive, directory + 8), method = le16(archive, directory + 10);
+            quint32 const crc = le32(archive, directory + 16), compressed = le32(archive, directory + 20), size = le32(archive, directory + 24);
+            qsizetype const nameLength = le16(archive, directory + 28);
+            qsizetype const next = directory + 46 + nameLength + le16(archive, directory + 30) + le16(archive, directory + 32);
+            qsizetype const local = le32(archive, directory + 42);
+            if (next > directoryEnd || local + 30 > archive.size() || le32(archive, local) != 0x04034b50u)
+                return {};
+            qsizetype const start = local + 30 + le16(archive, local + 26) + le16(archive, local + 28);
+            if (start > archive.size() || compressed > archive.size() - start)
+                return {};
+            QString const name = QString::fromUtf8(archive.mid(directory + 46, nameLength));
+            if (!(flags & 1u) && (method == 0 || method == 8)) {
+                QByteArray body = archive.mid(start, compressed);
+                bool ok = true;
+                if (method == 8)
+                    body = inflate(body, &ok);
+                if (!ok || body.size() != size || crc32(body) != crc)
+                    return {};
+                files.insert(name, body);
+            }
+            directory = next;
+        }
+        return files;
+    }
     qsizetype p = 0;
     while (p + 30 <= archive.size() && le32(archive, p) == 0x04034b50u) {
         quint16 const flags = le16(archive, p + 6), method = le16(archive, p + 8);
@@ -224,20 +276,7 @@ QHash<QString, QByteArray> read(QByteArray const& archive)
         qsizetype const start = p + 30 + nameLength + extraLength;
         qsizetype end;
         if (flags & 0x08) {
-            // The sizes come after the data: it runs to the next entry (or to the directory), less what is said about it.
-            qsizetype next = archive.indexOf("PK\x03\x04", start);
-            qsizetype const directory = archive.indexOf("PK\x01\x02", start);
-            if (next < 0 || (directory >= 0 && directory < next))
-                next = directory;
-            if (next < 0)
-                next = archive.size();
-            end = next;
-            qsizetype dataEnd = end;
-            if (dataEnd - 16 >= start && le32(archive, dataEnd - 16) == 0x08074b50u)
-                dataEnd -= 16;
-            else if (dataEnd - 12 >= start)
-                dataEnd -= 12;
-            compressed = quint32(dataEnd - start);
+            return {};
         } else {
             end = start + compressed;
         }

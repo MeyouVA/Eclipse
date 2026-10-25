@@ -372,6 +372,12 @@ void Document::shiftPoses(int layer, int frame, Pose const& from, Pose const& to
             p.rotY += to.rotY - from.rotY;
             p.scaleX *= ratio(from.scaleX, to.scaleX);
             p.scaleY *= ratio(from.scaleY, to.scaleY);
+            for (ValueCurve& curve : k.curves) {
+                double const scale = curve.value == Driver::ScaleX ? ratio(from.scaleX, to.scaleX)
+                    : curve.value == Driver::ScaleY ? ratio(from.scaleY, to.scaleY) : 1.0;
+                curve.in.ry() *= scale;
+                curve.out.ry() *= scale;
+            }
             p.opacity = std::clamp(p.opacity + to.opacity - from.opacity, 0.0, 1.0);
             for (int i = 0; i < to.bend.size(); ++i) {
                 if (p.bend.size() <= i)

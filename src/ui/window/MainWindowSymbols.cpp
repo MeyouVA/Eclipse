@@ -241,7 +241,7 @@ void MainWindow::onActionExpandSymbol()
 {
     int const at = m_document->expandSymbol(layer());
     if (at < 0) {
-        statusBar()->showMessage(tr("Select a layer that shows a symbol."), 5000);
+        statusBar()->showMessage(tr("Select a symbol without group effects, opacity changes or deformation to expand it."), 7000);
         return;
     }
     m_timeline->clearRange();

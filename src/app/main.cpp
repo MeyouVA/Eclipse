@@ -44,6 +44,8 @@ int main(int argc, char** argv)
     if (args.size() > 1) {
         window.show();
         window.openFile(args[1]);
+    } else if (window.reopenLastProject()) {
+        window.show();
     } else if (WelcomeDialog::shownAtStartup()) {
         window.onActionShowWelcome();  // shows the window once a scene is made or chosen
         if (!window.isVisible())

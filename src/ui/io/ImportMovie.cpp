@@ -12,6 +12,7 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QProcess>
+#include <QTemporaryDir>
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
@@ -35,13 +36,15 @@ int MainWindow::importMovie(QString const& path, QString* error)
     if (!QFileInfo::exists(path))
         return fail(tr("There is no file %1.").arg(QDir::toNativeSeparators(path)));
 
-    // The frames go to <scene>-media/<movie>/, at the frame rate of the scene.
+    // Each import owns a new folder under the scene's media folder.
     QFileInfo const sceneFile(m_path), movie(path);
-    QDir folder(sceneFile.dir().filePath(sceneFile.completeBaseName() + QStringLiteral("-media/") + movie.completeBaseName()));
-    if (!folder.mkpath(QStringLiteral(".")))
-        return fail(tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(folder.path())));
-    for (QString const& old : folder.entryList({QStringLiteral("frame_*.png"), QStringLiteral("sound.wav")}, QDir::Files))
-        folder.remove(old);
+    QDir media(sceneFile.dir().filePath(sceneFile.completeBaseName() + QStringLiteral("-media")));
+    if (!media.mkpath(QStringLiteral(".")))
+        return fail(tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(media.path())));
+    QTemporaryDir imported(media.filePath(movie.completeBaseName() + QStringLiteral("_XXXXXX")));
+    if (!imported.isValid())
+        return fail(tr("Could not create a folder for the imported movie."));
+    QDir folder(imported.path());
     auto run = [&](QStringList const& args, QString* said) {
         QProcess process;
         process.start(ffmpeg, args);
@@ -79,6 +82,8 @@ int MainWindow::importMovie(QString const& path, QString* error)
     if (at >= 0 && hasSound)
         m_document->addSound(wav, 0);
     m_document->endMacro();
+    if (at >= 0)
+        imported.setAutoRemove(false);
     if (at >= 0)
         m_timeline->setCurrentCell(m_document->scene().layers.size() > at ? at : 0, 0);
     return at;

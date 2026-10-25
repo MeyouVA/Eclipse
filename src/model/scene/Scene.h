@@ -10,6 +10,7 @@
 
 #include <QHash>
 #include <QJsonValue>
+#include <QJsonObject>
 #include <QSet>
 
 class Scene {
@@ -19,6 +20,7 @@ public:
     int width = 1920;
     int height = 1080;
     double fps = 24.0;
+    QJsonObject uiState;
     // Marks on the ruler of the Timeline: a name over a frame or a run of frames.
     struct Marker {
         int frame = 0;

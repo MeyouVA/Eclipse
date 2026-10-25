@@ -1350,8 +1350,8 @@
    <item id="AnnotationEraseTexts" text="Erase Selected &amp;Texts" responder="window" slot="onActionAnnotation(QString)" itemParameter="eraseTexts"/>
   </menu>
   <separator/>
-  <item id="PreviousColumn"/>
-  <item id="NextColumn"/>
+  <item id="PreviousColumn" text="Previous Column" slot="onActionPreviousColumn()" responder="window"/>
+  <item id="NextColumn" text="Next Column" slot="onActionNextColumn()" responder="window"/>
   <separator/>
   <item id="InsertKeyframe"/>
   <item id="DeleteKeyframe"/>

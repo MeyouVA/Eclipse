@@ -66,6 +66,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     }
     scene.m_frameCount = std::max(1, json["frames"].toInt(24));
     scene.background = QColor(json["background"].toString("#ffffff"));
+    scene.uiState = json["uiState"].toObject();
     for (QJsonValue const& wv : json["writes"].toArray()) {
         QJsonObject const wo = wv.toObject();
         Write w;
@@ -202,6 +203,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             n.id = no["id"].toInt();
             n.name = no["name"].toString();
             n.layer = no["layer"].toInt(0);
+            n.symbolLayer = no["symbolLayer"].toInt(0);
             n.sheets = no["sheets"].toInt(0xf) & 0xf;
             n.ports = std::max(0, no["ports"].toInt(1));
             n.outPorts = std::max(0, no["outPorts"].toInt(1));

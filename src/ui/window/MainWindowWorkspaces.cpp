@@ -10,6 +10,7 @@
 #include <QMenu>
 #include <QSettings>
 #include <QToolBar>
+#include <QJsonDocument>
 
 #include "actions/manager/ActionManager.h"
 #include "actions/dialogs/ShortcutsDialog.h"
@@ -530,6 +531,7 @@ void MainWindow::restoreWorkspace()
     m_workspace = workspaces().contains(name) ? name : QStringLiteral("Default");
     loadWorkspace(m_workspace);
     refreshWorkspaceBox();
+    restoreProjectUi(QJsonDocument::fromJson(s.value(QStringLiteral("window/sessionUi")).toByteArray()).object());
     holdBackFloating();
 }
 
@@ -564,6 +566,7 @@ void MainWindow::showEvent(QShowEvent* event)
 
 void MainWindow::onActionRestoreDefaultWorkspace()
 {
+    expandAllSides();
     // Forget what the user did to the current workspace.
     settings().remove(QStringLiteral("workspaces/") + m_workspace);
     applyBuiltinWorkspace(builtinWorkspaces().contains(m_workspace) ? m_workspace : QStringLiteral("Default"));

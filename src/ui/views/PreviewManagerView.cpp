@@ -106,6 +106,12 @@ quint64 PreviewManagerView::fingerprint(Scene const& scene, int frame)
             number(q.x());
             number(q.y());
         }
+        for (PointMove const& point : p.points) {
+            whole(point.drawing); whole(point.sheet); whole(point.fill); whole(point.line); whole(point.point);
+            for (QPointF const& q : {point.by, point.in, point.out}) {
+                number(q.x()); number(q.y());
+            }
+        }
     };
     auto drawing = [&](Drawing const& d) {
         // (A drawing that was not changed keeps the very lists it had: the same places in memory.)
@@ -127,6 +133,10 @@ quint64 PreviewManagerView::fingerprint(Scene const& scene, int frame)
     whole(scene.palette.size());
     pointer(scene.symbols.constData());
     whole(scene.symbols.size());
+    pointer(scene.graph.nodes.constData());
+    pointer(scene.graph.cables.constData());
+    for (GraphNode const& node : scene.graph.nodes)
+        number(node.amountAt(frame));
     matrix(scene.cameraTransform(frame));
     number(scene.focalDistance(frame));
     if (int const camera = scene.cameraIndex(); camera >= 0) {

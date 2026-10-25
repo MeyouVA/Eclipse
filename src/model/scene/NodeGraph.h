@@ -9,6 +9,7 @@ struct GraphNode {
     Kind kind = Composite;
     QString name;
     int layer = 0;              // a layer node: the layer's id
+    int symbolLayer = 0;        // an individual output of a symbol, or 0 for the whole instance
     int sheets = 0xf;
     Effect effect;              // an effect node: what it does (its input 0 the picture; input 1 the matte, for those that take one)
     // An effect node's amount, keyframed: so much on these frames, straight from one to the next (none: `effect.amount`).

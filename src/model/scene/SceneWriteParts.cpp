@@ -653,6 +653,8 @@ QJsonObject graphToJson(NodeGraph const& graph)
                          {"group", n.group}, {"at", QJsonArray{n.at.x(), n.at.y()}}};
         if (n.kind == GraphNode::LayerNode)
             node["layer"] = n.layer;
+        if (n.kind == GraphNode::LayerNode && n.symbolLayer)
+            node["symbolLayer"] = n.symbolLayer;
         if (n.kind == GraphNode::LayerNode && n.sheets != 0xf)
             node["sheets"] = n.sheets;
         if (n.kind == GraphNode::EffectNode) {

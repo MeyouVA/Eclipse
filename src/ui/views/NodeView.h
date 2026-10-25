@@ -12,6 +12,7 @@
 #include <QRectF>
 #include <QVector>
 #include <QWidget>
+#include <algorithm>
 
 class Document;
 class QLineEdit;
@@ -46,6 +47,8 @@ public:
     // Where a place of the view is in the graph.
     QPointF graphPoint(QPointF widgetPos) const { return toGraph(widgetPos); }
     double zoom() const { return m_zoom; }
+    QPointF pan() const { return m_pan; }
+    void restoreView(double zoom, QPointF pan) { m_zoom = std::clamp(zoom, 0.1, 4.0); m_pan = pan; update(); }
     // Larger or smaller about the middle of the view.
     void zoomBy(double factor);
     // Preferences: the small map in the corner shown or not; cables drawn straight from port to port, or as curves.

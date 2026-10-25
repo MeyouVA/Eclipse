@@ -55,6 +55,9 @@ public:
     ~MainWindow() override;
 
     bool openFile(QString const& path);
+    bool reopenLastProject();
+    QJsonObject projectUiState() const;
+    void restoreProjectUi(QJsonObject const& state);
     // The frames playback runs between (the first is 0).  `stop` -1 is the end of the scene.
     void setPlayRange(int start, int stop);
     int playStart() const { return m_playStart; }
@@ -83,15 +86,15 @@ public:
     // Preferences: an undo (or redo) of a change to another drawing goes to that drawing.
     bool restoresDrawingOnUndo() const { return m_restoreDrawingOnUndo; }
     // Scene > Remove Unused Files: the files of the scene's media folder that the scene no longer uses (to the Recycle Bin).
-    void onActionRemoveUnusedFiles();
+    Q_INVOKABLE void onActionRemoveUnusedFiles();
     QStringList unusedFiles() const;
     // File > Manage Versions: the scene's versions (name, name_v2, name_v3 ...) - opened, or deleted.
-    void onActionManageVersions();
+    Q_INVOKABLE void onActionManageVersions();
     QStringList sceneVersions() const;
     // Scene Markers: a marker of one frame on the current frame.
-    void onActionMarkCurrentFrame();
+    Q_INVOKABLE void onActionMarkCurrentFrame();
     // File > Delete Backup Files: the scene's backup copies (name.ecl~, name_backup_*) to the Recycle Bin.
-    void onActionDeleteBackupFiles();
+    Q_INVOKABLE void onActionDeleteBackupFiles();
     QStringList backupFiles() const;
     // Preferences: a red border round the view in use.
     void setCurrentViewBorder(bool on);
@@ -622,6 +625,7 @@ private:
     void loadWorkspace(QString const& name);
     // (`force`: even when workspaces are not saved by themselves - Save Workspace.)
     void saveCurrentWorkspace(bool force = false);
+    void saveProjectUi();
     // The arrangement as it was opened or last saved, to tell whether it has changed since.
     void markWorkspaceClean();
     QByteArray m_cleanWorkspace;

@@ -85,16 +85,18 @@ void MainWindow::onActionResetTransformation()
 
 void MainWindow::onActionFlipHorizontalAnimation()
 {
-    Pose pose = m_document->scene().layers[layer()].poseAt(frame());
+    Pose const was = m_document->scene().poseOf(layer(), frame());
+    Pose pose = was;
     pose.scaleX = -pose.scaleX;
-    m_document->setKeyframe(layer(), frame(), pose, tr("Flip Horizontal"));
+    m_document->animatePose(layer(), frame(), was, pose, tr("Flip Horizontal"));
 }
 
 void MainWindow::onActionFlipVerticalAnimation()
 {
-    Pose pose = m_document->scene().layers[layer()].poseAt(frame());
+    Pose const was = m_document->scene().poseOf(layer(), frame());
+    Pose pose = was;
     pose.scaleY = -pose.scaleY;
-    m_document->setKeyframe(layer(), frame(), pose, tr("Flip Vertical"));
+    m_document->animatePose(layer(), frame(), was, pose, tr("Flip Vertical"));
 }
 
 void MainWindow::onActionTopLight()

@@ -132,7 +132,7 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
                     one.setTransform(onto);
                     Pose const pose = scene.poseOf(l, frame);
                     paintLayerDrawing(one, scene, l, frame,
-                                      Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose)),
+                                      Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index)),
                                       layer.opacity * pose.opacity, camera * base);
                 }
             }
@@ -200,7 +200,7 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
         painter.setTransform(scene.worldTransform(l, frame) * camera * base);
         Pose const pose = scene.poseOf(l, frame);
         paintLayerDrawing(painter, scene, l, frame,
-                          Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose)),
+                          Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index)),
                           layer.opacity * pose.opacity, camera * base);
     }
     painter.setTransform(base);
@@ -366,7 +366,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 } else if (int const index = layer.drawingAt(frame); index != Layer::kNoDrawing) {
                     p.setTransform(scene.worldTransform(l, frame) * camera * base);
                     Pose const pose = scene.poseOf(l, frame);
-                    Drawing shown = Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose));
+                    Drawing shown = Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index));
                     if ((n->sheets & 0xf) != 0xf) {
                         // Only the art layers it gives (Line Art, Colour Art, Underlay, Overlay).
                         for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
@@ -376,7 +376,17 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                             }
                         shown.pictures.removeIf([&](Picture const& pic) { return !(n->sheets & (1 << (pic.painted ? pic.sheet : int(Drawing::LineSheet)))); });
                     }
-                    paintLayerDrawing(p, scene, l, frame, shown, layer.opacity * pose.opacity, camera * base);
+                    if (n->symbolLayer && layer.showsSymbol()) {
+                        Scene selected = scene;
+                        for (Scene::Symbol& symbol : selected.symbols)
+                            if (symbol.id == layer.symbolId)
+                                for (Layer& output : symbol.layers)
+                                    if (output.holdsDrawings() && output.id != n->symbolLayer)
+                                        output.visible = false;
+                        paintLayerDrawing(p, selected, l, frame, shown, layer.opacity * pose.opacity, camera * base);
+                    } else {
+                        paintLayerDrawing(p, scene, l, frame, shown, layer.opacity * pose.opacity, camera * base);
+                    }
                 }
             }
         } else if (n && n->kind == GraphNode::Composite) {

@@ -62,6 +62,21 @@ void Document::insertFrames(int at, int count)
         return;
     apply(tr("Add Frames"), [&](Scene& s) {
         s.setFrameCount(s.frameCount() + count);
+        for (FunctionColumn& column : s.functions) {
+            for (Layer* curve : {&column.curve, &column.velocity})
+                for (Keyframe& key : curve->keys)
+                    if (key.frame >= at)
+                        key.frame += count;
+            for (FunctionColumn::PathPoint& point : column.path)
+                if (point.frame >= at)
+                    point.frame += count;
+        }
+        for (GraphNode& node : s.graph.nodes) {
+            QMap<int, double> shifted;
+            for (auto it = node.amountKeys.cbegin(); it != node.amountKeys.cend(); ++it)
+                shifted.insert(it.key() >= at ? it.key() + count : it.key(), it.value());
+            node.amountKeys = shifted;
+        }
         for (Layer& layer : s.layers) {
             layer.cells.insert(at, count, Layer::kNoDrawing);
             layer.cells.resize(s.frameCount());
@@ -116,6 +131,25 @@ void Document::removeFrames(int first, int last)
         return;
     int const count = last - first + 1;
     apply(tr("Remove Frames"), [&](Scene& s) {
+        for (FunctionColumn& column : s.functions) {
+            for (Layer* curve : {&column.curve, &column.velocity}) {
+                curve->keys.removeIf([&](Keyframe const& key) { return key.frame >= first && key.frame <= last; });
+                for (Keyframe& key : curve->keys)
+                    if (key.frame > last)
+                        key.frame -= count;
+            }
+            column.path.removeIf([&](FunctionColumn::PathPoint const& point) { return point.frame >= first && point.frame <= last; });
+            for (FunctionColumn::PathPoint& point : column.path)
+                if (point.frame > last)
+                    point.frame -= count;
+        }
+        for (GraphNode& node : s.graph.nodes) {
+            QMap<int, double> shifted;
+            for (auto it = node.amountKeys.cbegin(); it != node.amountKeys.cend(); ++it)
+                if (it.key() < first || it.key() > last)
+                    shifted.insert(it.key() > last ? it.key() - count : it.key(), it.value());
+            node.amountKeys = shifted;
+        }
         for (Layer& layer : s.layers) {
             layer.cells.remove(first, count);
             layer.shiftKeyExposures(first, -count);

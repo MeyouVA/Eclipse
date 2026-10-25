@@ -162,7 +162,7 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
             continue;
         painter.setTransform(inner.worldTransform(l, f) * base);
         Pose const pose = inner.poseOf(l, f);
-        paintLayerDrawing(painter, inner, l, f, Deform::ridden(inner, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose)),
+        paintLayerDrawing(painter, inner, l, f, Deform::ridden(inner, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose, index)),
                           layer.opacity * pose.opacity, base);
     }
     painter.setTransform(base);

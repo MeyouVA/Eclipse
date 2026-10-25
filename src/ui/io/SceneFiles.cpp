@@ -65,16 +65,22 @@ QStringList MainWindow::sceneFiles(bool missingOnly) const
         if (!file.isEmpty() && !files.contains(file) && !(missingOnly && QFileInfo::exists(file)))
             files << file;
     };
-    for (Layer const& layer : m_document->scene().layers) {
-        if (layer.kind == Layer::Sound)
-            add(layer.soundFile);
-        for (Drawing const& drawing : layer.drawings) {
-            for (Picture const& picture : drawing.pictures)
-                if (picture.linked)
-                    add(picture.file);
-            add(drawing.model);
+    auto collect = [&](QVector<Layer> const& layers) {
+        for (Layer const& layer : layers) {
+            if (layer.kind == Layer::Sound)
+                add(layer.soundFile);
+            for (Drawing const& drawing : layer.drawings) {
+                for (Picture const& picture : drawing.pictures)
+                    if (picture.linked)
+                        add(picture.file);
+                add(drawing.model);
+            }
         }
-    }
+    };
+    Scene const scene = m_document->wholeScene();
+    collect(scene.layers);
+    for (Scene::Symbol const& symbol : scene.symbols)
+        collect(symbol.layers);
     for (QString const& reference : m_document->scene().references)
         add(reference);
     return files;

@@ -75,6 +75,8 @@ public:
     double firstFrame() const { return m_first; }
     double frameSpan() const;
     bool zoomed() const { return m_zoomed || m_span > 0.0; }
+    QJsonObject viewState() const;
+    void restoreViewState(QJsonObject const& state);
     void resetView();
     void resetZoom();
     void resetPan();

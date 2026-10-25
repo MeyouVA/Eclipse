@@ -161,7 +161,7 @@ QByteArray encode(Scene const& scene, Options const& options, Report* report)
             } else {
                 // Bent, warped or turned in space: drawn as it shows on this frame, where it shows.
                 Drawing const d = layer.showsSymbol() ? scene.symbolPicture(layer.symbolId, index)
-                                                      : Deform::ridden(scene, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose));
+                                                      : Deform::ridden(scene, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose, index));
                 p.character = shapes.drawing(d, world * twips, std::sqrt(std::abs(world.determinant())));
                 p.matrix = QTransform();
             }

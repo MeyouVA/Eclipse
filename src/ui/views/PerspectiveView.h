@@ -20,6 +20,8 @@ public:
     double yaw() const { return m_yaw; }
     double pitch() const { return m_pitch; }
     double zoom() const { return m_zoom; }
+    QPointF pan() const { return m_pan; }
+    void restoreView(double zoom, QPointF pan) { m_zoom = std::clamp(zoom, 0.1, 20.0); m_pan = pan; update(); }
     void setOrbit(double yaw, double pitch);
     void resetView();
     int currentFrame() const { return m_frame; }

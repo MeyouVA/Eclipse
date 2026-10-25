@@ -38,8 +38,11 @@ int Document::expandSymbol(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].showsSymbol() || !m_scene.findSymbol(m_scene.layers[layer].symbolId))
         return -1;
-    int at = -1;
-    apply(tr("Expand Symbol"), [&](Scene& s) { at = s.expandSymbol(layer); });
+    Scene expanded = m_scene;
+    int const at = expanded.expandSymbol(layer);
+    if (at < 0)
+        return -1;
+    apply(tr("Expand Symbol"), [&](Scene& s) { s = expanded; });
     return at;
 }
 

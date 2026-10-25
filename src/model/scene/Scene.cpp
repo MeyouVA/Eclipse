@@ -38,6 +38,17 @@ void Scene::setFrameCount(int count)
         while (!layer.keys.isEmpty() && layer.keys.last().frame >= m_frameCount)
             layer.keys.removeLast();
     }
+    for (FunctionColumn& column : functions) {
+        for (Layer* curve : {&column.curve, &column.velocity})
+            curve->keys.removeIf([&](Keyframe const& key) { return key.frame >= m_frameCount; });
+        column.path.removeIf([&](FunctionColumn::PathPoint const& point) { return point.frame >= m_frameCount; });
+    }
+    for (GraphNode& node : graph.nodes)
+        for (auto it = node.amountKeys.begin(); it != node.amountKeys.end(); )
+            if (it.key() >= m_frameCount)
+                it = node.amountKeys.erase(it);
+            else
+                ++it;
 }
 
 QString Scene::uniqueLayerName(QString const& base) const

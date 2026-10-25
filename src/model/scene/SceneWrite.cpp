@@ -9,6 +9,7 @@
 #include "model/geometry/Deform.h"
 
 #include <QFile>
+#include <QSaveFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 
@@ -187,7 +188,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"guides", guideArray},
                        {"metadata", pairsJson(metadata)},
                        {"frames", m_frameCount},
-                       {"background", background.name()},
+                       {"background", background.name(QColor::HexArgb)},
                        {"layers", layerArray}};
     if (!functions.isEmpty()) {
         QJsonArray columns;
@@ -228,13 +229,15 @@ QJsonObject Scene::toJson(QString const& folder) const
             sheet.append(QJsonObject{{"layer", m.layer}, {"frame", m.frame}, {"length", m.length}, {"colour", m.colour}});
         whole["sheetMarkers"] = sheet;
     }
+    if (!uiState.isEmpty())
+        whole["uiState"] = uiState;
     return whole;
 }
 
 bool Scene::save(QString const& path, QString* error) const
 {
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
         if (error)
             *error = file.errorString();
         return false;
@@ -250,8 +253,16 @@ bool Scene::save(QString const& path, QString* error) const
     }
     // The palettes linked to a file of their own are written there too, for the other scenes linked to it.
     for (int i = 0; i < paletteLinks.size() && i < paletteNames.size(); ++i)
-        if (!paletteLinks[i].isEmpty())
-            writePaletteFile(i, paletteLinks[i]);
+        if (!paletteLinks[i].isEmpty() && !writePaletteFile(i, paletteLinks[i])) {
+            if (error)
+                *error = QStringLiteral("Could not write linked palette: %1").arg(paletteLinks[i]);
+            return false;
+        }
+    if (!file.commit()) {
+        if (error)
+            *error = file.errorString();
+        return false;
+    }
     return true;
 }
 

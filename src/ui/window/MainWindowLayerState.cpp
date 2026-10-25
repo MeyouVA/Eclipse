@@ -161,10 +161,11 @@ void MainWindow::onActionResetAll()
     if (!m_timeline->hasParameters(layer()))
         return;
     Pose rest;
-    rest.fx = scene.layers[layer()].poseAt(frame()).fx;     // the amounts of its effects are not a transformation
-    if (scene.layers[layer()].poseAt(frame()) == rest)
+    Pose const was = scene.poseOf(layer(), frame());
+    rest.fx = was.fx;
+    if (was == rest)
         return;
-    m_document->setKeyframe(layer(), frame(), rest, tr("Reset All"));
+    m_document->animatePose(layer(), frame(), was, rest, tr("Reset All"));
 }
 
 void MainWindow::stepLayer(int direction)

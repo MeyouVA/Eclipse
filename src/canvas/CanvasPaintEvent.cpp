@@ -102,7 +102,7 @@ QImage Canvas::modeImage(Scene const& scene, int frame, ViewMode mode)
                 p.setTransform(scene.worldTransform(l, frame) * camera);
                 Pose const pose = scene.poseOf(l, frame);
                 paintLayerDrawing(p, scene, l, frame,
-                                  Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[layer.drawingAt(frame)], layer, pose)),
+                                  Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[layer.drawingAt(frame)], layer, pose, layer.drawingAt(frame))),
                                   1.0, camera);
             }
             double const z = scene.depthOf(l, frame);

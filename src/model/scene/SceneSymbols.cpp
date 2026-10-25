@@ -1,5 +1,7 @@
 // Eclipse - the scene: symbols - found, pictured, made, inserted, expanded, duplicated.
 #include "model/scene/Scene.h"
+#include "model/geometry/Deform.h"
+#include "model/scene/SymbolTiming.h"
 
 #include <algorithm>
 
@@ -41,19 +43,46 @@ Drawing Scene::symbolPicture(int symbolId, int frame, int depth) const
         int const index = layer.drawingAt(f);
         if (!inner.enabled(l) || index == Layer::kNoDrawing || !layer.holdsDrawings())
             continue;
-        Drawing const shown = layer.showsSymbol() ? inner.symbolPicture(layer.symbolId, index, depth + 1) : layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index];
+        Pose const pose = inner.poseOf(l, f);
+        Drawing const shown = layer.showsSymbol() ? inner.symbolPicture(layer.symbolId, index, depth + 1)
+            : Deform::ridden(inner, l, f, Deform::shown(layer.morphing(f) ? layer.shownAt(f) : layer.drawings[index], layer, pose, index));
+        double const opacity = std::clamp(layer.opacity * pose.opacity, 0.0, 1.0);
+        auto fade = [&](QColor& colour, int& swatch) {
+            if (opacity >= 1.0)
+                return;
+            if (Swatch const* source = findSwatch(swatch))
+                colour = source->color;
+            colour.setAlphaF(colour.alphaF() * float(opacity));
+            swatch = kNoSwatch;
+        };
         QTransform const world = inner.worldTransform(l, f);
         for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            if (layer.hiddenSheets & (1 << sheet))
+                continue;
             for (Fill fill : shown.fillsOf(sheet)) {
+                fade(fill.color, fill.swatch);
                 fill.transform(world);
                 out.fillsOf(sheet).push_back(fill);
             }
             for (Stroke stroke : shown.strokesOf(sheet)) {
+                fade(stroke.color, stroke.swatch);
                 stroke.transform(world);
                 out.strokesOf(sheet).push_back(stroke);
             }
         }
         for (Picture picture : shown.pictures) {
+            if (layer.hiddenSheets & (1 << (picture.painted ? picture.sheet : int(Drawing::LineSheet))))
+                continue;
+            if (opacity < 1.0 && !picture.image.isNull()) {
+                picture.image = picture.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                for (int y = 0; y < picture.image.height(); ++y) {
+                    QRgb* pixels = reinterpret_cast<QRgb*>(picture.image.scanLine(y));
+                    for (int x = 0; x < picture.image.width(); ++x) {
+                        QRgb const pixel = pixels[x];
+                        pixels[x] = qRgba(int(qRed(pixel) * opacity), int(qGreen(pixel) * opacity), int(qBlue(pixel) * opacity), int(qAlpha(pixel) * opacity));
+                    }
+                }
+            }
             picture.transform(world);
             out.pictures.push_back(picture);
         }
@@ -189,6 +218,11 @@ int Scene::makeSymbol(QVector<int> const& picked, QString const& name)
         }
     }
     shows.name = uniqueLayerName(symbol.name);
+    for (GraphNode& node : graph.nodes)
+        if (node.kind == GraphNode::LayerNode && goneIds.contains(node.layer)) {
+            node.symbolLayer = node.layer;
+            node.layer = shows.id;
+        }
     int const at = std::clamp(top - (count - 1), 0, int(layers.size()));
     layers.insert(at, shows);
     if (keepCamera) {
@@ -223,6 +257,19 @@ int Scene::expandSymbol(int layer)
     if (!found)
         return -1;
     Symbol const symbol = *found;
+    Layer const instance = layers[layer];
+    Scene const source = symbolScene(symbol);
+    bool sameTiming = true;
+    for (int frame = 0; frame < m_frameCount; ++frame)
+        sameTiming = sameTiming && instance.drawingAt(frame) == frame;
+    if (instance.opacity != 1.0 || !instance.effects.isEmpty() || instance.blend != Layer::BlendNormal || instance.hiddenSheets
+        || instance.bones.size() > 1 || instance.hasWarp())
+        return -1;
+    for (int frame = 0; frame < m_frameCount; ++frame) {
+        Pose const pose = poseOf(layer, frame);
+        if (pose.opacity != 1.0 || !pose.points.isEmpty() || !pose.quad.isEmpty() || !pose.bend.isEmpty() || !pose.warp.isEmpty())
+            return -1;
+    }
     // A peg in its place carries what the layer had: where it is among the layers, what it is attached to, how it moves.
     Layer peg = layers[layer];
     peg.kind = Layer::Peg;
@@ -239,6 +286,8 @@ int Scene::expandSymbol(int layer)
         renumbered.insert(inner.id, m_nextLayerId++);
     int at = layer + 1;
     for (Layer inner : symbol.layers) {
+        if (!sameTiming)
+            inner = SymbolTiming::expanded(source, inner, instance, m_frameCount);
         inner.id = renumbered.value(inner.id);
         if (renumbered.contains(inner.parent)) {
             inner.parent = renumbered.value(inner.parent);
@@ -249,10 +298,18 @@ int Scene::expandSymbol(int layer)
         for (Effect& effect : inner.effects)
             if (renumbered.contains(effect.matte))
                 effect.matte = renumbered.value(effect.matte);
+        for (Driver& driver : inner.drivers)
+            if (renumbered.contains(driver.source))
+                driver.source = renumbered.value(driver.source);
         inner.cells.resize(m_frameCount, Layer::kNoDrawing);
         inner.name = uniqueLayerName(inner.name);
         layers.insert(at++, inner);
     }
+    for (GraphNode& node : graph.nodes)
+        if (node.kind == GraphNode::LayerNode && node.layer == peg.id && node.symbolLayer) {
+            node.layer = renumbered.value(node.symbolLayer, peg.id);
+            node.symbolLayer = 0;
+        }
     refreshSymbolInstances();
     return layer;
 }
@@ -275,6 +332,8 @@ void Scene::takeSymbol(int symbolId, Scene const& worked)
     palette = worked.palette;
     paletteNames = worked.paletteNames;
     paletteLinks = worked.paletteLinks;
+    functions = worked.functions;
+    nextFunctionId = std::max(nextFunctionId, worked.nextFunctionId);
     m_nextSwatchId = std::max(m_nextSwatchId, worked.m_nextSwatchId);
     m_nextLayerId = std::max(m_nextLayerId, worked.m_nextLayerId);
     refreshSymbolInstances();

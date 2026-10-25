@@ -94,6 +94,8 @@ public:
     void setBrushTextureRamp(int low, int high);
     void setOnionSkin(bool on);
     void setDrawingView(bool on);
+    QJsonObject viewState() const;
+    void restoreViewState(QJsonObject const& state);
     // While playing, nothing but the frame itself is shown (no onion skin, no editing).
     void setPlaying(bool playing);
 

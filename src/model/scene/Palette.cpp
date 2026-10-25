@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "model/scene/Scene.h"
+#include <QSaveFile>
 
 #include <QLinearGradient>
 #include <QRadialGradient>
@@ -81,9 +82,11 @@ bool Scene::takePaletteJson(int inPalette, QJsonObject const& root)
 
 bool Scene::writePaletteFile(int inPalette, QString const& path) const
 {
-    QFile file(path);
-    return inPalette >= 0 && inPalette < paletteNames.size() && file.open(QIODevice::WriteOnly | QIODevice::Truncate)
-           && file.write(QJsonDocument(paletteJson(inPalette)).toJson()) > 0;
+    if (inPalette < 0 || inPalette >= paletteNames.size())
+        return false;
+    QSaveFile file(path);
+    QByteArray const bytes = QJsonDocument(paletteJson(inPalette)).toJson();
+    return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit();
 }
 
 bool Scene::readPaletteFile(int inPalette, QString const& path)

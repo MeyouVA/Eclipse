@@ -102,6 +102,7 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
         Layer& layer = s.layers[l];
         if (block.pastePivot)
             layer.pivot = row.pivot;
+        QVector<Keyframe> pastedKeys = row.keys;
         if (layer.holdsDrawings() && row.holdsDrawings) {
             // Synced layers: the drawings of the other drawing layers left out.
             QString const set = layer.drawingAt(begin) != Layer::kNoDrawing ? layer.drawings[layer.drawingAt(begin)].set : QString();
@@ -123,13 +124,18 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
                     continue;       // no drawing of that name here: the cell is left as it is
                 layer.cells[f] = cell < 0 ? Layer::kNoDrawing : place.value(cell, Layer::kNoDrawing);
             }
-            layer.compact();
+            for (Keyframe& key : pastedKeys) {
+                for (PointMove& point : key.pose.points)
+                    point.drawing = place.value(point.drawing, -1);
+                key.pose.points.removeIf([](PointMove const& point) { return point.drawing < 0; });
+            }
         }
+        struct CompactOnExit { Layer& layer; ~CompactOnExit() { layer.compact(); } } compact{layer};
         if (block.leaveKeys)
             continue;
         if ((block.keyParts & Keyframe::AllParts) != Keyframe::AllParts) {
             // Some parts only: each key pasted sets those parts, on a key of the layer's where there is one.
-            for (Keyframe key : row.keys) {
+            for (Keyframe key : pastedKeys) {
                 key.frame += frame;
                 if (key.frame < begin || key.frame >= end)
                     continue;
@@ -152,9 +158,25 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
                     pose.scaleY = key.pose.scaleY;
                 if (parts & Keyframe::PartSkew)
                     pose.skew = key.pose.skew;
+                if (parts & Keyframe::PartOpacity)
+                    pose.opacity = key.pose.opacity;
+                if (parts & Keyframe::PartFov)
+                    pose.fov = key.pose.fov;
+                if (parts & Keyframe::PartRest) {
+                    pose.rotX = key.pose.rotX;
+                    pose.rotY = key.pose.rotY;
+                    pose.quad = key.pose.quad;
+                    pose.bend = key.pose.bend;
+                    pose.warp = key.pose.warp;
+                    pose.fx = key.pose.fx;
+                    pose.points = key.pose.points;
+                }
                 if (here != layer.keys.end()) {
                     here->pose = pose;
                     here->parts |= parts;
+                    for (ValueCurve const& curve : key.curves)
+                        if (parts & (1 << curve.value))
+                            here->setCurve(curve);
                 } else {
                     key.pose = pose;
                     key.parts = parts;
@@ -166,7 +188,7 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
         }
         if (block.offsetKeys) {
             // Offset Keyframes: what the layer has at each key's frame, moved, turned and scaled by the key pasted.
-            for (Keyframe key : row.keys) {
+            for (Keyframe key : pastedKeys) {
                 key.frame += frame;
                 if (key.frame < begin || key.frame >= end)
                     continue;
@@ -190,7 +212,7 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
         // The keyframes of the block take the place of those that were in its frames.
         layer.keys.erase(std::remove_if(layer.keys.begin(), layer.keys.end(), [&](Keyframe const& k) { return k.frame >= begin && k.frame < end; }),
                          layer.keys.end());
-        for (Keyframe key : row.keys) {
+        for (Keyframe key : pastedKeys) {
             key.frame += frame;
             if (key.frame >= begin && key.frame < end)
                 layer.keys.push_back(key);

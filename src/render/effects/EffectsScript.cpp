@@ -13,6 +13,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
 #include <QObject>
 
@@ -72,7 +75,23 @@ QString Effects::runScript(QImage& image, QString const& script, int frame, doub
     QJSEngine::setObjectOwnership(&picture, QJSEngine::CppOwnership);
     engine.globalObject().setProperty(QStringLiteral("frame"), frame + 1);
     engine.globalObject().setProperty(QStringLiteral("amount"), amount);
+    std::mutex mutex;
+    std::condition_variable finished;
+    bool done = false;
+    std::thread watchdog([&] {
+        std::unique_lock lock(mutex);
+        if (!finished.wait_for(lock, std::chrono::seconds(10), [&] { return done; }))
+            engine.setInterrupted(true);
+    });
     QJSValue const result = engine.evaluate(script);
+    {
+        std::lock_guard lock(mutex);
+        done = true;
+    }
+    finished.notify_one();
+    watchdog.join();
+    if (engine.isInterrupted())
+        return QObject::tr("The script took too long.");
     if (result.isError())
         return QObject::tr("Line %1: %2").arg(result.property(QStringLiteral("lineNumber")).toInt()).arg(result.toString());
     return QString();

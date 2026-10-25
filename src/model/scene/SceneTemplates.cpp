@@ -1,5 +1,6 @@
 // Eclipse - the scene: templates - a piece of a scene taken out, and a piece brought in.
 #include "model/scene/Scene.h"
+#include "model/scene/TemplateFunctions.h"
 
 #include <QHash>
 
@@ -32,10 +33,17 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
     piece.m_nextSwatchId = m_nextSwatchId;
     piece.m_nextLayerId = m_nextLayerId;
     piece.m_frameCount = frames;
+    QHash<int, int> const columns = TemplateFunctions::import(piece, *this, -first);
+    for (FunctionColumn& column : piece.functions) {
+        if (column.kind == FunctionColumn::Bezier || column.kind == FunctionColumn::Ease)
+            TemplateFunctions::crop(column.curve, 0, frames - 1);
+        TemplateFunctions::crop(column.velocity, 0, frames - 1);
+    }
     for (int l = 0; l < layers.size(); ++l) {
         if (!in[l])
             continue;
         Layer layer = layers[l];
+        TemplateFunctions::relink(layer, columns);
         layer.cells = layer.cells.mid(first, frames);
         layer.cells.resize(frames, Layer::kNoDrawing);
         for (int& mark : layer.keyExposures)
@@ -80,6 +88,12 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
     }
     // The symbols those layers show come along.
     piece.symbols = symbolsUsed(piece.layers);
+    if (!piece.symbols.isEmpty()) {
+        QHash<int, int> const symbolColumns = TemplateFunctions::import(piece, *this, 0);
+        for (Symbol& symbol : piece.symbols)
+            for (Layer& layer : symbol.layers)
+                TemplateFunctions::relink(layer, symbolColumns);
+    }
     piece.refreshSymbolInstances();
     return piece;
 }
@@ -107,6 +121,7 @@ int Scene::pasteOnto(Scene const& piece, int frame, bool drawings, bool keys)
     QHash<int, int> swatchOf;
     auto relink = [&](int& swatch, QColor const& colour) { swatch = takeColour(piece, swatch, colour, swatchOf); };
     int const count = piece.frameCount();
+    QHash<int, int> const columns = keys ? TemplateFunctions::import(*this, piece, frame) : QHash<int, int>();
     for (int i = 0; i < piece.layers.size(); ++i) {
         Layer const& theirs = piece.layers[i];
         Layer& mine = layers[target[i]];
@@ -139,12 +154,17 @@ int Scene::pasteOnto(Scene const& piece, int frame, bool drawings, bool keys)
         // The keyframes over those frames are theirs.
         if (!keys)
             continue;
+        mine.links = theirs.links;
+        TemplateFunctions::relink(mine, columns);
         for (int k = int(mine.keys.size()) - 1; k >= 0; --k)
             if (mine.keys[k].frame >= frame && mine.keys[k].frame < frame + count)
                 mine.keys.removeAt(k);
-        for (Keyframe const& key : theirs.keys)
-            if (key.frame >= 0 && key.frame < count)
-                mine.setKey(frame + key.frame, key.pose);
+        for (Keyframe key : theirs.keys)
+            if (key.frame >= 0 && key.frame < count) {
+                key.frame += frame;
+                mine.keys.push_back(key);
+            }
+        std::sort(mine.keys.begin(), mine.keys.end(), [](Keyframe const& a, Keyframe const& b) { return a.frame < b.frame; });
     }
     return *std::min_element(target.begin(), target.end());
 }
@@ -171,6 +191,8 @@ int Scene::insert(Scene const& piece, int frame)
         return -1;
     if (frame + piece.frameCount() > m_frameCount)
         setFrameCount(frame + piece.frameCount());
+    QHash<int, int> const columns = TemplateFunctions::import(*this, piece, frame);
+    QHash<int, int> const symbolColumns = piece.symbols.isEmpty() ? columns : TemplateFunctions::import(*this, piece, 0);
     // The colours: as Preferences say (by default those the scene has already, by name and colour; the others added).
     QHash<int, int> swatchOf;
     auto relink = [&](int& swatch, QColor const& colour) { swatch = takeColour(piece, swatch, colour, swatchOf); };
@@ -197,6 +219,7 @@ int Scene::insert(Scene const& piece, int frame)
                 theirs.name = QStringLiteral("%1 %2").arg(base).arg(n);
             }
             for (Layer& inner : theirs.layers) {
+                TemplateFunctions::relink(inner, symbolColumns);
                 for (Drawing& d : inner.drawings) {
                     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
                         for (Stroke& stroke : d.strokesOf(sheet))
@@ -222,6 +245,7 @@ int Scene::insert(Scene const& piece, int frame)
         if (theirs.kind == Layer::Camera && haveCamera)
             continue;           // a scene is seen through one camera
         Layer layer = theirs;
+        TemplateFunctions::relink(layer, columns);
         layer.id = m_nextLayerId++;
         idOf.insert(theirs.id, layer.id);
         layer.name = uniqueLayerName(theirs.name);
@@ -259,6 +283,8 @@ int Scene::insert(Scene const& piece, int frame)
         for (Effect& effect : layer.effects)
             if (idOf.contains(effect.matte))
                 effect.matte = idOf.value(effect.matte);
+        for (Driver& driver : layer.drivers)
+            driver.source = idOf.value(driver.source, 0);
     }
     if (!symbolOf.isEmpty())
         refreshSymbolInstances();

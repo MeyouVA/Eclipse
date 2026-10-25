@@ -349,7 +349,7 @@ void CoordView::showCoordinates()
         return;
     }
     Layer const& layer = scene.layers[m_layer];
-    Pose const pose = layer.poseAt(m_frame);
+    Pose const pose = scene.poseOf(m_layer, m_frame);
     // (A box that is being typed in is left alone.)
     auto show = [](QLineEdit* edit, QString const& text) {
         if (!edit->hasFocus() || edit->isReadOnly())
@@ -374,7 +374,7 @@ void CoordView::applyCoordinate(int which)
     if (m_layer < 0 || m_layer >= scene.layers.size() || which < 0 || which >= FieldDepth)
         return;
     QLineEdit* const edit = m_fields[which];
-    Pose pose = scene.layers[m_layer].poseAt(m_frame);
+    Pose pose = scene.poseOf(m_layer, m_frame);
     Pose const was = pose;
     double value = 0.0;
     bool ok = false;
@@ -407,7 +407,7 @@ void CoordView::applyCoordinate(int which)
     if (typing)
         edit->clearFocus();
     if (ok && !(pose == was))
-        m_document->setKeyframe(m_layer, m_frame, pose, tr("Change Coordinates"));
+        m_document->animatePose(m_layer, m_frame, was, pose, tr("Change Coordinates"));
     showCoordinates();
     if (typing)
         edit->setFocus();
