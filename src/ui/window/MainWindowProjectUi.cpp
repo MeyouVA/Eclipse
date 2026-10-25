@@ -1,4 +1,4 @@
-// Eclipse - the last view of each project, kept without saving discarded animation edits.
+// Eclipse - each project's view state, stored with its saved scene.
 #include "ui/window/MainWindow.h"
 #include "ui/window/MainWindowPrivate.h"
 #include "canvas/Canvas.h"
@@ -12,11 +12,7 @@
 #include <QAbstractScrollArea>
 #include <QAction>
 #include <QDockWidget>
-#include <QFile>
-#include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
-#include <QSaveFile>
 #include <QScrollBar>
 #include <QStatusBar>
 #include <QSplitter>
@@ -260,14 +256,4 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
     placeCollapseArrows();
     placeBetweenArrows();
     markWorkspaceClean();
-}
-
-void MainWindow::saveProjectUi()
-{
-    if (m_path.isEmpty())
-        return;
-    QSaveFile file(m_path + QStringLiteral(".ui.json"));
-    QByteArray const bytes = QJsonDocument(projectUiState()).toJson(QJsonDocument::Compact);
-    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
-        statusBar()->showMessage(tr("Could not save the project layout: %1").arg(file.errorString()), 8000);
 }

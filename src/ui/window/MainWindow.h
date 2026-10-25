@@ -625,7 +625,6 @@ private:
     void loadWorkspace(QString const& name);
     // (`force`: even when workspaces are not saved by themselves - Save Workspace.)
     void saveCurrentWorkspace(bool force = false);
-    void saveProjectUi();
     // The arrangement as it was opened or last saved, to tell whether it has changed since.
     void markWorkspaceClean();
     QByteArray m_cleanWorkspace;

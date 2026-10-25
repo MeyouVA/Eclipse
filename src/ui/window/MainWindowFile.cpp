@@ -66,7 +66,6 @@ void MainWindow::onActionCloseScene()
     // The scene goes and the welcome window comes back, as when the program starts.
     if (!confirmDiscard())
         return;
-    saveProjectUi();
     stop();
     m_path.clear();
     m_document->reset(Scene());
@@ -82,7 +81,6 @@ bool MainWindow::createScene(QString const& path, int width, int height, double 
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(QFileInfo(path).absolutePath())));
         return false;
     }
-    saveProjectUi();
     stop();
     Scene scene;
     scene.width = width;
@@ -123,7 +121,6 @@ bool MainWindow::openFile(QString const& path)
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not open %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;
     }
-    saveProjectUi();
     stop();
     m_path = path;
     m_document->reset(scene);
@@ -132,13 +129,7 @@ bool MainWindow::openFile(QString const& path)
     placeCameraView();
     updateTitle();
     addRecent(path);
-    QJsonObject ui = scene.uiState;
-    QFile viewFile(path + QStringLiteral(".ui.json"));
-    if (viewFile.open(QIODevice::ReadOnly)) {
-        QJsonObject const saved = QJsonDocument::fromJson(viewFile.readAll()).object();
-        if (saved["version"].toInt() == 1)
-            ui = saved;
-    }
+    QJsonObject const ui = scene.uiState;
     QString const opened = m_path;
     QTimer::singleShot(0, this, [this, opened, ui] {
         if (m_path == opened)
@@ -202,10 +193,7 @@ bool MainWindow::saveTo(QString const& path)
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not save %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;
     }
-    if (m_path != path)
-        saveProjectUi();
     m_path = path;
-    saveProjectUi();
     m_document->setSaved();
     updateTitle();
     addRecent(path);
@@ -375,8 +363,6 @@ void MainWindow::closeEvent(QCloseEvent* event)
         event->ignore();
         return;
     }
-    saveProjectUi();
-    QJsonObject const closingUi = projectUiState();
     if (!m_autoSaveWorkspace && m_persistWorkspaces && workspaceChanged()) {
         QMessageBox::StandardButton const answer
             = QMessageBox::question(this, tr("Eclipse"), tr("Some workspace have been changed. Do you wish to save them?"),
@@ -389,7 +375,6 @@ void MainWindow::closeEvent(QCloseEvent* event)
             saveCurrentWorkspace(true);
     }
     QSettings s = settings();
-    s.setValue(QStringLiteral("window/sessionUi"), QJsonDocument(closingUi).toJson(QJsonDocument::Compact));
     s.setValue(QStringLiteral("window/geometry"), saveGeometry());
     s.setValue(QStringLiteral("window/workspace"), m_workspace);
     saveCurrentWorkspace();

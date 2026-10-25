@@ -534,13 +534,8 @@ void MainWindow::restoreWorkspace()
         tool->trigger();
     QString const name = s.value(QStringLiteral("window/workspace"), QStringLiteral("Default")).toString();
     m_workspace = workspaces().contains(name) ? name : QStringLiteral("Default");
-    QJsonObject const session = QJsonDocument::fromJson(s.value(QStringLiteral("window/sessionUi")).toByteArray()).object();
-    if (session["version"].toInt() == 1) {
-        restoreProjectUi(session);
-    } else {
-        loadWorkspace(m_workspace);
-        refreshWorkspaceBox();
-    }
+    loadWorkspace(m_workspace);
+    refreshWorkspaceBox();
     holdBackFloating();
 }
 
