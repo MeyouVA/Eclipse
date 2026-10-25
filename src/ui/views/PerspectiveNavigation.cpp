@@ -63,7 +63,7 @@ void PerspectiveView::onActionLookAtSelected()
 
 void PerspectiveView::onActionFrameSelected()
 {
-    QPolygonF const quad = layerQuad(m_layer);
+    QPolygonF const quad = layerPolygon(m_layer);
     if (quad.isEmpty())
         return;
     QRectF const box = quad.boundingRect();

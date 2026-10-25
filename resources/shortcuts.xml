@@ -6,6 +6,7 @@
   <shortcut id="shortcut.lookAtSelected" text="Look at Selected" value=""/>
   <shortcut id="shortcut.moveViewForward" text="Move Forward" value=""/>
   <shortcut id="shortcut.moveViewBackward" text="Move Backward" value=""/>
+  <shortcut id="shortcut.perspectiveClippingPlanes" text="Perspective Clipping Planes" value=""/>
   <shortcut id="shortcut.new" text="New" value="Ctrl+N"/>
   <shortcut id="shortcut.open" text="Open" value="Ctrl+O"/>
   <shortcut id="shortcut.save" text="Save" value="Ctrl+S"/>

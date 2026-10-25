@@ -11,6 +11,7 @@
 #include <algorithm>
 
 class Document;
+struct Drawing;
 
 class ECLIPSE_UI_API PerspectiveView : public QWidget {
     Q_OBJECT
@@ -27,6 +28,9 @@ public:
     void resetView();
     QJsonObject viewState() const;
     void restoreViewState(QJsonObject const& state);
+    bool setClippingPlanes(double nearDistance, double farDistance);
+    double nearDistance() const { return m_nearDistance; }
+    double farDistance() const { return m_farDistance; }
     int currentFrame() const { return m_frame; }
     // Where a point of space is in the view; `seen` is told whether it is before the eye.
     QPointF project(double x, double y, double z, bool* seen = nullptr) const;
@@ -45,6 +49,7 @@ public slots:
     void onActionLookAtSelected();
     void onActionMoveForward();
     void onActionMoveBackward();
+    void onActionClippingPlanes();
     void setCameraCone(bool on) { m_cameraCone = on; update(); }
 
 signals:
@@ -59,7 +64,12 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
-    QPolygonF layerQuad(int layer, QRectF* box = nullptr) const;
+    struct Point { double x, y, z; };
+    Point viewPoint(Point point) const;
+    QPointF projectView(Point point) const;
+    QPolygonF projectPolygon(QVector<Point> polygon) const;
+    bool projectSegment(Point a, Point b, QLineF& line) const;
+    QPolygonF layerPolygon(int layer, QTransform* projection = nullptr, Drawing* displayed = nullptr) const;
     // How far from the eye a point is (bigger: further off), to draw the furthest first.
     double distanceOf(double x, double y, double z) const;
     int layerAt(QPointF widgetPos) const;
@@ -75,6 +85,8 @@ private:
     double m_viewX = 0.0;
     double m_viewY = 0.0;
     double m_viewZ = 0.0;
+    double m_nearDistance = 1.0;
+    double m_farDistance = 100000.0;
     enum Drag { None, Orbit, Pan } m_drag = None;
     QPointF m_last;
     QPointF m_pressed;

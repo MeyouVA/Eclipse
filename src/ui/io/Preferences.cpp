@@ -261,8 +261,10 @@ void MainWindow::placeCameraView()
 {
     for (DepthView* view : findChildren<DepthView*>())
         view->resetView();
-    for (PerspectiveView* view : findChildren<PerspectiveView*>())
+    for (PerspectiveView* view : findChildren<PerspectiveView*>()) {
         view->resetView();
+        view->setClippingPlanes(1.0, 100000.0);
+    }
     // As the preferences say: the whole frame in the view, or at its own size.
     m_canvas->fitToWindow();
     if (preferences().value(QStringLiteral("prefs/cameraZoom"), 0).toInt() == 1)

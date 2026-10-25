@@ -2,6 +2,7 @@
 
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QWheelEvent>
 
 #include <algorithm>
@@ -16,7 +17,6 @@
 namespace {
 constexpr double kDefaultYaw = -32.0;
 constexpr double kDefaultPitch = 18.0;
-constexpr double kRadians = 3.14159265358979323846 / 180.0;
 }
 
 PerspectiveView::PerspectiveView(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
@@ -50,63 +50,6 @@ void PerspectiveView::resetView()
     update();
 }
 
-static void turn(Scene const& scene, double yaw, double pitch, double viewX, double viewY, double viewZ, double& x, double& y, double& z)
-{
-    x -= scene.width / 2.0 + viewX;
-    y -= scene.height / 2.0 + viewY;
-    z -= viewZ;
-    double const cy = std::cos(yaw * kRadians), sy = std::sin(yaw * kRadians);
-    double const cp = std::cos(pitch * kRadians), sp = std::sin(pitch * kRadians);
-    double const x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
-    double const y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
-    x = x1;
-    y = y2;
-    z = z2;
-}
-
-double PerspectiveView::distanceOf(double x, double y, double z) const
-{
-    turn(m_document->scene(), m_yaw, m_pitch, m_viewX, m_viewY, m_viewZ, x, y, z);
-    return -z;
-}
-
-QPointF PerspectiveView::project(double x, double y, double z, bool* seen) const
-{
-    Scene const& scene = m_document->scene();
-    turn(scene, m_yaw, m_pitch, m_viewX, m_viewY, m_viewZ, x, y, z);
-    double const eye = 3.5 * std::max(scene.width, scene.height);
-    double const left = eye - z;
-    if (seen)
-        *seen = left > eye * 0.05;
-    double const scale = eye / std::max(left, eye * 0.05);
-    double const fit = std::min(width() / double(scene.width), height() / double(scene.height)) * 0.5 * m_zoom;
-    return QPointF(width() / 2.0, height() / 2.0) + m_pan + QPointF(x, y) * (scale * fit);
-}
-
-QPolygonF PerspectiveView::layerQuad(int layer, QRectF* box) const
-{
-    Scene const& scene = m_document->scene();
-    QPolygonF quad;
-    if (layer < 0 || layer >= scene.layers.size() || !scene.layers[layer].holdsDrawings() || !scene.enabled(layer))
-        return quad;
-    Layer const& l = scene.layers[layer];
-    int const index = l.drawingAt(m_frame);
-    if (index == Layer::kNoDrawing || l.drawings[index].isEmpty())
-        return quad;
-    QRectF const bounds = l.drawings[index].bounds().adjusted(-4, -4, 4, 4);
-    if (box)
-        *box = bounds;
-    for (QPointF const& corner : {bounds.topLeft(), bounds.topRight(), bounds.bottomRight(), bounds.bottomLeft()}) {
-        double x, y, z;
-        scene.toSpace(layer, m_frame, corner, x, y, z);
-        bool seen = true;
-        quad << project(x, y, z, &seen);
-        if (!seen)
-            return QPolygonF();
-    }
-    return quad;
-}
-
 QPointF PerspectiveView::layerPoint(int layer) const
 {
     Scene const& scene = m_document->scene();
@@ -129,8 +72,8 @@ int PerspectiveView::layerAt(QPointF widgetPos) const
     int found = -1;
     double nearest = 1e300;
     for (int l = 0; l < scene.layers.size(); ++l) {
-        QPolygonF const quad = layerQuad(l);
-        if (quad.size() != 4 || !quad.containsPoint(widgetPos, Qt::OddEvenFill))
+        QPolygonF const quad = layerPolygon(l);
+        if (quad.size() < 3 || !quad.containsPoint(widgetPos, Qt::OddEvenFill))
             continue;
         double x, y, z;
         scene.toSpace(l, m_frame, scene.layers[l].pivot, x, y, z);
@@ -155,16 +98,12 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     int const camera = scene.cameraIndex();
     double const cameraDepth = camera >= 0 ? scene.depthOf(camera, m_frame) : 0.0, distance = scene.focalDistance(m_frame);
     QTransform const fromPicture = scene.cameraTransform(m_frame).inverted();
-    QPolygonF frame;
-    bool frameSeen = true;
+    QVector<Point> corners;
     for (QPointF const& corner : {QPointF(0, 0), QPointF(scene.width, 0), QPointF(scene.width, scene.height), QPointF(0, scene.height)}) {
         QPointF const at = fromPicture.map(corner);
-        bool seen = true;
-        frame << project(at.x(), at.y(), cameraDepth, &seen);
-        frameSeen = frameSeen && seen;
+        corners.push_back({at.x(), at.y(), cameraDepth});
     }
-    if (!frameSeen)
-        frame.clear();
+    QPolygonF const frame = projectPolygon(corners);
     QPointF const middle = fromPicture.map(QPointF(scene.width / 2.0, scene.height / 2.0));
     bool eyeSeen = true;
     QPointF const eye = project(middle.x(), middle.y(), cameraDepth + distance, &eyeSeen);
@@ -174,16 +113,22 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     struct Item {
         int layer;      // -1: the frame of the camera
         double distance;
+        QPolygonF polygon;
+        QTransform projection;
+        Drawing drawing;
     };
     QVector<Item> items;
     if (!frame.isEmpty())
-        items.push_back({-1, distanceOf(middle.x(), middle.y(), cameraDepth)});
+        items.push_back({-1, distanceOf(middle.x(), middle.y(), cameraDepth), frame, {}, {}});
     for (int l = 0; l < scene.layers.size(); ++l) {
-        if (layerQuad(l).size() != 4)
+        QTransform projection;
+        Drawing drawing;
+        QPolygonF polygon = layerPolygon(l, &projection, &drawing);
+        if (polygon.size() < 3)
             continue;
         double x, y, z;
         scene.toSpace(l, m_frame, scene.layers[l].pivot, x, y, z);
-        items.push_back({l, distanceOf(x, y, z)});
+        items.push_back({l, distanceOf(x, y, z), std::move(polygon), projection, std::move(drawing)});
     }
     std::stable_sort(items.begin(), items.end(), [](Item const& a, Item const& b) { return a.distance > b.distance; });
 
@@ -198,15 +143,18 @@ void PerspectiveView::paintEvent(QPaintEvent*)
             continue;
         }
         Layer const& layer = scene.layers[item.layer];
-        QRectF box;
-        QPolygonF const quad = layerQuad(item.layer, &box);
-        QTransform onto;
-        if (!QTransform::quadToQuad(QPolygonF({box.topLeft(), box.topRight(), box.bottomRight(), box.bottomLeft()}), quad, onto))
+        QTransform const& onto = item.projection;
+        QPolygonF const& quad = item.polygon;
+        if (quad.size() < 3 || !onto.isInvertible())
             continue;
         Pose const pose = scene.poseOf(item.layer, m_frame);
+        painter.save();
+        QPainterPath clip;
+        clip.addPolygon(quad);
+        painter.setClipPath(clip);
         painter.setTransform(onto);
-        Canvas::paintDrawing(painter, scene, Deform::ridden(scene, item.layer, m_frame, Deform::shown(layer.shownAt(m_frame), layer, pose, layer.drawingAt(m_frame))), layer.opacity * pose.opacity);
-        painter.resetTransform();
+        Canvas::paintDrawing(painter, scene, item.drawing, layer.opacity * pose.opacity);
+        painter.restore();
         bool const current = item.layer == m_layer;
         painter.setBrush(Qt::NoBrush);
         painter.setPen(QPen(current ? QColor(255, 190, 70) : QColor(150, 150, 150, 150), current ? 1.6 : 1.0, current ? Qt::SolidLine : Qt::DotLine));
@@ -219,9 +167,12 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     // The cone, over everything, so that the camera is always found.
     painter.resetTransform();
     painter.setPen(QPen(QColor(blue.red(), blue.green(), blue.blue(), 170), 1.0));
-    if (m_cameraCone && eyeSeen)
-        for (QPointF const& corner : std::as_const(frame))
-            painter.drawLine(eye, corner);
+    if (m_cameraCone)
+        for (Point const& corner : std::as_const(corners)) {
+            QLineF line;
+            if (projectSegment({middle.x(), middle.y(), cameraDepth + distance}, corner, line))
+                painter.drawLine(line);
+        }
     painter.setPen(QPen(QColor(20, 30, 44), 1));
     painter.setBrush(camera >= 0 && camera == m_layer ? QColor(255, 255, 255) : blue);
     if (eyeSeen)
