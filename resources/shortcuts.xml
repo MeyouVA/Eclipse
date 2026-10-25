@@ -3,6 +3,9 @@
      itself is only written here (and in the user's own changes, kept in the settings). -->
 <shortcuts>
  <category id="General" text="General">
+  <shortcut id="shortcut.lookAtSelected" text="Look at Selected" value=""/>
+  <shortcut id="shortcut.moveViewForward" text="Move Forward" value=""/>
+  <shortcut id="shortcut.moveViewBackward" text="Move Backward" value=""/>
   <shortcut id="shortcut.new" text="New" value="Ctrl+N"/>
   <shortcut id="shortcut.open" text="Open" value="Ctrl+O"/>
   <shortcut id="shortcut.save" text="Save" value="Ctrl+S"/>

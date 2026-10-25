@@ -105,8 +105,7 @@ QJsonObject MainWindow::projectUiState() const
     for (DepthView* view : findChildren<DepthView*>())
         views[widgetKey(view, this)] = QJsonObject{{"zoom", view->zoom()}, {"x", view->pan().x()}, {"y", view->pan().y()}};
     for (PerspectiveView* view : findChildren<PerspectiveView*>())
-        views[widgetKey(view, this)] = QJsonObject{{"zoom", view->zoom()}, {"x", view->pan().x()}, {"y", view->pan().y()},
-                                                 {"yaw", view->yaw()}, {"pitch", view->pitch()}};
+        views[widgetKey(view, this)] = view->viewState();
     for (NodeView* view : findChildren<NodeView*>())
         views[widgetKey(view, this)] = view->viewState();
     for (QDockWidget* dock : m_docks)
@@ -193,10 +192,7 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
     }
     for (PerspectiveView* view : findChildren<PerspectiveView*>()) {
         QJsonObject const v = views[widgetKey(view, this)].toObject();
-        if (!v.isEmpty()) {
-            view->setOrbit(v["yaw"].toDouble(-32), v["pitch"].toDouble(18));
-            view->restoreView(v["zoom"].toDouble(1), QPointF(v["x"].toDouble(), v["y"].toDouble()));
-        }
+        view->restoreViewState(v);
     }
     for (NodeView* view : findChildren<NodeView*>()) {
         QJsonObject const v = views[widgetKey(view, this)].toObject();

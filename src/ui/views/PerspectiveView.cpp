@@ -46,13 +46,15 @@ void PerspectiveView::resetView()
     m_pitch = kDefaultPitch;
     m_zoom = 1.0;
     m_pan = QPointF();
+    m_viewX = m_viewY = m_viewZ = 0.0;
     update();
 }
 
-static void turn(Scene const& scene, double yaw, double pitch, double& x, double& y, double& z)
+static void turn(Scene const& scene, double yaw, double pitch, double viewX, double viewY, double viewZ, double& x, double& y, double& z)
 {
-    x -= scene.width / 2.0;
-    y -= scene.height / 2.0;
+    x -= scene.width / 2.0 + viewX;
+    y -= scene.height / 2.0 + viewY;
+    z -= viewZ;
     double const cy = std::cos(yaw * kRadians), sy = std::sin(yaw * kRadians);
     double const cp = std::cos(pitch * kRadians), sp = std::sin(pitch * kRadians);
     double const x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
@@ -64,14 +66,14 @@ static void turn(Scene const& scene, double yaw, double pitch, double& x, double
 
 double PerspectiveView::distanceOf(double x, double y, double z) const
 {
-    turn(m_document->scene(), m_yaw, m_pitch, x, y, z);
+    turn(m_document->scene(), m_yaw, m_pitch, m_viewX, m_viewY, m_viewZ, x, y, z);
     return -z;
 }
 
 QPointF PerspectiveView::project(double x, double y, double z, bool* seen) const
 {
     Scene const& scene = m_document->scene();
-    turn(scene, m_yaw, m_pitch, x, y, z);
+    turn(scene, m_yaw, m_pitch, m_viewX, m_viewY, m_viewZ, x, y, z);
     double const eye = 3.5 * std::max(scene.width, scene.height);
     double const left = eye - z;
     if (seen)
@@ -154,12 +156,18 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     double const cameraDepth = camera >= 0 ? scene.depthOf(camera, m_frame) : 0.0, distance = scene.focalDistance(m_frame);
     QTransform const fromPicture = scene.cameraTransform(m_frame).inverted();
     QPolygonF frame;
+    bool frameSeen = true;
     for (QPointF const& corner : {QPointF(0, 0), QPointF(scene.width, 0), QPointF(scene.width, scene.height), QPointF(0, scene.height)}) {
         QPointF const at = fromPicture.map(corner);
-        frame << project(at.x(), at.y(), cameraDepth);
+        bool seen = true;
+        frame << project(at.x(), at.y(), cameraDepth, &seen);
+        frameSeen = frameSeen && seen;
     }
+    if (!frameSeen)
+        frame.clear();
     QPointF const middle = fromPicture.map(QPointF(scene.width / 2.0, scene.height / 2.0));
-    QPointF const eye = project(middle.x(), middle.y(), cameraDepth + distance);
+    bool eyeSeen = true;
+    QPointF const eye = project(middle.x(), middle.y(), cameraDepth + distance, &eyeSeen);
     QColor const blue = InterfaceColours::get("planningCamera");
 
     // What is drawn, the furthest from the eye first: the layers, and the frame among them.
@@ -168,7 +176,8 @@ void PerspectiveView::paintEvent(QPaintEvent*)
         double distance;
     };
     QVector<Item> items;
-    items.push_back({-1, distanceOf(middle.x(), middle.y(), cameraDepth)});
+    if (!frame.isEmpty())
+        items.push_back({-1, distanceOf(middle.x(), middle.y(), cameraDepth)});
     for (int l = 0; l < scene.layers.size(); ++l) {
         if (layerQuad(l).size() != 4)
             continue;
@@ -210,12 +219,13 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     // The cone, over everything, so that the camera is always found.
     painter.resetTransform();
     painter.setPen(QPen(QColor(blue.red(), blue.green(), blue.blue(), 170), 1.0));
-    if (m_cameraCone)
+    if (m_cameraCone && eyeSeen)
         for (QPointF const& corner : std::as_const(frame))
             painter.drawLine(eye, corner);
     painter.setPen(QPen(QColor(20, 30, 44), 1));
     painter.setBrush(camera >= 0 && camera == m_layer ? QColor(255, 255, 255) : blue);
-    painter.drawEllipse(eye, 5.5, 5.5);
+    if (eyeSeen)
+        painter.drawEllipse(eye, 5.5, 5.5);
 
     painter.setPen(QColor(140, 140, 140));
     painter.setFont(small);

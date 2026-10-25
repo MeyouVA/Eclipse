@@ -131,6 +131,9 @@
    <separator/>
    <item id="CameraCone" text="Camera Cone" checkable="true" checked="true" responder="window" slot="onActionCameraCone(bool)"/>
    <item id="FrameSelectedPlane" text="Frame Selected Plane" responder="focus" slot="onActionFrameSelected()"/>
+   <item id="LookAtSelected" text="Look at Selected" shortcut="shortcut.lookAtSelected" responder="focus" slot="onActionLookAtSelected()" tooltip="Centre the selection in the Perspective view, keeping rotation and zoom."/>
+   <item id="MoveViewForward" text="Move Forward" shortcut="shortcut.moveViewForward" responder="focus" slot="onActionMoveForward()" tooltip="Move forward along the Perspective viewing direction."/>
+   <item id="MoveViewBackward" text="Move Backward" shortcut="shortcut.moveViewBackward" responder="focus" slot="onActionMoveBackward()" tooltip="Move backward along the Perspective viewing direction."/>
    <menu id="CameraSnapshots" text="Snapshots">
     <item id="TakeSnapshot1" text="Take Snapshot 1" shortcut="shortcut.takeSnapshot1" responder="camera" slot="onActionTakeSnapshot(QString)" itemParameter="1"/>
     <item id="TakeSnapshot2" text="Take Snapshot 2" shortcut="shortcut.takeSnapshot2" responder="camera" slot="onActionTakeSnapshot(QString)" itemParameter="2"/>
@@ -1628,6 +1631,9 @@
 
  <menu id="menu.scenePlanning" text="Scene Planning">
   <item id="FrameSelectedPlane"/>
+  <item id="LookAtSelected"/>
+  <item id="MoveViewForward"/>
+  <item id="MoveViewBackward"/>
   <item id="ZoomIn"/>
   <item id="ZoomOut"/>
   <item id="ResetZoom"/>

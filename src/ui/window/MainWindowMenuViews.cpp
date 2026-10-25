@@ -50,6 +50,9 @@ void MainWindow::createWindowsMenuViews()
         connect(view, &QWidget::customContextMenuRequested, this, [this, view](QPoint const& point) {
             view->setFocus();
             if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.scenePlanning"), this)) {
+                if (!qobject_cast<PerspectiveView*>(view))
+                    for (char const* id : {"LookAtSelected", "MoveViewForward", "MoveViewBackward"})
+                        menu->removeAction(m_actions->action(QLatin1String(id)));
                 menu->setAttribute(Qt::WA_DeleteOnClose);
                 menu->popup(view->mapToGlobal(point));
             }

@@ -50,6 +50,7 @@
 #include "ui/io/ImportExportPrivate.h"
 #include "ui/views/NodeView.h"
 #include "ui/views/DepthView.h"
+#include "ui/views/PerspectiveView.h"
 #include "actions/theme/InterfaceColours.h"
 #include <QHeaderView>
 #include <QTreeWidget>
@@ -259,6 +260,8 @@ void MainWindow::applyPreferences()
 void MainWindow::placeCameraView()
 {
     for (DepthView* view : findChildren<DepthView*>())
+        view->resetView();
+    for (PerspectiveView* view : findChildren<PerspectiveView*>())
         view->resetView();
     // As the preferences say: the whole frame in the view, or at its own size.
     m_canvas->fitToWindow();
