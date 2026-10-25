@@ -522,6 +522,10 @@ void MainWindow::restoreWorkspace()
     // The first time, the window fills the screen.
     if (!restoreGeometry(s.value(QStringLiteral("window/geometry")).toByteArray()))
         setWindowState(windowState() | Qt::WindowMaximized);
+    if (!isVisible()) {
+        m_restoreWorkspacePending = true;
+        return;
+    }
     m_persistWorkspaces = true;
     applyPreferences();
     // Preferences: the drawing tool in hand to begin with.
@@ -530,9 +534,13 @@ void MainWindow::restoreWorkspace()
         tool->trigger();
     QString const name = s.value(QStringLiteral("window/workspace"), QStringLiteral("Default")).toString();
     m_workspace = workspaces().contains(name) ? name : QStringLiteral("Default");
-    loadWorkspace(m_workspace);
-    refreshWorkspaceBox();
-    restoreProjectUi(QJsonDocument::fromJson(s.value(QStringLiteral("window/sessionUi")).toByteArray()).object());
+    QJsonObject const session = QJsonDocument::fromJson(s.value(QStringLiteral("window/sessionUi")).toByteArray()).object();
+    if (session["version"].toInt() == 1) {
+        restoreProjectUi(session);
+    } else {
+        loadWorkspace(m_workspace);
+        refreshWorkspaceBox();
+    }
     holdBackFloating();
 }
 
@@ -555,6 +563,8 @@ void MainWindow::holdBackFloating()
 void MainWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
+    if (std::exchange(m_restoreWorkspacePending, false))
+        restoreWorkspace();
     // The arrangement as it is first seen: changes to the workspace are told from it.
     if (m_cleanWorkspace.isEmpty())
         QTimer::singleShot(0, this, [this] { markWorkspaceClean(); });

@@ -676,6 +676,7 @@ private:
     QList<class CollapseHandle*> m_betweenHandles;
     bool m_collapsing = false;
     bool m_placePending = false;
+    bool m_restoreWorkspacePending = false;
     // Marks the view that was clicked in last: it is outlined.
     void setActiveView(QWidget* frame);
     void updateTitle();
