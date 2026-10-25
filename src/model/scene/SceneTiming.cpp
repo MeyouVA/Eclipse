@@ -3,35 +3,14 @@
 #include <QHash>
 #include <QSet>
 
-static bool sameDrawingStorage(Drawing const& a, Drawing const& b)
+QVector<int> drawingRemap(Layer const& before, Layer const& after)
 {
-    if (a.name != b.name || a.set != b.set || a.model != b.model || a.pictures.constData() != b.pictures.constData())
-        return false;
-    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
-        if (a.strokesOf(sheet).constData() != b.strokesOf(sheet).constData() || a.fillsOf(sheet).constData() != b.fillsOf(sheet).constData())
-            return false;
-    return true;
-}
-
-static QVector<int> drawingOrigins(Layer const& current, Layer const& before)
-{
-    QVector<int> origins(current.drawings.size(), -1);
-    QSet<int> used;
-    for (int drawing = 0; drawing < current.drawings.size() && drawing < before.drawings.size(); ++drawing)
-        if (sameDrawingStorage(current.drawings[drawing], before.drawings[drawing])) {
-            origins[drawing] = drawing;
-            used.insert(drawing);
-        }
-    for (int drawing = 0; drawing < current.drawings.size(); ++drawing) {
-        if (origins[drawing] >= 0)
-            continue;
-        for (int old = 0; old < before.drawings.size(); ++old)
-            if (!used.contains(old) && sameDrawingStorage(current.drawings[drawing], before.drawings[old])) {
-                origins[drawing] = old;
-                used.insert(old);
-                break;
-            }
-    }
+    QVector<int> origins(before.drawings.size(), -1);
+    QHash<quint64, int> current;
+    for (int drawing = 0; drawing < after.drawings.size(); ++drawing)
+        current.insert(after.drawings[drawing].editIdentity, drawing);
+    for (int drawing = 0; drawing < before.drawings.size(); ++drawing)
+        origins[drawing] = current.value(before.drawings[drawing].editIdentity, -1);
     return origins;
 }
 
@@ -40,7 +19,7 @@ void copyLayerTiming(Layer const& source, Layer& target, Layer const* beforeSour
     QHash<int, int> standsFor;
     if (beforeSource && beforeTarget) {
         QHash<int, int> oldPairs, targetNow;
-        QVector<int> const sourceOrigins = drawingOrigins(source, *beforeSource), targetOrigins = drawingOrigins(target, *beforeTarget);
+        QVector<int> const sourceOrigins = drawingRemap(source, *beforeSource), targetOrigins = drawingRemap(target, *beforeTarget);
         for (int frame = 0; frame < beforeSource->cells.size() && frame < beforeTarget->cells.size(); ++frame)
             if (int const drawing = beforeSource->drawingAt(frame), own = beforeTarget->drawingAt(frame); drawing >= 0 && own >= 0 && !oldPairs.contains(drawing))
                 oldPairs.insert(drawing, own);

@@ -24,6 +24,8 @@ template <class Edit> void Document::apply(QString const& text, Edit edit)
 {
     Scene after = m_scene;
     edit(after);
+    for (Layer& layer : after.layers)
+        layer.keepDrawingIdentitiesUnique();
     // (Synced layers keep the same timing.)
     after.followSyncedTiming(m_scene);
     // (Clones are one set of drawings and one timing.)
@@ -31,7 +33,7 @@ template <class Edit> void Document::apply(QString const& text, Edit edit)
     // (Key exposures that mark nothing any more - their drawing gone or changed - are not kept.)
     for (Layer& layer : after.layers)
         layer.tidyKeyExposures();
-    m_undo.push(new SceneStateCommand(this, m_scene, std::move(after), text));
+    pushUndo(new SceneStateCommand(this, m_scene, std::move(after), text));
 }
 
 // The points a curve command works on: a layer's (0 and up), or a function column's (-1 the first column, -2 the next ...).

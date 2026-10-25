@@ -98,7 +98,7 @@ bool Document::enterSymbol(int symbolId)
     inner.refreshSymbolInstances();
     QVector<Around> around = m_around;
     around.push_back({m_scene, symbolId});
-    m_undo.push(new SymbolLevelCommand(this, m_scene, m_around, inner, around, tr("Edit Symbol")));
+    pushUndo(new SymbolLevelCommand(this, m_scene, m_around, inner, around, tr("Edit Symbol")));
     return true;
 }
 
@@ -110,7 +110,7 @@ bool Document::leaveSymbol()
     Around const left = around.takeLast();
     Scene outer = left.scene;
     outer.takeSymbol(left.symbolId, m_scene);
-    m_undo.push(new SymbolLevelCommand(this, m_scene, m_around, outer, around, tr("Leave Symbol")));
+    pushUndo(new SymbolLevelCommand(this, m_scene, m_around, outer, around, tr("Leave Symbol")));
     return true;
 }
 
@@ -146,7 +146,10 @@ void Document::reset(Scene const& scene)
     m_unsavedInside = false;
     m_undo.clear();
     m_undo.setUndoLimit(m_undoLevels);
+    m_editGroups.clear();
     m_scene = scene;
+    for (Layer& layer : m_scene.layers)
+        layer.keepDrawingIdentitiesUnique();
     emit changed();
 }
 
@@ -177,7 +180,7 @@ void Document::addStroke(int layer, int frame, Stroke const& stroke)
     Drawing const& d = m_scene.layers[layer].drawings[m_scene.layers[layer].cells[frame]];
     Stroke placed = stroke;
     placed.order = Drawing::topOrder(d.fills, d.strokes);
-    m_undo.push(new AddStrokeCommand(this, layer, m_scene.layers[layer].cells[frame], placed));
+    pushUndo(new AddStrokeCommand(this, layer, m_scene.layers[layer].cells[frame], placed));
 }
 
 int Document::eraseAt(int layer, int frame, QPointF p, double radius)
@@ -223,6 +226,7 @@ void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString 
         } else {
             // Joints kept: a point of one that was moved takes the others with it.
             Drawing kept = drawing;
+            kept.editIdentity = s.layers[layer].drawings[index].editIdentity;
             kept.keepJoints(s.layers[layer].drawings[index]);
             s.layers[layer].drawings[index] = kept;
         }

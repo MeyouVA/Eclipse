@@ -432,8 +432,8 @@ public:
     // Takes the frames `first`..`last` out of the scene, which keeps one frame at least.
     void removeFrames(int first, int last);
     // The same exposure command on several layers, as one undo step.
-    void beginMacro(QString const& text) { m_undo.beginMacro(text); }
-    void endMacro() { m_undo.endMacro(); }
+    void beginMacro(QString const& text);
+    void endMacro();
     // `fov` (above 0): the angle of view of the camera size; a camera that had the old one, and does not key it, takes it.
     void setSceneSettings(int width, int height, double fps, double fov = 0.0);
 
@@ -472,4 +472,10 @@ private:
     bool m_substitutionKeys = true;
     bool m_rippleMarkers = false;
     QUndoStack m_undo;
+    struct EditGroup {
+        QString text;
+        bool opened = false;
+    };
+    QVector<EditGroup> m_editGroups;
+    void pushUndo(QUndoCommand* command);
 };

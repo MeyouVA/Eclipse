@@ -2,6 +2,9 @@
 #pragma once
 
 #include "model/scene/Stroke.h"
+#include "EclipseExport.h"
+
+ECLIPSE_MODEL_API quint64 nextDrawingIdentity();
 
 struct Fill {
     QVector<QPolygonF> outlines;
@@ -134,4 +137,6 @@ struct Drawing {
         art.strokes = colourStrokes;
         return art;
     }
+    // Runtime identity follows a drawing through edits and undo; project files keep their existing format.
+    quint64 editIdentity = nextDrawingIdentity();
 };

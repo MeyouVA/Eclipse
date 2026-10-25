@@ -112,6 +112,8 @@ void Scene::followClones(Scene const& before)
         auto leader = touched.constFind(layers[l].cloneGroup);
         if (leader == touched.constEnd() || layers[*leader].cells.size() != layers[l].cells.size())
             continue;
+        if (int const old = before.layerIndex(layers[*leader].id); old >= 0)
+            layers[l].renumberMoves(drawingRemap(before.layers[old], layers[*leader]));
         if (!layers[*leader].cloneTiming) {
             for (Drawing& d : layers[*leader].drawings)
                 d.pinned = true;

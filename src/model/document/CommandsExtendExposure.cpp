@@ -15,7 +15,7 @@ void Document::previewExposureCells(Scene const& before, int layer, QVector<int>
     after.followClones(before);
     for (Layer& edited : after.layers)
         edited.tidyKeyExposures();
-    m_undo.push(new SceneStateCommand(this, m_scene, std::move(after), tr("Extend Exposure")));
+    pushUndo(new SceneStateCommand(this, m_scene, std::move(after), tr("Extend Exposure")));
 }
 
 bool Document::extendExposureTo(int layer, int from, int to, bool insert)

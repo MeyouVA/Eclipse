@@ -191,6 +191,7 @@ static void oneNameEach(QVector<Drawing>& drawings)
 
 void Layer::compact()
 {
+    keepDrawingIdentitiesUnique();
     QVector<int> remap(drawings.size(), kNoDrawing);
     QVector<Drawing> kept;
     bool bank = false;
