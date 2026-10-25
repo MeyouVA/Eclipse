@@ -138,7 +138,8 @@ int Document::storeAsFunction(int layer, int value, int kind)
             column.path.push_back({p.x, p.y, p.z, key.frame, 0.0, 0.0, 0.0});
             continue;
         }
-        Keyframe point = pointKey(key.frame, Driver::read(key.pose, value));
+        double const v = value == Driver::Fov && key.pose.fov <= 0.0 ? l.fovAt(key.frame) : Driver::read(key.pose, value);
+        Keyframe point = pointKey(key.frame, v);
         point.tween = key.tween;
         point.easeIn = key.easeIn;
         point.easeOut = key.easeOut;
@@ -151,7 +152,8 @@ int Document::storeAsFunction(int layer, int value, int kind)
         }
         column.curve.keys.push_back(point);
     }
-    double const now = Driver::read(m_scene.poseOf(layer, 0), value);
+    double const resolved = Driver::read(m_scene.poseOf(layer, 0), value);
+    double const now = value == Driver::Fov && resolved <= 0.0 ? l.fovAt(0) : resolved;
     if (kind == FunctionColumn::Expression)
         column.expression = QString::number(now, 'g', 10);
     if (path && column.path.isEmpty()) {

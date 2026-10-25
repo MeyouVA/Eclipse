@@ -165,7 +165,10 @@ public:
     static QImage modeImage(Scene const& scene, int frame, ViewMode mode);
     // Snapshots: the frame as rendered, kept to compare later work with - shown in the view in place of the frame.
     void takeSnapshot();
-    void setShowSnapshot(bool on) { m_showSnapshot = on && hasSnapshot(); update(); }
+    Q_INVOKABLE void onActionTakeSnapshot(QString slot);
+    Q_INVOKABLE void onActionShowSnapshot(QString slot);
+    Q_INVOKABLE void onActionHideSnapshot() { setShowSnapshot(false); }
+    void setShowSnapshot(bool on) { m_showSnapshot = on && hasSnapshot(); update(); emit snapshotChanged(); }
     Q_INVOKABLE void onActionNoZDragging(bool on) { m_noZDrag = on; }
     // The Transform tool: its options and preferences; the other layers it works on along with the current one.
     TransformOptions const& transformOptions() const { return m_tx; }
@@ -266,7 +269,7 @@ public:
     static void paintDrawing(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity,
                              QColor const* tint = nullptr);
     static void paintLayerDrawing(QPainter& painter, Scene const& scene, int layer, int frame, Drawing const& drawing,
-                                  double opacity, QTransform const& sceneToDevice, bool everySheet = false);
+                                  double opacity, QTransform const& sceneToDevice, bool everySheet = false, bool cameraClipping = true);
     static void paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
     // How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
     static inline double s_lineOpacity = 1.0;
@@ -623,6 +626,7 @@ public slots:
     void onActionHighlightColour(bool on);
 
 signals:
+    void snapshotChanged();
     // A setting of the tool in hand changed by a command (Tool Properties shows it again).
     void toolSettingsChanged();
     void selectionChanged();

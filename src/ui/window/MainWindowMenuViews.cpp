@@ -34,8 +34,27 @@
 #include <QStatusBar>
 #include <QToolBar>
 
+void MainWindow::onActionCameraCone(bool on)
+{
+    for (DepthView* view : findChildren<DepthView*>())
+        view->setCameraCone(on);
+    for (PerspectiveView* view : findChildren<PerspectiveView*>())
+        view->setCameraCone(on);
+}
+
 void MainWindow::createWindowsMenuViews()
 {
+    auto planningMenu = [this](QWidget* view, QString const& responder) {
+        m_actions->registerResponder(responder, view);
+        view->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(view, &QWidget::customContextMenuRequested, this, [this, view](QPoint const& point) {
+            view->setFocus();
+            if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.scenePlanning"), this)) {
+                menu->setAttribute(Qt::WA_DeleteOnClose);
+                menu->popup(view->mapToGlobal(point));
+            }
+        });
+    };
     // Node Library: the kinds of layer and effect there are, to add from.
     {
         NodeLibraryView* const view = new NodeLibraryView(this);
@@ -142,12 +161,16 @@ void MainWindow::createWindowsMenuViews()
                 view->setCurrentCell(l, f);
         });
         connect(view, &PerspectiveView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
+        planningMenu(view, QStringLiteral("perspectiveView"));
         addView(tr("Perspective"), QStringLiteral("PerspectiveViewDock"), view, Qt::RightDockWidgetArea)->hide();
     }
     // Top and Side: the scene from above and from the side, to set how far each layer stands from the camera.
     for (DepthView::Mode mode : {DepthView::Top, DepthView::Side}) {
         DepthView* const view = new DepthView(m_document, mode, this);
+        view->setAnimationCanvas(m_canvas);
+        connect(view, &DepthView::message, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
         view->setObjectName(mode == DepthView::Top ? QStringLiteral("TopView") : QStringLiteral("SideView"));
+        planningMenu(view, mode == DepthView::Top ? QStringLiteral("topView") : QStringLiteral("sideView"));
         connect(m_timeline, &Timeline::currentCellChanged, view, [this, view, mode](int l, int f) {
             if (!m_playTimer.isActive() || playsIn(mode == DepthView::Top ? QStringLiteral("top") : QStringLiteral("side")))
                 view->setCurrentCell(l, f);

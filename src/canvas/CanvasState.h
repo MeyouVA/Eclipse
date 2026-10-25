@@ -194,6 +194,7 @@ protected:
     int m_modeCacheFrame = -1;
     ViewMode m_modeCacheMode = ViewNormal;
     QImage m_snapshot;
+    QImage m_snapshotSlots[5];
     bool m_showSnapshot = false;
     bool m_snapGrid = false;
     bool m_animate = true;

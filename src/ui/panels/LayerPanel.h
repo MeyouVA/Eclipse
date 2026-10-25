@@ -39,6 +39,8 @@ private:
     void applyEase();
     void buildTransformOptions();
     void refreshTransformOptions(struct Layer const& layer);
+    void buildCameraOptions();
+    void refreshCameraOptions(struct Layer const& layer);
 public:
     // Attribute Controls: a window to set which values of the current layer follow values of other layers.
     void editDrivers();
@@ -69,6 +71,9 @@ private:
     class QLayout* m_turnRow = nullptr;
     QDoubleSpinBox* m_fov;          // a camera: the angle it sees
     class QLayout* m_fovRow = nullptr;
+    QWidget* m_clipRow = nullptr;
+    QDoubleSpinBox* m_nearPlane = nullptr;
+    QDoubleSpinBox* m_farPlane = nullptr;
     class QToolButton* m_functionButtons[9] = {};
     QDoubleSpinBox* m_scaleX;
     QDoubleSpinBox* m_scaleY;

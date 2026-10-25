@@ -490,6 +490,8 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
                                   {"cardColor", layer.cardColor.name(QColor::HexArgb)},
                                   {"boneLength", layer.boneLength},
                                   {"fov", layer.fov},
+                                  {"nearPlane", layer.nearPlane},
+                                  {"farPlane", layer.farPlane},
                                   {"quad", quad},
                                   {"quadSize", QJsonArray{layer.quadSize.width(), layer.quadSize.height()}},
                                   {"bones", bones},

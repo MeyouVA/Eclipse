@@ -281,7 +281,15 @@ void Document::setEffectAmount(int layer, int frame, int index, double amount)
 void Document::setFov(int layer, double degrees, int frame)
 {
     degrees = std::clamp(degrees, 1.0, 170.0);
-    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Camera || m_scene.layers[layer].fovAt(frame) == degrees)
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Camera)
+        return;
+    if (int const index = m_scene.functionIndex(m_scene.layers[layer].linkOf(Driver::Fov)); index >= 0) {
+        FunctionColumn const& column = m_scene.functions[index];
+        if (column.kind == FunctionColumn::Bezier || column.kind == FunctionColumn::Ease)
+            setKeyValues(-1 - index, {{frame, Driver::X, degrees}}, tr("Change Field of View"));
+        return;
+    }
+    if (m_scene.layers[layer].fovAt(frame) == degrees)
         return;
     apply(tr("Change Field of View"), [&](Scene& s) {
         Layer& l = s.layers[layer];

@@ -265,6 +265,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(QString(), m_key);
     form->addRow(m_effects);
     buildTransformOptions();
+    buildCameraOptions();
 
     connect(m_fov, &QDoubleSpinBox::valueChanged, this, [this](double degrees) {
         if (!m_refreshing)
@@ -438,9 +439,9 @@ void LayerPanel::refresh()
     m_form->setRowVisible(m_card, layer.kind == Layer::ColourCard);
     m_form->setRowVisible(m_length, layer.kind == Layer::Bone);
     m_form->setRowVisible(m_fovRow, layer.kind == Layer::Camera);
-    m_fov->setValue(m_fov->property("driven").toBool() ? pose.fov : layer.fovAt(m_frame));
-    // A camera is not turned in space (it looks straight at the scene).
-    m_form->setRowVisible(m_turnRow, layer.kind != Layer::Camera);
+    m_fov->setValue(m_fov->property("driven").toBool() || layer.linkOf(Driver::Fov) != 0 ? pose.fov : layer.fovAt(m_frame));
+    m_form->setRowVisible(m_turnRow, true);
+    refreshCameraOptions(layer);
     m_card->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px;").arg(layer.cardColor.name()));
     m_length->setValue(layer.boneLength);
     m_form->setRowVisible(m_ikRow, layer.kind == Layer::Bone);

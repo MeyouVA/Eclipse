@@ -188,6 +188,7 @@ public:
     int lipSyncFromWords(int soundLayer, QString const& words);
 
 public slots:
+    void onActionCameraCone(bool on);
     // The Colour Editor, on the colour in hand (Palettes > Colour Editor, or a double click on a colour).
     void showColourEditor();
     // ---- File ----

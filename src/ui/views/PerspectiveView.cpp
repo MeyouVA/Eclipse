@@ -21,6 +21,7 @@ constexpr double kRadians = 3.14159265358979323846 / 180.0;
 PerspectiveView::PerspectiveView(Document* document, QWidget* parent) : QWidget(parent), m_document(document)
 {
     setMinimumSize(200, 150);
+    setFocusPolicy(Qt::StrongFocus);
     connect(m_document, &Document::changed, this, qOverload<>(&QWidget::update));
 }
 
@@ -192,7 +193,7 @@ void PerspectiveView::paintEvent(QPaintEvent*)
         QTransform onto;
         if (!QTransform::quadToQuad(QPolygonF({box.topLeft(), box.topRight(), box.bottomRight(), box.bottomLeft()}), quad, onto))
             continue;
-        Pose const pose = layer.poseAt(m_frame);
+        Pose const pose = scene.poseOf(item.layer, m_frame);
         painter.setTransform(onto);
         Canvas::paintDrawing(painter, scene, Deform::ridden(scene, item.layer, m_frame, Deform::shown(layer.shownAt(m_frame), layer, pose)), layer.opacity * pose.opacity);
         painter.resetTransform();
@@ -208,8 +209,9 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     // The cone, over everything, so that the camera is always found.
     painter.resetTransform();
     painter.setPen(QPen(QColor(blue.red(), blue.green(), blue.blue(), 170), 1.0));
-    for (QPointF const& corner : std::as_const(frame))
-        painter.drawLine(eye, corner);
+    if (m_cameraCone)
+        for (QPointF const& corner : std::as_const(frame))
+            painter.drawLine(eye, corner);
     painter.setPen(QPen(QColor(20, 30, 44), 1));
     painter.setBrush(camera >= 0 && camera == m_layer ? QColor(255, 255, 255) : blue);
     painter.drawEllipse(eye, 5.5, 5.5);

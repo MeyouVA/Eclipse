@@ -78,7 +78,7 @@ QVector<QPair<int, Pose>> Canvas::posedOthers() const
         Layer const& l = scene.layers[other];
         if (carried || l.kind == Layer::Quadmap || l.kind == Layer::Group || l.kind == Layer::ColourCard)
             continue;
-        Pose const was = l.poseAt(m_frame);
+        Pose const was = scene.poseOf(other, m_frame);
         QPointF const pivot = scene.pivotOf(other, m_frame);
         QTransform const local = l.matrixFor(was, pivot);
         QTransform const world = scene.worldTransform(other, m_frame);
@@ -192,14 +192,12 @@ void Canvas::nudgeLayer(QPointF direction, bool far)
             continue;
         QPointF const at = toScene(QPointF(width() / 2.0, height() / 2.0));
         QPointF const by = up.inverted().map(at + direction * step) - up.inverted().map(at);
-        Pose const was = m_document->scene().layers[target].poseAt(m_frame);
+        Pose const was = m_document->scene().poseOf(target, m_frame);
         Pose now = was;
         now.x += by.x();
         now.y += by.y();
-        if (m_animate)
-            m_document->setKeyframe(target, m_frame, now, tr("Nudge"));
-        else
-            m_document->shiftPoses(target, m_frame, was, now, tr("Nudge"));
+        if (!m_document->animatePose(target, m_frame, was, now, tr("Nudge"), Keyframe::AllParts, !m_animate))
+            emit message(tr("Edit the linked column's expression or path in the Function Editor to change this value."));
     }
     m_document->endMacro();
 }

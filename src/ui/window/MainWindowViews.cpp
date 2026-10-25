@@ -4,6 +4,7 @@
 #include "model/geometry/Deform.h"
 
 #include <QApplication>
+#include <QSignalBlocker>
 #include <QComboBox>
 #include <QDockWidget>
 #include <QFrame>
@@ -244,7 +245,8 @@ void MainWindow::createViews()
     // The keyboard focus going into a view makes it the view in use as well (a click does both).
     connect(qApp, &QApplication::focusChanged, this, [this](QWidget*, QWidget* now) {
         for (QWidget* w = now; w && w != this; w = w->parentWidget()) {
-            if (w->objectName() == QLatin1String("ViewFrame") && (w->window() == this || w->window() == m_cameraWindow)) {
+            if (w->objectName() == QLatin1String("ViewFrame") && (w->window() == this || w->window() == m_cameraWindow
+                || m_docks.contains(qobject_cast<QDockWidget*>(w->window())))) {
                 setActiveView(w);
                 break;
             }
@@ -394,6 +396,11 @@ void MainWindow::createCameraView()
             statusBar()->showMessage(tr("Snapshot taken of frame %1. Show it to compare.").arg(frame() + 1), 5000);
         });
         connect(show, &QToolButton::toggled, m_canvas, [this](bool on) { m_canvas->setShowSnapshot(on); });
+        connect(m_canvas, &Canvas::snapshotChanged, show, [this, show] {
+            QSignalBlocker const block(show);
+            show->setEnabled(m_canvas->hasSnapshot());
+            show->setChecked(m_canvas->showsSnapshot());
+        });
         row->addWidget(take);
         row->addWidget(show);
     }

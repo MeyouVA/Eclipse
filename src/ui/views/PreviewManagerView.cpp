@@ -128,6 +128,11 @@ quint64 PreviewManagerView::fingerprint(Scene const& scene, int frame)
     pointer(scene.symbols.constData());
     whole(scene.symbols.size());
     matrix(scene.cameraTransform(frame));
+    number(scene.focalDistance(frame));
+    if (int const camera = scene.cameraIndex(); camera >= 0) {
+        number(scene.layers[camera].nearPlane);
+        number(scene.layers[camera].farPlane);
+    }
     for (int l : scene.drawOrder(frame)) {
         Layer const& layer = scene.layers[l];
         // A drawing layer with nothing on this frame shows nothing, wherever it is.
@@ -140,7 +145,7 @@ quint64 PreviewManagerView::fingerprint(Scene const& scene, int frame)
         whole(layer.hiddenSheets);
         whole(layer.cardColor.rgba());
         matrix(scene.worldTransform(l, frame));
-        pose(layer.poseAt(frame));
+        pose(scene.poseOf(l, frame));
         pointer(layer.bones.constData());
         pointer(layer.warp.constData());
         pointer(layer.effects.constData());

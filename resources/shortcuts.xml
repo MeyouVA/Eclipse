@@ -38,6 +38,11 @@
   <shortcut id="shortcut.gotoFrame" text="Go to Frame" value=""/>
  </category>
  <category id="Camera" text="Camera">
+  <shortcut id="shortcut.takeSnapshot1" text="Take Snapshot 1" value=""/>
+  <shortcut id="shortcut.takeSnapshot2" text="Take Snapshot 2" value=""/>
+  <shortcut id="shortcut.takeSnapshot3" text="Take Snapshot 3" value=""/>
+  <shortcut id="shortcut.takeSnapshot4" text="Take Snapshot 4" value=""/>
+  <shortcut id="shortcut.takeSnapshot5" text="Take Snapshot 5" value=""/>
   <shortcut id="shortcut.backlight" text="Backlight" value=""/>
   <shortcut id="shortcut.zoomIn" text="Zoom In" value="2"/>
   <shortcut id="shortcut.zoomOut" text="Zoom Out" value="1"/>

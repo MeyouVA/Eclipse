@@ -501,6 +501,10 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         layer.cardColor = QColor(card);
     layer.boneLength = std::max(1.0, lo["boneLength"].toDouble(200.0));
     layer.fov = std::clamp(lo["fov"].toDouble(Layer::kDefaultFov), 1.0, 170.0);
+    layer.nearPlane = std::max(0.0, lo["nearPlane"].toDouble());
+    layer.farPlane = std::max(0.0, lo["farPlane"].toDouble());
+    if (layer.farPlane > 0.0 && layer.farPlane <= layer.nearPlane)
+        layer.farPlane = 0.0;
     QJsonArray const quad = lo["quad"].toArray();
     for (int i = 0; i + 1 < quad.size(); i += 2)
         layer.quad.push_back(QPointF(quad[i].toDouble(), quad[i + 1].toDouble()));

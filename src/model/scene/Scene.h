@@ -208,6 +208,8 @@ public:
     void depthPlane(int layer, int frame, double& a, double& b, double& c) const;
     // Level with the camera or behind it: not seen at all.
     bool behindCamera(int layer, int frame) const;
+    // The part of a drawing inside the camera's clipping planes, in drawing coordinates.
+    QPolygonF cameraClip(int layer, int frame, QRectF bounds) const;
     QTransform depthTransform(double z, int frame) const;
     // By how much (1: not at all).
     double depthScale(double z, int frame) const;

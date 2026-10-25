@@ -303,6 +303,23 @@ bool Canvas::penUpPose(Drag drag)
     }
     if (m_dragPose == m_poseStart)
         return false;
+    auto editable = [this](int layer, Pose const& was, Pose const& now) {
+        Scene const& scene = m_document->scene();
+        for (ValueLink const& link : scene.layers[layer].links) {
+            FunctionColumn const* column = scene.function(link.function);
+            if (column && column->kind != FunctionColumn::Bezier && column->kind != FunctionColumn::Ease
+                && std::abs(Driver::read(was, link.value) - Driver::read(now, link.value)) > 1e-9)
+                return false;
+        }
+        return true;
+    };
+    bool canEdit = editable(m_layer, m_poseStart, m_dragPose);
+    for (auto const& [other, pose] : others)
+        canEdit = canEdit && editable(other, m_document->scene().poseOf(other, m_frame), pose);
+    if (!canEdit) {
+        emit message(tr("Edit the linked column's expression or path in the Function Editor to change this value."));
+        return false;
+    }
     QString const text = drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
                          : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer")
                          : drag == DragPoseTurn ? tr("Turn Layer in Space") : tr("Rotate Layer");
@@ -311,27 +328,27 @@ bool Canvas::penUpPose(Drag drag)
     // A keyframe here of the layer as posed: of every value, or (as Preferences may say) only of those changed.
     auto keyHere = [this, &text](int layer, Pose const& was, Pose const& now) {
         int const parts = Canvas::changedParts(was, now);
-        if (!m_tx.allKeys && parts != 0 && m_document->scene().layers[layer].keyIndex(m_frame) < 0)
-            m_document->setPartKeyframe(layer, m_frame, parts, now, text);
-        else
-            m_document->setKeyframe(layer, m_frame, now, text);
+        int const keyed = !m_tx.allKeys && parts != 0 && m_document->scene().layers[layer].keyIndex(m_frame) < 0 ? parts : Keyframe::AllParts;
+        if (!m_document->animatePose(layer, m_frame, was, now, text, keyed))
+            emit message(tr("Edit the linked column's expression or path in the Function Editor to change this value."));
     };
     Layer const before = m_document->scene().layers[m_layer];
     if (!m_animate) {
-        m_document->shiftPoses(m_layer, m_frame, m_poseStart, m_dragPose, text, first, last);
+        if (!m_document->animatePose(m_layer, m_frame, m_poseStart, m_dragPose, text, Keyframe::AllParts, true, first, last))
+            emit message(tr("Edit the linked column's expression or path in the Function Editor to change this value."));
     } else {
         if (m_keyFrameOne && m_frame > 0 && before.keys.isEmpty())
-            m_document->setKeyframe(m_layer, 0, m_poseStart, text);    // its first keyframe, not on the first frame: the first frame gets one too
+            m_document->animatePose(m_layer, 0, m_poseStart, m_poseStart, text);
         keyHere(m_layer, m_poseStart, m_dragPose);
         // Snap Keyframe: a stop-motion keyframe changed, the next one that held the same values follows it.
         int const at = before.keyIndex(m_frame);
         if (m_tx.snapKeyframe && at >= 0 && !before.keys[at].tween && at + 1 < before.keys.size() && before.keys[at + 1].pose == before.keys[at].pose)
-            m_document->setKeyframe(m_layer, before.keys[at + 1].frame, m_dragPose, text);
+            m_document->animatePose(m_layer, before.keys[at + 1].frame, m_poseStart, m_dragPose, text);
     }
     for (auto const& [other, pose] : others) {
-        Pose const was = m_document->scene().layers[other].poseAt(m_frame);
+        Pose const was = m_document->scene().poseOf(other, m_frame);
         if (!m_animate)
-            m_document->shiftPoses(other, m_frame, was, pose, text, first, last);
+            m_document->animatePose(other, m_frame, was, pose, text, Keyframe::AllParts, true, first, last);
         else
             keyHere(other, was, pose);
     }

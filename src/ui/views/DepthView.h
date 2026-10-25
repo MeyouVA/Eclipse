@@ -7,8 +7,10 @@
 #include "EclipseExport.h"
 
 #include <QWidget>
+#include <algorithm>
 
 class Document;
+class Canvas;
 
 class ECLIPSE_UI_API DepthView : public QWidget {
     Q_OBJECT
@@ -23,14 +25,23 @@ public:
     double zoom() const { return m_zoom; }
     QPointF pan() const { return m_pan; }
     void resetView();
+    void setAnimationCanvas(Canvas* canvas) { m_canvas = canvas; }
     int currentFrame() const { return m_frame; }
     QSize sizeHint() const override { return QSize(320, 260); }
 
 public slots:
     void setCurrentCell(int layer, int frame);
+    void onActionZoomIn() { m_zoom = std::min(m_zoom * 1.25, 40.0); update(); }
+    void onActionZoomOut() { m_zoom = std::max(m_zoom / 1.25, 0.2); update(); }
+    void onActionResetZoom() { m_zoom = 1.0; update(); }
+    void onActionResetPan() { m_pan = QPointF(); update(); }
+    void onActionResetView() { resetView(); }
+    void onActionFrameSelected();
+    void setCameraCone(bool on) { m_cameraCone = on; update(); }
 
 signals:
     void layerPicked(int layer);
+    void message(QString const& text);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -63,10 +74,12 @@ private:
     int markAt(QPointF widgetPos) const;
 
     Document* m_document;
+    Canvas* m_canvas = nullptr;
     Mode m_mode;
     double m_zoom = 1.0;
     QPointF m_pan;
     bool m_panning = false;
+    bool m_cameraCone = true;
     QPointF m_last;
     int m_layer = 0;
     int m_frame = 0;

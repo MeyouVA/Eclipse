@@ -129,6 +129,22 @@
    <item id="FrameSelection" icon="view/frameselection" text="&amp;Frame Drawing Selection" shortcut="shortcut.frameSelection" responder="camera" slot="onActionFrameSelection()"/>
    <item id="QuickCloseup" icon="view/zoomin" text="&amp;Quick Close-up" shortcut="shortcut.quickCloseup" checkable="true" responder="camera" slot="onActionQuickCloseup()"/>
    <separator/>
+   <item id="CameraCone" text="Camera Cone" checkable="true" checked="true" responder="window" slot="onActionCameraCone(bool)"/>
+   <item id="FrameSelectedPlane" text="Frame Selected Plane" responder="focus" slot="onActionFrameSelected()"/>
+   <menu id="CameraSnapshots" text="Snapshots">
+    <item id="TakeSnapshot1" text="Take Snapshot 1" shortcut="shortcut.takeSnapshot1" responder="camera" slot="onActionTakeSnapshot(QString)" itemParameter="1"/>
+    <item id="TakeSnapshot2" text="Take Snapshot 2" shortcut="shortcut.takeSnapshot2" responder="camera" slot="onActionTakeSnapshot(QString)" itemParameter="2"/>
+    <item id="TakeSnapshot3" text="Take Snapshot 3" shortcut="shortcut.takeSnapshot3" responder="camera" slot="onActionTakeSnapshot(QString)" itemParameter="3"/>
+    <item id="TakeSnapshot4" text="Take Snapshot 4" shortcut="shortcut.takeSnapshot4" responder="camera" slot="onActionTakeSnapshot(QString)" itemParameter="4"/>
+    <item id="TakeSnapshot5" text="Take Snapshot 5" shortcut="shortcut.takeSnapshot5" responder="camera" slot="onActionTakeSnapshot(QString)" itemParameter="5"/>
+    <separator/>
+    <item id="ShowSnapshot1" text="Show Snapshot 1" responder="camera" slot="onActionShowSnapshot(QString)" itemParameter="1"/>
+    <item id="ShowSnapshot2" text="Show Snapshot 2" responder="camera" slot="onActionShowSnapshot(QString)" itemParameter="2"/>
+    <item id="ShowSnapshot3" text="Show Snapshot 3" responder="camera" slot="onActionShowSnapshot(QString)" itemParameter="3"/>
+    <item id="ShowSnapshot4" text="Show Snapshot 4" responder="camera" slot="onActionShowSnapshot(QString)" itemParameter="4"/>
+    <item id="ShowSnapshot5" text="Show Snapshot 5" responder="camera" slot="onActionShowSnapshot(QString)" itemParameter="5"/>
+    <item id="HideSnapshot" text="Show Scene" responder="camera" slot="onActionHideSnapshot()"/>
+   </menu>
    <item id="NextColour" icon="misc/nextcolour" text="Next C&amp;olour" shortcut="shortcut.nextColour" responder="window" slot="onActionNextColour()"/>
    <item id="PreviousColour" icon="misc/prevcolour" text="Previous Colo&amp;ur" shortcut="shortcut.prevColour" responder="window" slot="onActionPreviousColour()"/>
    <separator/>
@@ -795,6 +811,7 @@
 
  <!-- Right-click menus of the views. -->
  <menu id="menu.cameraView" text="Camera View Menu">
+  <submenu id="CameraSnapshots" text="Snapshots"/>
   <submenu id="menu.animationTools" text="Animation Tools"/>
   <submenu id="menu.drawingTools" text="Drawing Tools"/>
   <separator/>
@@ -1592,4 +1609,17 @@
   </menu>
  </menu>
 
+ <menu id="menu.scenePlanning" text="Scene Planning">
+  <item id="FrameSelectedPlane"/>
+  <item id="ZoomIn"/>
+  <item id="ZoomOut"/>
+  <item id="ResetZoom"/>
+  <item id="ResetPan"/>
+  <item id="ResetView"/>
+  <separator/>
+  <item id="CameraCone"/>
+  <item id="NoZDragging"/>
+  <separator/>
+  <item id="InsertCamera"/>
+ </menu>
 </menus>

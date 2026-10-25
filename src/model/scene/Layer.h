@@ -94,6 +94,8 @@ struct Layer {
     double ikMax = 90.0;
     static constexpr double kDefaultFov = 41.112;
     double fov = kDefaultFov;
+    double nearPlane = 0.0;
+    double farPlane = 0.0;
     // The angle on a frame: that of the keyframes when they say, else the one above.
     double fovAt(int frame) const;
     QVector<QPointF> quad;

@@ -7,6 +7,7 @@
 #include "EclipseExport.h"
 
 #include <QWidget>
+#include <algorithm>
 
 class Document;
 
@@ -30,6 +31,13 @@ public:
 
 public slots:
     void setCurrentCell(int layer, int frame);
+    void onActionZoomIn() { m_zoom = std::min(m_zoom * 1.25, 20.0); update(); }
+    void onActionZoomOut() { m_zoom = std::max(m_zoom / 1.25, 0.1); update(); }
+    void onActionResetZoom() { m_zoom = 1.0; update(); }
+    void onActionResetPan() { m_pan = QPointF(); update(); }
+    void onActionResetView() { resetView(); }
+    void onActionFrameSelected();
+    void setCameraCone(bool on) { m_cameraCone = on; update(); }
 
 signals:
     void layerPicked(int layer);
@@ -59,4 +67,5 @@ private:
     QPointF m_last;
     QPointF m_pressed;
     bool m_moved = false;
+    bool m_cameraCone = true;
 };

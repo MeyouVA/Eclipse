@@ -17,10 +17,21 @@ layer glides from one pose to the other.</li>
 <h2>The camera</h2>
 <p><b>Insert &gt; Camera</b> adds a camera layer. Moved, scaled and turned like any layer, it changes what the frame sees. A scene can
 have several; <b>Scene &gt; Camera</b> chooses one.</p>
+<p>Select a camera and open <b>Layer Properties</b> to edit its field of view and near/far clipping planes.
+Clipping distances are measured from the camera's eye in scene units. A near value of zero uses the automatic limit;
+a far value of zero is unlimited. Artwork crossing a clipping plane is trimmed at the plane. These settings are saved with the scene.</p>
+<p><b>View &gt; Snapshots</b> keeps five rendered compositions for comparison. Take a snapshot in a slot, show that slot,
+then choose <b>Show Scene</b> to return to the current frame. Snapshots stay in memory during the session.</p>
 <h2>Depth</h2>
 <p><b>Scene &gt; Scene Settings &gt; Projection</b> can be Orthographic: depth then only puts layers in front of and behind one another.</p>
 <p>Every layer has a depth (Z). Nearer layers look bigger and slide by faster when the camera moves. The <b>Top</b>, <b>Side</b> and
 <b>Perspective</b> views show the layers in space. With the Transform tool, hold Alt to drag a layer nearer or further.</p>
+<p>Drag a sheet or camera in <b>Top</b> or <b>Side</b> to change its depth. These drags follow the animation mode;
+<b>No Z Dragging</b> prevents depth edits. Roll the wheel to zoom, and drag with the middle button to pan.
+In <b>Perspective</b>, drag with the left button to orbit. Right-click any planning view for navigation,
+or choose <b>View &gt; Frame Selected Plane</b> to centre the selected sheet. <b>View &gt; Camera Cone</b> toggles the cone.</p>
+<p>Animation tools and depth drags write linked Bezier and Ease values into their function columns.
+Expressions, velocity-based columns and 3D paths are edited in the Function Editor.</p>
 <h2>Morphing</h2>
 <p><b>Animation &gt; Morphing &gt; Create Morphing</b> makes the frames between two key drawings by itself, changing one into the other.</p>
 <p>The <b>Morphing</b> tool puts down hints - a point on the first drawing and where it goes on the second. In its properties,

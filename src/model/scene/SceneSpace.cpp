@@ -93,7 +93,7 @@ Pose poseFor(Scene const& scene, int layer, int frame, PoseOverride const* over)
     Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : other ? *other : scene.layers[layer].poseAt(frame);
     Layer const& l = scene.layers[layer];
     // The values linked to function columns: as the columns have them.
-    for (ValueLink const& link : l.links)
+    for (ValueLink const& link : (other || (over && over->layer == layer && over->frame == frame && !over->hasMatrix)) ? QVector<ValueLink>() : l.links)
         if (FunctionColumn const* column = scene.function(link.function)) {
             double v = column->valueFor(link.value, frame, scene);
             if (link.value == Driver::Opacity)
@@ -228,7 +228,8 @@ double Scene::depthOf(int layer, int frame, PoseOverride const* over) const
 double Scene::focalDistance(int frame) const
 {
     int const camera = cameraIndex();
-    double const angle = camera >= 0 ? layers[camera].fovAt(frame) : fov;
+    double const keyed = camera >= 0 ? poseOf(camera, frame).fov : 0.0;
+    double const angle = camera >= 0 ? (keyed > 0.0 ? std::clamp(keyed, 1.0, 170.0) : layers[camera].fovAt(frame)) : fov;
     return (fovAcross ? width : height) / 2.0 / std::tan(angle * 3.14159265358979323846 / 360.0);
 }
 
@@ -251,7 +252,47 @@ bool Scene::behindCamera(int layer, int frame) const
         return false;
     int const camera = cameraIndex();
     double const away = depthOf(layer, frame) - (camera >= 0 ? depthOf(camera, frame) : 0.0);
-    return away >= focalDistance(frame) * 0.98;
+    if (camera >= 0 && layers[layer].holdsDrawings()) {
+        Drawing const drawing = layers[layer].shownAt(frame);
+        if (!drawing.isEmpty())
+            return cameraClip(layer, frame, drawing.bounds().adjusted(-2, -2, 2, 2)).isEmpty();
+    }
+    return !orthographic && away >= focalDistance(frame) * 0.98;
+}
+
+QPolygonF Scene::cameraClip(int layer, int frame, QRectF bounds) const
+{
+    QPolygonF polygon(bounds);
+    int const camera = cameraIndex();
+    if (camera < 0 || layer < 0 || layer >= layers.size())
+        return polygon;
+    double a, b, c;
+    depthPlane(layer, frame, a, b, c);
+    double const eye = depthOf(camera, frame) + focalDistance(frame);
+    double const near = std::max(layers[camera].nearPlane, orthographic ? 0.0 : focalDistance(frame) * 0.02);
+    auto cut = [&](double plane, bool closer) {
+        QPolygonF kept;
+        if (polygon.isEmpty())
+            return;
+        auto value = [&](QPointF p) { return (closer ? 1.0 : -1.0) * (eye - a * p.x() - b * p.y() - c - plane); };
+        QPointF previous = polygon.last();
+        double before = value(previous);
+        for (QPointF const& p : std::as_const(polygon)) {
+            double const after = value(p);
+            if ((before >= 0.0) != (after >= 0.0))
+                kept << previous + (p - previous) * (before / (before - after));
+            if (after >= 0.0)
+                kept << p;
+            previous = p;
+            before = after;
+        }
+        polygon = kept;
+    };
+    if (!orthographic || layers[camera].nearPlane > 0.0)
+        cut(near, true);
+    if (layers[camera].farPlane > 0.0)
+        cut(layers[camera].farPlane, false);
+    return polygon;
 }
 
 QTransform Scene::depthTransform(double z, int frame) const
@@ -299,7 +340,7 @@ QVector<int> Scene::drawOrder(int frame) const
         visit(visit, l, 0);     // (a loop a damaged file left)
     for (int k = n - 1; k >= 0; --k) {
         int const i = front[k];
-        if (flat || !behindCamera(i, frame))
+        if (!behindCamera(i, frame))
             order.push_back(i);
     }
     if (!flat)
@@ -327,7 +368,7 @@ QTransform Scene::worldTransform(int layer, int frame, PoseOverride const* over)
     if (turned(layer, frame, over) || cameraTurned) {
         QTransform const lens = cameraTransform(frame);
         double const cameraDepth = camera >= 0 ? depthOf(camera, frame) : 0.0, distance = focalDistance(frame);
-        QPointF const middle(width / 2.0, height / 2.0), pivot = layers[layer].pivot;
+        QPointF const middle(width / 2.0, height / 2.0);
         Mat4 space = spaceOf(*this, layer, frame, over);
         if (cameraTurned && lens.isInvertible()) {
             // The camera turned one way: what it sees is turned the other, about the middle of what it looks at.
@@ -335,20 +376,15 @@ QTransform Scene::worldTransform(int layer, int frame, PoseOverride const* over)
             space = space * Mat4::move(-centre.x(), -centre.y(), -cameraDepth) * Mat4::aboutX(-cameraPose.rotX) * Mat4::aboutY(-cameraPose.rotY)
                     * Mat4::move(centre.x(), centre.y(), cameraDepth);
         }
-        QPolygonF from, to;
-        bool seen = true;
-        for (QPointF const& corner : {QPointF(-200, -200), QPointF(200, -200), QPointF(200, 200), QPointF(-200, 200)}) {
-            double x, y, z;
-            space.map(pivot + corner, x, y, z);
-            double const left = distance - (z - cameraDepth);
-            if (left < distance * 0.02)
-                seen = false;       // that corner is behind the camera
-            from << pivot + corner;
-            to << middle + (lens.map(QPointF(x, y)) - middle) * (distance / std::max(left, distance * 0.02));
+        space = space * Mat4::flat(lens);
+        if (!orthographic) {
+            Mat4 projection;
+            projection.m[2][3] = -1.0 / distance;
+            space = space * Mat4::move(-middle.x(), -middle.y(), -cameraDepth) * projection * Mat4::move(middle.x(), middle.y(), 0);
         }
-        QTransform picture;
-        if (seen && QTransform::quadToQuad(from, to, picture) && picture.isInvertible())
-            return picture * lens.inverted();
+        QTransform const picture(space.m[0][0], space.m[0][1], space.m[0][3], space.m[1][0], space.m[1][1], space.m[1][3],
+                                 space.m[3][0], space.m[3][1], space.m[3][3]);
+        return picture * lens.inverted();
     }
     return flatTransform(layer, frame, over) * depthTransform(depthOf(layer, frame, over), frame);
 }

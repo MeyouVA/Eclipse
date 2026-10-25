@@ -9,6 +9,7 @@
 
 #include "model/document/Commands.h"
 #include "model/scene/Scene.h"
+#include "canvas/Canvas.h"
 
 namespace {
 constexpr double kMargin = 26.0;
@@ -17,6 +18,7 @@ constexpr double kMargin = 26.0;
 DepthView::DepthView(Document* document, Mode mode, QWidget* parent) : QWidget(parent), m_document(document), m_mode(mode)
 {
     setMinimumSize(160, 120);
+    setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(false);
     connect(m_document, &Document::changed, this, qOverload<>(&QWidget::update));
 }
@@ -200,7 +202,8 @@ void DepthView::paintEvent(QPaintEvent*)
     cone << eye << edgeAt(0.0, back) << edgeAt(extent, back);
     painter.setPen(QPen(QColor(111, 168, 232), 1.2));
     painter.setBrush(QColor(111, 168, 232, 26));
-    painter.drawPolygon(cone);
+    if (m_cameraCone)
+        painter.drawPolygon(cone);
     // The frame itself, where the cone crosses that plane.
     painter.setPen(QPen(QColor(111, 168, 232), 2.2));
     painter.drawLine(place(0.0, cameraDepth, back, front), place(extent, cameraDepth, back, front));
@@ -267,6 +270,30 @@ void DepthView::resetView()
     update();
 }
 
+void DepthView::onActionFrameSelected()
+{
+    QVector<Mark> const all = marks();
+    double back = 0.0, front = 0.0;
+    depthRange(all, back, front);
+    for (Mark const& mark : all) {
+        if (mark.layer != m_layer)
+            continue;
+        if (mark.camera) {
+            m_pan += QPointF(rect().center()) - layerPoint(m_layer);
+        } else {
+            QPointF const a = place(mark.from, mark.depthFrom, back, front), b = place(mark.to, mark.depthTo, back, front);
+            QPointF const centre = (a + b) / 2.0;
+            double const factor = std::min(width() * 0.7 / std::max(std::abs(a.x() - b.x()), 40.0),
+                                           height() * 0.7 / std::max(std::abs(a.y() - b.y()), 40.0));
+            double const zoom = std::clamp(m_zoom * factor, 0.2, 40.0);
+            m_pan = (m_pan - centre + rect().center()) * (zoom / m_zoom);
+            m_zoom = zoom;
+        }
+        update();
+        return;
+    }
+}
+
 int DepthView::markAt(QPointF at) const
 {
     QVector<Mark> const all = marks();
@@ -323,6 +350,10 @@ void DepthView::mousePressEvent(QMouseEvent* event)
     int const picked = markAt(at);
     if (picked < 0)
         return;
+    if (picked != m_layer)
+        emit layerPicked(picked);
+    if (m_document->scene().layers[picked].locked || (m_canvas && m_canvas->noZDragging()))
+        return;
     QVector<Mark> const all = marks();
     double back = 0.0, front = 0.0;
     depthRange(all, back, front);
@@ -332,8 +363,6 @@ void DepthView::mousePressEvent(QMouseEvent* event)
     m_dragLayer = picked;
     m_dragStart = depthAt(at);
     m_dragBy = 0.0;
-    if (picked != m_layer)
-        emit layerPicked(picked);
     update();
 }
 
@@ -385,9 +414,15 @@ void DepthView::mouseReleaseEvent(QMouseEvent* event)
     m_held = false;
     Scene const& scene = m_document->scene();
     if (layer < scene.layers.size() && std::abs(by) > 1e-9) {
-        Pose pose = scene.layers[layer].poseAt(m_frame);
+        Pose const was = scene.poseOf(layer, m_frame);
+        Pose pose = was;
         pose.z += by;
-        m_document->setKeyframe(layer, m_frame, pose, tr("Move in Depth"));
+        bool const offset = m_canvas && !m_canvas->animates();
+        bool const ranged = m_canvas && m_canvas->animatesOnionRange();
+        int const first = ranged ? std::max(0, m_frame - m_canvas->onionPrevious()) : -1;
+        int const last = ranged ? m_frame + m_canvas->onionNext() : -1;
+        if (!m_document->animatePose(layer, m_frame, was, pose, tr("Move in Depth"), Keyframe::PartZ, offset, first, last))
+            emit message(tr("Edit the linked column's expression or path in the Function Editor to change its depth."));
     }
     update();
 }

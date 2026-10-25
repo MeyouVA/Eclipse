@@ -70,8 +70,7 @@ void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& dr
 
 void Canvas::takeSnapshot()
 {
-    m_snapshot = modeImage(m_document->scene(), m_frame, ViewRender);
-    update();
+    onActionTakeSnapshot(QStringLiteral("1"));
 }
 
 QImage Canvas::modeImage(Scene const& scene, int frame, ViewMode mode)
@@ -337,7 +336,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         if (!m_playing && m_backlight)
             paintDrawing(painter, scene, made, 1.0, &dark);
         else
-            paintLayerDrawing(painter, scene, l, m_frame, made, layer.opacity * poseOf(l, m_frame).opacity * faint, view);
+            paintLayerDrawing(painter, scene, l, m_frame, made, layer.opacity * poseOf(l, m_frame).opacity * faint, view, false, !m_drawingView);
         return;
     }
     if (index != Layer::kNoDrawing && !m_playing && m_backlight) {
@@ -366,7 +365,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
                     painter.drawPolyline(centre);
             }
     } else if (l == m_layer && transforming)
-        paintLayerDrawing(painter, scene, l, m_frame, followedPreview(), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt);
+        paintLayerDrawing(painter, scene, l, m_frame, followedPreview(), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt, !m_drawingView);
     else if (index != Layer::kNoDrawing && l == m_layer && !m_previewAllArt && !m_playing) {
         // Only the sheet being worked on.
         Drawing one = erasing ? withArt(m_eraseArt) : layerDrawing(l, index);
@@ -376,11 +375,11 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
                 one.strokesOf(sheet).clear();
             }
         }
-        paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, view, true);
+        paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, view, true, !m_drawingView);
     } else if (index != Layer::kNoDrawing)
         paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layerDrawing(l, index)),
                           layer.opacity * poseOf(l, m_frame).opacity * faint
-                              * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), view);
+                              * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), view, false, !m_drawingView);
     if (index != Layer::kNoDrawing && faint < 1.0 && m_lightWhite > 0 && !m_backlight && !(l == m_layer && transforming)) {
         // The light table's wash: the other layers' colours taken toward white.
         static QColor const white(255, 255, 255);

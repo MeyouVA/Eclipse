@@ -6,6 +6,7 @@
 #include <atomic>
 #include <QPainter>
 #include <QPainterPath>
+#include <QScopeGuard>
 
 #include <QHash>
 #include <QSet>
@@ -173,9 +174,22 @@ static thread_local bool tPaintingToBlend = false;
 static thread_local bool tOverridden = false;
 
 void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int frame, Drawing const& drawing, double opacity,
-                               QTransform const& sceneToDevice, bool everySheet)
+                               QTransform const& sceneToDevice, bool everySheet, bool cameraClipping)
 {
     Layer const& layer = scene.layers[l];
+    painter.save();
+    auto const restore = qScopeGuard([&painter] { painter.restore(); });
+    if (cameraClipping && scene.cameraIndex() >= 0 && layer.holdsDrawings() && !drawing.isEmpty()) {
+        QRectF const bounds = drawing.bounds().adjusted(-2, -2, 2, 2);
+        QPolygonF const clipped = scene.cameraClip(l, frame, bounds);
+        if (clipped.isEmpty())
+            return;
+        if (clipped != QPolygonF(bounds)) {
+            QPainterPath area;
+            area.addPolygon(clipped);
+            painter.setClipPath(area, Qt::IntersectClip);
+        }
+    }
     if (layer.blend != Layer::BlendNormal && !tPaintingToBlend && opacity > 0.0) {
         // The layer alone in a picture of its own (its lines over its paint as usual), mixed with what is under it once.
         static QPainter::CompositionMode const kModes[Layer::BlendCount] = {
@@ -195,7 +209,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             off.setTransform(painter.transform());
             off.setClipRegion(painter.clipRegion(), painter.hasClipping() ? Qt::ReplaceClip : Qt::NoClip);
             tPaintingToBlend = true;
-            paintLayerDrawing(off, scene, l, frame, drawing, opacity, sceneToDevice, everySheet);
+            paintLayerDrawing(off, scene, l, frame, drawing, opacity, sceneToDevice, everySheet, cameraClipping);
             tPaintingToBlend = false;
         }
         painter.save();
@@ -217,7 +231,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                     fill.swatch = swap.value(fill.swatch, fill.swatch);
             }
             tOverridden = true;
-            paintLayerDrawing(painter, scene, l, frame, swapped, opacity, sceneToDevice, everySheet);
+            paintLayerDrawing(painter, scene, l, frame, swapped, opacity, sceneToDevice, everySheet, cameraClipping);
             tOverridden = false;
             return;
         }
@@ -232,7 +246,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                 kept.pictures.removeIf([sheet](Picture const& p) { return p.painted && p.sheet == sheet; });
             }
         }
-        paintLayerDrawing(painter, scene, l, frame, kept, opacity, sceneToDevice, true);
+        paintLayerDrawing(painter, scene, l, frame, kept, opacity, sceneToDevice, true, cameraClipping);
         return;
     }
     bool effects = false;
@@ -427,10 +441,10 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             return;
         }
         ++tMatteDepth;
-        paintLayerDrawing(mp, scene, m, frame, shownMatte, 1.0, sceneToDevice);
+        paintLayerDrawing(mp, scene, m, frame, shownMatte, 1.0, sceneToDevice, false, cameraClipping);
         --tMatteDepth;
     };
-    Pose const pose = layer.poseAt(frame);
+    Pose const pose = scene.poseOf(l, frame);
     LayerEffectSpace const space{painter, scene, l, frame, sceneToDevice, layer, size, dpr, pixelsPerUnit, pose, paintMatte, symbol};
     for (int i = 0; i < layer.effects.size(); ++i)
         applyLayerEffect(image, i, space);

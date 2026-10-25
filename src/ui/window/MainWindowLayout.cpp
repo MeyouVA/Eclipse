@@ -241,7 +241,8 @@ bool MainWindow::eventFilter(QObject* object, QEvent* event)
     // A click anywhere in a view makes it the view in use.
     if (event->type() == QEvent::MouseButtonPress && object->isWidgetType()) {
         for (QWidget* w = static_cast<QWidget*>(object); w && w != this; w = w->parentWidget()) {
-            if (w->objectName() == QLatin1String("ViewFrame") && (w->window() == this || w->window() == m_cameraWindow)) {
+            if (w->objectName() == QLatin1String("ViewFrame") && (w->window() == this || w->window() == m_cameraWindow
+                || m_docks.contains(qobject_cast<QDockWidget*>(w->window())))) {
                 setActiveView(w);
                 break;
             }

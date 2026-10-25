@@ -173,8 +173,7 @@ void Canvas::transformDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers)
         return;
     }
     auto begin = [&] {
-        Layer const& layer = m_document->scene().layers[m_layer];
-        m_poseStart = m_dragPose = layer.poseAt(m_frame);
+        m_poseStart = m_dragPose = m_document->scene().poseOf(m_layer, m_frame);
         m_dragPivot = m_document->scene().pivotOf(m_layer, m_frame);
         m_world0 = m_document->scene().worldTransform(m_layer, m_frame);
         m_dragBounds = subjectBounds();
