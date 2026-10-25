@@ -438,7 +438,7 @@
     <item id="ToolTurn3D" icon="tool/turn3d" text="Turn in Spa&amp;ce" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="turn3d"/>
    </menu>
    <menu id="AnimationCell" text="&amp;Cell">
-    <item id="ExtendExposure" icon="timeline/extend" text="&amp;Extend Exposure" shortcut="shortcut.extendExposure" responder="window" slot="onActionExtendExposure()"/>
+    <item id="ExtendExposure" icon="timeline/extend" text="&amp;Extend Exposure" tooltip="Select an empty frame after a drawing and press F5 to fill the gap. On a drawing, choose an end frame." shortcut="shortcut.extendExposure" responder="window" slot="onActionExtendExposure()"/>
     <item id="ExtendExposureTo" text="E&amp;xtend Exposure..." responder="window" slot="onActionExtendExposureTo()"/>
     <item id="ExtendExposureToEnd" text="Extend Exposure for Scene &amp;Duration" responder="window" slot="onActionExtendExposureToEnd()"/>
     <item id="ClearExposure" icon="timeline/clear" text="&amp;Clear Exposure" shortcut="shortcut.clearExposure" responder="window" slot="onActionClearExposure()"/>

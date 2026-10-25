@@ -1,9 +1,19 @@
 // Eclipse - the scene: cloned, synced and shared-drawing layers; motion-path control points; the display.
 #include "model/scene/Scene.h"
+#include "model/scene/SceneTimingShared.h"
 
 #include <algorithm>
 
 #include <QHash>
+
+static bool timingChanged(Layer const& before, Layer const& after)
+{
+    QVector<int> cells = before.cells;
+    cells.resize(after.cells.size(), Layer::kNoDrawing);
+    QVector<int> keys = before.keyExposures;
+    keys.removeIf([&](int frame) { return frame >= after.cells.size(); });
+    return cells != after.cells || keys != after.keyExposures;
+}
 
 int Scene::cloneLayer(int layer)
 {
@@ -23,34 +33,6 @@ int Scene::cloneLayer(int layer)
     return layer + 1;
 }
 
-void Scene::copyTiming(int from, int to)
-{
-    if (from < 0 || from >= layers.size() || to < 0 || to >= layers.size() || from == to)
-        return;
-    Layer const& source = layers[from];
-    Layer& target = layers[to];
-    QHash<int, int> standsFor;
-    QVector<int> spoken;
-    QVector<int> cells(target.cells.size(), Layer::kNoDrawing);
-    for (int frame = 0; frame < cells.size() && frame < source.cells.size(); ++frame) {
-        int const shown = source.cells[frame];
-        if (shown == Layer::kNoDrawing)
-            continue;
-        auto found = standsFor.constFind(shown);
-        if (found == standsFor.constEnd()) {
-            int own = target.cells[frame];
-            if (own == Layer::kNoDrawing || spoken.contains(own)) {
-                own = int(target.drawings.size());
-                target.drawings.push_back(Drawing());
-            }
-            spoken.push_back(own);
-            found = standsFor.insert(shown, own);
-        }
-        cells[frame] = *found;
-    }
-    target.cells = cells;
-}
-
 void Scene::followSyncedTiming(Scene const& before)
 {
     // The layer of each group whose timing this change touched (the first, should there be several).
@@ -61,7 +43,7 @@ void Scene::followSyncedTiming(Scene const& before)
             continue;
         int const was = before.layerIndex(layers[l].id);
         // (A layer new to its group counts as untouched: it is the one that follows.)
-        bool const changed = was >= 0 && before.layers[was].syncGroup == layers[l].syncGroup && before.layers[was].cells != layers[l].cells;
+        bool const changed = was >= 0 && before.layers[was].syncGroup == layers[l].syncGroup && timingChanged(before.layers[was], layers[l]);
         same[l] = !changed;
         if (changed && !touched.contains(layers[l].syncGroup))
             touched.insert(layers[l].syncGroup, l);
@@ -70,8 +52,10 @@ void Scene::followSyncedTiming(Scene const& before)
         if (layers[l].syncGroup == 0 || !same[l])
             continue;
         auto leader = touched.constFind(layers[l].syncGroup);
-        if (leader != touched.constEnd() && layers[*leader].cells.size() == layers[l].cells.size())
-            copyTiming(*leader, l);
+        if (leader != touched.constEnd() && layers[*leader].cells.size() == layers[l].cells.size()) {
+            int const oldSource = before.layerIndex(layers[*leader].id), oldTarget = before.layerIndex(layers[l].id);
+            copyLayerTiming(layers[*leader], layers[l], oldSource >= 0 ? &before.layers[oldSource] : nullptr, oldTarget >= 0 ? &before.layers[oldTarget] : nullptr);
+        }
     }
 }
 
@@ -116,7 +100,7 @@ void Scene::followClones(Scene const& before)
             Layer const& old = before.layers[was];
             // (Drawings that were not touched are still the very ones the scene had before.)
             bool const drawingsChanged = old.drawings.size() != layers[l].drawings.size() || old.drawings.constData() != layers[l].drawings.constData();
-            changed = drawingsChanged || (layers[l].cloneTiming && old.cells != layers[l].cells);
+            changed = drawingsChanged || (layers[l].cloneTiming && timingChanged(old, layers[l]));
         }
         same[l] = !changed;
         if (changed && !touched.contains(layers[l].cloneGroup))

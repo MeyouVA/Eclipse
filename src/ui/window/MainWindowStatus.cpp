@@ -78,15 +78,37 @@ void MainWindow::updateActionStates()
     set("DeleteSceneMarker", scene.markerAt(f) >= 0);
     set("ToggleLayerOnion", draws);
     set("DuplicateDrawing", cell);
-    set("ExtendExposure", draws && f > 0 && current.drawingAt(f - 1) != Layer::kNoDrawing);
-    set("ClearExposure", cell);
-    for (char const* id : {"IncreaseExposure", "DecreaseExposure", "SetExposure1", "SetExposure2", "SetExposure3", "ClearExposureAndPull"})
-        set(id, cell);
-    set("AddKeyExposure", cell && !current.isKey(f));
-    set("RemoveKeyExposure", cell);
-    set("RemoveDuplicateKeyExposure", draws && !current.keyExposures.isEmpty());
-    set("InsertBlankCell", draws);
-    set("FillEmptyCells", draws);
+    bool exposureCell = false, exposureLayer = false, extend = false;
+    bool addExposureKey = false, removeDuplicates = false, drawingBank = false;
+    int const first = m_timeline->selectionFirstFrame();
+    for (int selected : exposureLayers()) {
+        Layer const& target = scene.layers[selected];
+        exposureLayer = true;
+        exposureCell = exposureCell || target.drawingAt(first) != Layer::kNoDrawing;
+        addExposureKey = addExposureKey || (target.drawingAt(first) != Layer::kNoDrawing && !target.isKey(first));
+        removeDuplicates = removeDuplicates || !target.keyExposures.isEmpty();
+        drawingBank = drawingBank || !target.drawings.isEmpty();
+        int source = first;
+        while (source >= 0 && target.drawingAt(source) == Layer::kNoDrawing)
+            --source;
+        extend = extend || source >= 0;
+    }
+    set("ExtendExposure", extend);
+    set("ExtendExposureTo", extend);
+    set("ExtendExposureToEnd", extend);
+    set("ClearExposure", exposureLayer);
+    for (char const* id : {"IncreaseExposure", "DecreaseExposure", "SetExposure1", "SetExposure2", "SetExposure3", "SetExposure4", "SetExposure5",
+                          "SetExposure6", "SetExposure7", "SetExposure8", "SetExposure9", "SetExposureAsk"})
+        set(id, exposureCell);
+    set("ClearExposureAndPull", exposureLayer);
+    set("AddKeyExposure", addExposureKey);
+    set("RemoveKeyExposure", exposureCell);
+    set("RemoveDuplicateKeyExposure", removeDuplicates);
+    for (char const* id : {"Hold1", "Hold2", "Hold3", "Hold4", "HoldExposure"})
+        set(id, exposureLayer);
+    set("FillCellsRandomly", drawingBank);
+    set("InsertBlankCell", exposureLayer);
+    set("FillEmptyCells", exposureLayer);
     set("PreviousDrawing", draws && current.previousDrawingFrame(f) >= 0);
     set("NextDrawing", draws && current.nextDrawingFrame(f) >= 0);
     set("SubstitutePrevious", cell && current.drawings.size() > 1);

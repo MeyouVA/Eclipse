@@ -34,6 +34,7 @@ bool Timeline::beginExposureDrag(QPoint pos)
     m_exposureStart = start;
     m_exposureEnd = end;
     m_exposureCells = layer.cells;
+    m_exposureBefore = std::make_shared<Scene>(scene);
     m_exposureBegun = false;
     moveExposureDrag(pos);
     return true;
@@ -42,20 +43,24 @@ bool Timeline::beginExposureDrag(QPoint pos)
 void Timeline::moveExposureDrag(QPoint pos)
 {
     Scene const& scene = m_document->scene();
-    if (m_exposureLayer >= scene.layers.size())
+    if (m_exposureLayer < 0 || m_exposureLayer >= scene.layers.size() || !m_exposureBefore)
         return;
     // The exposure runs from its start to the frame under the pointer (at least its first frame).
     int const last = std::clamp(frameAt(std::max(pos.x(), int(kHeaderWidth))), m_exposureStart, scene.frameCount() - 1);
     int const drawing = m_exposureCells.value(m_exposureStart, Layer::kNoDrawing);
     int const through = std::max(last + 1, m_exposureEnd);
-    QVector<int> cells;
+    QVector<int> cells = m_exposureCells;
     for (int f = m_exposureStart; f < through && f < m_exposureCells.size(); ++f)
-        cells.push_back(f <= last ? drawing : f < m_exposureEnd ? int(Layer::kNoDrawing) : m_exposureCells[f]);
+        cells[f] = f <= last ? drawing : f < m_exposureEnd ? int(Layer::kNoDrawing) : m_exposureCells[f];
     if (!m_exposureBegun) {
+        if (cells == scene.layers[m_exposureLayer].cells) {
+            setCurrentCell(m_exposureLayer, last);
+            return;
+        }
         m_exposureBegun = true;
         m_document->beginMacro(tr("Extend Exposure"));
     }
-    m_document->setCells(m_exposureLayer, m_exposureStart, cells, tr("Extend Exposure"));
+    m_document->previewExposureCells(*m_exposureBefore, m_exposureLayer, cells);
     setCurrentCell(m_exposureLayer, last);
     viewport()->update();
 }
@@ -67,6 +72,7 @@ void Timeline::endExposureDrag()
     m_exposureLayer = -1;
     m_exposureBegun = false;
     m_exposureCells.clear();
+    m_exposureBefore.reset();
 }
 
 QVector<int> Timeline::exposuresCut(QVector<int> const& layers, int end) const

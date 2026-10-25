@@ -29,7 +29,7 @@
 
 void MainWindow::onExposure(QString const& text, std::function<void(int layer, int frame)> const& command)
 {
-    QVector<int> const layers = m_timeline->selectedLayers();
+    QVector<int> const layers = exposureLayers();
     int const at = m_timeline->selectionFirstFrame();
     if (layers.size() > 1)
         m_document->beginMacro(text);
@@ -79,7 +79,8 @@ void MainWindow::onActionInsertBlankCell()
 
 void MainWindow::onActionClearExposureAndPull()
 {
-    onExposure(tr("Clear Exposure and Pull"), [this](int l, int f) { m_document->clearExposureAndPull(l, f); });
+    int const count = m_timeline->selectionLastFrame() - m_timeline->selectionFirstFrame() + 1;
+    onExposure(tr("Clear Exposure and Pull"), [this, count](int l, int f) { m_document->clearExposureAndPull(l, f, count); });
 }
 
 void MainWindow::onActionFillEmptyCells()
@@ -151,14 +152,21 @@ void MainWindow::onActionDuplicateDrawing()
 
 void MainWindow::onActionExtendExposure()
 {
-    // Hold the previous drawing over this frame and move on, so repeated presses keep extending.
-    m_document->extendExposure(layer(), frame());
-    stepFrame(+1);
+    int const first = m_timeline->selectionFirstFrame(), last = m_timeline->selectionLastFrame();
+    bool occupied = false;
+    for (int l : exposureLayers())
+        occupied = occupied || m_document->scene().layers[l].drawingAt(first) != Layer::kNoDrawing;
+    if (first == last && occupied) {
+        onActionExtendExposureTo();
+        return;
+    }
+    onExposure(tr("Extend Exposure"), [this, last](int l, int firstFrame) { m_document->extendExposureTo(l, firstFrame, last); });
 }
 
 void MainWindow::onActionClearExposure()
 {
-    m_document->clearCell(layer(), frame());
+    int const count = m_timeline->selectionLastFrame() - m_timeline->selectionFirstFrame() + 1;
+    onExposure(tr("Clear Exposure"), [this, count](int l, int first) { m_document->setCells(l, first, QVector<int>(count, Layer::kNoDrawing), tr("Clear Exposure")); });
 }
 
 bool MainWindow::cycleDialog(QString const& title, QString const& label, int least, int* times, int* kind)

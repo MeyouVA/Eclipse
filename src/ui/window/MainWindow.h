@@ -737,6 +737,7 @@ private:
     void stepColour(int direction);
     // The exposure commands act on every layer of the block selected, from its first frame.
     void onExposure(QString const& text, std::function<void(int layer, int frame)> const& command);
+    QVector<int> exposureLayers() const;
     int layer() const;
     int frame() const;
     // Says so and is true when the current layer shows no 3D model.

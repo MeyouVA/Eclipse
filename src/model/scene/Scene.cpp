@@ -31,10 +31,13 @@ int Scene::markerAt(int frame) const
 
 void Scene::setFrameCount(int count)
 {
+    bool const growing = count > m_frameCount;
     m_frameCount = std::max(1, count);
     for (Layer& layer : layers) {
+        bool const trimmed = layer.cells.size() > m_frameCount;
         layer.cells.resize(m_frameCount, Layer::kNoDrawing);
-        layer.compact();
+        if (!growing || trimmed)
+            layer.compact();
         while (!layer.keys.isEmpty() && layer.keys.last().frame >= m_frameCount)
             layer.keys.removeLast();
     }

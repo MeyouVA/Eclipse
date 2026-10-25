@@ -252,6 +252,11 @@ void Document::pasteCells(QVector<int> const& layers, int frame, CellBlock const
 
 static void fitCells(Scene& s, int layer)
 {
+    int last = int(s.layers[layer].cells.size()) - 1;
+    while (last >= s.frameCount() && s.layers[layer].cells[last] == Layer::kNoDrawing)
+        --last;
+    if (last >= s.frameCount())
+        s.setFrameCount(last + 1);
     s.layers[layer].cells.resize(s.frameCount(), Layer::kNoDrawing);
     s.layers[layer].compact();
 }
@@ -374,12 +379,16 @@ void Document::insertBlankCell(int layer, int frame)
     });
 }
 
-void Document::clearExposureAndPull(int layer, int frame)
+void Document::clearExposureAndPull(int layer, int frame, int count)
 {
     if (!validCell(m_scene, layer, frame))
         return;
     int start = 0, length = 0;
     exposureOf(m_scene.layers[layer], frame, start, length);
+    if (count > 0) {
+        start = frame;
+        length = std::min(count, m_scene.frameCount() - frame);
+    }
     if (length == 0)
         return;
     apply(tr("Clear Exposure and Pull"), [&](Scene& s) {

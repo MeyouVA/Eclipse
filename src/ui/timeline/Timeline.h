@@ -18,6 +18,7 @@ struct TimelinePaintSpace;
 #include <memory>
 
 class Document;
+class Scene;
 struct Pose;
 class QLineEdit;
 class QSlider;
@@ -251,6 +252,7 @@ private:
     int m_exposureLayer = -1;       // the layer whose exposure is dragged
     int m_exposureStart = 0, m_exposureEnd = 0;   // the exposure, as it was (its last frame + 1)
     QVector<int> m_exposureCells;   // the layer's cells before the drag
+    std::shared_ptr<Scene> m_exposureBefore;
     bool m_exposureBegun = false;
     bool m_overwriteDrop = true;
     bool m_dragGap = true, m_dragToKey = false;

@@ -178,13 +178,11 @@ void Document::extendExposure(int layer, int frame)
 {
     if (!validCell(m_scene, layer, frame) || frame == 0)
         return;
-    int const previous = m_scene.layers[layer].cells[frame - 1];
-    if (previous == Layer::kNoDrawing || previous == m_scene.layers[layer].cells[frame])
-        return;
-    apply(tr("Extend Exposure"), [&](Scene& s) {
-        s.layers[layer].cells[frame] = previous;
-        s.layers[layer].compact();
-    });
+    int source = frame - 1;
+    while (source >= 0 && m_scene.layers[layer].drawingAt(source) == Layer::kNoDrawing)
+        --source;
+    if (source >= 0)
+        extendExposureTo(layer, source, frame);
 }
 
 void Document::deleteDrawing(int layer, int frame)

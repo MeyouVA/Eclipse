@@ -8,6 +8,7 @@
 #include <QInputDialog>
 #include <QRandomGenerator>
 #include <QSpinBox>
+#include <QRadioButton>
 #include <QStatusBar>
 
 #include "model/document/Commands.h"
@@ -44,7 +45,7 @@ int MainWindow::holdCells(int every)
     if (every < 1)
         return 0;
     Scene const& scene = m_document->scene();
-    QVector<int> const layers = m_timeline->selectedLayers();
+    QVector<int> const layers = exposureLayers();
     int changed = 0;
     m_document->beginMacro(tr("Hold Exposure"));
     for (int l : layers) {
@@ -82,7 +83,7 @@ bool MainWindow::fillCellsRandomly(int l, int first, int last, int shortest, int
 {
     // The layer's drawings, in no order, each held between so many frames and so many, never the same twice running.
     Scene const& scene = m_document->scene();
-    if (l < 0 || l >= scene.layers.size() || !scene.layers[l].holdsDrawings() || scene.layers[l].drawings.isEmpty() || last < first)
+    if (l < 0 || l >= scene.layers.size() || !scene.layers[l].holdsDrawings() || scene.layers[l].locked || scene.layers[l].drawings.isEmpty() || last < first)
         return false;
     int const count = int(scene.layers[l].drawings.size());
     shortest = std::max(1, shortest);
@@ -126,7 +127,7 @@ void MainWindow::onActionFillCellsRandomly()
         return;
     quint32 const seed = QRandomGenerator::global()->generate();
     m_document->beginMacro(tr("Fill Cells Randomly"));
-    for (int l : m_timeline->selectedLayers()) {
+    for (int l : exposureLayers()) {
         int const first = m_timeline->selectionFirstFrame();
         int const last = std::max(m_timeline->selectionLastFrame(), first);
         fillCellsRandomly(l, first, last, shortest->value(), longest->value(), seed + quint32(l));
@@ -136,34 +137,47 @@ void MainWindow::onActionFillCellsRandomly()
 
 bool MainWindow::extendExposureTo(int l, int from, int to)
 {
-    // The drawing of the frame `from` held on up to the frame `to` (the scene made longer if it must be).
-    Scene const& scene = m_document->scene();
-    if (l < 0 || l >= scene.layers.size() || !scene.layers[l].holdsDrawings() || from < 0 || from >= scene.layers[l].cells.size() || to <= from)
-        return false;
-    int const drawing = scene.layers[l].cells[from];
-    if (drawing == Layer::kNoDrawing)
-        return false;
-    m_document->beginMacro(tr("Extend Exposure"));
-    if (to >= scene.frameCount())
-        m_document->setFrameCount(to + 1);
-    m_document->setCells(l, from + 1, QVector<int>(to - from, drawing), tr("Extend Exposure"));
-    m_document->endMacro();
-    return true;
+    return m_document->extendExposureTo(l, from, to);
 }
 
 void MainWindow::onActionExtendExposureTo()
 {
-    bool ok = false;
-    int const to = QInputDialog::getInt(this, tr("Extend Exposure"), tr("Extend the exposure up to frame:"), frame() + 2, 1, 99999, 1, &ok);
-    if (!ok)
+    int const first = m_timeline->selectionFirstFrame();
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("ExtendExposureDialog"));
+    dialog.setWindowTitle(tr("Extend Exposure"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QSpinBox* const to = new QSpinBox(&dialog);
+    to->setObjectName(QStringLiteral("ExposureToFrame"));
+    to->setRange(first + 1, 999999);
+    to->setValue(first + 2);
+    QRadioButton* const overwrite = new QRadioButton(tr("Overwrite later exposures"), &dialog);
+    overwrite->setObjectName(QStringLiteral("ExposureOverwrite"));
+    overwrite->setChecked(true);
+    QRadioButton* const insert = new QRadioButton(tr("Insert and shift later exposures"), &dialog);
+    insert->setObjectName(QStringLiteral("ExposureInsert"));
+    form->addRow(tr("Extend to frame"), to);
+    form->addRow(overwrite);
+    form->addRow(insert);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (dialog.exec() != QDialog::Accepted)
         return;
-    if (!extendExposureTo(layer(), frame(), to - 1))
-        statusBar()->showMessage(tr("Extend Exposure: there is no drawing on this frame, or the frame is not after it."), 4000);
+    bool changed = false;
+    int const end = to->value() - 1;
+    bool const shifting = insert->isChecked();
+    onExposure(tr("Extend Exposure"), [this, end, shifting, &changed](int l, int from) {
+        changed = m_document->extendExposureTo(l, from, end, shifting) || changed;
+    });
+    if (!changed)
+        statusBar()->showMessage(tr("No exposure changed. Select an unlocked drawing layer and a later frame."), 4000);
 }
 
 void MainWindow::onActionExtendExposureToEnd()
 {
     // Extend Exposure for Scene Duration: on to the scene's last frame.
-    if (!extendExposureTo(layer(), frame(), m_document->scene().frameCount() - 1))
-        statusBar()->showMessage(tr("Extend Exposure: there is no drawing on this frame to extend."), 4000);
+    int const end = m_document->scene().frameCount() - 1;
+    onExposure(tr("Extend Exposure"), [this, end](int l, int from) { m_document->extendExposureTo(l, from, end); });
 }

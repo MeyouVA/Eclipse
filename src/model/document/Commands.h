@@ -144,8 +144,11 @@ public:
     // ... or `prefix` and then its number in the layer ("arm-1", "arm-2" ...).
     bool renameDrawingsWithPrefix(int layer, QString const& prefix);
     bool exposeDrawing(int layer, int frame, QString const& label);
-    // Holds the drawing of the previous frame over `frame`.
+    // Holds the most recent earlier drawing through `frame`, filling any empty gap.
     void extendExposure(int layer, int frame);
+    // Insert shifts later exposures; overwrite replaces them through the target frame.
+    bool extendExposureTo(int layer, int from, int to, bool insert = false);
+    void previewExposureCells(Scene const& before, int layer, QVector<int> const& cells);
     // Copies the drawing at `frame` into a new drawing starting there.
     void duplicateDrawing(int layer, int frame);
     void clearCell(int layer, int frame);
@@ -405,7 +408,7 @@ public:
     // An empty cell at `frame`, pushing the rest along.
     void insertBlankCell(int layer, int frame);
     // Takes the whole exposure `frame` is in out and pulls the rest back.
-    void clearExposureAndPull(int layer, int frame);
+    void clearExposureAndPull(int layer, int frame, int count = 0);
     // Every empty cell after a drawing holds that drawing.
     void fillEmptyCells(int layer);
     void setCells(int layer, int first, QVector<int> const& drawings, QString const& text);
