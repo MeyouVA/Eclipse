@@ -71,7 +71,7 @@ void Document::setMouth(int layer, int frame, QChar shape)
     shape = shape.toUpper();
     if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound || !kShapes.contains(shape))
         return;
-    int const at = frame - m_scene.layers[layer].soundStart;
+    int const at = m_scene.layers[layer].soundFrameAt(frame);
     if (at < 0 || frame >= m_scene.frameCount() || m_scene.layers[layer].mouthAt(frame) == shape)
         return;
     apply(tr("Change Mouth Shape"), [&](Scene& s) {

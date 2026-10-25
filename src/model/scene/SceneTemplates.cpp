@@ -34,11 +34,6 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
     piece.m_nextLayerId = m_nextLayerId;
     piece.m_frameCount = frames;
     QHash<int, int> const columns = TemplateFunctions::import(piece, *this, -first);
-    for (FunctionColumn& column : piece.functions) {
-        if (column.kind == FunctionColumn::Bezier || column.kind == FunctionColumn::Ease)
-            TemplateFunctions::crop(column.curve, 0, frames - 1);
-        TemplateFunctions::crop(column.velocity, 0, frames - 1);
-    }
     for (int l = 0; l < layers.size(); ++l) {
         if (!in[l])
             continue;
@@ -76,7 +71,7 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
             start.tween = before >= 0 ? layers[l].keys[layers[l].keyIndex(before)].tween : false;
             layer.keys.push_front(start);
         }
-        layer.soundStart = std::max(0, layer.soundStart - first);
+        layer.soundStart -= first;
         // Attached to a layer that is not coming along: attached to nothing.
         int const up = parentIndex(l);
         if (up < 0 || !in[up]) {
@@ -89,10 +84,11 @@ Scene Scene::extract(QVector<int> const& chosen, int first, int last) const
     // The symbols those layers show come along.
     piece.symbols = symbolsUsed(piece.layers);
     if (!piece.symbols.isEmpty()) {
-        QHash<int, int> const symbolColumns = TemplateFunctions::import(piece, *this, 0);
-        for (Symbol& symbol : piece.symbols)
+        for (Symbol& symbol : piece.symbols) {
+            QHash<int, int> const symbolColumns = TemplateFunctions::import(piece, symbolScene(symbol), 0);
             for (Layer& layer : symbol.layers)
                 TemplateFunctions::relink(layer, symbolColumns);
+        }
     }
     piece.refreshSymbolInstances();
     return piece;

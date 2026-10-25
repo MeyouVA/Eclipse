@@ -548,6 +548,12 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
     }
     if (layer.showsSymbol())
         layerObject["symbol"] = layer.symbolId;
+    if (!layer.soundFrames.isEmpty()) {
+        QJsonArray frames;
+        for (int frame : layer.soundFrames)
+            frames.append(frame);
+        layerObject["soundFrames"] = frames;
+    }
     if (layer.embeddedPivot != Layer::PivotNotUsed)
         layerObject["embeddedPivot"] = layer.embeddedPivot;
     if (layer.separatePosition)

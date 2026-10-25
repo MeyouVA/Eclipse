@@ -168,6 +168,20 @@ QVector<qint16> mix(Scene const& scene)
         std::shared_ptr<SoundData> const data = load(layer.soundFile);
         if (!data)
             continue;
+        if (!layer.soundFrames.isEmpty()) {
+            for (int f = 0; f < scene.frameCount(); ++f) {
+                int const frame = layer.soundFrameAt(f);
+                if (frame < 0)
+                    continue;
+                qint64 const to = at(f), length = at(f + 1) - to, from = at(frame);
+                for (qint64 i = 0; i < length && to + i < total && from + i < data->frames(); ++i) {
+                    any = true;
+                    sum[(to + i) * 2] += data->samples[(from + i) * 2];
+                    sum[(to + i) * 2 + 1] += data->samples[(from + i) * 2 + 1];
+                }
+            }
+            continue;
+        }
         any = true;
         qint64 const offset = at(layer.soundStart);
         qint64 const first = std::max<qint64>(0, -offset);
@@ -194,7 +208,10 @@ QVector<qint16> mix(Scene const& scene)
                     if (shown[f] < 0)
                         continue;
                     qint64 const to = at(f), length = at(f + 1) - to;
-                    qint64 const from = at(shown[f] - layer.soundStart);
+                    int const soundFrame = layer.soundFrameAt(shown[f]);
+                    if (soundFrame < 0)
+                        continue;
+                    qint64 const from = at(soundFrame);
                     for (qint64 i = 0; i < length && to + i < total; ++i) {
                         qint64 const s = from + i;
                         if (s < 0 || s >= data->frames())

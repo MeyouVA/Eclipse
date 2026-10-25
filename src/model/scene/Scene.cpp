@@ -39,6 +39,8 @@ void Scene::setFrameCount(int count)
             layer.keys.removeLast();
     }
     for (FunctionColumn& column : functions) {
+        if (column.extendedTiming)
+            continue;
         for (Layer* curve : {&column.curve, &column.velocity})
             curve->keys.removeIf([&](Keyframe const& key) { return key.frame >= m_frameCount; });
         column.path.removeIf([&](FunctionColumn::PathPoint const& point) { return point.frame >= m_frameCount; });

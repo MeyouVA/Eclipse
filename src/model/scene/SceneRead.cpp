@@ -245,15 +245,24 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             continue;
         c.curve.cells.clear();
         c.velocity.cells.clear();
-        keysFromJson(fo["points"].toArray(), c.curve, scene.frameCount());
-        keysFromJson(fo["velocity"].toArray(), c.velocity, scene.frameCount());
+        c.extendedTiming = fo["extendedTiming"].toBool();
+        c.expressionOffset = fo["expressionOffset"].toInt();
+        c.expressionFrames = std::max(0, fo["expressionFrames"].toInt());
+        QJsonArray const range = fo["velocityRange"].toArray();
+        if (range.size() == 2) {
+            c.velocityRangeSet = true;
+            c.velocityStart = range[0].toInt();
+            c.velocityEnd = range[1].toInt();
+        }
+        keysFromJson(fo["points"].toArray(), c.curve, scene.frameCount(), c.extendedTiming);
+        keysFromJson(fo["velocity"].toArray(), c.velocity, scene.frameCount(), c.extendedTiming);
         c.expression = fo["expression"].toString();
         for (QJsonValue const& pv : fo["path"].toArray()) {
             QJsonArray const p = pv.toArray();
             if (p.size() < 7)
                 continue;
-            c.path.push_back({p[0].toDouble(), p[1].toDouble(), p[2].toDouble(), std::max(-1, p[3].toInt(-1)), std::clamp(p[4].toDouble(), -1.0, 1.0),
-                              std::clamp(p[5].toDouble(), -1.0, 1.0), std::clamp(p[6].toDouble(), -1.0, 1.0)});
+            c.path.push_back({p[0].toDouble(), p[1].toDouble(), p[2].toDouble(), p[3].toInt(-1), std::clamp(p[4].toDouble(), -1.0, 1.0),
+                              std::clamp(p[5].toDouble(), -1.0, 1.0), std::clamp(p[6].toDouble(), -1.0, 1.0), p.size() > 7 && p[7].toBool()});
         }
         c.constantZ = fo["constantZ"].toBool(false);
         c.shown = fo["shown"].toBool(true);

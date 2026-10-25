@@ -197,10 +197,18 @@ QJsonObject Scene::toJson(QString const& folder) const
             for (Keyframe const& k : c.curve.keys)
                 keys.append(keyToJson(k));
             for (FunctionColumn::PathPoint const& p : c.path)
-                path.append(QJsonArray{p.x, p.y, p.z, p.frame, p.tension, p.continuity, p.bias});
+                path.append(QJsonArray{p.x, p.y, p.z, p.frame, p.tension, p.continuity, p.bias, p.locked});
             for (Keyframe const& k : c.velocity.keys)
                 velocity.append(keyToJson(k));
             QJsonObject column{{"id", c.id}, {"name", c.name}, {"kind", c.kind}};
+            if (c.extendedTiming)
+                column["extendedTiming"] = true;
+            if (c.expressionOffset)
+                column["expressionOffset"] = c.expressionOffset;
+            if (c.expressionFrames)
+                column["expressionFrames"] = c.expressionFrames;
+            if (c.velocityRangeSet)
+                column["velocityRange"] = QJsonArray{c.velocityStart, c.velocityEnd};
             if (!keys.isEmpty())
                 column["points"] = keys;
             if (!c.expression.isEmpty())

@@ -105,11 +105,13 @@ struct Layer {
     QVector<QPointF> quadAt(Pose const& pose) const;
     QString soundFile;        // a sound layer: the file it plays
     int soundStart = 0;       // and the frame it starts on
+    QVector<int> soundFrames; // source frames after retiming; -1 is silent, empty plays continuously
+    int soundFrameAt(int frame) const { int const at = frame - soundStart; return soundFrames.isEmpty() ? at : soundFrames.value(at, -1); }
     QString lipsync;
     // The shape on a frame of the scene; null where the sound layer has none.
     QChar mouthAt(int frame) const
     {
-        int const at = frame - soundStart;
+        int const at = soundFrameAt(frame);
         return kind == Sound && at >= 0 && at < lipsync.size() ? lipsync[at] : QChar();
     }
     QPointF pivot;            // the point scaling and rotation happen about, in layer coordinates

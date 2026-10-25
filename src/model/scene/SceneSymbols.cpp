@@ -286,7 +286,8 @@ int Scene::expandSymbol(int layer)
         renumbered.insert(inner.id, m_nextLayerId++);
     int at = layer + 1;
     for (Layer inner : symbol.layers) {
-        if (!sameTiming)
+        inner.visible = inner.visible && instance.visible;
+        if (!sameTiming || inner.kind == Layer::Sound)
             inner = SymbolTiming::expanded(source, inner, instance, m_frameCount);
         inner.id = renumbered.value(inner.id);
         if (renumbered.contains(inner.parent)) {

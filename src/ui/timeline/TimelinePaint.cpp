@@ -6,6 +6,7 @@
 #include <QPainter>
 
 #include <functional>
+#include <cmath>
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
@@ -97,9 +98,14 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
                 int const mid = y + rh / 2;
                 p.setPen(QColor(120, 200, 150));
                 for (int x = left; x < right; x += 2) {
-                    qint64 const first = qint64((x - kHeaderWidth + sx - layer.soundStart * cw) * perPixel);
+                    double const frame = double(x - kHeaderWidth + sx) / cw;
+                    int const whole = int(std::floor(frame));
+                    int const sourceFrame = layer.soundFrameAt(whole);
+                    if (sourceFrame < 0)
+                        continue;
+                    qint64 const first = qint64((sourceFrame + frame - whole) * SoundData::kRate / scene.fps);
                     if (first >= sound->frames())
-                        break;
+                        continue;
                     int const half = int(sound->peak(first, qint64(perPixel * 2) + 1) * (rh / 2 - 2) + 0.5);
                     p.drawLine(x, mid - half, x, mid + half);
                 }

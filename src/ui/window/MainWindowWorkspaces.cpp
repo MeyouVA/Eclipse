@@ -310,6 +310,7 @@ void MainWindow::applyBuiltinWorkspace(QString const& name)
     QDockWidget* const xsheet = dockOf("XsheetDock");
     // Start from nothing: a dock keeps its old place otherwise.
     for (QDockWidget* d : std::as_const(m_docks)) {
+        d->hide();
         d->setFloating(false);
         removeDockWidget(d);
     }

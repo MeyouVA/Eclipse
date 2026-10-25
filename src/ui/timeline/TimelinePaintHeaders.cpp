@@ -403,7 +403,7 @@ std::shared_ptr<SoundData> Timeline::symbolSound(int l) const
         for (Layer const& inner : symbol->layers) {
             if (inner.kind == Layer::Sound) {
                 any = true;
-                key = key * 1099511628211ull ^ qHash(inner.soundFile) ^ quint64(inner.soundStart) * 31u ^ quint64(inner.visible);
+                key = key * 1099511628211ull ^ qHash(inner.soundFile) ^ quint64(inner.soundStart) * 31u ^ quint64(inner.visible) ^ qHash(inner.soundFrames);
             } else if (inner.showsSymbol()) {
                 key = key * 1099511628211ull ^ qHash(inner.cells);
                 look(inner.symbolId, depth + 1);

@@ -4,8 +4,17 @@
 #include "model/document/CommandsPrivate.h"
 
 #include <cmath>
+#include <tuple>
 
 namespace {
+
+bool sameKeys(QVector<Keyframe> const& a, QVector<Keyframe> const& b)
+{
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](Keyframe const& x, Keyframe const& y) {
+        return std::tie(x.frame, x.pose, x.curves, x.parts, x.tween, x.easeIn, x.easeOut, x.liftIn, x.liftOut, x.controls, x.controlsZ, x.tension, x.continuity, x.bias)
+            == std::tie(y.frame, y.pose, y.curves, y.parts, y.tween, y.easeIn, y.easeOut, y.liftIn, y.liftOut, y.controls, y.controlsZ, y.tension, y.continuity, y.bias);
+    });
+}
 
 QString valueName(int value)
 {
@@ -65,16 +74,10 @@ void Document::setFunction(FunctionColumn const& column, QString const& text)
         return;
     FunctionColumn const& now = m_scene.functions[i];
     if (now.name == column.name && now.kind == column.kind && now.expression == column.expression && now.path == column.path && now.constantZ == column.constantZ
-        && now.shown == column.shown && now.curve.keys.size() == column.curve.keys.size() && now.velocity.keys.size() == column.velocity.keys.size()) {
-        bool same = true;
-        for (int k = 0; same && k < now.curve.keys.size(); ++k)
-            same = now.curve.keys[k].frame == column.curve.keys[k].frame && now.curve.keys[k].pose == column.curve.keys[k].pose
-                   && now.curve.keys[k].curves == column.curve.keys[k].curves;
-        for (int k = 0; same && k < now.velocity.keys.size(); ++k)
-            same = now.velocity.keys[k].frame == column.velocity.keys[k].frame && now.velocity.keys[k].pose == column.velocity.keys[k].pose;
-        if (same)
-            return;
-    }
+        && now.shown == column.shown && now.extendedTiming == column.extendedTiming && now.expressionOffset == column.expressionOffset
+        && now.expressionFrames == column.expressionFrames && now.velocityRangeSet == column.velocityRangeSet && now.velocityStart == column.velocityStart
+        && now.velocityEnd == column.velocityEnd && sameKeys(now.curve.keys, column.curve.keys) && sameKeys(now.velocity.keys, column.velocity.keys))
+        return;
     apply(text, [&](Scene& s) { s.functions[i] = column; });
 }
 

@@ -18,11 +18,20 @@ struct FunctionColumn {
     // Bezier, ease, velocity-based: the points, as keyframes that set pos x (shaped like a layer value's curve).
     Layer curve;
     QString expression;
-    // A 3D path: its points in space, each on a frame of its own or (-1) placed by the velocity.
+    // Imported expressions retain their original frame origin and scene length.
+    int expressionOffset = 0;
+    int expressionFrames = 0;
+    bool extendedTiming = false;
+    // Implicit path velocity keeps its full source range across crops and insertions.
+    bool velocityRangeSet = false;
+    int velocityStart = 0, velocityEnd = 0;
+    // Path points may be locked before the scene starts; an unlocked point follows the velocity.
     struct PathPoint {
         double x = 0.0, y = 0.0, z = 0.0;
         int frame = -1;
         double tension = 0.0, continuity = 0.0, bias = 0.0;
+        bool locked = false;
+        bool timeLocked() const { return locked || frame >= 0; }
         bool operator==(PathPoint const&) const = default;
     };
     QVector<PathPoint> path;

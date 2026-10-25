@@ -199,7 +199,7 @@ void FunctionEditor::refresh()
             m_points->setRowCount(int(c->path.size()));
             for (int i = 0; i < c->path.size(); ++i) {
                 FunctionColumn::PathPoint const& p = c->path[i];
-                fillRow(m_points, i, {number(p.x), number(p.y), number(p.z), p.frame >= 0 ? QString::number(p.frame + 1) : QString(), number(p.tension),
+                fillRow(m_points, i, {number(p.x), number(p.y), number(p.z), p.timeLocked() ? QString::number(p.frame + 1) : QString(), number(p.tension),
                                       number(p.continuity), number(p.bias)});
             }
         } else {
@@ -248,6 +248,8 @@ void FunctionEditor::commitPoints()
         return;
     FunctionColumn changed = *now;
     int const last = scene.frameCount() - 1;
+    int const firstAllowed = changed.extendedTiming ? -100000000 : 0;
+    int const lastAllowed = changed.extendedTiming ? 100000000 : last;
     QString text;
     if (changed.kind == FunctionColumn::Path3D) {
         changed.path.clear();
@@ -258,7 +260,8 @@ void FunctionEditor::commitPoints()
             p.z = cellValue(m_points, r, 2);
             bool unlocked = false;
             double const frame = cellValue(m_points, r, 3, 0.0, &unlocked);
-            p.frame = unlocked ? -1 : std::clamp(int(std::lround(frame)) - 1, 0, last);
+            p.frame = unlocked ? -1 : std::clamp(int(std::lround(frame)) - 1, firstAllowed, lastAllowed);
+            p.locked = !unlocked;
             p.tension = std::clamp(cellValue(m_points, r, 4), -1.0, 1.0);
             p.continuity = std::clamp(cellValue(m_points, r, 5), -1.0, 1.0);
             p.bias = std::clamp(cellValue(m_points, r, 6), -1.0, 1.0);
@@ -269,16 +272,11 @@ void FunctionEditor::commitPoints()
         // The rows by frame (one point a frame), each with its handles.
         QMap<int, Keyframe> byFrame;
         for (int r = 0; r < m_points->rowCount(); ++r) {
-            Keyframe k;
-            k.frame = std::clamp(int(std::lround(cellValue(m_points, r, 0, 1.0))) - 1, 0, last);
+            int const old = r < now->curve.keys.size() ? r : -1;
+            Keyframe k = old >= 0 ? now->curve.keys[old] : Keyframe();
+            k.frame = std::clamp(int(std::lround(cellValue(m_points, r, 0, 1.0))) - 1, firstAllowed, lastAllowed);
             k.pose.x = cellValue(m_points, r, 1);
             k.parts = Keyframe::PartX;
-            int const old = now->curve.keyIndex(k.frame);
-            if (old >= 0) {
-                k.tween = now->curve.keys[old].tween;
-                k.easeIn = now->curve.keys[old].easeIn;
-                k.easeOut = now->curve.keys[old].easeOut;
-            }
             if (changed.kind == FunctionColumn::Bezier || changed.kind == FunctionColumn::Ease) {
                 ValueCurve curve = old >= 0 ? now->curve.curveAt(Driver::X, old) : ValueCurve();
                 curve.value = Driver::X;
@@ -311,8 +309,9 @@ void FunctionEditor::commitVelocity()
     FunctionColumn changed = *now;
     QMap<int, Keyframe> byFrame;
     for (int r = 0; r < m_velocity->rowCount(); ++r) {
-        Keyframe k;
-        k.frame = std::clamp(int(std::lround(cellValue(m_velocity, r, 0, 1.0))) - 1, 0, scene.frameCount() - 1);
+        Keyframe k = r < now->velocity.keys.size() ? now->velocity.keys[r] : Keyframe();
+        k.frame = std::clamp(int(std::lround(cellValue(m_velocity, r, 0, 1.0))) - 1,
+                             changed.extendedTiming ? -100000000 : 0, changed.extendedTiming ? 100000000 : scene.frameCount() - 1);
         k.pose.x = std::clamp(cellValue(m_velocity, r, 1), 0.0, 100.0);
         k.parts = Keyframe::PartX;
         byFrame.insert(k.frame, k);
@@ -423,6 +422,8 @@ void FunctionEditor::toggleLock()
     if (!now || now->kind != FunctionColumn::Path3D || row < 0 || row >= now->path.size())
         return;
     FunctionColumn changed = *now;
-    changed.path[row].frame = changed.path[row].frame >= 0 ? -1 : m_frame;
+    bool const lock = !changed.path[row].timeLocked();
+    changed.path[row].frame = lock ? m_frame : -1;
+    changed.path[row].locked = lock;
     m_document->setFunction(changed, tr("Lock/Unlock Point"));
 }

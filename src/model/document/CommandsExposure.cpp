@@ -70,6 +70,10 @@ void Document::insertFrames(int at, int count)
             for (FunctionColumn::PathPoint& point : column.path)
                 if (point.frame >= at)
                     point.frame += count;
+            if (column.velocityRangeSet) {
+                if (column.velocityStart >= at) column.velocityStart += count;
+                if (column.velocityEnd >= at) column.velocityEnd += count;
+            }
         }
         for (GraphNode& node : s.graph.nodes) {
             QMap<int, double> shifted;
@@ -87,6 +91,8 @@ void Document::insertFrames(int at, int count)
             for (Morph& morph : layer.morphs)
                 if (morph.from >= at)
                     morph.from += count;
+            if (layer.kind == Layer::Sound && !layer.soundFrames.isEmpty() && at > layer.soundStart && at <= layer.soundStart + layer.soundFrames.size())
+                layer.soundFrames.insert(at - layer.soundStart, count, -1);
             if (layer.kind == Layer::Sound && layer.soundStart >= at)
                 layer.soundStart += count;
             QMap<int, QColor> shifted;
@@ -142,6 +148,11 @@ void Document::removeFrames(int first, int last)
             for (FunctionColumn::PathPoint& point : column.path)
                 if (point.frame > last)
                     point.frame -= count;
+            if (column.velocityRangeSet) {
+                auto shifted = [&](int value) { return value > last ? value - count : value >= first ? first : value; };
+                column.velocityStart = shifted(column.velocityStart);
+                column.velocityEnd = shifted(column.velocityEnd);
+            }
         }
         for (GraphNode& node : s.graph.nodes) {
             QMap<int, double> shifted;
@@ -163,6 +174,13 @@ void Document::removeFrames(int first, int last)
             for (Morph& morph : layer.morphs)
                 if (morph.from > last)
                     morph.from -= count;
+            if (layer.kind == Layer::Sound && !layer.soundFrames.isEmpty()) {
+                int const begin = std::max(0, first - layer.soundStart), end = std::min(int(layer.soundFrames.size()) - 1, last - layer.soundStart);
+                if (end >= begin)
+                    layer.soundFrames.remove(begin, end - begin + 1);
+                if (layer.soundFrames.isEmpty())
+                    layer.soundFrames << -1;
+            }
             if (layer.kind == Layer::Sound && layer.soundStart > last)
                 layer.soundStart -= count;
             else if (layer.kind == Layer::Sound && layer.soundStart >= first)

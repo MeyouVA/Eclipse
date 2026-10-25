@@ -67,19 +67,19 @@ double FunctionColumn::valueAt(double frame, Scene const* scene, QString* error)
     }
     case Expression: {
         double out = 0.0;
-        auto lookup = [scene](QString const& name, double at, double& v) {
+        auto lookup = [scene, this](QString const& name, double at, double& v) {
             if (!scene)
                 return false;
             for (FunctionColumn const& c : scene->functions)
                 if (c.name.compare(name, Qt::CaseInsensitive) == 0) {
                     QString inner;
-                    v = c.valueAt(at, scene, &inner);
+                    v = c.valueAt(at + expressionOffset, scene, &inner);
                     return inner.isEmpty();
                 }
             return false;
         };
-        int const frames = scene ? scene->frameCount() : 1;
-        if (!ExpressionValue::evaluate(expression, frame, frames, lookup, out, error))
+        int const frames = expressionFrames > 0 ? expressionFrames : scene ? scene->frameCount() : 1;
+        if (!ExpressionValue::evaluate(expression, frame - expressionOffset, frames, lookup, out, error))
             return 0.0;
         return out;
     }
@@ -142,11 +142,11 @@ QVector3D FunctionColumn::pathAt(double frame, int lastFrame) const
     // The points on frames of their own: the way between them is gone steadily (unless a velocity says otherwise).
     QVector<QPair<double, double>> locked;      // (frame, distance)
     for (int i = 0; i < path.size(); ++i)
-        if (path[i].frame >= 0)
+        if (path[i].timeLocked())
             locked.push_back({double(path[i].frame), length[int(at[i])]});
     if (!velocity.keys.isEmpty() || locked.size() < 2) {
-        double const first = locked.isEmpty() ? 0.0 : locked.first().first;
-        double const last = locked.size() < 2 ? std::max(first + 1.0, double(lastFrame)) : locked.last().first;
+        double const first = locked.isEmpty() ? (velocityRangeSet ? double(velocityStart) : 0.0) : locked.first().first;
+        double const last = locked.size() < 2 ? std::max(first + 1.0, double(velocityRangeSet ? velocityEnd : lastFrame)) : locked.last().first;
         distance = alongByVelocity(velocity, frame, first, last) * total;
     } else if (frame <= locked.first().first) {
         distance = locked.first().second;

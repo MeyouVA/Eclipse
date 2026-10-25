@@ -37,5 +37,5 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
 Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString, QImage> const& images, int frameCount, double width, double height);
 
 // Keyframes from a file into a layer (or a function column's points).
-void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount);
+void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool extended = false);
 }  // namespace scene_read

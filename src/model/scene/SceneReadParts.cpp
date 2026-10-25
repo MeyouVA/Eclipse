@@ -521,6 +521,8 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     for (int i = 0; i + 1 < bones.size(); i += 2)
         layer.bones.push_back(QPointF(bones[i].toDouble(), bones[i + 1].toDouble()));
     layer.soundStart = lo["soundStart"].toInt(0);
+    for (QJsonValue const& frame : lo["soundFrames"].toArray())
+        layer.soundFrames << std::max(-1, frame.toInt(-1));
     for (QChar const shape : lo["lipsync"].toString())
         layer.lipsync += QStringLiteral("ABCDEFGX").contains(shape) ? shape : QLatin1Char('X');
     layer.parent = lo["parent"].toInt(0);
@@ -577,13 +579,13 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     return layer;
 }
 
-void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount)
+void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool extended)
 {
     auto scale = [](double v) { return std::abs(v) < 0.001 ? (v < 0 ? -0.001 : 0.001) : v; };
     for (QJsonValue const& kv : array) {
         QJsonObject const ko = kv.toObject();
         int const frame = ko["frame"].toInt(-1);
-        if (frame < 0 || frame >= frameCount)
+        if (!ko["frame"].isDouble() || (!extended && (frame < 0 || frame >= frameCount)))
             continue;
         Pose pose;
         pose.x = ko["x"].toDouble();
