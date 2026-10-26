@@ -252,7 +252,7 @@ void Canvas::bendLine(QPointF at)
     } else {
         // Two bows, one each way: the first third of the line goes towards the pointer, the last away from it.
         QPointF const along = (m_bendTo - m_bendFrom) / 3.0, off = (at - middle) * 1.5;
-        a.out = along + off;
+        a.out = m_bendTail ? m_bendFirst : along + off;
         b.in = -along - off;
     }
     a.in = -a.out;

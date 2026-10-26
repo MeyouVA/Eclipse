@@ -10,7 +10,8 @@ void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::Keyboa
 {
     static QVector<Tool> const looking = {Hand, Zoom, RotateView, Transform, IK, Rigging, Dropper, Morphing, SplineOffset, Turn3D, Reposition};
     Scene const& scene = m_document->scene();
-    if (!panning && !m_morphMacro && !looking.contains(m_tool) && m_layer >= 0 && m_layer < scene.layers.size()
+    if (!panning && !m_spaceDown && !m_playing && !m_morphMacro && !looking.contains(m_tool)
+        && m_layer >= 0 && m_layer < scene.layers.size() && !scene.layers[m_layer].locked
         && scene.layers[m_layer].holdsDrawings() && scene.layers[m_layer].morphing(m_frame)) {
         m_document->beginMacro(tr("Draw on Morphing"));
         m_morphMacro = true;
@@ -36,10 +37,15 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         followSettings(*m_leader);
     m_lastWidgetPos = widgetPos;
     if (m_bending) {
-        // The Line tool's curve, bent where it should be: this click puts it down.
-        m_bending = false;
-        m_drag = DragNone;
-        keepShape();
+        bendLine(toLayer(widgetPos));
+        if (m_lineMode == LineSCurve && !m_bendTail) {
+            m_bendFirst = m_stroke.points.first().out;
+            m_bendTail = true;
+        } else {
+            m_bending = false;
+            m_drag = DragNone;
+            keepShape();
+        }
         update();
         return;
     }
@@ -403,7 +409,7 @@ void Canvas::setLeader(Canvas* leader)
 
 void Canvas::followSettings(Canvas const& leader)
 {
-    if (m_tool != leader.m_tool)
+    if (m_tabletTool < 0 && m_tool != leader.m_tool)
         setTool(leader.m_tool);
     m_swatch = leader.m_swatch;
     m_brushWidth = leader.m_brushWidth;

@@ -439,6 +439,7 @@ public:
 
 signals:
     void changed();
+    void resetDone();
     // The scene worked on is another one: a symbol gone into or come out of (by undo and redo too).
     void levelChanged();
 

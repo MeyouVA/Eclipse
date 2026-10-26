@@ -32,6 +32,15 @@ bool Canvas::eventFilter(QObject* object, QEvent* event)
 
 bool Canvas::event(QEvent* event)
 {
+    if (event->type() == QEvent::ShortcutOverride && m_bending) {
+        int const key = static_cast<QKeyEvent*>(event)->key();
+        if (key == Qt::Key_Return || key == Qt::Key_Enter) { event->accept(); return true; }
+    }
+    if (event->type() == QEvent::ShortcutOverride && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape
+        && (m_drag != DragNone || m_bending || m_tabletActive)) {
+        event->accept();
+        return true;
+    }
     if (event->type() == QEvent::ShortcutOverride && m_polyActive) {
         int const key = static_cast<QKeyEvent*>(event)->key();
         if (key == Qt::Key_Return || key == Qt::Key_Enter || key == Qt::Key_Escape) {
@@ -56,12 +65,14 @@ void Canvas::mouseDoubleClickEvent(QMouseEvent* event)
 
 void Canvas::mousePressEvent(QMouseEvent* event)
 {
-    if (m_tabletActive)
+    if (m_tabletActive || m_mouseButton != Qt::NoButton)
         return;
     if (event->button() == Qt::MiddleButton && !m_middlePans)
         return;     // (Preferences: the middle button does not pan)
-    if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton)
+    if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton) {
         penDown(event->position(), 1.0f, event->button() == Qt::MiddleButton, event->modifiers());
+        m_mouseButton = event->button();
+    }
 }
 
 void Canvas::mouseMoveEvent(QMouseEvent* event)
@@ -97,46 +108,17 @@ void Canvas::dropEvent(QDropEvent* event)
     emit templateDropped(QString::fromUtf8(event->mimeData()->data(QStringLiteral("application/x-eclipse-template"))));
 }
 
-void Canvas::mouseReleaseEvent(QMouseEvent*)
+void Canvas::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (!m_tabletActive && m_drag != DragNone)
+    if (m_tabletActive || event->button() != m_mouseButton)
+        return;
+    if (m_drag != DragNone) {
+        if (event->position() != m_lastWidgetPos || m_drag == DragShape)
+            penMove(event->position(), 1.0f, event->modifiers());
         penUp();
-    if (!m_tabletActive)
-        closeMorphMacro();
-}
-
-void Canvas::tabletEvent(QTabletEvent* event)
-{
-    float pressure = pressureFor(float(std::clamp(event->pressure(), 0.05, 1.0)));
-    if (m_tool == Brush && m_tiltSensitivity > 0)
-        pressure = tiltedPressure(pressure, event->xTilt(), event->yTilt(), m_tiltSensitivity);
-    switch (event->type()) {
-    case QEvent::TabletPress:
-        m_tabletActive = true;
-        setFocus();
-        // The eraser end of the pen erases when the brush is selected.
-        if (event->pointerType() == QPointingDevice::PointerType::Eraser && m_tool == Brush) {
-            m_tool = Eraser;
-            penDown(event->position(), pressure, false, event->modifiers());
-            m_tool = Brush;
-        } else {
-            penDown(event->position(), pressure, event->button() == Qt::MiddleButton, event->modifiers());
-        }
-        break;
-    case QEvent::TabletMove:
-        if (m_drag != DragNone)
-            penMove(event->position(), pressure, event->modifiers());
-        break;
-    case QEvent::TabletRelease:
-        if (m_drag != DragNone)
-            penUp();
-        closeMorphMacro();
-        m_tabletActive = false;
-        break;
-    default:
-        break;
     }
-    event->accept();
+    m_mouseButton = Qt::NoButton;
+    closeMorphMacro();
 }
 
 void Canvas::wheelEvent(QWheelEvent* event)
@@ -164,13 +146,17 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         finishPolyline(event->key() != Qt::Key_Escape);
         return;
     }
-    if (event->key() == Qt::Key_Escape && m_drag != DragNone && m_drag != DragPan) {
-        // Abandon what is being dragged.
-        m_drag = DragNone;
+    if (m_bending && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)) {
         m_bending = false;
-        m_dragTransform = QTransform();
-        m_stroke = Stroke();
+        m_drag = DragNone;
+        keepShape();
+        closeMorphMacro();
         update();
+        return;
+    }
+    if (event->key() == Qt::Key_Escape && (m_drag != DragNone || m_bending || m_tabletActive)) {
+        // Abandon what is being dragged.
+        cancelInput();
         return;
     }
     // Alt and the up or down arrow: the lines selected a little thicker or thinner (Nudge Selection Thickness).

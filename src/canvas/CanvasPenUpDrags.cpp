@@ -321,11 +321,14 @@ bool Canvas::penUpDraw(Drag drag)
 bool Canvas::penUpShape(Drag drag)
 {
     Q_UNUSED(drag);
+    if (m_bending)
+        return true;
     // A click without a drag draws nothing.
     bool const drawn = m_stroke.bounds().width() * m_zoom > m_stroke.width * m_zoom + 3 || m_stroke.bounds().height() * m_zoom > m_stroke.width * m_zoom + 3;
     if (drawn && m_tool == Line && m_lineMode != LineStraight && m_stroke.points.size() == 2) {
         // The Line tool's curves: now the pointer bends the line, and a click puts it down.
         m_bending = true;
+        m_bendTail = false;
         m_bendFrom = m_stroke.points[0].pos;
         m_bendTo = m_stroke.points[1].pos;
         update();

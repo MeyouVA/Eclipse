@@ -18,14 +18,7 @@ void Canvas::cancelPlaneInput()
 {
     if (!m_planeView)
         return;
-    m_drag = DragNone;
-    m_tabletActive = false;
-    m_bending = false;
-    m_dragTransform = QTransform();
-    m_stroke = Stroke();
-    finishPolyline(false);
-    closeMorphMacro();
-    update();
+    cancelInput();
 }
 
 void Canvas::paintPlane(QPainter& painter)

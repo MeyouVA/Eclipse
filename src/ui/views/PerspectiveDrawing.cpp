@@ -148,12 +148,19 @@ bool PerspectiveView::event(QEvent* event)
     if (event->type() == QEvent::ShortcutOverride && m_facingLayer >= 0) {
         int const key = static_cast<QKeyEvent*>(event)->key();
         if (key == Qt::Key_Escape || key == Qt::Key_Space) { event->accept(); return true; }
+        if ((key == Qt::Key_Return || key == Qt::Key_Enter) && m_planeEditor && m_planeEditor->bendingLine()) {
+            event->accept(); return true;
+        }
     }
     return QWidget::event(event);
 }
 
 void PerspectiveView::keyPressEvent(QKeyEvent* event)
 {
+    if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) && m_planeEditor && m_planeEditor->bendingLine()) {
+        QApplication::sendEvent(m_planeEditor, event);
+        update(); return;
+    }
     if (event->key() == Qt::Key_Space) { m_spaceDown = true; event->accept(); return; }
     if (event->key() == Qt::Key_Escape && m_facingLayer >= 0) {
         bool const active = m_planeEditor && m_planeEditor->planeInputActive();

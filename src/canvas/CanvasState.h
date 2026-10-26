@@ -51,6 +51,8 @@ protected:
     QPointF m_stabiliserLine, m_stabiliserPen;
     int m_lineMode = LineStraight;
     bool m_bending = false;
+    bool m_bendTail = false;
+    QPointF m_bendFirst;
     QPointF m_bendFrom, m_bendTo;
     bool m_shapeAutoFill = false;
     int m_smoothing = 25;
@@ -328,6 +330,9 @@ protected:
     QPointF m_textAt;                         // and where the words will stand (layer coordinates)
     int m_textEdit = -1;                      // the painted area whose words are being changed; -1: new words
     bool m_tabletActive = false;  // a pen is driving: ignore the mouse events Qt synthesises
+    int m_tabletTool = -1;
+    float m_tabletPressure = 1.0f;
+    Qt::MouseButton m_mouseButton = Qt::NoButton;
     Stroke m_stroke;        // the stroke being drawn
     bool m_keepNoPictures = false;      // the drawing being committed has had its last picture taken away
     bool m_committing = false;    // our own edit is going through: keep the selection

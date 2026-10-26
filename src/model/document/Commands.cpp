@@ -150,6 +150,7 @@ void Document::reset(Scene const& scene)
     m_scene = scene;
     for (Layer& layer : m_scene.layers)
         layer.keepDrawingIdentitiesUnique();
+    emit resetDone();
     emit changed();
 }
 

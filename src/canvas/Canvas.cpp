@@ -19,6 +19,7 @@ Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_documen
     setMinimumSize(320, 240);
     setMouseTracking(true);     // the status bar says where the pointer is
     connect(m_document, &Document::changed, this, &Canvas::onDocumentChanged);
+    connect(m_document, &Document::resetDone, this, &Canvas::cancelInput);
     updateCursor();
 }
 
@@ -68,11 +69,7 @@ void Canvas::setTool(Tool tool)
             m_toolBeforeDropper = int(m_tool);
         finishPolyline(true);
         endText(true);
-        if (m_bending) {        // a curve of the Line tool not put down yet: it goes
-            m_bending = false;
-            m_drag = DragNone;
-            m_stroke = Stroke();
-        }
+        cancelInput();
     }
     bool const bothWas = bothArtsNow();
     if (bothWas && tool != Select && tool != Cutter)
@@ -130,6 +127,11 @@ void Canvas::setCurrentCell(int layer, int frame)
         Canvas* canvas;
         ~Told() { emit canvas->morphHereChanged(); }
     } const told{this};
+    if (layer != m_layer || frame != m_frame) {
+        finishPolyline(true);
+        endText(true);
+        cancelInput();
+    }
     // Permanent Selection: what lies in the place of the selection on the frame gone to is selected there.
     QRectF const held = m_permanentSelection && m_tool == Select && hasSelection() && layer == m_layer && frame != m_frame
                         ? selectionBounds().adjusted(-1.5, -1.5, 1.5, 1.5) : QRectF();
@@ -145,8 +147,6 @@ void Canvas::setCurrentCell(int layer, int frame)
         return;
     }
     if (layer != m_layer || frame != m_frame) {
-        finishPolyline(true);  // it belongs to the drawing it was begun on
-        endText(true);
         setSelection({}, {});
         m_ceStroke = m_cePoint = m_ceFill = -1;
         emit pointPicked(-1);
@@ -364,6 +364,7 @@ void Canvas::setArt(Art art)
         return;
     finishPolyline(true);
     endText(true);
+    cancelInput();
     clearSelection();
     m_ceStroke = m_cePoint = m_ceFill = -1;
     emit pointPicked(-1);
