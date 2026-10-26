@@ -758,6 +758,7 @@ private:
     void penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);
     void penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers);
     void closeMorphMacro();
+    bool canEditDrawing() const;
     void cancelInput();
     void penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers modifiers);
     void penUp();

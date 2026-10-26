@@ -1,4 +1,12 @@
 #include "canvas/Canvas.h"
+#include "model/document/Commands.h"
+
+bool Canvas::canEditDrawing() const
+{
+    Scene const& scene = m_document->scene();
+    return !m_playing && m_layer >= 0 && m_layer < scene.layers.size() && m_frame >= 0 && m_frame < scene.frameCount()
+           && scene.layers[m_layer].holdsDrawings() && !scene.layers[m_layer].showsSymbol() && !scene.layers[m_layer].locked;
+}
 
 void Canvas::cancelInput()
 {

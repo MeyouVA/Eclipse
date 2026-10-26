@@ -237,6 +237,8 @@ void Canvas::onActionSetPencilSoftTip()
 
 void Canvas::onActionSetPencilSoftTipAllDrawings()
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;

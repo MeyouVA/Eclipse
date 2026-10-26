@@ -254,6 +254,8 @@ void Canvas::onActionRemoveControlPoint()
 
 void Canvas::onActionDistributeToLayers()
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     Drawing const* const d = currentDrawing();
     if (!d || !hasSelection() || m_layer < 0 || m_layer >= scene.layers.size()) {
@@ -328,6 +330,8 @@ void Canvas::onActionDistributeToLayers()
 
 void Canvas::onActionCreateDrawingFromSelection()
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     Drawing const* const d = currentDrawing();
     if (!d || !hasSelection() || m_layer < 0 || m_layer >= scene.layers.size()) {
@@ -433,6 +437,8 @@ QColor Canvas::onionStepColour(bool after, int step) const
 
 void Canvas::alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text, QSet<int> const* only)
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size() || region.isNull())
         return;

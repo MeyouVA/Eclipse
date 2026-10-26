@@ -45,6 +45,8 @@ void Canvas::deleteSelection()
     }
     if (m_tool == ContourEditor) {
         // The picked point; a line cannot have fewer than two, so then the line goes.
+        if (!canEditDrawing())
+            return;
         if (!contourValid())
             return;
         Drawing edited = *currentDrawing();
@@ -97,7 +99,7 @@ void Canvas::deleteSelection()
         return;
     }
     Drawing const* const d = currentDrawing();
-    if (!d || !hasSelection())
+    if (!canEditDrawing() || !d || !hasSelection())
         return;
     Drawing kept;
     for (int i = 0; i < d->strokes.size(); ++i)
@@ -129,6 +131,8 @@ void Canvas::deleteSelection()
 
 void Canvas::onActionDeleteNonSelection()
 {
+    if (!canEditDrawing())
+        return;
     Drawing const* const d = currentDrawing();
     if (!selecting() || !d || !hasSelection()) {
         emit message(tr("Select what is to stay first: the rest of the drawing goes."));
@@ -203,7 +207,7 @@ void Canvas::copySelection()
 
 void Canvas::cutSelection()
 {
-    if (!hasSelection())
+    if (!canEditDrawing() || !hasSelection())
         return;
     copySelection();
     Drawing const* const d = currentDrawing();
@@ -232,6 +236,8 @@ bool Canvas::canPaste()
 
 void Canvas::paste()
 {
+    if (!canEditDrawing())
+        return;
     if (m_tool == ContourEditor && !s_pointClipboard.isEmpty() && !m_playing) {
         // Points copied in the Contour Editor: added after the picked point of the curve, a little way along.
         Drawing const* const d = currentDrawing();

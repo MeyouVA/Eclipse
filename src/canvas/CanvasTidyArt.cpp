@@ -26,6 +26,8 @@ using namespace canvas_tidy_shared;
 
 void Canvas::onActionCreateColourArt()
 {
+    if (!canEditDrawing())
+        return;
     Drawing const* const real = realDrawing();
     if (!real || (real->strokes.isEmpty() && real->fills.isEmpty())) {
         emit message(tr("There is no line art on this frame to make colour art from."));
@@ -374,6 +376,8 @@ void Canvas::onActionRemoveInvisibleLines()
 
 void Canvas::onActionCopyArt()
 {
+    if (!canEditDrawing())
+        return;
     // From one sheet of the drawing into another: the lines (with no thickness, into the colour art) and the areas.
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size() || m_copyArt.from == m_copyArt.to) {

@@ -469,6 +469,8 @@ void Canvas::multiplyThickness(Stroke& line, double multiplier, bool tips, doubl
 
 void Canvas::colourArtTwin(Stroke const& line)
 {
+    if (!canEditDrawing())
+        return;
     Drawing const* const real = realDrawing();
     if (!real || line.points.size() < 2)
         return;

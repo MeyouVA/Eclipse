@@ -42,6 +42,8 @@ void Canvas::setPointThickness(int percent)
 
 void Canvas::transformSelection(QTransform const& about, QString const& text)
 {
+    if (!canEditDrawing())
+        return;
     if (m_tool == Reposition)
         selectAll();        // that tool has all of the drawing in hand, always
     Drawing const* const d = currentDrawing();

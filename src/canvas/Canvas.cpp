@@ -25,6 +25,11 @@ Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_documen
 
 void Canvas::onDocumentChanged()
 {
+    Scene const& scene = m_document->scene();
+    if (m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].locked
+        && (m_drag != DragNone || m_polyActive || m_bending || m_tabletActive)
+        && m_drag != DragPan && m_drag != DragRotateView && m_drag != DragZoom)
+        cancelInput();
     m_modeCache = QImage();
     QVector<int> const shape = drawingShape();
     bool const same = !shape.isEmpty() && shape == m_seenShape;
@@ -114,6 +119,8 @@ void Canvas::setOnionSkin(bool on)
 
 void Canvas::setPlaying(bool playing)
 {
+    if (playing && !m_playing)
+        cancelInput();
     m_playing = playing;
     if (playing)
         clearSelection();

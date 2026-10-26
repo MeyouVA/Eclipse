@@ -52,6 +52,8 @@ void Canvas::onActionSetPencilTexture()
 
 void Canvas::onActionSetPencilTextureAll()
 {
+    if (!canEditDrawing())
+        return;
     // Every pencil line of every drawing of the layer takes the current texture: one step.
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size() || !scene.layers[m_layer].holdsDrawings())

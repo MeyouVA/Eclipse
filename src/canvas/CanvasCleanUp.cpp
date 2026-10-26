@@ -37,6 +37,8 @@ void Canvas::onActionRespectProtected(bool on)
 
 void Canvas::onActionSelectionArt(QString const& how)
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     Drawing const* const d = currentDrawing();
     if (!selecting() || !d || !hasSelection() || m_layer < 0 || m_layer >= scene.layers.size()) {
@@ -118,6 +120,8 @@ void Canvas::onActionSelectionArt(QString const& how)
 
 void Canvas::repositionOthers(QTransform const& done, QString const& text)
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
@@ -159,6 +163,8 @@ void Canvas::repositionOthers(QTransform const& done, QString const& text)
 
 void Canvas::onActionAutoMatte()
 {
+    if (!canEditDrawing())
+        return;
     Drawing const* const real = realDrawing();
     if (!real || (real->strokes.isEmpty() && real->fills.isEmpty())) {
         emit message(tr("There is no line art on this frame to make a matte of."));
@@ -205,6 +211,8 @@ void Canvas::onActionAutoMatte()
 
 bool Canvas::autoMatte(double radius, int source, int destination)
 {
+    if (!canEditDrawing())
+        return false;
     Drawing const* const real = realDrawing();
     if (!real || source < 0 || source >= Drawing::SheetCount || destination < 0 || destination >= Drawing::SheetCount)
         return false;

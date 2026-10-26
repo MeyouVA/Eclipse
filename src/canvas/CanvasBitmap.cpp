@@ -310,6 +310,8 @@ void Canvas::resampleBitmaps(Drawing& drawing, double factor)
 
 void Canvas::onActionConvertToBitmap()
 {
+    if (!canEditDrawing())
+        return;
     Drawing const* const real = realDrawing();
     Scene const& scene = m_document->scene();
     if (!real || m_layer < 0 || m_layer >= scene.layers.size()) {
@@ -332,6 +334,8 @@ void Canvas::onActionConvertToBitmap()
 
 void Canvas::onActionMatchArtLayerType()
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
@@ -366,6 +370,8 @@ void Canvas::onActionMatchArtLayerType()
 
 void Canvas::onActionBitmapResolution()
 {
+    if (!canEditDrawing())
+        return;
     Drawing const* const real = realDrawing();
     bool hasPixels = false;
     if (real)
@@ -400,6 +406,8 @@ void Canvas::onActionBitmapResolution()
 
 void Canvas::changeBitmapResolution(double factor, bool allDrawings)
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;

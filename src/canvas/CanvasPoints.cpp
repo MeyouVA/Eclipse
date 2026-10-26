@@ -45,6 +45,8 @@ Drawing const& Canvas::layerDrawing(int layer, int index) const
 
 void Canvas::commitPointMoves(Drawing const& whole, QString const& text)
 {
+    if (!canEditDrawing())
+        return;
     Layer const& l = m_document->scene().layers[m_layer];
     int const index = l.drawingAt(m_frame);
     QVector<PointMove> mine;
@@ -70,6 +72,8 @@ void Canvas::onActionAnimatePoints(bool on)
 
 void Canvas::onActionResetPoints()
 {
+    if (!canEditDrawing())
+        return;
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;

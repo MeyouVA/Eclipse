@@ -13,6 +13,8 @@
 
 void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QString const& text, QRectF reach)
 {
+    if (!canEditDrawing())
+        return;
     Drawing art = realDrawing() ? *realDrawing() : Drawing();
     // The pixels of the art layer being worked on.
     int const sheet = sheetOf(m_art);
@@ -334,6 +336,8 @@ void Canvas::cutWithEraser()
 
 void Canvas::commitDrawing(Drawing const& drawing, QString const& text)
 {
+    if (!canEditDrawing())
+        return;
     if (pointAnimating()) {
         commitPointMoves(withArt(drawing), text);
         return;

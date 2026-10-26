@@ -208,6 +208,8 @@ void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
 
 void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
 {
+    if (!canEditDrawing())
+        return;
     // With a Symmetry guide: once more over its axis - and over every other axis of symmetry the scene has.
     QVector<QTransform> const mirrors = symmetries();
     // A line of the Line tool or the Polyline whose end was put on the end of another: the two are joined there.
