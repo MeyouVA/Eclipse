@@ -10,6 +10,55 @@
 #include "model/document/Commands.h"
 #include "model/geometry/FillRegion.h"
 
+namespace {
+
+bool dividedShape(QPolygonF const& outline, int owner, Drawing const& drawing, double gap)
+{
+    QPainterPath zone;
+    zone.addPolygon(outline);
+    zone.closeSubpath();
+    for (int i = 0; i < drawing.strokes.size(); ++i) {
+        if (i == owner || drawing.strokes[i].closed || drawing.strokes[i].link != 0)
+            continue;
+        QPainterPath wall;
+        QVector<StrokePoint> const run = drawing.strokes[i].path();
+        if (run.isEmpty())
+            continue;
+        wall.moveTo(run.first().pos);
+        for (int k = 1; k < run.size(); ++k)
+            wall.lineTo(run[k].pos);
+        if (drawing.strokes[i].closed)
+            wall.closeSubpath();
+        if (!zone.intersects(wall))
+            continue;
+        QVector<QPointF> contacts;
+        auto touch = [&](QPointF at) {
+            for (QPointF const& other : std::as_const(contacts))
+                if (QLineF(at, other).length() < 1.0)
+                    return;
+            contacts.push_back(at);
+        };
+        double const reach = gap + (drawing.strokes[i].width + drawing.strokes[owner].width) / 2.0;
+        for (int edge = 0; edge < outline.size(); ++edge) {
+            QPointF const a = outline[edge], b = outline[(edge + 1) % outline.size()];
+            QLineF const boundary(a, b);
+            for (QPointF end : {run.first().pos, run.last().pos})
+                if (distanceToSegment(end, a, b) <= reach)
+                    touch(end);
+            for (int k = 1; k < run.size(); ++k) {
+                QPointF intersection;
+                if (boundary.intersects(QLineF(run[k - 1].pos, run[k].pos), &intersection) == QLineF::BoundedIntersection)
+                    touch(intersection);
+            }
+        }
+        if (contacts.size() >= 2)
+            return true;
+    }
+    return false;
+}
+
+} // namespace
+
 void Canvas::paintAt(QPointF p)
 {
     Scene const& scene = m_document->scene();
@@ -60,10 +109,13 @@ void Canvas::paintAt(QPointF p)
                 emit message(kept);
                 return;
             }
-            if (edited.strokes[i].swatch == m_swatch && edited.strokes[i].color == color)
+            bool const textured = m_paintOverTexture && edited.strokes[i].texture != 0;
+            if (edited.strokes[i].swatch == m_swatch && edited.strokes[i].color == color && !textured)
                 return;
             edited.strokes[i].swatch = m_swatch;
             edited.strokes[i].color = color;
+            if (textured)
+                edited.strokes[i].texture = 0;
             commitDrawing(edited, tr("Paint Line"));
             return;
         }
@@ -88,6 +140,8 @@ void Canvas::paintAt(QPointF p)
                 outline << q.pos;
             if (outline.size() < 3 || !outline.containsPoint(p, Qt::WindingFill))
                 continue;
+            if (!painted && dividedShape(outline, i, edited, gapNow()))
+                continue;
             // The one on top: the highest in the order, the later of those.
             if (shape < 0 || line.order >= edited.strokes[shape].order) {
                 shape = i;
@@ -108,11 +162,16 @@ void Canvas::paintAt(QPointF p)
                     emit message(kept);
                     return;
                 }
-                if (edited.fills[painted].swatch == m_swatch && edited.fills[painted].color == color)
+                bool const textured = m_paintOverTexture && edited.fills[painted].texture != 0;
+                if (edited.fills[painted].swatch == m_swatch && edited.fills[painted].color == color && !textured)
                     return;
                 edited.fills[painted].swatch = m_swatch;
                 edited.fills[painted].color = color;
+                if (textured)
+                    edited.fills[painted].texture = 0;
                 commitDrawing(edited, tr("Paint"));
+                if (m_paintSelectNew)
+                    setSelection({}, {painted});
                 return;
             }
             if (m_tool != Repaint) {
@@ -156,6 +215,11 @@ void Canvas::paintAt(QPointF p)
                 area.swatch = m_swatch;
                 area.color = color;
                 area.order = line.order;
+                if (Swatch const* const sw = scene.findSwatch(m_swatch); m_useStoredGradient && m_hasStoredGradient && sw && sw->isPlaced()) {
+                    area.gradPlaced = true;
+                    area.gradFrom = m_storedGradFrom;
+                    area.gradTo = m_storedGradTo;
+                }
                 // Among the shapes' paint in the order of their lines: a later shape's paint over an earlier one's.
                 int at = int(edited.fills.size());
                 for (int i = 0; i < edited.fills.size(); ++i) {
@@ -173,6 +237,8 @@ void Canvas::paintAt(QPointF p)
                 }
                 edited.fills.insert(at, area);
                 commitDrawing(edited, tr("Paint"));
+                if (m_paintSelectNew)
+                    setSelection({}, {at});
                 return;
             }
         }

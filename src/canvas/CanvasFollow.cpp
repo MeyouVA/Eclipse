@@ -409,21 +409,31 @@ quint64 Canvas::wallsKey(QVector<Stroke> const& walls)
         std::memcpy(&bits, &v, sizeof bits);
         key = (key ^ bits) * 1099511628211ULL;
     };
+    mix(double(walls.size()));
     for (Stroke const& line : walls) {
         mix(line.link);
         mix(line.width);
         mix(line.closed ? 1.0 : 0.0);
         mix(line.curve ? 1.0 : 0.0);
+        mix(double(line.points.size()));
         for (StrokePoint const& p : line.points) {
             mix(p.pos.x());
             mix(p.pos.y());
+            mix(p.corner ? 1.0 : 0.0);
+            mix(p.handles ? 1.0 : 0.0);
             if (p.handles) {
-                mix(p.in.x() + 3.0 * p.in.y());
-                mix(p.out.x() + 7.0 * p.out.y());
+                mix(p.in.x());
+                mix(p.in.y());
+                mix(p.out.x());
+                mix(p.out.y());
             }
         }
-        for (ThicknessPoint const& k : line.thickness)
-            mix(k.at + k.left * 13.0 + k.right * 17.0);
+        mix(double(line.thickness.size()));
+        for (ThicknessPoint const& k : line.thickness) {
+            mix(k.at);
+            mix(k.left);
+            mix(k.right);
+        }
     }
     return key;
 }
