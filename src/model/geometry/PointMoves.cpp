@@ -35,8 +35,11 @@ void apply(Stroke& line, Stroke const& rest, PointMove const& m)
 
 // A line seen as places along it: where each is at rest and how far it has gone.
 struct Anchor {
-    QVector<QPointF> at, by;
+    Stroke rest, now;
+    QVector<QPointF> at;
+    QVector<double> places;
     QRectF box;
+    double reach = 4.0;
 };
 
 void addAnchor(QVector<Anchor>& anchors, Stroke const& rest, Stroke const& now)
@@ -45,48 +48,54 @@ void addAnchor(QVector<Anchor>& anchors, Stroke const& rest, Stroke const& now)
     if (span == 0 || now.pieces() != span)
         return;
     Anchor a;
-    int const steps = span * 8;
+    a.rest = rest;
+    a.now = now;
+    int const steps = span * 32;
     for (int k = 0; k <= steps; ++k) {
-        double const place = double(k) / 8.0;
+        double const place = double(k) / 32.0;
         QPointF const from = rest.pointAt(place);
         a.at.push_back(from);
-        a.by.push_back(now.pointAt(place) - from);
+        a.places.push_back(place);
     }
     a.box = QPolygonF(a.at).boundingRect();
+    for (StrokePoint const& p : rest.path())
+        a.reach = std::max(a.reach, double(rest.width) * p.pressure / 2.0 + 4.0);
     anchors.push_back(a);
 }
 
-// How far a point of paint goes: as the lines nearest it go, the nearer the more.
+// Bind an edge to its nearest original boundary, then evaluate the same place on the moved curve.
 QPointF follow(QPointF v, QVector<Anchor> const& anchors)
 {
-    auto boxDistance = [v](QRectF const& r) {
-        double const dx = std::max({r.left() - v.x(), 0.0, v.x() - r.right()});
-        double const dy = std::max({r.top() - v.y(), 0.0, v.y() - r.bottom()});
-        return std::hypot(dx, dy);
-    };
-    double nearest = 1e300;
-    for (Anchor const& a : anchors)
-        nearest = std::min(nearest, boxDistance(a.box));
-    QPointF sum;
-    double weights = 0.0;
+    double best = 1e300;
+    QPointF displacement;
     for (Anchor const& a : anchors) {
-        if (boxDistance(a.box) > 4.0 * nearest + 40.0)
+        if (!a.box.adjusted(-a.reach, -a.reach, a.reach, a.reach).contains(v))
             continue;
-        double best = 1e300;
-        QPointF by;
-        for (int k = 0; k < a.at.size(); ++k) {
-            QPointF const d = a.at[k] - v;
-            double const d2 = d.x() * d.x() + d.y() * d.y();
-            if (d2 < best) {
-                best = d2;
-                by = a.by[k];
-            }
+        int closest = -1;
+        double distance = 1e300;
+        for (int k = 0; k + 1 < a.at.size(); ++k) {
+            double const d = distanceToSegment(v, a.at[k], a.at[k + 1]);
+            if (d < distance) { distance = d; closest = k; }
         }
-        double const w = 1.0 / (best + 1.0);
-        sum += by * w;
-        weights += w;
+        if (closest < 0 || distance > a.reach + 1.0)
+            continue;
+        double low = a.places[closest], high = a.places[closest + 1];
+        auto distanceAt = [&](double place) { QPointF const d = a.rest.pointAt(place) - v; return QPointF::dotProduct(d, d); };
+        for (int k = 0; k < 24; ++k) {
+            double const left = (2 * low + high) / 3.0, right = (low + 2 * high) / 3.0;
+            if (distanceAt(left) < distanceAt(right)) high = right;
+            else low = left;
+        }
+        double place = (low + high) / 2.0;
+        for (double end : {a.places[closest], a.places[closest + 1]})
+            if (distanceAt(end) < distanceAt(place)) place = end;
+        double const d2 = distanceAt(place);
+        if (d2 <= a.reach * a.reach && d2 < best) {
+            best = d2;
+            displacement = a.now.pointAt(place) - a.rest.pointAt(place);
+        }
     }
-    return weights > 0.0 ? sum / weights : QPointF();
+    return displacement;
 }
 
 }  // namespace
@@ -104,8 +113,6 @@ Drawing movedPoints(Drawing const& drawing, int index, QVector<PointMove> const&
     if (index < 0 || !movesPoints(moves, index))
         return drawing;
     Drawing out = drawing;
-    QVector<Anchor> anchors;
-    bool any = false;
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
         QVector<Stroke>& lines = out.strokesOf(sheet);
         QVector<Fill>& fills = out.fillsOf(sheet);
@@ -137,40 +144,61 @@ Drawing movedPoints(Drawing const& drawing, int index, QVector<PointMove> const&
             else if (m.fill >= 0 && m.fill < fills.size() && m.line >= 0 && m.line < fills[m.fill].contours.size())
                 apply(fills[m.fill].contours[m.line], frozen(drawing.fillsOf(sheet)[m.fill].contours[m.line]), m);
         }
-        for (int i = 0; i < lines.size(); ++i) {
-            addAnchor(anchors, drawing.strokesOf(sheet)[i], lines[i]);
-            any = any || lineMoved[i];
-        }
         for (int f = 0; f < fills.size(); ++f) {
             bool reshaped = false;
             for (int c = 0; c < fills[f].contours.size(); ++c) {
-                addAnchor(anchors, drawing.fillsOf(sheet)[f].contours[c], fills[f].contours[c]);
                 reshaped = reshaped || contourMoved[f][c];
             }
             if (reshaped)
                 fills[f].rebuild();
-            any = any || reshaped;
         }
     }
-    if (!any)
-        return out;
-    // Paint with no contour of its own: each corner of its edge goes as the lines round it go.
-    QRectF reach;
-    for (Anchor const& a : anchors)
-        for (QPointF const& by : a.by)
-            if (moved(by)) {
-                reach = reach.united(a.box);
-                break;
-            }
-    reach.adjust(-60, -60, 60, 60);
-    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        QVector<Anchor> anchors;
+        for (int i = 0; i < drawing.strokesOf(sheet).size(); ++i)
+            addAnchor(anchors, drawing.strokesOf(sheet)[i], out.strokesOf(sheet)[i]);
+        for (int f = 0; f < drawing.fillsOf(sheet).size(); ++f)
+            for (int c = 0; c < drawing.fillsOf(sheet)[f].contours.size(); ++c)
+                addAnchor(anchors, drawing.fillsOf(sheet)[f].contours[c], out.fillsOf(sheet)[f].contours[c]);
+        if (sheet == Drawing::ColourSheet) {
+            for (int i = 0; i < drawing.strokes.size(); ++i)
+                addAnchor(anchors, drawing.strokes[i], out.strokes[i]);
+            for (int f = 0; f < drawing.fills.size(); ++f)
+                for (int c = 0; c < drawing.fills[f].contours.size(); ++c)
+                    addAnchor(anchors, drawing.fills[f].contours[c], out.fills[f].contours[c]);
+        }
+        // Paint without its own contour follows only boundaries on its sheet, or Line Art above Colour Art.
         for (Fill& fill : out.fillsOf(sheet)) {
-            if (!fill.contours.isEmpty() || !fill.text.isEmpty() || !fill.bounds().intersects(reach))
+            if (!fill.contours.isEmpty() || !fill.text.isEmpty())
                 continue;
+            if (fill.link != 0) {
+                for (int line = 0; line < drawing.strokesOf(sheet).size(); ++line) {
+                    Stroke const& rest = drawing.strokesOf(sheet)[line];
+                    if (rest.link != fill.link)
+                        continue;
+                    bool changed = false;
+                    for (PointMove const& m : moves)
+                        changed = changed || (m.drawing == index && m.sheet == sheet && m.fill < 0 && m.line == line);
+                    if (!changed)
+                        break;
+                    QPolygonF was;
+                    for (StrokePoint const& p : rest.path()) was << p.pos;
+                    QRectF const a = fill.bounds(), b = was.boundingRect();
+                    if (std::abs(a.left() - b.left()) > 3 || std::abs(a.right() - b.right()) > 3
+                        || std::abs(a.top() - b.top()) > 3 || std::abs(a.bottom() - b.bottom()) > 3)
+                        break;
+                    QPolygonF boundary;
+                    for (StrokePoint const& p : out.strokesOf(sheet)[line].path()) boundary << p.pos;
+                    fill.outlines = {boundary};
+                    break;
+                }
+                continue;
+            }
             for (QPolygonF& outline : fill.outlines)
                 for (QPointF& v : outline)
                     v += follow(v, anchors);
         }
+    }
     return out;
 }
 

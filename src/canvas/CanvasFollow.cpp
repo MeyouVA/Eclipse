@@ -410,6 +410,7 @@ quint64 Canvas::wallsKey(QVector<Stroke> const& walls)
         key = (key ^ bits) * 1099511628211ULL;
     };
     for (Stroke const& line : walls) {
+        mix(line.link);
         mix(line.width);
         mix(line.closed ? 1.0 : 0.0);
         mix(line.curve ? 1.0 : 0.0);
@@ -436,6 +437,7 @@ QVector<QPolygonF> Canvas::fineOutlinesOf(Fill const& fill, QVector<Stroke> cons
         std::memcpy(&bits, &v, sizeof bits);
         mine = (mine ^ bits) * 1099511628211ULL;
     };
+    mix(fill.link);
     for (QPolygonF const& outline : fill.outlines) {
         mix(double(outline.size()));
         for (QPointF const& p : outline) {
@@ -448,7 +450,12 @@ QVector<QPolygonF> Canvas::fineOutlinesOf(Fill const& fill, QVector<Stroke> cons
         return *found;
     if (kept.size() > 6000)
         kept.clear();
-    QVector<QPolygonF> const fine = FillRegion::refine(fill.outlines, walls);
+    QVector<Stroke> own;
+    if (fill.link != 0)
+        for (Stroke const& wall : walls)
+            if (wall.link == fill.link)
+                own.push_back(wall);
+    QVector<QPolygonF> const fine = FillRegion::refine(fill.outlines, fill.link != 0 ? own : walls);
     kept.insert(mine, fine);
     return fine;
 }
