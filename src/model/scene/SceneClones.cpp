@@ -112,8 +112,13 @@ void Scene::followClones(Scene const& before)
         auto leader = touched.constFind(layers[l].cloneGroup);
         if (leader == touched.constEnd() || layers[*leader].cells.size() != layers[l].cells.size())
             continue;
-        if (int const old = before.layerIndex(layers[*leader].id); old >= 0)
-            layers[l].renumberMoves(drawingRemap(before.layers[old], layers[*leader]));
+        if (int const old = before.layerIndex(layers[*leader].id); old >= 0) {
+            QVector<int> const remap = drawingRemap(before.layers[old], layers[*leader]);
+            layers[l].renumberMoves(remap);
+            for (int drawing = 0; drawing < remap.size(); ++drawing)
+                if (remap[drawing] >= 0)
+                    layers[l].remapPointReferences(remap[drawing], before.layers[old].drawings[drawing], layers[*leader].drawings[remap[drawing]]);
+        }
         if (!layers[*leader].cloneTiming) {
             for (Drawing& d : layers[*leader].drawings)
                 d.pinned = true;

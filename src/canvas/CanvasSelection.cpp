@@ -68,15 +68,20 @@ void Canvas::selectAll()
 
 QRectF Canvas::selectionBounds() const
 {
-    Drawing const* const d = currentDrawing();
+    if (!currentDrawing())
+        return {};
+    Drawing const view = selectionDrawing();
+    Drawing const* const d = &view;
     QRectF r;
     if (!d)
         return r;
     auto add = [&r](QRectF const& b) { r = r.isNull() ? b : r.united(b); };
     for (int i : m_selStrokes)
-        add(d->strokes[i].bounds());
+        if (i >= 0 && i < d->strokes.size())
+            add(d->strokes[i].bounds());
     for (int i : m_selFills)
-        add(d->fills[i].bounds());
+        if (i >= 0 && i < d->fills.size())
+            add(d->fills[i].bounds());
     if (picturesHere())
         for (int i : m_selPictures)
             if (i >= 0 && i < d->pictures.size())
@@ -237,7 +242,8 @@ static void sameColour(Drawing const& d, int swatch, QColor const& colour, QVect
 
 bool Canvas::selectAt(QPointF p, bool toggle)
 {
-    Drawing const* const d = currentDrawing();
+    Drawing const view = selectionDrawing();
+    Drawing const* const d = &view;
     QVector<int> strokes = toggle ? m_selStrokes : QVector<int>();
     QVector<int> fills = toggle ? m_selFills : QVector<int>();
     QVector<int> pictures = toggle ? m_selPictures : QVector<int>();
@@ -296,7 +302,8 @@ void Canvas::selectInRect(QRectF const& rect, bool add)
 
 void Canvas::selectInside(std::function<bool(QPointF)> const& within, bool add)
 {
-    Drawing const* const d = currentDrawing();
+    Drawing const view = selectionDrawing();
+    Drawing const* const d = &view;
     QVector<int> strokes = add ? m_selStrokes : QVector<int>();
     QVector<int> fills = add ? m_selFills : QVector<int>();
     QVector<int> pictures = add ? m_selPictures : QVector<int>();

@@ -278,6 +278,7 @@ struct Layer {
     void keepDrawingIdentitiesUnique();
     // The keyframes' moved points follow their drawings to new places (`remap[old]`; kNoDrawing: gone).
     void renumberMoves(QVector<int> const& remap);
+    void remapPointReferences(int drawing, Drawing const& before, Drawing const& after);
     void substitute(int frame, int drawing);
 };
 

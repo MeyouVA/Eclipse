@@ -251,6 +251,7 @@ void Canvas::paste()
         int at = m_cePoint + 1;
         QVector<int> added;
         for (StrokePoint p : std::as_const(s_pointClipboard)) {
+            p.editIdentity = 0;
             p.pos += shift;
             line->points.insert(at, p);
             added << at++;
@@ -270,6 +271,7 @@ void Canvas::paste()
     Drawing merged = d ? *d : Drawing();
     QVector<int> strokes, fills;
     Drawing placed = s_clipboard;
+    placed.renewPointIdentities();
     if (m_pasteBehaviour != 0) {
         QRectF const box = placed.bounds();
         QTransform const toView = layerViewTransform();

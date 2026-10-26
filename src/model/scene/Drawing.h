@@ -124,6 +124,8 @@ struct Drawing {
     QRectF bounds() const;
     static int topOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes);
     void keepJoints(Drawing const& before);
+    void keepPointIdentitiesUnique();
+    void renewPointIdentities();
     int nextJoint() const;
     static void freshJoints(QVector<Stroke>& strokes, Drawing const& into);
     static int bottomOrder(QVector<Fill> const& fills, QVector<Stroke> const& strokes);

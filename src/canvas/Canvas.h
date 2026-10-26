@@ -785,6 +785,7 @@ private:
     // What a drag on the current drawing shows: the paint following its lines (as the keyframe will have it, while points are animated).
     Drawing followedPreview() const;
     Drawing const* currentDrawing() const;
+    Drawing selectionDrawing() const;
     // The whole drawing with the sheet worked on replaced by `art`.
     Drawing withArt(Drawing const& art) const;
     void addStrokeToArt(Stroke const& stroke);

@@ -34,6 +34,7 @@ struct StrokePoint {
     // How solid the line is here (0 to 1): a line can fade along its length.
     float opacity = 1.0f;
     int joint = 0;
+    quint64 editIdentity = 0;
 };
 
 struct ThicknessPoint {

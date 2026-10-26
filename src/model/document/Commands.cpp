@@ -3,6 +3,7 @@
 
 #include <QUndoCommand>
 #include "model/document/CommandsPrivate.h"
+#include "model/scene/PointIdentity.h"
 
 // Appends one stroke to an existing drawing.
 class AddStrokeCommand : public QUndoCommand {
@@ -96,6 +97,8 @@ bool Document::enterSymbol(int symbolId)
         return false;
     Scene inner = m_scene.symbolScene(*symbol);
     inner.refreshSymbolInstances();
+    for (Layer& layer : inner.layers)
+        layer.keepDrawingIdentitiesUnique();
     QVector<Around> around = m_around;
     around.push_back({m_scene, symbolId});
     pushUndo(new SymbolLevelCommand(this, m_scene, m_around, inner, around, tr("Edit Symbol")));
@@ -205,8 +208,12 @@ int Document::eraseAt(int layer, int frame, QPointF p, double radius)
     int const removed = int(strokes.size() - kept.size()) + int(fills.size() - keptFills.size());
     if (removed)
         apply(tr("Erase"), [&](Scene& s) {
-            s.layers[layer].drawings[index].strokes = kept;
-            s.layers[layer].drawings[index].fills = keptFills;
+            Drawing edited = s.layers[layer].drawings[index];
+            edited.strokes = kept;
+            edited.fills = keptFills;
+            edited.keepPointIdentitiesUnique();
+            s.layers[layer].remapPointReferences(index, s.layers[layer].drawings[index], edited);
+            s.layers[layer].drawings[index] = edited;
         });
     return removed;
 }
@@ -229,6 +236,9 @@ void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString 
             Drawing kept = drawing;
             kept.editIdentity = s.layers[layer].drawings[index].editIdentity;
             kept.keepJoints(s.layers[layer].drawings[index]);
+            DrawingPoints::inheritCorresponding(kept, s.layers[layer].drawings[index]);
+            kept.keepPointIdentitiesUnique();
+            s.layers[layer].remapPointReferences(index, s.layers[layer].drawings[index], kept);
             s.layers[layer].drawings[index] = kept;
         }
     });
