@@ -269,36 +269,9 @@ void Canvas::onActionConvertPencilToBrush()
         Stroke const& stroke = d->strokes[i];
         if (stroke.points.size() < 2)
             continue;
-        if (!stroke.uniform()) {
-            // A line whose thickness changes: the shape it covers, as the brush would have made it.
-            Fill const varying = Fill::fromStroke(stroke, 0.1);
-            if (varying.outlines.isEmpty())
-                continue;
-            edited.fills.push_back(varying);
-            gone.push_back(i);
-            continue;
-        }
-        QPainterPath centre;
-        QVector<StrokePoint> const line = stroke.path();
-        centre.moveTo(line.first().pos);
-        for (int k = 1; k < line.size(); ++k)
-            centre.lineTo(line[k].pos);
-        if (stroke.closed)
-            centre.closeSubpath();
-        QPainterPathStroker stroker;
-        stroker.setWidth(std::max(0.1, double(stroke.width) * stroke.pressureAt(0.0)));
-        stroker.setJoinStyle(stroke.join == Stroke::MitreJoin ? Qt::MiterJoin : stroke.join == Stroke::BevelJoin ? Qt::BevelJoin : Qt::RoundJoin);
-        stroker.setMiterLimit(Stroke::kMitreLimit / 2.0);
-        stroker.setCapStyle(stroke.capStart == Stroke::FlatCap && stroke.capEnd == Stroke::FlatCap ? Qt::FlatCap : Qt::RoundCap);
-        Fill shape;
-        for (QPolygonF const& outline : stroker.createStroke(centre).simplified().toSubpathPolygons())
-            if (outline.size() >= 3)
-                shape.contours.push_back(Fill::contourOf(outline, 0.1));
-        shape.rebuild();
+        Fill const shape = Fill::fromStroke(stroke, 0.1);
         if (shape.outlines.isEmpty())
             continue;
-        shape.swatch = stroke.swatch;
-        shape.color = stroke.color;
         edited.fills.push_back(shape);
         gone.push_back(i);
     }

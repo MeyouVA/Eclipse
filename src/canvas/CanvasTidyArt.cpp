@@ -64,7 +64,7 @@ void Canvas::onActionCreateColourArt()
     }
     clearSelection();
     m_committing = true;
-    m_document->setDrawing(m_layer, m_frame, whole, tr("Create Colour Art from Line Art"));
+    keepWholeDrawing(whole, tr("Create Colour Art from Line Art"));
     m_committing = false;
     emit message(tr("%n line(s) made in the colour art.", nullptr, made));
 }

@@ -401,4 +401,5 @@ void Stroke::transform(QTransform const& t)
     }
     // Keep the line weight in proportion to the shape.
     width = float(width * std::sqrt(std::abs(t.determinant())));
+    unpaintedWidth = float(unpaintedWidth * std::sqrt(std::abs(t.determinant())));
 }

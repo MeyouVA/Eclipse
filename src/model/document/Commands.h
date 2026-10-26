@@ -79,6 +79,7 @@ public:
     int eraseAt(int layer, int frame, QPointF p, double radius);
 
     void setDrawing(int layer, int frame, Drawing const& drawing, QString const& text);
+    void setPosedDrawing(int layer, int frame, Drawing const& drawing, QString const& text);
 
     // ---- palette ------------------------------------------------------------------------
     int addSwatch(QString const& name, QColor const& color, int palette = 0);
@@ -451,6 +452,7 @@ private:
     // Runs `edit` on a copy of the scene and pushes the result as one undo step.
     template <class Edit> void apply(QString const& text, Edit edit);
     void setScene(Scene const& scene);
+    void replaceDrawing(int layer, int frame, Drawing const& drawing, QString const& text, bool posed);
 
     Scene m_scene;
 public:

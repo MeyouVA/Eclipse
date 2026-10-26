@@ -108,34 +108,14 @@ bool Canvas::fillBitmapAt(QPointF p, bool clear)
             region += todo;
         }
         todo.clear();
-        QImage mask(w, h, QImage::Format_ARGB32_Premultiplied);
-        mask.fill(Qt::transparent);
-        QRgb const paint = clear ? qRgba(0, 0, 0, 255) : qPremultiply(to);     // (to clear: the mask marks where)
-        for (QPoint const at : std::as_const(region))
-            mask.setPixel(at, paint);
         changed = !region.isEmpty();
-        // The region takes the colour (cleared: is cut out) - pixel for pixel, no smoothing at its edge.
+        QImage merged = before;
+        QRgb const paint = clear ? QRgb(0) : qPremultiply(to);
+        for (QPoint const at : std::as_const(region))
+            merged.setPixel(at, paint);
         painter.resetTransform();
         painter.setRenderHint(QPainter::Antialiasing, false);
-        painter.setCompositionMode(clear ? QPainter::CompositionMode_DestinationOut : QPainter::CompositionMode_Source);
-        if (clear) {
-            painter.drawImage(0, 0, mask);
-            return;
-        }
-        // Only where the mask is: the rest of the picture stays as it was.
-        QImage merged = before;
-        QPainter m(&merged);
-        m.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-        QImage hole = mask;
-        {
-            QPainter hp(&hole);
-            hp.setCompositionMode(QPainter::CompositionMode_SourceIn);
-            hp.fillRect(hole.rect(), Qt::black);
-        }
-        m.drawImage(0, 0, hole);
-        m.setCompositionMode(QPainter::CompositionMode_SourceOver);
-        m.drawImage(0, 0, mask);
-        m.end();
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.drawImage(0, 0, merged);
     }, clear ? tr("Unpaint") : tr("Paint"));
     return changed;

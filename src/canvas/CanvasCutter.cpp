@@ -126,11 +126,17 @@ void Canvas::cutInside(QPolygonF const& shape)
             // The piece: only what is inside the shape, cropped to it.
             QImage piece = whole.image.copy(reach).convertToFormat(QImage::Format_ARGB32_Premultiplied);
             {
+                QImage mask(piece.size(), QImage::Format_ARGB32_Premultiplied);
+                mask.fill(Qt::transparent);
+                {
+                    QPainter painter(&mask);
+                    painter.setRenderHint(QPainter::Antialiasing, true);
+                    painter.translate(-reach.topLeft());
+                    painter.fillPath(hole, Qt::black);
+                }
                 QPainter painter(&piece);
-                painter.setRenderHint(QPainter::Antialiasing, true);
-                painter.translate(-reach.topLeft());
                 painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-                painter.fillPath(hole, Qt::black);
+                painter.drawImage(0, 0, mask);
             }
             bool any = false;
             for (int y = 0; y < piece.height() && !any; ++y) {
@@ -169,19 +175,30 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
     if (!d)
         return;
     QColor const color = m_document->scene().resolve(m_swatch, Qt::black);
-    Drawing edited;
-    edited.pictures = d->pictures;
-    edited.pinned = d->pinned;
+    Drawing edited = *d;
+    edited.strokes.clear();
+    edited.fills.clear();
+    QVector<int> paintedFills;
     bool any = false;
     for (Stroke stroke : d->strokes) {
         bool inside = false;
         for (StrokePoint const& point : stroke.points)
             inside = inside || within(point.pos);
-        // Lines take the colour from Paint and Repaint; they have one already, and are never unpainted.
         inside = inside && !keepsColour(stroke.swatch);      // a protected colour is left as it is
-        if (inside && (m_tool == Paint || m_tool == Repaint) && (stroke.swatch != m_swatch || stroke.color != color)) {
+        if (inside && m_tool == Unpaint && stroke.width > 0.0f) {
+            stroke.unpaintedWidth = stroke.width;
+            stroke.width = 0.0f;
+            any = true;
+        }
+        bool const paint = m_tool == Paint || (m_tool == Repaint && stroke.width > 0.0f) || (m_tool == PaintUnpainted && stroke.width <= 0.0f);
+        bool const textured = m_paintOverTexture && stroke.texture != 0;
+        if (inside && paint && (stroke.width <= 0.0f || stroke.swatch != m_swatch || stroke.color != color || textured)) {
+            if (stroke.width <= 0.0f)
+                stroke.width = stroke.unpaintedWidth > 0.0f ? stroke.unpaintedWidth : float(m_brushWidth);
+            stroke.unpaintedWidth = 0.0f;
             stroke.swatch = m_swatch;
             stroke.color = color;
+            if (textured) stroke.texture = 0;
             any = true;
         }
         edited.strokes.push_back(stroke);
@@ -196,10 +213,13 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
             any = true;
             continue;       // the paint goes
         }
-        if (inside && (m_tool == Paint || m_tool == Repaint) && (fill.swatch != m_swatch || fill.color != color)) {
+        bool const textured = m_paintOverTexture && fill.texture != 0;
+        if (inside && (m_tool == Paint || m_tool == Repaint) && (fill.swatch != m_swatch || fill.color != color || textured)) {
             fill.swatch = m_swatch;
             fill.color = color;
+            if (textured) fill.texture = 0;
             any = true;
+            paintedFills.push_back(int(edited.fills.size()));
         }
         edited.fills.push_back(fill);
     }
@@ -233,16 +253,30 @@ void Canvas::paintInside(std::function<bool(QPointF)> const& within, QRectF cons
                     continue;       // it runs on outside what was drawn round: left alone
                 Fill fill;
                 fill.outlines = outlines;
+                fill.follows = true;
+                fill.seed = at;
                 fill.swatch = m_swatch;
                 fill.color = color;
+                Scene const& scene = m_document->scene();
+                if (Swatch const* const sw = scene.findSwatch(m_swatch); m_useStoredGradient && m_hasStoredGradient && sw && sw->isPlaced()) {
+                    fill.gradPlaced = true;
+                    fill.gradFrom = m_storedGradFrom;
+                    fill.gradTo = m_storedGradTo;
+                }
                 int const under = underIndex(edited);
+                for (int& selected : paintedFills)
+                    if (selected >= under) ++selected;
                 edited.fills.insert(under, fill);
+                paintedFills.push_back(under);
                 any = true;
             }
         }
     }
-    if (any)
+    if (any) {
         commitDrawing(edited, m_tool == Unpaint ? tr("Unpaint") : tr("Paint"));
+        if (m_paintSelectNew && !paintedFills.isEmpty())
+            setSelection({}, paintedFills);
+    }
 }
 
 void Canvas::setLasso(bool on)

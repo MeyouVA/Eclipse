@@ -74,8 +74,21 @@ Fill Fill::fromStroke(Stroke const& stroke, double tolerance)
     Fill shape;
     shape.swatch = stroke.swatch;
     shape.color = stroke.color;
-    for (QPolygonF const& polygon : stroke.outlinePolygons())
-        shape.contours.push_back(contourOf(polygon, tolerance));
+    shape.order = stroke.order;
+    shape.group = stroke.group;
+    shape.gradPlaced = stroke.gradPlaced;
+    shape.gradFrom = stroke.gradFrom;
+    shape.gradTo = stroke.gradTo;
+    shape.texture = stroke.texture;
+    shape.textureAmount = stroke.textureAmount;
+    shape.textureCrisp = stroke.textureCrisp;
+    shape.textureLow = stroke.textureLow;
+    shape.textureHigh = stroke.textureHigh;
+    for (QPolygonF const& polygon : stroke.outlinePolygons()) {
+        Stroke contour = contourOf(polygon, tolerance);
+        contour.sourceIdentity = stroke.sourceIdentity;
+        shape.contours.push_back(contour);
+    }
     shape.rebuild();
     return shape;
 }

@@ -1,5 +1,6 @@
 #include "model/scene/Layer.h"
 #include "model/scene/PointIdentity.h"
+#include "model/geometry/PointEdit.h"
 #include <QHash>
 #include <QSet>
 #include <atomic>
@@ -28,40 +29,23 @@ void assignIdentities(Drawing& drawing, bool renew)
     };
     Drawing const& view = drawing;
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
-        for (int line = 0; line < view.strokesOf(sheet).size(); ++line)
+        for (int line = 0; line < view.strokesOf(sheet).size(); ++line) {
+            if (renew || !view.strokesOf(sheet)[line].sourceIdentity)
+                drawing.strokesOf(sheet)[line].sourceIdentity = nextPointIdentity();
             assign(view.strokesOf(sheet)[line], [&](int p) -> StrokePoint& { return drawing.strokesOf(sheet)[line].points[p]; });
-        for (int fill = 0; fill < view.fillsOf(sheet).size(); ++fill)
-            for (int contour = 0; contour < view.fillsOf(sheet)[fill].contours.size(); ++contour)
+        }
+        for (int fill = 0; fill < view.fillsOf(sheet).size(); ++fill) {
+            if (renew || !view.fillsOf(sheet)[fill].sourceIdentity)
+                drawing.fillsOf(sheet)[fill].sourceIdentity = nextPointIdentity();
+            for (int contour = 0; contour < view.fillsOf(sheet)[fill].contours.size(); ++contour) {
+                if (renew || !view.fillsOf(sheet)[fill].contours[contour].sourceIdentity)
+                    drawing.fillsOf(sheet)[fill].contours[contour].sourceIdentity = nextPointIdentity();
                 assign(view.fillsOf(sheet)[fill].contours[contour], [&](int p) -> StrokePoint& {
                     return drawing.fillsOf(sheet)[fill].contours[contour].points[p];
                 });
+            }
+        }
     }
-}
-
-Stroke const* lineOf(Drawing const& drawing, PointMove const& move)
-{
-    if (move.sheet < 0 || move.sheet >= Drawing::SheetCount || move.line < 0)
-        return nullptr;
-    if (move.fill < 0) {
-        auto const& lines = drawing.strokesOf(move.sheet);
-        return move.line < lines.size() ? &lines[move.line] : nullptr;
-    }
-    auto const& fills = drawing.fillsOf(move.sheet);
-    if (move.fill >= fills.size())
-        return nullptr;
-    auto const& contours = fills[move.fill].contours;
-    return move.line < contours.size() ? &contours[move.line] : nullptr;
-}
-
-bool reversed(Stroke const& before, Stroke const& after)
-{
-    int const count = int(before.points.size());
-    if (count < 2 || after.points.size() != count)
-        return false;
-    for (int p = 0; p < count; ++p)
-        if (before.points[p].editIdentity != after.points[count - 1 - p].editIdentity)
-            return false;
-    return true;
 }
 
 } // namespace
@@ -111,56 +95,5 @@ void DrawingPoints::inheritCorresponding(Drawing& drawing, Drawing const& before
 
 void Layer::remapPointReferences(int drawing, Drawing const& before, Drawing const& after)
 {
-    bool any = false;
-    for (Keyframe const& key : keys)
-        for (PointMove const& move : key.pose.points)
-            any = any || move.drawing == drawing;
-    if (!any)
-        return;
-    QHash<quint64, PointMove> destinations;
-    auto remember = [&](Stroke const& line, PointMove address) {
-        for (int p = 0; p < line.points.size(); ++p) {
-            address.point = p;
-            if (line.points[p].editIdentity)
-                destinations.insert(line.points[p].editIdentity, address);
-        }
-    };
-    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
-        PointMove address;
-        address.drawing = drawing;
-        address.sheet = sheet;
-        for (int line = 0; line < after.strokesOf(sheet).size(); ++line) {
-            address.line = line;
-            remember(after.strokesOf(sheet)[line], address);
-        }
-        for (int fill = 0; fill < after.fillsOf(sheet).size(); ++fill) {
-            address.fill = fill;
-            for (int contour = 0; contour < after.fillsOf(sheet)[fill].contours.size(); ++contour) {
-                address.line = contour;
-                remember(after.fillsOf(sheet)[fill].contours[contour], address);
-            }
-        }
-    }
-    for (Keyframe& key : keys) {
-        QVector<PointMove> kept;
-        for (PointMove move : key.pose.points) {
-            if (move.drawing == drawing) {
-                Stroke const* const line = lineOf(before, move);
-                if (!line || move.point < 0 || move.point >= line->points.size())
-                    continue;
-                auto const found = destinations.constFind(line->points[move.point].editIdentity);
-                if (found == destinations.constEnd())
-                    continue;
-                if (Stroke const* const target = lineOf(after, *found); target && reversed(*line, *target))
-                    std::swap(move.in, move.out);
-                move.sheet = found->sheet;
-                move.fill = found->fill;
-                move.line = found->line;
-                move.point = found->point;
-            }
-            kept.push_back(move);
-        }
-        std::sort(kept.begin(), kept.end(), [](PointMove const& a, PointMove const& b) { return a.comesBefore(b); });
-        key.pose.points = kept;
-    }
+    DrawingPoints::retarget(*this, drawing, before, after);
 }

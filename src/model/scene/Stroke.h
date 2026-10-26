@@ -47,6 +47,7 @@ struct ThicknessPoint {
 // One pen stroke, in scene coordinates (pixels of the camera frame).
 struct Stroke {
     QVector<StrokePoint> points;
+    quint64 sourceIdentity = 0;
     // Only while two sheets of a drawing are worked on as one: the sheet this came from (not kept in the file).
     int sheet = -1;
     bool curve = false;
@@ -70,6 +71,7 @@ struct Stroke {
     int order = 0;
     QColor color = Qt::black;
     float width = 4.0f;  // at full pressure
+    float unpaintedWidth = 0.0f;
     bool gradPlaced = false;
     QPointF gradFrom;
     QPointF gradTo;

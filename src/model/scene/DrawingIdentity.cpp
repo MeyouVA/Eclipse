@@ -8,6 +8,8 @@ bool needsPointIdentities(Drawing const& drawing)
 {
     QSet<quint64> seen;
     auto missing = [&](Stroke const& line) {
+        if (!line.sourceIdentity)
+            return true;
         for (StrokePoint const& point : line.points) {
             if (!point.editIdentity || seen.contains(point.editIdentity))
                 return true;
@@ -19,10 +21,13 @@ bool needsPointIdentities(Drawing const& drawing)
         for (Stroke const& line : drawing.strokesOf(sheet))
             if (missing(line))
                 return true;
-        for (Fill const& fill : drawing.fillsOf(sheet))
+        for (Fill const& fill : drawing.fillsOf(sheet)) {
+            if (!fill.sourceIdentity)
+                return true;
             for (Stroke const& contour : fill.contours)
                 if (missing(contour))
                     return true;
+        }
     }
     return false;
 }

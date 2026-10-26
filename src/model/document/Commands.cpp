@@ -4,6 +4,7 @@
 #include <QUndoCommand>
 #include "model/document/CommandsPrivate.h"
 #include "model/scene/PointIdentity.h"
+#include "model/geometry/PointEdit.h"
 
 // Appends one stroke to an existing drawing.
 class AddStrokeCommand : public QUndoCommand {
@@ -220,6 +221,16 @@ int Document::eraseAt(int layer, int frame, QPointF p, double radius)
 
 void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString const& text)
 {
+    replaceDrawing(layer, frame, drawing, text, false);
+}
+
+void Document::setPosedDrawing(int layer, int frame, Drawing const& drawing, QString const& text)
+{
+    replaceDrawing(layer, frame, drawing, text, true);
+}
+
+void Document::replaceDrawing(int layer, int frame, Drawing const& drawing, QString const& text, bool posed)
+{
     if (!validCell(m_scene, layer, frame) || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].showsSymbol())
         return;         // (what a layer that shows a symbol has on it is the symbol's: changed there)
     apply(text, [&](Scene& s) {
@@ -233,12 +244,13 @@ void Document::setDrawing(int layer, int frame, Drawing const& drawing, QString 
             startDrawingAt(s.layers[layer], frame, made);
         } else {
             // Joints kept: a point of one that was moved takes the others with it.
-            Drawing kept = drawing;
+            Drawing kept = posed ? DrawingPoints::restorePose(s.layers[layer], index, frame, drawing) : drawing;
             kept.editIdentity = s.layers[layer].drawings[index].editIdentity;
             kept.keepJoints(s.layers[layer].drawings[index]);
             DrawingPoints::inheritCorresponding(kept, s.layers[layer].drawings[index]);
             kept.keepPointIdentitiesUnique();
-            s.layers[layer].remapPointReferences(index, s.layers[layer].drawings[index], kept);
+            if (!posed)
+                s.layers[layer].remapPointReferences(index, s.layers[layer].drawings[index], kept);
             s.layers[layer].drawings[index] = kept;
         }
     });

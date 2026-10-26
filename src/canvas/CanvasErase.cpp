@@ -96,7 +96,7 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
         clearSelection();
     Picture& merged = art.pictures[at];
     merged.image = image;
-    m_document->setDrawing(m_layer, m_frame, art, text);
+    keepWholeDrawing(art, text);
 }
 
 int Canvas::liftedPieceAt(QPointF p) const
@@ -181,10 +181,6 @@ void Canvas::addStrokeToArt(Stroke const& stroke)
 
 void Canvas::eraseArtAt(QPointF p, double radius)
 {
-    if (m_art == LineArt) {
-        m_document->eraseAt(m_layer, m_frame, p, radius);
-        return;
-    }
     Drawing const* const d = currentDrawing();
     if (!d)
         return;
@@ -343,6 +339,6 @@ void Canvas::commitDrawing(Drawing const& drawing, QString const& text)
         return;
     }
     m_committing = true;
-    m_document->setDrawing(m_layer, m_frame, followLines(withArt(drawing), realDrawing()), text);
+    keepWholeDrawing(followLines(withArt(drawing), realDrawing()), text);
     m_committing = false;
 }

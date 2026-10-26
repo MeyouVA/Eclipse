@@ -226,7 +226,7 @@ bool Canvas::autoMatte(double radius, int source, int destination)
     whole.fillsOf(destination).push_front(matte);
     clearSelection();
     m_committing = true;
-    m_document->setDrawing(m_layer, m_frame, whole, tr("Generate Auto-Matte"));
+    keepWholeDrawing(whole, tr("Generate Auto-Matte"));
     m_committing = false;
     emit message(destination == Drawing::ColourSheet ? tr("The matte is in the colour art, behind the lines.") : tr("The matte is at the back of the art it was asked for."));
     update();

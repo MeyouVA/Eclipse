@@ -4,6 +4,16 @@
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
 
+bool Canvas::pointsPosed() const
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return false;
+    Layer const& l = scene.layers[m_layer];
+    return l.holdsDrawings() && !l.showsSymbol() && !l.morphing(m_frame) && l.drawingAt(m_frame) != Layer::kNoDrawing
+        && (pointAnimating() || Deform::movesPoints(l.poseAt(m_frame).points, l.drawingAt(m_frame)));
+}
+
 bool Canvas::pointAnimating() const
 {
     if (!m_animatePoints || !m_animate || m_tool != ContourEditor)
@@ -15,6 +25,14 @@ bool Canvas::pointAnimating() const
     return l.holdsDrawings() && !l.showsSymbol() && !l.morphing(m_frame) && l.drawingAt(m_frame) != Layer::kNoDrawing;
 }
 
+void Canvas::keepWholeDrawing(Drawing const& drawing, QString const& text)
+{
+    if (pointsPosed())
+        m_document->setPosedDrawing(m_layer, m_frame, drawing, text);
+    else
+        m_document->setDrawing(m_layer, m_frame, drawing, text);
+}
+
 Drawing const* Canvas::pointViewOf(Drawing const& rest, int index) const
 {
     Pose const pose = m_document->scene().layers[m_layer].poseAt(m_frame);
@@ -23,6 +41,7 @@ Drawing const* Canvas::pointViewOf(Drawing const& rest, int index) const
         if (m.drawing == index)
             mine.push_back(m);
     QVector<void const*> key;
+    key << rest.pictures.constData();
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
         key << rest.strokesOf(sheet).constData() << rest.fillsOf(sheet).constData();
     if (m_pointViewLayer == m_layer && m_pointViewIndex == index && m_pointViewRest == key && m_pointViewMoves == mine)
@@ -38,7 +57,7 @@ Drawing const* Canvas::pointViewOf(Drawing const& rest, int index) const
 Drawing const& Canvas::layerDrawing(int layer, int index) const
 {
     Layer const& l = m_document->scene().layers[layer];
-    if (layer == m_layer && index == l.drawingAt(m_frame) && pointAnimating())
+    if (layer == m_layer && index == l.drawingAt(m_frame) && pointsPosed())
         return *realDrawing();
     return l.drawings[index];
 }

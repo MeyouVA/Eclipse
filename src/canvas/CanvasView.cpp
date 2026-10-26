@@ -312,9 +312,9 @@ Drawing Canvas::shown(int layer, int frame, Drawing const& drawing) const
     bool const plain = ((l.bones.size() < 2 && !l.hasWarp()) || showsRest(layer)) && drawing.model.isEmpty();
     // (And on the curve of a deformer of a layer it is attached to.)
     bool const rides = !showsRest(layer) && l.parent != 0;      // (and bends on bones it hangs from)
-    // The point editor supplies posed geometry already; every other tool still displays the current point animation.
+    // The active drawing supplies its point pose to both rendering and tool input.
     Pose pose = poseOf(layer, frame);
-    bool const posedAlready = layer == m_layer && frame == m_frame && pointAnimating();
+    bool const posedAlready = layer == m_layer && frame == m_frame && pointsPosed();
     bool const moves = !pose.points.isEmpty() && !posedAlready && !l.morphing(frame);
     Drawing const moved = moves ? Deform::movedPoints(drawing, l.drawingAt(frame), pose.points) : Drawing();
     Drawing const& base = moves ? moved : drawing;

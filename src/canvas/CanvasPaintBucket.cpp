@@ -9,6 +9,7 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/FillRegion.h"
+#include "model/geometry/Deform.h"
 
 namespace {
 
@@ -79,6 +80,7 @@ void Canvas::paintAt(QPointF p)
                     emit message(kept);
                     return;
                 }
+                edited.strokes[i].unpaintedWidth = edited.strokes[i].width;
                 edited.strokes[i].width = 0.0f;
                 commitDrawing(edited, tr("Unpaint Line"));
                 return;
@@ -103,15 +105,18 @@ void Canvas::paintAt(QPointF p)
         paintUnder = paintUnder || fill.contains(p);
     for (int i = int(edited.strokes.size()) - 1; i >= 0 && !paintUnder; --i) {
         if (edited.strokes[i].hit(p, 0.5 / m_zoom)) {
-            if (m_tool == PaintUnpainted)
+            if ((m_tool == PaintUnpainted && edited.strokes[i].width > 0.0f) || (m_tool == Repaint && edited.strokes[i].width <= 0.0f))
                 return;  // it has its colour already
             if (keepsColour(edited.strokes[i].swatch)) {
                 emit message(kept);
                 return;
             }
             bool const textured = m_paintOverTexture && edited.strokes[i].texture != 0;
-            if (edited.strokes[i].swatch == m_swatch && edited.strokes[i].color == color && !textured)
+            if (edited.strokes[i].width > 0.0f && edited.strokes[i].swatch == m_swatch && edited.strokes[i].color == color && !textured)
                 return;
+            if (edited.strokes[i].width <= 0.0f)
+                edited.strokes[i].width = edited.strokes[i].unpaintedWidth > 0.0f ? edited.strokes[i].unpaintedWidth : float(m_brushWidth);
+            edited.strokes[i].unpaintedWidth = 0.0f;
             edited.strokes[i].swatch = m_swatch;
             edited.strokes[i].color = color;
             if (textured)
@@ -305,68 +310,6 @@ void Canvas::paintAt(QPointF p)
     default:
         break;
     }
-}
-
-void Canvas::pickColourAt(QPointF widgetPos)
-{
-    // What is in front is found first: lines before paint, front layers before those behind.
-    Scene const& scene = m_document->scene();
-    QPointF const at = toScene(widgetPos);
-    QVector<int> const order = scene.drawOrder(m_frame);
-    // Do Not Pick Transparency: lines unpainted and colours that cannot be seen are passed over.
-    auto seen = [&](int swatch, QColor const& colour, float width) {
-        return !m_dropperNoTransparency || (width > 0.0f && scene.resolve(swatch, colour).alpha() > 0);
-    };
-    for (int place = int(order.size()) - 1; place >= 0; --place) {
-        int const l = order[place];
-        Layer const& layer = scene.layers[l];
-        int const index = layer.drawingAt(m_frame);
-        if (!scene.shows(l) || !layer.holdsDrawings() || index == Layer::kNoDrawing || (!m_dropperAllLayers && l != m_layer))
-            continue;
-        QPointF const p = scene.worldTransform(l, m_frame).inverted().map(at);
-        Drawing const& drawing = layer.drawings[index];
-        for (int i = int(drawing.strokes.size()) - 1; i >= 0; --i) {
-            if (drawing.strokes[i].hit(p, 2.0 / m_zoom) && seen(drawing.strokes[i].swatch, drawing.strokes[i].color, drawing.strokes[i].width)) {
-                tookColour(drawing.strokes[i].swatch, scene.resolve(drawing.strokes[i].swatch, drawing.strokes[i].color));
-                return;
-            }
-        }
-        for (int i = int(drawing.fills.size()) - 1; i >= 0; --i) {
-            if (drawing.fills[i].contains(p) && seen(drawing.fills[i].swatch, drawing.fills[i].color, 1.0f)) {
-                tookColour(drawing.fills[i].swatch, scene.resolve(drawing.fills[i].swatch, drawing.fills[i].color));
-                return;
-            }
-        }
-        for (int sheet : {int(Drawing::OverlaySheet), int(Drawing::UnderlaySheet)}) {
-            for (int i = int(drawing.strokesOf(sheet).size()) - 1; i >= 0; --i) {
-                Stroke const& stroke = drawing.strokesOf(sheet)[i];
-                if (stroke.hit(p, 2.0 / m_zoom) && seen(stroke.swatch, stroke.color, stroke.width)) {
-                    tookColour(stroke.swatch, scene.resolve(stroke.swatch, stroke.color));
-                    return;
-                }
-            }
-            for (int i = int(drawing.fillsOf(sheet).size()) - 1; i >= 0; --i) {
-                Fill const& fill = drawing.fillsOf(sheet)[i];
-                if (fill.contains(p) && seen(fill.swatch, fill.color, 1.0f)) {
-                    tookColour(fill.swatch, scene.resolve(fill.swatch, fill.color));
-                    return;
-                }
-            }
-        }
-        for (int i = int(drawing.colourStrokes.size()) - 1; i >= 0; --i) {
-            if (drawing.colourStrokes[i].hit(p, 2.0 / m_zoom) && seen(drawing.colourStrokes[i].swatch, drawing.colourStrokes[i].color, drawing.colourStrokes[i].width)) {
-                tookColour(drawing.colourStrokes[i].swatch, scene.resolve(drawing.colourStrokes[i].swatch, drawing.colourStrokes[i].color));
-                return;
-            }
-        }
-        for (int i = int(drawing.colourFills.size()) - 1; i >= 0; --i) {
-            if (drawing.colourFills[i].contains(p) && seen(drawing.colourFills[i].swatch, drawing.colourFills[i].color, 1.0f)) {
-                tookColour(drawing.colourFills[i].swatch, scene.resolve(drawing.colourFills[i].swatch, drawing.colourFills[i].color));
-                return;
-            }
-        }
-    }
-    emit message(tr("There is nothing there to take a colour from."));
 }
 
 void Canvas::tookColour(int swatch, QColor const& colour)

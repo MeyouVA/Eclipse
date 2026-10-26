@@ -8,6 +8,7 @@ ECLIPSE_MODEL_API quint64 nextDrawingIdentity();
 
 struct Fill {
     QVector<QPolygonF> outlines;
+    quint64 sourceIdentity = 0;
     // Only while two sheets of a drawing are worked on as one: the sheet this came from (not kept in the file).
     int sheet = -1;
     QString text;

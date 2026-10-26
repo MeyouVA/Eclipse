@@ -184,14 +184,13 @@ inline QVector<Fill> areasOf(QPainterPath const& result, Fill const& like, QVect
             known[m] = old(polygons[members[m]], olds[m]);
             plain = plain && known[m] && !olds[m].hasContour;
         }
-        Fill piece;
-        piece.swatch = like.swatch;
-        piece.color = like.color;
-        piece.texture = like.texture;
-        piece.textureAmount = like.textureAmount;
-        piece.textureCrisp = like.textureCrisp;
-        piece.textureLow = like.textureLow;
-        piece.textureHigh = like.textureHigh;
+        Fill piece = like;
+        piece.outlines.clear();
+        piece.contours.clear();
+        piece.text.clear();
+        piece.textFont.clear();
+        piece.follows = false;
+        piece.link = 0;
         for (int m = 0; m < members.size(); ++m) {
             if (plain) {
                 piece.outlines.push_back(olds[m].outline);

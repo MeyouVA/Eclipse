@@ -25,6 +25,8 @@ QJsonObject strokeToJson(Stroke const& s)
         pts.append(std::round(double(p.pressure) * 1000.0) / 1000.0);
     }
     QJsonObject o{{"color", s.color.name(QColor::HexArgb)}, {"swatch", s.swatch}, {"width", double(s.width)}, {"points", pts}};
+    if (s.unpaintedWidth > 0.0f)
+        o["unpaintedWidth"] = double(s.unpaintedWidth);
     if (s.group != 0)
         o["group"] = s.group;
     if (s.link != 0)

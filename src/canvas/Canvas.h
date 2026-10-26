@@ -778,6 +778,8 @@ private:
     Drawing const* realDrawing() const;
     // The Contour Editor works on the points as this frame has them moved (Animate Points, with Animate on).
     bool pointAnimating() const;
+    bool pointsPosed() const;
+    void keepWholeDrawing(Drawing const& drawing, QString const& text);
     // A drawing of a layer as the current frame is worked on: with its moved points when they are being animated.
     Drawing const& layerDrawing(int layer, int index) const;
     void commitPointMoves(Drawing const& whole, QString const& text);

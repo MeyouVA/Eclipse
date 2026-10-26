@@ -76,6 +76,7 @@ Stroke strokeFromJson(QJsonObject const& o)
     s.color = QColor(o["color"].toString("#ff000000"));
     s.swatch = o["swatch"].toInt(-1);
     s.width = float(o["width"].toDouble(4.0));
+    s.unpaintedWidth = float(std::clamp(o["unpaintedWidth"].toDouble(), 0.0, 10000.0));
     QString const join = o["join"].toString();
     s.join = join == QLatin1String("mitre") ? Stroke::MitreJoin : join == QLatin1String("bevel") ? Stroke::BevelJoin : Stroke::RoundJoin;
     // ("cap" was both ends at once, for a short while.)

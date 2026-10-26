@@ -17,6 +17,17 @@
 
 #include "model/document/Commands.h"
 
+namespace {
+bool animatedSheet(Layer const& layer, int drawing, int sheet)
+{
+    for (Keyframe const& key : layer.keys)
+        for (PointMove const& move : key.pose.points)
+            if (move.drawing == drawing && move.sheet == sheet)
+                return true;
+    return false;
+}
+}
+
 void Canvas::stampTip(QPainter& onto, Stroke const& stroke, double share, QBrush const& brush) const
 {
     TipShape const& t = m_tipShape;
@@ -320,6 +331,11 @@ void Canvas::onActionConvertToBitmap()
     }
     Drawing whole = *real;
     int const sheet = sheetOf(m_art);
+    Layer const& layer = scene.layers[m_layer];
+    if (animatedSheet(layer, layer.drawingAt(m_frame), sheet)) {
+        emit message(tr("Convert Deformed Drawings to Drawings before converting animated points to bitmap art."));
+        return;
+    }
     if (whole.strokesOf(sheet).isEmpty() && whole.fillsOf(sheet).isEmpty()) {
         emit message(tr("There is no vector art in this art layer to convert."));
         return;
@@ -327,7 +343,7 @@ void Canvas::onActionConvertToBitmap()
     rasterize(whole, sheet, scene, bitmapFineness(), bitmapArea());
     clearSelection();
     m_committing = true;
-    m_document->setDrawing(m_layer, m_frame, whole, tr("Convert to Bitmap Drawing"));
+    keepWholeDrawing(whole, tr("Convert to Bitmap Drawing"));
     m_committing = false;
     update();
 }
@@ -340,6 +356,12 @@ void Canvas::onActionMatchArtLayerType()
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
     Layer const layer = scene.layers[m_layer];
+    for (int drawing = 0; drawing < layer.drawings.size(); ++drawing)
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+            if (layer.bitmapSheet(sheet) && animatedSheet(layer, drawing, sheet)) {
+                emit message(tr("Convert Deformed Drawings to Drawings before converting animated points to bitmap art."));
+                return;
+            }
     int made = 0;
     m_document->beginMacro(tr("Convert Drawings to Match Art Layer Type"));
     QSet<int> done;

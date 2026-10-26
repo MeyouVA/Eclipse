@@ -25,6 +25,7 @@ Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_documen
 
 void Canvas::onDocumentChanged()
 {
+    m_pointViewLayer = -1;
     Scene const& scene = m_document->scene();
     if (m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].locked
         && (m_drag != DragNone || m_polyActive || m_bending || m_tabletActive)
@@ -239,7 +240,7 @@ Drawing const* Canvas::realDrawing() const
     if (index == Layer::kNoDrawing)
         return nullptr;
     Drawing const& rest = scene.layers[m_layer].drawings[index];
-    return pointAnimating() ? pointViewOf(rest, index) : &rest;
+    return pointsPosed() ? pointViewOf(rest, index) : &rest;
 }
 
 // The sheet of a drawing an art layer of the view stands for.
@@ -334,6 +335,13 @@ Drawing Canvas::withArt(Drawing const& art) const
             whole.pinned = real->pinned;
             whole.name = real->name;
             whole.mark = real->mark;
+            whole.set = real->set;
+            whole.model = real->model;
+            whole.modelCentre = real->modelCentre;
+            whole.modelScale = real->modelScale;
+            whole.trace = real->trace;
+            whole.pivotSet = real->pivotSet;
+            whole.pivot = real->pivot;
             if (whole.pictures.isEmpty() && !m_keepNoPictures)
                 whole.pictures = real->pictures;        // (the tools do not touch pictures: one made afresh has none)
         }

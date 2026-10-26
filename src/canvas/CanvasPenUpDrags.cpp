@@ -309,7 +309,7 @@ bool Canvas::penUpDraw(Drag drag)
             }
             if (!edges.isEmpty()) {
                 m_committing = true;
-                m_document->setDrawing(m_layer, m_frame, whole, tr("Draw Stroke"));
+                keepWholeDrawing(whole, tr("Draw Stroke"));
                 m_committing = false;
             }
         }
