@@ -51,7 +51,7 @@ void MainWindow::createWindowsMenuViews()
             view->setFocus();
             if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.scenePlanning"), this)) {
                 if (!qobject_cast<PerspectiveView*>(view))
-                    for (char const* id : {"LookAtSelected", "MoveViewForward", "MoveViewBackward", "PerspectiveClippingPlanes"})
+                    for (char const* id : {"LookAtSelected", "FaceSelectedToDraw", "MoveViewForward", "MoveViewBackward", "PerspectiveClippingPlanes"})
                         menu->removeAction(m_actions->action(QLatin1String(id)));
                 menu->setAttribute(Qt::WA_DeleteOnClose);
                 menu->popup(view->mapToGlobal(point));
@@ -159,6 +159,8 @@ void MainWindow::createWindowsMenuViews()
     {
         PerspectiveView* const view = new PerspectiveView(m_document, this);
         view->setObjectName(QStringLiteral("PerspectiveView"));
+        view->setDrawingCanvas(m_canvas);
+        connect(view, &PerspectiveView::message, this, [this](QString const& text) { statusBar()->showMessage(text, 8000); });
         connect(m_timeline, &Timeline::currentCellChanged, view, [this, view](int l, int f) {
             if (!m_playTimer.isActive() || playsIn(QStringLiteral("perspective")))
                 view->setCurrentCell(l, f);

@@ -132,6 +132,7 @@
    <item id="CameraCone" text="Camera Cone" checkable="true" checked="true" responder="window" slot="onActionCameraCone(bool)"/>
    <item id="FrameSelectedPlane" text="Frame Selected Plane" responder="focus" slot="onActionFrameSelected()"/>
    <item id="LookAtSelected" text="Look at Selected" shortcut="shortcut.lookAtSelected" responder="focus" slot="onActionLookAtSelected()" tooltip="Centre the selection in the Perspective view, keeping rotation and zoom."/>
+   <item id="FaceSelectedToDraw" text="Face Selected to Draw" shortcut="shortcut.faceSelectedToDraw" responder="focus" slot="onActionFaceSelectedToDraw()" tooltip="Face the selected drawing plane and use drawing tools in the Perspective view."/>
    <item id="MoveViewForward" text="Move Forward" shortcut="shortcut.moveViewForward" responder="focus" slot="onActionMoveForward()" tooltip="Move forward along the Perspective viewing direction."/>
    <item id="MoveViewBackward" text="Move Backward" shortcut="shortcut.moveViewBackward" responder="focus" slot="onActionMoveBackward()" tooltip="Move backward along the Perspective viewing direction."/>
    <item id="PerspectiveClippingPlanes" text="Clipping Planes..." shortcut="shortcut.perspectiveClippingPlanes" responder="focus" slot="onActionClippingPlanes()" tooltip="Set the visible depth range in the Perspective view."/>
@@ -1633,6 +1634,7 @@
  <menu id="menu.scenePlanning" text="Scene Planning">
   <item id="FrameSelectedPlane"/>
   <item id="LookAtSelected"/>
+  <item id="FaceSelectedToDraw"/>
   <item id="MoveViewForward"/>
   <item id="MoveViewBackward"/>
   <item id="PerspectiveClippingPlanes"/>

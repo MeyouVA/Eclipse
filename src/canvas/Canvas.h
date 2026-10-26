@@ -96,6 +96,10 @@ public:
     void setDrawingView(bool on);
     QJsonObject viewState() const;
     void restoreViewState(QJsonObject const& state);
+    void setPlaneProjection(QTransform const& projection);
+    void paintPlane(QPainter& painter);
+    void cancelPlaneInput();
+    bool planeInputActive() const { return m_drag != DragNone || m_bending || m_polyActive; }
     // While playing, nothing but the frame itself is shown (no onion skin, no editing).
     void setPlaying(bool playing);
 

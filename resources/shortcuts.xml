@@ -4,6 +4,7 @@
 <shortcuts>
  <category id="General" text="General">
   <shortcut id="shortcut.lookAtSelected" text="Look at Selected" value=""/>
+  <shortcut id="shortcut.faceSelectedToDraw" text="Face Selected to Draw" value=""/>
   <shortcut id="shortcut.moveViewForward" text="Move Forward" value=""/>
   <shortcut id="shortcut.moveViewBackward" text="Move Backward" value=""/>
   <shortcut id="shortcut.perspectiveClippingPlanes" text="Perspective Clipping Planes" value=""/>

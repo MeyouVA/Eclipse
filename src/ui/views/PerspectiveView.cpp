@@ -1,6 +1,7 @@
 #include "ui/views/PerspectiveView.h"
 
 #include <QMouseEvent>
+#include <QApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QWheelEvent>
@@ -23,25 +24,35 @@ PerspectiveView::PerspectiveView(Document* document, QWidget* parent) : QWidget(
 {
     setMinimumSize(200, 150);
     setFocusPolicy(Qt::StrongFocus);
+    setMouseTracking(true);
     connect(m_document, &Document::changed, this, qOverload<>(&QWidget::update));
 }
 
 void PerspectiveView::setCurrentCell(int layer, int frame)
 {
+    if (m_layer != layer || m_frame != frame)
+        cancelPlaneDrawing();
     m_layer = layer;
     m_frame = frame;
+    Scene const& scene = m_document->scene();
+    if (layer < 0 || layer >= scene.layers.size() || scene.layers[layer].id != m_facingLayer)
+        m_facingLayer = -1;
+    if (m_planeEditor)
+        m_planeEditor->setCurrentCell(layer, frame);
     update();
 }
 
 void PerspectiveView::setOrbit(double yaw, double pitch)
 {
     m_yaw = std::remainder(yaw, 360.0);
-    m_pitch = std::clamp(pitch, -89.0, 89.0);
+    m_pitch = std::clamp(pitch, -90.0, 90.0);
     update();
 }
 
 void PerspectiveView::resetView()
 {
+    cancelPlaneDrawing();
+    m_facingLayer = -1;
     m_yaw = kDefaultYaw;
     m_pitch = kDefaultPitch;
     m_zoom = 1.0;
@@ -116,6 +127,7 @@ void PerspectiveView::paintEvent(QPaintEvent*)
         QPolygonF polygon;
         QTransform projection;
         Drawing drawing;
+        bool editing = false;
     };
     QVector<Item> items;
     if (!frame.isEmpty())
@@ -123,12 +135,17 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     for (int l = 0; l < scene.layers.size(); ++l) {
         QTransform projection;
         Drawing drawing;
-        QPolygonF polygon = layerPolygon(l, &projection, &drawing);
+        bool const editing = l == m_layer && m_planeEditor && drawingTool() && canEditPlane();
+        QPolygonF polygon = editing ? editingPolygon() : layerPolygon(l, &projection, &drawing);
+        if (editing) {
+            projection = layerProjection(l);
+            m_planeEditor->setPlaneProjection(projection);
+        }
         if (polygon.size() < 3)
             continue;
         double x, y, z;
         scene.toSpace(l, m_frame, scene.layers[l].pivot, x, y, z);
-        items.push_back({l, distanceOf(x, y, z), std::move(polygon), projection, std::move(drawing)});
+        items.push_back({l, distanceOf(x, y, z), std::move(polygon), projection, std::move(drawing), editing});
     }
     std::stable_sort(items.begin(), items.end(), [](Item const& a, Item const& b) { return a.distance > b.distance; });
 
@@ -153,15 +170,21 @@ void PerspectiveView::paintEvent(QPaintEvent*)
         clip.addPolygon(quad);
         painter.setClipPath(clip);
         painter.setTransform(onto);
-        Canvas::paintDrawing(painter, scene, item.drawing, layer.opacity * pose.opacity);
+        if (item.editing)
+            m_planeEditor->paintPlane(painter);
+        else
+            Canvas::paintDrawing(painter, scene, item.drawing, layer.opacity * pose.opacity);
         painter.restore();
+        QPolygonF const outline = item.editing ? layerPolygon(item.layer) : quad;
+        if (outline.isEmpty())
+            continue;
         bool const current = item.layer == m_layer;
         painter.setBrush(Qt::NoBrush);
         painter.setPen(QPen(current ? QColor(255, 190, 70) : QColor(150, 150, 150, 150), current ? 1.6 : 1.0, current ? Qt::SolidLine : Qt::DotLine));
-        painter.drawPolygon(quad);
+        painter.drawPolygon(outline);
         painter.setFont(small);
         painter.setPen(current ? QColor(255, 220, 150) : QColor(190, 190, 190));
-        painter.drawText(quad[0] + QPointF(2, -4), layer.name);
+        painter.drawText(outline[0] + QPointF(2, -4), layer.name);
     }
 
     // The cone, over everything, so that the camera is always found.
@@ -187,13 +210,36 @@ void PerspectiveView::paintEvent(QPaintEvent*)
 
 void PerspectiveView::mousePressEvent(QMouseEvent* event)
 {
+    if (event->button() == Qt::LeftButton && !m_spaceDown && !(event->modifiers() & Qt::AltModifier)
+        && drawingTool() && m_facingLayer >= 0) {
+        if (preparePlaneEditor()) {
+            m_drawingGesture = true;
+            QApplication::sendEvent(m_planeEditor, event);
+        }
+        update(); return;
+    }
+    if (event->button() == Qt::LeftButton && (event->modifiers() & Qt::AltModifier)) {
+        cancelPlaneDrawing();
+        m_facingLayer = -1;
+    }
     m_drag = event->button() == Qt::LeftButton ? Orbit : (event->button() == Qt::MiddleButton || event->button() == Qt::RightButton) ? Pan : None;
+    if (event->button() == Qt::LeftButton && m_spaceDown)
+        m_drag = Pan;
     m_last = m_pressed = event->position();
     m_moved = false;
 }
 
 void PerspectiveView::mouseMoveEvent(QMouseEvent* event)
 {
+    if (m_drawingGesture && !canEditPlane()) {
+        cancelPlaneDrawing();
+        update(); return;
+    }
+    if (m_drawingGesture || (drawingTool() && canEditPlane() && m_drag == None)) {
+        if (preparePlaneEditor())
+            QApplication::sendEvent(m_planeEditor, event);
+        update(); return;
+    }
     if (m_drag == None)
         return;
     QPointF const d = event->position() - m_last;
@@ -212,6 +258,14 @@ void PerspectiveView::mouseMoveEvent(QMouseEvent* event)
 
 void PerspectiveView::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (m_drawingGesture && event->button() == Qt::LeftButton) {
+        if (preparePlaneEditor())
+            QApplication::sendEvent(m_planeEditor, event);
+        else
+            cancelPlaneDrawing();
+        m_drawingGesture = false;
+        update(); return;
+    }
     // A click that did not turn the view picks the layer under it.
     if (m_drag == Orbit && !m_moved && event->button() == Qt::LeftButton) {
         int const picked = layerAt(event->position());

@@ -120,16 +120,26 @@ QPolygonF PerspectiveView::layerPolygon(int layer, QTransform* projection, Drawi
     for (QPointF const& corner : {bounds.topLeft(), bounds.topRight(), bounds.bottomRight(), bounds.bottomLeft()})
         polygon.push_back(world(corner));
     QPolygonF const clipped = projectPolygon(polygon);
-    if (projection && clipped.size() >= 3) {
-        Point const o = viewPoint(world(QPointF(0, 0))), u = viewPoint(world(QPointF(1, 0))), v = viewPoint(world(QPointF(0, 1)));
-        double const ax = u.x - o.x, ay = u.y - o.y, az = u.z - o.z;
-        double const bx = v.x - o.x, by = v.y - o.y, bz = v.z - o.z;
-        double const eye = 3.5 * std::max(scene.width, scene.height);
-        double const k = eye * std::min(width() / double(scene.width), height() / double(scene.height)) * 0.5 * m_zoom;
-        double const cx = width() / 2.0 + m_pan.x(), cy = height() / 2.0 + m_pan.y(), depth = eye - o.z;
-        *projection = QTransform(k * ax - cx * az, k * ay - cy * az, -az,
-                                 k * bx - cx * bz, k * by - cy * bz, -bz,
-                                 k * o.x + cx * depth, k * o.y + cy * depth, depth);
-    }
+    if (projection && clipped.size() >= 3)
+        *projection = layerProjection(layer);
     return clipped;
+}
+
+QTransform PerspectiveView::layerProjection(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    auto world = [&](QPointF local) {
+        Point point;
+        scene.toSpace(layer, m_frame, local, point.x, point.y, point.z);
+        return point;
+    };
+    Point const o = viewPoint(world(QPointF(0, 0))), u = viewPoint(world(QPointF(1, 0))), v = viewPoint(world(QPointF(0, 1)));
+    double const ax = u.x - o.x, ay = u.y - o.y, az = u.z - o.z;
+    double const bx = v.x - o.x, by = v.y - o.y, bz = v.z - o.z;
+    double const eye = 3.5 * std::max(scene.width, scene.height);
+    double const k = eye * std::min(width() / double(scene.width), height() / double(scene.height)) * 0.5 * m_zoom;
+    double const cx = width() / 2.0 + m_pan.x(), cy = height() / 2.0 + m_pan.y(), depth = eye - o.z;
+    return QTransform(k * ax - cx * az, k * ay - cy * az, -az,
+                      k * bx - cx * bz, k * by - cy * bz, -bz,
+                      k * o.x + cx * depth, k * o.y + cy * depth, depth);
 }

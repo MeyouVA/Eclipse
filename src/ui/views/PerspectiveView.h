@@ -8,9 +8,11 @@
 
 #include <QWidget>
 #include <QJsonObject>
+#include <QPointer>
 #include <algorithm>
 
 class Document;
+class Canvas;
 struct Drawing;
 
 class ECLIPSE_UI_API PerspectiveView : public QWidget {
@@ -26,6 +28,7 @@ public:
     void restoreView(double zoom, QPointF pan) { m_zoom = std::clamp(zoom, 0.1, 20.0); m_pan = pan; update(); }
     void setOrbit(double yaw, double pitch);
     void resetView();
+    void setDrawingCanvas(Canvas* canvas);
     QJsonObject viewState() const;
     void restoreViewState(QJsonObject const& state);
     bool setClippingPlanes(double nearDistance, double farDistance);
@@ -47,6 +50,7 @@ public slots:
     void onActionResetView() { resetView(); }
     void onActionFrameSelected();
     void onActionLookAtSelected();
+    void onActionFaceSelectedToDraw();
     void onActionMoveForward();
     void onActionMoveBackward();
     void onActionClippingPlanes();
@@ -54,6 +58,7 @@ public slots:
 
 signals:
     void layerPicked(int layer);
+    void message(QString const& text);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -62,6 +67,10 @@ protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
+    void tabletEvent(QTabletEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    bool event(QEvent* event) override;
 
 private:
     struct Point { double x, y, z; };
@@ -70,6 +79,12 @@ private:
     QPolygonF projectPolygon(QVector<Point> polygon) const;
     bool projectSegment(Point a, Point b, QLineF& line) const;
     QPolygonF layerPolygon(int layer, QTransform* projection = nullptr, Drawing* displayed = nullptr) const;
+    QTransform layerProjection(int layer) const;
+    QPolygonF editingPolygon() const;
+    bool canEditPlane() const;
+    bool drawingTool() const;
+    bool preparePlaneEditor();
+    void cancelPlaneDrawing();
     // How far from the eye a point is (bigger: further off), to draw the furthest first.
     double distanceOf(double x, double y, double z) const;
     int layerAt(QPointF widgetPos) const;
@@ -92,4 +107,9 @@ private:
     QPointF m_pressed;
     bool m_moved = false;
     bool m_cameraCone = true;
+    QPointer<Canvas> m_drawingCanvas;
+    Canvas* m_planeEditor = nullptr;
+    int m_facingLayer = -1;
+    bool m_drawingGesture = false;
+    bool m_spaceDown = false;
 };

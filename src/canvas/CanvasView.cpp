@@ -30,6 +30,8 @@ void Canvas::setDrawingView(bool on)
 
 QTransform Canvas::viewTransform() const
 {
+    if (m_planeView)
+        return m_planeProjection;
     if (m_drawingView)
         return cameraViewTransform();   // no camera: the sheet as it is
     return m_document->scene().cameraTransform(m_frame) * cameraViewTransform();
@@ -37,6 +39,8 @@ QTransform Canvas::viewTransform() const
 
 QTransform Canvas::cameraViewTransform() const
 {
+    if (m_planeView)
+        return m_planeProjection;
     Scene const& scene = m_document->scene();
     QTransform t;
     t.translate(width() / 2.0 + m_pan.x(), height() / 2.0 + m_pan.y());

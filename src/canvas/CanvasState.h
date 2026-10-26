@@ -89,6 +89,8 @@ protected:
     double m_otherRotation = 0.0;
     bool m_mirror = false;
     bool m_drawingView = false;
+    bool m_planeView = false;
+    QTransform m_planeProjection;
     bool m_grid = false;
     int m_gridKind = 0;
     int m_fieldsAcross = 12;
