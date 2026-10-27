@@ -195,6 +195,11 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.cameraZoom->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/cameraZoom"), 0).toInt(), 0, 1));
     w.cameraZoom->setToolTip(tr("How the Camera view shows a scene made or opened: the whole frame in the view, or at its own size."));
     w.cameraLayout->addRow(tr("A scene opens"), w.cameraZoom);
+    w.outlineLocked = new QCheckBox(tr("Show Locked Drawings as Outlines"), w.camera);
+    w.outlineLocked->setObjectName(QStringLiteral("PrefOutlineLocked"));
+    w.outlineLocked->setToolTip(tr("Show locked drawings as outlines when a scene is opened."));
+    w.outlineLocked->setChecked(s.value(QStringLiteral("prefs/outlineLocked"), false).toBool());
+    w.cameraLayout->addRow(w.outlineLocked);
     w.nudge = new QSpinBox(w.camera);
     w.nudge->setObjectName(QStringLiteral("PrefNudge"));
     w.nudge->setRange(1, 100);

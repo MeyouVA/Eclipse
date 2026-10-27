@@ -80,6 +80,17 @@ void MainWindow::applyPreferences()
     m_canvas->setBitmapCanvasSize(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt(),
                                   s.value(QStringLiteral("prefs/bitmapCanvasHeight"), s.value(QStringLiteral("prefs/bitmapCanvas"), 150)).toInt());
     m_canvas->setBitmapPpi(s.value(QStringLiteral("prefs/bitmapPpi"), 72).toInt());
+    m_canvas->setBitmapCameraDensity(s.value(QStringLiteral("prefs/bitmapCameraDensity"), false).toBool());
+    bool const outlineLocked = s.value(QStringLiteral("prefs/outlineLocked"), false).toBool();
+    if (m_appliedOutlinePreference != int(outlineLocked)) {
+        if (QAction* const action = m_actions->action(QStringLiteral("OutlineLocked"))) {
+            if (action->isChecked() != outlineLocked)
+                action->trigger();
+            else
+                m_canvas->onActionOutlineLocked(outlineLocked);
+            m_appliedOutlinePreference = int(outlineLocked);
+        }
+    }
     m_canvas->setBitmapCanvasBasis(s.value(QStringLiteral("prefs/bitmapCanvasBasis"), 0).toInt());
     m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
     // Palettes: element palettes shown, the Colour view's background, colour recovery and what pasted templates do with colours.
@@ -384,6 +395,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/nudge"), w.nudge->value());
     s.setValue(QStringLiteral("prefs/undoLevels"), w.undoLevels->value());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());
+    s.setValue(QStringLiteral("prefs/outlineLocked"), w.outlineLocked->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), w.extend->isChecked());
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());
@@ -421,6 +433,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/bitmapCanvas"), w.bitmapCanvas->value());
     s.setValue(QStringLiteral("prefs/bitmapCanvasHeight"), w.bitmapCanvasHeight->value());
     s.setValue(QStringLiteral("prefs/bitmapPpi"), w.bitmapPpi->value());
+    s.setValue(QStringLiteral("prefs/bitmapCameraDensity"), w.bitmapCameraDensity->isChecked());
     s.setValue(QStringLiteral("prefs/bitmapCanvasBasis"), w.canvasBasis->currentIndex());
     s.setValue(QStringLiteral("prefs/advancedElementMode"), w.elementMode->isChecked());
     s.setValue(QStringLiteral("prefs/initialTool"), w.initialTool->currentData().toString());

@@ -200,6 +200,11 @@ void MainWindow::preferencesDrawing(PreferenceWidgets& w, QSettings& s, QDialog&
     w.bitmapPpi->setToolTip(tr("How fine the pixels of new bitmap drawings are: 72 ppi is a pixel for each unit of the scene (at the layer's own resolution)."));
     w.bitmapPpi->setValue(s.value(QStringLiteral("prefs/bitmapPpi"), 72).toInt());
     w.drawingLayout->addRow(tr("Bitmap resolution"), w.bitmapPpi);
+    w.bitmapCameraDensity = new QCheckBox(tr("Pixel Density Proportional to Camera"), w.drawing);
+    w.bitmapCameraDensity->setObjectName(QStringLiteral("PrefBitmapCameraDensity"));
+    w.bitmapCameraDensity->setToolTip(tr("New bitmap art made in the Camera view uses the camera's zoom to choose its pixel density."));
+    w.bitmapCameraDensity->setChecked(s.value(QStringLiteral("prefs/bitmapCameraDensity"), false).toBool());
+    w.drawingLayout->addRow(w.bitmapCameraDensity);
     w.canvasBasis = new QComboBox(w.drawing);
     w.canvasBasis->setObjectName(QStringLiteral("PrefBitmapCanvasBasis"));
     w.canvasBasis->addItems({tr("The Scene's Frame"), tr("Based on the Area Covered by the Camera"), tr("Camera Move over Current")});

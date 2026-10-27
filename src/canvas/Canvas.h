@@ -458,6 +458,7 @@ public slots:
     void onActionBacklight(bool on);
     // Layers that are locked shown as outlines, so that they do not hide what is worked on.
     void onActionOutlineLocked(bool on);
+    bool outlinesLocked() const { return m_outlineLocked; }
     void onActionShowSymbolPivot(bool on);
     // Show > BBox Selection Style: what is selected is told by its box alone - no line drawn over each thing.
     void onActionBBoxSelectionStyle(bool on)
@@ -751,6 +752,7 @@ private:
     // Its parts: the frame's edge, grids, guides and each tool's aids (true when nothing more is to be painted), then the selection's.
     void paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, QTransform const& view, bool transforming, bool erasing,
                         std::function<void(int)> const& onionsOf);
+    void paintLockedOutline(QPainter& painter, int layer, Drawing const& drawing) const;
     bool paintViewAids(QPainter& painter, QRectF const& frameRect, QTransform const& view);
     void paintSelectionAids(QPainter& painter);
     bool contourValid() const;

@@ -328,12 +328,15 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         onionsOf(l);
     painter.setTransform(worldOf(l, m_frame) * view);
     int const index = layer.drawingAt(m_frame);
+    bool const outlined = index != Layer::kNoDrawing && !m_playing && !m_backlight && m_outlineLocked && layer.locked;
     // The light table: while drawing, the layers that are not being drawn on are faint.
     double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? m_lightWash / 100.0 : 1.0;
     if (index != Layer::kNoDrawing && layer.morphing(m_frame)) {
         static QColor const dark(34, 34, 38);
         Drawing const made = shown(l, m_frame, layer.shownAt(m_frame));
-        if (!m_playing && m_backlight)
+        if (outlined)
+            paintLockedOutline(painter, l, made);
+        else if (!m_playing && m_backlight)
             paintDrawing(painter, scene, made, 1.0, &dark);
         else
             paintLayerDrawing(painter, scene, l, m_frame, made, layer.opacity * poseOf(l, m_frame).opacity * faint, view, false, !m_drawingView);
@@ -343,27 +346,9 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         // Backlight: everything drawn as one dark shape, as if lit from behind.
         static QColor const dark(34, 34, 38);
         paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? followedPreview() : layerDrawing(l, index)), 1.0, &dark);
-    } else if (index != Layer::kNoDrawing && !m_playing && m_outlineLocked && layer.locked) {
-        // A locked layer as outlines: the edges of its paint and the paths of its lines.
-        Drawing const lines = shown(l, m_frame, layerDrawing(l, index));
-        QPen edge(layer.trackColor.isValid() ? layer.trackColor : QColor(200, 70, 60));
-        edge.setCosmetic(true);
-        painter.setPen(edge);
-        painter.setBrush(Qt::NoBrush);
-        for (QVector<Fill> const* fills : {&lines.underlayFills, &lines.colourFills, &lines.fills, &lines.overlayFills})
-            for (Fill const& fill : *fills)
-                for (QPolygonF const& outline : fill.outlines)
-                    painter.drawPolygon(outline);
-        for (QVector<Stroke> const* strokes : {&lines.underlayStrokes, &lines.colourStrokes, &lines.strokes, &lines.overlayStrokes})
-            for (Stroke const& stroke : *strokes) {
-                QPolygonF centre;
-                for (StrokePoint const& p : stroke.path())
-                    centre << p.pos;
-                if (stroke.closed)
-                    painter.drawPolygon(centre);
-                else
-                    painter.drawPolyline(centre);
-            }
+    } else if (outlined) {
+        Drawing const lines = layer.showsSymbol() ? scene.symbolPicture(layer.symbolId, index) : shown(l, m_frame, layerDrawing(l, index));
+        paintLockedOutline(painter, l, lines);
     } else if (l == m_layer && transforming)
         paintLayerDrawing(painter, scene, l, m_frame, followedPreview(), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt, !m_drawingView);
     else if (index != Layer::kNoDrawing && l == m_layer && !m_previewAllArt && !m_playing) {
@@ -380,7 +365,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layerDrawing(l, index)),
                           layer.opacity * poseOf(l, m_frame).opacity * faint
                               * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), view, false, !m_drawingView);
-    if (index != Layer::kNoDrawing && faint < 1.0 && m_lightWhite > 0 && !m_backlight && !(l == m_layer && transforming)) {
+    if (index != Layer::kNoDrawing && faint < 1.0 && m_lightWhite > 0 && !m_backlight && !outlined && !(l == m_layer && transforming)) {
         // The light table's wash: the other layers' colours taken toward white.
         static QColor const white(255, 255, 255);
         painter.setTransform(worldOf(l, m_frame) * view);

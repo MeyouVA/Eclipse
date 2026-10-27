@@ -4,6 +4,7 @@
 #include "canvas/Canvas.h"
 #include "model/document/Commands.h"
 #include "actions/manager/ActionManager.h"
+#include "actions/theme/AppSettings.h"
 #include "ui/views/DepthView.h"
 #include "ui/views/PerspectiveView.h"
 #include "ui/views/NodeView.h"
@@ -66,7 +67,8 @@ QJsonObject MainWindow::projectUiState() const
     state["timelineParameters"] = parameters;
     QJsonObject viewActions;
     for (char const* id : {"LightTable", "CurrentDrawingOnTop", "CameraMask", "ShowSafeArea", "ShowSafeTitle", "ShowGrid", "GridOutlineOnly",
-                          "GridUnderlay", "ProportionGrid", "Backlight", "MirrorView", "PreviewAllArt", "OnionSkinToggle", "ShowGuides"})
+                          "GridUnderlay", "ProportionGrid", "Backlight", "MirrorView", "PreviewAllArt", "OnionSkinToggle", "ShowGuides",
+                          "OutlineLocked", "BBoxSelectionStyle"})
         if (QAction* action = m_actions->action(QLatin1String(id)); action && action->isCheckable())
             viewActions[QLatin1String(id)] = action->isChecked();
     state["viewActions"] = viewActions;
@@ -123,8 +125,14 @@ QJsonObject MainWindow::projectUiState() const
 
 void MainWindow::restoreProjectUi(QJsonObject const& state)
 {
-    if (state["version"].toInt() != 1)
+    if (state["version"].toInt() != 1) {
+        bool const outlines = settings().value(QStringLiteral("prefs/outlineLocked"), false).toBool();
+        m_canvas->onActionOutlineLocked(outlines);
+        m_canvas->onActionBBoxSelectionStyle(false);
+        m_actions->setChecked(QStringLiteral("OutlineLocked"), outlines);
+        m_actions->setChecked(QStringLiteral("BBoxSelectionStyle"), false);
         return;
+    }
     expandAllSides();
     QString const workspace = state["workspace"].toString();
     if (workspaces().contains(workspace))
@@ -206,6 +214,13 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
         if (QAction* action = m_actions->action(it.key()); action && action->isCheckable() && action->isChecked() != it.value().toBool())
             action->trigger();
     m_canvas->restoreViewState(state["canvas"].toObject());
+    QJsonObject const canvasState = state["canvas"].toObject();
+    if (!canvasState.contains(QStringLiteral("outlineLocked")) && !viewActions.contains(QStringLiteral("OutlineLocked")))
+        m_canvas->onActionOutlineLocked(settings().value(QStringLiteral("prefs/outlineLocked"), false).toBool());
+    if (!canvasState.contains(QStringLiteral("bboxSelection")) && !viewActions.contains(QStringLiteral("BBoxSelectionStyle")))
+        m_canvas->onActionBBoxSelectionStyle(false);
+    m_actions->setChecked(QStringLiteral("OutlineLocked"), m_canvas->outlinesLocked());
+    m_actions->setChecked(QStringLiteral("BBoxSelectionStyle"), m_canvas->bboxSelectionStyle());
     m_actions->setChecked(QStringLiteral("MirrorView"), m_canvas->viewMirrored());
     m_actions->setChecked(QStringLiteral("PreviewAllArt"), m_canvas->previewsAllArt());
     m_actions->setChecked(QStringLiteral("OnionSkinToggle"), m_canvas->onionSkin());

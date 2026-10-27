@@ -425,6 +425,7 @@ void Canvas::followSettings(Canvas const& leader)
     m_bitmapCanvas = leader.m_bitmapCanvas;
     m_bitmapCanvasHeight = leader.m_bitmapCanvasHeight;
     m_bitmapPpi = leader.m_bitmapPpi;
+    m_bitmapCameraDensity = leader.m_bitmapCameraDensity;
     m_bitmapBasis = leader.m_bitmapBasis;
     m_autoColourArt = leader.m_autoColourArt;
     m_copyArt = leader.m_copyArt;

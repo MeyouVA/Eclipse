@@ -324,6 +324,8 @@ public:
         m_bitmapCanvasHeight = std::clamp(heightPercent, 100, 400);
     }
     void setBitmapPpi(int ppi) { m_bitmapPpi = std::clamp(ppi, 18, 1200); }
+    void setBitmapCameraDensity(bool on) { m_bitmapCameraDensity = on; }
+    bool bitmapCameraDensity() const { return m_bitmapCameraDensity; }
     void setBitmapCanvasBasis(int basis) { m_bitmapBasis = std::clamp(basis, 0, 2); }
     void setSnapping(bool on) { m_snapping = on; }
     bool snapping() const { return m_snapping; }

@@ -26,7 +26,18 @@ void Canvas::paintIntoBitmap(std::function<void(QPainter&)> const& paint, QStrin
         // The pixels of the drawing: as Preferences say (the frame of the scene and a quarter of it more on every side).
         QRectF const area = bitmapArea();
         // As fine as the layer asks: so many pixels across each unit of the scene.
-        double const fine = bitmapFineness();
+        double fine = bitmapFineness();
+        if (m_bitmapCameraDensity && !m_drawingView && !m_planeView) {
+            Scene const& scene = m_document->scene();
+            double const camera = std::sqrt(std::abs(scene.cameraTransform(m_frame).determinant())) * scene.depthScale(0.0, m_frame);
+            if (std::isfinite(camera) && camera > 0.0) {
+                double const lower = std::exp2(std::clamp(std::floor(std::log2(camera)), -8.0, 8.0));
+                double const factor = camera <= lower * 1.5 * (1.0 + 1e-12) ? lower : lower * 2.0;
+                fine = std::clamp(fine * factor, 0.25, 8.0);
+            }
+            if (area.width() > 0.0 && area.height() > 0.0)
+                fine = std::min({fine, std::nextafter(8192.0, 0.0) / area.width(), std::nextafter(8192.0, 0.0) / area.height()});
+        }
         Picture pixels;
         pixels.painted = true;
         pixels.sheet = sheet;

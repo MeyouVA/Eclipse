@@ -37,6 +37,7 @@ protected:
     int m_bitmapCanvasHeight = 150;
     int m_bitmapPpi = 72;
     int m_bitmapBasis = CanvasScene;
+    bool m_bitmapCameraDensity = false;
     bool m_autoColourArt = false;
     CopyArt m_copyArt;
     bool m_quietFlatten = false;

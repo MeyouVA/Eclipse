@@ -28,6 +28,7 @@ struct PreferenceWidgets {
     QComboBox* selectMode = nullptr;
     QFormLayout* cameraLayout = nullptr;
     QComboBox* cameraZoom = nullptr;
+    QCheckBox* outlineLocked = nullptr;
     QSpinBox* nudge = nullptr;
     QCheckBox* frameOne = nullptr;
     QSpinBox* gridAcross = nullptr;
@@ -154,6 +155,7 @@ struct PreferenceWidgets {
     QSpinBox* bitmapCanvasHeight = nullptr;
     QHBoxLayout* canvasSize = nullptr;
     QSpinBox* bitmapPpi = nullptr;
+    QCheckBox* bitmapCameraDensity = nullptr;
     QComboBox* canvasBasis = nullptr;
     QComboBox* initialTool = nullptr;
     QCheckBox* scalePencil = nullptr;
