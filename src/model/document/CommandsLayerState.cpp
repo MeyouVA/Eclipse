@@ -129,11 +129,11 @@ void Document::setAllVisible(bool visible, int except)
         any = any || (l != except && m_scene.layers[l].visible != visible);
     if (!any)
         return;
-    apply(visible ? tr("Enable Layers") : tr("Disable Layers"), [&](Scene& s) {
-        for (int l = 0; l < s.layers.size(); ++l)
-            if (l != except)
-                s.layers[l].visible = visible;
-    });
+    Scene after = m_scene;
+    for (int l = 0; l < after.layers.size(); ++l)
+        if (l != except)
+            after.layers[l].visible = visible;
+    pushUndo(new SceneStateCommand(this, m_scene, std::move(after), visible ? tr("Enable Layers") : tr("Disable Layers")));
 }
 
 void Document::setAllCollapsed(bool collapsed)

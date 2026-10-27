@@ -368,7 +368,9 @@ void Document::setLayerVisible(int layer, bool visible)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].visible == visible)
         return;
-    apply(visible ? tr("Show Layer") : tr("Hide Layer"), [&](Scene& s) { s.layers[layer].visible = visible; });
+    Scene after = m_scene;
+    after.layers[layer].visible = visible;
+    pushUndo(new SceneStateCommand(this, m_scene, std::move(after), visible ? tr("Show Layer") : tr("Hide Layer")));
 }
 
 void Document::setLayerOnion(int layer, bool onion)
