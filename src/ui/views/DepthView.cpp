@@ -506,15 +506,9 @@ void DepthView::mouseReleaseEvent(QMouseEvent* event)
         return;
     if (m_dragControlKey >= 0) {
         int const key = m_dragControlKey, control = m_dragControlIndex;
-        QPointF position = m_dragControlPosition;
-        double depth = m_dragControlDepth;
-        auto addAxis = [&](int axis, double amount) {
-            if (axis == 0) position.rx() += amount;
-            else if (axis == 1) position.ry() += amount;
-            else if (axis == 2) depth += amount;
-        };
-        if (m_dragControlCoordinate >= 0) addAxis(m_dragControlCoordinate, m_dragControlDelta.x());
-        addAxis(m_dragControlSecond, m_dragControlDelta.y());
+        QPointF position;
+        double depth = 0.0;
+        motionControlDragTarget(position, depth);
         m_dragControlKey = m_dragControlIndex = -1; m_held = false; m_dragBy = 0.0;
         if (m_canvas && (!m_canvas->noZDragging() || m_dragControlNoZ) && m_layer >= 0 && m_layer < m_document->scene().layers.size()
             && !m_document->scene().layers[m_layer].locked && std::isfinite(depth))

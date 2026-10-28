@@ -83,6 +83,7 @@ private:
     QImage thumbnail(int layer);
     void paintMotionPath(QPainter& painter, double back, double front) const;
     bool beginMotionControlDrag(QPointF at);
+    void motionControlDragTarget(QPointF& position, double& depth) const;
 
     Document* m_document;
     Canvas* m_canvas = nullptr;

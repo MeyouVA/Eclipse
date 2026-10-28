@@ -13,7 +13,33 @@ void DepthView::paintMotionPath(QPainter& painter, double back, double front) co
     if (!m_canvas || !m_canvas->showsPlanningControls())
         return;
     Scene const& scene = m_document->scene();
-    PlanningMotionPath const path = planningMotionPath(scene, m_layer);
+    PlanningMotionPath path;
+    if (m_dragControlKey >= 0 && !m_dragControlDelta.isNull() && m_layer >= 0 && m_layer < scene.layers.size()
+        && m_dragControlKey + 1 < scene.layers[m_layer].keys.size()
+        && m_dragControlIndex >= 0 && m_dragControlIndex < scene.layers[m_layer].keys[m_dragControlKey].controls.size()) {
+        QPointF position;
+        double depth = 0.0;
+        motionControlDragTarget(position, depth);
+        if (std::isfinite(position.x()) && std::isfinite(position.y()) && std::isfinite(depth)) {
+            Scene preview = scene;
+            Keyframe& key = preview.layers[m_layer].keys[m_dragControlKey];
+            Keyframe const& next = preview.layers[m_layer].keys[m_dragControlKey + 1];
+            QVector<double> before;
+            key.pathLine(QPointF(key.pose.x, key.pose.y), QPointF(next.pose.x, next.pose.y), &before);
+            key.controls[m_dragControlIndex] = position;
+            QVector<double> after;
+            key.pathLine(QPointF(key.pose.x, key.pose.y), QPointF(next.pose.x, next.pose.y), &after);
+            double const natural = key.pose.z + (next.pose.z - key.pose.z) * after.value(m_dragControlIndex, 0.0);
+            if (m_dragControlIndex < key.controlsZ.size() || std::abs(natural - depth) > 1e-9) {
+                while (key.controlsZ.size() <= m_dragControlIndex)
+                    key.controlsZ.push_back(key.pose.z + (next.pose.z - key.pose.z) * before.value(key.controlsZ.size(), 0.0));
+                key.controlsZ[m_dragControlIndex] = depth;
+            }
+            path = planningMotionPath(preview, m_layer);
+        }
+    }
+    if (path.samples.isEmpty())
+        path = planningMotionPath(scene, m_layer);
     if (path.samples.isEmpty())
         return;
     QTransform const camera = scene.cameraTransform(m_frame);
@@ -40,23 +66,24 @@ void DepthView::paintMotionPath(QPainter& painter, double back, double front) co
     }
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(InterfaceColours::get("controlPoint"), 1.6));
-    for (PlanningPathPoint point : path.controls) {
-        if (point.keyIndex == m_dragControlKey && point.controlIndex == m_dragControlIndex) {
-            double const along = m_dragControlDelta.x();
-            double const depth = m_dragControlDelta.y();
-            auto addAxis = [&](int axis, double amount) {
-                point.x += (axis == 0 ? point.xX : axis == 1 ? point.yX : point.depthX) * amount;
-                point.y += (axis == 0 ? point.xY : axis == 1 ? point.yY : point.depthY) * amount;
-                point.z += (axis == 0 ? point.xZ : axis == 1 ? point.yZ : point.depthZ) * amount;
-            };
-            if (m_dragControlCoordinate >= 0) addAxis(m_dragControlCoordinate, along);
-            addAxis(m_dragControlSecond, depth);
-        }
+    for (PlanningPathPoint const& point : path.controls)
         painter.drawEllipse(projected(point), 4.5, 4.5);
-    }
     painter.restore();
 }
 
+
+void DepthView::motionControlDragTarget(QPointF& position, double& depth) const
+{
+    position = m_dragControlPosition;
+    depth = m_dragControlDepth;
+    auto addAxis = [&](int axis, double amount) {
+        if (axis == 0) position.rx() += amount;
+        else if (axis == 1) position.ry() += amount;
+        else if (axis == 2) depth += amount;
+    };
+    if (m_dragControlCoordinate >= 0) addAxis(m_dragControlCoordinate, m_dragControlDelta.x());
+    addAxis(m_dragControlSecond, m_dragControlDelta.y());
+}
 
 bool DepthView::beginMotionControlDrag(QPointF at)
 {
