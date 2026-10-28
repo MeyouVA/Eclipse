@@ -1,6 +1,7 @@
 #include "ui/views/DepthView.h"
 
 #include <QMouseEvent>
+#include <QKeyEvent>
 #include <QPainter>
 #include <QWheelEvent>
 #include <QSettings>
@@ -26,7 +27,11 @@ DepthView::DepthView(Document* document, Mode mode, QWidget* parent) : QWidget(p
     setPlanningPreferences(settings.value(QStringLiteral("prefs/planningDefaultZoom"), 100).toDouble() / 100.0,
                            settings.value(QStringLiteral("prefs/planningThumbnailSize"), 64).toInt());
     m_zoom = m_defaultZoom;
-    connect(m_document, &Document::changed, this, [this] { m_thumbnails.clear(); update(); });
+    connect(m_document, &Document::changed, this, [this] {
+        m_thumbnails.clear();
+        if (m_dragControlKey >= 0) { m_dragControlKey = m_dragControlIndex = -1; m_held = false; m_dragBy = 0.0; }
+        update();
+    });
 }
 
 void DepthView::setAnimationCanvas(Canvas* canvas)
@@ -35,7 +40,12 @@ void DepthView::setAnimationCanvas(Canvas* canvas)
         disconnect(m_canvas, &Canvas::planningControlsChanged, this, nullptr);
     m_canvas = canvas;
     if (m_canvas)
-        connect(m_canvas, &Canvas::planningControlsChanged, this, qOverload<>(&QWidget::update));
+        connect(m_canvas, &Canvas::planningControlsChanged, this, [this] {
+            if (!m_canvas->showsPlanningControls() && m_dragControlKey >= 0) {
+                m_dragControlKey = m_dragControlIndex = -1; m_dragBy = 0.0; m_held = false;
+            }
+            update();
+        });
     update();
 }
 
@@ -43,6 +53,10 @@ void DepthView::setCurrentCell(int layer, int frame)
 {
     if (m_frame != frame)
         m_thumbnails.clear();
+    if (m_layer != layer || m_frame != frame) {
+        m_dragControlKey = m_dragControlIndex = -1;
+        if (m_dragLayer < 0) m_held = false;
+    }
     m_layer = layer;
     m_frame = frame;
     update();
@@ -384,6 +398,8 @@ void DepthView::mousePressEvent(QMouseEvent* event)
     if (event->button() != Qt::LeftButton)
         return;
     QPointF const at = event->position();
+    if (beginMotionControlDrag(at))
+        return;
     int const picked = markAt(at);
     if (picked < 0)
         return;
@@ -401,6 +417,26 @@ void DepthView::mousePressEvent(QMouseEvent* event)
     m_dragStart = depthAt(at);
     m_dragBy = 0.0;
     update();
+}
+
+bool DepthView::event(QEvent* event)
+{
+    if (event->type() == QEvent::ShortcutOverride && m_dragControlKey >= 0 && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
+        event->accept();
+        return true;
+    }
+    return QWidget::event(event);
+}
+
+void DepthView::keyPressEvent(QKeyEvent* event)
+{
+    if (event->key() == Qt::Key_Escape && m_dragControlKey >= 0) {
+        m_dragControlKey = m_dragControlIndex = -1; m_dragBy = 0.0; m_held = false;
+        update();
+        event->accept();
+        return;
+    }
+    QWidget::keyPressEvent(event);
 }
 
 void DepthView::mouseDoubleClickEvent(QMouseEvent* event)
@@ -429,7 +465,7 @@ void DepthView::mouseMoveEvent(QMouseEvent* event)
         update();
         return;
     }
-    if (m_dragLayer < 0)
+    if (m_dragLayer < 0 && m_dragControlKey < 0)
         return;
     m_dragBy = depthAt(event->position()) - m_dragStart;
     // With Shift, by whole tens.
@@ -442,7 +478,20 @@ void DepthView::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::MiddleButton || event->button() == Qt::RightButton)
         m_panning = false;
-    if (event->button() != Qt::LeftButton || m_dragLayer < 0)
+    if (event->button() != Qt::LeftButton)
+        return;
+    if (m_dragControlKey >= 0) {
+        int const key = m_dragControlKey, control = m_dragControlIndex;
+        double const by = m_dragBy;
+        double const depth = m_dragControlDepth + by / m_dragControlSlope;
+        m_dragControlKey = m_dragControlIndex = -1; m_held = false; m_dragBy = 0.0;
+        if (std::abs(by) > 1e-9 && m_canvas && !m_canvas->noZDragging() && m_layer >= 0 && m_layer < m_document->scene().layers.size()
+            && !m_document->scene().layers[m_layer].locked && std::isfinite(depth))
+            m_document->setControlPointDepth(m_layer, key, control, depth);
+        update();
+        return;
+    }
+    if (m_dragLayer < 0)
         return;
     int const layer = m_dragLayer;
     double const by = m_dragBy;

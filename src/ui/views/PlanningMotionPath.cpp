@@ -90,8 +90,12 @@ PlanningMotionPath planningMotionPath(Scene const& scene, int index)
             over.pose.y = layer.keys[k].controls[c].y();
             over.pose.z = c < firstKey.controlsZ.size() ? firstKey.controlsZ[c]
                                                        : firstKey.pose.z + (nextKey.pose.z - firstKey.pose.z) * positions.value(c, 0.0);
-            PlanningPathPoint const point = pointAt(frame, &over, false);
-            if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z))
+            PlanningPathPoint point = pointAt(frame, &over, false);
+            point.keyIndex = k; point.controlIndex = c; point.localDepth = over.pose.z;
+            over.pose.z += 1.0;
+            PlanningPathPoint const shifted = pointAt(frame, &over, false);
+            point.depthX = shifted.x - point.x; point.depthY = shifted.y - point.y; point.depthZ = shifted.z - point.z;
+            if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z) && std::isfinite(point.depthX) && std::isfinite(point.depthY) && std::isfinite(point.depthZ))
                 result.controls.push_back(point);
         }
     }

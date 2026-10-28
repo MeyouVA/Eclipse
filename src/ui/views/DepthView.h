@@ -49,12 +49,14 @@ signals:
     void message(QString const& text);
 
 protected:
+    bool event(QEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
 private:
     // What a layer is in this view: where it stands and how far it reaches across.
@@ -80,6 +82,7 @@ private:
     QRectF thumbnailRect(QPointF a, QPointF b) const;
     QImage thumbnail(int layer);
     void paintMotionPath(QPainter& painter, double back, double front) const;
+    bool beginMotionControlDrag(QPointF at);
 
     Document* m_document;
     Canvas* m_canvas = nullptr;
@@ -97,6 +100,8 @@ private:
     int m_dragLayer = -1;
     double m_dragStart = 0.0;   // the depth under the pointer when the drag began
     double m_dragBy = 0.0;
+    int m_dragControlKey = -1, m_dragControlIndex = -1;
+    double m_dragControlDepth = 0.0, m_dragControlSlope = 0.0;
     // The range is held while dragging, so that the view does not slide under the pointer.
     bool m_held = false;
     double m_heldBack = 0.0;
