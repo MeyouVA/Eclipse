@@ -468,6 +468,22 @@ void DepthView::mouseMoveEvent(QMouseEvent* event)
     if (m_dragLayer < 0 && m_dragControlKey < 0)
         return;
     m_dragBy = depthAt(event->position()) - m_dragStart;
+    if (m_dragControlKey >= 0) {
+        QPointF const delta = event->position() - m_dragControlStart;
+        double const determinant = m_dragControlAxis.x() * m_dragControlDepthAxis.y() - m_dragControlAxis.y() * m_dragControlDepthAxis.x();
+        if (m_dragControlCoordinate >= 0 && std::abs(determinant) >= 1e-9) {
+            m_dragControlDelta.setX((delta.x() * m_dragControlDepthAxis.y() - delta.y() * m_dragControlDepthAxis.x()) / determinant);
+            m_dragControlDelta.setY((m_dragControlAxis.x() * delta.y() - m_dragControlAxis.y() * delta.x()) / determinant);
+        } else {
+            m_dragControlDelta = QPointF(0.0, m_dragBy / m_dragControlSlope);
+        }
+        if (event->modifiers() & Qt::ShiftModifier) {
+            m_dragControlDelta.setX(std::round(m_dragControlDelta.x() / 10.0) * 10.0);
+            m_dragControlDelta.setY(std::round(m_dragControlDelta.y() / 10.0) * 10.0);
+        }
+        update();
+        return;
+    }
     // With Shift, by whole tens.
     if (event->modifiers() & Qt::ShiftModifier)
         m_dragBy = std::round(m_dragBy / 10.0) * 10.0;
@@ -482,12 +498,19 @@ void DepthView::mouseReleaseEvent(QMouseEvent* event)
         return;
     if (m_dragControlKey >= 0) {
         int const key = m_dragControlKey, control = m_dragControlIndex;
-        double const by = m_dragBy;
-        double const depth = m_dragControlDepth + by / m_dragControlSlope;
+        QPointF position = m_dragControlPosition;
+        double depth = m_dragControlDepth;
+        auto addAxis = [&](int axis, double amount) {
+            if (axis == 0) position.rx() += amount;
+            else if (axis == 1) position.ry() += amount;
+            else if (axis == 2) depth += amount;
+        };
+        if (m_dragControlCoordinate >= 0) addAxis(m_dragControlCoordinate, m_dragControlDelta.x());
+        addAxis(m_dragControlSecond, m_dragControlDelta.y());
         m_dragControlKey = m_dragControlIndex = -1; m_held = false; m_dragBy = 0.0;
-        if (std::abs(by) > 1e-9 && m_canvas && !m_canvas->noZDragging() && m_layer >= 0 && m_layer < m_document->scene().layers.size()
+        if (m_canvas && !m_canvas->noZDragging() && m_layer >= 0 && m_layer < m_document->scene().layers.size()
             && !m_document->scene().layers[m_layer].locked && std::isfinite(depth))
-            m_document->setControlPointDepth(m_layer, key, control, depth);
+            m_document->moveControlPointInSpace(m_layer, key, control, position, depth);
         update();
         return;
     }

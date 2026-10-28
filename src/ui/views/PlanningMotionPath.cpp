@@ -95,7 +95,15 @@ PlanningMotionPath planningMotionPath(Scene const& scene, int index)
             over.pose.z += 1.0;
             PlanningPathPoint const shifted = pointAt(frame, &over, false);
             point.depthX = shifted.x - point.x; point.depthY = shifted.y - point.y; point.depthZ = shifted.z - point.z;
-            if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z) && std::isfinite(point.depthX) && std::isfinite(point.depthY) && std::isfinite(point.depthZ))
+            over.pose.z -= 1.0; over.pose.x += 1.0;
+            PlanningPathPoint const shiftedX = pointAt(frame, &over, false);
+            point.xX = shiftedX.x - point.x; point.xY = shiftedX.y - point.y; point.xZ = shiftedX.z - point.z;
+            over.pose.x -= 1.0; over.pose.y += 1.0;
+            PlanningPathPoint const shiftedY = pointAt(frame, &over, false);
+            point.yX = shiftedY.x - point.x; point.yY = shiftedY.y - point.y; point.yZ = shiftedY.z - point.z;
+            if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z) && std::isfinite(point.depthX) && std::isfinite(point.depthY) && std::isfinite(point.depthZ)
+                && std::isfinite(point.xX) && std::isfinite(point.xY) && std::isfinite(point.xZ)
+                && std::isfinite(point.yX) && std::isfinite(point.yY) && std::isfinite(point.yZ))
                 result.controls.push_back(point);
         }
     }

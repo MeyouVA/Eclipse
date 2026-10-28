@@ -5,6 +5,7 @@
 #include "model/document/Commands.h"
 
 #include <QPainter>
+#include <algorithm>
 #include <cmath>
 
 void DepthView::paintMotionPath(QPainter& painter, double back, double front) const
@@ -40,9 +41,16 @@ void DepthView::paintMotionPath(QPainter& painter, double back, double front) co
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(InterfaceColours::get("controlPoint"), 1.6));
     for (PlanningPathPoint point : path.controls) {
-        if (point.keyIndex == m_dragControlKey && point.controlIndex == m_dragControlIndex && std::abs(m_dragControlSlope) > 1e-9) {
-            double const by = m_dragBy / m_dragControlSlope;
-            point.x += point.depthX * by; point.y += point.depthY * by; point.z += point.depthZ * by;
+        if (point.keyIndex == m_dragControlKey && point.controlIndex == m_dragControlIndex) {
+            double const along = m_dragControlDelta.x();
+            double const depth = m_dragControlDelta.y();
+            auto addAxis = [&](int axis, double amount) {
+                point.x += (axis == 0 ? point.xX : axis == 1 ? point.yX : point.depthX) * amount;
+                point.y += (axis == 0 ? point.xY : axis == 1 ? point.yY : point.depthY) * amount;
+                point.z += (axis == 0 ? point.xZ : axis == 1 ? point.yZ : point.depthZ) * amount;
+            };
+            if (m_dragControlCoordinate >= 0) addAxis(m_dragControlCoordinate, along);
+            addAxis(m_dragControlSecond, depth);
         }
         painter.drawEllipse(projected(point), 4.5, 4.5);
     }
@@ -75,11 +83,38 @@ bool DepthView::beginMotionControlDrag(QPointF at)
     if (scene.layers[m_layer].locked)
         return true;
     m_canvas->pickControlPoint(picked->keyIndex, picked->controlIndex);
-    if (m_canvas->noZDragging() || std::abs(picked->depthZ) < 1e-9)
+    if (m_canvas->noZDragging())
         return true;
     m_heldBack = back; m_heldFront = front; m_held = true;
     m_dragControlKey = picked->keyIndex; m_dragControlIndex = picked->controlIndex;
     m_dragControlDepth = picked->localDepth; m_dragControlSlope = picked->depthZ;
+    m_dragControlPosition = scene.layers[m_layer].keys[picked->keyIndex].controls[picked->controlIndex];
+    m_dragControlStart = at; m_dragControlDelta = QPointF();
+    auto screenOffset = [&](double x, double y, double z) {
+        QPointF const base = camera.map(QPointF(picked->x, picked->y));
+        QPointF const offset = camera.map(QPointF(picked->x + x, picked->y + y));
+        return place(m_mode == Top ? offset.x() : offset.y(), picked->z + z, back, front)
+               - place(m_mode == Top ? base.x() : base.y(), picked->z, back, front);
+    };
+    QPointF const xAxis = screenOffset(picked->xX, picked->xY, picked->xZ);
+    QPointF const yAxis = screenOffset(picked->yX, picked->yY, picked->yZ);
+    QPointF const zAxis = screenOffset(picked->depthX, picked->depthY, picked->depthZ);
+    auto determinant = [](QPointF a, QPointF b) { return a.x() * b.y() - a.y() * b.x(); };
+    QPointF const axes[] = {xAxis, yAxis, zAxis};
+    int const first = m_mode == Top ? 0 : 1, other = 1 - first;
+    int const pairs[][2] = {{first, 2}, {other, 2}, {first, other}};
+    double best = 0.0;
+    m_dragControlCoordinate = -1; m_dragControlSecond = 2;
+    for (auto const& pair : pairs) {
+        double const area = std::abs(determinant(axes[pair[0]], axes[pair[1]]));
+        if (area > best + 1e-9) { best = area; m_dragControlCoordinate = pair[0]; m_dragControlSecond = pair[1]; }
+    }
+    if (m_dragControlCoordinate < 0 && std::abs(m_dragControlSlope) < 1e-9) {
+        m_dragControlKey = m_dragControlIndex = -1; m_held = false;
+        return true;
+    }
+    m_dragControlAxis = m_dragControlCoordinate >= 0 ? axes[m_dragControlCoordinate] : QPointF();
+    m_dragControlDepthAxis = axes[m_dragControlSecond];
     m_dragStart = depthAt(at); m_dragBy = 0.0;
     update();
     return true;

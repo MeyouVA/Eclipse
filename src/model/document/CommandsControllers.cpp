@@ -30,6 +30,34 @@ void Document::moveControlPoint(int layer, int key, int control, QPointF to)
     apply(tr("Move Control Point"), [&](Scene& s) { s.layers[layer].keys[key].controls[control] = to; });
 }
 
+void Document::moveControlPointInSpace(int layer, int key, int control, QPointF to, double depth)
+{
+    if (!hasControl(m_scene, layer, key, control) || key + 1 >= m_scene.layers[layer].keys.size()
+        || !std::isfinite(to.x()) || !std::isfinite(to.y()) || !std::isfinite(depth))
+        return;
+    Keyframe const& a = m_scene.layers[layer].keys[key];
+    Keyframe const& b = m_scene.layers[layer].keys[key + 1];
+    QVector<double> before;
+    a.pathLine(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), &before);
+    double const oldDepth = control < a.controlsZ.size() ? a.controlsZ[control]
+                                                        : a.pose.z + (b.pose.z - a.pose.z) * before.value(control, 0.0);
+    if (a.controls[control] == to && std::abs(oldDepth - depth) < 1e-9)
+        return;
+    apply(tr("Move Control Point"), [&](Scene& s) {
+        Keyframe& into = s.layers[layer].keys[key];
+        Keyframe const& next = s.layers[layer].keys[key + 1];
+        into.controls[control] = to;
+        QVector<double> after;
+        into.pathLine(QPointF(into.pose.x, into.pose.y), QPointF(next.pose.x, next.pose.y), &after);
+        double const natural = into.pose.z + (next.pose.z - into.pose.z) * after.value(control, 0.0);
+        if (control < into.controlsZ.size() || std::abs(natural - depth) > 1e-9) {
+            while (into.controlsZ.size() <= control)
+                into.controlsZ.push_back(into.pose.z + (next.pose.z - into.pose.z) * before.value(into.controlsZ.size(), 0.0));
+            into.controlsZ[control] = depth;
+        }
+    });
+}
+
 void Document::removeControlPoint(int layer, int key, int control)
 {
     if (!hasControl(m_scene, layer, key, control))

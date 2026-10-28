@@ -337,6 +337,7 @@ public:
     // Control points of a layer's motion path (see Scene).  `key` is the keyframe the stretch starts at.
     int insertControlPoint(int layer, int frame);
     void moveControlPoint(int layer, int key, int control, QPointF to);
+    void moveControlPointInSpace(int layer, int key, int control, QPointF to, double depth);
     bool offsetPath(int layer, QPointF by);
     void removeControlPoint(int layer, int key, int control);
     // How far a control point stands towards the camera: the path bends in depth through it.
