@@ -21,14 +21,14 @@ void NodeView::startBoxSelection(QMouseEvent* event)
     m_drag = DragBox;
     m_boxModifiers = event->modifiers();
     m_boxBefore = graphMode() ? m_graphPicked : m_layerPicked;
-    if (!(m_boxModifiers & (Qt::ControlModifier | Qt::ShiftModifier)))
+    if (!(m_boxModifiers & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier)))
         deselectAll();
 }
 
 void NodeView::updateBoxSelection()
 {
     QRectF const box = QRectF(m_pressPos, m_dragNow).normalized();
-    QVector<int> picked = m_boxModifiers & (Qt::ControlModifier | Qt::ShiftModifier) ? m_boxBefore : QVector<int>();
+    QVector<int> picked = m_boxModifiers & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier) ? m_boxBefore : QVector<int>();
     auto include = [&](int id, QRectF const& node) {
         if (node.isEmpty() || !box.intersects(node))
             return;
