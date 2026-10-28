@@ -243,6 +243,8 @@ void NodeView::mousePressEvent(QMouseEvent* event)
     // The port under a node: pull a cable out of it.
     if (event->button() == Qt::LeftButton) {
         for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {
+            if (!nodeShown(l))
+                continue;
             QRectF const r = nodeRect(l);
             QPointF const port(r.center().x(), r.bottom());
             if (std::hypot(port.x() - m_pressPos.x(), port.y() - m_pressPos.y()) <= std::max(5.0, 7.0 * m_zoom)

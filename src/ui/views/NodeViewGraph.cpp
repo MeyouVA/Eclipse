@@ -260,14 +260,8 @@ int NodeView::graphCableAt(QPointF widgetPos) const
         if (graphNodeRect(cable.from).isNull() || graphNodeRect(cable.to).isNull())
             continue;
         QVector<QPointF> const pts = cablePoints(graphOutPort(cable.from, cable.fromPort), graphInPort(cable.to, cable.toPort));
-        for (int i = 0; i + 1 < pts.size(); ++i) {
-            QLineF const seg(pts[i], pts[i + 1]);
-            QPointF const d = seg.p2() - seg.p1();
-            double const len2 = QPointF::dotProduct(d, d);
-            double const t = len2 > 0.0 ? std::clamp(QPointF::dotProduct(widgetPos - seg.p1(), d) / len2, 0.0, 1.0) : 0.0;
-            if (QLineF(seg.p1() + d * t, widgetPos).length() <= 5.0)
-                return c;
-        }
+        if (cableContains(pts, widgetPos, 5.0))
+            return c;
     }
     return -1;
 }

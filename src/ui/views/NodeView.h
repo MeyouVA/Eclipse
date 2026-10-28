@@ -154,6 +154,7 @@ private:
     QRectF graphBounds() const;
     int cableAt(QPointF widgetPos) const;
     QVector<QPointF> cablePoints(QPointF from, QPointF to) const;
+    static bool cableContains(QVector<QPointF> const& points, QPointF position, double reach);
     bool m_navigator = true;
     bool m_straight = false;
     bool m_doubleClickEdits = false;

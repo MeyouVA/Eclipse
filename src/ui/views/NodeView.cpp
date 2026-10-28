@@ -22,6 +22,10 @@ NodeView::NodeView(Document* document, QWidget* parent) : QWidget(parent), m_doc
     setMouseTracking(false);
     setAcceptDrops(true);       // from the Node Library
     connect(m_document, &Document::changed, this, [this] {
+        m_drag = DragNone;
+        m_dragLayer = -1;
+        m_unplugged = -1;
+        m_pegChild = 0;
         m_cable = -1;
         // (The graph changed: a cable picked by its place may be another now; a group gone into may be gone.)
         m_graphCable = -1;
@@ -358,6 +362,18 @@ QVector<QPointF> NodeView::cablePoints(QPointF from, QPointF to) const
     return out;
 }
 
+bool NodeView::cableContains(QVector<QPointF> const& points, QPointF position, double reach)
+{
+    for (qsizetype i = 1; i < points.size(); ++i) {
+        QPointF const from = points[i - 1], delta = points[i] - from;
+        double const lengthSquared = QPointF::dotProduct(delta, delta);
+        double const t = lengthSquared > 0.0 ? std::clamp(QPointF::dotProduct(position - from, delta) / lengthSquared, 0.0, 1.0) : 0.0;
+        if (QLineF(from + delta * t, position).length() <= reach)
+            return true;
+    }
+    return false;
+}
+
 QPointF NodeView::cableMiddle(int child) const
 {
     int const parent = m_document->scene().parentIndex(child);
@@ -384,9 +400,8 @@ int NodeView::cableAt(QPointF widgetPos) const
         if (parent < 0 || !nodeShown(l) || !nodeShown(parent))
             continue;
         QRectF const r = nodeRect(l);
-        for (QPointF const& q : cablePoints(outPort(parent), QPointF(r.center().x(), r.top())))
-            if (std::hypot(q.x() - widgetPos.x(), q.y() - widgetPos.y()) <= 6.0)
-                return l;
+        if (cableContains(cablePoints(outPort(parent), QPointF(r.center().x(), r.top())), widgetPos, 6.0))
+            return l;
     }
     return -1;
 }
