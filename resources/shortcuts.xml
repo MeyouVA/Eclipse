@@ -23,6 +23,7 @@
   <shortcut id="shortcut.cut" text="Cut" value="Ctrl+X"/>
   <shortcut id="shortcut.copy" text="Copy" value="Ctrl+C"/>
   <shortcut id="shortcut.paste" text="Paste" value="Ctrl+V"/>
+  <shortcut id="shortcut.pasteInPlace" text="Paste Drawing Object in Place" value="Ctrl+Shift+V"/>
   <shortcut id="shortcut.pasteCycle" text="Paste Cycle" value="Ctrl+/"/>
   <shortcut id="shortcut.pasteReverse" text="Paste Reverse" value="Ctrl+."/>
   <shortcut id="shortcut.delete" text="Delete" value="Del"/>

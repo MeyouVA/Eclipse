@@ -1,5 +1,7 @@
 #include "ui/window/WelcomeDialog.h"
 #include "model/scene/Layer.h"
+#include <algorithm>
+#include <cmath>
 
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -28,6 +30,16 @@
 static QSettings settings()
 {
     return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+}
+
+static QPair<double, double> fovLimits()
+{
+    QSettings const s = settings();
+    double minimum = s.value(QStringLiteral("prefs/minimumFov"), Layer::kMinFov).toDouble();
+    double maximum = s.value(QStringLiteral("prefs/maximumFov"), Layer::kMaxFov).toDouble();
+    minimum = std::isfinite(minimum) ? std::clamp(minimum, Layer::kMinFov, Layer::kMaxFov) : Layer::kMinFov;
+    maximum = std::isfinite(maximum) ? std::clamp(maximum, minimum, Layer::kMaxFov) : Layer::kMaxFov;
+    return {minimum, maximum};
 }
 
 static QString fpsText(double fps)
@@ -290,7 +302,10 @@ void WelcomeDialog::fillResolutions(QString const& select)
 Resolution WelcomeDialog::resolution() const
 {
     int const i = m_size->currentIndex();
-    return i >= 0 && i < m_resolutions.size() ? m_resolutions[i] : Resolution();
+    Resolution result = i >= 0 && i < m_resolutions.size() ? m_resolutions[i] : Resolution();
+    auto const [minimum, maximum] = fovLimits();
+    result.fov = std::clamp(result.fov, minimum, maximum);
+    return result;
 }
 
 void WelcomeDialog::showResolution()
@@ -300,6 +315,9 @@ void WelcomeDialog::showResolution()
     m_height->setText(QString::number(r.height));
     m_fps->setText(fpsText(r.fps));
     m_fov->setText(QString::number(r.fov, 'g', 6));
+    int const index = m_size->currentIndex();
+    m_fov->setToolTip(index >= 0 && index < m_resolutions.size() && r.fov != m_resolutions[index].fov
+                          ? tr("Limited by the camera field-of-view preferences for this new scene.") : QString());
     m_remove->setEnabled(r.custom);
 }
 
@@ -323,8 +341,9 @@ void WelcomeDialog::addResolution()
     QLabel* const ratio = new QLabel(sizeBox);
     QDoubleSpinBox* const fov = new QDoubleSpinBox(sizeBox);
     fov->setObjectName(QStringLiteral("ResolutionFov"));
-    fov->setRange(Layer::kMinFov, Layer::kMaxFov);
     fov->setDecimals(3);
+    auto const [minimum, maximum] = fovLimits();
+    fov->setRange(minimum, maximum);
     fov->setSuffix(tr(" deg"));
     fov->setToolTip(tr("The camera's angle of view, top to bottom: how much nearer layers grow, and further ones shrink, with depth."));
     fov->setValue(from.fov);

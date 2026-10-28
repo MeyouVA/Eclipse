@@ -236,6 +236,16 @@ bool Canvas::canPaste()
 
 void Canvas::paste()
 {
+    pasteWithPlacement(false);
+}
+
+void Canvas::pasteInPlace()
+{
+    pasteWithPlacement(true);
+}
+
+void Canvas::pasteWithPlacement(bool inPlace)
+{
     if (!canEditDrawing())
         return;
     if (m_tool == ContourEditor && !s_pointClipboard.isEmpty() && !m_playing) {
@@ -247,7 +257,7 @@ void Canvas::paste()
         Stroke* const line = contourLine(edited);
         if (!line)
             return;
-        QPointF const shift(8.0 / std::max(m_zoom, 1e-6), 8.0 / std::max(m_zoom, 1e-6));
+        QPointF const shift = inPlace ? QPointF() : QPointF(8.0 / std::max(m_zoom, 1e-6), 8.0 / std::max(m_zoom, 1e-6));
         int at = m_cePoint + 1;
         QVector<int> added;
         for (StrokePoint p : std::as_const(s_pointClipboard)) {
@@ -272,7 +282,7 @@ void Canvas::paste()
     QVector<int> strokes, fills;
     Drawing placed = s_clipboard;
     placed.renewPointIdentities();
-    if (m_pasteBehaviour != 0) {
+    if (!inPlace && m_pasteBehaviour != 0) {
         QRectF const box = placed.bounds();
         QTransform const toView = layerViewTransform();
         QRectF const seen = toView.mapRect(box);

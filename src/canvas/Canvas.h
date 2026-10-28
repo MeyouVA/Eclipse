@@ -366,6 +366,7 @@ public slots:
     void cut() { cutSelection(); }
     void copy() { copySelection(); }
     void paste();
+    void pasteInPlace();
     void deleteSelection();
     void selectAll();
     void deselectAll() { clearSelection(); }
@@ -691,6 +692,7 @@ protected:
     void keyReleaseEvent(QKeyEvent*) override;
 
 private:
+    void pasteWithPlacement(bool inPlace);
     // The colours of pasted artwork this scene lacks, recovered or unlinked (a macro is left open when any): theirs -> here.
     QHash<int, int> recoverPastedColours(Drawing const& placed);
     // The lines just inked put over or under the others (Ink tool properties); m_inkedNow follows them.
