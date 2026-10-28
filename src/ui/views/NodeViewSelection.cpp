@@ -5,6 +5,8 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QSet>
+#include <cmath>
 
 QVector<int> NodeView::pickedLayers() const
 {
@@ -131,6 +133,51 @@ void NodeView::onActionCentreOnSelection()
         m_centred = true;
         update();
     }
+}
+
+QPointF NodeView::nodeDragDelta(QPointF widgetPos) const
+{
+    QPointF delta = (widgetPos - m_pressPos) / m_zoom;
+    double bestX = 8.0, bestY = 8.0, adjustX = 0.0, adjustY = 0.0;
+    auto consider = [&](double correction, double& best, double& adjustment) {
+        double const distance = std::abs(correction * m_zoom);
+        if (distance < best) { best = distance; adjustment = correction; }
+    };
+    Scene const& scene = m_document->scene();
+    if (graphMode()) {
+        NodeGraph const& graph = scene.graph;
+        QSet<int> moving(m_graphPicked.cbegin(), m_graphPicked.cend());
+        if (m_graphNode) moving.insert(m_graphNode);
+        QVector<GraphNode const*> selected, stationary;
+        for (GraphNode const& node : graph.nodes)
+            if (node.group == m_graphGroup)
+                (moving.contains(node.id) ? selected : stationary).push_back(&node);
+        for (GraphNode const* from : selected)
+            for (GraphNode const* other : stationary)
+                consider(other->at.y() - (from->at.y() + delta.y()), bestY, adjustY);
+        for (GraphCable const& cable : graph.cables) {
+            bool const fromMoving = moving.contains(cable.from), toMoving = moving.contains(cable.to);
+            if (fromMoving == toMoving || graphNodeRect(cable.from).isNull() || graphNodeRect(cable.to).isNull()) continue;
+            double const fromX = graphOutPort(cable.from, cable.fromPort).x();
+            double const toX = graphInPort(cable.to, cable.toPort).x();
+            consider((fromMoving ? toX - fromX : fromX - toX) / m_zoom - delta.x(), bestX, adjustX);
+        }
+    } else {
+        QVector<int> const picked = pickedLayers();
+        QSet<int> const moving(picked.cbegin(), picked.cend());
+        QVector<int> stationary;
+        for (int other = 0; other < scene.layers.size(); ++other)
+            if (nodeShown(other) && !moving.contains(other)) stationary.push_back(other);
+        QVector<QPointF> const at = positions();
+        for (int layer : picked) {
+            for (int other : stationary) {
+                consider(at[other].y() - (at[layer].y() + delta.y()), bestY, adjustY);
+                if (scene.parentIndex(layer) == other || scene.parentIndex(other) == layer)
+                    consider((nodeRect(other).center().x() - nodeRect(layer).center().x()) / m_zoom - delta.x(), bestX, adjustX);
+            }
+        }
+    }
+    return delta + QPointF(adjustX, adjustY);
 }
 
 void NodeView::movePickedNodes(QPointF delta)

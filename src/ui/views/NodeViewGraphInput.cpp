@@ -164,9 +164,10 @@ void NodeView::graphRelease(QMouseEvent* event)
         QVector<int> moving = m_graphPicked;
         if (!moving.contains(m_graphNode))
             moving.push_back(m_graphNode);
+        QPointF const delta = nodeDragDelta(at);
         for (int id : std::as_const(moving))
             if (int const i = g.nodeIndex(id); i >= 0)
-                g.nodes[i].at += (at - m_pressPos) / m_zoom;
+                g.nodes[i].at += delta;
         m_document->setGraph(g, moving.size() > 1 ? tr("Move Nodes") : tr("Move Node"));
     } else if (drag == DragPeg) {
         Scene const& scene = m_document->scene();

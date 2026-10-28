@@ -32,9 +32,11 @@ void NodeView::paintEvent(QPaintEvent*)
     }
     QVector<QPointF> pos = positions();
     // A node being dragged is drawn where the pointer has it, cables and all.
-    if (m_drag == DragNode && m_moved)
+    if (m_drag == DragNode && m_moved) {
+        QPointF const delta = nodeDragDelta(m_dragNow);
         for (int layer : pickedLayers())
-            pos[layer] += (m_dragNow - m_pressPos) / m_zoom;
+            pos[layer] += delta;
+    }
     auto rectOf = [&](QPointF graph) { return QRectF(toWidget(graph), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom)); };
     auto cable = [&](QPointF from, QPointF to, QColor const& color, double width) {
         QVector<QPointF> const pts = cablePoints(from, to);
@@ -327,7 +329,7 @@ void NodeView::mouseReleaseEvent(QMouseEvent* event)
         } else if (enteredGroup() >= 0 && pathRect().contains(event->position())) {
             m_document->setParent(layer, scene.parentIndex(enteredGroup()));
         } else {
-            movePickedNodes((event->position() - m_pressPos) / m_zoom);
+            movePickedNodes(nodeDragDelta(event->position()));
         }
     } else if (drag == DragCable) {
         // Dropped on a node: that layer is attached to the one the cable came from.

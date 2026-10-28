@@ -166,6 +166,7 @@ private:
     void updateBoxSelection();
     void paintBoxSelection(QPainter& painter);
     void movePickedNodes(QPointF delta);
+    QPointF nodeDragDelta(QPointF widgetPos) const;
 
     Document* m_document;
     QLineEdit* m_search = nullptr;     // along the bottom: type a name, Enter goes to the next node of it

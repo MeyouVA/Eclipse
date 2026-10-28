@@ -191,7 +191,7 @@ void NodeView::paintGraphMode(QPainter& p)
         p.drawPolyline(pts.constData(), int(pts.size()));
     };
     // A node being dragged is drawn where the pointer has it, cables and all.
-    QPointF const dragBy = m_drag == DragGraphNode && m_moved ? m_dragNow - m_pressPos : QPointF();
+    QPointF const dragBy = m_drag == DragGraphNode && m_moved ? nodeDragDelta(m_dragNow) * m_zoom : QPointF();
     auto shift = [&](int id) { return id == m_graphNode || m_graphPicked.contains(id) ? dragBy : QPointF(); };
     // ---- cables ----
     for (int c = 0; c < g.cables.size(); ++c) {
@@ -318,6 +318,6 @@ void NodeView::paintGraphMode(QPainter& p)
         p.setBrush(QColor(40, 118, 122));
         p.drawRoundedRect(path, 4, 4);
         p.setPen(QColor(245, 245, 245));
-        p.drawText(path.adjusted(8, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft, QStringLiteral("↑  ") + tr("Top") + QStringLiteral(" / ") + names.join(QStringLiteral(" / ")));
+        p.drawText(path.adjusted(8, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft, QStringLiteral("â†‘  ") + tr("Top") + QStringLiteral(" / ") + names.join(QStringLiteral(" / ")));
     }
 }
