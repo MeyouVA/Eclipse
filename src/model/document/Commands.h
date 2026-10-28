@@ -67,6 +67,9 @@ public:
     void setSubstitutionCycles(bool on) { m_substitutionCycles = on; }
     bool substitutionCycles() const { return m_substitutionCycles; }
     void setUndoLevels(int levels);
+    void setFovLimits(double minimum, double maximum);
+    double minimumFov() const { return m_minimumFov; }
+    double maximumFov() const { return m_maximumFov; }
     QUndoStack* undoStack() { return &m_undo; }
 
     // Replaces everything (new / open); clears the undo history.
@@ -471,6 +474,7 @@ private:
     void keyOn(Layer& layer, int frame, Pose const& pose) const;
     bool m_nameByFrame = false;
     int m_undoLevels = 0;
+    double m_minimumFov = Layer::kMinFov, m_maximumFov = Layer::kMaxFov;
     bool m_substitutionCycles = true;
     bool m_substitutionKeys = true;
     bool m_rippleMarkers = false;

@@ -11,6 +11,7 @@
 #include <QPlainTextEdit>
 #include <QCheckBox>
 #include "ui/panels/ColourEditor.h"
+#include "ui/panels/LayerPanel.h"
 #include <QTabWidget>
 #include <QComboBox>
 #include <QDialog>
@@ -124,6 +125,10 @@ void MainWindow::applyPreferences()
     if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
         m_canvas->setArt(Canvas::LineArt);
     m_document->setUndoLevels(std::clamp(s.value(QStringLiteral("prefs/undoLevels"), 100).toInt(), 0, 10000));
+    m_document->setFovLimits(s.value(QStringLiteral("prefs/minimumFov"), Layer::kMinFov).toDouble(),
+                             s.value(QStringLiteral("prefs/maximumFov"), Layer::kMaxFov).toDouble());
+    if (m_layerPanel)
+        m_layerPanel->refreshFovLimits();
     m_document->setNameDrawingsByFrame(s.value(QStringLiteral("prefs/nameByFrame"), false).toBool());
     m_document->setExtendPreviousExposure(s.value(QStringLiteral("prefs/extendExposure"), true).toBool());
     m_document->setStopMotionKeys(s.value(QStringLiteral("prefs/stopMotionKeys"), false).toBool());
@@ -406,6 +411,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/overlayUnderlay"), w.moreArt->isChecked());
     s.setValue(QStringLiteral("prefs/nudge"), w.nudge->value());
     s.setValue(QStringLiteral("prefs/undoLevels"), w.undoLevels->value());
+    s.setValue(QStringLiteral("prefs/minimumFov"), w.minimumFov->value());
+    s.setValue(QStringLiteral("prefs/maximumFov"), w.maximumFov->value());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/outlineLocked"), w.outlineLocked->isChecked());
     s.setValue(QStringLiteral("prefs/bboxSelection"), w.bboxSelection->isChecked());

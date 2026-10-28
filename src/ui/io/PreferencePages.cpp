@@ -88,6 +88,25 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.undoLevels->setToolTip(tr("How many steps can be undone. It takes hold with the next scene made or opened."));
     w.undoLevels->setValue(m_document->undoLevels());
     w.generalLayout->addRow(tr("Levels of undo"), w.undoLevels);
+    w.minimumFov = new QDoubleSpinBox(w.general);
+    w.maximumFov = new QDoubleSpinBox(w.general);
+    w.minimumFov->setObjectName(QStringLiteral("PrefMinimumFov"));
+    w.maximumFov->setObjectName(QStringLiteral("PrefMaximumFov"));
+    for (QDoubleSpinBox* box : {w.minimumFov, w.maximumFov}) {
+        box->setDecimals(3);
+        box->setRange(Layer::kMinFov, Layer::kMaxFov);
+        box->setSuffix(tr(" deg"));
+    }
+    w.minimumFov->setValue(m_document->minimumFov());
+    w.maximumFov->setValue(m_document->maximumFov());
+    w.minimumFov->setToolTip(tr("The smallest angle accepted when directly editing a camera. Existing project values are preserved."));
+    w.maximumFov->setToolTip(tr("The largest angle accepted when directly editing a camera. Existing project values are preserved."));
+    connect(w.minimumFov, &QDoubleSpinBox::valueChanged, w.maximumFov, &QDoubleSpinBox::setMinimum);
+    connect(w.maximumFov, &QDoubleSpinBox::valueChanged, w.minimumFov, &QDoubleSpinBox::setMaximum);
+    w.maximumFov->setMinimum(w.minimumFov->value());
+    w.minimumFov->setMaximum(w.maximumFov->value());
+    w.generalLayout->addRow(tr("Minimum camera field of view"), w.minimumFov);
+    w.generalLayout->addRow(tr("Maximum camera field of view"), w.maximumFov);
     w.keepBackup = new QCheckBox(tr("Keep a backup of the scene file when saving"), w.general);
     w.keepBackup->setObjectName(QStringLiteral("PrefKeepBackup"));
     w.keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));

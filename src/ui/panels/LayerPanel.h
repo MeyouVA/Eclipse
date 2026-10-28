@@ -20,6 +20,7 @@ class ECLIPSE_UI_API LayerPanel : public QWidget {
 
 public:
     explicit LayerPanel(Document* document, QWidget* parent = nullptr);
+    void refreshFovLimits();
 
 signals:
     // A value's function button: clicked (show it in the Function view), Alt-clicked (its column in the Function Editor).

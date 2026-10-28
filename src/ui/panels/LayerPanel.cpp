@@ -404,6 +404,11 @@ void LayerPanel::editDrivers()
         m_document->editLayers({m_layer}, tr("Attribute Controls"), [drivers](Layer& layer) { layer.drivers = drivers; });
 }
 
+void LayerPanel::refreshFovLimits()
+{
+    refresh();
+}
+
 void LayerPanel::refresh()
 {
     Scene const& scene = m_document->scene();
@@ -439,7 +444,9 @@ void LayerPanel::refresh()
     m_form->setRowVisible(m_card, layer.kind == Layer::ColourCard);
     m_form->setRowVisible(m_length, layer.kind == Layer::Bone);
     m_form->setRowVisible(m_fovRow, layer.kind == Layer::Camera);
-    m_fov->setValue(m_fov->property("driven").toBool() || layer.linkOf(Driver::Fov) != 0 ? pose.fov : layer.fovAt(m_frame));
+    double const currentFov = m_fov->property("driven").toBool() || layer.linkOf(Driver::Fov) != 0 ? pose.fov : layer.fovAt(m_frame);
+    m_fov->setRange(std::min(m_document->minimumFov(), currentFov), std::max(m_document->maximumFov(), currentFov));
+    m_fov->setValue(currentFov);
     m_form->setRowVisible(m_turnRow, true);
     refreshCameraOptions(layer);
     m_card->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px;").arg(layer.cardColor.name()));

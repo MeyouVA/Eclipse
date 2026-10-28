@@ -11,6 +11,8 @@ struct PreferenceWidgets {
     QCheckBox* focusOnEnter = nullptr;
     QDoubleSpinBox* modelScale = nullptr;
     QSpinBox* undoLevels = nullptr;
+    QDoubleSpinBox* minimumFov = nullptr;
+    QDoubleSpinBox* maximumFov = nullptr;
     QCheckBox* keepBackup = nullptr;
     QCheckBox* compress = nullptr;
     QSpinBox* quiet = nullptr;

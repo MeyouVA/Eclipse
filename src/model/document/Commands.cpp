@@ -2,6 +2,8 @@
 #include "model/document/Commands.h"
 
 #include <QUndoCommand>
+#include <algorithm>
+#include <cmath>
 #include "model/document/CommandsPrivate.h"
 #include "model/scene/PointIdentity.h"
 #include "model/geometry/PointEdit.h"
@@ -89,6 +91,14 @@ void Document::setUndoLevels(int levels)
     m_undoLevels = std::max(0, levels);
     if (m_undo.count() == 0)
         m_undo.setUndoLimit(m_undoLevels);
+}
+
+void Document::setFovLimits(double minimum, double maximum)
+{
+    minimum = std::isfinite(minimum) ? std::clamp(minimum, Layer::kMinFov, Layer::kMaxFov) : Layer::kMinFov;
+    maximum = std::isfinite(maximum) ? std::clamp(maximum, minimum, Layer::kMaxFov) : Layer::kMaxFov;
+    m_minimumFov = minimum;
+    m_maximumFov = maximum;
 }
 
 bool Document::enterSymbol(int symbolId)
@@ -334,7 +344,7 @@ void Document::setSceneSettings(int width, int height, double fps, double fov)
         s.height = std::max(1, height);
         s.fps = std::clamp(fps, 1.0, 240.0);
         if (fov > 0.0 && fov != s.fov) {
-            fov = std::clamp(fov, Layer::kMinFov, Layer::kMaxFov);
+            fov = std::clamp(fov, m_minimumFov, m_maximumFov);
             for (Layer& l : s.layers) {
                 bool keyed = false;
                 for (Keyframe const& k : l.keys)

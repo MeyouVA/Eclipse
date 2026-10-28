@@ -14,6 +14,7 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QSpinBox>
+#include <QSignalBlocker>
 
 #include "actions/manager/ActionManager.h"
 #include "audio/sound/Sound.h"
@@ -125,11 +126,22 @@ void MainWindow::onActionSceneSettings()
     fps->setValue(scene.fps);
     QDoubleSpinBox* const fov = new QDoubleSpinBox(&dialog);
     fov->setObjectName(QStringLiteral("SceneFov"));
-    fov->setRange(Layer::kMinFov, Layer::kMaxFov);
     fov->setDecimals(3);
+    fov->setRange(std::min(m_document->minimumFov(), scene.fov), std::max(m_document->maximumFov(), scene.fov));
     fov->setSuffix(tr(" deg"));
     fov->setToolTip(tr("The angle of view of the camera size: cameras that have not been given another angle take it."));
     fov->setValue(scene.fov);
+    bool fovEdited = false;
+    connect(fov, &QDoubleSpinBox::valueChanged, &dialog, [this, fov, &fovEdited, original = scene.fov](double value) {
+        fovEdited = true;
+        if (value == original)
+            return;
+        double const limited = std::clamp(value, m_document->minimumFov(), m_document->maximumFov());
+        if (limited != value) {
+            QSignalBlocker const blocker(fov);
+            fov->setValue(limited);
+        }
+    });
     // The sizes there are to choose from: one picked fills in the width, the height and the rate.
     QComboBox* const presets = new QComboBox(&dialog);
     presets->setObjectName(QStringLiteral("ScenePresets"));
@@ -185,7 +197,7 @@ void MainWindow::onActionSceneSettings()
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     if (dialog.exec() == QDialog::Accepted) {
         m_document->beginMacro(tr("Scene Settings"));
-        m_document->setSceneSettings(width->value(), height->value(), fps->value(), fov->value());
+        m_document->setSceneSettings(width->value(), height->value(), fps->value(), fovEdited ? fov->value() : scene.fov);
         m_document->setOrthographic(projection->currentIndex() == 1);
         m_document->setFovAcross(fit->currentIndex() == 1);
         m_document->endMacro();
