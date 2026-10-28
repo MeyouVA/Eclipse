@@ -280,6 +280,7 @@ public:
     int insertControlPoint(int layer, int frame);
     // The frame on which the layer is nearest the control point (between the two keyframes it lies between).
     int controlPointFrame(int layer, int key, int control) const;
+    QVector<int> controlPointFrames(int layer, int key) const;
     // The control point becomes a keyframe on that frame (locked in time); the frame, or -1.
     int lockControlPointInTime(int layer, int key, int control);
     // After a change: the clones of a layer whose drawings or timing it touched take them over.

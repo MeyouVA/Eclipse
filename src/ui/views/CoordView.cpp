@@ -490,15 +490,20 @@ void CoordView::rebuildPoints()
     m_pointTable->setRowCount(0);
     QVector<QPointF> const points = key >= 0 ? scene.layers[m_layer].keys[key].controls : QVector<QPointF>();
     m_pointTable->setRowCount(int(points.size()));
+    QVector<int> const controlFrames = key >= 0 ? scene.controlPointFrames(m_layer, key) : QVector<int>();
+    QVector<double> placed;
+    if (!points.isEmpty()) {
+        Keyframe const& a = scene.layers[m_layer].keys[key];
+        Keyframe const& b = scene.layers[m_layer].keys[key + 1];
+        a.pathLine(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), &placed);
+    }
     for (int p = 0; p < points.size(); ++p) {
         // Its depth: its own, or where the straight way between the keyframes' depths has it.
         Keyframe const& a = scene.layers[m_layer].keys[key];
         Keyframe const& b = scene.layers[m_layer].keys[key + 1];
-        QVector<double> placed;
-        a.pathLine(QPointF(a.pose.x, a.pose.y), QPointF(b.pose.x, b.pose.y), &placed);
         double const z = p < a.controlsZ.size() ? a.controlsZ[p] : a.pose.z + (b.pose.z - a.pose.z) * placed.value(p, 0.0);
         QString const texts[5] = {QString::number(p + 1), shortNumber(points[p].x()), shortNumber(points[p].y()),
-                                  QString::number(scene.controlPointFrame(m_layer, key, p) + 1), shortNumber(z)};
+                                  QString::number(controlFrames.value(p, -1) + 1), shortNumber(z)};
         for (int column = 0; column < 5; ++column) {
             QTableWidgetItem* const item = new QTableWidgetItem(texts[column]);
             item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);

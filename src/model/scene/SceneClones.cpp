@@ -261,6 +261,31 @@ int Scene::insertControlPoint(int layer, int frame)
     return -1;
 }
 
+QVector<int> Scene::controlPointFrames(int layer, int key) const
+{
+    if (layer < 0 || layer >= layers.size())
+        return {};
+    Layer const& l = layers[layer];
+    if (key < 0 || key + 1 >= l.keys.size())
+        return {};
+    QVector<QPointF> const& controls = l.keys[key].controls;
+    QVector<int> frames(controls.size(), -1);
+    if (controls.isEmpty())
+        return frames;
+    QVector<double> nearest(controls.size(), 1e300);
+    for (int frame = l.keys[key].frame + 1; frame < l.keys[key + 1].frame; ++frame) {
+        Pose const pose = l.poseAt(frame);
+        for (int control = 0; control < controls.size(); ++control) {
+            double const distance = std::hypot(pose.x - controls[control].x(), pose.y - controls[control].y());
+            if (distance < nearest[control]) {
+                nearest[control] = distance;
+                frames[control] = frame;
+            }
+        }
+    }
+    return frames;
+}
+
 int Scene::controlPointFrame(int layer, int key, int control) const
 {
     if (layer < 0 || layer >= layers.size())

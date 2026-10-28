@@ -80,8 +80,9 @@ PlanningMotionPath planningMotionPath(Scene const& scene, int index)
         Keyframe const& nextKey = layer.keys[k + 1];
         QVector<double> positions;
         firstKey.pathLine(QPointF(firstKey.pose.x, firstKey.pose.y), QPointF(nextKey.pose.x, nextKey.pose.y), &positions);
+        QVector<int> const controlFrames = scene.controlPointFrames(index, k);
         for (int c = 0; c < firstKey.controls.size(); ++c) {
-            int const frame = scene.controlPointFrame(index, k, c);
+            int const frame = controlFrames.value(c, -1);
             if (frame < 0 || frame >= scene.frameCount())
                 continue;
             PoseOverride over;
