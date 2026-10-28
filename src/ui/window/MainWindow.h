@@ -267,6 +267,7 @@ public slots:
     class Canvas* drawingWindowView() const;
     // The shortcuts and Scripts toolbar buttons the scripts were given.
     void refreshScriptCommands();
+    void onActionOpenPreviewManager();
     void onActionRenderPreview();
     void onShowScripts(QMenu* menu);
     void onActionAutoRender(bool on);

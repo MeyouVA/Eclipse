@@ -8,6 +8,7 @@
 #include <QApplication>
 #include <QDesktopServices>
 #include <QDir>
+#include <QDockWidget>
 #include <QFile>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -308,6 +309,15 @@ void MainWindow::shuttleStep()
 }
 
 // ---- Scene > Render: the preview of the Preview Manager -------------------------------------
+
+void MainWindow::onActionOpenPreviewManager()
+{
+    QDockWidget* const dock = dockOf("PreviewManagerDock");
+    if (!dock)
+        return;
+    showView(dock);
+    dock->raise();
+}
 
 void MainWindow::onActionRenderPreview()
 {

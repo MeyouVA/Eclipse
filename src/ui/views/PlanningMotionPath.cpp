@@ -76,7 +76,11 @@ PlanningMotionPath planningMotionPath(Scene const& scene, int index)
             result.samples.push_back(point);
     }
     for (int k = 0; k + 1 < layer.keys.size(); ++k) {
-        for (int c = 0; c < layer.keys[k].controls.size(); ++c) {
+        Keyframe const& firstKey = layer.keys[k];
+        Keyframe const& nextKey = layer.keys[k + 1];
+        QVector<double> positions;
+        firstKey.pathLine(QPointF(firstKey.pose.x, firstKey.pose.y), QPointF(nextKey.pose.x, nextKey.pose.y), &positions);
+        for (int c = 0; c < firstKey.controls.size(); ++c) {
             int const frame = scene.controlPointFrame(index, k, c);
             if (frame < 0 || frame >= scene.frameCount())
                 continue;
@@ -84,6 +88,8 @@ PlanningMotionPath planningMotionPath(Scene const& scene, int index)
             over.layer = index; over.frame = frame; over.pose = scene.poseOf(index, frame);
             over.pose.x = layer.keys[k].controls[c].x();
             over.pose.y = layer.keys[k].controls[c].y();
+            over.pose.z = c < firstKey.controlsZ.size() ? firstKey.controlsZ[c]
+                                                       : firstKey.pose.z + (nextKey.pose.z - firstKey.pose.z) * positions.value(c, 0.0);
             PlanningPathPoint const point = pointAt(frame, &over, false);
             if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z))
                 result.controls.push_back(point);
