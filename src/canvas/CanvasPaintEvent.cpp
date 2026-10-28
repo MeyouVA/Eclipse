@@ -344,6 +344,8 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         selected = selected || l == other || (other >= 0 && other < scene.layers.size() && scene.isAncestor(other, l));
     bool const highlight = selected && m_tool == Transform && !m_bboxSelection && !m_playing && !m_drawingView && !m_backlight && !outlined;
     auto paintArtwork = [&](Drawing const& art, double opacity, bool everySheet) {
+        if (m_strokesWash && l == m_layer && !m_playing)
+            opacity *= 0.3;
         if (!highlight) {
             paintLayerDrawing(painter, scene, l, m_frame, art, opacity, view, everySheet, !m_drawingView);
             return;
@@ -374,6 +376,46 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         painter.drawImage(0, 0, image);
         painter.restore();
     };
+    auto paintGuides = [&](Drawing const& lines) {
+        if ((!m_showStrokes && !m_strokesWash && m_tool != StrokeTool && m_tool != CloseGap) || m_playing || l != m_layer || index == Layer::kNoDrawing)
+            return;
+        painter.save();
+        if (!m_drawingView && scene.cameraIndex() >= 0 && !lines.isEmpty()) {
+            QRectF const bounds = lines.bounds().adjusted(-2, -2, 2, 2);
+            QPolygonF const clipped = scene.cameraClip(l, m_frame, bounds);
+            if (clipped.isEmpty()) {
+                painter.restore();
+                return;
+            }
+            if (clipped != QPolygonF(bounds)) {
+                QPainterPath area;
+                area.addPolygon(clipped);
+                painter.setClipPath(area, Qt::IntersectClip);
+            }
+        }
+        QPen hair(QColor(40, 200, 235));
+        hair.setCosmetic(true);
+        painter.setPen(hair);
+        painter.setBrush(Qt::NoBrush);
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+            if (!m_previewAllArt ? sheet != sheetOf(m_art) && !(bothArtsNow() && (sheet == Drawing::LineSheet || sheet == Drawing::ColourSheet))
+                                 : !layer.sheetShown(sheet))
+                continue;
+            for (Fill const& fill : lines.fillsOf(sheet))
+                for (QPolygonF const& outline : fill.outlines)
+                    painter.drawPolygon(outline);
+            for (Stroke const& stroke : lines.strokesOf(sheet)) {
+                QPolygonF centre;
+                for (StrokePoint const& point : stroke.path())
+                    centre << point.pos;
+                if (stroke.closed)
+                    painter.drawPolygon(centre);
+                else
+                    painter.drawPolyline(centre);
+            }
+        }
+        painter.restore();
+    };
     // The light table: while drawing, the layers that are not being drawn on are faint.
     double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? m_lightWash / 100.0 : 1.0;
     if (index != Layer::kNoDrawing && layer.morphing(m_frame)) {
@@ -385,6 +427,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
             paintDrawing(painter, scene, made, 1.0, &dark);
         else
             paintArtwork(made, layer.opacity * poseOf(l, m_frame).opacity * faint, false);
+        paintGuides(made);
         return;
     }
     if (index != Layer::kNoDrawing && !m_playing && m_backlight) {
@@ -408,34 +451,15 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         paintArtwork(shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, true);
     } else if (index != Layer::kNoDrawing)
         paintArtwork(shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layerDrawing(l, index)),
-                          layer.opacity * poseOf(l, m_frame).opacity * faint
-                              * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), false);
+                          layer.opacity * poseOf(l, m_frame).opacity * faint, false);
     if (index != Layer::kNoDrawing && faint < 1.0 && m_lightWhite > 0 && !m_backlight && !outlined && !(l == m_layer && transforming)) {
         // The light table's wash: the other layers' colours taken toward white.
         static QColor const white(255, 255, 255);
         painter.setTransform(worldOf(l, m_frame) * view);
         paintDrawing(painter, scene, shown(l, m_frame, layerDrawing(l, index)), layer.opacity * m_lightWhite / 100.0, &white);
     }
-    if ((m_showStrokes || m_tool == StrokeTool || m_tool == CloseGap) && !m_playing && l == m_layer && index != Layer::kNoDrawing) {
-        // Where the pen went, and the edges of the painted areas: hair lines over the artwork.
-        Drawing const lines = erasing ? withArt(m_eraseArt) : transforming ? previewDrawing() : layerDrawing(l, index);
-        QPen hair(QColor(40, 200, 235));
-        hair.setCosmetic(true);
-        painter.setPen(hair);
-        painter.setBrush(Qt::NoBrush);
-        for (Fill const& fill : lines.fills)
-            for (QPolygonF const& outline : fill.outlines)
-                painter.drawPolygon(outline);
-        for (Stroke const& stroke : lines.strokes) {
-            QPolygonF centre;
-            for (StrokePoint const& p : stroke.path())
-                centre << p.pos;
-            if (stroke.closed)
-                painter.drawPolygon(centre);
-            else
-                painter.drawPolyline(centre);
-        }
-    }
+    if ((m_showStrokes || m_strokesWash || m_tool == StrokeTool || m_tool == CloseGap) && !m_playing && l == m_layer && index != Layer::kNoDrawing)
+        paintGuides(transforming ? followedPreview() : shown(l, m_frame, erasing ? withArt(m_eraseArt) : layerDrawing(l, index)));
     if (l == m_layer && m_drag == DragDraw && m_tool == Pencil && m_pencilMode != PencilDraw)
         paintStroke(painter, m_stroke, QBrush(m_pushHighlight));     // a highlight: it pushes or thickens, it is not kept
     else if (l == m_layer && (m_drag == DragDraw || m_drag == DragShape))

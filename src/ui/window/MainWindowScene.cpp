@@ -125,7 +125,7 @@ void MainWindow::onActionSceneSettings()
     fps->setValue(scene.fps);
     QDoubleSpinBox* const fov = new QDoubleSpinBox(&dialog);
     fov->setObjectName(QStringLiteral("SceneFov"));
-    fov->setRange(1.0, 170.0);
+    fov->setRange(Layer::kMinFov, Layer::kMaxFov);
     fov->setDecimals(3);
     fov->setSuffix(tr(" deg"));
     fov->setToolTip(tr("The angle of view of the camera size: cameras that have not been given another angle take it."));

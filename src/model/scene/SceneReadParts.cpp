@@ -501,7 +501,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     if (QString const card = lo["cardColor"].toString(); !card.isEmpty())
         layer.cardColor = QColor(card);
     layer.boneLength = std::max(1.0, lo["boneLength"].toDouble(200.0));
-    layer.fov = std::clamp(lo["fov"].toDouble(Layer::kDefaultFov), 1.0, 170.0);
+    layer.fov = std::clamp(lo["fov"].toDouble(Layer::kDefaultFov), Layer::kMinFov, Layer::kMaxFov);
     layer.nearPlane = std::max(0.0, lo["nearPlane"].toDouble());
     layer.farPlane = std::max(0.0, lo["farPlane"].toDouble());
     if (layer.farPlane > 0.0 && layer.farPlane <= layer.nearPlane)
@@ -598,7 +598,7 @@ void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool ex
         pose.z = ko["z"].toDouble(0.0);
         pose.rotX = ko["rx"].toDouble(0.0);
         pose.rotY = ko["ry"].toDouble(0.0);
-        pose.fov = ko["fov"].toDouble(0.0) > 0.0 ? std::clamp(ko["fov"].toDouble(), 1.0, 170.0) : 0.0;
+        pose.fov = ko["fov"].toDouble(0.0) > 0.0 ? std::clamp(ko["fov"].toDouble(), Layer::kMinFov, Layer::kMaxFov) : 0.0;
         pose.opacity = std::clamp(ko["op"].toDouble(1.0), 0.0, 1.0);
         for (QJsonValue const& v : ko["fx"].toArray())
             pose.fx.push_back(std::max(0.0, v.toDouble()));

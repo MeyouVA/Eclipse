@@ -55,7 +55,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     m_rotY = number(-36000, 36000, 5.0, 2);
     m_rotY->setObjectName(QStringLiteral("LayerRotY"));
     m_rotY->setToolTip(tr("Turns the layer in space about the line up its pivot: positive, its right side goes away from the camera."));
-    m_fov = number(1, 170, 1.0, 3);
+    m_fov = number(Layer::kMinFov, Layer::kMaxFov, 1.0, 3);
     m_fov->setObjectName(QStringLiteral("CameraFov"));
     m_fov->setSuffix(QStringLiteral(" deg"));
     m_fov->setToolTip(tr("The angle the camera sees from the top of the frame to the bottom. A wide angle stands close: depth shows strongly.\n"

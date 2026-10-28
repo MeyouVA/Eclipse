@@ -86,7 +86,7 @@ bool MainWindow::createScene(QString const& path, int width, int height, double 
     scene.width = width;
     scene.height = height;
     scene.fps = fps;
-    scene.fov = fov > 0.0 ? std::clamp(fov, 1.0, 170.0) : Layer::kDefaultFov;    // (0: the usual angle)
+    scene.fov = fov > 0.0 ? std::clamp(fov, Layer::kMinFov, Layer::kMaxFov) : Layer::kDefaultFov;    // (0: the usual angle)
     m_path.clear();
     m_document->reset(scene);
     m_timeline->setCurrentCell(0, 0);

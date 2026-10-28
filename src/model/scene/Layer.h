@@ -92,6 +92,7 @@ struct Layer {
     bool ikHoldAngle = false;
     double ikMin = -90.0;
     double ikMax = 90.0;
+    static constexpr double kMinFov = 1.0, kMaxFov = 179.0;
     static constexpr double kDefaultFov = 41.112;
     double fov = kDefaultFov;
     double nearPlane = 0.0;

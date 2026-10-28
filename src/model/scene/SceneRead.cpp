@@ -49,7 +49,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         scene.sheetMarkers.push_back(m);
     }
     scene.fovAcross = json["fovAcross"].toBool(false);
-    scene.fov = std::clamp(json["fov"].toDouble(Layer::kDefaultFov), 1.0, 170.0);
+    scene.fov = std::clamp(json["fov"].toDouble(Layer::kDefaultFov), Layer::kMinFov, Layer::kMaxFov);
     scene.activeCamera = json["camera"].toInt(0);
     scene.display = json["display"].toInt(0);
     for (QJsonValue const& gv : json["guides"].toArray()) {

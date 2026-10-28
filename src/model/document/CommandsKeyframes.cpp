@@ -280,7 +280,7 @@ void Document::setEffectAmount(int layer, int frame, int index, double amount)
 
 void Document::setFov(int layer, double degrees, int frame)
 {
-    degrees = std::clamp(degrees, 1.0, 170.0);
+    degrees = std::clamp(degrees, Layer::kMinFov, Layer::kMaxFov);
     if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Camera)
         return;
     if (int const index = m_scene.functionIndex(m_scene.layers[layer].linkOf(Driver::Fov)); index >= 0) {

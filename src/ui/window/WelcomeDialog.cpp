@@ -1,4 +1,5 @@
 #include "ui/window/WelcomeDialog.h"
+#include "model/scene/Layer.h"
 
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -98,7 +99,7 @@ QVector<Resolution> WelcomeDialog::resolutions(QString const& resourceDirectory,
             r.height = a.value(QLatin1String("height")).toInt();
             r.fps = a.value(QLatin1String("fps")).toDouble();
             if (a.hasAttribute(QLatin1String("fov")))
-                r.fov = std::clamp(a.value(QLatin1String("fov")).toDouble(), 1.0, 170.0);
+                r.fov = std::clamp(a.value(QLatin1String("fov")).toDouble(), Layer::kMinFov, Layer::kMaxFov);
             r.across = a.value(QLatin1String("fit")) == QLatin1String("horizontal");
             r.orthographic = a.value(QLatin1String("projection")) == QLatin1String("orthographic");
             if (!r.name.isEmpty() && r.width > 0 && r.height > 0 && r.fps > 0.0)
@@ -114,7 +115,7 @@ QVector<Resolution> WelcomeDialog::resolutions(QString const& resourceDirectory,
             continue;
         Resolution r{parts[0], parts[1].toInt(), parts[2].toInt(), parts[3].toDouble(), true};
         if (parts.size() == 5 && parts[4].toDouble() > 0.0)
-            r.fov = std::clamp(parts[4].toDouble(), 1.0, 170.0);
+            r.fov = std::clamp(parts[4].toDouble(), Layer::kMinFov, Layer::kMaxFov);
         if (!r.name.isEmpty() && r.width > 0 && r.height > 0 && r.fps > 0.0)
             all.push_back(r);
     }
@@ -322,7 +323,7 @@ void WelcomeDialog::addResolution()
     QLabel* const ratio = new QLabel(sizeBox);
     QDoubleSpinBox* const fov = new QDoubleSpinBox(sizeBox);
     fov->setObjectName(QStringLiteral("ResolutionFov"));
-    fov->setRange(1.0, 170.0);
+    fov->setRange(Layer::kMinFov, Layer::kMaxFov);
     fov->setDecimals(3);
     fov->setSuffix(tr(" deg"));
     fov->setToolTip(tr("The camera's angle of view, top to bottom: how much nearer layers grow, and further ones shrink, with depth."));

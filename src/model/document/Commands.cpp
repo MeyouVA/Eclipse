@@ -334,7 +334,7 @@ void Document::setSceneSettings(int width, int height, double fps, double fov)
         s.height = std::max(1, height);
         s.fps = std::clamp(fps, 1.0, 240.0);
         if (fov > 0.0 && fov != s.fov) {
-            fov = std::clamp(fov, 1.0, 170.0);
+            fov = std::clamp(fov, Layer::kMinFov, Layer::kMaxFov);
             for (Layer& l : s.layers) {
                 bool keyed = false;
                 for (Keyframe const& k : l.keys)

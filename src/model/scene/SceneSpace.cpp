@@ -162,7 +162,7 @@ Mat4 spaceOf(Scene const& scene, int layer, int frame, PoseOverride const* over)
 double Layer::fovAt(int frame) const
 {
     double const keyed = poseAt(frame).fov;
-    return std::clamp(keyed > 0.0 ? keyed : fov, 1.0, 170.0);
+    return std::clamp(keyed > 0.0 ? keyed : fov, Layer::kMinFov, Layer::kMaxFov);
 }
 
 bool Scene::turned(int layer, int frame, PoseOverride const* over) const
@@ -229,7 +229,7 @@ double Scene::focalDistance(int frame) const
 {
     int const camera = cameraIndex();
     double const keyed = camera >= 0 ? poseOf(camera, frame).fov : 0.0;
-    double const angle = camera >= 0 ? (keyed > 0.0 ? std::clamp(keyed, 1.0, 170.0) : layers[camera].fovAt(frame)) : fov;
+    double const angle = camera >= 0 ? (keyed > 0.0 ? std::clamp(keyed, Layer::kMinFov, Layer::kMaxFov) : layers[camera].fovAt(frame)) : fov;
     return (fovAcross ? width : height) / 2.0 / std::tan(angle * 3.14159265358979323846 / 360.0);
 }
 
@@ -455,7 +455,7 @@ void Driver::write(Pose& pose, int value, double v)
     case Opacity: pose.opacity = std::clamp(v, 0.0, 1.0); break;
     case Z: pose.z = v; break;
     case Skew: pose.skew = v; break;
-    case Fov: pose.fov = std::clamp(v, 1.0, 170.0); break;
+    case Fov: pose.fov = std::clamp(v, Layer::kMinFov, Layer::kMaxFov); break;
     default: break;
     }
 }
