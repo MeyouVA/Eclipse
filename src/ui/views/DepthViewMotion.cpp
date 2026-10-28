@@ -83,8 +83,6 @@ bool DepthView::beginMotionControlDrag(QPointF at)
     if (scene.layers[m_layer].locked)
         return true;
     m_canvas->pickControlPoint(picked->keyIndex, picked->controlIndex);
-    if (m_canvas->noZDragging())
-        return true;
     m_heldBack = back; m_heldFront = front; m_held = true;
     m_dragControlKey = picked->keyIndex; m_dragControlIndex = picked->controlIndex;
     m_dragControlDepth = picked->localDepth; m_dragControlSlope = picked->depthZ;
@@ -101,6 +99,25 @@ bool DepthView::beginMotionControlDrag(QPointF at)
     QPointF const zAxis = screenOffset(picked->depthX, picked->depthY, picked->depthZ);
     auto determinant = [](QPointF a, QPointF b) { return a.x() * b.y() - a.y() * b.x(); };
     QPointF const axes[] = {xAxis, yAxis, zAxis};
+    m_dragControlNoZ = m_canvas->noZDragging();
+    if (m_dragControlNoZ) {
+        double const ax = m_mode == Top ? xAxis.x() : xAxis.y();
+        double const ay = m_mode == Top ? yAxis.x() : yAxis.y();
+        double const zx = m_mode == Top ? xAxis.y() : xAxis.x();
+        double const zy = m_mode == Top ? yAxis.y() : yAxis.x();
+        double const depthLength = std::hypot(zx, zy);
+        QPointF direction = depthLength > 1e-9 ? QPointF(zy / depthLength, -zx / depthLength) : QPointF(ax, ay);
+        double const across = ax * direction.x() + ay * direction.y();
+        if (std::abs(across) < 1e-9) {
+            m_dragControlKey = m_dragControlIndex = -1; m_held = false;
+            return true;
+        }
+        m_dragNoZCoefficients = direction / across;
+        m_dragControlCoordinate = 0; m_dragControlSecond = 1;
+        m_dragStart = depthAt(at); m_dragBy = 0.0;
+        update();
+        return true;
+    }
     int const first = m_mode == Top ? 0 : 1, other = 1 - first;
     int const pairs[][2] = {{first, 2}, {other, 2}, {first, other}};
     double best = 0.0;

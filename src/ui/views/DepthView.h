@@ -103,7 +103,8 @@ private:
     int m_dragControlKey = -1, m_dragControlIndex = -1;
     double m_dragControlDepth = 0.0, m_dragControlSlope = 0.0;
     QPointF m_dragControlStart, m_dragControlPosition, m_dragControlDelta;
-    QPointF m_dragControlAxis, m_dragControlDepthAxis;
+    QPointF m_dragControlAxis, m_dragControlDepthAxis, m_dragNoZCoefficients;
+    bool m_dragControlNoZ = false;
     int m_dragControlCoordinate = -1, m_dragControlSecond = 2;
     // The range is held while dragging, so that the view does not slide under the pointer.
     bool m_held = false;
