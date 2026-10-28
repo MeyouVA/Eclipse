@@ -2,6 +2,7 @@
 #include "ui/window/MainWindow.h"
 
 #include <QCheckBox>
+#include <QApplication>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -16,6 +17,18 @@
 #include "actions/theme/AppSettings.h"
 #include "model/document/Commands.h"
 #include "model/scene/Keyframe.h"
+#include "canvas/Canvas.h"
+
+void MainWindow::onActionPasteInPlace()
+{
+    Canvas* target = m_canvas;
+    if (Canvas* const drawing = drawingWindowView(); drawing && drawing->isVisible()) {
+        QWidget* const focus = QApplication::focusWidget();
+        if ((focus && (focus == drawing || drawing->isAncestorOf(focus))) || QApplication::activeWindow() == drawing->window())
+            target = drawing;
+    }
+    target->pasteInPlace();
+}
 
 bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& title)
 {

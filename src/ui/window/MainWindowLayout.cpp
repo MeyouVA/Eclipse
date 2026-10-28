@@ -7,6 +7,7 @@
 #include <QToolButton>
 #include <QMenu>
 #include <QToolBar>
+#include <QShortcut>
 
 #include "actions/manager/ActionManager.h"
 #include "audio/sound/Sound.h"
@@ -423,6 +424,21 @@ void MainWindow::setDrawingWindowShown(bool on)
         view->setDrawingView(true);
         view->setLeader(m_canvas);
         view->setCurrentCell(layer(), frame());
+        if (QAction* const paste = m_actions->action(QStringLiteral("PasteInPlace")))
+            window->addAction(paste);
+        for (char const* id : {"EditCut", "EditCopy", "EditPaste"}) {
+            QAction* const action = m_actions->action(QLatin1String(id));
+            if (!action)
+                continue;
+            QShortcut* const shortcut = new QShortcut(action->shortcut(), window);
+            connect(action, &QAction::changed, shortcut, [action, shortcut] { shortcut->setKey(action->shortcut()); });
+            QString const command = QLatin1String(id);
+            connect(shortcut, &QShortcut::activated, view, [view, command] {
+                if (command == QLatin1String("EditCut")) view->cut();
+                else if (command == QLatin1String("EditCopy")) view->copy();
+                else view->paste();
+            });
+        }
         connect(m_timeline, &Timeline::currentCellChanged, view, &Canvas::setCurrentCell);
         connect(view, &Canvas::message, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
         // A small bar of its own: the light table, and the zoom of this view.

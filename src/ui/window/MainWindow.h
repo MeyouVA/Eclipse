@@ -324,6 +324,7 @@ public slots:
     void onActionPasteCycle();
     void onActionPasteReverse();
     void onActionPasteSpecial();
+    void onActionPasteInPlace();
     void onActionCreateCycle();
     void onActionAddFramesAtStart();
     void onActionAddFramesAtEnd();
