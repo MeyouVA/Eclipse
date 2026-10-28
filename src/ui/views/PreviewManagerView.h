@@ -44,6 +44,7 @@ private:
     bool m_rendering = false;
     bool m_cancel = false;
     bool m_auto = false;
+    quint64 m_revision = 0;
     QTimer* m_autoTimer = nullptr;
     QVector<QImage> m_frames;          // what was rendered last, frame by frame (kept when the preview goes stale)
     QVector<quint64> m_prints;         // and the fingerprint of each

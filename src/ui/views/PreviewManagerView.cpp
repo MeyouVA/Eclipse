@@ -62,14 +62,13 @@ PreviewManagerView::PreviewManagerView(Document* document, Canvas* canvas, QWidg
             render();
     });
     connect(m_document, &Document::changed, this, [this] {
-        if (m_auto) {
-            m_autoTimer->start();
-            return;
+        ++m_revision;
+        if (m_canvas->previewFrames() > 0) {
+            m_canvas->setPreview({});
+            showStatus(true);
         }
-        if (m_rendering || m_canvas->previewFrames() == 0)
-            return;
-        m_canvas->setPreview({});
-        showStatus(true);
+        if (m_auto)
+            m_autoTimer->start();
     });
     showStatus();
 }
@@ -208,6 +207,7 @@ int PreviewManagerView::render(bool everything)
     if (m_rendering)
         return 0;
     Scene const scene = m_document->scene();
+    quint64 const revision = m_revision;
     double const scale = m_size->currentData().toInt() / 100.0;
     QSize const size(std::max(2, int(std::lround(scene.width * scale))), std::max(2, int(std::lround(scene.height * scale))));
     // What was kept before, where it is still the picture of that frame.
@@ -229,7 +229,7 @@ int PreviewManagerView::render(bool everything)
         // (Now and then the window gets a word in: Cancel Preview Render is taken notice of.)
         if (made % 4 == 3)
             QApplication::processEvents();
-        if (m_cancel)
+        if (m_cancel || m_revision != revision)
             break;
         ++made;
         QImage image(size, QImage::Format_ARGB32_Premultiplied);
@@ -243,11 +243,18 @@ int PreviewManagerView::render(bool everything)
     }
     QApplication::restoreOverrideCursor();
     m_rendering = false;
-    if (m_cancel) {
+    if (m_cancel || m_revision != revision) {
         // What was rendered is kept for next time; the preview is not complete, so it is not played from.
+        bool const changed = m_revision != revision;
         m_frames = frames;
         m_prints = prints.mid(0, frames.size());
         m_cancel = false;
+        if (changed) {
+            m_sound.clear();
+            m_canvas->setPreview({});
+            if (m_auto)
+                m_autoTimer->start();
+        }
         showStatus(true);
         return -1;
     }

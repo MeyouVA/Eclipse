@@ -1016,7 +1016,7 @@
   </menu>
   <menu id="TimelineLock" text="Lock">
    <item id="LockLayer" icon="timeline/lock" text="Lock" responder="window" slot="onActionLockLayer()"/>
-   <item id="UnlockLayer" icon="timeline/unlock" text="Unlock" responder="window" slot="onActionUnlockLayer()"/>
+   <item id="UnlockLayer" icon="timeline/unlock" text="Unlock" shortcut="shortcut.unlockSelection" responder="window" slot="onActionUnlockLayer()"/>
    <item id="LockAll" icon="timeline/lockall" text="Lock All" responder="window" slot="onActionLockAll()"/>
    <item id="UnlockAll" icon="timeline/unlockall" text="Unlock All" responder="window" slot="onActionUnlockAll()"/>
    <item id="LockAllOthers" icon="timeline/lockothers" text="Lock All Others" responder="window" slot="onActionLockAllOthers()"/>

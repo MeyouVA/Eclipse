@@ -66,6 +66,7 @@
   <shortcut id="shortcut.snapAndAlign" text="Snap and Align" value="Ctrl+Alt+,"/>
   <shortcut id="shortcut.autoFillInside" text="Automatically Fill Inside Regions" value="Ctrl+Shift+R"/>
   <shortcut id="shortcut.hideSelection" text="Hide Selection" value=""/>
+  <shortcut id="shortcut.unlockSelection" text="Unlock Selection" value="Ctrl+Shift+K"/>
   <shortcut id="shortcut.showSelectionHideOthers" text="Show Selection And Hide All Others" value=""/>
   <shortcut id="shortcut.smoothFast" text="Smooth Fast" value=""/>
   <shortcut id="shortcut.pumpThickness" text="Pump Selection Thickness" value=""/>
