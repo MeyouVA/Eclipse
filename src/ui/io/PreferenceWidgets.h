@@ -30,6 +30,10 @@ struct PreferenceWidgets {
     QComboBox* cameraZoom = nullptr;
     QCheckBox* outlineLocked = nullptr;
     QCheckBox* bboxSelection = nullptr;
+    QCheckBox* washCamera = nullptr;
+    QCheckBox* washDrawing = nullptr;
+    QSpinBox* washPercent = nullptr;
+    QPushButton* washColour = nullptr;
     QSpinBox* nudge = nullptr;
     QCheckBox* frameOne = nullptr;
     QSpinBox* gridAcross = nullptr;

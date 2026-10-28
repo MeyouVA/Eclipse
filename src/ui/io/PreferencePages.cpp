@@ -205,6 +205,34 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.bboxSelection->setToolTip(tr("Show selected layers with a bounding box instead of a colour highlight when a scene is opened."));
     w.bboxSelection->setChecked(s.value(QStringLiteral("prefs/bboxSelection"), false).toBool());
     w.cameraLayout->addRow(w.bboxSelection);
+    w.washCamera = new QCheckBox(tr("Wash background images in Camera"), w.camera);
+    w.washCamera->setObjectName(QStringLiteral("PrefWashCamera"));
+    w.washCamera->setChecked(s.value(QStringLiteral("prefs/washCamera"), false).toBool());
+    w.washCamera->setToolTip(tr("Wash imported images in the Camera view while using animation tools."));
+    w.cameraLayout->addRow(w.washCamera);
+    w.washDrawing = new QCheckBox(tr("Wash background images while drawing"), w.camera);
+    w.washDrawing->setObjectName(QStringLiteral("PrefWashDrawing"));
+    w.washDrawing->setChecked(s.value(QStringLiteral("prefs/washDrawing"), false).toBool());
+    w.washDrawing->setToolTip(tr("Wash imported images in the Camera view while using drawing tools."));
+    w.cameraLayout->addRow(w.washDrawing);
+    w.washPercent = new QSpinBox(w.camera);
+    w.washPercent->setObjectName(QStringLiteral("PrefWashPercent"));
+    w.washPercent->setRange(0, 100);
+    w.washPercent->setSuffix(tr(" %"));
+    w.washPercent->setValue(s.value(QStringLiteral("prefs/washPercent"), 50).toInt());
+    w.cameraLayout->addRow(tr("Background wash amount"), w.washPercent);
+    w.washColour = new QPushButton(w.camera);
+    w.washColour->setObjectName(QStringLiteral("PrefWashColour"));
+    auto showWashColour = [button = w.washColour](QColor const& colour) {
+        button->setProperty("colour", colour);
+        button->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px; min-width: 60px;").arg(colour.name()));
+    };
+    showWashColour(s.value(QStringLiteral("prefs/washColour"), QColor(Qt::white)).value<QColor>());
+    connect(w.washColour, &QPushButton::clicked, &dialog, [button = w.washColour, showWashColour, &dialog] {
+        QColor const colour = ColourEditor::getColour(button->property("colour").value<QColor>(), &dialog, tr("Background Wash Colour"));
+        if (colour.isValid()) showWashColour(colour);
+    });
+    w.cameraLayout->addRow(tr("Background wash colour"), w.washColour);
     w.nudge = new QSpinBox(w.camera);
     w.nudge->setObjectName(QStringLiteral("PrefNudge"));
     w.nudge->setRange(1, 100);

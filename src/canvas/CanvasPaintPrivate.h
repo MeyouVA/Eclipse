@@ -10,7 +10,10 @@
 
 namespace canvas_paint {
 
+struct PictureWash { int percent = 0; QColor colour = Qt::white; };
+PictureWash& pictureWashState();
 void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing const& drawing, QColor const* tint);
+QImage washedPicture(QImage const& image, int percent, QColor const& colour);
 
 }  // namespace canvas_paint
 

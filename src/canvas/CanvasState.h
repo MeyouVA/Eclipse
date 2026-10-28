@@ -137,6 +137,9 @@ protected:
     QColor m_onionBefore = QColor(220, 60, 60);
     QColor m_onionAfter = QColor(50, 160, 80);
     QColor m_backdrop = QColor(127, 127, 127);
+    bool m_washCamera = false, m_washDrawing = false;
+    int m_washPercent = 50;
+    QColor m_washColour = Qt::white;
     int m_lightWash = 30;
     int m_lightWhite = 0;           // the light table: how far the other layers are washed toward white
     bool m_lightShade = false;      // the light table: a veil over the layers under the one drawn on

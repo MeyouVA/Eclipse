@@ -68,7 +68,7 @@ QJsonObject MainWindow::projectUiState() const
     QJsonObject viewActions;
     for (char const* id : {"LightTable", "CurrentDrawingOnTop", "CameraMask", "ShowSafeArea", "ShowSafeTitle", "ShowGrid", "GridOutlineOnly",
                           "GridUnderlay", "ProportionGrid", "Backlight", "MirrorView", "PreviewAllArt", "OnionSkinToggle", "ShowGuides",
-                          "OutlineLocked", "BBoxSelectionStyle"})
+                          "OutlineLocked", "BBoxSelectionStyle", "ShowControl", "ShowStrokes", "ShowStrokesWash"})
         if (QAction* action = m_actions->action(QLatin1String(id)); action && action->isCheckable())
             viewActions[QLatin1String(id)] = action->isChecked();
     state["viewActions"] = viewActions;
@@ -132,6 +132,11 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
         m_canvas->onActionBBoxSelectionStyle(bbox);
         m_actions->setChecked(QStringLiteral("OutlineLocked"), outlines);
         m_actions->setChecked(QStringLiteral("BBoxSelectionStyle"), bbox);
+        m_canvas->onActionShowControl(false);
+        m_canvas->onActionShowStrokes(false);
+        m_canvas->onActionShowStrokesWash(false);
+        for (char const* id : {"ShowControl", "ShowStrokes", "ShowStrokesWash"})
+            m_actions->setChecked(QLatin1String(id), false);
         return;
     }
     expandAllSides();
@@ -216,6 +221,18 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
             action->trigger();
     m_canvas->restoreViewState(state["canvas"].toObject());
     QJsonObject const canvasState = state["canvas"].toObject();
+    if (!viewActions.contains(QStringLiteral("ShowControl"))) {
+        m_canvas->onActionShowControl(false);
+        m_actions->setChecked(QStringLiteral("ShowControl"), false);
+    }
+    if (!viewActions.contains(QStringLiteral("ShowStrokes"))) {
+        m_canvas->onActionShowStrokes(false);
+        m_actions->setChecked(QStringLiteral("ShowStrokes"), false);
+    }
+    if (!viewActions.contains(QStringLiteral("ShowStrokesWash"))) {
+        m_canvas->onActionShowStrokesWash(false);
+        m_actions->setChecked(QStringLiteral("ShowStrokesWash"), false);
+    }
     if (!canvasState.contains(QStringLiteral("outlineLocked")) && !viewActions.contains(QStringLiteral("OutlineLocked")))
         m_canvas->onActionOutlineLocked(settings().value(QStringLiteral("prefs/outlineLocked"), false).toBool());
     if (!canvasState.contains(QStringLiteral("bboxSelection")) && !viewActions.contains(QStringLiteral("BBoxSelectionStyle")))

@@ -49,7 +49,8 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             painter.drawLine(box.topRight(), box.bottomLeft());
         } else {
             painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-            painter.drawImage(box, picture.image);
+            PictureWash const& wash = pictureWashState();
+            painter.drawImage(box, !picture.painted && wash.percent > 0 ? washedPicture(picture.image, wash.percent, wash.colour) : picture.image);
         }
         painter.restore();
     };

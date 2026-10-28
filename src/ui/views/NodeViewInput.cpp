@@ -112,8 +112,8 @@ void NodeView::paintEvent(QPaintEvent*)
     QFont font = this->font();
     font.setPointSizeF(std::max(5.0, font.pointSizeF() * m_zoom));
     p.setFont(font);
-    auto node = [&](QRectF const& r, QString const& name, QColor const& color, bool current, bool dim) {
-        p.setPen(QPen(current ? InterfaceColours::get("nodeSelected") : QColor(20, 21, 23), current ? 2.0 : 1.0));
+    auto node = [&](QRectF const& r, QString const& name, QColor const& color, bool current, bool dim, QColor const& border = QColor(20, 21, 23)) {
+        p.setPen(QPen(current ? InterfaceColours::get("nodeSelected") : border, current ? 2.0 : 1.0));
         p.setBrush(dim ? color.darker(190) : color);
         p.drawRoundedRect(r, 4 * m_zoom, 4 * m_zoom);
         p.setPen(dim ? QColor(150, 150, 150) : QColor(245, 245, 245));
@@ -127,7 +127,8 @@ void NodeView::paintEvent(QPaintEvent*)
         QRectF const r = rectOf(pos[l]);
         QColor const color = layer.kind == Layer::Peg ? InterfaceColours::get("nodePeg") : layer.kind == Layer::Camera ? InterfaceColours::get("nodeCamera")
                              : layer.kind == Layer::Sound ? InterfaceColours::get("nodeSound") : layer.kind == Layer::Group ? InterfaceColours::get("nodeGroup") : InterfaceColours::get("nodeDrawing");
-        node(r, layer.name, color, m_layerPicked.contains(layer.id), !layer.visible);
+        node(r, layer.name, color, m_layerPicked.contains(layer.id), !layer.visible,
+             layer.kind == Layer::Camera ? InterfaceColours::get("nodeCameraBorder") : QColor(20, 21, 23));
         if (layer.kind == Layer::Group) {
             // A group can be gone into: a small arrow at its right end says so.
             QPointF const tip(r.right() - 10 * m_zoom, r.center().y() + 4 * m_zoom);

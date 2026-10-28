@@ -1,10 +1,12 @@
 // Eclipse - the Camera view painted: onion skin, snapshots and view modes, the layers of the frame.
 #include "canvas/Canvas.h"
+#include "canvas/CanvasPaintPrivate.h"
 #include "actions/theme/InterfaceColours.h"
 
 #include <QElapsedTimer>
 #include <QPainter>
 #include <QPainterPath>
+#include <QScopeGuard>
 
 #include <cmath>
 #include <numeric>
@@ -151,6 +153,14 @@ void Canvas::paintEvent(QPaintEvent*)
     drawing.start();
     // Preferences: pencil lines shown fainter in the view (only here: what is exported keeps them as they are).
     s_lineOpacity = m_pencilOpacity / 100.0;
+    canvas_paint::PictureWash& wash = canvas_paint::pictureWashState();
+    canvas_paint::PictureWash const previousWash = wash;
+    auto const restoreWash = qScopeGuard([&] { wash = previousWash; });
+    bool const drawingTool = m_tool != Transform && m_tool != IK && m_tool != Rigging && m_tool != SplineOffset && m_tool != Turn3D
+                             && m_tool != Hand && m_tool != Zoom && m_tool != RotateView;
+    wash.percent = !m_playing && !m_drawingView && !m_planeView && m_viewMode == ViewNormal && !m_showSnapshot
+                        && (drawingTool ? m_washDrawing : m_washCamera) ? m_washPercent : 0;
+    wash.colour = m_washColour;
     // (While anything moves - the pen, the playhead - paint is drawn with its quick edge.)
     s_fineFills = m_drag == DragNone && !m_playing;
     paintView();

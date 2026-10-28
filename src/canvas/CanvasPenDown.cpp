@@ -436,6 +436,10 @@ void Canvas::followSettings(Canvas const& leader)
     m_shapeAutoFill = leader.m_shapeAutoFill;
     m_scaleThickness = leader.m_scaleThickness;
     m_pencilOpacity = leader.m_pencilOpacity;
+    m_washCamera = leader.m_washCamera;
+    m_washDrawing = leader.m_washDrawing;
+    m_washPercent = leader.m_washPercent;
+    m_washColour = leader.m_washColour;
     m_bitmapHardness = leader.m_bitmapHardness;
     m_bitmapFlow = leader.m_bitmapFlow;
     m_bitmapTip = leader.m_bitmapTip;

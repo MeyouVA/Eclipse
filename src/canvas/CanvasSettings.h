@@ -32,6 +32,11 @@ public:
     int retouchMode() const { return m_retouchMode; }
     // Preferences: how strongly pencil lines show in the views (per cent; what is exported is not changed).
     void setPencilLinesOpacity(int percent) { m_pencilOpacity = std::clamp(percent, 0, 100); settingChanged(); }
+    void setBackgroundWash(bool camera, bool drawing, int percent, QColor const& colour)
+    {
+        m_washCamera = camera; m_washDrawing = drawing; m_washPercent = std::clamp(percent, 0, 100);
+        m_washColour = colour.isValid() ? colour : QColor(Qt::white); settingChanged();
+    }
     void setLineOptions(LineOptions const& options) { m_lineOptions = options; }
     void setCopyArt(CopyArt const& how) { m_copyArt = how; }
     CopyArt const& copyArt() const { return m_copyArt; }

@@ -143,6 +143,8 @@ void MainWindow::applyPreferences()
     m_timeline->setRulerLocked(s.value(QStringLiteral("prefs/lockTimelineRuler"), false).toBool());
     m_loopPause = std::clamp(s.value(QStringLiteral("prefs/loopPause"), 0).toInt(), 0, 5000);
     for (Canvas* const view : findChildren<Canvas*>()) {
+        view->setBackgroundWash(s.value(QStringLiteral("prefs/washCamera"), false).toBool(), s.value(QStringLiteral("prefs/washDrawing"), false).toBool(),
+                                s.value(QStringLiteral("prefs/washPercent"), 50).toInt(), s.value(QStringLiteral("prefs/washColour"), QColor(Qt::white)).value<QColor>());
         view->setZoomOnMouse(s.value(QStringLiteral("prefs/zoomOnMouse"), false).toBool());
         view->setZoomLimits(s.value(QStringLiteral("prefs/zoomMin"), 2).toInt(), s.value(QStringLiteral("prefs/zoomMax"), 6400).toInt());
         view->setDefaultZoom(s.value(QStringLiteral("prefs/defaultZoom"), 100).toInt());
@@ -407,6 +409,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/outlineLocked"), w.outlineLocked->isChecked());
     s.setValue(QStringLiteral("prefs/bboxSelection"), w.bboxSelection->isChecked());
+    s.setValue(QStringLiteral("prefs/washCamera"), w.washCamera->isChecked());
+    s.setValue(QStringLiteral("prefs/washDrawing"), w.washDrawing->isChecked());
+    s.setValue(QStringLiteral("prefs/washPercent"), w.washPercent->value());
+    s.setValue(QStringLiteral("prefs/washColour"), w.washColour->property("colour").value<QColor>());
     s.setValue(QStringLiteral("prefs/extendExposure"), w.extend->isChecked());
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());
