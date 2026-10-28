@@ -9,7 +9,12 @@
 
 void PerspectiveView::setDrawingCanvas(Canvas* canvas)
 {
+    if (m_drawingCanvas)
+        disconnect(m_drawingCanvas, &Canvas::showControlChanged, this, nullptr);
     m_drawingCanvas = canvas;
+    if (m_drawingCanvas)
+        connect(m_drawingCanvas, &Canvas::showControlChanged, this, qOverload<>(&QWidget::update));
+    update();
 }
 
 void PerspectiveView::cancelPlaneDrawing()

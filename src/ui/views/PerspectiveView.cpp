@@ -201,6 +201,7 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     if (eyeSeen)
         painter.drawEllipse(eye, 5.5, 5.5);
 
+    paintMotionPath(painter);
     painter.setPen(QColor(140, 140, 140));
     painter.setFont(small);
     painter.drawText(QRectF(4, 2, width() - 8, 16), Qt::AlignLeft | Qt::AlignVCenter, tr("Perspective"));

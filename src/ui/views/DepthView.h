@@ -30,7 +30,7 @@ public:
     void resetView();
     void setPlanningPreferences(double defaultZoom, int thumbnailSize);
     int thumbnailSize() const { return m_thumbnailSize; }
-    void setAnimationCanvas(Canvas* canvas) { m_canvas = canvas; }
+    void setAnimationCanvas(Canvas* canvas);
     int currentFrame() const { return m_frame; }
     QSize sizeHint() const override { return QSize(320, 260); }
 
@@ -79,6 +79,7 @@ private:
     int markAt(QPointF widgetPos) const;
     QRectF thumbnailRect(QPointF a, QPointF b) const;
     QImage thumbnail(int layer);
+    void paintMotionPath(QPainter& painter, double back, double front) const;
 
     Document* m_document;
     Canvas* m_canvas = nullptr;

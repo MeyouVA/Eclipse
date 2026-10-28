@@ -1645,6 +1645,7 @@
   <item id="ResetView"/>
   <separator/>
   <item id="CameraCone"/>
+  <item id="ShowControl"/>
   <item id="NoZDragging"/>
   <separator/>
   <item id="InsertCamera"/>

@@ -89,6 +89,7 @@ private:
     double distanceOf(double x, double y, double z) const;
     int layerAt(QPointF widgetPos) const;
     void moveView(double by);
+    void paintMotionPath(QPainter& painter) const;
 
     Document* m_document;
     int m_layer = 0;

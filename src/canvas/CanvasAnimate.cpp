@@ -310,7 +310,7 @@ bool Canvas::stepPathPoint(int direction, int* frame)
         return false;
     Place const& to = places[next];
     if (to.control >= 0) {
-        m_showControl = true;
+        onActionShowControl(true);
         pickControlPoint(to.key, to.control);
     } else {
         pickControlPoint(-1, -1);
@@ -340,7 +340,7 @@ bool Canvas::pickNearestControlPoint()
     }
     if (bestKey < 0)
         return false;
-    m_showControl = true;
+    onActionShowControl(true);
     pickControlPoint(bestKey, bestControl);
     update();
     return true;

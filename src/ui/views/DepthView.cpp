@@ -29,6 +29,16 @@ DepthView::DepthView(Document* document, Mode mode, QWidget* parent) : QWidget(p
     connect(m_document, &Document::changed, this, [this] { m_thumbnails.clear(); update(); });
 }
 
+void DepthView::setAnimationCanvas(Canvas* canvas)
+{
+    if (m_canvas)
+        disconnect(m_canvas, &Canvas::showControlChanged, this, nullptr);
+    m_canvas = canvas;
+    if (m_canvas)
+        connect(m_canvas, &Canvas::showControlChanged, this, qOverload<>(&QWidget::update));
+    update();
+}
+
 void DepthView::setCurrentCell(int layer, int frame)
 {
     if (m_frame != frame)
@@ -272,6 +282,7 @@ void DepthView::paintEvent(QPaintEvent*)
             painter.drawText(QPointF(x, std::min(a.y(), b.y()) - 4), label);
         }
     }
+    paintMotionPath(painter, back, front);
     painter.setPen(QColor(140, 140, 140));
     painter.drawText(QRectF(4, 2, width() - 8, 16), Qt::AlignLeft | Qt::AlignVCenter, m_mode == Top ? tr("Top") : tr("Side"));
 }
