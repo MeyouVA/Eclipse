@@ -329,6 +329,41 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
     painter.setTransform(worldOf(l, m_frame) * view);
     int const index = layer.drawingAt(m_frame);
     bool const outlined = index != Layer::kNoDrawing && !m_playing && !m_backlight && m_outlineLocked && layer.locked;
+    bool selected = l == m_layer || (m_layer >= 0 && m_layer < scene.layers.size() && scene.isAncestor(m_layer, l));
+    for (int other : m_transformLayers)
+        selected = selected || l == other || (other >= 0 && other < scene.layers.size() && scene.isAncestor(other, l));
+    bool const highlight = selected && m_tool == Transform && !m_bboxSelection && !m_playing && !m_drawingView && !m_backlight && !outlined;
+    auto paintArtwork = [&](Drawing const& art, double opacity, bool everySheet) {
+        if (!highlight) {
+            paintLayerDrawing(painter, scene, l, m_frame, art, opacity, view, everySheet, !m_drawingView);
+            return;
+        }
+        QPaintDevice* const device = painter.device();
+        double const dpr = device->devicePixelRatioF();
+        QImage image(QSize(int(device->width() * dpr), int(device->height() * dpr)), QImage::Format_ARGB32_Premultiplied);
+        image.setDevicePixelRatio(dpr);
+        image.fill(Qt::transparent);
+        {
+            QPainter off(&image);
+            off.setRenderHints(painter.renderHints());
+            off.setTransform(painter.transform());
+            paintLayerDrawing(off, scene, l, m_frame, art, opacity, view, everySheet, !m_drawingView);
+            off.resetTransform();
+            off.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+            off.fillRect(QRectF(QPointF(), QSizeF(image.size()) / dpr), QColor(235, 45, 180, 90));
+        }
+        painter.save();
+        painter.resetTransform();
+        static QPainter::CompositionMode const modes[Layer::BlendCount] = {
+            QPainter::CompositionMode_SourceOver, QPainter::CompositionMode_Multiply, QPainter::CompositionMode_Screen,
+            QPainter::CompositionMode_Overlay, QPainter::CompositionMode_Darken, QPainter::CompositionMode_Lighten,
+            QPainter::CompositionMode_ColorDodge, QPainter::CompositionMode_ColorBurn, QPainter::CompositionMode_HardLight,
+            QPainter::CompositionMode_SoftLight, QPainter::CompositionMode_Difference, QPainter::CompositionMode_Exclusion,
+            QPainter::CompositionMode_Plus};
+        painter.setCompositionMode(modes[std::clamp(layer.blend, 0, int(Layer::BlendCount) - 1)]);
+        painter.drawImage(0, 0, image);
+        painter.restore();
+    };
     // The light table: while drawing, the layers that are not being drawn on are faint.
     double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? m_lightWash / 100.0 : 1.0;
     if (index != Layer::kNoDrawing && layer.morphing(m_frame)) {
@@ -339,7 +374,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         else if (!m_playing && m_backlight)
             paintDrawing(painter, scene, made, 1.0, &dark);
         else
-            paintLayerDrawing(painter, scene, l, m_frame, made, layer.opacity * poseOf(l, m_frame).opacity * faint, view, false, !m_drawingView);
+            paintArtwork(made, layer.opacity * poseOf(l, m_frame).opacity * faint, false);
         return;
     }
     if (index != Layer::kNoDrawing && !m_playing && m_backlight) {
@@ -350,7 +385,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         Drawing const lines = layer.showsSymbol() ? scene.symbolPicture(layer.symbolId, index) : shown(l, m_frame, layerDrawing(l, index));
         paintLockedOutline(painter, l, lines);
     } else if (l == m_layer && transforming)
-        paintLayerDrawing(painter, scene, l, m_frame, followedPreview(), layer.opacity * poseOf(l, m_frame).opacity, view, !m_previewAllArt, !m_drawingView);
+        paintArtwork(followedPreview(), layer.opacity * poseOf(l, m_frame).opacity, !m_previewAllArt);
     else if (index != Layer::kNoDrawing && l == m_layer && !m_previewAllArt && !m_playing) {
         // Only the sheet being worked on.
         Drawing one = erasing ? withArt(m_eraseArt) : layerDrawing(l, index);
@@ -360,11 +395,11 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
                 one.strokesOf(sheet).clear();
             }
         }
-        paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, view, true, !m_drawingView);
+        paintArtwork(shown(l, m_frame, one), layer.opacity * poseOf(l, m_frame).opacity, true);
     } else if (index != Layer::kNoDrawing)
-        paintLayerDrawing(painter, scene, l, m_frame, shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layerDrawing(l, index)),
+        paintArtwork(shown(l, m_frame, erasing && l == m_layer ? withArt(m_eraseArt) : layerDrawing(l, index)),
                           layer.opacity * poseOf(l, m_frame).opacity * faint
-                              * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), view, false, !m_drawingView);
+                              * (m_showStrokes && m_strokesWash && l == m_layer && !m_playing ? 0.3 : 1.0), false);
     if (index != Layer::kNoDrawing && faint < 1.0 && m_lightWhite > 0 && !m_backlight && !outlined && !(l == m_layer && transforming)) {
         // The light table's wash: the other layers' colours taken toward white.
         static QColor const white(255, 255, 255);

@@ -29,6 +29,7 @@ struct PreferenceWidgets {
     QFormLayout* cameraLayout = nullptr;
     QComboBox* cameraZoom = nullptr;
     QCheckBox* outlineLocked = nullptr;
+    QCheckBox* bboxSelection = nullptr;
     QSpinBox* nudge = nullptr;
     QCheckBox* frameOne = nullptr;
     QSpinBox* gridAcross = nullptr;

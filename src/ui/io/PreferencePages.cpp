@@ -200,6 +200,11 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.outlineLocked->setToolTip(tr("Show locked drawings as outlines when a scene is opened."));
     w.outlineLocked->setChecked(s.value(QStringLiteral("prefs/outlineLocked"), false).toBool());
     w.cameraLayout->addRow(w.outlineLocked);
+    w.bboxSelection = new QCheckBox(tr("Bounding Box Selection Style"), w.camera);
+    w.bboxSelection->setObjectName(QStringLiteral("PrefBBoxSelection"));
+    w.bboxSelection->setToolTip(tr("Show selected layers with a bounding box instead of a colour highlight when a scene is opened."));
+    w.bboxSelection->setChecked(s.value(QStringLiteral("prefs/bboxSelection"), false).toBool());
+    w.cameraLayout->addRow(w.bboxSelection);
     w.nudge = new QSpinBox(w.camera);
     w.nudge->setObjectName(QStringLiteral("PrefNudge"));
     w.nudge->setRange(1, 100);

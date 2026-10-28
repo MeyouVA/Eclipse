@@ -749,6 +749,7 @@ private:
     // Preferences: the Function Editors stay in front of the window.
     bool m_editorsOnTop = true;
     int m_appliedOutlinePreference = -1;
+    int m_appliedBBoxPreference = -1;
     void connectFunctionColumns();
     // The value column the Xsheet is on (layer, value); value -1 when it is on a layer's own column.
     QPair<int, int> xsheetValueColumn() const;

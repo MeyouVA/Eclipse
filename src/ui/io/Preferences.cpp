@@ -91,6 +91,16 @@ void MainWindow::applyPreferences()
             m_appliedOutlinePreference = int(outlineLocked);
         }
     }
+    bool const bboxSelection = s.value(QStringLiteral("prefs/bboxSelection"), false).toBool();
+    if (m_appliedBBoxPreference != int(bboxSelection)) {
+        if (QAction* const action = m_actions->action(QStringLiteral("BBoxSelectionStyle"))) {
+            if (action->isChecked() != bboxSelection)
+                action->trigger();
+            else
+                m_canvas->onActionBBoxSelectionStyle(bboxSelection);
+            m_appliedBBoxPreference = int(bboxSelection);
+        }
+    }
     m_canvas->setBitmapCanvasBasis(s.value(QStringLiteral("prefs/bitmapCanvasBasis"), 0).toInt());
     m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
     // Palettes: element palettes shown, the Colour view's background, colour recovery and what pasted templates do with colours.
@@ -396,6 +406,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/undoLevels"), w.undoLevels->value());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/outlineLocked"), w.outlineLocked->isChecked());
+    s.setValue(QStringLiteral("prefs/bboxSelection"), w.bboxSelection->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), w.extend->isChecked());
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());

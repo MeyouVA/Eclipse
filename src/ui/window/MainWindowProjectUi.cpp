@@ -127,10 +127,11 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
 {
     if (state["version"].toInt() != 1) {
         bool const outlines = settings().value(QStringLiteral("prefs/outlineLocked"), false).toBool();
+        bool const bbox = settings().value(QStringLiteral("prefs/bboxSelection"), false).toBool();
         m_canvas->onActionOutlineLocked(outlines);
-        m_canvas->onActionBBoxSelectionStyle(false);
+        m_canvas->onActionBBoxSelectionStyle(bbox);
         m_actions->setChecked(QStringLiteral("OutlineLocked"), outlines);
-        m_actions->setChecked(QStringLiteral("BBoxSelectionStyle"), false);
+        m_actions->setChecked(QStringLiteral("BBoxSelectionStyle"), bbox);
         return;
     }
     expandAllSides();
@@ -218,7 +219,7 @@ void MainWindow::restoreProjectUi(QJsonObject const& state)
     if (!canvasState.contains(QStringLiteral("outlineLocked")) && !viewActions.contains(QStringLiteral("OutlineLocked")))
         m_canvas->onActionOutlineLocked(settings().value(QStringLiteral("prefs/outlineLocked"), false).toBool());
     if (!canvasState.contains(QStringLiteral("bboxSelection")) && !viewActions.contains(QStringLiteral("BBoxSelectionStyle")))
-        m_canvas->onActionBBoxSelectionStyle(false);
+        m_canvas->onActionBBoxSelectionStyle(settings().value(QStringLiteral("prefs/bboxSelection"), false).toBool());
     m_actions->setChecked(QStringLiteral("OutlineLocked"), m_canvas->outlinesLocked());
     m_actions->setChecked(QStringLiteral("BBoxSelectionStyle"), m_canvas->bboxSelectionStyle());
     m_actions->setChecked(QStringLiteral("MirrorView"), m_canvas->viewMirrored());
