@@ -8,7 +8,7 @@
 
 void PerspectiveView::paintMotionPath(QPainter& painter) const
 {
-    if (!m_drawingCanvas || !m_drawingCanvas->showsControl())
+    if (!m_drawingCanvas || !m_drawingCanvas->showsPlanningControls())
         return;
     PlanningMotionPath const path = planningMotionPath(m_document->scene(), m_layer);
     if (path.samples.isEmpty())

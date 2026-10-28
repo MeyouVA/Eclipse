@@ -102,6 +102,7 @@ public:
     bool planeInputActive() const { return m_drag != DragNone || m_bending || m_polyActive; }
     // While playing, nothing but the frame itself is shown (no onion skin, no editing).
     void setPlaying(bool playing);
+    bool showsPlanningControls() const { return !m_playing && (m_showControl || m_tx.controlPointsOnSelected); }
 
     void fitToWindow();
     // Where a point of the scene is in the widget.
@@ -179,7 +180,7 @@ public:
     // The Transform tool: its options and preferences; the other layers it works on along with the current one.
     TransformOptions const& transformOptions() const { return m_tx; }
     bool animatesPoints() const { return m_animatePoints; }
-    void setTransformOptions(TransformOptions const& options) { m_tx = options; update(); }
+    void setTransformOptions(TransformOptions const& options);
     QVector<int> transformLayers() const { return m_transformLayers; }
     void setTransformLayers(QVector<int> const& layers);
     // The layer the animation tools move for `layer`: the peg above it in Peg Selection Mode, or when it is not to be animated (-1: none).
@@ -652,6 +653,7 @@ signals:
     // The view is closer or further than it was.
     void zoomChanged();
     void showControlChanged(bool on);
+    void planningControlsChanged();
     void artChanged(int art);
     void drawingViewChanged(bool on);
     void controlPointPicked(int key, int control);

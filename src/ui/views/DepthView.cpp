@@ -32,10 +32,10 @@ DepthView::DepthView(Document* document, Mode mode, QWidget* parent) : QWidget(p
 void DepthView::setAnimationCanvas(Canvas* canvas)
 {
     if (m_canvas)
-        disconnect(m_canvas, &Canvas::showControlChanged, this, nullptr);
+        disconnect(m_canvas, &Canvas::planningControlsChanged, this, nullptr);
     m_canvas = canvas;
     if (m_canvas)
-        connect(m_canvas, &Canvas::showControlChanged, this, qOverload<>(&QWidget::update));
+        connect(m_canvas, &Canvas::planningControlsChanged, this, qOverload<>(&QWidget::update));
     update();
 }
 

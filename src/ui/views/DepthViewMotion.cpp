@@ -8,7 +8,7 @@
 
 void DepthView::paintMotionPath(QPainter& painter, double back, double front) const
 {
-    if (!m_canvas || !m_canvas->showsControl())
+    if (!m_canvas || !m_canvas->showsPlanningControls())
         return;
     Scene const& scene = m_document->scene();
     PlanningMotionPath const path = planningMotionPath(scene, m_layer);

@@ -174,9 +174,12 @@ void Canvas::onActionShowControl(bool on)
 {
     if (m_showControl == on)
         return;
+    bool const oldControls = showsPlanningControls();
     m_showControl = on;
     update();
     emit showControlChanged(on);
+    if (oldControls != showsPlanningControls())
+        emit planningControlsChanged();
 }
 
 void Canvas::onActionHideAllControls()

@@ -120,12 +120,24 @@ void Canvas::setOnionSkin(bool on)
 
 void Canvas::setPlaying(bool playing)
 {
+    bool const oldControls = showsPlanningControls();
     if (playing && !m_playing)
         cancelInput();
     m_playing = playing;
+    if (oldControls != showsPlanningControls())
+        emit planningControlsChanged();
     if (playing)
         clearSelection();
     update();
+}
+
+void Canvas::setTransformOptions(TransformOptions const& options)
+{
+    bool const oldControls = showsPlanningControls();
+    m_tx = options;
+    update();
+    if (oldControls != showsPlanningControls())
+        emit planningControlsChanged();
 }
 
 void Canvas::setCurrentCell(int layer, int frame)

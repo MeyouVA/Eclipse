@@ -10,10 +10,10 @@
 void PerspectiveView::setDrawingCanvas(Canvas* canvas)
 {
     if (m_drawingCanvas)
-        disconnect(m_drawingCanvas, &Canvas::showControlChanged, this, nullptr);
+        disconnect(m_drawingCanvas, &Canvas::planningControlsChanged, this, nullptr);
     m_drawingCanvas = canvas;
     if (m_drawingCanvas)
-        connect(m_drawingCanvas, &Canvas::showControlChanged, this, qOverload<>(&QWidget::update));
+        connect(m_drawingCanvas, &Canvas::planningControlsChanged, this, qOverload<>(&QWidget::update));
     update();
 }
 
