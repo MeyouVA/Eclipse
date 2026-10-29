@@ -181,13 +181,18 @@ int NodeView::groupGraphNodes(QVector<int> const& ids)
         else
             outgoing.push_back(c);
     }
+    // (One output for each picture leaving, however many nodes outside take it.)
+    QVector<QPair<int, int>> leaving;
+    for (GraphCable const& c : std::as_const(outgoing))
+        if (!leaving.contains(qMakePair(c.from, c.fromPort)))
+            leaving.push_back(qMakePair(c.from, c.fromPort));
     GraphNode groupNode;
     groupNode.id = group;
     groupNode.kind = GraphNode::Group;
     groupNode.group = m_graphGroup;
     groupNode.at = middle;
     groupNode.ports = std::max<int>(1, int(incoming.size()));
-    groupNode.outPorts = std::max<int>(1, int(outgoing.size()));
+    groupNode.outPorts = std::max<int>(1, int(leaving.size()));
     GraphNode in;
     in.id = group + 1;
     in.kind = GraphNode::GroupIn;
@@ -213,11 +218,10 @@ int NodeView::groupGraphNodes(QVector<int> const& ids)
         kept.push_back({c.from, c.fromPort, group, k});
         kept.push_back({in.id, k, c.to, c.toPort});
     }
-    for (int k = 0; k < outgoing.size(); ++k) {
-        GraphCable const& c = outgoing[k];
-        kept.push_back({c.from, c.fromPort, out.id, k});
-        kept.push_back({group, k, c.to, c.toPort});
-    }
+    for (int k = 0; k < leaving.size(); ++k)
+        kept.push_back({leaving[k].first, leaving[k].second, out.id, k});
+    for (GraphCable const& c : std::as_const(outgoing))
+        kept.push_back({group, int(leaving.indexOf(qMakePair(c.from, c.fromPort))), c.to, c.toPort});
     g.cables = kept;
     m_document->setGraph(g, tr("Group Selected Nodes"));
     m_graphPicked = {group};
@@ -353,6 +357,10 @@ int NodeView::addGraphNode(GraphNode node, QPointF graphPos)
     node.id = g.nextId();
     node.group = m_graphGroup;
     node.at = graphPos;
+    if (node.kind == GraphNode::Composite && m_options.compositePassThrough)
+        node.passThrough = true;
+    if (node.kind == GraphNode::EffectNode && node.effect.type == Effect::ImageSwitch)
+        node.ports = std::max(2, node.ports);
     g.nodes.push_back(node);
     if (node.kind == GraphNode::Group) {
         // Inside it: what comes in, and what goes out.
@@ -403,7 +411,8 @@ void NodeView::changeGraphPorts(int id, bool outputs, int by)
         return;
     GraphNode& n = g.nodes[i];
     bool const group = n.kind == GraphNode::Group;
-    if (outputs ? !group : (n.kind != GraphNode::Composite && !group))
+    bool const switcher = n.kind == GraphNode::EffectNode && n.effect.type == Effect::ImageSwitch;
+    if (outputs ? !group : (n.kind != GraphNode::Composite && !group && !switcher))
         return;
     int& count = outputs ? n.outPorts : n.ports;
     int const now = std::max(1, count + by);

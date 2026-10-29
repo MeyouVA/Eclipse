@@ -17,12 +17,14 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSet>
+#include <QSpinBox>
 
 #include <algorithm>
 #include <cmath>
 #include <functional>
 
 #include "model/document/Commands.h"
+#include "render/effects/Effects.h"
 #include "ui/panels/EffectsPanel.h"
 
 namespace {
@@ -32,12 +34,13 @@ bool takesColour(Effect::Type t)
 {
     return t == Effect::Tint || t == Effect::Glow || t == Effect::Shadow || t == Effect::ColourScale || t == Effect::Tone || t == Effect::Highlight
            || t == Effect::FieldChart
-           || t == Effect::MatteGenerator || t == Effect::Gradient;
+           || t == Effect::MatteGenerator || t == Effect::Gradient || t == Effect::ChromaKey;
 }
 
 bool turnsInsideOut(Effect::Type t)
 {
-    return GraphNode::takesMatte(t) || t == Effect::Gradient || t == Effect::MatteResize;
+    return GraphNode::takesMatte(t) || t == Effect::Gradient || t == Effect::MatteResize || t == Effect::ChromaKey || t == Effect::DifferenceKeyer
+           || t == Effect::LuminanceThreshold;
 }
 
 }  // namespace
@@ -46,6 +49,10 @@ void NodeView::editGraphNode(int id)
 {
     NodeGraph g = m_document->scene().graph;
     int const i = g.nodeIndex(id);
+    if (i >= 0 && g.nodes[i].kind == GraphNode::Composite) {
+        editComposite(id);
+        return;
+    }
     if (i < 0 || g.nodes[i].kind != GraphNode::EffectNode)
         return;
     Effect e = g.nodes[i].effect;
@@ -60,7 +67,12 @@ void NodeView::editGraphNode(int id)
     amount->setRange(0.0, 1000.0);
     amount->setDecimals(2);
     amount->setValue(g.nodes[i].amountAt(m_frame));
-    form->addRow(tr("Amount"), amount);
+    Effect::Type const type = e.type;
+    bool const keyer = type == Effect::ChromaKey || type == Effect::DifferenceKeyer || type == Effect::LuminanceThreshold;
+    if (type == Effect::ImageSwitch)
+        amount->setDecimals(0);
+    form->addRow(type == Effect::GenericComposite ? tr("Opacity") : keyer ? tr("Threshold") : type == Effect::ImageSwitch ? tr("Port Index") : tr("Amount"),
+                 amount);
     // Animated: the amount a keyframe of this frame (the frames between go straight from one keyframe to the next).
     QCheckBox* const keyed = new QCheckBox(tr("Keyframe on frame %1").arg(m_frame + 1), &dialog);
     keyed->setObjectName(QStringLiteral("GraphEffectKeyed"));
@@ -180,12 +192,113 @@ void NodeView::editGraphNode(int id)
             form->addRow(names[k], area[k]);
         }
     }
+    auto fraction = [&](char const* name, double value, double most = 1.0) {
+        QDoubleSpinBox* const box = new QDoubleSpinBox(&dialog);
+        box->setObjectName(QLatin1String(name));
+        box->setRange(0.0, most);
+        box->setSingleStep(0.05);
+        box->setDecimals(2);
+        box->setValue(value);
+        return box;
+    };
+    QComboBox* colourOperation = nullptr;
+    QComboBox* alphaOperation = nullptr;
+    QDoubleSpinBox* intensity[3] = {};
+    if (type == Effect::GenericComposite) {
+        colourOperation = new QComboBox(&dialog);
+        colourOperation->setObjectName(QStringLiteral("GraphEffectColourOperation"));
+        colourOperation->addItems(Effects::colourOperations());
+        colourOperation->setCurrentIndex(std::clamp(e.colourOperation, 0, int(colourOperation->count()) - 1));
+        form->addRow(tr("Colour Operation"), colourOperation);
+        alphaOperation = new QComboBox(&dialog);
+        alphaOperation->setObjectName(QStringLiteral("GraphEffectAlphaOperation"));
+        alphaOperation->addItems(Effects::alphaOperations());
+        alphaOperation->setCurrentIndex(std::clamp(e.alphaOperation, 0, int(alphaOperation->count()) - 1));
+        form->addRow(tr("Alpha Operation"), alphaOperation);
+        QString const names[3] = {tr("Intensity Red"), tr("Intensity Green"), tr("Intensity Blue")};
+        for (int c = 0; c < 3; ++c) {
+            intensity[c] = fraction("GraphEffectIntensity", e.intensity[c], 10.0);
+            form->addRow(names[c], intensity[c]);
+        }
+    }
+    QCheckBox* arts[Drawing::SheetCount] = {};
+    if (type == Effect::LayerSelector) {
+        QString const names[Drawing::SheetCount] = {tr("Underlay"), tr("Colour Art"), tr("Line Art"), tr("Overlay")};
+        for (int sheet = Drawing::SheetCount - 1; sheet >= 0; --sheet) {
+            arts[sheet] = new QCheckBox(names[sheet], &dialog);
+            arts[sheet]->setObjectName(QStringLiteral("GraphEffectArt%1").arg(sheet));
+            arts[sheet]->setChecked(e.sheets & (1 << sheet));
+            form->addRow(arts[sheet]);
+        }
+    }
+    QDoubleSpinBox* softness = nullptr;
+    QDoubleSpinBox* clipBlack = nullptr;
+    QDoubleSpinBox* clipWhite = nullptr;
+    QDoubleSpinBox* spill = nullptr;
+    if (keyer) {
+        softness = fraction("GraphEffectSoftness", e.softness);
+        form->addRow(tr("Softness"), softness);
+        clipBlack = fraction("GraphEffectClipBlack", e.clipBlack);
+        form->addRow(tr("Clip Black"), clipBlack);
+        clipWhite = fraction("GraphEffectClipWhite", e.clipWhite);
+        form->addRow(tr("Clip White"), clipWhite);
+        if (type == Effect::ChromaKey) {
+            spill = fraction("GraphEffectSpill", e.spill);
+            form->addRow(tr("Spill Reduction"), spill);
+        }
+    }
+    QSpinBox* switchInputs = nullptr;
+    if (type == Effect::ImageSwitch) {
+        switchInputs = new QSpinBox(&dialog);
+        switchInputs->setObjectName(QStringLiteral("GraphEffectInputs"));
+        switchInputs->setRange(1, 64);
+        switchInputs->setValue(g.nodes[i].inputs());
+        form->addRow(tr("Inputs"), switchInputs);
+    }
+    QCheckBox* inViews = nullptr;
+    QCheckBox* inRender = nullptr;
+    if (type == Effect::Visibility) {
+        inViews = new QCheckBox(tr("Display in Camera View"), &dialog);
+        inViews->setObjectName(QStringLiteral("GraphEffectInViews"));
+        inViews->setChecked(e.showInViews);
+        form->addRow(inViews);
+        inRender = new QCheckBox(tr("Soft Render"), &dialog);
+        inRender->setObjectName(QStringLiteral("GraphEffectInRender"));
+        inRender->setToolTip(tr("Shown when the scene is rendered (exported, previewed or printed)."));
+        inRender->setChecked(e.showInRender);
+        form->addRow(inRender);
+    }
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted)
         return;
+    if (colourOperation) {
+        e.colourOperation = colourOperation->currentIndex();
+        e.alphaOperation = alphaOperation->currentIndex();
+        for (int c = 0; c < 3; ++c)
+            e.intensity[c] = intensity[c]->value();
+    }
+    if (arts[0]) {
+        e.sheets = 0;
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+            if (arts[sheet]->isChecked())
+                e.sheets |= 1 << sheet;
+    }
+    if (softness) {
+        e.softness = softness->value();
+        e.clipBlack = clipBlack->value();
+        e.clipWhite = clipWhite->value();
+    }
+    if (spill)
+        e.spill = spill->value();
+    if (switchInputs)
+        g.nodes[i].ports = switchInputs->value();
+    if (inViews) {
+        e.showInViews = inViews->isChecked();
+        e.showInRender = inRender->isChecked();
+    }
     if (channel)
         e.channel = channel->currentIndex();
     if (mode)
@@ -227,7 +340,11 @@ QString NodeView::graphPortName(GraphNode const& n, int port, bool input) const
         if (port == 0)
             return tr("Input image");
         Effect::Type const t = n.effect.type;
-        return t == Effect::Blending || t == Effect::Glue ? tr("Under") : tr("Matte");
+        if (t == Effect::ImageSwitch)
+            return tr("Input %1").arg(port + 1);
+        if (t == Effect::DifferenceKeyer)
+            return tr("Clean background");
+        return t == Effect::Blending || t == Effect::Glue || t == Effect::GenericComposite ? tr("Under") : tr("Matte");
     }
     if (n.kind == GraphNode::Display)
         return tr("Image shown");

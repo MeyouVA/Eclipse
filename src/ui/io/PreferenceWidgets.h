@@ -135,6 +135,7 @@ struct PreferenceWidgets {
     QComboBox* importAlignment = nullptr;
     QComboBox* importTransparency = nullptr;
     QCheckBox* bindSharedColumns = nullptr;
+    QCheckBox* compositePassThrough = nullptr;
     QGroupBox* onionPage = nullptr;
     QFormLayout* onionLayout = nullptr;
     QSpinBox* onionCountBefore = nullptr;

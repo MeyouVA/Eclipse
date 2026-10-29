@@ -134,6 +134,10 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         Effects::removeTransparency(image, amount);
     } else if (e.type == Effect::MatteComposite) {
         Effects::matteComposite(image);
+    } else if (e.type == Effect::ChromaKey) {
+        Effects::chromaKey(image, e.color, amount, e.softness, e.clipBlack, e.clipWhite, e.spill, e.invert);
+    } else if (e.type == Effect::LuminanceThreshold) {
+        Effects::luminanceThreshold(image, amount, e.softness, e.clipBlack, e.clipWhite, e.invert);
     } else if (e.type == Effect::VariableBlur) {
         int const m = scene.layerIndex(e.matte);
         if (m < 0)

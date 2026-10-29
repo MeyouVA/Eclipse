@@ -163,7 +163,10 @@ void Canvas::paintEvent(QPaintEvent*)
     wash.colour = m_washColour;
     // (While anything moves - the pen, the playhead - paint is drawn with its quick edge.)
     s_fineFills = m_drag == DragNone && !m_playing;
+    // (Render View shows the frame as it will be rendered; the others as the view shows it.)
+    setViewing(m_viewMode != ViewRender);
     paintView();
+    setViewing(false);
     if (!m_playing && !m_drawingView && !m_planeView && !m_showSnapshot) {
         QPainter aids(this);
         aids.setRenderHint(QPainter::Antialiasing, true);

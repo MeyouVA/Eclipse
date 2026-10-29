@@ -79,6 +79,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Script")), &QAction::triggered, this, [this] { add(Effect::Script); });
     connect(menu->addAction(tr("External")), &QAction::triggered, this, [this] { add(Effect::External); });
     connect(menu->addAction(tr("Apply Camera")), &QAction::triggered, this, [this] { add(Effect::ApplyCamera); });
+    connect(menu->addAction(tr("Chroma Keying")), &QAction::triggered, this, [this] { add(Effect::ChromaKey); });
+    connect(menu->addAction(tr("Luminance Threshold")), &QAction::triggered, this, [this] { add(Effect::LuminanceThreshold); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -249,7 +251,7 @@ void EffectsPanel::showEditors()
     bool const resizing = valid && e.type == Effect::MatteResize;
     bool const coloured = valid && (e.type == Effect::Tint || e.type == Effect::Glow || e.type == Effect::Shadow || e.type == Effect::ColourScale || shading
                                     || e.type == Effect::FieldChart
-                                    || e.type == Effect::MatteGenerator || e.type == Effect::Gradient) && e.type != Effect::MatteBlur;
+                                    || e.type == Effect::MatteGenerator || e.type == Effect::Gradient || e.type == Effect::ChromaKey) && e.type != Effect::MatteBlur;
     bool const graded = valid && e.type == Effect::Gradient;
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
@@ -340,7 +342,7 @@ void EffectsPanel::showEditors()
                         : particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
                         : shading ? tr("The layer whose drawing says where the shade (or the light) falls on this one.")
                                   : tr("The layer whose drawing cuts this one: only what lies inside it stays."));
-    m_invert->setVisible(cutter || shading || resizing || graded || viewed);
+    m_invert->setVisible(cutter || shading || resizing || graded || viewed || (valid && (e.type == Effect::ChromaKey || e.type == Effect::LuminanceThreshold)));
     m_invert->setText(viewed ? tr("Apply Camera Viewpoint") : resizing ? tr("Shrink") : graded ? tr("Radial") : tr("Inverted"));
     m_invert->setToolTip(resizing ? tr("Make what is painted smaller instead of bigger.") : graded ? tr("From the middle out, instead of from side to side.")
                                   : tr("Keep what lies outside the matte instead."));
@@ -383,8 +385,11 @@ void EffectsPanel::showEditors()
         m_amount->setValue(amount);
     } else if (valid && (e.type == Effect::Tint || e.type == Effect::Transparency || e.type == Effect::HueSaturation || e.type == Effect::BrightnessContrast
                          || e.type == Effect::Grain || e.type == Effect::RadialBlur || e.type == Effect::ColourScale || e.type == Effect::Negate
-                         || e.type == Effect::BlackWhite || e.type == Effect::Gradient || e.type == Effect::RemoveTransparency)) {
-        m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency") : e.type == Effect::RemoveTransparency ? tr("Threshold") : tr("Amount"));
+                         || e.type == Effect::BlackWhite || e.type == Effect::Gradient || e.type == Effect::RemoveTransparency || e.type == Effect::ChromaKey
+                         || e.type == Effect::LuminanceThreshold)) {
+        m_amountLabel->setText(e.type == Effect::Transparency ? tr("Transparency")
+                               : e.type == Effect::RemoveTransparency || e.type == Effect::ChromaKey || e.type == Effect::LuminanceThreshold ? tr("Threshold")
+                               : tr("Amount"));
         m_amount->setRange(0.0, 100.0);
         m_amount->setDecimals(0);
         m_amount->setSuffix(QStringLiteral(" %"));

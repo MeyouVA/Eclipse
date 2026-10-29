@@ -24,6 +24,8 @@
 namespace canvas_paint_shared {
 
 inline std::atomic<bool> gBlurs{true};
+// Painting for the Camera view (not a render): a Visibility node then goes by its Camera view switch.
+inline thread_local bool gViewing = false;
 inline std::atomic<bool> gFocus{true};
 
 }  // namespace canvas_paint_shared

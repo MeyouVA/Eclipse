@@ -122,6 +122,11 @@ void MainWindow::preferencesNodeView(PreferenceWidgets& w, QSettings& s, QDialog
                                 s.value(QStringLiteral("prefs/bindSharedColumns"), true).toBool());
     w.bindSharedColumns->setToolTip(tr("A binding made in Attribute Controls on a value linked to a function column is made on every value linked to that column."));
     w.nodeLayout->addRow(w.bindSharedColumns);
+    // Composites.
+    w.compositePassThrough = check(page, "PrefCompositePassThrough", tr("Default Pass Through Composite"),
+                                   s.value(QStringLiteral("prefs/compositePassThrough"), false).toBool());
+    w.compositePassThrough->setToolTip(tr("New composites pass their inputs on separately into the composite they feed (Pass Through mode)."));
+    w.nodeLayout->addRow(w.compositePassThrough);
 }
 
 void MainWindow::saveNodePreferences(PreferenceWidgets& w, QSettings& s)
@@ -147,6 +152,7 @@ void MainWindow::saveNodePreferences(PreferenceWidgets& w, QSettings& s)
     s.setValue(QStringLiteral("prefs/importAlignment"), w.importAlignment->currentIndex());
     s.setValue(QStringLiteral("prefs/importTransparency"), w.importTransparency->currentIndex());
     s.setValue(QStringLiteral("prefs/bindSharedColumns"), w.bindSharedColumns->isChecked());
+    s.setValue(QStringLiteral("prefs/compositePassThrough"), w.compositePassThrough->isChecked());
 }
 
 void MainWindow::applyNodePreferences(QSettings const& s)
@@ -165,6 +171,7 @@ void MainWindow::applyNodePreferences(QSettings const& s)
     o.backdropUnselected = std::clamp(s.value(QStringLiteral("prefs/backdropUnselected"), 170).toInt(), 0, 255);
     o.backdropTitleSize = std::clamp(s.value(QStringLiteral("prefs/backdropTitleSize"), 14).toInt(), 6, 72);
     o.backdropColours = std::clamp(s.value(QStringLiteral("prefs/backdropColours"), 17).toInt(), 1, 17);
+    o.compositePassThrough = s.value(QStringLiteral("prefs/compositePassThrough"), false).toBool();
     for (NodeView* const view : findChildren<NodeView*>()) {
         view->setOptions(o);
         view->setNavigatorShown(s.value(QStringLiteral("prefs/nodeNavigator"), true).toBool());

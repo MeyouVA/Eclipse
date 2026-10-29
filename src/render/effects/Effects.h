@@ -77,5 +77,15 @@ void scaleOutput(QImage& image, double scale);
 void glue(QImage& under, QImage const& top, double radius);
 QString runScript(QImage& image, QString const& script, int frame, double amount, double unit);
 QString runExternal(QImage& image, QString const& command, int frame, int seconds = 60);
+// `top` put onto `under` by one of the generic composite's colour operations (Effect::colourOperation) and alpha operations, its colours scaled first.
+void genericComposite(QImage& under, QImage const& top, int colourOperation, int alphaOperation, double const (&intensity)[3], double opacity);
+QStringList colourOperations();
+QStringList alphaOperations();
+// Takes away what is near the key colour (nearer than `threshold`, partly so for `softness` more), and as much of that colour from what stays as `spill` says.
+void chromaKey(QImage& image, QColor const& key, double threshold, double softness, double clipBlack, double clipWhite, double spill, bool invert);
+// Takes away what is the same as the clean picture behind it (differs by less than `threshold`).
+void differenceKey(QImage& image, QImage const& clean, double threshold, double softness, double clipBlack, double clipWhite, bool invert);
+// Keeps what is lighter than `threshold` (0..1), the rest taken away (inverted: what is darker).
+void luminanceThreshold(QImage& image, double threshold, double softness, double clipBlack, double clipWhite, bool invert);
 
 }

@@ -289,7 +289,9 @@ void NodeView::graphDoubleClick(QMouseEvent* event)
             g.nodes[g.nodeIndex(hit)].name = text;
             m_document->setGraph(g, tr("Edit Note"));
         }
-    } else if (n->kind == GraphNode::Composite || n->kind == GraphNode::Display) {
+    } else if (n->kind == GraphNode::Composite) {
+        editComposite(hit);
+    } else if (n->kind == GraphNode::Display) {
         bool ok = false;
         QString const name = QInputDialog::getText(this, tr("Rename Node"), tr("Name:"), QLineEdit::Normal, graphNodeName(*n), &ok);
         if (ok) {
@@ -355,7 +357,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
     layerMenu->setEnabled(!layerMenu->isEmpty());
     if (GraphNode const* const n = g.node(hit)) {
         menu.addSeparator();
-        if (n->kind == GraphNode::Composite || n->kind == GraphNode::Group) {
+        if (n->kind == GraphNode::Composite || n->kind == GraphNode::Group || (n->kind == GraphNode::EffectNode && n->effect.type == Effect::ImageSwitch)) {
             connect(menu.addAction(tr("Add Input Port")), &QAction::triggered, this, [this, hit] { changeGraphPorts(hit, false, 1); });
             connect(menu.addAction(tr("Remove Input Port")), &QAction::triggered, this, [this, hit] { changeGraphPorts(hit, false, -1); });
         }
@@ -367,6 +369,9 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
         if (n->kind == GraphNode::EffectNode)
             connect(menu.addAction(tr("Edit Effect...")), &QAction::triggered, this, [this, hit] { editGraphNode(hit); });
         if (n->kind == GraphNode::Composite) {
+            connect(menu.addAction(tr("Composite Settings...")), &QAction::triggered, this, [this, hit] { editComposite(hit); });
+            if (m_graphPicked.size() > 1)
+                connect(menu.addAction(tr("Connect to Composite")), &QAction::triggered, this, &NodeView::onActionConnectToComposite);
             // Pass Through: its inputs go on separately into the composite it feeds.
             QAction* const through = menu.addAction(tr("Pass Through"));
             through->setObjectName(QStringLiteral("NodePassThrough"));
@@ -407,6 +412,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
         menu.addSeparator();
         QVector<int> const picked = m_graphPicked;
         connect(menu.addAction(tr("Group Selected Nodes")), &QAction::triggered, this, [this, picked] { groupGraphNodes(picked); });
+        connect(menu.addAction(tr("Group Selection with Composite")), &QAction::triggered, this, [this, picked] { groupGraphNodesWithComposite(picked); });
     }
     menu.addSeparator();
     if (m_graphGroup)

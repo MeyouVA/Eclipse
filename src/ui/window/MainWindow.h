@@ -472,6 +472,11 @@ public:
 
 public slots:
     void onActionSetPropertiesOnManyLayers();
+    // Compositing: the selected layers grouped with a composite; the Camera view showing the matte; an effect put on the current layer.
+    void onActionGroupSelectionWithComposite();
+    void onActionMatteView(bool on);
+    void onActionToggleImageMatte();
+    void onActionInsertEffect(QString const& type);
     // Every layer attached to the current one, and those attached to them: all picked together.
     void onActionSelectChildren();
     // The layers selected hidden; or shown, and every other one hidden - one step of undo each.

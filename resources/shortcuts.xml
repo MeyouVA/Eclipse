@@ -31,6 +31,7 @@
   <shortcut id="shortcut.deselectAll" text="Deselect All" value="Esc"/>
   <shortcut id="shortcut.preferences" text="Preferences" value="Ctrl+U"/>
   <shortcut id="shortcut.ungroup" text="Ungroup Selected Layers" value="Ctrl+Shift+G"/>
+  <shortcut id="shortcut.groupSelectionComposite" text="Group Selection with Composite" value=""/>
   <shortcut id="shortcut.editShortcuts" text="Keyboard Shortcuts" value=""/>
   <shortcut id="shortcut.toggleFullscreen" text="Toggle Full Screen" value="Ctrl+F"/>
   <shortcut id="shortcut.velocityEditor" text="Toggle Velocity Editor" value="Shift+V"/>
@@ -423,6 +424,7 @@
   <shortcut id="shortcut.tagLayers" text="Tag Selected Layers" value=""/>
   <shortcut id="shortcut.untagLayers" text="Untag Selected Layers" value=""/>
   <shortcut id="shortcut.autoMatte" text="Generate Auto-Matte" value=""/>
+  <shortcut id="shortcut.toggleMatte" text="Toggle Image/Matte" value=""/>
   <shortcut id="shortcut.toolStamp" text="Stamp Tool" value=""/>
   <shortcut id="shortcut.createStamp" text="Create Stamp from Selection" value=""/>
   <shortcut id="shortcut.renameDrawing" text="Rename Drawing" value="Ctrl+D"/>
@@ -489,5 +491,7 @@
   <shortcut id="shortcut.nodeAlignHorizontally" text="Align Nodes Horizontally" value=""/>
   <shortcut id="shortcut.nodeExplodeGroups" text="Explode Selected Groups" value=""/>
   <shortcut id="shortcut.nodeShowNavigator" text="Show/Hide Navigator" value=""/>
+  <shortcut id="shortcut.nodeCreateComposite" text="Create Composite" value="Ctrl+H"/>
+  <shortcut id="shortcut.nodeGroupComposite" text="Group with Composite" value="Ctrl+Shift+G"/>
  </category>
 </shortcuts>

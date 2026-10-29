@@ -157,6 +157,8 @@ bool NodeView::handleOwnKeys(QKeyEvent* event, bool dryRun)
         {"shortcut.nodeOrderDown", &NodeView::onActionOrderDown},
         {"shortcut.nodeAlignHorizontally", &NodeView::onActionAlignHorizontally},
         {"shortcut.nodeExplodeGroups", &NodeView::onActionExplodeGroups},
+        {"shortcut.nodeCreateComposite", &NodeView::onActionCreateComposite},
+        {"shortcut.nodeGroupComposite", &NodeView::onActionGroupWithComposite},
     };
     for (Bound const& b : bound)
         if (matchesShortcut(event, QLatin1String(b.id))) {

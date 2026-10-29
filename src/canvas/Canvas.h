@@ -118,6 +118,8 @@ public:
     int removeDirt(double size);
     int closeGaps(double gap);
     bool autoMatte(double radius, int source = Drawing::LineSheet, int destination = Drawing::ColourSheet);
+    // The same on every drawing of the layer, one step of undo (how many drawings were given one).
+    int autoMatteAll(double radius, int source = Drawing::LineSheet, int destination = Drawing::ColourSheet);
     void setPaintAllDrawings(bool on) { m_paintAll = on; }
     // The eraser rubs out of the line art and the colour art at once.
     void setEraserBothArts(bool on) { m_bothArts = on; }
@@ -300,6 +302,9 @@ public:
     static QTransform viewedThrough(Scene const& scene, int camera, int frame);
     static void setBlursEnabled(bool on);
     static bool blursEnabled();
+    // Whether frames are painted for the view itself (on) or rendered (off, the default), for what shows only in one of them.
+    static void setViewing(bool on);
+    static bool viewing();
     static void setFocusEnabled(bool on);
     static bool focusEnabled();
     static bool paintGraph(QPainter& painter, Scene const& scene, int frame);

@@ -9,12 +9,14 @@
 #include <QRandomGenerator>
 #include <functional>
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QInputDialog>
+#include <QLabel>
 #include <QJsonDocument>
 #include <QSettings>
 
@@ -196,6 +198,12 @@ void Canvas::onActionAutoMatte()
     QComboBox* const destination = arts("MatteDestination", settings().value(QStringLiteral("tools/matteDestination"), int(Drawing::ColourSheet)).toInt());
     form->addRow(tr("Source"), source);
     form->addRow(tr("Destination"), destination);
+    auto* const every = new QCheckBox(tr("Generate Auto-Matte on all Drawings"), &ask);
+    every->setObjectName(QStringLiteral("MatteAllDrawings"));
+    every->setToolTip(tr("Every drawing of the layer is given a matte, not only the one on this frame."));
+    every->setChecked(settings().value(QStringLiteral("tools/matteAll"), false).toBool());
+    form->addRow(every);
+    form->addRow(tr("Matte Color"), new QLabel(tr("the current colour (%1)").arg(m_document->scene().resolve(m_swatch, Qt::black).name()), &ask));
     auto* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &ask);
     connect(buttons, &QDialogButtonBox::accepted, &ask, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &ask, &QDialog::reject);
@@ -205,6 +213,12 @@ void Canvas::onActionAutoMatte()
     settings().setValue(QStringLiteral("tools/matteRadius"), radius->value());
     settings().setValue(QStringLiteral("tools/matteSource"), source->currentData().toInt());
     settings().setValue(QStringLiteral("tools/matteDestination"), destination->currentData().toInt());
+    settings().setValue(QStringLiteral("tools/matteAll"), every->isChecked());
+    if (every->isChecked()) {
+        int const made = autoMatteAll(radius->value(), source->currentData().toInt(), destination->currentData().toInt());
+        emit message(made ? tr("%n drawing(s) given a matte.", nullptr, made) : tr("There is nothing in the %1 of the drawings to make a matte of.").arg(source->currentText()));
+        return;
+    }
     if (!autoMatte(radius->value(), source->currentData().toInt(), destination->currentData().toInt()))
         emit message(tr("There is nothing in the %1 of this frame to make a matte of.").arg(source->currentText()));
 }
@@ -231,6 +245,44 @@ bool Canvas::autoMatte(double radius, int source, int destination)
     emit message(destination == Drawing::ColourSheet ? tr("The matte is in the colour art, behind the lines.") : tr("The matte is at the back of the art it was asked for."));
     update();
     return true;
+}
+
+int Canvas::autoMatteAll(double radius, int source, int destination)
+{
+    if (!canEditDrawing() || source < 0 || source >= Drawing::SheetCount || destination < 0 || destination >= Drawing::SheetCount)
+        return 0;
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return 0;
+    // A copy: the scene changes under us with every drawing set.
+    QVector<Drawing> const drawings = scene.layers[m_layer].drawings;
+    QVector<int> const cells = scene.layers[m_layer].cells;
+    QColor const colour = scene.resolve(m_swatch, Qt::black);
+    QVector<bool> done(drawings.size(), false);
+    int made = 0;
+    clearSelection();
+    m_document->beginMacro(tr("Generate Auto-Matte on all Drawings"));
+    m_committing = true;
+    for (int f = 0; f < cells.size(); ++f) {
+        int const index = cells[f];
+        if (index < 0 || index >= drawings.size() || done[index])
+            continue;
+        done[index] = true;
+        Fill matte;
+        matte.outlines = Deform::outerEdges(drawings[index], source, radius);
+        if (matte.outlines.isEmpty())
+            continue;
+        matte.swatch = m_swatch;
+        matte.color = colour;
+        Drawing whole = drawings[index];
+        whole.fillsOf(destination).push_front(matte);
+        m_document->setDrawing(m_layer, f, whole, tr("Generate Auto-Matte"));
+        ++made;
+    }
+    m_committing = false;
+    m_document->endMacro();
+    update();
+    return made;
 }
 
 void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)

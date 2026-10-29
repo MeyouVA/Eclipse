@@ -88,6 +88,7 @@ public:
         int backdropUnselected = 170;
         int backdropTitleSize = 14;
         int backdropColours = 17;       // how many of the backdrop colours are offered
+        bool compositePassThrough = false;  // new composites pass their inputs through
     };
     void setOptions(Options const& options);
     Options const& options() const { return m_options; }
@@ -181,6 +182,10 @@ public:
     QVector<int> pickedGraphNodes() const;
     void addPickedGraphNode(int id);
     int groupGraphNodes(QVector<int> const& ids);
+    // The nodes grouped, with a composite inside taking whatever left them, so the group gives one picture (its id; 0: none).
+    int groupGraphNodesWithComposite(QVector<int> const& ids);
+    // The picked nodes cabled into new inputs of a composite (how many were).
+    int connectToComposite(int composite, QVector<int> const& ids);
     // What a port of a node takes or gives (shown when the pointer rests on it): "Input image", "Matte" ...
     QString graphPortName(GraphNode const& node, int port, bool input) const;
 
@@ -235,6 +240,10 @@ public slots:
     void onActionEditor();
     void onActionCreateDisplay();
     void onActionCreateBackdrop();
+    // Composites: a new one; the picked nodes grouped with one inside; the picked nodes cabled into the picked composite.
+    void onActionCreateComposite();
+    void onActionGroupWithComposite();
+    void onActionConnectToComposite();
     void onActionRecalculateSelected();
     void onActionRecalculateAll();
     void onActionFindAndInsert();
@@ -414,6 +423,8 @@ private:
     void graphContextMenu(QPoint globalPos, QPointF widgetPos);
     void deleteGraphSelection();
     void editGraphNode(int id);
+    // A composite's settings: its name, mode (bitmap, vector, pass through) and how deep what it gives stands.
+    void editComposite(int id);
     void resetGraphView();
     void addNavigationMenu(QMenu& menu);
     int m_dragLayer = -1;

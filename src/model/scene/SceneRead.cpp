@@ -213,6 +213,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
                 n.at = QPointF(at[0].toDouble(), at[1].toDouble());
             n.enabled = no["enabled"].toBool(true);
             n.passThrough = no["passThrough"].toBool(false);
+            n.asVector = no["asVector"].toBool(false);
+            n.outputZ = std::clamp(no["outputZ"].toInt(0), 0, int(GraphNode::ZFromPort));
+            n.zPort = std::max(0, no["zPort"].toInt(0));
             n.thumb = std::clamp(no["thumb"].toInt(0), 0, 2000);
             for (auto const& [key, map] : {std::pair<char const*, QMap<int, QString>*>{"portNames", &n.portNames}, {"portFilters", &n.portFilters}}) {
                 QJsonObject const names = no[QLatin1String(key)].toObject();

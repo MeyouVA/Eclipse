@@ -52,7 +52,9 @@ int GraphNode::inputs() const
     case Note:
         return 0;
     case EffectNode:
-        return takesMatte(effect.type) ? 2 : 1;
+        if (effect.type == Effect::ImageSwitch)
+            return std::max(1, ports);
+        return takesMatte(effect.type) || effect.type == Effect::GenericComposite || effect.type == Effect::DifferenceKeyer ? 2 : 1;
     case Display:
     case Waypoint:
         return 1;
@@ -364,7 +366,9 @@ Effect Effect::made(Type type)
              : type == Grain ? 0.3 : type == RadialBlur ? 0.15 : type == Negate ? 1.0 : type == Median ? 2.0 : type == Tone || type == Highlight ? 2.0
              : type == Bloom ? 12.0 : type == Pixelate ? 10.0 : type == Turbulence ? 6.0 : type == MatteGenerator ? 30.0
              : type == BlackWhite || type == Gradient ? 1.0 : type == MatteResize ? 4.0 : type == RemoveTransparency ? 0.5
-             : type == VariableBlur ? 12.0 : type == MotionBlur ? 4.0 : type == FieldChart ? 1.0 : type == ColourCurves ? 1.0 : type == Focus ? 4.0 : type == ApplyPeg ? 1.0 : type == ScaleOutput ? 0.5 : type == Glue ? 10.0 : type == Script || type == External || type == ApplyCamera ? 1.0 : 8.0;
+             : type == VariableBlur ? 12.0 : type == MotionBlur ? 4.0 : type == FieldChart ? 1.0 : type == ColourCurves ? 1.0 : type == Focus ? 4.0 : type == ApplyPeg ? 1.0 : type == ScaleOutput ? 0.5 : type == Glue ? 10.0 : type == Script || type == External || type == ApplyCamera ? 1.0
+             : type == GenericComposite || type == LayerSelector || type == Visibility ? 1.0 : type == ChromaKey ? 0.3 : type == DifferenceKeyer ? 0.1
+             : type == LuminanceThreshold ? 0.5 : type == ImageSwitch ? 0.0 : 8.0;
     e.color = type == Shadow ? QColor(0, 0, 0, 150) : type == Glow ? QColor(255, 240, 160) : type == ColourScale ? QColor(255, 200, 150)
             : type == Tone ? QColor(120, 110, 170) : type == Highlight ? QColor(255, 245, 210) : type == MatteGenerator ? QColor(255, 255, 255)
             : type == FieldChart ? QColor(30, 30, 30)
@@ -392,5 +396,12 @@ Effect Effect::made(Type type)
         e.hue = 30.0;
     if (type == BrightnessContrast)
         e.brightness = 20.0;
+    if (type == ChromaKey) {
+        e.color = QColor(0, 177, 64);
+        e.softness = 0.1;
+        e.spill = 0.5;
+    }
+    if (type == DifferenceKeyer || type == LuminanceThreshold)
+        e.softness = 0.05;
     return e;
 }

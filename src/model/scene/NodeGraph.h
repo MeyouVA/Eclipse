@@ -24,6 +24,12 @@ struct GraphNode {
     bool enabled = true;
     // A composite whose inputs go on separately into the composite it feeds (blend modes then reach what lies under it there).
     bool passThrough = false;
+    // A composite as vector: its inputs drawn straight into one picture, each over the last, rather than a picture of each laid over the others.
+    bool asVector = false;
+    // How deep what a composite gives stands, to the composite it feeds: as its leftmost or rightmost input, the nearest or furthest, or one chosen.
+    enum OutputZ { ZLeftmost, ZRightmost, ZLowest, ZHighest, ZFromPort };
+    int outputZ = ZLeftmost;
+    int zPort = 0;
     // How tall its thumbnail is over it in the Node View (0: none shown).
     int thumb = 0;
     // Names given to its outputs, and the names its inputs accept (a filter; * and ? stand for any letters).

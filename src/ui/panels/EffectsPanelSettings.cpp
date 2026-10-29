@@ -284,7 +284,8 @@ void EffectsPanel::connectEditors()
         bool const percent = effect.type == Effect::Tint || effect.type == Effect::Transparency || effect.type == Effect::HueSaturation
                              || effect.type == Effect::BrightnessContrast || effect.type == Effect::Grain || effect.type == Effect::RadialBlur
                              || effect.type == Effect::ColourScale || effect.type == Effect::Negate || effect.type == Effect::BlackWhite
-                             || effect.type == Effect::Gradient;
+                             || effect.type == Effect::Gradient || effect.type == Effect::RemoveTransparency || effect.type == Effect::ChromaKey
+                             || effect.type == Effect::LuminanceThreshold;
         double const amount = percent ? v / 100.0 : v;
         if (effect.animated) {
             // On this frame only: a keyframe.

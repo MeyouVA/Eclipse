@@ -67,6 +67,16 @@ bool Canvas::blursEnabled()
     return gBlurs;
 }
 
+void Canvas::setViewing(bool on)
+{
+    gViewing = on;
+}
+
+bool Canvas::viewing()
+{
+    return gViewing;
+}
+
 void Canvas::setFocusEnabled(bool on)
 {
     gFocus = on;
@@ -345,6 +355,86 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
         image.fill(Qt::transparent);
         return image;
     };
+    // A layer's picture: where its pegs put it, with its own effects; only the art layers in `sheets` (Line Art, Colour Art, Underlay, Overlay).
+    auto paintLayerNode = [&](QImage& out, GraphNode const& node, int sheets) {
+        GraphNode const* const n = &node;
+        int const l = scene.layerIndex(n->layer);
+        if (l < 0 || !scene.enabled(l))
+            return;
+        Layer const& layer = scene.layers[l];
+        QPainter p(&out);
+        p.setRenderHints(painter.renderHints());
+        if (layer.kind == Layer::ColourCard) {
+            QColor colour = layer.cardColor;
+            colour.setAlphaF(colour.alphaF() * float(layer.opacity));
+            p.setTransform(base);
+            p.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
+        } else if (int const index = layer.drawingAt(frame); index != Layer::kNoDrawing) {
+            p.setTransform(scene.worldTransform(l, frame) * camera * base);
+            Pose const pose = scene.poseOf(l, frame);
+            Drawing shown = Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index));
+            if ((sheets & 0xf) != 0xf) {
+                // Only the art layers it gives (Line Art, Colour Art, Underlay, Overlay).
+                for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+                    if (!(sheets & (1 << sheet))) {
+                        shown.fillsOf(sheet).clear();
+                        shown.strokesOf(sheet).clear();
+                    }
+                shown.pictures.removeIf([&](Picture const& pic) { return !(sheets & (1 << (pic.painted ? pic.sheet : int(Drawing::LineSheet)))); });
+            }
+            if (n->symbolLayer && layer.showsSymbol()) {
+                Scene selected = scene;
+                for (Scene::Symbol& symbol : selected.symbols)
+                    if (symbol.id == layer.symbolId)
+                        for (Layer& output : symbol.layers)
+                            if (output.holdsDrawings() && output.id != n->symbolLayer)
+                                output.visible = false;
+                paintLayerDrawing(p, selected, l, frame, shown, layer.opacity * pose.opacity, camera * base);
+            } else {
+                paintLayerDrawing(p, scene, l, frame, shown, layer.opacity * pose.opacity, camera * base);
+            }
+        }
+    };
+    // How deep what leaves an output stands (as a layer's depth: more is nearer the camera), for a composite to lay its inputs in order.
+    std::function<double(int, int, int)> depthAt = [&](int id, int port, int guard) -> double {
+        GraphNode const* const n = graph.node(id);
+        if (!n || guard > 64)
+            return 0.0;
+        auto from = [&](int node, int in) {
+            GraphCable const* const c = graph.into(node, in);
+            return c ? depthAt(c->from, c->fromPort, guard + 1) : 0.0;
+        };
+        switch (n->kind) {
+        case GraphNode::LayerNode: {
+            int const l = scene.layerIndex(n->layer);
+            return l >= 0 ? scene.depthOf(l, frame) : 0.0;
+        }
+        case GraphNode::EffectNode:
+            if (n->effect.type == Effect::ImageSwitch && n->effect.enabled)
+                return from(id, std::clamp(int(std::lround(n->amountAt(frame))), 0, n->inputs() - 1));
+            return from(id, 0);
+        case GraphNode::Waypoint:
+            return from(id, 0);
+        case GraphNode::Group:
+            return graph.groupOut(id) ? from(graph.groupOut(id), port) : 0.0;
+        case GraphNode::GroupIn:
+            return from(n->group, port);
+        case GraphNode::Composite: {
+            if (n->outputZ == GraphNode::ZFromPort)
+                return from(id, n->zPort);
+            QVector<double> depths;
+            for (int in = 0; in < n->inputs(); ++in)
+                if (graph.into(id, in))
+                    depths.push_back(from(id, in));
+            if (depths.isEmpty())
+                return 0.0;
+            return n->outputZ == GraphNode::ZRightmost ? depths.last() : n->outputZ == GraphNode::ZLowest ? *std::min_element(depths.cbegin(), depths.cend())
+                   : n->outputZ == GraphNode::ZHighest ? *std::max_element(depths.cbegin(), depths.cend()) : depths.first();
+        }
+        default:
+            return 0.0;
+        }
+    };
     // Each output of each node, worked out once; a ring (which the Node View does not let one make) gives nothing.
     QHash<QPair<int, int>, QImage> made;
     QSet<QPair<int, int>> working;
@@ -362,43 +452,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
         };
         GraphNode const* const n = graph.node(id);
         if (n && n->kind == GraphNode::LayerNode) {
-            // A layer's picture: where its pegs put it, with its own effects.
-            int const l = scene.layerIndex(n->layer);
-            if (l >= 0 && scene.enabled(l)) {
-                Layer const& layer = scene.layers[l];
-                QPainter p(&out);
-                p.setRenderHints(painter.renderHints());
-                if (layer.kind == Layer::ColourCard) {
-                    QColor colour = layer.cardColor;
-                    colour.setAlphaF(colour.alphaF() * float(layer.opacity));
-                    p.setTransform(base);
-                    p.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
-                } else if (int const index = layer.drawingAt(frame); index != Layer::kNoDrawing) {
-                    p.setTransform(scene.worldTransform(l, frame) * camera * base);
-                    Pose const pose = scene.poseOf(l, frame);
-                    Drawing shown = Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index));
-                    if ((n->sheets & 0xf) != 0xf) {
-                        // Only the art layers it gives (Line Art, Colour Art, Underlay, Overlay).
-                        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
-                            if (!(n->sheets & (1 << sheet))) {
-                                shown.fillsOf(sheet).clear();
-                                shown.strokesOf(sheet).clear();
-                            }
-                        shown.pictures.removeIf([&](Picture const& pic) { return !(n->sheets & (1 << (pic.painted ? pic.sheet : int(Drawing::LineSheet)))); });
-                    }
-                    if (n->symbolLayer && layer.showsSymbol()) {
-                        Scene selected = scene;
-                        for (Scene::Symbol& symbol : selected.symbols)
-                            if (symbol.id == layer.symbolId)
-                                for (Layer& output : symbol.layers)
-                                    if (output.holdsDrawings() && output.id != n->symbolLayer)
-                                        output.visible = false;
-                        paintLayerDrawing(p, selected, l, frame, shown, layer.opacity * pose.opacity, camera * base);
-                    } else {
-                        paintLayerDrawing(p, scene, l, frame, shown, layer.opacity * pose.opacity, camera * base);
-                    }
-                }
-            }
+            paintLayerNode(out, *n, n->sheets);
         } else if (n && (n->kind == GraphNode::Waypoint || (!n->enabled && (n->kind == GraphNode::Composite || n->kind == GraphNode::Group)))) {
             // A waypoint, or a composite or group switched off: what comes into its first input goes straight on.
             out = input(id, 0);
@@ -420,12 +474,25 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 }
             };
             gather(id, 0);
-            for (int k = int(feeds.size()) - 1; k >= 0; --k) {
+            // The furthest laid down first, so the nearest ends in front; of those as deep, the first input in front.
+            QVector<double> depths(feeds.size());
+            QVector<int> order(feeds.size());
+            for (int k = 0; k < feeds.size(); ++k) {
+                depths[k] = depthAt(feeds[k].from, feeds[k].fromPort, 0);
+                order[k] = k;
+            }
+            std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return depths[a] < depths[b] || (depths[a] == depths[b] && a > b); });
+            for (int k : std::as_const(order)) {
                 GraphCable const* const c = &feeds[k];
-                QImage const over = picture(c->from, c->fromPort);
                 GraphNode const* const from = graph.node(c->from);
                 int const l = from && from->kind == GraphNode::LayerNode ? scene.layerIndex(from->layer) : -1;
                 int const blend = l >= 0 ? scene.layers[l].blend : int(Layer::BlendNormal);
+                if (n->asVector && l >= 0 && blend == Layer::BlendNormal) {
+                    // As vector: the layer drawn straight in with the rest, with no picture of its own between.
+                    paintLayerNode(out, *from, from->sheets);
+                    continue;
+                }
+                QImage const over = picture(c->from, c->fromPort);
                 if (blend == Layer::BlendNormal) {
                     QPainter p(&out);
                     p.resetTransform();
@@ -562,12 +629,54 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 Effects::blendOnto(under, out, e.blendMode);
                 out = under;
             } else if (e.type == Effect::VariableBlur) {
-                Effects::variableBlur(out, input(id, 1), amount * pixelsPerUnit);
+                QImage matte = input(id, 1);
+                if (e.invert) {
+                    // Outside the matte: blurred most where it is darkest.
+                    for (int y = 0; y < matte.height(); ++y) {
+                        QRgb* const line = reinterpret_cast<QRgb*>(matte.scanLine(y));
+                        for (int x = 0; x < matte.width(); ++x) {
+                            int const k = 255 - (qRed(line[x]) * 299 + qGreen(line[x]) * 587 + qBlue(line[x]) * 114) / 1000;
+                            line[x] = qRgb(k, k, k);
+                        }
+                    }
+                }
+                Effects::variableBlur(out, matte, amount * pixelsPerUnit);
             } else if (e.type == Effect::Glue) {
                 // Joined to what comes in at the second input.
                 QImage under = input(id, 1);
                 Effects::glue(under, out, amount * pixelsPerUnit);
                 out = under;
+            } else if (e.type == Effect::GenericComposite) {
+                // The first input put onto the second by the colour and alpha operations chosen.
+                QImage under = input(id, 1);
+                Effects::genericComposite(under, out, e.colourOperation, e.alphaOperation, e.intensity, amount);
+                out = under;
+            } else if (e.type == Effect::LayerSelector) {
+                // Only some art layers of the layer that comes in (straight, or through waypoints); anything else comes through whole.
+                int from = id;
+                GraphNode const* up = nullptr;
+                for (int guard = 0; guard < 256; ++guard) {
+                    GraphCable const* const c = graph.into(from, 0);
+                    up = c ? graph.node(c->from) : nullptr;
+                    if (!up || up->kind != GraphNode::Waypoint)
+                        break;
+                    from = c->from;
+                }
+                if (up && up->kind == GraphNode::LayerNode) {
+                    out = blank();
+                    paintLayerNode(out, *up, up->sheets & e.sheets);
+                }
+            } else if (e.type == Effect::ChromaKey) {
+                Effects::chromaKey(out, e.color, amount, e.softness, e.clipBlack, e.clipWhite, e.spill, e.invert);
+            } else if (e.type == Effect::DifferenceKeyer) {
+                Effects::differenceKey(out, input(id, 1), amount, e.softness, e.clipBlack, e.clipWhite, e.invert);
+            } else if (e.type == Effect::LuminanceThreshold) {
+                Effects::luminanceThreshold(out, amount, e.softness, e.clipBlack, e.clipWhite, e.invert);
+            } else if (e.type == Effect::ImageSwitch) {
+                out = input(id, std::clamp(int(std::lround(amount)), 0, n->inputs() - 1));
+            } else if (e.type == Effect::Visibility) {
+                if (gViewing ? !e.showInViews : !e.showInRender)
+                    out = blank();
             } else if (GraphNode::takesMatte(e.type) && graph.into(id, 1)) {
                 // The matte comes in at the second input: what is painted there (or, inverted, what is not).
                 QImage where = input(id, 1);

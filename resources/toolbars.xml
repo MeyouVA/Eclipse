@@ -265,6 +265,7 @@
   <item id="ZoomOut" toolbarText="Zoom -" visible="false"/>
   <item id="ResetView" toolbarText="Reset View" visible="false"/>
   <item id="TopLight" toolbarText="Top Light" visible="false"/>
+  <item id="AutoMatte" toolbarText="Auto-Matte" visible="false"/>
  </toolbar>
 
  <toolbar id="CameraViewToolbar" text="Camera View">

@@ -264,6 +264,20 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::External;
     else if (type == QLatin1String("applyCamera"))
         e.type = Effect::ApplyCamera;
+    else if (type == QLatin1String("genericComposite"))
+        e.type = Effect::GenericComposite;
+    else if (type == QLatin1String("layerSelector"))
+        e.type = Effect::LayerSelector;
+    else if (type == QLatin1String("chromaKey"))
+        e.type = Effect::ChromaKey;
+    else if (type == QLatin1String("differenceKeyer"))
+        e.type = Effect::DifferenceKeyer;
+    else if (type == QLatin1String("luminanceThreshold"))
+        e.type = Effect::LuminanceThreshold;
+    else if (type == QLatin1String("imageSwitch"))
+        e.type = Effect::ImageSwitch;
+    else if (type == QLatin1String("visibility"))
+        e.type = Effect::Visibility;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);
@@ -318,6 +332,18 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
     if (QJsonArray const area = eo["area"].toArray(); area.size() == 4)
         e.area = QRectF(area[0].toDouble(), area[1].toDouble(), std::max(0.0, area[2].toDouble()), std::max(0.0, area[3].toDouble()));
     e.blendMode = std::clamp(eo["blendMode"].toInt(1), 0, int(Layer::BlendCount) - 1);
+    e.colourOperation = std::clamp(eo["colourOperation"].toInt(0), 0, 9);
+    e.alphaOperation = std::clamp(eo["alphaOperation"].toInt(0), 0, 5);
+    if (QJsonArray const intensity = eo["intensity"].toArray(); intensity.size() == 3)
+        for (int c = 0; c < 3; ++c)
+            e.intensity[c] = std::clamp(intensity[c].toDouble(1.0), 0.0, 10.0);
+    e.sheets = eo["sheets"].toInt(0xf) & 0xf;
+    e.softness = std::clamp(eo["softness"].toDouble(e.softness), 0.0, 1.0);
+    e.clipBlack = std::clamp(eo["clipBlack"].toDouble(0.0), 0.0, 1.0);
+    e.clipWhite = std::clamp(eo["clipWhite"].toDouble(1.0), 0.0, 1.0);
+    e.spill = std::clamp(eo["spill"].toDouble(0.0), 0.0, 1.0);
+    e.showInViews = eo["showInViews"].toBool(true);
+    e.showInRender = eo["showInRender"].toBool(true);
     if (e.type == Effect::Script || e.type == Effect::External)
         e.text = eo["text"].toString();
     QJsonArray const curves = eo["curves"].toArray();

@@ -110,6 +110,10 @@ void MainWindow::createWindowsMenuViews()
                 return;
             }
             Effect const e = Effect::made(Effect::Type(std::clamp(type, 0, int(Effect::TypeCount) - 1)));
+            if (Effect::graphOnly(e.type) || e.type == Effect::Blending) {
+                statusBar()->showMessage(tr("That works only as a node of a graph wired by hand (Node View > Wire the Graph by Hand)."), 6000);
+                return;
+            }
             QVector<Effect> effects = scene.layers[layer()].effects;
             effects.push_back(e);
             m_document->setEffects(layer(), effects, tr("Add Effect"));

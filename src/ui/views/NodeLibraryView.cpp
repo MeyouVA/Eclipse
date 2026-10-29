@@ -88,6 +88,14 @@ static Entry const kEffects[] = {
     {QT_TR_NOOP("Scale Output"), "effect:37", QT_TR_NOOP("The picture made at a fraction of the resolution"), QT_TR_NOOP("Output")},
     {QT_TR_NOOP("Script"), "effect:39", QT_TR_NOOP("A JavaScript run on the picture each frame"), QT_TR_NOOP("Filter")},
     {QT_TR_NOOP("External"), "effect:40", QT_TR_NOOP("A program run on the picture each frame (it reads {in} and writes {out})"), QT_TR_NOOP("Filter")},
+    {QT_TR_NOOP("Blending"), "effect:30", QT_TR_NOOP("Lays the picture over the one at its second input as a blend mode says (in a graph wired by hand)"), QT_TR_NOOP("Combine")},
+    {QT_TR_NOOP("Generic Composite"), "effect:42", QT_TR_NOOP("Puts the picture onto the one at its second input by a colour and an alpha operation (in a graph wired by hand)"), QT_TR_NOOP("Combine")},
+    {QT_TR_NOOP("Image Switch"), "effect:47", QT_TR_NOOP("Passes on one of its inputs, chosen by a port index that can be animated (in a graph wired by hand)"), QT_TR_NOOP("Combine")},
+    {QT_TR_NOOP("Layer Selector"), "effect:43", QT_TR_NOOP("Only some art layers of the layer that comes in: Line Art, Colour Art, Underlay, Overlay (in a graph wired by hand)"), QT_TR_NOOP("Filter")},
+    {QT_TR_NOOP("Chroma Keying"), "effect:44", QT_TR_NOOP("Takes away a backing colour, as a green screen, and its spill from what stays"), QT_TR_NOOP("Filter")},
+    {QT_TR_NOOP("RGB Difference Keyer"), "effect:45", QT_TR_NOOP("Takes away what matches a clean picture of the background at its second input (in a graph wired by hand)"), QT_TR_NOOP("Filter")},
+    {QT_TR_NOOP("Luminance Threshold"), "effect:46", QT_TR_NOOP("Keeps what is lighter than a threshold (or, inverted, darker) as a matte"), QT_TR_NOOP("Filter")},
+    {QT_TR_NOOP("Visibility"), "effect:48", QT_TR_NOOP("Shows what comes in only in the Camera view, or only when rendered (in a graph wired by hand)"), QT_TR_NOOP("Misc")},
     {QT_TR_NOOP("Field Chart"), "effect:33", QT_TR_NOOP("A 12-field chart of the camera frame over the layer"), QT_TR_NOOP("Generator")},
 };
 
@@ -222,7 +230,7 @@ void NodeLibraryView::fillCategories(QString const& current)
     // The kinds there are, then the user's own (in italics).
     QSignalBlocker const quiet(m_categories);
     m_categories->clear();
-    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator")});
+    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator"), tr("Combine"), tr("Misc")});
     for (auto it = m_user.cbegin(); it != m_user.cend(); ++it) {
         QListWidgetItem* const item = new QListWidgetItem(it.key(), m_categories);
         QFont italic = item->font();

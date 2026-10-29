@@ -182,6 +182,10 @@ QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::ColourCurves ? "colourCurves" : e.type == Effect::Focus ? "focus"
                              : e.type == Effect::ApplyPeg ? "applyPeg" : e.type == Effect::ScaleOutput ? "scaleOutput" : e.type == Effect::Glue ? "glue"
                              : e.type == Effect::Script ? "script" : e.type == Effect::External ? "external" : e.type == Effect::ApplyCamera ? "applyCamera"
+                             : e.type == Effect::GenericComposite ? "genericComposite" : e.type == Effect::LayerSelector ? "layerSelector"
+                             : e.type == Effect::ChromaKey ? "chromaKey" : e.type == Effect::DifferenceKeyer ? "differenceKeyer"
+                             : e.type == Effect::LuminanceThreshold ? "luminanceThreshold" : e.type == Effect::ImageSwitch ? "imageSwitch"
+                             : e.type == Effect::Visibility ? "visibility"
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
@@ -202,6 +206,23 @@ QJsonObject effectToJson(Effect const& e)
         one["area"] = QJsonArray{e.area.x(), e.area.y(), e.area.width(), e.area.height()};
     if (e.type == Effect::Blending)
         one["blendMode"] = e.blendMode;
+    if (e.type == Effect::GenericComposite) {
+        one["colourOperation"] = e.colourOperation;
+        one["alphaOperation"] = e.alphaOperation;
+        one["intensity"] = QJsonArray{e.intensity[0], e.intensity[1], e.intensity[2]};
+    }
+    if (e.type == Effect::LayerSelector)
+        one["sheets"] = e.sheets;
+    if (e.type == Effect::ChromaKey || e.type == Effect::DifferenceKeyer || e.type == Effect::LuminanceThreshold) {
+        one["softness"] = e.softness;
+        one["clipBlack"] = e.clipBlack;
+        one["clipWhite"] = e.clipWhite;
+        one["spill"] = e.spill;
+    }
+    if (e.type == Effect::Visibility) {
+        one["showInViews"] = e.showInViews;
+        one["showInRender"] = e.showInRender;
+    }
     if (e.type == Effect::Script || e.type == Effect::External)
         one["text"] = e.text;
     if (e.type == Effect::ColourCurves) {
@@ -707,6 +728,12 @@ QJsonObject graphToJson(NodeGraph const& graph)
             node["enabled"] = false;
         if (n.passThrough)
             node["passThrough"] = true;
+        if (n.asVector)
+            node["asVector"] = true;
+        if (n.outputZ != GraphNode::ZLeftmost)
+            node["outputZ"] = n.outputZ;
+        if (n.zPort != 0)
+            node["zPort"] = n.zPort;
         if (n.thumb > 0)
             node["thumb"] = n.thumb;
         auto names = [](QMap<int, QString> const& map) {

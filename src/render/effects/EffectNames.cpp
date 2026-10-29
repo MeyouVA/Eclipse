@@ -113,6 +113,28 @@ QString name(Effect const& effect, Scene const& scene)
         int const matte = scene.layerIndex(effect.matte);
         return QObject::tr("Variable Blur  %1  %2").arg(effect.amount, 0, 'f', 1).arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"));
     }
+    case Effect::GenericComposite:
+        return QObject::tr("Generic Composite  %1%").arg(int(std::lround(effect.amount * 100.0)));
+    case Effect::LayerSelector: {
+        QStringList arts;
+        QString const names[4] = {QObject::tr("Underlay"), QObject::tr("Colour Art"), QObject::tr("Line Art"), QObject::tr("Overlay")};
+        for (int sheet = 0; sheet < 4; ++sheet)
+            if (effect.sheets & (1 << sheet))
+                arts.push_back(names[sheet]);
+        return QObject::tr("Layer Selector  %1").arg(arts.isEmpty() ? QObject::tr("(nothing)") : arts.join(QStringLiteral(", ")));
+    }
+    case Effect::ChromaKey:
+        return QObject::tr("Chroma Keying  %1").arg(effect.color.name());
+    case Effect::DifferenceKeyer:
+        return QObject::tr("RGB Difference Keyer  %1").arg(effect.amount, 0, 'f', 2);
+    case Effect::LuminanceThreshold:
+        return QObject::tr("Luminance Threshold  %1").arg(effect.amount, 0, 'f', 2);
+    case Effect::ImageSwitch:
+        return QObject::tr("Image Switch  %1").arg(int(std::lround(effect.amount)) + 1);
+    case Effect::Visibility:
+        return QObject::tr("Visibility  %1").arg(effect.showInViews && effect.showInRender ? QObject::tr("everywhere")
+                                                 : effect.showInViews ? QObject::tr("views only") : effect.showInRender ? QObject::tr("render only")
+                                                 : QObject::tr("hidden"));
     case Effect::Tone:
     case Effect::Highlight: {
         int const matte = scene.layerIndex(effect.matte);

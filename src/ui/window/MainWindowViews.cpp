@@ -400,7 +400,10 @@ void MainWindow::createCameraView()
         mode->setToolTip(tr("Normal: the frame as you work on it.  Render: as it will be rendered.\n"
                             "Matte: white where the frame is painted, black where it is clear.  Depth: each layer as light as it is near the camera."));
         mode->setFocusPolicy(Qt::NoFocus);
-        connect(mode, &QComboBox::currentIndexChanged, m_canvas, [this](int index) { m_canvas->setViewMode(Canvas::ViewMode(index)); });
+        connect(mode, &QComboBox::currentIndexChanged, m_canvas, [this](int index) {
+            m_canvas->setViewMode(Canvas::ViewMode(index));
+            m_actions->setChecked(QStringLiteral("MatteView"), index == int(Canvas::ViewMatte));
+        });
         row->addSpacing(6);
         row->addWidget(mode);
         // Snapshots: the frame as rendered, kept; shown in place of the frame while the button is down, to compare.

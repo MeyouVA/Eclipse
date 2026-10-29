@@ -6,7 +6,8 @@
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
-                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, Script, External, ApplyCamera, TypeCount };
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, Script, External, ApplyCamera,
+                GenericComposite, LayerSelector, ChromaKey, DifferenceKeyer, LuminanceThreshold, ImageSwitch, Visibility, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -35,6 +36,19 @@ struct Effect {
     QRectF area;                // crop: what is kept, in scene units
     int blendMode = 1;          // blending: a Layer::Blend (Multiply to begin with)
     QVector<QPointF> curves[4];
+    // Generic composite: how the colours and the opacity of the first input go onto the second, each colour scaled first.
+    int colourOperation = 0;
+    int alphaOperation = 0;
+    double intensity[3] = {1.0, 1.0, 1.0};
+    int sheets = 0xf;           // layer selector: the art layers it lets through (1 << Drawing::Sheet each)
+    double softness = 0.0;      // keyers: how gradual the edge between kept and taken away is
+    double clipBlack = 0.0;     // keyers: opacity below this taken away wholly, above `clipWhite` kept wholly (0..1)
+    double clipWhite = 1.0;
+    double spill = 0.0;         // chroma keying: how much of the key colour is taken out of what stays (0..1)
+    bool showInViews = true;    // visibility: whether what comes in shows in the Camera view, and in renders
+    bool showInRender = true;
+    // Works only as a node of a graph wired by hand (it takes more than one picture, or a layer's art layers).
+    static bool graphOnly(Type type) { return type == GenericComposite || type == LayerSelector || type == DifferenceKeyer || type == ImageSwitch || type == Visibility; }
     QString text;               // script: the script; external: the command line
     int life = 24;
     double speed = 6.0;
