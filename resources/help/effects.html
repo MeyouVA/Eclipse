@@ -6,10 +6,16 @@
 to change it. Their amounts can be animated - each has a row in the Timeline. The <b>Node Library</b> lists them all by kind.</p>
 <ul>
 <li><b>Blurs</b>: Blur, Directional Blur, Radial Blur, Variable Blur (as much as a matte layer is light), Motion Blur (a fading trail
-of the frames before) and Focus (depth of field: the further a layer stands from the depth in focus, the more blurred).</li>
+of the frames before) and Focus (depth of field: the further a layer stands from the depth in focus, the more blurred);
+also Blur-Gaussian (more across or more up and down), Blur-Box, Blur-Radial-Zoom (zoom, spin or spiral about a centre), Bokeh Blur,
+Anti-Flicker and Unsharp Mask.</li>
 <li><b>Colour</b>: Tint, Colour-Scale, Hue-Saturation, Brightness-Contrast, Colour Curves (drag the curve, for all three colours or
-one), Negate, Black &amp; White, Gradient, Tone and Highlight (shade and light where a matte lies), Channel Selector.</li>
-<li><b>Light and shape</b>: Glow, Shadow, Bloom, Grain, Median, Pixelate, Ripple, Turbulence.</li>
+one), Negate, Black &amp; White, Gradient, Tone and Highlight (shade and light where a matte lies), Channel Selector; also
+Colour-Fade, Channel-Swap, Colour Levels, Colour-Screen, Contrast, Gamma, Colour Banding, Dither and Increase Opacity.</li>
+<li><b>Light and shape</b>: Glow, Shadow, Bloom, Shine (rays away from a light), Lens Flare, Grain, Median, Pixelate, Ripple,
+Turbulence, Shake and Quake (random moves).</li>
+<li><b>Generators</b>: Turbulent Noise, Grid, Field Chart (12 or 16 field) and Burn-In (text over the frame: <code>%f</code> the
+frame, <code>%s</code> the scene's name, <code>%t</code> the time code).</li>
 <li><b>Mattes</b>: Cutter, Matte Generator, Matte Resize, Matte Blur, Matte Composite, Crop, Remove Transparency, Transparency.</li>
 <li><b>Moving and output</b>: Apply Peg Transformation (moved as another layer moves), Scale Output (made at a fraction of the
 resolution), Field Chart (a 12-field chart over the picture).</li>
@@ -19,7 +25,9 @@ resolution), Field Chart (a 12-field chart over the picture).</li>
 <li><b>External</b>: a program run on the picture each frame: it reads <code>{in}</code> and writes <code>{out}</code> (PNG files);
 <code>{frame}</code> is the frame.</li>
 </ul>
-<p>Edit &gt; Preferences &gt; Render can switch Blur and Focus off everywhere, for speed while working.</p>
+<p>Many effects have settings of their own, shown under the amount in the Effects panel and in the node's settings window.
+Insert &gt; Effects adds the common ones to the current layer (in a graph wired by hand: as a node after the layer's).</p>
+<p>Edit &gt; Preferences &gt; Render can switch blurs, Focus, Tone and Highlight, and Colour-Override off everywhere, for speed while working.</p>
 <h2>The node graph</h2>
 <p>The <b>Node View</b> shows the layers as nodes. <b>Wire the Graph by Hand</b> (in its menu) turns that into a graph of nodes and
 cables you change yourself; the frame is then made as the graph says, in the Render view, exports and printing.</p>
@@ -30,6 +38,9 @@ mode) and <b>Glue</b> (joined to it, the gap between filled smoothly).</li>
 <li>The ends of layer, peg and group nodes are their parenting: cable a layer to a peg to hang it there.</li>
 <li>A layer node can give only some of its art layers - Line Art, Colour Art, Underlay, Overlay (Art Layers, in its menu).</li>
 <li>Double-click an effect node to set it; its amount can be keyframed.</li>
+<li>Some effects work only in a graph: <b>Colour-Override</b> (palette colours of the layer that comes in shown in others, or only
+those), <b>Refract</b> (bent through the bumps of the picture at its second input) and <b>Animate Pencil Texture</b> (the grain of
+textured lines moved along them each frame).</li>
 <li>Ctrl+click nodes, then Group: the cables across the group's edge become its inputs and outputs.</li>
 <li><b>Stack the Layers Again</b> goes back to the layers drawn in order.</li>
 </ul>

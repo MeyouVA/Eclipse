@@ -18,6 +18,38 @@
 
 namespace Effects {
 
+QString kindName(Effect::Type type)
+{
+    switch (type) {
+    case Effect::GaussianBlur: return QObject::tr("Blur-Gaussian");
+    case Effect::BoxBlur: return QObject::tr("Blur-Box");
+    case Effect::ZoomBlur: return QObject::tr("Blur-Radial-Zoom");
+    case Effect::BokehBlur: return QObject::tr("Bokeh Blur");
+    case Effect::AntiFlicker: return QObject::tr("Anti-Flicker");
+    case Effect::ColourFade: return QObject::tr("Colour-Fade");
+    case Effect::ColourOverride: return QObject::tr("Colour-Override");
+    case Effect::ChannelSwap: return QObject::tr("Channel-Swap");
+    case Effect::ColourLevels: return QObject::tr("Colour Levels");
+    case Effect::ColourScreen: return QObject::tr("Colour-Screen");
+    case Effect::Contrast: return QObject::tr("Contrast");
+    case Effect::Gamma: return QObject::tr("Gamma");
+    case Effect::ColourBanding: return QObject::tr("Colour Banding");
+    case Effect::Dither: return QObject::tr("Dither");
+    case Effect::Shine: return QObject::tr("Shine");
+    case Effect::LensFlare: return QObject::tr("Lens Flare");
+    case Effect::BurnIn: return QObject::tr("Burn-In");
+    case Effect::TurbulentNoise: return QObject::tr("Turbulent Noise");
+    case Effect::Grid: return QObject::tr("Grid");
+    case Effect::Refract: return QObject::tr("Refract");
+    case Effect::Shake: return QObject::tr("Shake");
+    case Effect::Quake: return QObject::tr("Quake");
+    case Effect::UnsharpMask: return QObject::tr("Unsharp Mask");
+    case Effect::IncreaseOpacity: return QObject::tr("Increase Opacity");
+    case Effect::AnimatePencilTexture: return QObject::tr("Animate Pencil Texture");
+    default: return name(Effect::made(type), Scene()).section(QStringLiteral("  "), 0, 0);
+    }
+}
+
 QString name(Effect const& effect, Scene const& scene)
 {
     switch (effect.type) {
@@ -140,6 +172,41 @@ QString name(Effect const& effect, Scene const& scene)
         int const matte = scene.layerIndex(effect.matte);
         return (effect.type == Effect::Tone ? QObject::tr("Tone  %1%2") : QObject::tr("Highlight  %1%2"))
             .arg(matte >= 0 ? scene.layers[matte].name : QObject::tr("(no matte)"), effect.invert ? QObject::tr("  inverted") : QString());
+    }
+    case Effect::GaussianBlur:
+    case Effect::BoxBlur:
+    case Effect::ZoomBlur:
+    case Effect::BokehBlur:
+    case Effect::AntiFlicker:
+    case Effect::ColourFade:
+    case Effect::ColourOverride:
+    case Effect::ChannelSwap:
+    case Effect::ColourLevels:
+    case Effect::ColourScreen:
+    case Effect::Contrast:
+    case Effect::Gamma:
+    case Effect::ColourBanding:
+    case Effect::Dither:
+    case Effect::Shine:
+    case Effect::LensFlare:
+    case Effect::BurnIn:
+    case Effect::TurbulentNoise:
+    case Effect::Grid:
+    case Effect::Refract:
+    case Effect::Shake:
+    case Effect::Quake:
+    case Effect::UnsharpMask:
+    case Effect::IncreaseOpacity:
+    case Effect::AnimatePencilTexture: {
+        Effect::Amount const a = Effect::amountOf(effect.type);
+        QString const kind = kindName(effect.type);
+        if (effect.type == Effect::ColourOverride)
+            return QObject::tr("%1  %n colour(s)", nullptr, int(effect.overrides.size())).arg(kind);
+        if (a.shown == 1 && effect.amount < 1.0)
+            return QStringLiteral("%1  %2%").arg(kind).arg(int(std::lround(effect.amount * 100.0)));
+        if (a.shown == 2 || a.shown == 3)
+            return QStringLiteral("%1  %2").arg(kind).arg(effect.amount, 0, 'f', 1);
+        return kind;
     }
     default: {
         int const matte = scene.layerIndex(effect.matte);

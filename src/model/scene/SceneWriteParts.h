@@ -26,6 +26,8 @@ QString pathFrom(QString const& folder, QString const& file);
 
 QJsonArray pairsJson(QVector<QPair<QString, QString>> const& pairs);
 
+// The name a newer kind of effect is saved by.
+char const* effectTypeName(Effect::Type type);
 // An effect, as the scene file keeps it (on a layer, or on an effect node of the node graph).
 QJsonObject effectToJson(Effect const& e);
 

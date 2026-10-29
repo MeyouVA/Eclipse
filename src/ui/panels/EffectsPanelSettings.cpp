@@ -285,7 +285,7 @@ void EffectsPanel::connectEditors()
                              || effect.type == Effect::BrightnessContrast || effect.type == Effect::Grain || effect.type == Effect::RadialBlur
                              || effect.type == Effect::ColourScale || effect.type == Effect::Negate || effect.type == Effect::BlackWhite
                              || effect.type == Effect::Gradient || effect.type == Effect::RemoveTransparency || effect.type == Effect::ChromaKey
-                             || effect.type == Effect::LuminanceThreshold;
+                             || effect.type == Effect::LuminanceThreshold || Effect::amountOf(effect.type).shown == 1;
         double const amount = percent ? v / 100.0 : v;
         if (effect.animated) {
             // On this frame only: a keyframe.

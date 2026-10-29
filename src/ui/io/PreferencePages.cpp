@@ -521,6 +521,16 @@ void MainWindow::preferencesRender(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.renderFocus->setToolTip(tr("Off: Focus (depth of field) effects are left out wherever a frame is drawn."));
     w.renderFocus->setChecked(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
     w.renderLayout->addRow(w.renderFocus);
+    w.renderToneHighlight = new QCheckBox(tr("Enable tone and highlight"), w.renderPage);
+    w.renderToneHighlight->setObjectName(QStringLiteral("PrefRenderToneHighlight"));
+    w.renderToneHighlight->setToolTip(tr("Off: Tone and Highlight effects are left out wherever a frame is drawn - faster while working."));
+    w.renderToneHighlight->setChecked(s.value(QStringLiteral("prefs/renderToneHighlight"), true).toBool());
+    w.renderLayout->addRow(w.renderToneHighlight);
+    w.renderColourOverride = new QCheckBox(tr("Enable colour override"), w.renderPage);
+    w.renderColourOverride->setObjectName(QStringLiteral("PrefRenderColourOverride"));
+    w.renderColourOverride->setToolTip(tr("Off: Colour-Override nodes let the layer through in its own colours."));
+    w.renderColourOverride->setChecked(s.value(QStringLiteral("prefs/renderColourOverride"), true).toBool());
+    w.renderLayout->addRow(w.renderColourOverride);
 
     Q_UNUSED(s);
     Q_UNUSED(dialog);

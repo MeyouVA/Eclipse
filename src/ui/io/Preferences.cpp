@@ -218,6 +218,8 @@ void MainWindow::applyPreferences()
     m_canvas->setFieldChart(s.value(QStringLiteral("prefs/fieldsAcross"), 12).toInt(), s.value(QStringLiteral("prefs/fieldsDown"), 12).toInt());
     Canvas::setBlursEnabled(s.value(QStringLiteral("prefs/renderBlurs"), true).toBool());
     Canvas::setFocusEnabled(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
+    Canvas::setToneHighlightEnabled(s.value(QStringLiteral("prefs/renderToneHighlight"), true).toBool());
+    Canvas::setColourOverrideEnabled(s.value(QStringLiteral("prefs/renderColourOverride"), true).toBool());
     m_canvas->update();
     m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
@@ -476,6 +478,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/ikError"), w.ikError->value());
     s.setValue(QStringLiteral("prefs/renderBlurs"), w.renderBlurs->isChecked());
     s.setValue(QStringLiteral("prefs/renderFocus"), w.renderFocus->isChecked());
+    s.setValue(QStringLiteral("prefs/renderToneHighlight"), w.renderToneHighlight->isChecked());
+    s.setValue(QStringLiteral("prefs/renderColourOverride"), w.renderColourOverride->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetCentre"), w.xsheetCentre->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetHold"), w.xsheetHold->value());
     s.setValue(QStringLiteral("prefs/focusOnEnter"), w.focusOnEnter->isChecked());

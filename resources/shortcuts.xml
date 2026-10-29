@@ -229,6 +229,7 @@
   <shortcut id="shortcut.extendExposure" text="Extend Exposure" value="F5"/>
   <shortcut id="shortcut.clearExposure" text="Clear Exposure" value=""/>
   <shortcut id="shortcut.insertKeyframe" text="Insert Keyframe" value="F6"/>
+  <shortcut id="shortcut.insertQuadmap" text="Insert Quadmap" value=""/>
   <shortcut id="shortcut.deleteKeyframe" text="Delete Keyframe" value="F7"/>
   <shortcut id="shortcut.motionKeyframe" text="Set Motion Keyframe" value="Ctrl+K"/>
   <shortcut id="shortcut.stopMotionKeyframe" text="Set Stop-Motion Keyframe" value="Ctrl+L"/>

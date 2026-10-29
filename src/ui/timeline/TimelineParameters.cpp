@@ -7,6 +7,7 @@
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
+#include "render/effects/Effects.h"
 #include <QScrollBar>
 
 QString Timeline::parameterName(Parameter which)
@@ -143,7 +144,8 @@ QString Timeline::rowName(int layer, Parameter which) const
                                                           QT_TR_NOOP("Glue"), QT_TR_NOOP("Script"), QT_TR_NOOP("External"),
                                                           QT_TR_NOOP("Apply Camera")};
     Effect const& effect = scene.layers[layer].effects[e];
-    return tr("Effect: %1").arg(tr(kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)]));
+    char const* const known = kNames[std::clamp(int(effect.type), 0, int(Effect::TypeCount) - 1)];
+    return tr("Effect: %1").arg(known ? tr(known) : Effects::name(effect, scene).section(QStringLiteral("  "), 0, 0));
 }
 
 QRect Timeline::parameterValueRect(int layer, Parameter which) const

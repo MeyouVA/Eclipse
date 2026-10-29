@@ -119,4 +119,6 @@ private:
     QPlainTextEdit* m_text = nullptr;
     QPushButton* m_textApply = nullptr;
     QLabel* m_textSays = nullptr;
+    // The named settings of the kinds that have them.
+    class EffectParamsEditor* m_params = nullptr;
 };

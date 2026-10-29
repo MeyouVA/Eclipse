@@ -96,7 +96,31 @@ static Entry const kEffects[] = {
     {QT_TR_NOOP("RGB Difference Keyer"), "effect:45", QT_TR_NOOP("Takes away what matches a clean picture of the background at its second input (in a graph wired by hand)"), QT_TR_NOOP("Filter")},
     {QT_TR_NOOP("Luminance Threshold"), "effect:46", QT_TR_NOOP("Keeps what is lighter than a threshold (or, inverted, darker) as a matte"), QT_TR_NOOP("Filter")},
     {QT_TR_NOOP("Visibility"), "effect:48", QT_TR_NOOP("Shows what comes in only in the Camera view, or only when rendered (in a graph wired by hand)"), QT_TR_NOOP("Misc")},
-    {QT_TR_NOOP("Field Chart"), "effect:33", QT_TR_NOOP("A 12-field chart of the camera frame over the layer"), QT_TR_NOOP("Generator")},
+    {QT_TR_NOOP("Field Chart"), "effect:33", QT_TR_NOOP("A 12-field chart of the camera frame over the layer"), QT_TR_NOOP("Generator")},    {QT_TR_NOOP("Blur-Gaussian"), "effect:49", QT_TR_NOOP("A smooth blur, more across or more up and down as you choose"), QT_TR_NOOP("Blur")},
+    {QT_TR_NOOP("Blur-Box"), "effect:50", QT_TR_NOOP("A fast blur in passes, across and up and down"), QT_TR_NOOP("Blur")},
+    {QT_TR_NOOP("Blur-Radial-Zoom"), "effect:51", QT_TR_NOOP("A blur towards a centre (zoom), round it (radial) or both (spiral)"), QT_TR_NOOP("Blur")},
+    {QT_TR_NOOP("Bokeh Blur"), "effect:52", QT_TR_NOOP("Blurs through the shape of a lens, the bright spots spreading most"), QT_TR_NOOP("Blur")},
+    {QT_TR_NOOP("Anti-Flicker"), "effect:53", QT_TR_NOOP("A slight blur up and down, against flickering lines on television"), QT_TR_NOOP("Blur")},
+    {QT_TR_NOOP("Unsharp Mask"), "effect:71", QT_TR_NOOP("Sharpens the picture: its difference from a blur added back"), QT_TR_NOOP("Blur")},
+    {QT_TR_NOOP("Colour-Fade"), "effect:54", QT_TR_NOOP("Fades the colours towards one colour, in RGB, HSV or HSL"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Colour-Override"), "effect:55", QT_TR_NOOP("The layer that comes in drawn in other colours, colour by colour of the palette (in a graph wired by hand)"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Channel-Swap"), "effect:56", QT_TR_NOOP("Each channel taken from another (red from blue, and so on)"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Colour Levels"), "effect:57", QT_TR_NOOP("Input and output black and white, and gamma, for all colours or one channel"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Colour-Screen"), "effect:58", QT_TR_NOOP("Keeps only what lies within ranges of red, green and blue"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Contrast"), "effect:59", QT_TR_NOOP("Pushes the darks and the lights away from a mid point"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Gamma"), "effect:60", QT_TR_NOOP("Gamma correction, for the whole picture or each channel"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Colour Banding"), "effect:61", QT_TR_NOOP("Turns the picture into bands of up to four colours by how light it is"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Dither"), "effect:62", QT_TR_NOOP("A fine noise that hides the steps between colours"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Increase Opacity"), "effect:72", QT_TR_NOOP("Makes the picture more opaque by a factor"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Shine"), "effect:63", QT_TR_NOOP("Rays of light coming from the bright parts, away from a light"), QT_TR_NOOP("Light")},
+    {QT_TR_NOOP("Lens Flare"), "effect:64", QT_TR_NOOP("The rings and glow of a light shining into the lens"), QT_TR_NOOP("Light")},
+    {QT_TR_NOOP("Burn-In"), "effect:65", QT_TR_NOOP("Text over the frame: its number, the scene's name, the time code"), QT_TR_NOOP("Generator")},
+    {QT_TR_NOOP("Turbulent Noise"), "effect:66", QT_TR_NOOP("A cloud of noise that can change from frame to frame"), QT_TR_NOOP("Generator")},
+    {QT_TR_NOOP("Grid"), "effect:67", QT_TR_NOOP("A grid of cells over the camera frame, numbered along the edges"), QT_TR_NOOP("Generator")},
+    {QT_TR_NOOP("Refract"), "effect:68", QT_TR_NOOP("Bends the picture through the bumps of the picture at its second input, as through glass or heat (in a graph wired by hand)"), QT_TR_NOOP("Deformation")},
+    {QT_TR_NOOP("Shake"), "effect:69", QT_TR_NOOP("Moves and turns the picture about at random, smoothly"), QT_TR_NOOP("Move")},
+    {QT_TR_NOOP("Quake"), "effect:70", QT_TR_NOOP("Jolts the picture about at random, each jolt held for some frames"), QT_TR_NOOP("Move")},
+    {QT_TR_NOOP("Animate Pencil Texture"), "effect:73", QT_TR_NOOP("The grain of the pencil lines of the layer that comes in moved along them each frame (in a graph wired by hand)"), QT_TR_NOOP("Filter")},
 };
 
 }  // namespace
@@ -230,7 +254,7 @@ void NodeLibraryView::fillCategories(QString const& current)
     // The kinds there are, then the user's own (in italics).
     QSignalBlocker const quiet(m_categories);
     m_categories->clear();
-    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator"), tr("Combine"), tr("Misc")});
+    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator"), tr("Combine"), tr("Misc"), tr("Blur"), tr("Colour-Correct"), tr("Light")});
     for (auto it = m_user.cbegin(); it != m_user.cend(); ++it) {
         QListWidgetItem* const item = new QListWidgetItem(it.key(), m_categories);
         QFont italic = item->font();

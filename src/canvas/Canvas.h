@@ -307,6 +307,12 @@ public:
     static bool viewing();
     static void setFocusEnabled(bool on);
     static bool focusEnabled();
+    static void setToneHighlightEnabled(bool on);
+    static bool toneHighlightEnabled();
+    static void setColourOverrideEnabled(bool on);
+    static bool colourOverrideEnabled();
+    // Whether the preferences leave this kind of effect out (blurs, focus, tone and highlight, colour override).
+    static bool switchedOff(Effect::Type type);
     static bool paintGraph(QPainter& painter, Scene const& scene, int frame);
     static void paintDrawing(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity,
                              QColor const* tint = nullptr);

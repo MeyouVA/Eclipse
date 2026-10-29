@@ -218,7 +218,7 @@
    <item id="InsertColourCard" icon="timeline/addcolourcard" text="Co&amp;lour-Card" responder="window" slot="onActionAddColourCard()"/>
    <item id="InsertGroup" icon="timeline/addgroup" text="&amp;Group" responder="window" slot="onActionAddGroup()"/>
    <item id="InsertBone" icon="timeline/addbone" text="Game &amp;Bone" responder="window" slot="onActionAddBone()"/>
-   <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" responder="window" slot="onActionAddQuadmap()"/>
+   <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" shortcut="shortcut.insertQuadmap" responder="window" slot="onActionAddQuadmap()"/>
    <item id="InsertAnnotation" icon="xsheet/annotation" text="&amp;Annotation Column" responder="window" slot="onActionAddAnnotationColumn()"/>
    <submenu id="menu.insertEffects" text="&amp;Effects"/>
    <separator/>
@@ -836,6 +836,19 @@
  </menu>
 
  <menu id="menu.insertEffects" text="Effects">
+  <item id="InsertEffectBlur" text="Blur" responder="window" slot="onActionInsertEffect(QString)" itemParameter="0"/>
+  <item id="InsertEffectBoxBlur" text="Blur-Box" responder="window" slot="onActionInsertEffect(QString)" itemParameter="50"/>
+  <item id="InsertEffectDirectionalBlur" text="Blur-Directional" responder="window" slot="onActionInsertEffect(QString)" itemParameter="7"/>
+  <item id="InsertEffectGaussianBlur" text="Blur-Gaussian" responder="window" slot="onActionInsertEffect(QString)" itemParameter="49"/>
+  <item id="InsertEffectBrightnessContrast" text="Brightness-Contrast" responder="window" slot="onActionInsertEffect(QString)" itemParameter="9"/>
+  <item id="InsertEffectColourOverride" text="Colour-Override" responder="window" slot="onActionInsertEffect(QString)" itemParameter="55"/>
+  <item id="InsertEffectColourFade" text="Colour-Fade" responder="window" slot="onActionInsertEffect(QString)" itemParameter="54"/>
+  <item id="InsertEffectColourScale" text="Colour-Scale" responder="window" slot="onActionInsertEffect(QString)" itemParameter="12"/>
+  <item id="InsertEffectGlow" text="Glow" responder="window" slot="onActionInsertEffect(QString)" itemParameter="3"/>
+  <item id="InsertEffectHighlight" text="Highlight" responder="window" slot="onActionInsertEffect(QString)" itemParameter="17"/>
+  <item id="InsertEffectShadow" text="Shadow" responder="window" slot="onActionInsertEffect(QString)" itemParameter="4"/>
+  <item id="InsertEffectTone" text="Tone" responder="window" slot="onActionInsertEffect(QString)" itemParameter="16"/>
+  <separator/>
   <item id="InsertEffectTransparency" text="Transparency" responder="window" slot="onActionInsertEffect(QString)" itemParameter="6"/>
   <item id="InsertEffectBlending" text="Blending" responder="window" slot="onActionInsertEffect(QString)" itemParameter="30"/>
   <item id="InsertEffectCutter" text="Cutter" responder="window" slot="onActionInsertEffect(QString)" itemParameter="2"/>

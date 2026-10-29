@@ -105,6 +105,8 @@ struct PreferenceWidgets {
     QFormLayout* renderLayout = nullptr;
     QCheckBox* renderBlurs = nullptr;
     QCheckBox* renderFocus = nullptr;
+    QCheckBox* renderToneHighlight = nullptr;
+    QCheckBox* renderColourOverride = nullptr;
     QGroupBox* toolsPage = nullptr;
     QSpinBox* toolSize = nullptr;
     QFormLayout* toolsLayout = nullptr;

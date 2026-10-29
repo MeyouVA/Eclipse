@@ -103,6 +103,11 @@ void transparency(QImage& image, double amount)
 
 void directionalBlur(QImage& image, double length, double degrees)
 {
+    directionalBlur(image, length, degrees, 0.0, 0);
+}
+
+void directionalBlur(QImage& image, double length, double degrees, double falloff, int trail)
+{
     if (length < 0.5)
         return;
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
@@ -112,27 +117,35 @@ void directionalBlur(QImage& image, double length, double degrees)
     int const samples = std::clamp(int(std::ceil(length)), 2, 48);
     double const turn = degrees * 3.14159265358979323846 / 180.0;
     QPointF const along(std::cos(turn), -std::sin(turn));
+    // Each sample weighed less the further along it is, as the falloff says (none: all the same).
     QVector<QPoint> steps;
+    QVector<int> weights;
+    int total = 0;
+    falloff = std::clamp(falloff, 0.0, 1.0);
     for (int s = 0; s < samples; ++s) {
-        double const t = (double(s) / (samples - 1) - 0.5) * length;
+        double const share = double(s) / (samples - 1);
+        double const t = (trail == 1 ? share : trail == 2 ? share - 1.0 : share - 0.5) * length;
         steps.push_back(QPoint(int(std::lround(along.x() * t)), int(std::lround(along.y() * t))));
+        double const away = trail == 0 ? std::abs(share - 0.5) * 2.0 : trail == 1 ? share : 1.0 - share;
+        weights.push_back(std::max(1, int(std::lround(256.0 * (1.0 - falloff * away)))));
+        total += weights.back();
     }
     QImage const source = image;
     for (int y = 0; y < h; ++y) {
         QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
         for (int x = 0; x < w; ++x) {
-            int r = 0, g = 0, b = 0, a = 0;
-            for (QPoint const& step : std::as_const(steps)) {
-                int const sx = x + step.x(), sy = y + step.y();
+            qint64 r = 0, g = 0, b = 0, a = 0;
+            for (int s = 0; s < samples; ++s) {
+                int const sx = x + steps[s].x(), sy = y + steps[s].y();
                 if (sx < 0 || sy < 0 || sx >= w || sy >= h)
                     continue;       // beyond the picture: nothing (so the edge fades out)
                 QRgb const p = reinterpret_cast<QRgb const*>(source.constScanLine(sy))[sx];
-                r += qRed(p);
-                g += qGreen(p);
-                b += qBlue(p);
-                a += qAlpha(p);
+                r += qint64(qRed(p)) * weights[s];
+                g += qint64(qGreen(p)) * weights[s];
+                b += qint64(qBlue(p)) * weights[s];
+                a += qint64(qAlpha(p)) * weights[s];
             }
-            out[x] = qRgba(r / samples, g / samples, b / samples, a / samples);
+            out[x] = qRgba(int(r / total), int(g / total), int(b / total), int(a / total));
         }
     }
 }
@@ -236,6 +249,11 @@ void grain(QImage& image, double amount, quint32 seed)
 
 void radialBlur(QImage& image, double amount)
 {
+    radialBlur(image, amount, 1.0);
+}
+
+void radialBlur(QImage& image, double amount, double quality)
+{
     amount = std::clamp(amount, 0.0, 1.0);
     if (amount <= 0.0)
         return;
@@ -257,7 +275,7 @@ void radialBlur(QImage& image, double amount)
     if (right < 0)
         return;
     double const cx = (left + right) / 2.0, cy = (top + bottom) / 2.0;
-    int const samples = 24;
+    int const samples = std::clamp(int(std::lround(24.0 * quality)), 3, 24);
     QImage const source = image;
     for (int y = 0; y < h; ++y) {
         QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));

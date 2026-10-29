@@ -87,6 +87,33 @@ bool Canvas::focusEnabled()
     return gFocus;
 }
 
+void Canvas::setToneHighlightEnabled(bool on)
+{
+    gToneHighlight = on;
+}
+
+bool Canvas::toneHighlightEnabled()
+{
+    return gToneHighlight;
+}
+
+void Canvas::setColourOverrideEnabled(bool on)
+{
+    gColourOverride = on;
+}
+
+bool Canvas::colourOverrideEnabled()
+{
+    return gColourOverride;
+}
+
+bool Canvas::switchedOff(Effect::Type t)
+{
+    bool const blur = t == Effect::Blur || t == Effect::GaussianBlur || t == Effect::BoxBlur || t == Effect::ZoomBlur || t == Effect::BokehBlur;
+    return (blur && !gBlurs) || (t == Effect::Focus && !gFocus) || ((t == Effect::Tone || t == Effect::Highlight) && !gToneHighlight)
+           || (t == Effect::ColourOverride && !gColourOverride);
+}
+
 void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
 {
     painter.fillRect(QRectF(0, 0, scene.width, scene.height), scene.background);
@@ -356,7 +383,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
         return image;
     };
     // A layer's picture: where its pegs put it, with its own effects; only the art layers in `sheets` (Line Art, Colour Art, Underlay, Overlay).
-    auto paintLayerNode = [&](QImage& out, GraphNode const& node, int sheets) {
+    auto paintLayerNode = [&](QImage& out, GraphNode const& node, int sheets, Effect const* recolour = nullptr) {
         GraphNode const* const n = &node;
         int const l = scene.layerIndex(n->layer);
         if (l < 0 || !scene.enabled(l))
@@ -382,6 +409,8 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                     }
                 shown.pictures.removeIf([&](Picture const& pic) { return !(sheets & (1 << (pic.painted ? pic.sheet : int(Drawing::LineSheet)))); });
             }
+            if (recolour)
+                Effects::overrideColours(shown, *recolour);
             if (n->symbolLayer && layer.showsSymbol()) {
                 Scene selected = scene;
                 for (Scene::Symbol& symbol : selected.symbols)
@@ -527,30 +556,62 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 if (fed >= 0)
                     amount *= scene.truckFactor(fed, frame);
             }
+            Effects::Context context;
+            context.amount = amount;
+            context.pixelsPerUnit = pixelsPerUnit;
+            context.frame = QTransform::fromScale(dpr, dpr).mapRect((camera * base).mapRect(QRectF(0, 0, scene.width, scene.height)));
+            context.at = frame;
+            context.fps = scene.fps;
+            if (e.type == Effect::Refract)
+                context.second = input(id, 1);
             if (!e.enabled) {
                 // (Turned off: the picture goes through as it is.)
-            } else if ((e.type == Effect::Blur && !blursEnabled()) || (e.type == Effect::Focus && !focusEnabled())) {
+            } else if (switchedOff(e.type)) {
                 // (Switched off in the preferences.)
+            } else if (Effects::apply(out, e, context)) {
+                // (One of those done the same way on a layer and as a node.)
+            } else if (e.type == Effect::ColourOverride || e.type == Effect::AnimatePencilTexture) {
+                // The layer that comes in (straight, or through waypoints) drawn again: its colours changed, or its pencil textures moved.
+                int from = id;
+                GraphNode const* up = nullptr;
+                for (int guard = 0; guard < 256; ++guard) {
+                    GraphCable const* const c = graph.into(from, 0);
+                    up = c ? graph.node(c->from) : nullptr;
+                    if (!up || up->kind != GraphNode::Waypoint)
+                        break;
+                    from = c->from;
+                }
+                if (up && up->kind == GraphNode::LayerNode) {
+                    out = blank();
+                    if (e.type == Effect::ColourOverride) {
+                        paintLayerNode(out, *up, up->sheets, &e);
+                    } else {
+                        int const l = scene.layerIndex(up->layer);
+                        int const drawing = l >= 0 ? scene.layers[l].drawingAt(frame) : 0;
+                        double const most = e.value("most"), step = e.value("increment");
+                        quint32 const seed = quint32(e.value("seed"));
+                        int const kind = int(e.value("kind"));
+                        // Moved on so far each frame (round again past the most), or to a new random place each frame.
+                        double shift = step > 0.0 ? std::fmod(frame * step, std::max(1e-6, most))
+                                                  : (((quint32(frame) * 2654435761u) ^ (seed * 40503u)) & 0xffff) / 65535.0 * most;
+                        if (kind == 1)
+                            shift += ((quint32(drawing + 1) * 2246822519u ^ seed * 3266489917u) & 0xffff) / 65535.0 * most;
+                        gTextureShift = shift;
+                        gTextureSpread = kind == 2 ? most : 0.0;
+                        gTextureSeed = seed + quint32(frame) * (step > 0.0 ? 0u : 1u);
+                        paintLayerNode(out, *up, up->sheets, nullptr);
+                        gTextureShift = 0.0;
+                        gTextureSpread = 0.0;
+                    }
+                }
             } else if (e.type == Effect::Blur || e.type == Effect::Focus) {
                 Effects::blur(out, amount * pixelsPerUnit);
             } else if (e.type == Effect::Tint) {
                 Effects::tint(out, e.color, amount);
             } else if (e.type == Effect::Transparency) {
                 Effects::transparency(out, amount);
-            } else if (e.type == Effect::DirectionalBlur) {
-                Effects::directionalBlur(out, amount * pixelsPerUnit, e.direction);
-            } else if (e.type == Effect::HueSaturation) {
-                Effects::hueSaturation(out, e.hue, e.saturation, e.lightness, amount);
             } else if (e.type == Effect::BrightnessContrast) {
                 Effects::brightnessContrast(out, e.brightness, e.contrast, amount);
-            } else if (e.type == Effect::Grain) {
-                Effects::grain(out, amount, quint32(e.seed) * 7919u + quint32(frame));
-            } else if (e.type == Effect::RadialBlur) {
-                Effects::radialBlur(out, std::min(amount, 1.0));
-            } else if (e.type == Effect::ColourScale) {
-                Effects::colourScale(out, e.color, amount);
-            } else if (e.type == Effect::Negate) {
-                Effects::negate(out, amount);
             } else if (e.type == Effect::Median) {
                 Effects::median(out, amount * pixelsPerUnit);
             } else if (e.type == Effect::Ripple) {
@@ -567,13 +628,8 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 Effects::turbulence(out, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
             } else if (e.type == Effect::Gradient) {
                 Effects::gradient(out, e.color, e.endColor, e.direction, e.invert, amount);
-            } else if (e.type == Effect::BlackWhite) {
-                Effects::blackWhite(out, amount);
             } else if (e.type == Effect::MatteResize) {
                 Effects::matteResize(out, amount * pixelsPerUnit, e.invert);
-            } else if (e.type == Effect::FieldChart) {
-                Effects::fieldChart(out, QTransform::fromScale(dpr, dpr).mapRect((camera * base).mapRect(QRectF(0, 0, scene.width, scene.height))), e.color,
-                                    amount * dpr);
             } else if (e.type == Effect::ColourCurves) {
                 Effects::colourCurves(out, e.curves, amount);
             } else if (e.type == Effect::ApplyPeg) {
@@ -640,7 +696,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                         }
                     }
                 }
-                Effects::variableBlur(out, matte, amount * pixelsPerUnit);
+                Effects::variableBlur(out, matte, amount * pixelsPerUnit, e.value("blackRadius") * pixelsPerUnit, e.flag("keepInside"));
             } else if (e.type == Effect::Glue) {
                 // Joined to what comes in at the second input.
                 QImage under = input(id, 1);
@@ -670,8 +726,6 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 Effects::chromaKey(out, e.color, amount, e.softness, e.clipBlack, e.clipWhite, e.spill, e.invert);
             } else if (e.type == Effect::DifferenceKeyer) {
                 Effects::differenceKey(out, input(id, 1), amount, e.softness, e.clipBlack, e.clipWhite, e.invert);
-            } else if (e.type == Effect::LuminanceThreshold) {
-                Effects::luminanceThreshold(out, amount, e.softness, e.clipBlack, e.clipWhite, e.invert);
             } else if (e.type == Effect::ImageSwitch) {
                 out = input(id, std::clamp(int(std::lround(amount)), 0, n->inputs() - 1));
             } else if (e.type == Effect::Visibility) {
@@ -698,7 +752,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 } else if (e.type == Effect::MatteBlur) {
                     Effects::blur(where, std::max(1.0, amount * pixelsPerUnit / 3.0));
                     QImage blurred = out;
-                    Effects::blur(blurred, amount * pixelsPerUnit);
+                    Effects::matteBlurred(blurred, e, amount * pixelsPerUnit);
                     {
                         QPainter bp(&blurred);
                         bp.resetTransform();

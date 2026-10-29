@@ -1,6 +1,9 @@
 // Eclipse - the effects of the current layer: the panel made, effects added, copied, pasted, removed, the list and the editors shown.
 #include "ui/panels/EffectsPanel.h"
 #include "ui/panels/EffectsPanelEdit.h"
+#include "ui/panels/EffectParamsEditor.h"
+
+#include <QCoreApplication>
 
 #include <QCheckBox>
 #include "ui/panels/ColourEditor.h"
@@ -81,6 +84,23 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Apply Camera")), &QAction::triggered, this, [this] { add(Effect::ApplyCamera); });
     connect(menu->addAction(tr("Chroma Keying")), &QAction::triggered, this, [this] { add(Effect::ChromaKey); });
     connect(menu->addAction(tr("Luminance Threshold")), &QAction::triggered, this, [this] { add(Effect::LuminanceThreshold); });
+    // The newer kinds, by what they do.
+    struct Group {
+        char const* name;
+        QVector<Effect::Type> kinds;
+    };
+    QVector<Group> const groups = {
+        {QT_TR_NOOP("More Blurs"), {Effect::GaussianBlur, Effect::BoxBlur, Effect::ZoomBlur, Effect::BokehBlur, Effect::AntiFlicker, Effect::UnsharpMask}},
+        {QT_TR_NOOP("More Colour Corrections"), {Effect::ColourFade, Effect::ChannelSwap, Effect::ColourLevels, Effect::ColourScreen, Effect::Contrast, Effect::Gamma,
+                                                 Effect::ColourBanding, Effect::Dither, Effect::IncreaseOpacity}},
+        {QT_TR_NOOP("Light"), {Effect::Shine, Effect::LensFlare}},
+        {QT_TR_NOOP("Generate"), {Effect::TurbulentNoise, Effect::Grid, Effect::BurnIn}},
+        {QT_TR_NOOP("Move"), {Effect::Shake, Effect::Quake}}};
+    for (Group const& group : groups) {
+        QMenu* const sub = menu->addMenu(tr(group.name));
+        for (Effect::Type kind : group.kinds)
+            connect(sub->addAction(Effects::kindName(kind)), &QAction::triggered, this, [this, kind] { add(kind); });
+    }
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -158,6 +178,12 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     addAdjustSettings(layout);
     addMoreSettings(layout);
     addParticleSettings(layout);
+    m_params = new EffectParamsEditor(this);
+    layout->addWidget(m_params);
+    connect(m_params, &EffectParamsEditor::edited, this, [this](QString const& key, double value) {
+        if (!m_rebuilding)
+            edit([key, value](Effect& e) { e.setValue(key, value); });
+    });
 
     connectEditors();
     connect(m_document, &Document::changed, this, &EffectsPanel::rebuild);
@@ -270,7 +296,7 @@ void EffectsPanel::showEditors()
         m_more->setVisible(channel || cropping || curving);
         m_moreForm->setRowVisible(m_curveWhich, curving);
         m_moreForm->setRowVisible(m_curve, curving);
-        bool const texted = valid && (e.type == Effect::Script || e.type == Effect::External);
+        bool const texted = valid && (e.type == Effect::Script || e.type == Effect::External || e.type == Effect::BurnIn);
         m_more->setVisible(m_more->isVisibleTo(this) || texted);
         m_moreForm->setRowVisible(m_text, texted);
         m_moreForm->setRowVisible(m_textApply, texted);
@@ -278,7 +304,8 @@ void EffectsPanel::showEditors()
         if (texted && m_text->toPlainText() != e.text)
             m_text->setPlainText(e.text);
         if (texted)
-            m_text->setToolTip(e.type == Effect::Script
+            m_text->setToolTip(e.type == Effect::BurnIn ? tr("The text shown, then Apply: %f the frame, %s the scene's name, %t the time code, %% a percent sign.")
+                               : e.type == Effect::Script
                                    ? tr("JavaScript run on the picture each frame: frame, amount, and image - blur(r), tint(\"#rrggbb\", a), "
                                         "transparency(a), negate(a), blackWhite(a), hueSaturation(h, s, l), brightnessContrast(b, c), pixelate(s), "
                                         "median(r), bloom(r), grain(a), directionalBlur(length, degrees), colourScale(\"#rrggbb\", a), "
@@ -394,6 +421,17 @@ void EffectsPanel::showEditors()
         m_amount->setDecimals(0);
         m_amount->setSuffix(QStringLiteral(" %"));
         m_amount->setValue(amount * 100.0);
+    } else if (valid && Effect::amountOf(e.type).shown >= 0) {
+        // A newer kind: its amount as its table says, or none.
+        Effect::Amount const a = Effect::amountOf(e.type);
+        m_amountLabel->setVisible(a.shown > 0);
+        m_amount->setVisible(a.shown > 0);
+        m_animated->setVisible(a.shown > 0);
+        m_amountLabel->setText(QCoreApplication::translate("Effect", a.label ? a.label : "Amount"));
+        m_amount->setRange(0.0, a.shown == 1 ? 100.0 : a.most);
+        m_amount->setDecimals(a.shown == 1 ? 0 : 1);
+        m_amount->setSuffix(a.shown == 1 ? QStringLiteral(" %") : QString());
+        m_amount->setValue(a.shown == 1 ? amount * 100.0 : amount);
     } else if (valid && !cutter && !plain) {
         m_amountLabel->setText(e.type == Effect::Ripple ? tr("Height") : e.type == Effect::MatteBlur ? tr("Radius") : shading ? tr("Softness")
                                : resizing ? tr("By") : e.type == Effect::Pixelate ? tr("Block Size")
@@ -407,5 +445,8 @@ void EffectsPanel::showEditors()
     } else if (cutter) {
         m_invert->setChecked(e.invert);
     }
+    m_params->setVisible(valid && !Effect::params(e.type).isEmpty());
+    if (valid)
+        m_params->setEffect(e);
     m_rebuilding = false;
 }

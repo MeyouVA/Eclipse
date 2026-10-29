@@ -54,7 +54,8 @@ int GraphNode::inputs() const
     case EffectNode:
         if (effect.type == Effect::ImageSwitch)
             return std::max(1, ports);
-        return takesMatte(effect.type) || effect.type == Effect::GenericComposite || effect.type == Effect::DifferenceKeyer ? 2 : 1;
+        return takesMatte(effect.type) || effect.type == Effect::GenericComposite || effect.type == Effect::DifferenceKeyer
+                       || effect.type == Effect::Refract ? 2 : 1;
     case Display:
     case Waypoint:
         return 1;
@@ -403,5 +404,9 @@ Effect Effect::made(Type type)
     }
     if (type == DifferenceKeyer || type == LuminanceThreshold)
         e.softness = 0.05;
+    if (type >= GaussianBlur)
+        e.amount = amountOf(type).start;
+    if (type == BurnIn)
+        e.text = QStringLiteral("%s  %f  %t");
     return e;
 }

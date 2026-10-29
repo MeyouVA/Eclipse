@@ -26,6 +26,11 @@
 #include "model/document/Commands.h"
 #include "render/effects/Effects.h"
 #include "ui/panels/EffectsPanel.h"
+#include "ui/panels/EffectParamsEditor.h"
+
+#include <QCoreApplication>
+#include <QHeaderView>
+#include <QTableWidget>
 
 namespace {
 
@@ -71,13 +76,19 @@ void NodeView::editGraphNode(int id)
     bool const keyer = type == Effect::ChromaKey || type == Effect::DifferenceKeyer || type == Effect::LuminanceThreshold;
     if (type == Effect::ImageSwitch)
         amount->setDecimals(0);
-    form->addRow(type == Effect::GenericComposite ? tr("Opacity") : keyer ? tr("Threshold") : type == Effect::ImageSwitch ? tr("Port Index") : tr("Amount"),
+    Effect::Amount const newer = Effect::amountOf(type);
+    if (newer.shown >= 0)
+        amount->setRange(0.0, newer.most);
+    form->addRow(newer.shown >= 0 && newer.label ? QCoreApplication::translate("Effect", newer.label)
+                 : type == Effect::GenericComposite ? tr("Opacity") : keyer ? tr("Threshold") : type == Effect::ImageSwitch ? tr("Port Index") : tr("Amount"),
                  amount);
     // Animated: the amount a keyframe of this frame (the frames between go straight from one keyframe to the next).
     QCheckBox* const keyed = new QCheckBox(tr("Keyframe on frame %1").arg(m_frame + 1), &dialog);
     keyed->setObjectName(QStringLiteral("GraphEffectKeyed"));
     keyed->setChecked(!g.nodes[i].amountKeys.isEmpty());
     form->addRow(QString(), keyed);
+    form->setRowVisible(amount, newer.shown != 0);
+    form->setRowVisible(keyed, newer.shown != 0);
     QPushButton* colour = nullptr;
     if (takesColour(e.type)) {
         colour = new QPushButton(e.color.name(), &dialog);
@@ -104,13 +115,17 @@ void NodeView::editGraphNode(int id)
         form->addRow(tr("Channel"), channel);
     }
     QPlainTextEdit* text = nullptr;
-    if (e.type == Effect::Script || e.type == Effect::External) {
+    if (e.type == Effect::Script || e.type == Effect::External || e.type == Effect::BurnIn) {
         text = new QPlainTextEdit(&dialog);
         text->setObjectName(QStringLiteral("GraphEffectText"));
         text->setLineWrapMode(QPlainTextEdit::NoWrap);
         text->setPlainText(e.text);
         text->setMinimumSize(360, 120);
-        form->addRow(e.type == Effect::Script ? tr("Script") : tr("Command Line"), text);
+        if (e.type == Effect::BurnIn) {
+            text->setMinimumSize(300, 50);
+            text->setToolTip(tr("%f the frame, %s the scene's name, %t the time code, %% a percent sign."));
+        }
+        form->addRow(e.type == Effect::Script ? tr("Script") : e.type == Effect::BurnIn ? tr("Text") : tr("Command Line"), text);
     }
     QComboBox* peg = nullptr;
     if (e.type == Effect::ApplyPeg) {
@@ -268,12 +283,76 @@ void NodeView::editGraphNode(int id)
         inRender->setChecked(e.showInRender);
         form->addRow(inRender);
     }
+    // Colour-Override: each colour of the palettes, ticked to be shown in another.
+    QTableWidget* overrides = nullptr;
+    if (type == Effect::ColourOverride) {
+        Scene const& scene = m_document->scene();
+        overrides = new QTableWidget(int(scene.palette.size()), 2, &dialog);
+        overrides->setObjectName(QStringLiteral("GraphEffectOverrides"));
+        overrides->setHorizontalHeaderLabels({tr("Colour"), tr("Shown in")});
+        overrides->verticalHeader()->hide();
+        overrides->horizontalHeader()->setStretchLastSection(true);
+        overrides->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        overrides->setMinimumSize(320, 160);
+        for (int row = 0; row < scene.palette.size(); ++row) {
+            Swatch const& swatch = scene.palette[row];
+            QColor instead = swatch.color;
+            bool listed = false;
+            for (QPair<int, QColor> const& o : std::as_const(e.overrides))
+                if (o.first == swatch.id) {
+                    instead = o.second;
+                    listed = true;
+                }
+            QPixmap chip(14, 14);
+            chip.fill(swatch.color);
+            QTableWidgetItem* const name = new QTableWidgetItem(QIcon(chip), swatch.name);
+            name->setData(Qt::UserRole, swatch.id);
+            name->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
+            name->setCheckState(listed ? Qt::Checked : Qt::Unchecked);
+            overrides->setItem(row, 0, name);
+            QTableWidgetItem* const shown = new QTableWidgetItem(instead.name(QColor::HexArgb));
+            shown->setData(Qt::UserRole, instead);
+            shown->setBackground(instead);
+            shown->setForeground(instead.lightnessF() > 0.5 ? Qt::black : Qt::white);
+            overrides->setItem(row, 1, shown);
+        }
+        // A click on the second column picks the colour it is shown in instead (and ticks it).
+        connect(overrides, &QTableWidget::cellClicked, &dialog, [overrides, &dialog](int row, int column) {
+            if (column != 1)
+                return;
+            QTableWidgetItem* const shown = overrides->item(row, 1);
+            QColor const picked = ColourEditor::getColour(shown->data(Qt::UserRole).value<QColor>(), &dialog, tr("Shown in"));
+            if (!picked.isValid())
+                return;
+            shown->setData(Qt::UserRole, picked);
+            shown->setText(picked.name(QColor::HexArgb));
+            shown->setBackground(picked);
+            shown->setForeground(picked.lightnessF() > 0.5 ? Qt::black : Qt::white);
+            overrides->item(row, 0)->setCheckState(Qt::Checked);
+        });
+        form->addRow(overrides);
+    }
+    // The named settings of the kinds that have them.
+    EffectParamsEditor* params = nullptr;
+    if (!Effect::params(type).isEmpty()) {
+        params = new EffectParamsEditor(&dialog);
+        params->setEffect(e);
+        form->addRow(params);
+    }
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted)
         return;
+    if (params)
+        params->takeInto(e);
+    if (overrides) {
+        e.overrides.clear();
+        for (int row = 0; row < overrides->rowCount(); ++row)
+            if (overrides->item(row, 0)->checkState() == Qt::Checked)
+                e.overrides.push_back(qMakePair(overrides->item(row, 0)->data(Qt::UserRole).toInt(), overrides->item(row, 1)->data(Qt::UserRole).value<QColor>()));
+    }
     if (colourOperation) {
         e.colourOperation = colourOperation->currentIndex();
         e.alphaOperation = alphaOperation->currentIndex();
@@ -344,6 +423,8 @@ QString NodeView::graphPortName(GraphNode const& n, int port, bool input) const
             return tr("Input %1").arg(port + 1);
         if (t == Effect::DifferenceKeyer)
             return tr("Clean background");
+        if (t == Effect::Refract)
+            return tr("Height");
         return t == Effect::Blending || t == Effect::Glue || t == Effect::GenericComposite ? tr("Under") : tr("Matte");
     }
     if (n.kind == GraphNode::Display)

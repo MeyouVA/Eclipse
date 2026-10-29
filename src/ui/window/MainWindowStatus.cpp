@@ -10,6 +10,8 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QPushButton>
+
+#include "render/effects/Effects.h"
 #include <QStatusBar>
 #include <QTextBrowser>
 #include <QVBoxLayout>
@@ -33,6 +35,7 @@
 void MainWindow::updateTitle()
 {
     QString const name = m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).fileName();
+    Effects::setSceneName(m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).completeBaseName());
     // (Inside a symbol: which, after the name of the scene.)
     QStringList const trail = m_document->symbolTrail();
     QString const inside = trail.isEmpty() ? QString() : QStringLiteral(" [%1]").arg(trail.join(QStringLiteral(" > ")));

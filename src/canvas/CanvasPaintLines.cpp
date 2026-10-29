@@ -204,7 +204,16 @@ static void paintTexturedStroke(QPainter& painter, Stroke const& stroke, QBrush 
     mask.fill(Qt::transparent);
     double const amount = std::clamp(double(stroke.textureAmount), 0.0, 1.0);
     int const pieces = int(line.size()) - 1 + (stroke.closed ? 1 : 0);
-    double run = 0.0;
+    double run = gTextureShift;
+    if (gTextureSpread > 0.0) {
+        // Each line its own offset, from where it starts.
+        QPointF const start = line.first().pos;
+        quint32 h = quint32(qint64(std::lround(start.x() * 16.0))) * 73856093u ^ quint32(qint64(std::lround(start.y() * 16.0))) * 19349663u ^ gTextureSeed * 83492791u;
+        h ^= h >> 13;
+        h *= 0x5bd1e995u;
+        h ^= h >> 15;
+        run += (h & 0xffff) / 65535.0 * gTextureSpread;
+    }
     for (int i = 0; i < pieces; ++i) {
         StrokePoint const& from = line[i];
         StrokePoint const& to = line[(i + 1) % line.size()];

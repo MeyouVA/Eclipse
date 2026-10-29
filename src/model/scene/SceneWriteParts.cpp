@@ -162,6 +162,15 @@ QJsonArray pairsJson(QVector<QPair<QString, QString>> const& pairs)
     return array;
 }
 
+char const* effectTypeName(Effect::Type type)
+{
+    static char const* const names[] = {"gaussianBlur", "boxBlur", "zoomBlur", "bokehBlur", "antiFlicker", "colourFade", "colourOverride", "channelSwap",
+                                        "colourLevels", "colourScreen", "contrast", "gamma", "colourBanding", "dither", "shine", "lensFlare", "burnIn",
+                                        "turbulentNoise", "grid", "refract", "shake", "quake", "unsharpMask", "increaseOpacity", "animatePencilTexture"};
+    static_assert(sizeof(names) / sizeof(names[0]) == Effect::TypeCount - Effect::GaussianBlur);
+    return type >= Effect::GaussianBlur && type < Effect::TypeCount ? names[type - Effect::GaussianBlur] : "";
+}
+
 QJsonObject effectToJson(Effect const& e)
 {
     QJsonObject one{{"type", e.type == Effect::Blur ? "blur" : e.type == Effect::Tint ? "tint" : e.type == Effect::Glow ? "glow"
@@ -186,6 +195,7 @@ QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::ChromaKey ? "chromaKey" : e.type == Effect::DifferenceKeyer ? "differenceKeyer"
                              : e.type == Effect::LuminanceThreshold ? "luminanceThreshold" : e.type == Effect::ImageSwitch ? "imageSwitch"
                              : e.type == Effect::Visibility ? "visibility"
+                             : e.type >= Effect::GaussianBlur && e.type < Effect::TypeCount ? effectTypeName(e.type)
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
@@ -223,8 +233,20 @@ QJsonObject effectToJson(Effect const& e)
         one["showInViews"] = e.showInViews;
         one["showInRender"] = e.showInRender;
     }
-    if (e.type == Effect::Script || e.type == Effect::External)
+    if (e.type == Effect::Script || e.type == Effect::External || e.type == Effect::BurnIn)
         one["text"] = e.text;
+    if (!e.values.isEmpty()) {
+        QJsonObject values;
+        for (auto v = e.values.cbegin(); v != e.values.cend(); ++v)
+            values[v.key()] = v.value();
+        one["values"] = values;
+    }
+    if (!e.overrides.isEmpty()) {
+        QJsonArray overrides;
+        for (QPair<int, QColor> const& o : e.overrides)
+            overrides.append(QJsonArray{o.first, o.second.name(QColor::HexArgb)});
+        one["overrides"] = overrides;
+    }
     if (e.type == Effect::ColourCurves) {
         QJsonArray curves;
         for (QVector<QPointF> const& curve : e.curves) {

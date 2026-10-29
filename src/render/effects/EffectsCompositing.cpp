@@ -109,16 +109,24 @@ void Effects::variableBlur(QImage& image, QImage const& matte, double radius)
 
 void Effects::fieldChart(QImage& image, QRectF const& frame, QColor const& colour, double width)
 {
+    fieldChart(image, frame, colour, width, 0, false);
+}
+
+void Effects::fieldChart(QImage& image, QRectF const& frame, QColor const& colour, double width, int fields, bool opaque)
+{
     QPainter p(&image);
     p.resetTransform();
     p.setRenderHint(QPainter::Antialiasing, true);
+    if (opaque)
+        p.fillRect(frame, Qt::white);
     p.setPen(QPen(colour, std::max(0.5, width)));
     p.setBrush(Qt::NoBrush);
     p.drawRect(frame);
-    // Twelve fields across: six either side of the middle, and as many down as the frame's shape allows.
+    // Twelve (or sixteen) fields across: half either side of the middle, and as many down as the frame's shape allows.
+    int const half = fields == 1 ? 8 : 6;
     QPointF const middle = frame.center();
-    double const field = frame.width() / 12.0;
-    for (int k = 1; k <= 6; ++k) {
+    double const field = frame.width() / (2.0 * half);
+    for (int k = 1; k <= half; ++k) {
         p.drawLine(QPointF(middle.x() - k * field, frame.top()), QPointF(middle.x() - k * field, frame.bottom()));
         p.drawLine(QPointF(middle.x() + k * field, frame.top()), QPointF(middle.x() + k * field, frame.bottom()));
         if (k * field <= frame.height() / 2.0 + 0.5) {

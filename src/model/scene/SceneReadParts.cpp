@@ -1,5 +1,6 @@
 // Eclipse - reading the parts of a scene from its file.
 #include "model/scene/SceneReadParts.h"
+#include "model/scene/SceneWriteParts.h"
 
 #include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
@@ -177,6 +178,14 @@ QVector<Backdrop> backdropsFromJson(QJsonArray const& array)
     return out;
 }
 
+int effectTypeOf(QString const& name)
+{
+    for (int t = Effect::GaussianBlur; t < Effect::TypeCount; ++t)
+        if (name == QLatin1String(scene_write::effectTypeName(Effect::Type(t))))
+            return t;
+    return -1;
+}
+
 bool effectFromJson(QJsonObject const& eo, Effect& e)
 {
     QString const type = eo["type"].toString();
@@ -278,6 +287,8 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::ImageSwitch;
     else if (type == QLatin1String("visibility"))
         e.type = Effect::Visibility;
+    else if (int const newer = effectTypeOf(type); newer >= 0)
+        e.type = Effect::Type(newer);
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);
@@ -344,8 +355,14 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
     e.spill = std::clamp(eo["spill"].toDouble(0.0), 0.0, 1.0);
     e.showInViews = eo["showInViews"].toBool(true);
     e.showInRender = eo["showInRender"].toBool(true);
-    if (e.type == Effect::Script || e.type == Effect::External)
+    if (e.type == Effect::Script || e.type == Effect::External || e.type == Effect::BurnIn)
         e.text = eo["text"].toString();
+    QJsonObject const values = eo["values"].toObject();
+    for (auto v = values.constBegin(); v != values.constEnd(); ++v)
+        e.setValue(v.key(), v.value().toDouble());
+    for (QJsonValue const& ov : eo["overrides"].toArray())
+        if (QJsonArray const o = ov.toArray(); o.size() == 2 && QColor(o[1].toString()).isValid())
+            e.overrides.push_back(qMakePair(o[0].toInt(), QColor(o[1].toString())));
     QJsonArray const curves = eo["curves"].toArray();
     for (int c = 0; c < 4 && c < curves.size(); ++c)
         for (QJsonValue const& v : curves[c].toArray())

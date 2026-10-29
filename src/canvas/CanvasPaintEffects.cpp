@@ -28,8 +28,16 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         return;
     bool const trucked = e.truckFactor && Effect::trucks(e.type);
     double const amount = layer.effectAmount(i, pose) * (trucked ? scene.truckFactor(l, frame) : 1.0);
-    if ((e.type == Effect::Blur && !blursEnabled()) || (e.type == Effect::Focus && !focusEnabled())) {
+    Effects::Context context;
+    context.amount = amount;
+    context.pixelsPerUnit = pixelsPerUnit;
+    context.frame = QTransform::fromScale(dpr, dpr).mapRect(sceneToDevice.mapRect(QRectF(0, 0, scene.width, scene.height)));
+    context.at = frame;
+    context.fps = scene.fps;
+    if (switchedOff(e.type)) {
         // (Switched off in the preferences: the picture goes through as it is.)
+    } else if (Effects::apply(image, e, context)) {
+        // (One of those done the same way on a layer and as a node.)
     } else if (e.type == Effect::Blur) {
         Effects::blur(image, amount * pixelsPerUnit);
     } else if (e.type == Effect::Focus) {
@@ -39,21 +47,8 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         Effects::tint(image, e.color, amount);
     } else if (e.type == Effect::Transparency) {
         Effects::transparency(image, amount);
-    } else if (e.type == Effect::DirectionalBlur) {
-        // (A direction on the picture, as a shadow's: it does not turn with the layer.)
-        Effects::directionalBlur(image, amount * pixelsPerUnit, e.direction);
-    } else if (e.type == Effect::HueSaturation) {
-        Effects::hueSaturation(image, e.hue, e.saturation, e.lightness, amount);
     } else if (e.type == Effect::BrightnessContrast) {
         Effects::brightnessContrast(image, e.brightness, e.contrast, amount);
-    } else if (e.type == Effect::Grain) {
-        Effects::grain(image, amount, quint32(e.seed) * 7919u + quint32(frame));     // a new grain each frame
-    } else if (e.type == Effect::RadialBlur) {
-        Effects::radialBlur(image, std::min(amount, 1.0));
-    } else if (e.type == Effect::ColourScale) {
-        Effects::colourScale(image, e.color, amount);
-    } else if (e.type == Effect::Negate) {
-        Effects::negate(image, amount);
     } else if (e.type == Effect::Median) {
         Effects::median(image, amount * pixelsPerUnit);
     } else if (e.type == Effect::Ripple) {
@@ -72,13 +67,8 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         Effects::turbulence(image, amount * pixelsPerUnit, e.direction * pixelsPerUnit, frame);
     } else if (e.type == Effect::Gradient) {
         Effects::gradient(image, e.color, e.endColor, e.direction, e.invert, amount);
-    } else if (e.type == Effect::BlackWhite) {
-        Effects::blackWhite(image, amount);
     } else if (e.type == Effect::MatteResize) {
         Effects::matteResize(image, amount * pixelsPerUnit, e.invert);
-    } else if (e.type == Effect::FieldChart) {
-        Effects::fieldChart(image, QTransform::fromScale(dpr, dpr).mapRect(sceneToDevice.mapRect(QRectF(0, 0, scene.width, scene.height))), e.color,
-                            amount * dpr);
     } else if (e.type == Effect::MotionBlur && !symbol) {
         int const back = std::clamp(int(std::lround(amount)), 0, 60);
         QImage trail(size, QImage::Format_ARGB32_Premultiplied);
@@ -92,7 +82,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
                 int const index = f >= 0 ? layer.drawingAt(f) : Layer::kNoDrawing;
                 if (index == Layer::kNoDrawing)
                     continue;
-                tp.setOpacity(0.6 * (1.0 - double(k) / (back + 1)));
+                tp.setOpacity(e.value("intensity") * std::pow(1.0 - double(k) / (back + 1), e.value("falloff")));
                 tp.setTransform(scene.worldTransform(l, f) * sceneToDevice);
                 Pose const then = scene.poseOf(l, f);
                 paintDrawingOpaque(tp, scene, Deform::ridden(scene, l, f, Deform::shown(layer.drawings[index], layer, then)), nullptr);
@@ -136,8 +126,6 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         Effects::matteComposite(image);
     } else if (e.type == Effect::ChromaKey) {
         Effects::chromaKey(image, e.color, amount, e.softness, e.clipBlack, e.clipWhite, e.spill, e.invert);
-    } else if (e.type == Effect::LuminanceThreshold) {
-        Effects::luminanceThreshold(image, amount, e.softness, e.clipBlack, e.clipWhite, e.invert);
     } else if (e.type == Effect::VariableBlur) {
         int const m = scene.layerIndex(e.matte);
         if (m < 0)
@@ -151,7 +139,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
             mp.setTransform(scene.worldTransform(m, frame) * sceneToDevice);
             paintMatte(mp, m, index);
         }
-        Effects::variableBlur(image, where, amount * pixelsPerUnit);
+        Effects::variableBlur(image, where, amount * pixelsPerUnit, e.value("blackRadius") * pixelsPerUnit, e.flag("keepInside"));
     } else if (e.type == Effect::MatteBlur) {
         int const m = scene.layerIndex(e.matte);
         if (m < 0)
@@ -170,7 +158,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         // The change from sharp to blurred soft-edged as well.
         Effects::blur(where, std::max(1.0, amount * pixelsPerUnit / 3.0));
         QImage blurred = image;
-        Effects::blur(blurred, amount * pixelsPerUnit);
+        Effects::matteBlurred(blurred, e, amount * pixelsPerUnit);
         {
             QPainter bp(&blurred);
             bp.setCompositionMode(QPainter::CompositionMode_DestinationIn);

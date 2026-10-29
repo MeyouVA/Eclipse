@@ -3,11 +3,17 @@
 
 #include "model/scene/Swatch.h"
 
+#include <QMap>
+#include <QPair>
+
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
                 ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, Script, External, ApplyCamera,
-                GenericComposite, LayerSelector, ChromaKey, DifferenceKeyer, LuminanceThreshold, ImageSwitch, Visibility, TypeCount };
+                GenericComposite, LayerSelector, ChromaKey, DifferenceKeyer, LuminanceThreshold, ImageSwitch, Visibility,
+                GaussianBlur, BoxBlur, ZoomBlur, BokehBlur, AntiFlicker, ColourFade, ColourOverride, ChannelSwap, ColourLevels, ColourScreen, Contrast,
+                Gamma, ColourBanding, Dither, Shine, LensFlare, BurnIn, TurbulentNoise, Grid, Refract, Shake, Quake, UnsharpMask, IncreaseOpacity,
+                AnimatePencilTexture, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -48,7 +54,39 @@ struct Effect {
     bool showInViews = true;    // visibility: whether what comes in shows in the Camera view, and in renders
     bool showInRender = true;
     // Works only as a node of a graph wired by hand (it takes more than one picture, or a layer's art layers).
-    static bool graphOnly(Type type) { return type == GenericComposite || type == LayerSelector || type == DifferenceKeyer || type == ImageSwitch || type == Visibility; }
+    static bool graphOnly(Type type)
+    {
+        return type == GenericComposite || type == LayerSelector || type == DifferenceKeyer || type == ImageSwitch || type == Visibility || type == ColourOverride
+               || type == Refract || type == AnimatePencilTexture;
+    }
+    // A setting of a kind of effect, by name: what it is called, its range and where it starts (a colour: its 0xAARRGGBB).
+    struct Param {
+        enum Kind { Number, Whole, Toggle, Choice, Colour };
+        char const* key;
+        char const* label;
+        Kind kind;
+        double low, high, start;
+        char const* choices;    // a choice: the names, with "|" between
+        char const* tip;
+    };
+    static QVector<Param> const& params(Type type);
+    static Param const* param(Type type, QString const& key);
+    // The settings by name; only those moved from where they start are kept.
+    QMap<QString, double> values;
+    double value(char const* key) const;
+    bool flag(char const* key) const { return value(key) != 0.0; }
+    QColor colourValue(char const* key) const;
+    void setValue(QString const& key, double value);
+    // The amount of the newer kinds: what it is called, how it is shown (0 not at all, 1 a percentage, 2 scene units, 3 a number), where it starts and its most.
+    struct Amount {
+        char const* label;
+        int shown;
+        double start;
+        double most;
+    };
+    static Amount amountOf(Type type);
+    // Colour-Override: the colours (swatch ids) shown in another colour instead.
+    QVector<QPair<int, QColor>> overrides;
     QString text;               // script: the script; external: the command line
     int life = 24;
     double speed = 6.0;
