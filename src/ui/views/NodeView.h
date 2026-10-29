@@ -8,17 +8,23 @@
 
 #include "EclipseExport.h"
 
+#include <QHash>
+#include <QImage>
+#include <QKeySequence>
 #include <QPointF>
 #include <QRectF>
 #include <QVector>
 #include <QWidget>
 #include <QJsonObject>
 #include <algorithm>
+#include <functional>
+
+#include "model/scene/NodeGraph.h"
 
 class Document;
 class QLineEdit;
 class QMenu;
-struct GraphNode;
+class QKeyEvent;
 
 class ECLIPSE_UI_API NodeView : public QWidget {
     Q_OBJECT
@@ -62,10 +68,92 @@ public:
     void setNavigatorShown(bool on);
     bool navigatorShown() const { return m_navigator; }
     void setStraightCables(bool on);
-    bool straightCables() const { return m_straight; }
+    bool straightCables() const { return m_options.cableType == 1; }
     // Preferences: a double-click on a layer's node opens its properties (editRequested) instead of renaming it.
     void setDoubleClickOpensEditor(bool on) { m_doubleClickEdits = on; }
     bool doubleClickOpensEditor() const { return m_doubleClickEdits; }
+
+    // The Node View preferences.
+    struct Options {
+        int cableType = 0;              // 0 curved, 1 a line from port to port, 2 straight runs with square corners
+        bool wideCables = true;         // cables out of a pass-through composite wide, in two colours
+        bool portsRightToLeft = false;  // a composite's first input on its right
+        double magnifierWidth = 6.0;    // in tenths of the view's width
+        double magnifierAspect = 1.5;   // width over height
+        int magnifierOpacity = 80;      // percent
+        double magnifierScale = 5.0;    // how much larger
+        bool panMiddle = true;          // a middle drag pans; otherwise it moves the nodes picked
+        bool readColour = true;         // drawing nodes in their layer's colour, when it has one
+        int backdropSelected = 220;     // backdrop opacity (0..255), picked and not
+        int backdropUnselected = 170;
+        int backdropTitleSize = 14;
+        int backdropColours = 17;       // how many of the backdrop colours are offered
+    };
+    void setOptions(Options const& options);
+    Options const& options() const { return m_options; }
+    // The cable style: 0 curved, 1 line, 2 straight with square corners.
+    void setCableType(int type);
+    int cableType() const { return m_options.cableType; }
+    // The keys of the Node View's own shortcuts (by shortcut id), asked of the window when a key is pressed here.
+    void setShortcutLookup(std::function<QKeySequence(QString const&)> lookup) { m_shortcutLookup = std::move(lookup); }
+    bool matchesShortcut(QKeyEvent* event, QString const& id) const;
+    // The commands of the Node View's own menu, added to the menu shown in a graph wired by hand.
+    void setSharedMenu(std::function<QMenu*(QWidget*)> make) { m_sharedMenu = std::move(make); }
+
+    // ---- switched on and off ----
+    bool nodeEnabled(int id) const;
+    // ---- going round the graph ----
+    // The node a node takes its picture or motion from, and the one it gives to (graph ids; layer mode: layer indexes).
+    int parentOf(int node, bool skipEffects) const;
+    int childOf(int node, bool skipEffects) const;
+    // A node's path from the top, groups and all ("Top/Group/Node").
+    QString qualifiedName(int node) const;
+    // ---- waypoints ----
+    int addWaypoint(QPointF graphPos, int onCable = -1);
+    // ---- ports picked (their names and filters) ----
+    struct PortRef {
+        int node = 0;
+        int port = 0;
+        bool out = false;
+        bool operator==(PortRef const&) const = default;
+    };
+    QVector<PortRef> pickedPorts() const { return m_portsPicked; }
+    void pickPort(PortRef port, bool add);
+    // Names given to outputs, filters given to inputs: to the ports picked, else to those of the nodes picked.
+    int namePorts(QString const& name, bool filters);
+    bool portFilteringShown() const { return m_showFilters; }
+    // ---- the cable cutter ----
+    bool cableCutter() const { return m_cutter || m_cutterHeld; }
+    // Every cable at this level crossed by the line between two places of the view is cut, as one step.
+    int cutCables(QPointF from, QPointF to);
+    // ---- thumbnails ----
+    bool thumbnailShown(int node) const;
+    QRectF thumbnailRect(int node) const;
+    QImage thumbnailImage(int node, QSize size) const;
+    bool thumbnailPattern() const { return m_thumbPattern; }
+    // ---- the magnifier ----
+    bool magnifier() const { return m_magnifier; }
+    QRectF magnifierRect() const;
+    // ---- backdrops ----
+    QVector<Backdrop> const& backdrops() const;
+    QRectF backdropRect(int index) const;
+    int backdropAt(QPointF widgetPos) const;
+    QVector<int> pickedBackdrops() const { return m_backdropPicked; }
+    void pickBackdrop(int index, bool add);
+    int addBackdrop(QString const& title = QString());
+    void setBackdrops(QVector<Backdrop> const& backdrops, QString const& text);
+    bool editBackdrop(int index);
+    // The colours offered for a backdrop (the Colours preferences, as many as the Node View preferences say).
+    QVector<QColor> backdropColours() const;
+    // ---- the whole view as a picture (to print) ----
+    QImage picture(QSize size);
+    // ---- what the library offers to add, found by name ----
+    QStringList insertableNames() const;
+    bool insertByName(QString const& name, QPointF graphPos);
+    // The kind a node is, as Search For Nodes lists it; and the nodes found by name (and kind), picked.
+    QString nodeTypeName(int key) const;
+    QStringList nodeTypeNames() const;
+    int selectMatching(QString const& text, bool caseSensitive, QStringList const& types);
 
     // ---- the node graph, wired by hand (see NodeGraph) ----
     // Whether the scene's graph is wired by hand: the view then shows it and edits it (otherwise it shows the layers as
@@ -97,6 +185,63 @@ public:
     QString graphPortName(GraphNode const& node, int port, bool input) const;
 
 public slots:
+    // Nodes switched on and off: picked, all, all but those picked.
+    void onActionEnableNodes();
+    void onActionDisableNodes();
+    void onActionEnableAll();
+    void onActionDisableAllOthers();
+    // Going round the graph from the node picked.
+    void onActionSelectParent();
+    void onActionSelectParentSkippingEffects();
+    void onActionSelectChild();
+    void onActionSelectChildSkippingEffects();
+    void onActionSelectChildren();
+    void onActionSelectPreviousSibling();
+    void onActionSelectNextSibling();
+    void onActionCentreOnParent();
+    void onActionCentreOnChild();
+    // Groups.
+    void onActionGroupSelection();
+    void onActionCreateGroup();
+    void onActionMoveToParentGroup();
+    void onActionExplodeGroups();
+    void onActionSelectGroupContent();
+    // Waypoints and port names.
+    void onActionCreateWaypoint();
+    void onActionRenameWaypoint();
+    void onActionAddPortName();
+    void onActionAddPortFilter();
+    void onActionClearPortNames();
+    void onActionCopyPortNames();
+    void onActionPastePortNames();
+    void onActionShowPortFiltering(bool on);
+    void onActionCableCutter(bool on);
+    // Thumbnails, the navigator, the magnifier.
+    void onActionShowSelectedThumbnails();
+    void onActionHideSelectedThumbnails();
+    void onActionToggleSelectedThumbnails();
+    void onActionShowAllThumbnails();
+    void onActionHideAllThumbnails();
+    void onActionThumbnailPattern(bool on);
+    void onActionShowNavigator(bool on);
+    void onActionMagnifier(bool on);
+    // Arranging.
+    void onActionOrderUp();
+    void onActionOrderDown();
+    void onActionAlignHorizontally();
+    void onActionCopyQualifiedName();
+    // `how`: "timing" (a clone keeping the timing), "drawings" (a clone with timing of its own) or "duplicate".
+    void onActionCloneNodes(QString const& how);
+    void onActionEditor();
+    void onActionCreateDisplay();
+    void onActionCreateBackdrop();
+    void onActionRecalculateSelected();
+    void onActionRecalculateAll();
+    void onActionFindAndInsert();
+    void onActionSearchNodes();
+    void cut();
+    void copy();
+    void paste();
     void onActionNavigator(QString const& position);
     void onActionCableStyle(QString const& style);
     void selectAll();
@@ -125,6 +270,10 @@ signals:
     void editRequested(int layer);
     void contextMenuRequested(QPoint const& globalPos);
     void nodeDropped(QString const& what, QPointF graphPos);
+    // The layers picked here (front to back), for the Timeline to show picked too.
+    void layersPicked(QVector<int> const& layers);
+    void statusMessage(QString const& text);
+    void recalculateRequested(bool all);
 
 protected:
     bool event(QEvent* event) override;
@@ -142,6 +291,7 @@ protected:
     void dragEnterEvent(QDragEnterEvent*) override;
     void dragMoveEvent(QDragMoveEvent*) override;
     void dropEvent(QDropEvent*) override;
+    void leaveEvent(QEvent*) override;
     QSize sizeHint() const override { return QSize(360, 300); }
 
 private:
@@ -157,8 +307,61 @@ private:
     int cableAt(QPointF widgetPos) const;
     QVector<QPointF> cablePoints(QPointF from, QPointF to) const;
     static bool cableContains(QVector<QPointF> const& points, QPointF position, double reach);
+    static bool crosses(QVector<QPointF> const& points, QPointF from, QPointF to);
+    void paintView(QPainter& p);
+    void paintLayerMode(QPainter& p);
+    void paintBackdrops(QPainter& p);
+    void paintThumbnails(QPainter& p);
+    void paintMagnifier(QPainter& p);
+    void paintEditorButton(QPainter& p, QRectF const& node);
+    QRectF editorButton(QRectF const& node) const;
+    QColor layerNodeColour(int layer) const;
+    QColor nodeBorder(GraphNode const* node, int layer) const;
+    bool showsEditor(int layer, GraphNode const* node) const;
+    // A group node holding effects and nothing else (shown in the group-effect colours).
+    bool effectGroup(int id) const;
+    // The node keys the picked thumbnails and the like go by: a graph node's id, or (layer mode) a layer's id.
+    QVector<int> pickedKeys() const;
+    void setThumbs(QVector<int> const& keys, int height, QString const& text);
+    void switchNodes(QVector<int> const& keys, bool on, QString const& text);
+    // The mouse on what both kinds of view have: the cutter, thumbnails, editor buttons, backdrops.
+    bool commonPress(QMouseEvent* event);
+    bool backdropPress(QMouseEvent* event);
+    bool commonMove(QMouseEvent* event);
+    bool commonRelease(QMouseEvent* event);
+    bool backdropMenu(QPoint globalPos, QPointF widgetPos);
+    int thumbGripAt(QPointF widgetPos) const;
+    int editorAt(QPointF widgetPos) const;
+    void openEditor(int key);
+    QRectF nodeRectOf(int key) const;
+    QVector<int> shownKeys() const;
+    void emitPicked();
+    bool handleOwnKeys(QKeyEvent* event, bool dryRun);
+    void selectLayers(QVector<int> const& layers);
+    void selectRelative(int which, bool skipEffects, bool centre);
+    void moveOutOfGroup(QVector<int> const& ids, bool dissolve);
+    QString askName(QString const& title, QString const& label, QString const& text, bool waypoint);
+    bool m_printing = false;
+    bool m_inLens = false;
+    Options m_options;
+    std::function<QKeySequence(QString const&)> m_shortcutLookup;
+    std::function<QMenu*(QWidget*)> m_sharedMenu;
+    QVector<PortRef> m_portsPicked;
+    PortRef m_portPress;
+    bool m_showFilters = false;
+    bool m_cutter = false;
+    bool m_cutterHeld = false;
+    bool m_thumbPattern = false;
+    bool m_magnifier = false;
+    QPointF m_hover{-1, -1};
+    QVector<int> m_backdropPicked;
+    int m_backdropDrag = -1;
+    bool m_backdropResize = false;
+    QVector<int> m_backdropCarry;               // the nodes a backdrop being moved takes with it (keys)
+    int m_thumbDrag = 0;                        // the node whose thumbnail is being made larger or smaller (key)
+    int m_thumbStart = 0;
+    mutable QHash<QString, QImage> m_thumbCache;
     bool m_navigator = true;
-    bool m_straight = false;
     bool m_doubleClickEdits = false;
     int m_navigatorCorner = 2;
     bool m_spacePan = false;
@@ -180,7 +383,7 @@ private:
     QPointF m_pan = QPointF(40, 150);
     bool m_centred = false;   // the graph is brought into view the first time it is shown
 
-    enum Drag { DragNone, DragNode, DragCable, DragPan, DragWire, DragGraphNode, DragPeg, DragBox, DragDisconnect } m_drag = DragNone;
+    enum Drag { DragNone, DragNode, DragCable, DragPan, DragWire, DragGraphNode, DragPeg, DragBox, DragDisconnect, DragCut, DragBackdrop, DragThumb } m_drag = DragNone;
 
     // The graph, wired by hand: drawn and worked with in the widget.
     int m_graphGroup = 0;

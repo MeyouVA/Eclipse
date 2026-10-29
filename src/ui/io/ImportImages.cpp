@@ -445,6 +445,28 @@ void MainWindow::onActionImportSwf()
                              10000);
 }
 
+// A picture's colours as its file stores them under its see-through parts (Preferences > Node View), made straight.
+// 1: multiplied by the opacity (over black); 2: mixed with white by the opacity; 3: as 1, a colour above its opacity held down to it.
+static QImage readTransparency(QImage const& read, int kind)
+{
+    if (kind <= 0 || kind > 3 || !read.hasAlphaChannel())
+        return read;
+    QImage image = read.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const a = qAlpha(line[x]);
+            if (a == 0 || a == 255)
+                continue;
+            int rgb[3] = {qRed(line[x]), qGreen(line[x]), qBlue(line[x])};
+            for (int& c : rgb)
+                c = std::clamp(kind == 2 ? (c - (255 - a)) * 255 / a : std::min(c, kind == 3 ? a : 255) * 255 / a, 0, 255);
+            line[x] = qRgba(rgb[0], rgb[1], rgb[2], a);
+        }
+    }
+    return image;
+}
+
 int MainWindow::importImages(ImageImport const& options, QString* error)
 {
     auto fail = [&](QString const& why) {
@@ -466,6 +488,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         QImage image = reader.read();
         if (image.isNull())
             return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), reader.errorString()));
+        image = readTransparency(image, QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/importTransparency"), 0).toInt());
         double const across = double(scene.width) / image.width(), down = double(scene.height) / image.height();
         double const scale = !options.fit ? 1.0 : options.pan ? std::max(across, down) : std::min(across, down);
         QTransform placement = QTransform::fromScale(scale, scale);

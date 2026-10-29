@@ -437,6 +437,15 @@ public slots:
     void onActionSubstituteNext();
     void onActionSelectParent();
     void onActionSelectChild();
+    // Skipping effects: with the Node View's parenting followed, past effect nodes; otherwise as Select Parent and Select Child.
+    void onActionSelectParentSkippingEffects();
+    void onActionSelectChildSkippingEffects();
+    // Animation > Select Group Content: what is in the current group layer, picked in the Timeline.
+    void onActionSelectGroupContent();
+    // File > Print Node View...: the Node View as it is at its level, on paper.
+    void onActionPrintNodeView();
+    // The Node View menu's switches made to show how the view is (they can be changed by its own keys too).
+    void syncNodeViewChecks();
     // Every layer attached to the current one, and those attached to them: all picked together.
     void onActionSelectChildren();
     // The layers selected hidden; or shown, and every other one hidden - one step of undo each.
@@ -615,6 +624,8 @@ private:
     void preferencesRender(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesTools(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesNodeView(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void saveNodePreferences(struct PreferenceWidgets& w, class QSettings& s);
+    void applyNodePreferences(class QSettings const& s);
     void preferencesOnion(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesSound(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesDrawing(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
@@ -812,6 +823,8 @@ private:
     bool m_columnEditorNext = false;    // Column Properties opened as the Column Editor (with Apply/Next)
     LayerPanel* m_layerPanel = nullptr;
     NodeView* m_nodeView = nullptr;
+    // Preferences > Node View: Select Parent and the rest go by the Node View's cables (a graph wired by hand), not the Timeline's.
+    bool m_followNodeParenting = false;
     // Select in Camera: the node waiting for a layer (a graph node's id, or a layer's), and the prompt shown meanwhile.
     int m_cameraPickTarget = 0;
     bool m_cameraPickGraph = false;

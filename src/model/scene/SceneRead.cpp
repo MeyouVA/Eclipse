@@ -192,7 +192,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     {
         QJsonObject const g = json["graph"].toObject();
         static QStringList const kinds{QStringLiteral("layer"), QStringLiteral("composite"), QStringLiteral("effect"), QStringLiteral("group"),
-                                       QStringLiteral("groupIn"), QStringLiteral("groupOut"), QStringLiteral("display"), QStringLiteral("note")};
+                                       QStringLiteral("groupIn"), QStringLiteral("groupOut"), QStringLiteral("display"), QStringLiteral("note"),
+                                       QStringLiteral("waypoint")};
         for (QJsonValue const& nv : g["nodes"].toArray()) {
             QJsonObject const no = nv.toObject();
             GraphNode n;
@@ -210,6 +211,18 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             n.group = no["group"].toInt(0);
             if (QJsonArray const at = no["at"].toArray(); at.size() == 2)
                 n.at = QPointF(at[0].toDouble(), at[1].toDouble());
+            n.enabled = no["enabled"].toBool(true);
+            n.passThrough = no["passThrough"].toBool(false);
+            n.thumb = std::clamp(no["thumb"].toInt(0), 0, 2000);
+            for (auto const& [key, map] : {std::pair<char const*, QMap<int, QString>*>{"portNames", &n.portNames}, {"portFilters", &n.portFilters}}) {
+                QJsonObject const names = no[QLatin1String(key)].toObject();
+                for (auto it = names.begin(); it != names.end(); ++it) {
+                    bool okay = false;
+                    int const port = it.key().toInt(&okay);
+                    if (okay && port >= 0 && !it.value().toString().trimmed().isEmpty())
+                        map->insert(port, it.value().toString());
+                }
+            }
             if (n.kind == GraphNode::EffectNode && !effectFromJson(no["effect"].toObject(), n.effect))
                 continue;
             for (QJsonValue const& kv : no["amountKeys"].toArray())
@@ -223,6 +236,8 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             if (c.size() == 4 && scene.graph.node(c[0].toInt()) && scene.graph.node(c[2].toInt()))
                 scene.graph.cables.push_back({c[0].toInt(), c[1].toInt(), c[2].toInt(), c[3].toInt()});
         }
+        scene.graph.backdrops = backdropsFromJson(g["backdrops"].toArray());
+        scene.backdrops = backdropsFromJson(json["backdrops"].toArray());
     }
     // The pictures kept in the file itself, each image once (by the key the pictures name it by).
     QHash<QString, QImage> images;

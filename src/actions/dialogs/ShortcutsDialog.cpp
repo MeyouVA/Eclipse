@@ -161,8 +161,14 @@ QString ShortcutsDialog::conflict(QString const& id, QKeySequence const& key) co
 {
     if (key.isEmpty())
         return QString();
+    // The Node View's own keys act only inside it: they clash only with one another.
+    QString ownCategory;
     for (ActionManager::Shortcut const& s : m_manager->shortcuts())
-        if (s.id != id && m_keys.value(s.id) == key)
+        if (s.id == id)
+            ownCategory = s.category;
+    bool const nodeOnly = ownCategory == QLatin1String("Node View");
+    for (ActionManager::Shortcut const& s : m_manager->shortcuts())
+        if (s.id != id && m_keys.value(s.id) == key && (s.category == QLatin1String("Node View")) == nodeOnly)
             return s.text;
     return QString();
 }

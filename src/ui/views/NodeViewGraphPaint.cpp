@@ -238,7 +238,7 @@ void NodeView::paintGraphMode(QPainter& p)
 {
     Scene const& scene = m_document->scene();
     NodeGraph const& g = scene.graph;
-    QColor const imageCable(120, 200, 140), picked(255, 220, 90);
+    QColor const imageCable = InterfaceColours::get("nodeImageCable"), picked(255, 220, 90);
     auto cable = [&](QPointF from, QPointF to, QColor const& color, double width) {
         QVector<QPointF> const pts = cablePoints(from, to);
         p.setPen(QPen(color, width));
@@ -253,8 +253,15 @@ void NodeView::paintGraphMode(QPainter& p)
         GraphCable const& k = g.cables[c];
         if (c == m_unplugged || graphNodeRect(k.from).isNull() || graphNodeRect(k.to).isNull())
             continue;
-        cable(graphOutPort(k.from, k.fromPort) + shift(k.from), graphInPort(k.to, k.toPort) + shift(k.to), c == m_graphCable ? picked : imageCable,
-              c == m_graphCable ? 2.6 : 1.8);
+        QPointF const from = graphOutPort(k.from, k.fromPort) + shift(k.from), to = graphInPort(k.to, k.toPort) + shift(k.to);
+        GraphNode const* const source = g.node(k.from);
+        if (m_options.wideCables && source && source->kind == GraphNode::Composite && source->passThrough && c != m_graphCable) {
+            // Out of a pass-through composite: several pictures in one cable, wide and in two colours.
+            cable(from, to, imageCable, 5.0);
+            cable(from, to, InterfaceColours::get("nodeWideCableInner"), 1.6);
+            continue;
+        }
+        cable(from, to, c == m_graphCable ? picked : imageCable, c == m_graphCable ? 2.6 : 1.8);
     }
     if (m_drag == DragWire) {
         if (m_wireReverse)
@@ -264,7 +271,7 @@ void NodeView::paintGraphMode(QPainter& p)
     }
     // ---- the parenting of the layers: from a node's right end to the left end of each node that hangs from it ----
     {
-        QPen pegPen(QColor(230, 160, 60), 1.6, Qt::DashLine);
+        QPen pegPen(InterfaceColours::get("nodePegCable"), 1.6, Qt::DashLine);
         p.setPen(pegPen);
         p.setBrush(Qt::NoBrush);
         for (GraphNode const& n : g.nodes) {
@@ -304,20 +311,35 @@ void NodeView::paintGraphMode(QPainter& p)
             continue;
         }
         int const shownLayer = n.kind == GraphNode::LayerNode ? m_document->scene().layerIndex(n.layer) : -1;
-        int const layerKind = shownLayer >= 0 ? m_document->scene().layers[shownLayer].kind : -1;
-        QColor const color = layerKind == Layer::Camera ? InterfaceColours::get("nodeCamera") : layerKind == Layer::Peg ? InterfaceColours::get("nodePeg")
-                             : layerKind == Layer::Sound ? InterfaceColours::get("nodeSound") : n.kind == GraphNode::LayerNode ? InterfaceColours::get("nodeDrawing")
-                             : n.kind == GraphNode::Composite ? InterfaceColours::get("nodeComposite") : n.kind == GraphNode::EffectNode ? InterfaceColours::get("nodeEffect")
-                             : n.kind == GraphNode::Display ? InterfaceColours::get("nodeDisplay") : InterfaceColours::get("nodeGroup");
-        bool const off = n.kind == GraphNode::EffectNode && !n.effect.enabled;
         bool const chosen = n.id == m_graphNode || m_graphPicked.contains(n.id);
-        QColor const border = layerKind == Layer::Camera ? InterfaceColours::get("nodeCameraBorder") : QColor(20, 21, 23);
+        if (n.kind == GraphNode::Waypoint) {
+            // A waypoint: a dot that cables pass through, its name beside it.
+            p.setPen(QPen(chosen ? InterfaceColours::get("nodeSelected") : InterfaceColours::get("nodeDark"), chosen ? 2.0 : 1.0));
+            p.setBrush(n.enabled ? InterfaceColours::get("nodeLight") : InterfaceColours::get("nodeLight").darker(190));
+            p.drawEllipse(r);
+            if (!n.name.isEmpty()) {
+                p.setPen(QColor(235, 235, 235));
+                p.drawText(QRectF(r.right() + 4 * m_zoom, r.top() - 4 * m_zoom, 200 * m_zoom, r.height() + 8 * m_zoom), Qt::AlignLeft | Qt::AlignVCenter, n.name);
+            }
+            continue;
+        }
+        QColor const color = shownLayer >= 0 ? layerNodeColour(shownLayer)
+                             : n.kind == GraphNode::Composite ? InterfaceColours::get("nodeComposite") : n.kind == GraphNode::EffectNode ? InterfaceColours::get("nodeEffect")
+                             : n.kind == GraphNode::Display ? InterfaceColours::get("nodeDisplay")
+                             : n.kind == GraphNode::GroupIn || n.kind == GraphNode::GroupOut ? InterfaceColours::get("nodeProxyPort")
+                             : n.kind == GraphNode::Group ? InterfaceColours::get(effectGroup(n.id) ? "nodeGroupEffect" : "nodeGroup")
+                             : InterfaceColours::get("nodeLight");
+        bool const off = !nodeEnabled(n.id);
+        QColor const border = nodeBorder(&n, shownLayer);
         p.setPen(QPen(chosen ? InterfaceColours::get("nodeSelected") : border, chosen ? 2.0 : 1.0));
         p.setBrush(off ? color.darker(190) : color);
         p.drawRoundedRect(r, 4 * m_zoom, 4 * m_zoom);
         p.setPen(off ? QColor(150, 150, 150) : QColor(245, 245, 245));
-        QRectF const text = r.adjusted(8 * m_zoom, 0, -(n.kind == GraphNode::Group ? 18 : 6) * m_zoom, 0);
+        bool const editor = showsEditor(shownLayer, &n);
+        QRectF const text = r.adjusted(8 * m_zoom, 0, -(n.kind == GraphNode::Group ? 18 : editor ? 20 : 6) * m_zoom, 0);
         p.drawText(text, Qt::AlignVCenter | Qt::AlignLeft, p.fontMetrics().elidedText(graphNodeName(n), Qt::ElideRight, int(text.width())));
+        if (editor)
+            paintEditorButton(p, r);
         if (n.kind == GraphNode::Group) {
             // A group can be gone into: a small arrow at its right end says so.
             QPointF const tip(r.right() - 10 * m_zoom, r.center().y() + 4 * m_zoom);
@@ -326,15 +348,45 @@ void NodeView::paintGraphMode(QPainter& p)
             p.drawLine(tip + QPointF(-3.5 * m_zoom, -3.5 * m_zoom), tip);
             p.drawLine(tip + QPointF(3.5 * m_zoom, -3.5 * m_zoom), tip);
         }
-        // Ports: in along the top (filled when something comes in), out along the bottom.
-        p.setPen(QPen(QColor(20, 21, 23), 1));
+        // Ports: in along the top (filled when something comes in), out along the bottom; picked ones ringed, named ones labelled.
+        QFont small = p.font();
+        small.setPointSizeF(std::max(4.5, small.pointSizeF() * 0.8));
         for (int i = 0; i < n.inputs(); ++i) {
-            p.setBrush(g.into(n.id, i) ? QColor(210, 212, 216) : QColor(90, 92, 96));
-            p.drawEllipse(graphInPort(n.id, i) + shift(n.id), 3.5 * m_zoom, 3.5 * m_zoom);
+            QPointF const at = graphInPort(n.id, i) + shift(n.id);
+            p.setPen(QPen(InterfaceColours::get("nodePortImageDark"), 1));
+            p.setBrush(g.into(n.id, i) ? InterfaceColours::get("nodePortImage") : InterfaceColours::get("nodePortImage").darker(240));
+            p.drawEllipse(at, 3.5 * m_zoom, 3.5 * m_zoom);
+            if (m_portsPicked.contains(PortRef{n.id, i, false})) {
+                p.setPen(QPen(picked, 1.6));
+                p.setBrush(Qt::NoBrush);
+                p.drawEllipse(at, 6.5 * m_zoom, 6.5 * m_zoom);
+            }
+            if (m_showFilters && !n.portFilters.value(i).isEmpty()) {
+                QFont const was = p.font();
+                p.setFont(small);
+                p.setPen(QColor(250, 210, 120));
+                p.drawText(QRectF(at.x() - 60 * m_zoom, at.y() - 22 * m_zoom, 120 * m_zoom, 14 * m_zoom), Qt::AlignCenter, QStringLiteral("[") + n.portFilters.value(i) + QStringLiteral("]"));
+                p.setFont(was);
+            }
         }
-        p.setBrush(QColor(210, 212, 216));
-        for (int o = 0; o < n.outputs() && !pictureless(n); ++o)
-            p.drawEllipse(graphOutPort(n.id, o) + shift(n.id), 4.5 * m_zoom, 4.5 * m_zoom);
+        for (int o = 0; o < n.outputs() && !pictureless(n); ++o) {
+            QPointF const at = graphOutPort(n.id, o) + shift(n.id);
+            p.setPen(QPen(InterfaceColours::get("nodePortImageDark"), 1));
+            p.setBrush(InterfaceColours::get("nodePortImage"));
+            p.drawEllipse(at, 4.5 * m_zoom, 4.5 * m_zoom);
+            if (m_portsPicked.contains(PortRef{n.id, o, true})) {
+                p.setPen(QPen(picked, 1.6));
+                p.setBrush(Qt::NoBrush);
+                p.drawEllipse(at, 7.5 * m_zoom, 7.5 * m_zoom);
+            }
+            if (!n.portNames.value(o).isEmpty()) {
+                QFont const was = p.font();
+                p.setFont(small);
+                p.setPen(QColor(170, 230, 250));
+                p.drawText(QRectF(at.x() - 60 * m_zoom, at.y() + 6 * m_zoom, 120 * m_zoom, 14 * m_zoom), Qt::AlignCenter, n.portNames.value(o));
+                p.setFont(was);
+            }
+        }
         if (n.kind == GraphNode::LayerNode) {
             // Its transformation ports: small squares at its two ends.
             double const s = 3.5 * m_zoom;
@@ -343,6 +395,9 @@ void NodeView::paintGraphMode(QPainter& p)
             p.drawRect(QRectF(graphTransformOut(n.id) + shift(n.id) - QPointF(s, s), QSizeF(2 * s, 2 * s)));
         }
     }
+    paintThumbnails(p);
+    if (m_printing || m_inLens)
+        return;
     // The map in the corner: the nodes of this level as small blocks, and what the view shows as a frame.
     if (m_navigator && width() > 320 && height() > 200) {
         QRectF const map = navigatorRect();
@@ -377,6 +432,6 @@ void NodeView::paintGraphMode(QPainter& p)
         p.setBrush(QColor(40, 118, 122));
         p.drawRoundedRect(path, 4, 4);
         p.setPen(QColor(245, 245, 245));
-        p.drawText(path.adjusted(8, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft, QStringLiteral("â†‘  ") + tr("Top") + QStringLiteral(" / ") + names.join(QStringLiteral(" / ")));
+        p.drawText(path.adjusted(8, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft, QStringLiteral("\u2191  ") + tr("Top") + QStringLiteral(" / ") + names.join(QStringLiteral(" / ")));
     }
 }

@@ -27,6 +27,9 @@ QString found(QString const& folder, QString const& file, QString const& relativ
 
 QVector<QPair<QString, QString>> pairsFromJson(QJsonArray const& array);
 
+// The Node View's backdrops from the scene file.
+QVector<Backdrop> backdropsFromJson(QJsonArray const& array);
+
 // An effect from the scene file (false: one of a kind this version does not know).
 bool effectFromJson(QJsonObject const& eo, Effect& e);
 

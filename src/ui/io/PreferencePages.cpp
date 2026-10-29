@@ -575,29 +575,6 @@ void MainWindow::preferencesTools(PreferenceWidgets& w, QSettings& s, QDialog& d
     Q_UNUSED(dialog);
 }
 
-void MainWindow::preferencesNodeView(PreferenceWidgets& w, QSettings& s, QDialog& dialog)
-{
-    // Node View: how the graph is shown.
-    w.nodePage = new QGroupBox(tr("Node View"), &dialog);
-    w.navigator = new QCheckBox(tr("Show the small map of the graph in the corner"), w.nodePage);
-    w.navigator->setObjectName(QStringLiteral("PrefNodeNavigator"));
-    w.navigator->setChecked(s.value(QStringLiteral("prefs/nodeNavigator"), true).toBool());
-    w.straight = new QCheckBox(tr("Straight cables (instead of curves)"), w.nodePage);
-    w.straight->setObjectName(QStringLiteral("PrefNodeStraight"));
-    w.straight->setChecked(s.value(QStringLiteral("prefs/nodeStraight"), false).toBool());
-    w.nodeLayout = new QFormLayout(w.nodePage);
-    w.nodeLayout->addRow(w.navigator);
-    w.nodeLayout->addRow(w.straight);
-    w.nodeDoubleClick = new QComboBox(w.nodePage);
-    w.nodeDoubleClick->setObjectName(QStringLiteral("PrefNodeDoubleClick"));
-    w.nodeDoubleClick->addItems({tr("Renames the layer"), tr("Opens Layer Properties")});
-    w.nodeDoubleClick->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/nodeDoubleClick"), 0).toInt(), 0, 1));
-    w.nodeLayout->addRow(tr("A double-click on a layer's node"), w.nodeDoubleClick);
-
-    Q_UNUSED(s);
-    Q_UNUSED(dialog);
-}
-
 void MainWindow::preferencesOnion(PreferenceWidgets& w, QSettings& s, QDialog& dialog)
 {
     // Onion Skin: how many drawings either side it shows, and how strongly, when Eclipse starts.

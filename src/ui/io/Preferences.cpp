@@ -183,11 +183,8 @@ void MainWindow::applyPreferences()
                                 std::clamp(s.value(QStringLiteral("prefs/onionNext"), m_canvas->onionNext()).toInt(), 0, 6));
     if (s.contains(QStringLiteral("prefs/onionOpacity")))
         m_canvas->setOnionOpacity(std::clamp(s.value(QStringLiteral("prefs/onionOpacity"), 50).toInt(), 5, 100));
-    // Node View: the map in the corner, and straight or curved cables.
-    for (NodeView* const view : findChildren<NodeView*>()) {
-        view->setNavigatorShown(s.value(QStringLiteral("prefs/nodeNavigator"), true).toBool());
-        view->setStraightCables(s.value(QStringLiteral("prefs/nodeStraight"), false).toBool());
-    }
+    // Node View: the map in the corner, cables, the magnifier, backdrops and the rest.
+    applyNodePreferences(s);
     // Units: positions in fields or in pixels.
     if (CoordView* const coord = findChild<CoordView*>())
         coord->setPixelUnits(s.value(QStringLiteral("prefs/units"), 0).toInt() == 1);
@@ -283,8 +280,6 @@ void MainWindow::applyPreferences()
             for (int step = 0; step < Canvas::kOnionSteps; ++step)
                 m_canvas->setOnionStrength(after, step, nearest + (furthest - nearest) * step / std::max(1, Canvas::kOnionSteps - 1));
     }
-    if (NodeView* const view = findChild<NodeView*>())
-        view->setDoubleClickOpensEditor(s.value(QStringLiteral("prefs/nodeDoubleClick"), 0).toInt() == 1);
 }
 
 void MainWindow::placeCameraView()
@@ -399,8 +394,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/units"), w.units->currentIndex());
     s.setValue(QStringLiteral("prefs/smoothing"), w.smoothing->value());
     s.setValue(QStringLiteral("prefs/corners"), w.corners->value());
-    s.setValue(QStringLiteral("prefs/nodeNavigator"), w.navigator->isChecked());
-    s.setValue(QStringLiteral("prefs/nodeStraight"), w.straight->isChecked());
+    saveNodePreferences(w, s);
     s.setValue(QStringLiteral("prefs/onionPrevious"), w.onionCountBefore->value());
     s.setValue(QStringLiteral("prefs/onionNext"), w.onionCountAfter->value());
     s.setValue(QStringLiteral("prefs/onionOpacity"), w.onionStrength->value());
@@ -450,7 +444,6 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/timelineSceneEnd"), w.sceneEnd->isChecked());
     s.setValue(QStringLiteral("prefs/timelineReduceIndent"), w.reduceIndent->isChecked());
     s.setValue(QStringLiteral("prefs/preroll"), w.preroll->value());
-    s.setValue(QStringLiteral("prefs/nodeDoubleClick"), w.nodeDoubleClick->currentIndex());
     s.setValue(QStringLiteral("prefs/brushOutline"), w.brushOutline->isChecked());
     s.setValue(QStringLiteral("prefs/loop"), w.loopAtStart->isChecked());
     s.setValue(QStringLiteral("prefs/lipSyncLead"), w.lipLead->value());

@@ -40,5 +40,7 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
 
 // The node graph as it is written: its nodes and cables.
 QJsonObject graphToJson(NodeGraph const& graph);
+// The Node View's backdrops as they are written.
+QJsonArray backdropsToJson(QVector<Backdrop> const& backdrops);
 
 }  // namespace scene_write

@@ -18,7 +18,7 @@ void NodeView::onActionNavigator(QString const& position)
 
 void NodeView::onActionCableStyle(QString const& style)
 {
-    setStraightCables(style == QLatin1String("line"));
+    setCableType(style == QLatin1String("line") ? 1 : style == QLatin1String("straight") ? 2 : 0);
 }
 
 void NodeView::setNavigatorCorner(int corner)
@@ -33,7 +33,8 @@ QJsonObject NodeView::viewState() const
     for (int id : m_layerPicked) layers.append(id);
     for (int id : m_graphPicked) nodes.append(id);
     return {{"zoom", m_zoom}, {"x", m_pan.x()}, {"y", m_pan.y()}, {"group", m_groupId}, {"graphGroup", m_graphGroup},
-            {"navigator", m_navigator}, {"navigatorCorner", m_navigatorCorner}, {"straightCables", m_straight},
+            {"navigator", m_navigator}, {"navigatorCorner", m_navigatorCorner}, {"straightCables", m_options.cableType == 1}, {"cableType", m_options.cableType},
+            {"portFiltering", m_showFilters}, {"thumbnailPattern", m_thumbPattern},
             {"selectedLayers", layers}, {"selectedNodes", nodes}, {"activeNode", m_graphNode}};
 }
 
@@ -56,6 +57,8 @@ void NodeView::restoreViewState(QJsonObject const& state)
     m_graphNode = m_graphPicked.contains(state["activeNode"].toInt()) ? state["activeNode"].toInt() : m_graphPicked.isEmpty() ? 0 : m_graphPicked.last();
     setNavigatorShown(state["navigator"].toBool(m_navigator));
     setNavigatorCorner(state["navigatorCorner"].toInt(m_navigatorCorner));
-    setStraightCables(state["straightCables"].toBool(m_straight));
+    setCableType(state.contains(QStringLiteral("cableType")) ? state["cableType"].toInt() : state["straightCables"].toBool(m_options.cableType == 1) ? 1 : 0);
+    m_showFilters = state["portFiltering"].toBool(m_showFilters);
+    m_thumbPattern = state["thumbnailPattern"].toBool(m_thumbPattern);
     restoreView(state["zoom"].toDouble(1), QPointF(state["x"].toDouble(), state["y"].toDouble()));
 }

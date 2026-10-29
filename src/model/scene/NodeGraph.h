@@ -4,7 +4,7 @@
 #include "model/scene/Layer.h"
 
 struct GraphNode {
-    enum Kind { LayerNode, Composite, EffectNode, Group, GroupIn, GroupOut, Display, Note, KindCount };
+    enum Kind { LayerNode, Composite, EffectNode, Group, GroupIn, GroupOut, Display, Note, Waypoint, KindCount };
     int id = 0;
     Kind kind = Composite;
     QString name;
@@ -20,6 +20,17 @@ struct GraphNode {
     int outPorts = 1;
     int group = 0;              // the group node it is in (0: none, at the top)
     QPointF at;                 // where it stands in the Node View
+    // Off: a composite, group or waypoint passes its first input on unchanged (an effect has its own switch).
+    bool enabled = true;
+    // A composite whose inputs go on separately into the composite it feeds (blend modes then reach what lies under it there).
+    bool passThrough = false;
+    // How tall its thumbnail is over it in the Node View (0: none shown).
+    int thumb = 0;
+    // Names given to its outputs, and the names its inputs accept (a filter; * and ? stand for any letters).
+    QMap<int, QString> portNames;
+    QMap<int, QString> portFilters;
+    // Whether an output named `name` may be cabled into input `port` (a filter left empty takes anything).
+    bool accepts(int port, QString const& output) const;
     // The ports it has, in and out.
     int inputs() const;
     int outputs() const;
@@ -34,9 +45,21 @@ struct GraphCable {
     bool operator==(GraphCable const&) const = default;
 };
 
+// A coloured panel behind nodes in the Node View, with a title and a note; it moves the nodes on it along.
+struct Backdrop {
+    int group = 0;              // the group it is drawn in (a graph's group node, or a group layer's id; 0 at the top)
+    QRectF rect;                // where it lies, in the view's own units
+    QString title;
+    QString text;
+    QColor color = QColor(70, 110, 160);
+    int titleSize = 14;
+    bool operator==(Backdrop const&) const = default;
+};
+
 struct NodeGraph {
     QVector<GraphNode> nodes;
     QVector<GraphCable> cables;
+    QVector<Backdrop> backdrops;
     bool isEmpty() const { return nodes.isEmpty(); }
     int nodeIndex(int id) const;
     GraphNode const* node(int id) const;

@@ -156,6 +156,27 @@ QVector<QPair<QString, QString>> pairsFromJson(QJsonArray const& array)
     return pairs;
 }
 
+QVector<Backdrop> backdropsFromJson(QJsonArray const& array)
+{
+    QVector<Backdrop> out;
+    for (QJsonValue const& value : array) {
+        QJsonObject const o = value.toObject();
+        QJsonArray const r = o["rect"].toArray();
+        if (r.size() != 4)
+            continue;
+        Backdrop b;
+        b.group = o["group"].toInt(0);
+        b.rect = QRectF(r[0].toDouble(), r[1].toDouble(), std::max(20.0, r[2].toDouble()), std::max(20.0, r[3].toDouble()));
+        b.title = o["title"].toString();
+        b.text = o["text"].toString();
+        if (QColor const c(o["color"].toString()); c.isValid())
+            b.color = c;
+        b.titleSize = std::clamp(o["titleSize"].toInt(14), 6, 72);
+        out.push_back(b);
+    }
+    return out;
+}
+
 bool effectFromJson(QJsonObject const& eo, Effect& e)
 {
     QString const type = eo["type"].toString();
@@ -544,6 +565,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.nodePlaced = node.size() == 2;
     if (layer.nodePlaced)
         layer.nodePos = QPointF(node[0].toDouble(), node[1].toDouble());
+    layer.nodeThumb = std::clamp(lo["nodeThumb"].toInt(0), 0, 2000);
     QJsonArray const pivot = lo["pivot"].toArray();
     layer.pivot = pivot.size() == 2 ? QPointF(pivot[0].toDouble(), pivot[1].toDouble())
                                     : QPointF(width / 2.0, height / 2.0);

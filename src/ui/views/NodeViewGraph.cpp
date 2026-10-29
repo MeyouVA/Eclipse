@@ -41,6 +41,8 @@ bool NodeView::pictureless(GraphNode const& node) const
 
 double NodeView::graphNodeWidth(GraphNode const& node) const
 {
+    if (node.kind == GraphNode::Waypoint)
+        return 16.0;
     // (Wide enough for its ports to stand apart.)
     return std::max(kNodeWidth, 18.0 * std::max(node.inputs(), node.outputs()) + 30.0);
 }
@@ -77,6 +79,8 @@ QString NodeView::graphNodeName(GraphNode const& node) const
         return tr("Group Output");
     case GraphNode::Display:
         return node.name.isEmpty() ? tr("Display") : node.name;
+    case GraphNode::Waypoint:
+        return node.name.isEmpty() ? tr("Waypoint") : node.name;
     default:
         return QString();
     }
@@ -87,7 +91,7 @@ QRectF NodeView::graphNodeRect(int id) const
     GraphNode const* const n = m_document->scene().graph.node(id);
     if (!n || n->group != m_graphGroup)
         return QRectF();
-    return QRectF(toWidget(n->at), QSizeF(graphNodeWidth(*n) * m_zoom, kNodeHeight * m_zoom));
+    return QRectF(toWidget(n->at), QSizeF(graphNodeWidth(*n) * m_zoom, (n->kind == GraphNode::Waypoint ? 16.0 : kNodeHeight) * m_zoom));
 }
 
 QPointF NodeView::graphInPort(int id, int port) const
@@ -96,7 +100,9 @@ QPointF NodeView::graphInPort(int id, int port) const
     QRectF const r = graphNodeRect(id);
     if (!n || r.isNull())
         return QPointF();
-    return QPointF(r.left() + r.width() * (port + 1.0) / (n->inputs() + 1.0), r.top());
+    // (A composite's inputs may run from the right, as the preferences say.)
+    int const slot = m_options.portsRightToLeft && n->kind == GraphNode::Composite ? n->inputs() - 1 - port : port;
+    return QPointF(r.left() + r.width() * (slot + 1.0) / (n->inputs() + 1.0), r.top());
 }
 
 QPointF NodeView::graphOutPort(int id, int port) const
@@ -377,6 +383,10 @@ bool NodeView::connectGraph(int from, int fromPort, int to, int toPort)
     GraphNode const* const b = g.node(to);
     if (!a || !b || from == to || fromPort < 0 || fromPort >= a->outputs() || toPort < 0 || toPort >= b->inputs() || a->group != b->group)
         return false;
+    if (!b->accepts(toPort, a->portNames.value(fromPort))) {
+        emit statusMessage(tr("That input takes only outputs named %1.").arg(b->portFilters.value(toPort)));
+        return false;
+    }
     if (g.feeds(to, from))
         return false;   // (it would go round in a ring)
     g.cables.erase(std::remove_if(g.cables.begin(), g.cables.end(), [&](GraphCable const& c) { return c.to == to && c.toPort == toPort; }), g.cables.end());

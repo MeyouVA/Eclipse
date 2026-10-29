@@ -231,6 +231,8 @@ QJsonObject Scene::toJson(QString const& folder) const
         whole["images"] = images;
     if (!graph.isEmpty())
         whole["graph"] = graphToJson(graph);
+    if (!backdrops.isEmpty())
+        whole["backdrops"] = backdropsToJson(backdrops);
     if (!sheetMarkers.isEmpty()) {
         QJsonArray sheet;
         for (SheetMarker const& m : sheetMarkers)

@@ -460,4 +460,34 @@
   <shortcut id="shortcut.groupSelection" text="Group Selection" value="Ctrl+G"/>
   <shortcut id="shortcut.toolHand" text="Hand Tool" value="H"/>
  </category>
+ <category id="Node View" text="Node View">
+  <shortcut id="shortcut.nodeEnable" text="Enable Node" value="A"/>
+  <shortcut id="shortcut.nodeDisable" text="Disable Node" value="D"/>
+  <shortcut id="shortcut.nodeCreateDisplay" text="Create Display" value=""/>
+  <shortcut id="shortcut.nodeCentreSelection" text="Centre on Selection" value="O"/>
+  <shortcut id="shortcut.nodeMagnifier" text="Magnifier" value="Z"/>
+  <shortcut id="shortcut.nodeShowAll" text="Show All Nodes" value="Shift+."/>
+  <shortcut id="shortcut.nodeFindInsert" text="Find and Insert Node" value="Return"/>
+  <shortcut id="shortcut.nodeEnterGroup" text="Enter Group" value="Ctrl+Return"/>
+  <shortcut id="shortcut.nodeExitGroup" text="Exit Group" value="Ctrl+Shift+Return"/>
+  <shortcut id="shortcut.nodeMoveToParent" text="Move To Parent" value=""/>
+  <shortcut id="shortcut.nodeCreateGroup" text="Create Group" value="Alt+G"/>
+  <shortcut id="shortcut.nodeGroup" text="Group" value="Ctrl+G"/>
+  <shortcut id="shortcut.nodeCreateWaypoint" text="Create Waypoint" value=""/>
+  <shortcut id="shortcut.nodeRenameWaypoint" text="Rename Waypoint" value=""/>
+  <shortcut id="shortcut.nodeCableCutter" text="Cable Cutter" value=""/>
+  <shortcut id="shortcut.nodeCableCutterOverride" text="Cable Cutter Override (Hold)" value=""/>
+  <shortcut id="shortcut.nodeAddPortName" text="Add Port Name" value="+"/>
+  <shortcut id="shortcut.nodeCentreParent" text="Centre to Parent Node" value="Ctrl+Up"/>
+  <shortcut id="shortcut.nodeCentreChild" text="Centre to Child Node" value="Ctrl+Down"/>
+  <shortcut id="shortcut.nodeCopyQualifiedName" text="Copy Qualified Name" value="Ctrl+Q"/>
+  <shortcut id="shortcut.nodeCreateBackdrop" text="Create Backdrop" value=""/>
+  <shortcut id="shortcut.nodeToggleThumbnails" text="Show/Hide Selected Thumbnails" value="T"/>
+  <shortcut id="shortcut.nodeHideAllThumbnails" text="Hide All Thumbnails" value="Alt+T"/>
+  <shortcut id="shortcut.nodeOrderUp" text="Order Node View Up" value=""/>
+  <shortcut id="shortcut.nodeOrderDown" text="Order Node View Down" value=""/>
+  <shortcut id="shortcut.nodeAlignHorizontally" text="Align Nodes Horizontally" value=""/>
+  <shortcut id="shortcut.nodeExplodeGroups" text="Explode Selected Groups" value=""/>
+  <shortcut id="shortcut.nodeShowNavigator" text="Show/Hide Navigator" value=""/>
+ </category>
 </shortcuts>

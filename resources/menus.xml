@@ -54,6 +54,7 @@
    <separator/>
    <item id="Print" icon="file/print" text="&amp;Print..." responder="window" slot="onActionPrint()"/>
    <item id="PrintXsheet"/>
+   <item id="PrintNodeView" icon="file/print" text="Print &amp;Node View..." responder="window" slot="onActionPrintNodeView()"/>
    <separator/>
    <item id="Exit" icon="file/quit" text="&amp;Quit" shortcut="shortcut.quit" responder="window" slot="close()"/>
   </menu>
@@ -552,10 +553,11 @@
     <item id="SelectNextControlPoint" text="Select Ne&amp;xt Control Point" shortcut="shortcut.selectNextControlPoint" responder="window" slot="onActionSelectPathPoint(QString)" itemParameter="nextControl"/>
    </menu>
    <separator/>
-   <item id="SelectChildSkippingEffects" icon="anim/selectchild" text="Select Child Skipping E&amp;ffects" responder="window" slot="onActionSelectChild()"/>
+   <item id="SelectChildSkippingEffects" icon="anim/selectchild" text="Select Child Skipping E&amp;ffects" responder="window" slot="onActionSelectChildSkippingEffects()"/>
    <item id="SelectChild" icon="anim/selectchild" text="Select C&amp;hild" shortcut="shortcut.selectChild" responder="window" slot="onActionSelectChild()"/>
    <item id="SelectChildren" icon="anim/selectchildren" text="Select Childre&amp;n" responder="window" slot="onActionSelectChildren()"/>
-   <item id="SelectParentSkippingEffects" icon="anim/selectparent" text="Select Parent Skipping &amp;Effects" responder="window" slot="onActionSelectParent()"/>
+   <item id="SelectParentSkippingEffects" icon="anim/selectparent" text="Select Parent Skipping &amp;Effects" responder="window" slot="onActionSelectParentSkippingEffects()"/>
+   <item id="SelectGroupContent" text="Select &amp;Group Content" responder="window" slot="onActionSelectGroupContent()"/>
    <item id="SelectParent" icon="anim/selectparent" text="Select P&amp;arent" shortcut="shortcut.selectParent" responder="window" slot="onActionSelectParent()"/>
    <item id="SelectPreviousSibling" icon="anim/prevsibling" text="Select Previous Si&amp;bling" shortcut="shortcut.selectPrevSibling" responder="window" slot="onActionSelectPreviousSibling()"/>
    <item id="SelectNextSibling" icon="anim/nextsibling" text="Select Next Sib&amp;ling" shortcut="shortcut.selectNextSibling" responder="window" slot="onActionSelectNextSibling()"/>
@@ -852,6 +854,8 @@
   <separator/>
   <item id="EditSelectAll"/>
   <item id="EditDeselectAll"/>
+  <item id="SelectParentSkippingEffects"/>
+  <item id="SelectChildSkippingEffects"/>
   <item id="SelectWithCurrentColour" icon="edit/selectcolour" text="Select Strokes with Current Colour" shortcut="shortcut.selectCurrentColour" responder="camera" slot="onActionSelectWithCurrentColour()"/>
   <item id="SelectWithCurrentTexture" icon="edit/selecttexture" text="Select Strokes with Current Pencil Texture" shortcut="shortcut.selectCurrentTexture" responder="camera" slot="onActionSelectWithCurrentTexture()"/>
   <item id="InvertSelection" icon="edit/invertselection" text="Invert Selection" shortcut="shortcut.invertSelection" responder="camera" slot="onActionInvertSelection()"/>
@@ -924,7 +928,9 @@
   </menu>
   <menu id="TimelineSelect" text="Select">
    <item id="SelectParent"/>
+   <item id="SelectParentSkippingEffects"/>
    <item id="SelectChild"/>
+   <item id="SelectChildSkippingEffects"/>
    <item id="SelectChildren"/>
    <item id="SelectPreviousSibling"/>
    <item id="SelectNextSibling"/>
@@ -1544,42 +1550,131 @@
  </menu>
 
  <menu id="menu.nodeView" text="Node View Menu">
-  <item id="EditSelectAll"/>
-  <item id="EditDeselectAll"/>
-  <item id="NodeViewInvertSelection" text="Invert Selection" responder="nodeView" slot="onActionInvertSelection()"/>
-  <item id="EditDelete"/>
-  <separator/>
+  <menu id="NodeViewFileMenu" text="File">
+   <item id="PrintNodeView"/>
+   <item id="Print"/>
+  </menu>
+  <menu id="NodeViewEditMenu" text="Edit">
+   <item id="EditCut"/>
+   <item id="EditCopy"/>
+   <item id="EditPaste"/>
+   <item id="EditDelete"/>
+   <separator/>
+   <item id="EditSelectAll"/>
+   <item id="EditDeselectAll"/>
+   <item id="NodeViewInvertSelection" text="Invert Selection" responder="nodeView" slot="onActionInvertSelection()"/>
+   <item id="NodeSelectParent" icon="anim/selectparent" text="Select Parent" responder="nodeView" slot="onActionSelectParent()"/>
+   <item id="NodeSelectParentSkippingEffects" icon="anim/selectparent" text="Select Parent Skipping Effects" responder="nodeView" slot="onActionSelectParentSkippingEffects()"/>
+   <item id="NodeSelectChild" icon="anim/selectchild" text="Select Child" responder="nodeView" slot="onActionSelectChild()"/>
+   <item id="NodeSelectChildSkippingEffects" icon="anim/selectchild" text="Select Child Skipping Effects" responder="nodeView" slot="onActionSelectChildSkippingEffects()"/>
+   <item id="NodeSelectChildren" icon="anim/selectchildren" text="Select Children" responder="nodeView" slot="onActionSelectChildren()"/>
+   <item id="NodeSelectPreviousSibling" icon="anim/prevsibling" text="Select Previous Sibling" responder="nodeView" slot="onActionSelectPreviousSibling()"/>
+   <item id="NodeSelectNextSibling" icon="anim/nextsibling" text="Select Next Sibling" responder="nodeView" slot="onActionSelectNextSibling()"/>
+   <item id="NodeSelectGroupContent" text="Select Group Content" responder="nodeView" slot="onActionSelectGroupContent()"/>
+   <item id="SelectSyncedLayers"/>
+   <item id="NodeSearch" text="Search For Nodes..." responder="nodeView" slot="onActionSearchNodes()"/>
+   <separator/>
+   <item id="NodeCableCutter" text="Cable Cutter" checkable="true" responder="nodeView" slot="onActionCableCutter(bool)"/>
+   <separator/>
+   <item id="NodeRecalculateSelected" icon="misc/recalculate" text="Recalculate Selected" responder="nodeView" slot="onActionRecalculateSelected()"/>
+   <item id="NodeRecalculateAll" icon="misc/recalculate" text="Recalculate All" responder="nodeView" slot="onActionRecalculateAll()"/>
+  </menu>
+  <menu id="NodeViewViewMenu" text="View">
+   <item id="NodeViewZoomIn" icon="view/zoomin" text="Zoom In" responder="nodeView" slot="onActionZoomIn()"/>
+   <item id="NodeViewZoomOut" icon="view/zoomout" text="Zoom Out" responder="nodeView" slot="onActionZoomOut()"/>
+   <item id="NodeViewResetZoom" icon="view/resetzoom" text="Reset Zoom" responder="nodeView" slot="onActionResetZoom()"/>
+   <item id="NodeViewResetPan" icon="view/resetpan" text="Reset Pan" responder="nodeView" slot="onActionResetPan()"/>
+   <item id="NodeViewResetView" icon="view/resetview" text="Reset View" responder="nodeView" slot="onActionResetView()"/>
+   <item id="NodeViewCentreOnSelection" icon="timeline/viewselected" text="Centre on Selection" responder="nodeView" slot="onActionCentreOnSelection()"/>
+   <item id="NodeViewShowAll" text="Show All Nodes" responder="nodeView" slot="onActionResetView()"/>
+   <separator/>
+   <item id="NodeShowSelectedThumbnails" text="Show Selected Thumbnails" responder="nodeView" slot="onActionShowSelectedThumbnails()"/>
+   <item id="NodeHideSelectedThumbnails" text="Hide Selected Thumbnails" responder="nodeView" slot="onActionHideSelectedThumbnails()"/>
+   <item id="NodeShowAllThumbnails" text="Show All Thumbnails" responder="nodeView" slot="onActionShowAllThumbnails()"/>
+   <item id="NodeHideAllThumbnails" text="Hide All Thumbnails" responder="nodeView" slot="onActionHideAllThumbnails()"/>
+   <item id="NodeThumbnailPattern" text="Toggle Pattern" checkable="true" responder="nodeView" slot="onActionThumbnailPattern(bool)"/>
+   <separator/>
+   <menu id="NodeViewNavigator" text="Navigator">
+    <item id="NodeViewNavigatorShow" text="Show Navigator" checkable="true" checked="true" responder="nodeView" slot="onActionShowNavigator(bool)"/>
+    <item id="NodeViewNavigatorTopLeft" text="Top Left" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="0"/>
+    <item id="NodeViewNavigatorTopRight" text="Top Right" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="1"/>
+    <item id="NodeViewNavigatorBottomRight" text="Bottom Right" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="2"/>
+    <item id="NodeViewNavigatorBottomLeft" text="Bottom Left" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="3"/>
+   </menu>
+   <menu id="NodeViewCableStyle" text="Cable Style">
+    <item id="NodeViewCableBezier" text="Bezier" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="bezier"/>
+    <item id="NodeViewCableLine" text="Line" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="line"/>
+    <item id="NodeViewCableStraight" text="Straight" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="straight"/>
+   </menu>
+   <item id="NodeShowPortFiltering" text="Show Port Filtering" checkable="true" responder="nodeView" slot="onActionShowPortFiltering(bool)"/>
+   <item id="NodeMagnifier" text="Magnifier" checkable="true" responder="nodeView" slot="onActionMagnifier(bool)"/>
+   <separator/>
+   <item id="NodeEditor" icon="timeline/layerprops" text="Editor..." responder="nodeView" slot="onActionEditor()"/>
+  </menu>
   <menu id="NodeViewInsert" text="Insert">
    <item id="InsertDrawing"/>
    <item id="InsertPeg"/>
    <item id="InsertParentPeg"/>
    <item id="InsertCamera"/>
+   <item id="NodeCreateGroup" icon="timeline/addgroup" text="Group" responder="nodeView" slot="onActionCreateGroup()"/>
+   <item id="NodeCreateDisplay" text="Display" responder="nodeView" slot="onActionCreateDisplay()"/>
+   <item id="NodeCreateBackdrop" text="Backdrop" responder="nodeView" slot="onActionCreateBackdrop()"/>
+   <item id="NodeCreateWaypoint" text="Waypoint" responder="nodeView" slot="onActionCreateWaypoint()"/>
+   <item id="NodeFindInsert" text="Find and Insert Node..." responder="nodeView" slot="onActionFindAndInsert()"/>
   </menu>
-  <item id="RenameLayer"/>
+  <menu id="NodeViewNodesMenu" text="Nodes">
+   <item id="NodeEnable" text="Enable" responder="nodeView" slot="onActionEnableNodes()"/>
+   <item id="NodeDisable" text="Disable" responder="nodeView" slot="onActionDisableNodes()"/>
+   <item id="NodeEnableAll" text="Enable All" responder="nodeView" slot="onActionEnableAll()"/>
+   <item id="NodeDisableAllOthers" text="Disable All Others" responder="nodeView" slot="onActionDisableAllOthers()"/>
+   <separator/>
+   <item id="NodeCloneTiming" icon="edit/clonetiming" text="Clone Selected Nodes: Drawings and Timing" responder="nodeView" slot="onActionCloneNodes(QString)" itemParameter="timing"/>
+   <item id="NodeCloneDrawings" icon="edit/symbolduplicate" text="Clone Selected Nodes: Drawings Only" responder="nodeView" slot="onActionCloneNodes(QString)" itemParameter="drawings"/>
+   <item id="NodeDuplicate" icon="timeline/duplicatelayer" text="Duplicate Selected Nodes" responder="nodeView" slot="onActionCloneNodes(QString)" itemParameter="duplicate"/>
+   <item id="AddSyncedLayer"/>
+   <item id="SyncLayerWith"/>
+   <item id="UnsyncLayer"/>
+   <separator/>
+   <item id="NodeGroupSelection" icon="timeline/group" text="Group Selection" responder="nodeView" slot="onActionGroupSelection()"/>
+   <item id="NodeMoveToParentGroup" icon="timeline/toparentgroup" text="Move to Parent Group" responder="nodeView" slot="onActionMoveToParentGroup()"/>
+   <item id="NodeExplodeGroups" icon="timeline/ungroup" text="Explode Selected Groups" responder="nodeView" slot="onActionExplodeGroups()"/>
+   <item id="NodeViewEnterGroup" icon="view/groupenter" text="Enter Group" responder="nodeView" slot="onActionEnterGroup()"/>
+   <item id="NodeViewExitGroup" icon="view/groupexit" text="Exit Group" responder="nodeView" slot="onActionExitGroup()"/>
+   <separator/>
+   <item id="NodeOrderUp" text="Order Node View Up" responder="nodeView" slot="onActionOrderUp()"/>
+   <item id="NodeOrderDown" text="Order Node View Down" responder="nodeView" slot="onActionOrderDown()"/>
+   <item id="NodeAlignHorizontally" text="Align Nodes Horizontally" responder="nodeView" slot="onActionAlignHorizontally()"/>
+   <item id="NodeCentreParent" text="Centre to Parent Node" responder="nodeView" slot="onActionCentreOnParent()"/>
+   <item id="NodeCentreChild" text="Centre to Child Node" responder="nodeView" slot="onActionCentreOnChild()"/>
+   <separator/>
+   <item id="NodeCopyQualifiedName" text="Copy Qualified Name" responder="nodeView" slot="onActionCopyQualifiedName()"/>
+   <item id="NodeRenameWaypoint" text="Rename Waypoint..." responder="nodeView" slot="onActionRenameWaypoint()"/>
+   <menu id="NodePortNames" text="Port Names">
+    <item id="NodeAddPortName" text="Add Name to Port(s)..." responder="nodeView" slot="onActionAddPortName()"/>
+    <item id="NodeAddPortFilter" text="Add Filter to In Port(s)..." responder="nodeView" slot="onActionAddPortFilter()"/>
+    <item id="NodeClearPortNames" text="Clear Named Port(s)" responder="nodeView" slot="onActionClearPortNames()"/>
+    <item id="NodeCopyPortNames" text="Copy Named Port(s)" responder="nodeView" slot="onActionCopyPortNames()"/>
+    <item id="NodePastePortNames" text="Paste Named Port(s)" responder="nodeView" slot="onActionPastePortNames()"/>
+   </menu>
+  </menu>
   <separator/>
+  <item id="RenameLayer"/>
   <item id="AttachLayer"/>
   <item id="DetachLayer"/>
-  <separator/>
-  <item id="NodeViewEnterGroup" icon="view/groupenter" text="Enter Group" responder="nodeView" slot="onActionEnterGroup()"/>
-  <item id="NodeViewExitGroup" icon="view/groupexit" text="Exit Group" responder="nodeView" slot="onActionExitGroup()"/>
-  <separator/>
-  <item id="NodeViewResetView" icon="view/resetview" text="Reset View" responder="nodeView" slot="onActionResetView()"/>
-  <item id="NodeViewCentreOnSelection" icon="timeline/viewselected" text="Centre on Selection (O)" responder="nodeView" slot="onActionCentreOnSelection()"/>
-  <item id="NodeViewShowAll" text="Show All Nodes" responder="nodeView" slot="onActionResetView()"/>
-  <menu id="NodeViewNavigator" text="Navigator">
-   <item id="NodeViewNavigatorHide" text="Hide Navigator" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="hide"/>
-   <item id="NodeViewNavigatorTopLeft" text="Top Left" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="0"/>
-   <item id="NodeViewNavigatorTopRight" text="Top Right" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="1"/>
-   <item id="NodeViewNavigatorBottomRight" text="Bottom Right" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="2"/>
-   <item id="NodeViewNavigatorBottomLeft" text="Bottom Left" responder="nodeView" slot="onActionNavigator(QString)" itemParameter="3"/>
-  </menu>
-  <menu id="NodeViewCableStyle" text="Cable Style">
-   <item id="NodeViewCableLine" text="Line" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="line"/>
-   <item id="NodeViewCableBezier" text="Bezier" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="bezier"/>
-  </menu>
+  <item id="LayerPrefixSuffix"/>
+  <item id="BakeDrivers"/>
   <separator/>
   <item id="NodeViewSelectInCamera" text="Select in Camera..." responder="window" slot="onActionSelectInCamera()"/>
   <item id="NodeViewWireGraph" text="Wire the Graph by Hand" responder="nodeView" slot="onActionWireGraph()"/>
+ </menu>
+
+ <menu id="menu.nodeLibrary" text="Node Library Menu">
+  <item id="NodeLibraryNewCategory" text="New Category..." responder="nodeLibrary" slot="onActionNewCategory()"/>
+  <item id="NodeLibraryRenameCategory" text="Rename Category..." responder="nodeLibrary" slot="onActionRenameCategory()"/>
+  <item id="NodeLibraryRemoveCategory" text="Remove Category" responder="nodeLibrary" slot="onActionRemoveCategory()"/>
+  <item id="NodeLibraryRemoveNode" text="Remove Node" responder="nodeLibrary" slot="onActionRemoveNode()"/>
+  <separator/>
+  <item id="NodeLibraryRefresh" text="Refresh" responder="nodeLibrary" slot="onActionRefresh()"/>
  </menu>
 
  <menu id="menu.functionView" text="Function View Menu">
@@ -1653,6 +1748,9 @@
  </menu>
 
  <menu id="menu.scenePlanning" text="Scene Planning">
+  <item id="SelectParentSkippingEffects"/>
+  <item id="SelectChildSkippingEffects"/>
+  <separator/>
   <item id="FrameSelectedPlane"/>
   <item id="LookAtSelected"/>
   <item id="FaceSelectedToDraw"/>

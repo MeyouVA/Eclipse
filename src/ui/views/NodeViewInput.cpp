@@ -22,14 +22,31 @@ void NodeView::paintEvent(QPaintEvent*)
         m_centred = true;
         onActionResetView();
     }
-    Scene const& scene = m_document->scene();
     QPainter p(this);
-    p.fillRect(rect(), InterfaceColours::get("nodeBackground"));
+    paintView(p);
+}
+
+void NodeView::paintView(QPainter& p)
+{
+    p.fillRect(QRect(0, 0, p.device()->width(), p.device()->height()), InterfaceColours::get("nodeBackground"));
     p.setRenderHint(QPainter::Antialiasing, true);
-    if (graphMode()) {
+    paintBackdrops(p);
+    if (graphMode())
         paintGraphMode(p);
-        return;
+    else
+        paintLayerMode(p);
+    if (m_drag == DragCut) {
+        // The cutter's line: every cable it crosses is cut when it is let go.
+        p.setPen(QPen(QColor(240, 80, 70), 1.6, Qt::DashLine));
+        p.drawLine(m_pressPos, m_dragNow);
     }
+    if (!m_printing && !m_inLens)
+        paintMagnifier(p);
+}
+
+void NodeView::paintLayerMode(QPainter& p)
+{
+    Scene const& scene = m_document->scene();
     QVector<QPointF> pos = positions();
     // A node being dragged is drawn where the pointer has it, cables and all.
     if (m_drag == DragNode && m_moved) {
@@ -70,7 +87,8 @@ void NodeView::paintEvent(QPaintEvent*)
     for (int i = 0; i < drawings.size(); ++i) {
         Layer const& layer = scene.layers[drawings[i]];
         QRectF const r = rectOf(pos[drawings[i]]);
-        double const x = composite.left() + composite.width() * (i + 1.0) / (drawings.size() + 1.0);
+        int const slot = m_options.portsRightToLeft ? int(drawings.size()) - 1 - i : i;
+        double const x = composite.left() + composite.width() * (slot + 1.0) / (drawings.size() + 1.0);
         QColor c = imageCable;
         if (!layer.visible)
             c.setAlpha(70);
@@ -114,7 +132,7 @@ void NodeView::paintEvent(QPaintEvent*)
     QFont font = this->font();
     font.setPointSizeF(std::max(5.0, font.pointSizeF() * m_zoom));
     p.setFont(font);
-    auto node = [&](QRectF const& r, QString const& name, QColor const& color, bool current, bool dim, QColor const& border = QColor(20, 21, 23)) {
+    auto node = [&](QRectF const& r, QString const& name, QColor const& color, bool current, bool dim, QColor const& border = InterfaceColours::get("nodeDark")) {
         p.setPen(QPen(current ? InterfaceColours::get("nodeSelected") : border, current ? 2.0 : 1.0));
         p.setBrush(dim ? color.darker(190) : color);
         p.drawRoundedRect(r, 4 * m_zoom, 4 * m_zoom);
@@ -127,10 +145,9 @@ void NodeView::paintEvent(QPaintEvent*)
             continue;
         Layer const& layer = scene.layers[l];
         QRectF const r = rectOf(pos[l]);
-        QColor const color = layer.kind == Layer::Peg ? InterfaceColours::get("nodePeg") : layer.kind == Layer::Camera ? InterfaceColours::get("nodeCamera")
-                             : layer.kind == Layer::Sound ? InterfaceColours::get("nodeSound") : layer.kind == Layer::Group ? InterfaceColours::get("nodeGroup") : InterfaceColours::get("nodeDrawing");
-        node(r, layer.name, color, m_layerPicked.contains(layer.id), !layer.visible,
-             layer.kind == Layer::Camera ? InterfaceColours::get("nodeCameraBorder") : QColor(20, 21, 23));
+        node(r, layer.name, layerNodeColour(l), m_layerPicked.contains(layer.id), !layer.visible, nodeBorder(nullptr, l));
+        if (showsEditor(l, nullptr))
+            paintEditorButton(p, r);
         if (layer.kind == Layer::Group) {
             // A group can be gone into: a small arrow at its right end says so.
             QPointF const tip(r.right() - 10 * m_zoom, r.center().y() + 4 * m_zoom);
@@ -145,8 +162,8 @@ void NodeView::paintEvent(QPaintEvent*)
         p.setBrush(layer.visible ? QColor(235, 235, 235) : QColor(Qt::transparent));
         p.drawRect(eye);
         // Ports: in on top, out below.
-        p.setPen(QPen(QColor(20, 21, 23), 1));
-        p.setBrush(QColor(210, 212, 216));
+        p.setPen(QPen(InterfaceColours::get("nodePortImageDark"), 1));
+        p.setBrush(InterfaceColours::get("nodePortImage"));
         p.drawEllipse(QPointF(r.center().x(), r.top()), 3.5 * m_zoom, 3.5 * m_zoom);
         p.drawEllipse(QPointF(r.center().x(), r.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
     }
@@ -162,15 +179,18 @@ void NodeView::paintEvent(QPaintEvent*)
     node(composite, tr("Composite"), InterfaceColours::get("nodeComposite"), false, false);
     if (enteredGroup() >= 0) {
         // In a group the composite goes out of the group, not to the display; and what comes in is a node of its own.
-        node(display, tr("Group Output"), InterfaceColours::get("nodeGroup"), false, false);
-        node(groupIn, tr("Group Input"), InterfaceColours::get("nodeGroup"), false, false);
-        p.setPen(QPen(QColor(20, 21, 23), 1));
-        p.setBrush(QColor(210, 212, 216));
+        node(display, tr("Group Output"), InterfaceColours::get("nodeProxyPort"), false, false, InterfaceColours::get("nodeProxyPortDark"));
+        node(groupIn, tr("Group Input"), InterfaceColours::get("nodeProxyPort"), false, false, InterfaceColours::get("nodeProxyPortDark"));
+        p.setPen(QPen(InterfaceColours::get("nodePortImageDark"), 1));
+        p.setBrush(InterfaceColours::get("nodePortImage"));
         p.drawEllipse(QPointF(groupIn.center().x(), groupIn.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
         p.drawEllipse(QPointF(display.center().x(), display.top()), 3.5 * m_zoom, 3.5 * m_zoom);
     } else {
-        node(display, tr("Display"), InterfaceColours::get("nodeDisplay"), false, false);
+        node(display, tr("Display"), InterfaceColours::get("nodeDisplay"), false, false, InterfaceColours::get("nodeDisplayDark"));
     }
+    paintThumbnails(p);
+    if (m_printing || m_inLens)
+        return;
     // Inside a group: the way here along the top; a click on it goes out one level.
     if (QRectF const path = pathRect(); !path.isNull()) {
         p.setFont(this->font());
@@ -214,6 +234,8 @@ void NodeView::mousePressEvent(QMouseEvent* event)
         m_drag = DragPan;
         return;
     }
+    if (commonPress(event))
+        return;
     if (graphMode()) {
         graphPress(event);
         return;
@@ -234,7 +256,14 @@ void NodeView::mousePressEvent(QMouseEvent* event)
     m_pressPos = m_dragNow = event->position();
     m_moved = false;
     if (event->button() == Qt::MiddleButton) {
-        m_drag = DragPan;
+        // A middle drag pans; or, as the preferences may say, moves the nodes picked.
+        QVector<int> const picked = pickedLayers();
+        if (m_options.panMiddle || picked.isEmpty()) {
+            m_drag = DragPan;
+        } else {
+            m_drag = DragNode;
+            m_dragLayer = picked.first();
+        }
         return;
     }
     if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton)
@@ -264,6 +293,8 @@ void NodeView::mousePressEvent(QMouseEvent* event)
             return;
         }
         int const id = scene.layers[hit].id;
+        if (!(event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)))
+            m_backdropPicked.clear();
         if (event->modifiers() & Qt::ControlModifier) {
             if (m_layerPicked.contains(id))
                 m_layerPicked.removeAll(id);
@@ -284,13 +315,20 @@ void NodeView::mousePressEvent(QMouseEvent* event)
         return;
     }
     m_cable = cableAt(m_pressPos);
-    if (m_cable < 0 && event->button() == Qt::LeftButton)
+    if (m_cable < 0 && event->button() == Qt::LeftButton) {
+        if (backdropPress(event))
+            return;
+        if (!(event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)))
+            m_backdropPicked.clear();
         startBoxSelection(event);
+    }
     update();
 }
 
 void NodeView::mouseMoveEvent(QMouseEvent* event)
 {
+    if (commonMove(event))
+        return;
     if (graphMode()) {
         graphMove(event);
         return;
@@ -310,8 +348,13 @@ void NodeView::mouseMoveEvent(QMouseEvent* event)
 
 void NodeView::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (commonRelease(event))
+        return;
+    bool const picking = m_drag != DragPan;
     if (graphMode()) {
         graphRelease(event);
+        if (picking)
+            emitPicked();
         return;
     }
     Drag const drag = m_drag;
@@ -339,6 +382,8 @@ void NodeView::mouseReleaseEvent(QMouseEvent* event)
         if (target >= 0 && target != layer)
             m_document->setParent(target, layer);
     }
+    if (picking)
+        emitPicked();
     update();
 }
 
@@ -349,6 +394,12 @@ void NodeView::mouseDoubleClickEvent(QMouseEvent* event)
         return;
     }
     int const hit = nodeAt(event->position());
+    if (hit < 0) {
+        // On a backdrop's title: its properties.
+        if (int const backdrop = backdropAt(event->position()); backdrop >= 0)
+            editBackdrop(backdrop);
+        return;
+    }
     // A group is gone into; any other node is renamed.
     if (hit >= 0 && m_document->scene().layers[hit].kind == Layer::Group)
         enterGroup(hit);
@@ -370,6 +421,9 @@ void NodeView::wheelEvent(QWheelEvent* event)
 
 void NodeView::contextMenuEvent(QContextMenuEvent* event)
 {
+    m_hover = event->pos();
+    if (backdropMenu(event->globalPos(), event->pos()))
+        return;
     if (graphMode()) {
         graphContextMenu(event->globalPos(), event->pos());
         return;
@@ -379,6 +433,25 @@ void NodeView::contextMenuEvent(QContextMenuEvent* event)
 
 void NodeView::deleteSelection()
 {
+    if (!m_backdropPicked.isEmpty()) {
+        // The backdrops picked go (the nodes on them stay, unless they are picked too).
+        QVector<Backdrop> left = backdrops();
+        QVector<int> gone = m_backdropPicked;
+        std::sort(gone.begin(), gone.end(), std::greater<int>());
+        for (int i : std::as_const(gone))
+            if (i >= 0 && i < left.size())
+                left.removeAt(i);
+        m_backdropPicked.clear();
+        bool const nodesToo = graphMode() ? (!m_graphPicked.isEmpty() || m_graphCable >= 0) : (!pickedLayers().isEmpty() || m_cable >= 0);
+        if (nodesToo)
+            m_document->beginMacro(tr("Delete"));
+        setBackdrops(left, tr("Remove Backdrop"));
+        if (!nodesToo)
+            return;
+        deleteSelection();
+        m_document->endMacro();
+        return;
+    }
     if (graphMode()) {
         deleteGraphSelection();
         return;

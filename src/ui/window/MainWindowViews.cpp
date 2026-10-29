@@ -212,14 +212,30 @@ void MainWindow::createViews()
         if (!view)
             return;
         if (what.startsWith(QLatin1String("effect:"))) {
+            if (m_nodeView->graphMode()) {
+                // In a graph wired by hand an effect is a node of its own, where it was let go.
+                GraphNode n;
+                n.kind = GraphNode::EffectNode;
+                n.effect = Effect::made(Effect::Type(std::clamp(what.mid(7).toInt(), 0, int(Effect::TypeCount) - 1)));
+                m_nodeView->addGraphNode(n, graphPos);
+                return;
+            }
             view->add(what);        // an effect has no node of its own: it goes on the current layer
             return;
         }
         int const before = int(m_document->scene().layers.size());
         m_document->beginMacro(tr("Add Node"));
         view->add(what);
-        if (m_document->scene().layers.size() == before + 1 && layer() >= 0 && layer() < m_document->scene().layers.size())
+        if (m_document->scene().layers.size() == before + 1 && layer() >= 0 && layer() < m_document->scene().layers.size()) {
             m_document->setNodePos(layer(), graphPos);
+            // (In a graph wired by hand: its node, where it was let go.)
+            NodeGraph g = m_document->scene().graph;
+            if (int const k = g.nodeIndex(g.layerNode(m_document->scene().layers[layer()].id)); k >= 0) {
+                g.nodes[k].at = graphPos;
+                g.nodes[k].group = m_nodeView->graphGroup();
+                m_document->setGraph(g, tr("Add Node"));
+            }
+        }
         m_document->endMacro();
     });
     addView(tr("Node View"), QStringLiteral("NodeViewDock"), viewPanel(m_actions->createToolbar(QStringLiteral("NodeViewToolbar"), this), m_nodeView, this), Qt::RightDockWidgetArea);
@@ -245,7 +261,11 @@ void MainWindow::createViews()
                             : d->windowTitle() == tr("Desk") ? QStringLiteral("menu.deskView")
                             : d->windowTitle() == tr("Function") ? QStringLiteral("menu.functionView") : QString();
         if (!own.isEmpty())
-            bar->setViewMenu([this, own] { return m_actions->createMenu(own, this); });
+            bar->setViewMenu([this, own] {
+                if (own == QLatin1String("menu.nodeView"))
+                    syncNodeViewChecks();
+                return m_actions->createMenu(own, this);
+            });
     }
     qApp->installEventFilter(this);
     // The keyboard focus going into a view makes it the view in use as well (a click does both).

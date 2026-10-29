@@ -83,6 +83,7 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     alignment->addItems({tr("Fit"), tr("Pan"), tr("Project Resolution (Actual Size)")});
     alignment->setToolTip(tr("Fit: the whole picture inside the frame.\nPan: the picture fills the frame; what does not fit hangs over the edges, for the camera to pan across.\n"
                              "Project Resolution: a pixel of the picture is a pixel of the scene."));
+    alignment->setCurrentIndex(std::clamp(QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/importAlignment"), 0).toInt(), 0, 2));
     QFormLayout* const alignLayout = new QFormLayout(alignBox);
     alignLayout->addRow(tr("Rule"), alignment);
 

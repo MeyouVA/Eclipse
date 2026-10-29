@@ -71,6 +71,8 @@ public:
     QVector<Controller> controllers;
     // The node graph, once wired by hand (empty: the layers stack as they are).
     NodeGraph graph;
+    // The Node View's backdrops while the layers stack as they are (a graph wired by hand keeps its own).
+    QVector<Backdrop> backdrops;
     NodeGraph graphFromLayers() const;
     void graphLayerAdded(int layer);
     void graphLayerRemoved(int layerId);

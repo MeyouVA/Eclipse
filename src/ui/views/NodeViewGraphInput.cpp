@@ -30,7 +30,10 @@ void NodeView::graphPress(QMouseEvent* event)
     m_moved = false;
     m_wireReverse = false;
     if (event->button() == Qt::MiddleButton || (event->button() == Qt::LeftButton && m_spacePan)) {
-        m_drag = DragPan;
+        // A middle drag pans; or, as the preferences may say, moves the nodes picked.
+        m_drag = event->button() == Qt::MiddleButton && !m_options.panMiddle && !m_graphPicked.isEmpty() ? DragGraphNode : DragPan;
+        if (m_drag == DragGraphNode && !m_graphPicked.contains(m_graphNode))
+            m_graphNode = m_graphPicked.last();
         return;
     }
     if (event->button() != Qt::LeftButton)
@@ -76,6 +79,8 @@ void NodeView::graphPress(QMouseEvent* event)
         }
     }
     GraphPort const port = graphPortAt(m_pressPos);
+    if (port.node)
+        m_portPress = {port.node, port.port, port.out};
     if (port.node && port.out) {
         // Out of an output: a cable pulled to an input.
         m_drag = DragWire;
@@ -103,6 +108,10 @@ void NodeView::graphPress(QMouseEvent* event)
         update();
         return;
     }
+    if (!(event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier))) {
+        m_portsPicked.clear();
+        m_backdropPicked.clear();
+    }
     if (int const hit = graphNodeAt(m_pressPos)) {
         if (event->modifiers() & Qt::ControlModifier) {
             addPickedGraphNode(hit);
@@ -120,6 +129,8 @@ void NodeView::graphPress(QMouseEvent* event)
         m_drag = DragDisconnect;
         return;
     }
+    if (backdropPress(event))
+        return;
     startBoxSelection(event);
     update();
 }
@@ -143,6 +154,13 @@ void NodeView::graphRelease(QMouseEvent* event)
     Drag const drag = m_drag;
     m_drag = DragNone;
     QPointF const at = event->position();
+    if (drag == DragWire && QLineF(m_pressPos, at).length() < 4.0) {
+        // A port clicked, not pulled: it is picked (Ctrl: added), to name or filter.
+        m_unplugged = -1;
+        m_wireReverse = false;
+        pickPort(m_portPress, event->modifiers() & Qt::ControlModifier);
+        return;
+    }
     if (drag == DragWire && m_wireReverse) {
         m_wireReverse = false;
         GraphPort const port = graphPortAt(at);
@@ -222,7 +240,10 @@ void NodeView::graphRelease(QMouseEvent* event)
         }
         GraphNode const* const from = g.node(m_wireFrom);
         GraphNode const* const to = g.node(target.node);
-        bool const fits = from && to && target.node != m_wireFrom && from->group == to->group && !g.feeds(target.node, m_wireFrom);
+        bool const filtered = from && to && !to->accepts(target.port, from->portNames.value(m_wireFromPort));
+        if (filtered)
+            emit statusMessage(tr("That input takes only outputs named %1.").arg(to->portFilters.value(target.port)));
+        bool const fits = from && to && !filtered && target.node != m_wireFrom && from->group == to->group && !g.feeds(target.node, m_wireFrom);
         if (fits) {
             g.cables.erase(std::remove_if(g.cables.begin(), g.cables.end(), [&](GraphCable const& c) { return c.to == target.node && c.toPort == target.port; }),
                            g.cables.end());
@@ -239,8 +260,16 @@ void NodeView::graphDoubleClick(QMouseEvent* event)
 {
     int const hit = graphNodeAt(event->position());
     GraphNode const* const n = m_document->scene().graph.node(hit);
-    if (!n)
+    if (!n) {
+        if (int const backdrop = backdropAt(event->position()); backdrop >= 0)
+            editBackdrop(backdrop);
         return;
+    }
+    if (n->kind == GraphNode::Waypoint) {
+        pickGraphNode(hit);
+        onActionRenameWaypoint();
+        return;
+    }
     if (n->kind == GraphNode::Group) {
         enterGraphGroup(hit);
     } else if (n->kind == GraphNode::EffectNode) {
@@ -279,6 +308,9 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
     int const hit = graphNodeAt(widgetPos);
     if (hit && !m_graphPicked.contains(hit))
         pickGraphNode(hit);
+    if (!hit)
+        if (int const c = graphCableAt(widgetPos); c >= 0)
+            pickGraphCable(c);
     QMenu menu(this);
     QMenu* const add = menu.addMenu(tr("Add Node"));
     auto adder = [&](QString const& text, GraphNode::Kind kind) {
@@ -291,6 +323,7 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
     adder(tr("Composite"), GraphNode::Composite);
     adder(tr("Group"), GraphNode::Group);
     adder(tr("Note"), GraphNode::Note);
+    connect(add->addAction(tr("Waypoint")), &QAction::triggered, this, [this, graphPos] { addWaypoint(graphPos, m_graphCable); });
     if (m_graphGroup == 0)
         adder(tr("Display"), GraphNode::Display);
     QMenu* const effects = add->addMenu(tr("Effect"));
@@ -333,6 +366,22 @@ void NodeView::graphContextMenu(QPoint globalPos, QPointF widgetPos)
         }
         if (n->kind == GraphNode::EffectNode)
             connect(menu.addAction(tr("Edit Effect...")), &QAction::triggered, this, [this, hit] { editGraphNode(hit); });
+        if (n->kind == GraphNode::Composite) {
+            // Pass Through: its inputs go on separately into the composite it feeds.
+            QAction* const through = menu.addAction(tr("Pass Through"));
+            through->setObjectName(QStringLiteral("NodePassThrough"));
+            through->setCheckable(true);
+            through->setChecked(n->passThrough);
+            connect(through, &QAction::toggled, this, [this, hit](bool on) {
+                NodeGraph g = m_document->scene().graph;
+                if (int const i = g.nodeIndex(hit); i >= 0 && g.nodes[i].passThrough != on) {
+                    g.nodes[i].passThrough = on;
+                    m_document->setGraph(g, tr("Pass Through"));
+                }
+            });
+        }
+        if (n->kind == GraphNode::Waypoint)
+            connect(menu.addAction(tr("Rename Waypoint")), &QAction::triggered, this, &NodeView::onActionRenameWaypoint);
         if (n->kind == GraphNode::LayerNode && !pictureless(*n)) {
             // Which of the layer's art layers the node gives (the Line Art, Colour Art, Underlay and Overlay nodes).
             QMenu* const arts = menu.addMenu(tr("Art Layers"));

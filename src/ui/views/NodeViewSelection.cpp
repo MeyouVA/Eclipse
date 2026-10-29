@@ -86,6 +86,7 @@ void NodeView::selectAll()
             if (nodeShown(layer))
                 m_layerPicked << scene.layers[layer].id;
     }
+    emitPicked();
     update();
 }
 
@@ -232,7 +233,8 @@ bool NodeView::event(QEvent* event)
         int const code = key->key();
         bool const nudge = (key->modifiers() == Qt::NoModifier || key->modifiers() == Qt::ShiftModifier)
             && (code == Qt::Key_Left || code == Qt::Key_Right || code == Qt::Key_Up || code == Qt::Key_Down);
-        if (code == Qt::Key_Space || code == Qt::Key_Escape || nudge || (code == Qt::Key_O && key->modifiers() == Qt::NoModifier)) {
+        // The Node View's own keys come before the window's while it has the focus.
+        if (code == Qt::Key_Space || code == Qt::Key_Escape || nudge || handleOwnKeys(key, true)) {
             event->accept();
             return true;
         }
@@ -250,11 +252,18 @@ void NodeView::keyPressEvent(QKeyEvent* event)
             (graphMode() ? m_graphPicked : m_layerPicked) = m_boxBefore;
             m_graphNode = m_graphPicked.isEmpty() ? 0 : m_graphPicked.last();
         }
+        // (Escape also puts the cable cutter and the magnifier away.)
+        if (m_drag == DragNone && (m_cutter || m_magnifier)) {
+            onActionCableCutter(false);
+            onActionMagnifier(false);
+        }
         m_drag = DragNone;
         m_unplugged = -1;
+        m_backdropDrag = -1;
+        m_thumbDrag = 0;
+        m_backdropCarry.clear();
         update();
-    } else if (event->key() == Qt::Key_O && event->modifiers() == Qt::NoModifier) {
-        onActionCentreOnSelection();
+    } else if (handleOwnKeys(event, false)) {
     } else {
         if (event->modifiers() != Qt::NoModifier && event->modifiers() != Qt::ShiftModifier) {
             QWidget::keyPressEvent(event);
@@ -277,7 +286,15 @@ void NodeView::keyReleaseEvent(QKeyEvent* event)
 {
     if (event->key() == Qt::Key_Space && !event->isAutoRepeat()) {
         m_spacePan = false;
-        unsetCursor();
+        if (cableCutter())
+            onActionCableCutter(m_cutter);
+        else
+            unsetCursor();
+        event->accept();
+    } else if (m_cutterHeld && !event->isAutoRepeat() && matchesShortcut(event, QStringLiteral("shortcut.nodeCableCutterOverride"))) {
+        // The override let go: the cutter as it was.
+        m_cutterHeld = false;
+        onActionCableCutter(m_cutter);
         event->accept();
     } else {
         QWidget::keyReleaseEvent(event);
@@ -287,6 +304,10 @@ void NodeView::keyReleaseEvent(QKeyEvent* event)
 void NodeView::focusOutEvent(QFocusEvent* event)
 {
     m_spacePan = false;
-    unsetCursor();
+    m_cutterHeld = false;
+    if (m_cutter)
+        onActionCableCutter(true);
+    else
+        unsetCursor();
     QWidget::focusOutEvent(event);
 }

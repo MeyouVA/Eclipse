@@ -82,6 +82,7 @@ struct Layer {
     bool hasWarp() const { return warpPoints() >= (warpClosed ? 3 : 2); }
     QPointF nodePos;
     bool nodePlaced = false;
+    int nodeThumb = 0;              // how tall its node's thumbnail is in the Node View (0: none shown)
     QVector<Effect> effects;
     double effectAmount(int index, Pose const& pose) const;
     QColor cardColor = Qt::white;   // a colour-card: its colour

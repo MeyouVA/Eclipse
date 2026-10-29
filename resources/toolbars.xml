@@ -9,7 +9,27 @@
   <item id="NodeViewShowAll" toolbarText="Show All"/>
   <separator/>
   <item id="NodeViewEnterGroup" toolbarText="Enter Group"/>
-  <item id="NodeViewExitGroup" toolbarText="Exit Group"/>
+  <item id="NodeViewExitGroup" toolbarText="Up to Parent"/>
+  <separator/>
+  <item id="NodeEnable" toolbarText="Enable"/>
+  <item id="NodeDisable" toolbarText="Disable"/>
+  <item id="NodeEditor" toolbarText="Editor"/>
+  <item id="EditCut" visible="false"/>
+  <item id="EditCopy" visible="false"/>
+  <item id="EditPaste" visible="false"/>
+  <item id="EditDelete" visible="false"/>
+  <item id="NodeSelectParent" visible="false"/>
+  <item id="NodeSelectChild" visible="false"/>
+  <item id="NodeSelectChildSkippingEffects" visible="false"/>
+  <item id="NodeSelectPreviousSibling" visible="false"/>
+  <item id="NodeSelectNextSibling" visible="false"/>
+  <item id="NodeRecalculateAll" visible="false"/>
+  <item id="NodeRecalculateSelected" visible="false"/>
+  <item id="NodeCloneDrawings" visible="false"/>
+  <item id="NodeCloneTiming" visible="false"/>
+  <item id="LayerProperties" visible="false"/>
+  <item id="NodeThumbnailPattern" visible="false"/>
+  <item id="LayerPrefixSuffix" visible="false"/>
  </toolbar>
 
  <toolbar id="FileToolbar" text="File">

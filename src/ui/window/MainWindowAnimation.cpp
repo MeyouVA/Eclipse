@@ -233,6 +233,10 @@ void MainWindow::onActionSkins()
 
 void MainWindow::onActionSelectParent()
 {
+    if (m_followNodeParenting && m_nodeView->graphMode()) {
+        m_nodeView->onActionSelectParent();
+        return;
+    }
     int const parent = m_document->scene().parentIndex(layer());
     if (parent >= 0)
         m_timeline->setCurrentCell(parent, frame());
@@ -240,6 +244,10 @@ void MainWindow::onActionSelectParent()
 
 void MainWindow::onActionSelectChild()
 {
+    if (m_followNodeParenting && m_nodeView->graphMode()) {
+        m_nodeView->onActionSelectChild();
+        return;
+    }
     // The front-most layer attached to this one.
     Scene const& scene = m_document->scene();
     for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {
@@ -276,6 +284,10 @@ void MainWindow::onActionShowSelectionHideOthers()
 
 void MainWindow::onActionSelectChildren()
 {
+    if (m_followNodeParenting && m_nodeView->graphMode()) {
+        m_nodeView->onActionSelectChildren();
+        return;
+    }
     Scene const& scene = m_document->scene();
     // Front to back, as the Timeline lists them; a layer is in when what it is attached to is.
     QVector<int> family{layer()}, children;

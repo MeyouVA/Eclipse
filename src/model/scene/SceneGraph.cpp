@@ -1,5 +1,6 @@
 // Eclipse - the scene: the node graph and controllers; drawings' joints and order; effects made.
 #include "model/scene/Scene.h"
+#include <QRegularExpression>
 #include <QHash>
 
 #include "model/geometry/Deform.h"
@@ -53,6 +54,7 @@ int GraphNode::inputs() const
     case EffectNode:
         return takesMatte(effect.type) ? 2 : 1;
     case Display:
+    case Waypoint:
         return 1;
     case Composite:
     case Group:
@@ -75,6 +77,16 @@ int GraphNode::outputs() const
     default:
         return 1;
     }
+}
+
+bool GraphNode::accepts(int port, QString const& output) const
+{
+    QString const filter = portFilters.value(port).trimmed();
+    if (filter.isEmpty())
+        return true;
+    QRegularExpression const pattern(QRegularExpression::wildcardToRegularExpression(filter, QRegularExpression::NonPathWildcardConversion),
+                                     QRegularExpression::CaseInsensitiveOption);
+    return pattern.match(output.trimmed()).hasMatch();
 }
 
 bool GraphNode::takesMatte(Effect::Type type)

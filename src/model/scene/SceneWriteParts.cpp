@@ -544,6 +544,8 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
     }
     if (layer.nodePlaced)
         layerObject["node"] = QJsonArray{layer.nodePos.x(), layer.nodePos.y()};
+    if (layer.nodeThumb > 0)
+        layerObject["nodeThumb"] = layer.nodeThumb;
     if (!layer.frameMarks.isEmpty()) {
         QJsonArray marks;
         for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)
@@ -666,7 +668,7 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
 
 QJsonObject graphToJson(NodeGraph const& graph)
 {
-    static char const* const kinds[GraphNode::KindCount] = {"layer", "composite", "effect", "group", "groupIn", "groupOut", "display", "note"};
+    static char const* const kinds[GraphNode::KindCount] = {"layer", "composite", "effect", "group", "groupIn", "groupOut", "display", "note", "waypoint"};
     QJsonArray nodes, cables;
     for (GraphNode const& n : graph.nodes) {
         QJsonObject node{{"id", n.id}, {"kind", kinds[n.kind]}, {"name", n.name}, {"ports", n.ports}, {"outPorts", n.outPorts},
@@ -677,6 +679,23 @@ QJsonObject graphToJson(NodeGraph const& graph)
             node["symbolLayer"] = n.symbolLayer;
         if (n.kind == GraphNode::LayerNode && n.sheets != 0xf)
             node["sheets"] = n.sheets;
+        if (!n.enabled)
+            node["enabled"] = false;
+        if (n.passThrough)
+            node["passThrough"] = true;
+        if (n.thumb > 0)
+            node["thumb"] = n.thumb;
+        auto names = [](QMap<int, QString> const& map) {
+            QJsonObject out;
+            for (auto it = map.cbegin(); it != map.cend(); ++it)
+                if (!it.value().trimmed().isEmpty())
+                    out[QString::number(it.key())] = it.value();
+            return out;
+        };
+        if (!names(n.portNames).isEmpty())
+            node["portNames"] = names(n.portNames);
+        if (!names(n.portFilters).isEmpty())
+            node["portFilters"] = names(n.portFilters);
         if (n.kind == GraphNode::EffectNode) {
             node["effect"] = effectToJson(n.effect);
             if (!n.amountKeys.isEmpty()) {
@@ -690,7 +709,19 @@ QJsonObject graphToJson(NodeGraph const& graph)
     }
     for (GraphCable const& c : graph.cables)
         cables.append(QJsonArray{c.from, c.fromPort, c.to, c.toPort});
-    return QJsonObject{{"nodes", nodes}, {"cables", cables}};
+    QJsonObject out{{"nodes", nodes}, {"cables", cables}};
+    if (!graph.backdrops.isEmpty())
+        out["backdrops"] = backdropsToJson(graph.backdrops);
+    return out;
+}
+
+QJsonArray backdropsToJson(QVector<Backdrop> const& backdrops)
+{
+    QJsonArray out;
+    for (Backdrop const& b : backdrops)
+        out.append(QJsonObject{{"group", b.group}, {"rect", QJsonArray{b.rect.x(), b.rect.y(), b.rect.width(), b.rect.height()}}, {"title", b.title},
+                               {"text", b.text}, {"color", b.color.name(QColor::HexArgb)}, {"titleSize", b.titleSize}});
+    return out;
 }
 
 }  // namespace scene_write

@@ -16,6 +16,7 @@
 #include "ui/panels/LayerPanel.h"
 #include "ui/io/MovieExport.h"
 #include "ui/views/NodeView.h"
+#include "ui/views/NodeLibraryView.h"
 #include "ui/panels/ColourEditor.h"
 #include "ui/panels/PalettePanel.h"
 #include "ui/panels/SubstitutionPanel.h"
@@ -65,6 +66,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     m_actions->registerResponder(QStringLiteral("paletteView"), m_palette);
     m_actions->registerResponder(QStringLiteral("xsheetView"), m_xsheet);
     m_actions->registerResponder(QStringLiteral("nodeView"), m_nodeView);
+    if (NodeLibraryView* const library = findChild<NodeLibraryView*>(QStringLiteral("NodeLibraryView"))) {
+        m_actions->registerResponder(QStringLiteral("nodeLibrary"), library);
+        library->setSharedMenu([this](QWidget* parent) { return m_actions->createMenu(QStringLiteral("menu.nodeLibrary"), parent); });
+    }
     if (FunctionView* const function = findChild<FunctionView*>(QStringLiteral("FunctionView")))
         m_actions->registerResponder(QStringLiteral("functionView"), function);
     m_actions->populateMenuBar(QStringLiteral("menu.main"), menuBar());
@@ -123,12 +128,33 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(m_xsheet, &Xsheet::cellPicked, m_timeline, &Timeline::setCurrentCell);
     connect(m_timeline, &Timeline::currentCellChanged, m_nodeView, &NodeView::setCurrentCell);
     connect(m_nodeView, &NodeView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
+    // The layers picked in the Node View are picked in the Timeline too.
+    connect(m_nodeView, &NodeView::layersPicked, this, [this](QVector<int> const& layers) {
+        if (layers.isEmpty())
+            return;
+        if (!layers.contains(layer()))
+            m_timeline->setCurrentCell(layers.first(), frame());
+        m_timeline->setExtraLayers(layers);
+    });
+    connect(m_nodeView, &NodeView::statusMessage, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
+    connect(m_nodeView, &NodeView::recalculateRequested, this, [this](bool) { onActionRecalculateAll(); });
+    m_nodeView->setSharedMenu([this](QWidget* parent) {
+        syncNodeViewChecks();
+        return m_actions->createMenu(QStringLiteral("menu.nodeView"), parent);
+    });
+    m_nodeView->setShortcutLookup([this](QString const& id) {
+        for (ActionManager::Shortcut const& s : m_actions->shortcuts())
+            if (s.id == id)
+                return s.key;
+        return QKeySequence();
+    });
     connect(m_nodeView, &NodeView::renameRequested, this, &MainWindow::renameLayer);
     connect(m_nodeView, &NodeView::editRequested, this, [this](int layer) {
         m_timeline->setCurrentCell(layer, frame());
         onActionShowLayerProperties();
     });
     connect(m_nodeView, &NodeView::contextMenuRequested, this, [this](QPoint const& globalPos) {
+        syncNodeViewChecks();
         if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.nodeView"), this)) {
             menu->setAttribute(Qt::WA_DeleteOnClose);
             menu->popup(globalPos);

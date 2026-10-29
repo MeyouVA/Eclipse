@@ -399,12 +399,29 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                     }
                 }
             }
+        } else if (n && (n->kind == GraphNode::Waypoint || (!n->enabled && (n->kind == GraphNode::Composite || n->kind == GraphNode::Group)))) {
+            // A waypoint, or a composite or group switched off: what comes into its first input goes straight on.
+            out = input(id, 0);
         } else if (n && n->kind == GraphNode::Composite) {
             // Its inputs one over the other, the first in front; a layer that comes straight in is mixed as its blend mode says.
-            for (int in = n->inputs() - 1; in >= 0; --in) {
-                GraphCable const* const c = graph.into(id, in);
-                if (!c)
-                    continue;
+            // A pass-through composite coming in gives its own inputs in its place, each mixed here.
+            QVector<GraphCable> feeds;
+            std::function<void(int, int)> gather = [&](int node, int depth) {
+                GraphNode const* const at = graph.node(node);
+                for (int in = 0; at && in < at->inputs(); ++in) {
+                    GraphCable const* const c = graph.into(node, in);
+                    if (!c)
+                        continue;
+                    GraphNode const* const from = graph.node(c->from);
+                    if (from && from->kind == GraphNode::Composite && from->passThrough && from->enabled && depth < 32)
+                        gather(c->from, depth + 1);
+                    else
+                        feeds.push_back(*c);
+                }
+            };
+            gather(id, 0);
+            for (int k = int(feeds.size()) - 1; k >= 0; --k) {
+                GraphCable const* const c = &feeds[k];
                 QImage const over = picture(c->from, c->fromPort);
                 GraphNode const* const from = graph.node(c->from);
                 int const l = from && from->kind == GraphNode::LayerNode ? scene.layerIndex(from->layer) : -1;

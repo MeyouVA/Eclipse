@@ -22,6 +22,11 @@ NodeView::NodeView(Document* document, QWidget* parent) : QWidget(parent), m_doc
     setMouseTracking(false);
     setAcceptDrops(true);       // from the Node Library
     connect(m_document, &Document::changed, this, [this] {
+        m_thumbCache.clear();
+        m_backdropPicked.removeIf([this](int index) { return index < 0 || index >= backdrops().size(); });
+        m_portsPicked.removeIf([this](PortRef const& port) { return !m_document->scene().graph.node(port.node); });
+        m_backdropDrag = -1;
+        m_thumbDrag = 0;
         m_drag = DragNone;
         m_dragLayer = -1;
         m_unplugged = -1;
@@ -340,16 +345,39 @@ void NodeView::setNavigatorShown(bool on)
 
 void NodeView::setStraightCables(bool on)
 {
-    m_straight = on;
+    setCableType(on ? 1 : (m_options.cableType == 1 ? 0 : m_options.cableType));
+}
+
+void NodeView::setCableType(int type)
+{
+    m_options.cableType = std::clamp(type, 0, 2);
+    update();
+}
+
+void NodeView::setOptions(Options const& options)
+{
+    m_options = options;
+    m_options.cableType = std::clamp(m_options.cableType, 0, 2);
+    m_thumbCache.clear();
     update();
 }
 
 QVector<QPointF> NodeView::cablePoints(QPointF from, QPointF to) const
 {
-    if (m_straight) {
+    if (m_options.cableType == 1) {
         QVector<QPointF> out;
         for (int i = 0; i <= 24; ++i)
             out.push_back(from + (to - from) * (i / 24.0));
+        return out;
+    }
+    if (m_options.cableType == 2) {
+        // Straight runs with square corners: down out of the port, across, down into the other (eight points along each run).
+        double const middle = (from.y() + to.y()) / 2.0;
+        QPointF const corners[4] = {from, QPointF(from.x(), middle), QPointF(to.x(), middle), to};
+        QVector<QPointF> out;
+        for (int run = 0; run < 3; ++run)
+            for (int i = run == 0 ? 0 : 1; i <= 8; ++i)
+                out.push_back(corners[run] + (corners[run + 1] - corners[run]) * (i / 8.0));
         return out;
     }
     // An S: down out of the port, across, down into the other.
