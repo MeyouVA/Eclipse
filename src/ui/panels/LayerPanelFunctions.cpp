@@ -27,6 +27,10 @@ QToolButton* LayerPanel::functionButton(int value)
         Scene const& scene = m_document->scene();
         if (m_layer < 0 || m_layer >= scene.layers.size())
             return;
+        if (m_publishMode) {
+            togglePublished(m_layer, value);
+            return;
+        }
         if (QApplication::keyboardModifiers() & Qt::AltModifier) {
             int const column = scene.layers[m_layer].linkOf(value);
             if (column == 0)
@@ -81,6 +85,7 @@ void LayerPanel::fillFunctionMenu(QMenu* menu, int value)
         a->setObjectName(QStringLiteral("LinkNew_") + QString::number(kind));
         connect(a, &QAction::triggered, this, [this, layer, value, kind] { m_document->storeAsFunction(layer, value, kind); });
     }
+    addAttributeCommands(menu, value);
 }
 
 void LayerPanel::refreshFunctionButtons(Layer const& layer)

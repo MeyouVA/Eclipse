@@ -343,6 +343,8 @@ public:
     bool offsetPath(int layer, QPointF by);
     // Static Camera Transform: every keyframe of the camera (and its path) moved by the same amount; one without keyframes gets one that holds.
     bool offsetCamera(int camera, QPointF by, double depth);
+    // A value of the layer (Driver::Value) moved by `by` in every keyframe alike; false when a column or another layer gives it.
+    bool offsetValue(int layer, int value, double by);
     void removeControlPoint(int layer, int key, int control);
     // How far a control point stands towards the camera: the path bends in depth through it.
     void setControlPointDepth(int layer, int key, int control, double z);

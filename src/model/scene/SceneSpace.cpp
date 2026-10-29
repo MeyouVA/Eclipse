@@ -92,6 +92,10 @@ Pose poseFor(Scene const& scene, int layer, int frame, PoseOverride const* over)
     Pose const* const other = over ? over->otherPose(layer, frame) : nullptr;
     Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : other ? *other : scene.layers[layer].poseAt(frame);
     Layer const& l = scene.layers[layer];
+    if (!l.enable3d) {
+        pose.rotX = 0.0;
+        pose.rotY = 0.0;
+    }
     // The values linked to function columns: as the columns have them.
     for (ValueLink const& link : (other || (over && over->layer == layer && over->frame == frame && !over->hasMatrix)) ? QVector<ValueLink>() : l.links)
         if (FunctionColumn const* column = scene.function(link.function)) {
@@ -429,7 +433,40 @@ QTransform Scene::cameraTransform(int frame) const
     return camera >= 0 ? flatTransform(camera, frame).inverted() : QTransform();
 }
 
+double Scene::customValue(int layer, QString const& name, int frame) const
+{
+    if (layer < 0 || layer >= layers.size())
+        return 0.0;
+    for (CustomAttribute const& a : layers[layer].customAttributes)
+        if (a.name.compare(name, Qt::CaseInsensitive) == 0) {
+            FunctionColumn const* const column = function(a.function);
+            return column ? column->valueFor(Driver::X, frame, *this) : a.value;
+        }
+    return 0.0;
+}
+
+QTransform Scene::contentTransform(int layer) const
+{
+    if (layer < 0 || layer >= layers.size())
+        return QTransform();
+    Layer const& l = layers[layer];
+    if (!l.turnBeforeAlignment && !l.flipHorizontal && !l.flipVertical)
+        return QTransform();
+    // About the middle of the frame: a quarter turn, then the flips.
+    QPointF const middle(width / 2.0, height / 2.0);
+    QTransform t = QTransform::fromTranslate(-middle.x(), -middle.y());
+    if (l.turnBeforeAlignment)
+        t = t * QTransform().rotate(90.0);
+    t = t * QTransform::fromScale(l.flipHorizontal ? -1.0 : 1.0, l.flipVertical ? -1.0 : 1.0);
+    return t * QTransform::fromTranslate(middle.x(), middle.y());
+}
+
 QTransform Scene::worldTransform(int layer, int frame, PoseOverride const* over) const
+{
+    return contentTransform(layer) * spaceTransform(layer, frame, over);
+}
+
+QTransform Scene::spaceTransform(int layer, int frame, PoseOverride const* over) const
 {
     if (layer < 0 || layer >= layers.size())
         return QTransform();

@@ -446,6 +446,32 @@ public slots:
     void onActionPrintNodeView();
     // The Node View menu's switches made to show how the view is (they can be changed by its own keys too).
     void syncNodeViewChecks();
+    // ---- attributes ----
+    // Attribute bindings (a value of a layer following a value of another): one removed, all removed, one moved
+    // to another attribute or layer, those to layers no longer in the scene taken away.
+    void onActionRemoveAttributeBinding();
+    void onActionRemoveAllAttributeBindings();
+    void onActionReassignTargetAttributes();
+    void onActionCleanAttributeBindings();
+    bool reassignBinding(int fromLayer, int index, int toLayer, int toValue);
+    // The values published on the groups selected taken off them; Publish Attribute Mode for Layer Properties.
+    void onActionClearPublishedAttributes();
+    void onActionPublishAttributeMode(bool on);
+    // The attributes of the current layer described: names, keywords, types, animation, bindings.
+    void onActionShowAttributeInformation();
+    void showAttributeInformation(int layer);
+public:
+    // Set Properties on Many Layers: what is ticked, set on every layer selected (-1: left as each has it).
+    struct ManyLayerProperties {
+        int visible = -1, locked = -1, blend = -1, enable3d = -1, animatable = -1, flipHorizontal = -1, flipVertical = -1, clipping = -1;
+        double opacity = -1.0;
+    };
+    int setPropertiesOnLayers(QVector<int> const& layers, ManyLayerProperties const& set);
+    // The layers selected in the Timeline, or the current one.
+    QVector<int> attributeLayers() const;
+
+public slots:
+    void onActionSetPropertiesOnManyLayers();
     // Every layer attached to the current one, and those attached to them: all picked together.
     void onActionSelectChildren();
     // The layers selected hidden; or shown, and every other one hidden - one step of undo each.

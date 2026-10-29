@@ -17,6 +17,7 @@ void MainWindow::connectFunctionColumns()
 {
     connect(m_xsheet, &Xsheet::message, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
     connect(m_layerPanel, &LayerPanel::message, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
+    connect(m_layerPanel, &LayerPanel::attributeInformationWanted, this, &MainWindow::showAttributeInformation);
     connect(m_layerPanel, &LayerPanel::functionEditorWanted, this, &MainWindow::openFunctionEditor);
     connect(m_layerPanel, &LayerPanel::functionShown, this, [this](int layer, int value) {
         FunctionView* const function = findChild<FunctionView*>(QStringLiteral("FunctionView"));

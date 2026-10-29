@@ -27,7 +27,7 @@
   <item id="NodeRecalculateSelected" visible="false"/>
   <item id="NodeCloneDrawings" visible="false"/>
   <item id="NodeCloneTiming" visible="false"/>
-  <item id="LayerProperties" visible="false"/>
+  <item id="SetPropertiesManyLayers" visible="false"/>
   <item id="NodeThumbnailPattern" visible="false"/>
   <item id="LayerPrefixSuffix" visible="false"/>
  </toolbar>

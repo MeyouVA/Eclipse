@@ -191,6 +191,11 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             painter.setClipPath(area, Qt::IntersectClip);
         }
     }
+    if (layer.clipping && layer.holdsDrawings()) {
+        // Layer Properties > Clipping: only what lies in the frame (made larger or smaller by the factors) shows, in the layer's own space.
+        double const w = scene.width * layer.clipX, h = scene.height * layer.clipY;
+        painter.setClipRect(QRectF(scene.width / 2.0 - w / 2.0, scene.height / 2.0 - h / 2.0, w, h), Qt::IntersectClip);
+    }
     if (layer.blend != Layer::BlendNormal && !tPaintingToBlend && opacity > 0.0) {
         // The layer alone in a picture of its own (its lines over its paint as usual), mixed with what is under it once.
         static QPainter::CompositionMode const kModes[Layer::BlendCount] = {

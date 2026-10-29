@@ -546,6 +546,30 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["node"] = QJsonArray{layer.nodePos.x(), layer.nodePos.y()};
     if (layer.nodeThumb > 0)
         layerObject["nodeThumb"] = layer.nodeThumb;
+    if (!layer.customAttributes.isEmpty()) {
+        QJsonArray custom;
+        for (CustomAttribute const& a : layer.customAttributes)
+            custom.append(QJsonObject{{"name", a.name}, {"value", a.value}, {"function", a.function}});
+        layerObject["customAttributes"] = custom;
+    }
+    if (!layer.published.isEmpty()) {
+        QJsonArray published;
+        for (PublishedAttribute const& p : layer.published)
+            published.append(QJsonArray{p.layer, p.value});
+        layerObject["published"] = published;
+    }
+    if (!layer.enable3d)
+        layerObject["enable3d"] = false;
+    if (layer.alignment != 0)
+        layerObject["alignment"] = layer.alignment;
+    if (layer.turnBeforeAlignment)
+        layerObject["turnBeforeAlignment"] = true;
+    if (layer.flipHorizontal)
+        layerObject["flipHorizontal"] = true;
+    if (layer.flipVertical)
+        layerObject["flipVertical"] = true;
+    if (layer.clipping)
+        layerObject["clip"] = QJsonArray{layer.clipX, layer.clipY};
     if (!layer.frameMarks.isEmpty()) {
         QJsonArray marks;
         for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)

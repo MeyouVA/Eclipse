@@ -17,6 +17,7 @@
 #include <QHeaderView>
 #include <QTableWidget>
 #include <QSettings>
+#include <algorithm>
 
 #include "model/document/Commands.h"
 #include "ui/panels/EffectsPanel.h"
@@ -266,6 +267,7 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
     form->addRow(m_effects);
     buildTransformOptions();
     buildCameraOptions();
+    buildAttributeSections();
 
     connect(m_fov, &QDoubleSpinBox::valueChanged, this, [this](double degrees) {
         if (!m_refreshing)
@@ -387,6 +389,7 @@ void LayerPanel::editDrivers()
     if (dialog.exec() != QDialog::Accepted)
         return;
     QVector<Driver> drivers;
+    bool twice = false;
     for (int r = 0; r < table->rowCount(); ++r) {
         auto combo = [&](int c) { return qobject_cast<QComboBox*>(table->cellWidget(r, c)); };
         auto spin = [&](int c) { return qobject_cast<QDoubleSpinBox*>(table->cellWidget(r, c)); };
@@ -398,10 +401,43 @@ void LayerPanel::editDrivers()
         d.sourceValue = combo(2)->currentIndex();
         d.factor = spin(3)->value();
         d.offset = spin(4)->value();
+        // (A value follows one other value: a second binding of it is left out.)
+        if (std::any_of(drivers.cbegin(), drivers.cend(), [&d](Driver const& had) { return had.value == d.value; })) {
+            twice = true;
+            continue;
+        }
         drivers.push_back(d);
     }
-    if (drivers != m_document->scene().layers[m_layer].drivers)
-        m_document->editLayers({m_layer}, tr("Attribute Controls"), [drivers](Layer& layer) { layer.drivers = drivers; });
+    if (twice)
+        emit message(tr("Tried to add an Attribute-Binding that already exists: a value follows one other value."));
+    QVector<Driver> const before = m_document->scene().layers[m_layer].drivers;
+    if (drivers == before)
+        return;
+    // Preferences: a binding made on a value whose function column is shared goes on every value sharing it.
+    QVector<QPair<int, Driver>> shared;
+    if (QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/bindSharedColumns"), true).toBool()) {
+        Scene const& now = m_document->scene();
+        for (Driver const& d : std::as_const(drivers)) {
+            int const column = now.layers[m_layer].linkOf(d.value);
+            if (!column || before.contains(d))
+                continue;
+            for (int l = 0; l < now.layers.size(); ++l)
+                for (ValueLink const& link : now.layers[l].links)
+                    if (link.function == column && !(l == m_layer && link.value == d.value) && l != now.layerIndex(d.source)) {
+                        Driver copy = d;
+                        copy.value = link.value;
+                        shared.push_back({l, copy});
+                    }
+        }
+    }
+    m_document->beginMacro(tr("Attribute Controls"));
+    m_document->editLayers({m_layer}, tr("Attribute Controls"), [drivers](Layer& layer) { layer.drivers = drivers; });
+    for (auto const& [l, d] : std::as_const(shared))
+        m_document->editLayers({l}, tr("Attribute Controls"), [d = d](Layer& layer) {
+            layer.drivers.erase(std::remove_if(layer.drivers.begin(), layer.drivers.end(), [&d](Driver const& had) { return had.value == d.value; }), layer.drivers.end());
+            layer.drivers.push_back(d);
+        });
+    m_document->endMacro();
 }
 
 void LayerPanel::refreshFovLimits()
@@ -523,6 +559,7 @@ void LayerPanel::refresh()
     m_pivotY->setValue(layer.pivot.y());
     m_key->setText(layer.keys.isEmpty() ? tr("No keyframes: the layer does not move.")
                    : layer.keyIndex(m_frame) >= 0 ? tr("Keyframe on this frame.") : tr("Between keyframes."));
+    refreshAttributeSections(layer);
     m_refreshing = false;
 }
 

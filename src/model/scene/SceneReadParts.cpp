@@ -566,6 +566,24 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     if (layer.nodePlaced)
         layer.nodePos = QPointF(node[0].toDouble(), node[1].toDouble());
     layer.nodeThumb = std::clamp(lo["nodeThumb"].toInt(0), 0, 2000);
+    for (QJsonValue const& cv : lo["customAttributes"].toArray()) {
+        QJsonObject const co = cv.toObject();
+        if (!co["name"].toString().trimmed().isEmpty())
+            layer.customAttributes.push_back({co["name"].toString().trimmed(), co["value"].toDouble(), co["function"].toInt(0)});
+    }
+    for (QJsonValue const& pv : lo["published"].toArray())
+        if (QJsonArray const p = pv.toArray(); p.size() == 2)
+            layer.published.push_back({p[0].toInt(), std::clamp(p[1].toInt(), 0, int(Driver::ValueCount) - 1)});
+    layer.enable3d = lo["enable3d"].toBool(true);
+    layer.alignment = std::clamp(lo["alignment"].toInt(0), 0, 3);
+    layer.turnBeforeAlignment = lo["turnBeforeAlignment"].toBool(false);
+    layer.flipHorizontal = lo["flipHorizontal"].toBool(false);
+    layer.flipVertical = lo["flipVertical"].toBool(false);
+    if (QJsonArray const clip = lo["clip"].toArray(); clip.size() == 2) {
+        layer.clipping = true;
+        layer.clipX = std::clamp(clip[0].toDouble(1.0), 0.01, 100.0);
+        layer.clipY = std::clamp(clip[1].toDouble(1.0), 0.01, 100.0);
+    }
     QJsonArray const pivot = lo["pivot"].toArray();
     layer.pivot = pivot.size() == 2 ? QPointF(pivot[0].toDouble(), pivot[1].toDouble())
                                     : QPointF(width / 2.0, height / 2.0);

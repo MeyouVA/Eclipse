@@ -380,3 +380,30 @@ void Document::setDisplay(int layer)
         return;
     apply(tr("Set Default Display"), [&](Scene& s) { s.display = id; });
 }
+
+bool Document::offsetValue(int layer, int value, double by)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || value < 0 || value >= Driver::ValueCount || by == 0.0)
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    // (A value a function column or another layer gives is offset there, not here.)
+    if (l.linkOf(value) != 0 || std::any_of(l.drivers.cbegin(), l.drivers.cend(), [value](Driver const& d) { return d.value == value; }))
+        return false;
+    apply(tr("Offset Attribute Value"), [&](Scene& s) {
+        Layer& target = s.layers[layer];
+        if (target.keys.isEmpty()) {
+            Keyframe held;
+            held.frame = 0;
+            held.pose = target.poseAt(0);
+            held.tween = false;
+            target.keys.push_back(held);
+        }
+        for (Keyframe& key : target.keys) {
+            double v = Driver::read(key.pose, value) + by;
+            if (value == Driver::Opacity)
+                v = std::clamp(v, 0.0, 1.0);
+            Driver::write(key.pose, value, v);
+        }
+    });
+    return true;
+}

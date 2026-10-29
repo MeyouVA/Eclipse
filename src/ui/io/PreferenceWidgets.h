@@ -134,6 +134,7 @@ struct PreferenceWidgets {
     QSpinBox* nodeBackdropColours = nullptr;
     QComboBox* importAlignment = nullptr;
     QComboBox* importTransparency = nullptr;
+    QCheckBox* bindSharedColumns = nullptr;
     QGroupBox* onionPage = nullptr;
     QFormLayout* onionLayout = nullptr;
     QSpinBox* onionCountBefore = nullptr;

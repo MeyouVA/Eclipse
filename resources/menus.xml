@@ -583,6 +583,16 @@
    <separator/>
    <item id="LayerProperties" icon="timeline/layerprops" text="Layer Proper&amp;ties..." responder="window" slot="onActionShowLayerProperties()"/>
    <item id="LayerEditor" icon="timeline/layerprops" text="Editor..." shortcut="shortcut.toggleEditor" responder="window" slot="onActionToggleEditor()"/>
+   <item id="SetPropertiesManyLayers" icon="timeline/layerprops" text="Set Properties on &amp;Many Layers..." responder="window" slot="onActionSetPropertiesOnManyLayers()"/>
+   <item id="ShowAttributeInformation" text="Attribute &amp;Information..." responder="window" slot="onActionShowAttributeInformation()"/>
+   <menu id="AnimationControllers" text="&amp;Controllers">
+    <item id="ReassignTargetAttributes" text="&amp;Reassign Target Attributes..." responder="window" slot="onActionReassignTargetAttributes()"/>
+    <item id="RemoveAttributeBinding" text="Remove Attribute &amp;Binding..." responder="window" slot="onActionRemoveAttributeBinding()"/>
+    <item id="RemoveAllAttributeBindings" text="Remove &amp;All Attribute Bindings" responder="window" slot="onActionRemoveAllAttributeBindings()"/>
+    <item id="CleanAttributeBindings" text="&amp;Clean Attribute Bindings" responder="window" slot="onActionCleanAttributeBindings()"/>
+   </menu>
+   <item id="PublishAttributeMode" text="&amp;Publish Attribute Mode" checkable="true" responder="window" slot="onActionPublishAttributeMode(bool)"/>
+   <item id="ClearPublishedAttributes" text="Clear Publis&amp;hed Attributes" responder="window" slot="onActionClearPublishedAttributes()"/>
   </menu>
 
   <menu id="Scripts" text="Scri&amp;pts" responder="window" aboutToShowSlot="onShowScripts(QMenu*)"/>
@@ -856,6 +866,7 @@
   <item id="EditDeselectAll"/>
   <item id="SelectParentSkippingEffects"/>
   <item id="SelectChildSkippingEffects"/>
+  <item id="LayerProperties"/>
   <item id="SelectWithCurrentColour" icon="edit/selectcolour" text="Select Strokes with Current Colour" shortcut="shortcut.selectCurrentColour" responder="camera" slot="onActionSelectWithCurrentColour()"/>
   <item id="SelectWithCurrentTexture" icon="edit/selecttexture" text="Select Strokes with Current Pencil Texture" shortcut="shortcut.selectCurrentTexture" responder="camera" slot="onActionSelectWithCurrentTexture()"/>
   <item id="InvertSelection" icon="edit/invertselection" text="Invert Selection" shortcut="shortcut.invertSelection" responder="camera" slot="onActionInvertSelection()"/>
@@ -1121,6 +1132,13 @@
    <item id="EaseNone"/>
   </menu>
   <item id="LayerProperties"/>
+  <item id="SetPropertiesManyLayers"/>
+  <item id="ClearPublishedAttributes"/>
+  <menu id="TimelineControllers" text="Controller">
+   <item id="ReassignTargetAttributes"/>
+   <item id="RemoveAttributeBinding"/>
+   <item id="RemoveAllAttributeBindings"/>
+  </menu>
   <menu id="TimelineLipSync" text="Lip-Sync">
    <item id="AutoLipSync"/>
    <item id="LipSyncFromWords"/>
@@ -1573,6 +1591,8 @@
    <item id="NodeSelectGroupContent" text="Select Group Content" responder="nodeView" slot="onActionSelectGroupContent()"/>
    <item id="SelectSyncedLayers"/>
    <item id="NodeSearch" text="Search For Nodes..." responder="nodeView" slot="onActionSearchNodes()"/>
+   <item id="LayerProperties"/>
+   <item id="ReassignTargetAttributes"/>
    <separator/>
    <item id="NodeCableCutter" text="Cable Cutter" checkable="true" responder="nodeView" slot="onActionCableCutter(bool)"/>
    <separator/>
@@ -1608,6 +1628,8 @@
    </menu>
    <item id="NodeShowPortFiltering" text="Show Port Filtering" checkable="true" responder="nodeView" slot="onActionShowPortFiltering(bool)"/>
    <item id="NodeMagnifier" text="Magnifier" checkable="true" responder="nodeView" slot="onActionMagnifier(bool)"/>
+   <item id="PublishAttributeMode"/>
+   <item id="ShowAttributeInformation"/>
    <separator/>
    <item id="NodeEditor" icon="timeline/layerprops" text="Editor..." responder="nodeView" slot="onActionEditor()"/>
   </menu>
@@ -1638,6 +1660,7 @@
    <item id="NodeGroupSelection" icon="timeline/group" text="Group Selection" responder="nodeView" slot="onActionGroupSelection()"/>
    <item id="NodeMoveToParentGroup" icon="timeline/toparentgroup" text="Move to Parent Group" responder="nodeView" slot="onActionMoveToParentGroup()"/>
    <item id="NodeExplodeGroups" icon="timeline/ungroup" text="Explode Selected Groups" responder="nodeView" slot="onActionExplodeGroups()"/>
+   <item id="ClearPublishedAttributes"/>
    <item id="NodeViewEnterGroup" icon="view/groupenter" text="Enter Group" responder="nodeView" slot="onActionEnterGroup()"/>
    <item id="NodeViewExitGroup" icon="view/groupexit" text="Exit Group" responder="nodeView" slot="onActionExitGroup()"/>
    <separator/>
@@ -1662,7 +1685,14 @@
   <item id="AttachLayer"/>
   <item id="DetachLayer"/>
   <item id="LayerPrefixSuffix"/>
-  <item id="BakeDrivers"/>
+  <menu id="NodeControllers" text="Controllers">
+   <item id="ReassignTargetAttributes"/>
+   <item id="RemoveAttributeBinding"/>
+   <item id="RemoveAllAttributeBindings"/>
+   <item id="CleanAttributeBindings"/>
+   <item id="BakeDrivers"/>
+  </menu>
+  <item id="SetPropertiesManyLayers"/>
   <separator/>
   <item id="NodeViewSelectInCamera" text="Select in Camera..." responder="window" slot="onActionSelectInCamera()"/>
   <item id="NodeViewWireGraph" text="Wire the Graph by Hand" responder="nodeView" slot="onActionWireGraph()"/>
@@ -1765,6 +1795,7 @@
   <separator/>
   <item id="CameraCone"/>
   <item id="PasteInPlace"/>
+  <item id="LayerProperties"/>
   <item id="LayerEditor"/>
   <item id="OpenPreviewManager"/>
   <item id="ShowControl"/>

@@ -37,6 +37,21 @@ struct ValueLink {
     bool operator==(ValueLink const&) const = default;
 };
 
+// An attribute of the user's own on a layer: a number, set by hand or taken from a function column.
+struct CustomAttribute {
+    QString name;
+    double value = 0.0;
+    int function = 0;       // a function column's id it follows (0: its own value)
+    bool operator==(CustomAttribute const&) const = default;
+};
+
+// A value of a layer inside a group shown (and edited) on the group itself: the layer's id and its Driver::Value.
+struct PublishedAttribute {
+    int layer = 0;
+    int value = 0;
+    bool operator==(PublishedAttribute const&) const = default;
+};
+
 struct Driver {
     enum Value { X, Y, ScaleX, ScaleY, Angle, Opacity, Z, Skew, Fov, ValueCount };
     int value = Angle;          // what of this layer's pose follows
@@ -83,6 +98,19 @@ struct Layer {
     QPointF nodePos;
     bool nodePlaced = false;
     int nodeThumb = 0;              // how tall its node's thumbnail is in the Node View (0: none shown)
+    QVector<CustomAttribute> customAttributes;
+    QVector<PublishedAttribute> published;     // a group: values of the layers in it shown on it
+    bool enable3d = true;           // off: it does not turn in space (Turn in Space is left out)
+    // How its pictures were last fitted to the frame (Layer Properties > Alignment Rule): 0 as placed, 1 fit, 2 pan (fill), 3 actual size.
+    int alignment = 0;
+    // What it shows, turned a quarter (before it is fitted) and flipped, about the middle of the frame.
+    bool turnBeforeAlignment = false;
+    bool flipHorizontal = false;
+    bool flipVertical = false;
+    // Clipped to the frame made larger or smaller about its middle by these factors (off: nothing is clipped).
+    bool clipping = false;
+    double clipX = 1.0;
+    double clipY = 1.0;
     QVector<Effect> effects;
     double effectAmount(int index, Pose const& pose) const;
     QColor cardColor = Qt::white;   // a colour-card: its colour

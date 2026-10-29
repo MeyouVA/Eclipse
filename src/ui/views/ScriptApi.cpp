@@ -516,3 +516,84 @@ int ScriptPalette::add(QString const& name, QString const& value)
             return k;
     return -1;
 }
+
+int ScriptLayers::layerOfPath(QString const& path, QString* attribute) const
+{
+    Scene const& scene = m_document->scene();
+    int const colon = int(path.lastIndexOf(QLatin1Char(':')));
+    if (colon < 0)
+        return -1;
+    *attribute = path.mid(colon + 1).trimmed().toLower().replace(QLatin1Char('/'), QLatin1Char('.'));
+    QStringList names = path.left(colon).split(QLatin1Char('/'), Qt::SkipEmptyParts);
+    if (!names.isEmpty() && names.first().compare(QStringLiteral("Top"), Qt::CaseInsensitive) == 0)
+        names.removeFirst();
+    if (names.isEmpty())
+        return -1;
+    // The layer of that name whose groups, nearest first, are those named before it.
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        if (scene.layers[l].name != names.last())
+            continue;
+        QStringList groups;
+        for (int up = scene.parentIndex(l), guard = 0; up >= 0 && guard < 256; up = scene.parentIndex(up), ++guard)
+            if (scene.layers[up].kind == Layer::Group)
+                groups.prepend(scene.layers[up].name);
+        if (groups == names.mid(0, names.size() - 1) || names.size() == 1)
+            return l;
+    }
+    return -1;
+}
+
+static int attributeValue(QString const& name)
+{
+    static char const* const kKeywords[Driver::ValueCount] = {"position.x", "position.y", "scale.x", "scale.y", "rotation.angle", "opacity", "position.z", "skew", "fov"};
+    for (int v = 0; v < Driver::ValueCount; ++v)
+        if (name == QLatin1String(kKeywords[v]) || name == QString::fromLatin1(kDriverValues[v]).toLower())
+            return v;
+    return name == QLatin1String("angle") || name == QLatin1String("rotation") ? int(Driver::Angle) : -1;
+}
+
+double ScriptLayers::attribute(QString const& path, int frame) const
+{
+    QString name;
+    int const layer = layerOfPath(path, &name);
+    if (layer < 0)
+        return 0.0;
+    if (int const value = attributeValue(name); value >= 0)
+        return Driver::read(m_document->scene().poseOf(layer, frame - 1), value);
+    return m_document->scene().customValue(layer, name.startsWith(QLatin1String("custom.")) ? name.mid(7) : name, frame - 1);
+}
+
+bool ScriptLayers::setAttribute(QString const& path, int frame, double v)
+{
+    QString name;
+    int const layer = layerOfPath(path, &name);
+    if (layer < 0)
+        return false;
+    Scene const& scene = m_document->scene();
+    if (int const value = attributeValue(name); value >= 0) {
+        Pose pose = scene.layers[layer].poseAt(frame - 1);
+        Driver::write(pose, value, v);
+        m_document->setKeyframe(layer, std::max(0, frame - 1), pose, tr("Set Attribute Value"));
+        return true;
+    }
+    QString const custom = name.startsWith(QLatin1String("custom.")) ? name.mid(7) : name;
+    for (int i = 0; i < scene.layers[layer].customAttributes.size(); ++i)
+        if (scene.layers[layer].customAttributes[i].name.compare(custom, Qt::CaseInsensitive) == 0) {
+            m_document->editLayers({layer}, tr("Set Attribute Value"), [i, v](Layer& l) { l.customAttributes[i].value = v; });
+            return true;
+        }
+    return false;
+}
+
+QStringList ScriptLayers::attributes(int layer) const
+{
+    if (!has(layer))
+        return {};
+    QStringList out{QStringLiteral("position.x"), QStringLiteral("position.y"), QStringLiteral("position.z"), QStringLiteral("scale.x"), QStringLiteral("scale.y"),
+                    QStringLiteral("rotation.angle"), QStringLiteral("skew"), QStringLiteral("opacity")};
+    if (m_document->scene().layers[layer].kind == Layer::Camera)
+        out << QStringLiteral("fov");
+    for (CustomAttribute const& a : m_document->scene().layers[layer].customAttributes)
+        out << QStringLiteral("custom.") + a.name;
+    return out;
+}

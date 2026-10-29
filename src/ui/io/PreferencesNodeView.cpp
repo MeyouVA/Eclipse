@@ -117,6 +117,11 @@ void MainWindow::preferencesNodeView(PreferenceWidgets& w, QSettings& s, QDialog
                                   s.value(QStringLiteral("prefs/importTransparency"), 0).toInt());
     w.importTransparency->setToolTip(tr("How the colours of a picture's see-through parts are stored in its file."));
     w.nodeLayout->addRow(tr("Transparency of Imported Pictures"), w.importTransparency);
+    // Attribute bindings.
+    w.bindSharedColumns = check(page, "PrefBindSharedColumns", tr("Create new bindings on all attributes sharing the column"),
+                                s.value(QStringLiteral("prefs/bindSharedColumns"), true).toBool());
+    w.bindSharedColumns->setToolTip(tr("A binding made in Attribute Controls on a value linked to a function column is made on every value linked to that column."));
+    w.nodeLayout->addRow(w.bindSharedColumns);
 }
 
 void MainWindow::saveNodePreferences(PreferenceWidgets& w, QSettings& s)
@@ -141,6 +146,7 @@ void MainWindow::saveNodePreferences(PreferenceWidgets& w, QSettings& s)
     s.setValue(QStringLiteral("prefs/backdropColours"), w.nodeBackdropColours->value());
     s.setValue(QStringLiteral("prefs/importAlignment"), w.importAlignment->currentIndex());
     s.setValue(QStringLiteral("prefs/importTransparency"), w.importTransparency->currentIndex());
+    s.setValue(QStringLiteral("prefs/bindSharedColumns"), w.bindSharedColumns->isChecked());
 }
 
 void MainWindow::applyNodePreferences(QSettings const& s)

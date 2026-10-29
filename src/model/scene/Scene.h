@@ -238,6 +238,12 @@ public:
     // How many layers `layer` hangs under.
     int depth(int layer) const;
     QTransform worldTransform(int layer, int frame, PoseOverride const* over = nullptr) const;
+    // The same without what the layer shows being turned or flipped (Layer::turnBeforeAlignment and the flips).
+    QTransform spaceTransform(int layer, int frame, PoseOverride const* over = nullptr) const;
+    // What a layer shows turned a quarter and flipped about the middle of the frame, in its own space.
+    QTransform contentTransform(int layer) const;
+    // A custom attribute's value on a frame (from its function column when it follows one); 0 when there is none.
+    double customValue(int layer, QString const& name, int frame) const;
     // What a layer turns and scales about on a frame: its own pivot, or the pivot of a drawing (its own, or for a peg, of one hung on it).
     QPointF pivotOf(int layer, int frame) const;
     // The pose of a layer on a frame as the scene has it: its keyframes', with the values its drivers set from other layers.

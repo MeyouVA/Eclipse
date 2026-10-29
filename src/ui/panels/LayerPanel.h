@@ -27,11 +27,15 @@ signals:
     void functionShown(int layer, int value);
     void functionEditorWanted(int column);
     void message(QString const& text);
+    // Attribute Information... from a value's button: the attributes of a layer described.
+    void attributeInformationWanted(int layer);
 
 public slots:
     void setCurrentCell(int layer, int frame);
     // Animating off: a number typed moves the layer as a whole, in all its keyframes alike.
     void setAnimate(bool on) { m_animate = on; }
+    // Publish Attribute Mode: a click on a value's button publishes it on the group the layer is in (or takes it off).
+    void setPublishMode(bool on);
 
 private:
     void refresh();
@@ -45,6 +49,14 @@ private:
 public:
     // Attribute Controls: a window to set which values of the current layer follow values of other layers.
     void editDrivers();
+    bool publishMode() const { return m_publishMode; }
+    // A value of a layer shown on the group it is in, or taken off it again.
+    void togglePublished(int layer, int value);
+    // An attribute of the user's own on the current layer (false: no name, a name it has, or a name with / or :).
+    bool addCustomAttribute(QString const& name);
+    static QString valueName(int value);
+    // The group a layer is in (its nearest group above), or -1.
+    int groupOf(int layer) const;
 private:
     QDoubleSpinBox* number(double min, double max, double step, int decimals);
     // The button beside a value (Driver::Value) that shows its function and links it to a column.
@@ -113,5 +125,20 @@ private:
     QComboBox* m_embeddedPivot = nullptr;
     QComboBox* m_cameraAlignment = nullptr;
     class QFormLayout* m_form;
+    void buildAttributeSections();
+    void refreshAttributeSections(struct Layer const& layer);
+    void addAttributeCommands(class QMenu* menu, int value);
+    bool m_publishMode = false;
+    QWidget* m_drawingBox = nullptr;
+    QCheckBox* m_enable3d = nullptr;
+    QComboBox* m_alignment = nullptr;
+    QCheckBox* m_turnBefore = nullptr;
+    QCheckBox* m_flipH = nullptr;
+    QCheckBox* m_flipV = nullptr;
+    QCheckBox* m_clipping = nullptr;
+    QDoubleSpinBox* m_clipX = nullptr;
+    QDoubleSpinBox* m_clipY = nullptr;
+    QWidget* m_publishedBox = nullptr;
+    QWidget* m_customBox = nullptr;
     EffectsPanel* m_effects;
 };

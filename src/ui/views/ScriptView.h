@@ -110,9 +110,15 @@ public:
     Q_INVOKABLE int driverCount(int layer) const;
     Q_INVOKABLE QJSValue driver(int layer, int index) const;
     Q_INVOKABLE void clearDrivers(int layer);
+    // Attributes by path: "Group/Layer:position.x" (the groups it is in, its name, the attribute; "Top/" may lead), or a custom
+    // attribute "Layer:custom.Name" (or just "Layer:Name"). Frames from 1.  The names of a layer's attributes.
+    Q_INVOKABLE double attribute(QString const& path, int frame) const;
+    Q_INVOKABLE bool setAttribute(QString const& path, int frame, double value);
+    Q_INVOKABLE QStringList attributes(int layer) const;
 
 private:
     bool has(int layer) const;
+    int layerOfPath(QString const& path, QString* attribute) const;
     Document* m_document;
     Timeline* m_timeline;
     QJSEngine* m_engine;
