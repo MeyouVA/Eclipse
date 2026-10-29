@@ -1,6 +1,7 @@
 // Eclipse - the Camera view painted: onion skin, snapshots and view modes, the layers of the frame.
 #include "canvas/Canvas.h"
 #include "canvas/CanvasPaintPrivate.h"
+#include "canvas/CanvasPaintShared.h"
 #include "actions/theme/InterfaceColours.h"
 
 #include <QElapsedTimer>
@@ -13,6 +14,8 @@
 
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
+
+using namespace canvas_paint_shared;
 
 // A drawing of the onion skin: whole, in its colour - or only its outlines.
 void Canvas::paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint, double wash) const
@@ -152,7 +155,7 @@ void Canvas::paintEvent(QPaintEvent*)
     QElapsedTimer drawing;
     drawing.start();
     // Preferences: pencil lines shown fainter in the view (only here: what is exported keeps them as they are).
-    s_lineOpacity = m_pencilOpacity / 100.0;
+    gLineOpacity = m_pencilOpacity / 100.0;
     canvas_paint::PictureWash& wash = canvas_paint::pictureWashState();
     canvas_paint::PictureWash const previousWash = wash;
     auto const restoreWash = qScopeGuard([&] { wash = previousWash; });
@@ -162,11 +165,28 @@ void Canvas::paintEvent(QPaintEvent*)
                         && (drawingTool ? m_washDrawing : m_washCamera) ? m_washPercent : 0;
     wash.colour = m_washColour;
     // (While anything moves - the pen, the playhead - paint is drawn with its quick edge.)
-    s_fineFills = m_drag == DragNone && !m_playing;
+    gFineFills = (m_drag == DragNone && !m_playing) || m_viewQuality;
     // (Render View shows the frame as it will be rendered; the others as the view shows it.)
     setViewing(m_viewMode != ViewRender);
+    // The view's time limit for effects (not in renders): past it they are left out of this picture.
+    m_incomplete = false;
+    gEffectsTimed = m_effectsTimeout > 0 && !m_timeoutOff && m_viewMode == ViewNormal;
+    gEffectsTimedOut = false;
+    gEffectsDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_effectsTimeout);
     paintView();
+    m_timedOut = gEffectsTimedOut;
+    gEffectsTimed = false;
+    gEffectsTimedOut = false;
     setViewing(false);
+    if (m_timedOut || m_incomplete) {
+        QPainter note(this);
+        QString const text = m_incomplete ? tr("Rendering aborted - Rendering is incomplete (View Timeout)")
+                                          : tr("Interactive rendering is slow: effects were left out (View Timeout)");
+        QRectF const box(8, height() - note.fontMetrics().height() - 14, note.fontMetrics().horizontalAdvance(text) + 12, note.fontMetrics().height() + 6);
+        note.fillRect(box, QColor(0, 0, 0, 170));
+        note.setPen(QColor(255, 210, 120));
+        note.drawText(box, Qt::AlignCenter, text);
+    }
     if (!m_playing && !m_drawingView && !m_planeView && !m_showSnapshot) {
         QPainter aids(this);
         aids.setRenderHint(QPainter::Antialiasing, true);
@@ -175,8 +195,8 @@ void Canvas::paintEvent(QPaintEvent*)
         if (drawingTool && m_viewMode == ViewNormal)
             paintDrawingLabel(aids);
     }
-    s_fineFills = true;
-    s_lineOpacity = 1.0;
+    gFineFills = true;
+    gLineOpacity = 1.0;
     m_lastDrawMs = drawing.nsecsElapsed() / 1.0e6;
     m_averageDrawMs = m_averageDrawMs <= 0.0 ? m_lastDrawMs : m_averageDrawMs * 0.9 + m_lastDrawMs * 0.1;
     if (m_performanceReport) {
@@ -196,7 +216,7 @@ void Canvas::paintView()
     Scene const& scene = m_document->scene();
     QPainter painter(this);
     painter.fillRect(rect(), m_backdrop);
-    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setRenderHint(QPainter::Antialiasing, m_viewAntialias);
     painter.setTransform(cameraViewTransform());
 
     QRectF const frameRect(0, 0, scene.width, scene.height);
@@ -222,18 +242,37 @@ void Canvas::paintView()
     // A snapshot shown, or Render, Matte or Depth View: that picture of the frame, and nothing else.
     if (((m_showSnapshot && !m_snapshot.isNull()) || m_viewMode != ViewNormal) && !m_drawingView && m_frame >= 0) {
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-        if (!(m_showSnapshot && !m_snapshot.isNull()) && (m_modeCache.isNull() || m_modeCacheFrame != m_frame || m_modeCacheMode != m_viewMode)) {
-            // (Made again only when the frame, the mode or the scene has changed.)
-            m_modeCache = modeImage(scene, m_frame, m_viewMode);
-            m_modeCacheFrame = m_frame;
-            m_modeCacheMode = m_viewMode;
+        bool const snapshot = m_showSnapshot && !m_snapshot.isNull();
+        QImage shownImage;
+        if (snapshot) {
+            shownImage = m_snapshot;
+        } else if (m_viewMode == ViewRender) {
+            // (Kept frame by frame; made again after a change only with Auto Render, or when asked.)
+            shownImage = renderViewImage(m_frame);
+        } else {
+            if (m_modeCache.isNull() || m_modeCacheFrame != m_frame || m_modeCacheMode != m_viewMode) {
+                // (Made again only when the frame, the mode or the scene has changed.)
+                m_modeCache = modeImage(scene, m_frame, m_viewMode);
+                m_modeCacheFrame = m_frame;
+                m_modeCacheMode = m_viewMode;
+            }
+            shownImage = m_modeCache;
         }
-        painter.drawImage(frameRect, m_showSnapshot && !m_snapshot.isNull() ? m_snapshot : m_modeCache);
+        painter.drawImage(frameRect, shownImage);
         QPen border(QColor(70, 70, 70));
         border.setCosmetic(true);
         painter.setPen(border);
         painter.setBrush(Qt::NoBrush);
         painter.drawRect(frameRect);
+        if (!snapshot && m_viewMode == ViewRender && m_renderStale) {
+            // Auto Render is off: the picture is of the scene as it was, until it is rendered again.
+            painter.resetTransform();
+            QString const text = tr("Out of date: View > Render Current Frame to see the changes");
+            QRectF const box(8, height() - painter.fontMetrics().height() - 14, painter.fontMetrics().horizontalAdvance(text) + 12, painter.fontMetrics().height() + 6);
+            painter.fillRect(box, QColor(150, 40, 30, 200));
+            painter.setPen(Qt::white);
+            painter.drawText(box, Qt::AlignCenter, text);
+        }
         return;
     }
 
@@ -308,7 +347,14 @@ void Canvas::paintView()
         }
     };
     bool const shade = m_lightTable && m_lightShade && !m_playing && (m_drawingView || m_lightShadeCamera);
+    auto const drawDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_drawTimeout);
+    bool const drawTimed = m_drawTimeout > 0 && !m_timeoutOff && !m_drawingView;
     for (int l : std::as_const(order)) {
+        if (drawTimed && std::chrono::steady_clock::now() > drawDeadline) {
+            // Past the view's time limit: the layers not yet drawn are left out of this picture.
+            m_incomplete = true;
+            break;
+        }
         if (shade && l == m_layer) {
             // The light table's shade: a veil over what lies under the drawing worked on.
             painter.save();

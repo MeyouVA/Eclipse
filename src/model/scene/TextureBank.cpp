@@ -4,6 +4,7 @@
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QHash>
+#include <QMutex>
 
 #include <algorithm>
 #include <cmath>
@@ -14,6 +15,13 @@ QHash<int, TextureBank::Entry>& bank()
 {
     static QHash<int, TextureBank::Entry> entries;
     return entries;
+}
+
+// Renders on several threads read the bank while the window may add to it.
+QMutex& bankLock()
+{
+    static QMutex lock;
+    return lock;
 }
 
 }
@@ -32,6 +40,7 @@ QImage TextureBank::normalised(QImage const& grain)
 
 int TextureBank::add(QString const& name, QImage const& grain, double edge)
 {
+    QMutexLocker const locked(&bankLock());
     QImage const grey = normalised(grain);
     if (grey.isNull())
         return 0;
@@ -59,11 +68,13 @@ int TextureBank::add(QString const& name, QImage const& grain, double edge)
 
 void TextureBank::remove(int id)
 {
+    QMutexLocker const locked(&bankLock());
     bank().remove(id);
 }
 
 void TextureBank::rename(int id, QString const& name)
 {
+    QMutexLocker const locked(&bankLock());
     auto found = bank().find(id);
     if (found != bank().end() && !name.trimmed().isEmpty())
         found->name = name.trimmed();
@@ -71,16 +82,19 @@ void TextureBank::rename(int id, QString const& name)
 
 bool TextureBank::contains(int id)
 {
+    QMutexLocker const locked(&bankLock());
     return bank().contains(id);
 }
 
 TextureBank::Entry TextureBank::entry(int id)
 {
+    QMutexLocker const locked(&bankLock());
     return bank().value(id);
 }
 
 QVector<TextureBank::Entry> TextureBank::all()
 {
+    QMutexLocker const locked(&bankLock());
     QVector<Entry> entries;
     for (Entry const& entry : std::as_const(bank()))
         entries.push_back(entry);

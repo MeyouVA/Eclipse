@@ -45,7 +45,7 @@
     <separator/>
     <item id="ExportAudio" icon="file/exportaudio" text="&amp;Audio..." responder="window" slot="onActionExportAudio()"/>
     <separator/>
-    <item id="RenderWriteNodes" icon="file/exportframes" text="Render &amp;Write Nodes" responder="window" slot="onActionRenderWrites()"/>
+    <item id="RenderWriteNodes" icon="file/exportframes" text="Render &amp;Write Nodes" shortcut="shortcut.renderWriteNodes" responder="window" slot="onActionRenderWrites()"/>
    </menu>
    <separator/>
    <menu id="FileOptimize" text="Optimi&amp;ze">
@@ -159,6 +159,13 @@
    <item id="LightTable" icon="view/lighttable" text="&amp;Light Table" shortcut="shortcut.lightTable" checkable="true" responder="camera" slot="onActionLightTable(bool)"/>
    <item id="Backlight" icon="view/backlight" text="&amp;Backlight" shortcut="shortcut.backlight" checkable="true" responder="camera" slot="onActionBacklight(bool)"/>
    <item id="MatteView" text="&amp;Matte View" checkable="true" responder="window" slot="onActionMatteView(bool)" tooltip="Show only the matte: white where the frame is painted, black where it is clear."/>
+   <separator/>
+   <item id="ViewNormalMode" text="&amp;Normal View" checkable="true" checked="true" shortcut="shortcut.normalView" responder="window" slot="onActionCameraViewMode(QString)" itemParameter="normal" tooltip="The frame as you work on it, drawn quickly: what Preferences &gt; Render leaves out of the view is left out."/>
+   <item id="ViewRenderMode" text="Render &amp;View" checkable="true" shortcut="shortcut.renderView" responder="window" slot="onActionCameraViewMode(QString)" itemParameter="render" tooltip="The frame as it will be rendered, kept frame by frame."/>
+   <item id="RenderCurrentFrame" icon="misc/renderpreview" text="Render C&amp;urrent Frame" shortcut="shortcut.renderCurrentFrame" responder="window" slot="onActionRenderCurrentFrame()" tooltip="Render the frame again for the Render View (with Auto Render off, to see the changes)."/>
+   <item id="ViewAutoRender" icon="misc/autorender" text="Auto Re&amp;nder" checkable="true" checked="true" shortcut="shortcut.autoRender" responder="window" slot="onActionViewAutoRender(bool)" tooltip="The Render View renders the frame again after each change. Off, it keeps what it rendered until Render Current Frame."/>
+   <item id="ProgressiveRender" text="Pro&amp;gressive Render Preview" checkable="true" responder="window" slot="onActionProgressiveRender(bool)" tooltip="The Render View shows a rough picture at once, then the frame in full a moment later."/>
+   <item id="ViewTimeoutOff" text="Disable View &amp;Timeout" checkable="true" responder="window" slot="onActionViewTimeoutOff(bool)" tooltip="The Camera view draws everything however long it takes, whatever Preferences &gt; Render sets as its time limits."/>
    <menu id="ViewShow" text="S&amp;how">
     <item id="ShowDeformationMesh" text="Deformation Mesh" shortcut="shortcut.showDeformationMesh" checkable="true" responder="camera" slot="onActionShowDeformationMesh(bool)"/>
     <item id="ShowSafeArea" icon="view/safearea" text="Safe &amp;Area" shortcut="shortcut.safeArea" checkable="true" responder="camera" slot="onActionShowSafeArea(bool)"/>
@@ -251,6 +258,9 @@
     <item id="AutoRender" icon="misc/autorender" text="&amp;Auto Render" checkable="true" responder="window" slot="onActionAutoRender(bool)"/>
     <item id="RecalculateAll" icon="misc/recalculate" text="Recalculate A&amp;ll" responder="window" slot="onActionRecalculateAll()"/>
     <item id="CancelPreviewRender" icon="misc/cancelrender" text="&amp;Cancel Preview Render" responder="window" slot="onActionCancelPreviewRender()"/>
+    <item id="NodeRecalculateSelected"/>
+    <separator/>
+    <item id="AutoRenderWrite" icon="file/exportframes" text="Auto Render &amp;Write" checkable="true" shortcut="shortcut.autoRenderWrite" responder="window" slot="onActionAutoRenderWrite(bool)" tooltip="Each frame the Render View renders in full is also written by the write outputs that are on (images)."/>
    </menu>
    <item id="ElementManager" icon="misc/elements" text="&amp;Element Manager..." responder="window" slot="onActionElementManager()"/>
   </menu>
@@ -909,6 +919,9 @@
   <item id="LightTable"/>
   <item id="TopLight"/>
   <item id="MatteView"/>
+  <item id="ViewRenderMode"/>
+  <item id="RenderCurrentFrame"/>
+  <item id="ViewAutoRender"/>
   <submenu id="menu.grid" text="Grid"/>
   <item id="OpenPreviewManager" text="Preview Manager..." responder="window" slot="onActionOpenPreviewManager()"/>
   <item id="ShowControl"/>
@@ -1631,6 +1644,7 @@
    <separator/>
    <item id="NodeRecalculateSelected" icon="misc/recalculate" text="Recalculate Selected" responder="nodeView" slot="onActionRecalculateSelected()"/>
    <item id="NodeRecalculateAll" icon="misc/recalculate" text="Recalculate All" responder="nodeView" slot="onActionRecalculateAll()"/>
+   <item id="AutoRenderWrite"/>
   </menu>
   <menu id="NodeViewViewMenu" text="View">
    <item id="NodeViewZoomIn" icon="view/zoomin" text="Zoom In" responder="nodeView" slot="onActionZoomIn()"/>

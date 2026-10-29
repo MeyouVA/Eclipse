@@ -33,6 +33,14 @@ void Canvas::onDocumentChanged()
         && m_drag != DragPan && m_drag != DragRotateView && m_drag != DragZoom)
         cancelInput();
     m_modeCache = QImage();
+    // The Render View: rendered again with Auto Render; otherwise what it shows is kept, as of the scene as it was.
+    if (m_autoRender) {
+        if (!m_renderShown.isNull() || !m_renderFrames.isEmpty())
+            clearRenderCache();
+    } else if ((!m_renderShown.isNull() || !m_renderFrames.isEmpty()) && !m_renderStale) {
+        m_renderStale = true;
+        emit renderStateChanged();
+    }
     QVector<int> const shape = drawingShape();
     bool const same = !shape.isEmpty() && shape == m_seenShape;
     m_seenShape = shape;

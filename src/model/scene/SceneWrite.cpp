@@ -159,9 +159,12 @@ QJsonObject Scene::toJson(QString const& folder) const
         controllerArray.append(controller);
     }
     QJsonArray writeArray;
-    for (Write const& w : writes)
-        writeArray.append(QJsonObject{{"name", w.name}, {"movie", w.movie}, {"path", w.path}, {"format", w.format},
-                                      {"percent", w.percent}, {"enabled", w.enabled}});
+    for (Write const& w : writes) {
+        QJsonObject wo{{"name", w.name}, {"movie", w.movie}, {"path", w.path}, {"format", w.format}, {"percent", w.percent}, {"enabled", w.enabled}};
+        if (w.layers)
+            wo["layers"] = true;
+        writeArray.append(wo);
+    }
     QJsonObject whole{{"format", "eclipse-scene"},
                        {"controllers", controllerArray},
                        {"writes", writeArray},

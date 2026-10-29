@@ -81,7 +81,9 @@ QVector<P> const& table(Effect::Type type)
         {"hue", QT_TRANSLATE_NOOP("Effect", "Hue Interpolation"), P::Choice, 0, 3, 1,
          QT_TRANSLATE_NOOP("Effect", "Hue-Linear|Hue-Circular-Shortest|Hue-Circular-CW|Hue-Circular-CCW"), QT_TRANSLATE_NOOP("Effect", "Which way round the colour wheel the hue goes (HSV and HSL).")}};
     static QVector<P> const override = {
-        {"onlyListed", QT_TRANSLATE_NOOP("Effect", "Only the Colours Listed"), P::Toggle, 0, 1, 0, nullptr, QT_TRANSLATE_NOOP("Effect", "Everything drawn in other colours left out (a colour selector).")}};
+        {"onlyListed", QT_TRANSLATE_NOOP("Effect", "Render"), P::Choice, 0, 2, 0,
+         QT_TRANSLATE_NOOP("Effect", "All|Selected Colours and Bitmaps|Selected Colours"),
+         QT_TRANSLATE_NOOP("Effect", "What is drawn: everything (the colours listed changed), or only what is in the colours listed (a colour selector), with or without the layer's bitmaps.")}};
     static QVector<P> const swap = {
         {"red", QT_TRANSLATE_NOOP("Effect", "Red Channel From"), P::Choice, 0, 5, 0, kChannels, nullptr},
         {"green", QT_TRANSLATE_NOOP("Effect", "Green Channel From"), P::Choice, 0, 5, 1, kChannels, nullptr},

@@ -111,6 +111,12 @@ struct Layer {
     bool clipping = false;
     double clipX = 1.0;
     double clipY = 1.0;
+    // Vector render options: edge smoothness (Low hard, Very High at twice the size), edge hardness (exponent), picture scaling.
+    enum Antialias { AntialiasLow, AntialiasMedium, AntialiasHigh, AntialiasVeryHigh };
+    int antialiasing = AntialiasHigh;
+    double antialiasExponent = 1.0;
+    enum TextureFilter { FilterSmooth, FilterNearest };
+    int textureFilter = FilterSmooth;
     QVector<Effect> effects;
     double effectAmount(int index, Pose const& pose) const;
     QColor cardColor = Qt::white;   // a colour-card: its colour
@@ -171,6 +177,9 @@ struct Layer {
         bool pegSeparateScale = true, elementSeparateScale = true;
         bool animatable = true;
         int embeddedPivot = PivotNotUsed;
+        // Of drawing layers: how smooth their edges are, and how hard their soft edge (Antialiasing Quality and Exponent).
+        int antialiasing = 2;
+        double antialiasExponent = 1.0;
     };
     ECLIPSE_MODEL_API static NewLayerDefaults newLayers;
     double limitedAngle(double angle) const { return angleLimited ? std::clamp(angle, std::min(minAngle, maxAngle), std::max(minAngle, maxAngle)) : angle; }

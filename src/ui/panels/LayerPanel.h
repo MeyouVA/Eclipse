@@ -137,6 +137,9 @@ private:
     QCheckBox* m_flipV = nullptr;
     QCheckBox* m_clipping = nullptr;
     QDoubleSpinBox* m_clipX = nullptr;
+    QComboBox* m_antialiasing = nullptr;
+    QDoubleSpinBox* m_antialiasExponent = nullptr;
+    QComboBox* m_textureFilter = nullptr;
     QDoubleSpinBox* m_clipY = nullptr;
     QWidget* m_publishedBox = nullptr;
     QWidget* m_customBox = nullptr;

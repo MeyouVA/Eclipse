@@ -15,6 +15,7 @@
 #include "model/scene/Scene.h"
 #include "model/scene/AtomicFile.h"
 #include "canvas/Canvas.h"
+#include "canvas/FrameRender.h"
 
 namespace MovieExport {
 
@@ -131,23 +132,30 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
         process.waitForFinished(5000);
         return fail(why);
     };
-    QImage image(wide, high, QImage::Format_RGBA8888);
-    for (int f = first; f <= last; ++f) {
-        if (progress && !progress(f))
-            return abandon(QStringLiteral("Stopped."));
-        image.fill(Qt::transparent);
-        {
-            QPainter painter(&image);
-            painter.setRenderHint(QPainter::Antialiasing, true);
-            painter.scale(double(wide) / scene.width, double(high) / scene.height);
-            Canvas::paintFrame(painter, rendered, f);
-        }
-        // The lines of an image may be padded: send them one by one.
-        for (int y = 0; y < image.height(); ++y)
-            process.write(reinterpret_cast<char const*>(image.constScanLine(y)), qint64(image.width()) * 4);
-        while (process.bytesToWrite() > 0) {
-            if (process.state() != QProcess::Running || !process.waitForBytesWritten(30000))
-                return abandon(QStringLiteral("ffmpeg stopped: %1").arg(QString::fromLocal8Bit(process.readAllStandardError()).trimmed()));
+    // A few frames at a time rendered on the cores, then sent down the pipe in order.
+    int const chunk = std::max(1, FrameRender::threadsUsed() * 2);
+    for (int at = first; at <= last; at += chunk) {
+        QVector<int> frames;
+        for (int f = at; f <= std::min(last, at + chunk - 1); ++f)
+            frames.push_back(f);
+        QVector<QImage> batch(frames.size());
+        QImage* const held = batch.data();
+        FrameRender::render(rendered, frames, QSize(wide, high), false, [held, at](int f, QImage const& picture) {
+            held[f - at] = picture;
+            return QString();
+        }, nullptr);
+        for (int i = 0; i < batch.size(); ++i) {
+            // (Told of each frame as it goes down the pipe, in order.)
+            if (progress && !progress(at + i))
+                return abandon(QStringLiteral("Stopped."));
+            QImage const image = batch[i].convertToFormat(QImage::Format_RGBA8888);
+            // The lines of an image may be padded: send them one by one.
+            for (int y = 0; y < image.height(); ++y)
+                process.write(reinterpret_cast<char const*>(image.constScanLine(y)), qint64(image.width()) * 4);
+            while (process.bytesToWrite() > 0) {
+                if (process.state() != QProcess::Running || !process.waitForBytesWritten(30000))
+                    return abandon(QStringLiteral("ffmpeg stopped: %1").arg(QString::fromLocal8Bit(process.readAllStandardError()).trimmed()));
+            }
         }
     }
     process.closeWriteChannel();

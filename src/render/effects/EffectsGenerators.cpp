@@ -5,6 +5,7 @@
 #include <QFont>
 #include <QFontMetricsF>
 #include <QLinearGradient>
+#include <QMutex>
 #include <QPainter>
 #include <QPainterPath>
 #include <QRadialGradient>
@@ -22,6 +23,12 @@ QString& theSceneName()
 {
     static QString name;
     return name;
+}
+
+QMutex& sceneNameLock()
+{
+    static QMutex lock;
+    return lock;
 }
 
 // A painter on the image's own pixels (whatever its device pixel ratio).
@@ -55,11 +62,13 @@ QRgb bilinear(QImage const& source, double x, double y)
 
 void setSceneName(QString const& name)
 {
+    QMutexLocker const locked(&sceneNameLock());
     theSceneName() = name;
 }
 
 QString sceneName()
 {
+    QMutexLocker const locked(&sceneNameLock());
     return theSceneName();
 }
 

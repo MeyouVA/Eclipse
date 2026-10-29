@@ -34,9 +34,9 @@ QImage makeGrain(int size, int density, int streaks, unsigned seed);
 QImage preview(QImage const& grain, double edge, QSize size);
 // What kind `kind` (1 to count) is called.
 QString name(int kind);
-QImage const& tile(int kind, bool crisp = false);
+QImage tile(int kind, bool crisp = false);
 // The same grain lying flat, as on paper - what a brush stroke shows of it.  It repeats both ways.
-QImage const& paper(int kind);
+QImage paper(int kind);
 // A small picture of a line drawn with it (kind 0: a solid line), for a list.
 QIcon icon(int kind);
 

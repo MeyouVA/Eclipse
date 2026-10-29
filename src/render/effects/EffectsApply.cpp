@@ -75,7 +75,10 @@ void overrideColours(Drawing& drawing, Effect const& e)
     QHash<int, QColor> instead;
     for (QPair<int, QColor> const& o : e.overrides)
         instead.insert(o.first, o.second);
-    bool const only = e.flag("onlyListed");
+    bool const only = e.value("onlyListed") >= 1.0;
+    // Render Selected Colours (not their bitmaps): the pictures of the drawing are left out as well.
+    if (e.value("onlyListed") >= 2.0)
+        drawing.pictures.clear();
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
         if (only) {
             drawing.strokesOf(sheet).removeIf([&](Stroke const& s) { return !instead.contains(s.swatch); });

@@ -195,6 +195,39 @@ void LayerPanel::buildAttributeSections()
     connect(m_clipX, &QDoubleSpinBox::valueChanged, this, clipped);
     connect(m_clipY, &QDoubleSpinBox::valueChanged, this, clipped);
     drawing->addRow(tr("Clipping"), clip);
+    // Vector render options: how smooth its edges are, how hard their soft edge is, how its pictures are scaled.
+    QHBoxLayout* const smooth = new QHBoxLayout;
+    m_antialiasing = new QComboBox(m_drawingBox);
+    m_antialiasing->setObjectName(QStringLiteral("LayerAntialiasing"));
+    m_antialiasing->addItems({tr("Low"), tr("Medium"), tr("High"), tr("Very High")});
+    m_antialiasing->setToolTip(tr("Antialiasing Quality: Low draws hard edges; Very High works the edges out at twice the size (slower)."));
+    m_antialiasExponent = number(0.1, 10.0, 0.1, 2);
+    m_antialiasExponent->setObjectName(QStringLiteral("LayerAntialiasExponent"));
+    m_antialiasExponent->setToolTip(tr("Antialiasing Exponent: above 1 the soft edge of lines and paint is made harder, below 1 softer."));
+    m_textureFilter = new QComboBox(m_drawingBox);
+    m_textureFilter->setObjectName(QStringLiteral("LayerTextureFilter"));
+    m_textureFilter->addItems({tr("Smooth"), tr("Nearest")});
+    m_textureFilter->setToolTip(tr("Texture Filter: how its pictures are scaled - smoothly, or each pixel kept square (Nearest)."));
+    smooth->addWidget(m_antialiasing, 1);
+    smooth->addWidget(new QLabel(tr("Exponent"), m_drawingBox));
+    smooth->addWidget(m_antialiasExponent, 1);
+    smooth->addWidget(new QLabel(tr("Pictures"), m_drawingBox));
+    smooth->addWidget(m_textureFilter, 1);
+    auto smoothed = [this] {
+        if (m_refreshing)
+            return;
+        int const quality = m_antialiasing->currentIndex(), filter = m_textureFilter->currentIndex();
+        double const exponent = m_antialiasExponent->value();
+        m_document->editLayers({m_layer}, tr("Antialiasing"), [quality, exponent, filter](Layer& l) {
+            l.antialiasing = quality;
+            l.antialiasExponent = exponent;
+            l.textureFilter = filter;
+        });
+    };
+    connect(m_antialiasing, &QComboBox::currentIndexChanged, this, smoothed);
+    connect(m_antialiasExponent, &QDoubleSpinBox::valueChanged, this, smoothed);
+    connect(m_textureFilter, &QComboBox::currentIndexChanged, this, smoothed);
+    drawing->addRow(tr("Antialiasing"), smooth);
     m_form->addRow(tr("Drawing"), m_drawingBox);
 
     // ---- a group: the values published on it ----
@@ -253,7 +286,8 @@ void LayerPanel::refreshAttributeSections(Layer const& layer)
     bool const drawing = layer.holdsDrawings();
     m_drawingBox->setVisible(drawing || layer.kind == Layer::Peg);
     m_enable3d->setChecked(layer.enable3d);
-    for (QWidget* w : std::initializer_list<QWidget*>{m_alignment, m_turnBefore, m_flipH, m_flipV, m_clipping, m_clipX, m_clipY})
+    for (QWidget* w : std::initializer_list<QWidget*>{m_alignment, m_turnBefore, m_flipH, m_flipV, m_clipping, m_clipX, m_clipY, m_antialiasing,
+                                                      m_antialiasExponent, m_textureFilter})
         w->setEnabled(drawing);
     m_alignment->setCurrentIndex(std::clamp(layer.alignment, 0, 3));
     m_turnBefore->setChecked(layer.turnBeforeAlignment);
@@ -262,6 +296,9 @@ void LayerPanel::refreshAttributeSections(Layer const& layer)
     m_clipping->setChecked(layer.clipping);
     m_clipX->setValue(layer.clipX);
     m_clipY->setValue(layer.clipY);
+    m_antialiasing->setCurrentIndex(std::clamp(layer.antialiasing, 0, 3));
+    m_antialiasExponent->setValue(layer.antialiasExponent);
+    m_textureFilter->setCurrentIndex(std::clamp(layer.textureFilter, 0, 1));
     if (QLayout* const turn = m_turnRow)
         for (int i = 0; i < turn->count(); ++i)
             if (QWidget* const w = turn->itemAt(i)->widget())

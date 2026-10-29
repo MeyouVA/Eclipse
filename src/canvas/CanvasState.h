@@ -1,6 +1,7 @@
 // Eclipse - what the Camera view keeps: the settings of its tools and views, and where a drag or an edit stands.
 #pragma once
 
+#include <QCache>
 #include <QColor>
 #include <QFont>
 #include <QImage>
@@ -204,6 +205,21 @@ protected:
     QImage m_modeCache;
     int m_modeCacheFrame = -1;
     ViewMode m_modeCacheMode = ViewNormal;
+    // Render View: the frames it rendered at 1/m_renderReduce of full size (made again after a change with Auto Render, or when asked).
+    bool m_autoRender = true;
+    bool m_renderStale = false;
+    int m_renderReduce = 1;
+    bool m_progressiveRender = false;
+    QImage m_renderShown;
+    int m_renderShownFrame = -1;
+    QCache<int, QImage> m_renderFrames{256 * 1024};
+    QImage m_roughRender;
+    int m_roughFrame = -1;
+    // The Camera view's time limits (milliseconds, 0: none): past them its effects are left out, then the layers not yet drawn.
+    int m_effectsTimeout = 0, m_drawTimeout = 0;
+    bool m_viewAntialias = true, m_viewQuality = false;
+    bool m_timeoutOff = false;
+    bool m_timedOut = false, m_incomplete = false;
     QImage m_snapshot;
     QImage m_snapshotSlots[5];
     bool m_showSnapshot = false;

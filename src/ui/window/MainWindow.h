@@ -25,6 +25,7 @@ class Xsheet;
 class QLabel;
 class QMenu;
 class QPrinter;
+class QProgressDialog;
 class QSlider;
 class QSpinBox;
 class QCheckBox;
@@ -172,6 +173,8 @@ public:
         int first = 0, last = -1;   // frames; -1: the last of the scene
         int percent = 100;          // of the scene's resolution
         bool preview = false;       // quick: no smoothing of edges
+        bool layers = false;        // in a layered format, each layer of drawings apart too
+        QProgressDialog* progress = nullptr;    // told how many are done; its Cancel stops the render
     };
     // Returns how many were written; fewer than asked means it stopped, with a message.
     int exportImages(ImageExport const& options, QString* error);
@@ -260,7 +263,9 @@ public slots:
     void setDrawingWindowShown(bool on);
     // What a workspace keeps besides the panels: whether the Camera view floats, and the Drawing window, and where they are.
     void saveWorkspaceExtras(QString const& name);
-    int renderWrites(QString* error);
+    int renderWrites(QString* error, QProgressDialog* progress = nullptr);
+    // Where a write output's images or movie go: its folder or file (`path`), from the scene file's folder when not written in full.
+    QString writeFolder(QString const& path) const;
     void onActionRenderWrites();
     // Scene > Write Outputs...: the outputs listed, to add to, change and take away.
     void onActionWriteOutputs();
@@ -278,6 +283,15 @@ public slots:
     void onActionAutoRender(bool on);
     void onActionRecalculateAll();
     void onActionCancelPreviewRender();
+    // View: Normal View or Render View; the Render View's rendering; the Camera view's time limits.
+    void onActionCameraViewMode(QString const& mode);
+    void onActionRenderCurrentFrame();
+    void onActionViewAutoRender(bool on);
+    void onActionProgressiveRender(bool on);
+    void onActionViewTimeoutOff(bool on);
+    // Scene > Render > Auto Render Write: frames the Render View renders are written by the write outputs too.
+    void onActionAutoRenderWrite(bool on);
+    void writeRenderedFrame(int frame, QImage const& image);
     void onActionMakeCloneIndependent();
     void onActionAddSyncedLayer();
     void onActionSyncLayerWith();
@@ -653,6 +667,7 @@ private:
     void preferencesAdvanced(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesTimeline(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesRender(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void applyRenderPreferences(class QSettings const& s);
     void preferencesTools(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesNodeView(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void saveNodePreferences(struct PreferenceWidgets& w, class QSettings& s);
@@ -873,6 +888,7 @@ private:
     bool m_miniLoop = true;
     bool m_soundOn = true;
     bool m_scrub = false;           // a frame of sound is heard when the frame is changed by hand
+    bool m_autoRenderWrite = false; // Scene > Render > Auto Render Write
     QVector<qint16> m_scrubMix;     // the sound of the scene for that; emptied when the scene changes
     QElapsedTimer m_playClock;
     int m_playFrom = 0;

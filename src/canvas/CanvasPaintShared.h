@@ -5,6 +5,7 @@
 #include "model/scene/StrokePrivate.h"
 
 #include <atomic>
+#include <chrono>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -33,5 +34,29 @@ inline std::atomic<bool> gColourOverride{true};
 inline thread_local double gTextureShift = 0.0;
 inline thread_local double gTextureSpread = 0.0;
 inline thread_local quint32 gTextureSeed = 0;
+// How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
+inline thread_local double gLineOpacity = 1.0;
+// Paint drawn with its fine edge (off while something moves in the view).
+inline thread_local bool gFineFills = true;
+// Preferences > Render: what is left out (Canvas::RenderSwitch bits); the view-only ones only while the Camera view paints.
+inline std::atomic<unsigned> gRenderOff{0};
+// Painting a layer whose pictures are scaled to the nearest pixel (Layer Properties: Texture Filter).
+inline thread_local bool gNearestPictures = false;
+
+// The Camera view's time limit for effects (Preferences > Render): past it, effects are left out of the picture being drawn.
+inline thread_local bool gEffectsTimed = false;
+inline thread_local bool gEffectsTimedOut = false;
+inline thread_local std::chrono::steady_clock::time_point gEffectsDeadline{};
+inline bool effectsTimedOut()
+{
+    if (gEffectsTimed && !gEffectsTimedOut && std::chrono::steady_clock::now() > gEffectsDeadline)
+        gEffectsTimedOut = true;
+    return gEffectsTimedOut;
+}
+inline bool leftOut(unsigned which)
+{
+    unsigned const off = gRenderOff;
+    return (off & which) != 0 && ((which & Canvas::ViewOnlySwitches) == 0 || gViewing);
+}
 
 }  // namespace canvas_paint_shared

@@ -310,13 +310,13 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
 {
     if (stroke.points.isEmpty() || stroke.width <= 0.0f)
         return;     // nothing drawn; or a line with no thickness, which is not seen
-    if (s_lineOpacity < 1.0) {
+    if (gLineOpacity < 1.0) {
         double const was = painter.opacity();
-        painter.setOpacity(was * s_lineOpacity);
-        double const keep = s_lineOpacity;
-        s_lineOpacity = 1.0;
+        painter.setOpacity(was * gLineOpacity);
+        double const keep = gLineOpacity;
+        gLineOpacity = 1.0;
         paintStroke(painter, stroke, color);
-        s_lineOpacity = keep;
+        gLineOpacity = keep;
         painter.setOpacity(was);
         return;
     }
@@ -324,7 +324,24 @@ void Canvas::paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& 
         paintFadingStroke(painter, stroke, color);
         return;
     }
-    if (stroke.texture != 0 && stroke.textureAmount > 0.0f && !PencilTexture::tile(stroke.texture).isNull()) {
+    if (!stroke.uniform() && leftOut(ViewLineThickness)) {
+        // (Quicker in the view: drawn as thick all along as it is on average.)
+        double sum = 0.0;
+        for (ThicknessPoint const& t : stroke.thickness)
+            sum += (t.left + t.right) / 2.0;
+        for (StrokePoint const& p : stroke.points)
+            sum += stroke.thickness.isEmpty() ? p.pressure : 0.0;
+        Stroke even = stroke;
+        float const mean = float(sum / std::max<qsizetype>(1, stroke.thickness.isEmpty() ? stroke.points.size() : stroke.thickness.size()));
+        even.thickness.clear();
+        for (StrokePoint& p : even.points) {
+            p.pressure = mean;
+            p.lean = 0.0f;
+        }
+        paintStroke(painter, even, color);
+        return;
+    }
+    if (stroke.texture != 0 && stroke.textureAmount > 0.0f && !leftOut(ViewPencilTextures) && !leftOut(LineTextures) && !PencilTexture::tile(stroke.texture).isNull()) {
         paintTexturedStroke(painter, stroke, color);
         return;
     }
@@ -531,7 +548,7 @@ void Canvas::paintFill(QPainter& painter, Fill const& fill, QBrush const& color)
         path.addPolygon(outline);
         path.closeSubpath();
     }
-    if (fill.texture != 0 && fill.textureAmount > 0.0f && !PencilTexture::paper(fill.texture).isNull()) {
+    if (fill.texture != 0 && fill.textureAmount > 0.0f && !leftOut(ViewPencilTextures) && !leftOut(LineTextures) && !PencilTexture::paper(fill.texture).isNull()) {
         paintTexturedFill(painter, path, fill, color);
         return;
     }

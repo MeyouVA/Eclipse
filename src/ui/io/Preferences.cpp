@@ -37,6 +37,7 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
+#include "canvas/FrameRender.h"
 #include "ui/timeline/Xsheet.h"
 #include "ui/timeline/FunctionView.h"
 #include "ui/views/PreviewManagerView.h"
@@ -220,6 +221,7 @@ void MainWindow::applyPreferences()
     Canvas::setFocusEnabled(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
     Canvas::setToneHighlightEnabled(s.value(QStringLiteral("prefs/renderToneHighlight"), true).toBool());
     Canvas::setColourOverrideEnabled(s.value(QStringLiteral("prefs/renderColourOverride"), true).toBool());
+    applyRenderPreferences(s);
     m_canvas->update();
     m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
@@ -480,6 +482,18 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/renderFocus"), w.renderFocus->isChecked());
     s.setValue(QStringLiteral("prefs/renderToneHighlight"), w.renderToneHighlight->isChecked());
     s.setValue(QStringLiteral("prefs/renderColourOverride"), w.renderColourOverride->isChecked());
+    s.setValue(QStringLiteral("prefs/renderThreads"), w.renderThreads->value());
+    s.setValue(QStringLiteral("prefs/renderCacheMb"), w.renderCacheMb->value());
+    s.setValue(QStringLiteral("prefs/viewAntialiasMode"), w.viewAntialiasMode->currentIndex());
+    s.setValue(QStringLiteral("prefs/effectsTimeout"), w.effectsTimeout->value());
+    s.setValue(QStringLiteral("prefs/drawTimeout"), w.drawTimeout->value());
+    s.setValue(QStringLiteral("prefs/newAntialiasing"), w.newAntialiasing->currentIndex());
+    s.setValue(QStringLiteral("prefs/newAntialiasExponent"), w.newAntialiasExponent->value());
+    for (auto const& [box, key] : {std::pair<QCheckBox*, char const*>{w.disableRenderPreview, "prefs/disableRenderPreview"}, {w.lineTextures, "prefs/lineTextures"},
+                                   {w.viewCutters, "prefs/viewCutters"}, {w.viewTextures, "prefs/viewTextures"}, {w.viewPencilTextures, "prefs/viewPencilTextures"},
+                                   {w.viewLineThickness, "prefs/viewLineThickness"}, {w.viewEffects, "prefs/viewEffects"}, {w.viewAntialias, "prefs/viewAntialias"},
+                                   {w.smoothTextures, "prefs/smoothTextures"}})
+        s.setValue(QLatin1String(key), box->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetCentre"), w.xsheetCentre->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetHold"), w.xsheetHold->value());
     s.setValue(QStringLiteral("prefs/focusOnEnter"), w.focusOnEnter->isChecked());
@@ -621,4 +635,41 @@ void MainWindow::showStyleEditor()
     layout->addWidget(buttons);
     dialog.resize(520, 380);
     dialog.exec();
+}
+
+// Preferences > Render: rendering threads, the Render View, what the Camera view leaves out, its time limits and antialiasing.
+void MainWindow::applyRenderPreferences(QSettings const& s)
+{
+    FrameRender::setThreads(s.value(QStringLiteral("prefs/renderThreads"), 0).toInt());
+    Layer::newLayers.antialiasing = std::clamp(s.value(QStringLiteral("prefs/newAntialiasing"), 2).toInt(), 0, 3);
+    Layer::newLayers.antialiasExponent = std::clamp(s.value(QStringLiteral("prefs/newAntialiasExponent"), 1.0).toDouble(), 0.1, 10.0);
+    Canvas::setRenderSwitch(Canvas::LineTextures, s.value(QStringLiteral("prefs/lineTextures"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewCutters, s.value(QStringLiteral("prefs/viewCutters"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewTextures, s.value(QStringLiteral("prefs/viewTextures"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewPencilTextures, s.value(QStringLiteral("prefs/viewPencilTextures"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewLineThickness, s.value(QStringLiteral("prefs/viewLineThickness"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewEffects, s.value(QStringLiteral("prefs/viewEffects"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewSmoothPictures, s.value(QStringLiteral("prefs/smoothTextures"), true).toBool());
+    for (Canvas* const view : findChildren<Canvas*>()) {
+        view->setRenderCacheSize(s.value(QStringLiteral("prefs/renderCacheMb"), 256).toInt());
+        view->setViewTimeouts(s.value(QStringLiteral("prefs/effectsTimeout"), 0).toInt(), s.value(QStringLiteral("prefs/drawTimeout"), 0).toInt());
+        view->setViewAntialiasing(s.value(QStringLiteral("prefs/viewAntialias"), true).toBool(), s.value(QStringLiteral("prefs/viewAntialiasMode"), 0).toInt() == 1);
+    }
+    bool const autoRender = s.value(QStringLiteral("view/autoRender"), true).toBool();
+    m_canvas->setAutoRender(autoRender);
+    m_actions->setChecked(QStringLiteral("ViewAutoRender"), autoRender);
+    bool const progressive = s.value(QStringLiteral("view/progressiveRender"), false).toBool();
+    m_canvas->setProgressiveRender(progressive);
+    m_actions->setChecked(QStringLiteral("ProgressiveRender"), progressive);
+    // Without the render preview in the Camera view: its view modes and buttons are not offered there.
+    bool const noPreview = s.value(QStringLiteral("prefs/disableRenderPreview"), false).toBool();
+    if (QComboBox* const mode = findChild<QComboBox*>(QStringLiteral("ViewMode"))) {
+        if (noPreview && mode->currentIndex() == int(Canvas::ViewRender))
+            mode->setCurrentIndex(int(Canvas::ViewNormal));
+        mode->setVisible(!noPreview);
+    }
+    if (QWidget* const controls = findChild<QWidget*>(QStringLiteral("RenderViewControls")))
+        controls->setVisible(!noPreview && m_canvas->viewMode() == Canvas::ViewRender);
+    if (QAction* const render = m_actions->action(QStringLiteral("ViewRenderMode")))
+        render->setEnabled(!noPreview);
 }

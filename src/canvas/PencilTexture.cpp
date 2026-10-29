@@ -1,6 +1,8 @@
 // Eclipse - pencil textures: the strips of grain, made by the program itself.
 #include "canvas/PencilTexture.h"
 
+#include <QMutex>
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -29,7 +31,7 @@ double hashAt(int x, int y, unsigned seed)
 }
 
 // Smooth noise over the strip, `cellsX` by `cellsY` lumps; along the strip it comes round again.
-bool g_crisp = false;       // the grain being made has a crisp edge: it frays, but does not fade
+thread_local bool g_crisp = false;       // the grain being made has a crisp edge: it frays, but does not fade
 
 // How the grain thins out at the edge of a line: little by little, or - crisp - all there or not at all.
 double edgeOf(double fade)
@@ -37,7 +39,7 @@ double edgeOf(double fade)
     return g_crisp ? (fade >= 0.2 ? 1.0 : 0.0) : fade;
 }
 
-bool g_paper = false;       // the grain being made lies flat, as paper: it comes round again across as well
+thread_local bool g_paper = false;       // the grain being made lies flat, as paper: it comes round again across as well
 
 double noiseAt(double u, double v, int cellsX, int cellsY, unsigned seed)
 {
@@ -185,10 +187,11 @@ QHash<int, QImage>& ownPapers()
     return papers;
 }
 
-QImage const& none()
+// The kept strips and papers are made on whichever thread first draws them (renders run on several).
+QRecursiveMutex& cacheLock()
 {
-    static QImage const empty;
-    return empty;
+    static QRecursiveMutex lock;
+    return lock;
 }
 
 }
@@ -205,6 +208,7 @@ QString PencilTexture::libraryDirectory()
 
 void PencilTexture::loadLibrary()
 {
+    QMutexLocker const locked(&cacheLock());
     static bool loaded = false;
     if (loaded)
         return;
@@ -269,6 +273,7 @@ void PencilTexture::discard(int id)
 {
     loadLibrary();
     TextureBank::remove(id);
+    QMutexLocker const locked(&cacheLock());
     ownStrips().remove(id);
     ownCrispStrips().remove(id);
     ownPapers().remove(id);
@@ -306,8 +311,9 @@ QString PencilTexture::name(int kind)
     return QCoreApplication::translate("PencilTexture", kNames[std::clamp(kind, 0, count())]);
 }
 
-QImage const& PencilTexture::tile(int kind, bool crisp)
+QImage PencilTexture::tile(int kind, bool crisp)
 {
+    QMutexLocker const locked(&cacheLock());
     if (kind >= TextureBank::kFirst) {
         QHash<int, QImage>& strips = crisp ? ownCrispStrips() : ownStrips();
         auto found = strips.constFind(kind);
@@ -315,7 +321,7 @@ QImage const& PencilTexture::tile(int kind, bool crisp)
             return *found;
         TextureBank::Entry const entry = TextureBank::entry(kind);
         if (entry.id == 0)
-            return none();
+            return QImage();
         return *strips.insert(kind, stripOf(entry.grain, entry.edge, crisp));
     }
     static QImage tiles[2][Stroke::kTextureCount];
@@ -326,15 +332,16 @@ QImage const& PencilTexture::tile(int kind, bool crisp)
     return tile;
 }
 
-QImage const& PencilTexture::paper(int kind)
+QImage PencilTexture::paper(int kind)
 {
+    QMutexLocker const locked(&cacheLock());
     if (kind >= TextureBank::kFirst) {
         auto found = ownPapers().constFind(kind);
         if (found != ownPapers().constEnd())
             return *found;
         TextureBank::Entry const entry = TextureBank::entry(kind);
         if (entry.id == 0)
-            return none();
+            return QImage();
         return *ownPapers().insert(kind, flatOf(entry.grain));
     }
     static QImage tiles[Stroke::kTextureCount];

@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include <QApplication>
+#include <QComboBox>
 #include <QDesktopServices>
 #include <QDir>
 #include <QDockWidget>
@@ -22,6 +23,7 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
+#include "render/images/ImageFiles.h"
 #include "ui/views/DepthView.h"
 #include "ui/views/PerspectiveView.h"
 #include "ui/io/MovieExport.h"
@@ -344,4 +346,82 @@ void MainWindow::onActionCancelPreviewRender()
 {
     if (PreviewManagerView* const preview = findChild<PreviewManagerView*>())
         preview->cancel();
+}
+
+// ---- View: the Render View, and the Camera view's time limits --------------------------------------
+
+void MainWindow::onActionCameraViewMode(QString const& mode)
+{
+    // (Through the view mode box at the foot of the Camera view, so the two agree.)
+    Canvas::ViewMode const wanted = mode == QLatin1String("render") ? Canvas::ViewRender : Canvas::ViewNormal;
+    if (QComboBox* const box = findChild<QComboBox*>(QStringLiteral("ViewMode")))
+        box->setCurrentIndex(int(wanted));
+    else
+        m_canvas->setViewMode(wanted);
+    m_actions->setChecked(QStringLiteral("ViewNormalMode"), m_canvas->viewMode() == Canvas::ViewNormal);
+    m_actions->setChecked(QStringLiteral("ViewRenderMode"), m_canvas->viewMode() == Canvas::ViewRender);
+}
+
+void MainWindow::onActionRenderCurrentFrame()
+{
+    if (m_canvas->viewMode() != Canvas::ViewRender)
+        onActionCameraViewMode(QStringLiteral("render"));
+    m_canvas->renderCurrentFrame();
+    m_canvas->repaint();
+    statusBar()->showMessage(tr("Rendered frame %1").arg(frame() + 1), 3000);
+}
+
+void MainWindow::onActionViewAutoRender(bool on)
+{
+    m_canvas->setAutoRender(on);
+    m_actions->setChecked(QStringLiteral("ViewAutoRender"), on);
+    settings().setValue(QStringLiteral("view/autoRender"), on);
+}
+
+void MainWindow::onActionProgressiveRender(bool on)
+{
+    m_canvas->setProgressiveRender(on);
+    m_actions->setChecked(QStringLiteral("ProgressiveRender"), on);
+    settings().setValue(QStringLiteral("view/progressiveRender"), on);
+}
+
+void MainWindow::onActionViewTimeoutOff(bool on)
+{
+    m_canvas->setViewTimeoutOff(on);
+    m_actions->setChecked(QStringLiteral("ViewTimeoutOff"), on);
+    statusBar()->showMessage(on ? tr("View Timeout Disabled") : tr("View Timeout Enabled"), 4000);
+}
+
+void MainWindow::onActionAutoRenderWrite(bool on)
+{
+    m_autoRenderWrite = on;
+    m_actions->setChecked(QStringLiteral("AutoRenderWrite"), on);
+    if (on && std::none_of(m_document->scene().writes.cbegin(), m_document->scene().writes.cend(), [](Scene::Write const& w) { return w.enabled && !w.movie; }))
+        statusBar()->showMessage(tr("Auto Render Write is on, but no write output of images is on: add one with Scene > Write Outputs."), 7000);
+}
+
+void MainWindow::writeRenderedFrame(int at, QImage const& image)
+{
+    if (!m_autoRenderWrite || image.isNull())
+        return;
+    QStringList problems;
+    int made = 0;
+    for (Scene::Write const& w : m_document->scene().writes) {
+        if (!w.enabled || w.movie || w.path.trimmed().isEmpty())
+            continue;
+        QString const folder = writeFolder(w.path);
+        QDir().mkpath(folder);
+        QString const name = w.name.trimmed().isEmpty() ? QStringLiteral("frame") : w.name.trimmed();
+        QString const file = QDir(folder).filePath(QStringLiteral("%1_%2.%3").arg(name).arg(at + 1, 4, 10, QLatin1Char('0')).arg(w.format));
+        QImage const sized = w.percent == 100 ? image : image.scaled(image.size() * (w.percent / 100.0), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        QString why;
+        if (ImageFiles::save(sized, file, w.format, &why))
+            ++made;
+        else
+            problems << why;
+    }
+    if (!problems.isEmpty())
+        statusBar()->showMessage(problems.first(), 7000);
+    else if (made > 0)
+        statusBar()->showMessage(tr("Rendered frame %1, written by %n write output(s).", nullptr, made).arg(at + 1), 3000);
 }

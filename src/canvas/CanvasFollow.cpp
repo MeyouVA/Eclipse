@@ -7,6 +7,7 @@
 
 #include <QSet>
 #include <QHash>
+#include <QMutex>
 #include <cstring>
 
 #include "model/geometry/FillRegion.h"
@@ -441,6 +442,7 @@ quint64 Canvas::wallsKey(QVector<Stroke> const& walls)
 QVector<QPolygonF> Canvas::fineOutlinesOf(Fill const& fill, QVector<Stroke> const& walls, quint64 key)
 {
     static QHash<quint64, QVector<QPolygonF>> kept;
+    static QMutex lock;
     quint64 mine = key;
     auto mix = [&mine](double v) {
         quint64 bits = 0;
@@ -455,17 +457,21 @@ QVector<QPolygonF> Canvas::fineOutlinesOf(Fill const& fill, QVector<Stroke> cons
             mix(p.y());
         }
     }
-    auto const found = kept.constFind(mine);
-    if (found != kept.constEnd())
-        return *found;
-    if (kept.size() > 6000)
-        kept.clear();
+    {
+        QMutexLocker const locked(&lock);
+        auto const found = kept.constFind(mine);
+        if (found != kept.constEnd())
+            return *found;
+    }
     QVector<Stroke> own;
     if (fill.link != 0)
         for (Stroke const& wall : walls)
             if (wall.link == fill.link)
                 own.push_back(wall);
     QVector<QPolygonF> const fine = FillRegion::refine(fill.outlines, fill.link != 0 ? own : walls);
+    QMutexLocker const locked(&lock);
+    if (kept.size() > 6000)
+        kept.clear();
     kept.insert(mine, fine);
     return fine;
 }

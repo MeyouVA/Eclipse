@@ -12,12 +12,14 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "model/scene/Scene.h"
 #include "canvas/Canvas.h"
+#include "canvas/FrameRender.h"
 
 PreviewManagerView::PreviewManagerView(Document* document, Canvas* canvas, QWidget* parent) : QWidget(parent), m_document(document), m_canvas(canvas)
 {
@@ -214,43 +216,45 @@ int PreviewManagerView::render(bool everything)
     double const scale = m_size->currentData().toInt() / 100.0;
     QSize const size(std::max(2, int(std::lround(scene.width * scale))), std::max(2, int(std::lround(scene.height * scale))));
     // What was kept before, where it is still the picture of that frame.
-    bool const reuse = !everything && m_frames.size() == m_prints.size() && !m_frames.isEmpty() && m_frames.first().size() == size;
-    QVector<QImage> frames;
+    auto const sized = std::find_if(m_frames.cbegin(), m_frames.cend(), [](QImage const& i) { return !i.isNull(); });
+    bool const reuse = !everything && m_frames.size() == m_prints.size() && sized != m_frames.cend() && sized->size() == size;
+    QVector<QImage> frames(scene.frameCount());
     QVector<quint64> prints;
-    frames.reserve(scene.frameCount());
-    m_rendering = true;
-    m_cancel = false;
-    int made = 0;
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+    prints.reserve(scene.frameCount());
+    QVector<int> todo;
     for (int f = 0; f < scene.frameCount(); ++f) {
         quint64 const print = fingerprint(scene, f);
         prints.push_back(print);
-        if (reuse && f < m_prints.size() && m_prints[f] == print) {
-            frames.push_back(m_frames[f]);
-            continue;
-        }
-        // (Now and then the window gets a word in: Cancel Preview Render is taken notice of.)
-        if (made % 4 == 3)
-            QApplication::processEvents();
-        if (m_cancel || m_revision != revision)
-            break;
-        ++made;
-        QImage image(size, QImage::Format_ARGB32_Premultiplied);
-        image.fill(Qt::white);
-        QPainter painter(&image);
-        painter.setRenderHint(QPainter::Antialiasing, true);
-        painter.scale(double(size.width()) / scene.width, double(size.height()) / scene.height);
-        Canvas::paintFrame(painter, scene, f);
-        painter.end();
-        frames.push_back(image);
+        if (reuse && f < m_prints.size() && m_prints[f] == print && !m_frames[f].isNull())
+            frames[f] = m_frames[f];
+        else
+            todo.push_back(f);
     }
+    m_rendering = true;
+    m_cancel = false;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    // Several frames at once; now and then the window gets a word in, so that Cancel Preview Render is taken notice of.
+    QImage* const held = frames.data();
+    std::atomic<int> made{0};
+    FrameRender::render(
+        scene, todo, size, false,
+        [held, &made](int f, QImage const& image) {
+            held[f] = image;
+            ++made;
+            return QString();
+        },
+        [this, revision](int) {
+            QApplication::processEvents();
+            return !m_cancel && m_revision == revision;
+        },
+        nullptr, Qt::white);
     QApplication::restoreOverrideCursor();
     m_rendering = false;
     if (m_cancel || m_revision != revision) {
         // What was rendered is kept for next time; the preview is not complete, so it is not played from.
         bool const changed = m_revision != revision;
         m_frames = frames;
-        m_prints = prints.mid(0, frames.size());
+        m_prints = prints;
         m_cancel = false;
         if (changed) {
             m_sound.clear();
@@ -266,7 +270,7 @@ int PreviewManagerView::render(bool everything)
     m_sound = Sound::mix(scene);
     m_canvas->setPreview(frames);
     showStatus();
-    return made;
+    return made.load();
 }
 
 void PreviewManagerView::clear()

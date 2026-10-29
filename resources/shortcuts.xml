@@ -421,6 +421,12 @@
   <shortcut id="shortcut.shiftTraceDown" text="Desk: Shift Trace Drawing Move Down" value=""/>
   <shortcut id="shortcut.pencilLineWiggle" text="Pencil Line Wiggle" value=""/>
   <shortcut id="shortcut.renderAndPlay" text="Render and Play" value="Ctrl+Return"/>
+  <shortcut id="shortcut.normalView" text="Normal View" value=""/>
+  <shortcut id="shortcut.renderView" text="Render View" value=""/>
+  <shortcut id="shortcut.renderCurrentFrame" text="Render Current Frame" value=""/>
+  <shortcut id="shortcut.autoRender" text="Auto Render" value=""/>
+  <shortcut id="shortcut.autoRenderWrite" text="Auto Render Write" value=""/>
+  <shortcut id="shortcut.renderWriteNodes" text="Render Write Nodes" value="Ctrl+Shift+Y"/>
   <shortcut id="shortcut.miniPlayback" text="Mini Playback" value="Shift+Return"/>
   <shortcut id="shortcut.tagLayers" text="Tag Selected Layers" value=""/>
   <shortcut id="shortcut.untagLayers" text="Untag Selected Layers" value=""/>

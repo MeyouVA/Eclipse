@@ -173,6 +173,9 @@ public:
     void setPreview(QVector<QImage> const& frames);
     // The frame as that mode shows it, the size of the scene's frame.
     static QImage modeImage(Scene const& scene, int frame, ViewMode mode);
+    // The Render View's picture of a frame: kept, or rendered now (roughly first, with progressive rendering).
+    QImage renderViewImage(int frame);
+    void finishRender();
     // Snapshots: the frame as rendered, kept to compare later work with - shown in the view in place of the frame.
     void takeSnapshot();
     Q_INVOKABLE void onActionTakeSnapshot(QString slot);
@@ -311,6 +314,26 @@ public:
     static bool toneHighlightEnabled();
     static void setColourOverrideEnabled(bool on);
     static bool colourOverrideEnabled();
+    // Preferences > Render: what the Camera view leaves out to be quicker (renders keep it), and pencil textures everywhere.
+    enum RenderSwitch : unsigned {
+        ViewCutters = 1,            // cutters and mask effects
+        ViewTextures = 2,           // gradients and textures of colours in drawings: the colour alone
+        ViewPencilTextures = 4,     // pencil textures of lines and brush strokes
+        ViewLineThickness = 8,      // lines of changing thickness drawn even
+        ViewEffects = 16,           // every effect (the frame shown without effects)
+        ViewSmoothPictures = 64,    // pictures in drawings scaled smoothly (off: to the nearest pixel)
+        ViewOnlySwitches = 31 | 64,
+        LineTextures = 32,          // pencil textures, in renders too
+    };
+    // Preferences > Render: the Camera view's edges smoothed (Full Scene Antialiasing), and with their fine edge even while things move.
+    void setViewAntialiasing(bool on, bool quality)
+    {
+        m_viewAntialias = on;
+        m_viewQuality = quality;
+        update();
+    }
+    static void setRenderSwitch(RenderSwitch which, bool on);
+    static bool renderSwitch(RenderSwitch which);
     // Whether the preferences leave this kind of effect out (blurs, focus, tone and highlight, colour override).
     static bool switchedOff(Effect::Type type);
     static bool paintGraph(QPainter& painter, Scene const& scene, int frame);
@@ -319,15 +342,12 @@ public:
     static void paintLayerDrawing(QPainter& painter, Scene const& scene, int layer, int frame, Drawing const& drawing,
                                   double opacity, QTransform const& sceneToDevice, bool everySheet = false, bool cameraClipping = true);
     static void paintStroke(QPainter& painter, Stroke const& stroke, QBrush const& color);
-    // How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
-    static inline double s_lineOpacity = 1.0;
     // Pasted artwork in colours the scene lacks: those colours made again (colour recovery), asking first when interactive.
     static inline bool s_colourRecovery = true;
     static inline bool s_interactiveRecovery = false;
     // Whether artwork (not cells) was copied last.
     static bool artworkCopiedLast();
     static void setArtworkCopiedLast(bool artwork);
-    static inline bool s_fineFills = true;
     static QVector<Stroke> wallsOf(Drawing const& drawing, int sheet);
     static void underShapes(QVector<QPolygonF>& outlines, Drawing const& drawing);
     // Where new bucket paint goes among the fills: under the shapes with paint of their own (brush shapes, Auto Fill).
@@ -483,6 +503,29 @@ public slots:
     }
     QColor boneColour() const { return m_boneColour; }
     QColor boneSelectedColour() const { return m_boneSelectedColour; }
+    // Render View: Auto Render, the preview resolution (1, 2, 4 or 8 times smaller), a rough picture first, how much it keeps.
+    void setAutoRender(bool on);
+    bool autoRender() const { return m_autoRender; }
+    void setPreviewReduction(int factor);
+    int previewReduction() const { return m_renderReduce; }
+    void setProgressiveRender(bool on);
+    bool progressiveRender() const { return m_progressiveRender; }
+    void setRenderCacheSize(int megabytes);
+    void clearRenderCache();
+    // How many frames the Render View keeps, and how many megabytes they take.
+    int renderCacheFrames() const { return int(m_renderFrames.size()); }
+    double renderCacheMegabytes() const { return m_renderFrames.totalCost() / 1024.0; }
+    // The Render View's picture is of the scene as it was (Auto Render is off and the scene has changed since).
+    bool renderStale() const { return m_renderStale; }
+    // Renders the current frame again for the Render View (View > Render Current Frame).
+    void renderCurrentFrame();
+    // The Camera view's time limits: effects (ms) and the whole picture (ms), 0 for none; off switches both off for now.
+    void setViewTimeouts(int effectsMs, int drawMs);
+    void setViewTimeoutOff(bool off);
+    bool viewTimeoutOff() const { return m_timeoutOff; }
+    // The last picture of the view ran past its time limits: effects were left out, or layers.
+    bool viewTimedOut() const { return m_timedOut; }
+    bool viewIncomplete() const { return m_incomplete; }
     void setPerformanceReport(bool on)
     {
         m_performanceReport = on;
@@ -681,6 +724,9 @@ public slots:
 
 signals:
     void snapshotChanged();
+    // The Render View rendered a frame in full (for Auto Render Write), or what it shows went out of date or back.
+    void frameRendered(int frame, QImage const& image);
+    void renderStateChanged();
     // A setting of the tool in hand changed by a command (Tool Properties shows it again).
     void toolSettingsChanged();
     void selectionChanged();

@@ -613,6 +613,12 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["flipVertical"] = true;
     if (layer.clipping)
         layerObject["clip"] = QJsonArray{layer.clipX, layer.clipY};
+    if (layer.antialiasing != Layer::AntialiasHigh)
+        layerObject["antialiasing"] = layer.antialiasing;
+    if (layer.antialiasExponent != 1.0)
+        layerObject["antialiasExponent"] = layer.antialiasExponent;
+    if (layer.textureFilter != Layer::FilterSmooth)
+        layerObject["textureFilter"] = layer.textureFilter;
     if (!layer.frameMarks.isEmpty()) {
         QJsonArray marks;
         for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)

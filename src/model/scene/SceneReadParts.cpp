@@ -627,6 +627,9 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         layer.clipX = std::clamp(clip[0].toDouble(1.0), 0.01, 100.0);
         layer.clipY = std::clamp(clip[1].toDouble(1.0), 0.01, 100.0);
     }
+    layer.antialiasing = std::clamp(lo["antialiasing"].toInt(Layer::AntialiasHigh), 0, int(Layer::AntialiasVeryHigh));
+    layer.antialiasExponent = std::clamp(lo["antialiasExponent"].toDouble(1.0), 0.1, 10.0);
+    layer.textureFilter = std::clamp(lo["textureFilter"].toInt(Layer::FilterSmooth), 0, int(Layer::FilterNearest));
     QJsonArray const pivot = lo["pivot"].toArray();
     layer.pivot = pivot.size() == 2 ? QPointF(pivot[0].toDouble(), pivot[1].toDouble())
                                     : QPointF(width / 2.0, height / 2.0);

@@ -107,9 +107,27 @@ bool Canvas::colourOverrideEnabled()
     return gColourOverride;
 }
 
+void Canvas::setRenderSwitch(RenderSwitch which, bool on)
+{
+    if (on)
+        gRenderOff &= ~unsigned(which);
+    else
+        gRenderOff |= unsigned(which);
+}
+
+bool Canvas::renderSwitch(RenderSwitch which)
+{
+    return (gRenderOff & unsigned(which)) == 0;
+}
+
 bool Canvas::switchedOff(Effect::Type t)
 {
     bool const blur = t == Effect::Blur || t == Effect::GaussianBlur || t == Effect::BoxBlur || t == Effect::ZoomBlur || t == Effect::BokehBlur;
+    bool const cutter = t == Effect::Cutter || t == Effect::MatteComposite;
+    if (cutter ? leftOut(ViewCutters) : t != Effect::Visibility && leftOut(ViewEffects))
+        return true;
+    if (gViewing && t != Effect::Visibility && effectsTimedOut())
+        return true;
     return (blur && !gBlurs) || (t == Effect::Focus && !gFocus) || ((t == Effect::Tone || t == Effect::Highlight) && !gToneHighlight)
            || (t == Effect::ColourOverride && !gColourOverride);
 }

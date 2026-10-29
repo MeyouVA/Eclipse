@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <QApplication>
+#include <QThread>
 #include <QTimer>
 #include <QPlainTextEdit>
 #include <QCheckBox>
@@ -531,9 +532,99 @@ void MainWindow::preferencesRender(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.renderColourOverride->setToolTip(tr("Off: Colour-Override nodes let the layer through in its own colours."));
     w.renderColourOverride->setChecked(s.value(QStringLiteral("prefs/renderColourOverride"), true).toBool());
     w.renderLayout->addRow(w.renderColourOverride);
-
-    Q_UNUSED(s);
-    Q_UNUSED(dialog);
+    auto check = [&](QCheckBox*& box, QString const& text, char const* name, char const* key, bool usual, QString const& tip) {
+        box = new QCheckBox(text, w.renderPage);
+        box->setObjectName(QLatin1String(name));
+        box->setToolTip(tip);
+        box->setChecked(s.value(QLatin1String(key), usual).toBool());
+        w.renderLayout->addRow(box);
+    };
+    check(w.lineTextures, tr("Enable line texture"), "PrefLineTextures", "prefs/lineTextures", true,
+          tr("Off: lines and brush strokes are drawn solid instead of with their pencil textures, in renders as well."));
+    // Rendering: how many frames at once, and what the Render View keeps.
+    w.renderThreads = new QSpinBox(w.renderPage);
+    w.renderThreads->setObjectName(QStringLiteral("PrefRenderThreads"));
+    w.renderThreads->setRange(0, 64);
+    w.renderThreads->setSpecialValueText(tr("Auto (%1)").arg(QThread::idealThreadCount()));
+    w.renderThreads->setToolTip(tr("How many frames are rendered at once for exports, write outputs and the preview. "
+                                   "0 sets it by itself from the number of cores of the computer."));
+    w.renderThreads->setValue(s.value(QStringLiteral("prefs/renderThreads"), 0).toInt());
+    w.renderLayout->addRow(tr("Number of Rendering Threads (0=auto)"), w.renderThreads);
+    w.renderCacheMb = new QSpinBox(w.renderPage);
+    w.renderCacheMb->setObjectName(QStringLiteral("PrefRenderCache"));
+    w.renderCacheMb->setRange(0, 64 * 1024);
+    w.renderCacheMb->setSingleStep(64);
+    w.renderCacheMb->setSuffix(tr(" MB"));
+    w.renderCacheMb->setToolTip(tr("Render View Image Cache: how much memory the frames the Render View rendered may take, kept to be shown "
+                                   "again without rendering them again (also while playing). 0 keeps only the frame shown."));
+    w.renderCacheMb->setValue(s.value(QStringLiteral("prefs/renderCacheMb"), 256).toInt());
+    QPushButton* const clearCache = new QPushButton(tr("Clear Cache"), w.renderPage);
+    clearCache->setObjectName(QStringLiteral("PrefClearRenderCache"));
+    connect(clearCache, &QPushButton::clicked, &dialog, [this, &dialog] {
+        if (QMessageBox::question(&dialog, tr("Render View Image Cache"), tr("Are you sure you want to clear the cached images?")) == QMessageBox::Yes)
+            for (Canvas* const view : findChildren<Canvas*>())
+                view->clearRenderCache();
+    });
+    QHBoxLayout* const cacheRow = new QHBoxLayout;
+    cacheRow->addWidget(w.renderCacheMb, 1);
+    cacheRow->addWidget(clearCache);
+    w.renderLayout->addRow(tr("Render View Image Cache"), cacheRow);
+    check(w.disableRenderPreview, tr("Disable render preview in camera view"), "PrefDisableRenderPreview", "prefs/disableRenderPreview", false,
+          tr("The view modes and the Render View's buttons are taken out of the Camera view's status bar."));
+    // The Camera view: what it may leave out to be quicker (renders always have all of it), and its time limits.
+    w.renderLayout->addRow(new QLabel(tr("<b>Camera view</b> (renders are not changed by these)"), w.renderPage));
+    check(w.viewEffects, tr("Render effects"), "PrefViewEffects", "prefs/viewEffects", true,
+          tr("Off: the Normal View shows the frame without effects - quicker. The Render View still shows them."));
+    check(w.viewCutters, tr("Enable cutters and masks"), "PrefViewCutters", "prefs/viewCutters", true,
+          tr("Disabling cutters and mask effects will produce a drawing performance improvement in the Camera view."));
+    check(w.viewTextures, tr("Enable textures and gradients in drawings"), "PrefViewTextures", "prefs/viewTextures", true,
+          tr("Off: gradients and textured colours are shown as their colour alone - quicker."));
+    check(w.viewPencilTextures, tr("Enable textures in pencil lines"), "PrefViewPencilTextures", "prefs/viewPencilTextures", true,
+          tr("Off: pencil textures are left out of the view - quicker."));
+    check(w.viewLineThickness, tr("Enable variable line thickness"), "PrefViewLineThickness", "prefs/viewLineThickness", true,
+          tr("Off: lines of changing thickness are shown as thick all along as they are on average - quicker."));
+    check(w.smoothTextures, tr("Smooth textures"), "PrefSmoothTextures", "prefs/smoothTextures", true,
+          tr("Pictures in drawings are scaled smoothly in the view. Off: to the nearest pixel - quicker."));
+    check(w.viewAntialias, tr("Full scene antialiasing"), "PrefViewAntialias", "prefs/viewAntialias", true,
+          tr("The view's edges are smoothed. Off: hard edges - quicker."));
+    w.viewAntialiasMode = new QComboBox(w.renderPage);
+    w.viewAntialiasMode->setObjectName(QStringLiteral("PrefViewAntialiasMode"));
+    w.viewAntialiasMode->addItem(tr("Performance"));
+    w.viewAntialiasMode->addItem(tr("Quality"));
+    w.viewAntialiasMode->setToolTip(tr("Anti-Aliasing Mode: Performance draws paint with a quick edge while things move; Quality keeps its fine edge always."));
+    w.viewAntialiasMode->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/viewAntialiasMode"), 0).toInt(), 0, 1));
+    w.renderLayout->addRow(tr("Anti-Aliasing Mode"), w.viewAntialiasMode);
+    auto milliseconds = [&](QSpinBox*& box, char const* name, char const* key, QString const& tip) {
+        box = new QSpinBox(w.renderPage);
+        box->setObjectName(QLatin1String(name));
+        box->setRange(0, 60000);
+        box->setSingleStep(25);
+        box->setSuffix(tr(" ms"));
+        box->setSpecialValueText(tr("None"));
+        box->setToolTip(tip);
+        box->setValue(s.value(QLatin1String(key), 0).toInt());
+    };
+    milliseconds(w.effectsTimeout, "PrefEffectsTimeout", "prefs/effectsTimeout",
+                 tr("Effect Render Timeout: past this the Normal View leaves out the effects still to be drawn, to keep working quick (renders are whole)."));
+    milliseconds(w.drawTimeout, "PrefDrawTimeout", "prefs/drawTimeout",
+                 tr("Render Timeout: past this the Camera view stops drawing the layers still to be drawn; the picture is incomplete until it is drawn again."));
+    w.renderLayout->addRow(tr("Effect Render Timeout"), w.effectsTimeout);
+    w.renderLayout->addRow(tr("Render Timeout"), w.drawTimeout);
+    // What new drawing layers start with (each layer's own is in Layer Properties).
+    w.renderLayout->addRow(new QLabel(tr("<b>New layers</b>"), w.renderPage));
+    w.newAntialiasing = new QComboBox(w.renderPage);
+    w.newAntialiasing->setObjectName(QStringLiteral("PrefNewAntialiasing"));
+    w.newAntialiasing->addItems({tr("Low"), tr("Medium"), tr("High"), tr("Very High")});
+    w.newAntialiasing->setToolTip(tr("Antialiasing Quality of new drawing layers: Low draws hard edges; Very High works the edges out at twice the size."));
+    w.newAntialiasing->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/newAntialiasing"), 2).toInt(), 0, 3));
+    w.renderLayout->addRow(tr("Antialiasing Quality"), w.newAntialiasing);
+    w.newAntialiasExponent = new QDoubleSpinBox(w.renderPage);
+    w.newAntialiasExponent->setObjectName(QStringLiteral("PrefNewAntialiasExponent"));
+    w.newAntialiasExponent->setRange(0.1, 10.0);
+    w.newAntialiasExponent->setSingleStep(0.1);
+    w.newAntialiasExponent->setToolTip(tr("Antialiasing Exponent of new drawing layers: above 1 their soft edges are harder, below 1 softer."));
+    w.newAntialiasExponent->setValue(s.value(QStringLiteral("prefs/newAntialiasExponent"), 1.0).toDouble());
+    w.renderLayout->addRow(tr("Antialiasing Exponent"), w.newAntialiasExponent);
 }
 
 void MainWindow::preferencesTools(PreferenceWidgets& w, QSettings& s, QDialog& dialog)

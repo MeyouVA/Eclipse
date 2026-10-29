@@ -107,6 +107,23 @@ struct PreferenceWidgets {
     QCheckBox* renderFocus = nullptr;
     QCheckBox* renderToneHighlight = nullptr;
     QCheckBox* renderColourOverride = nullptr;
+    // Render: rendering threads, the Render View's cache, what the Camera view leaves out and its time limits, antialiasing.
+    QSpinBox* renderThreads = nullptr;
+    QSpinBox* renderCacheMb = nullptr;
+    QCheckBox* disableRenderPreview = nullptr;
+    QCheckBox* lineTextures = nullptr;
+    QCheckBox* viewCutters = nullptr;
+    QCheckBox* viewTextures = nullptr;
+    QCheckBox* viewPencilTextures = nullptr;
+    QCheckBox* viewLineThickness = nullptr;
+    QCheckBox* viewEffects = nullptr;
+    QSpinBox* effectsTimeout = nullptr;
+    QSpinBox* drawTimeout = nullptr;
+    QCheckBox* viewAntialias = nullptr;
+    QComboBox* viewAntialiasMode = nullptr;
+    QCheckBox* smoothTextures = nullptr;
+    QComboBox* newAntialiasing = nullptr;
+    QDoubleSpinBox* newAntialiasExponent = nullptr;
     QGroupBox* toolsPage = nullptr;
     QSpinBox* toolSize = nullptr;
     QFormLayout* toolsLayout = nullptr;

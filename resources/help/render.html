@@ -1,0 +1,26 @@
+<html><head><meta charset="utf-8"><title>Rendering and preview</title><style>body { background: #2b2b2e; color: #d6d8dc; font-family: 'Segoe UI', sans-serif; font-size: 10pt; margin: 14px; } h1 { color: #ffffff; font-size: 16pt; } h2 { color: #7fd0de; font-size: 12pt; margin-top: 16px; } a { color: #6fc3d6; } b { color: #ffffff; } li { margin-bottom: 4px; }</style></head><body>
+<p><a href="index.html">Contents</a></p>
+<h1>Rendering and preview</h1>
+<h2>The Camera view</h2>
+<ul>
+<li><b>Normal View</b> draws the frame as you work on it, quickly: <b>Edit &gt; Preferences &gt; Render</b> can leave out of it effects, cutters and masks, gradients and textures, pencil textures and changing line thickness, scale pictures to the nearest pixel, and turn off its smoothing of edges. Renders always have all of it.</li>
+<li><b>Render View</b> (View menu, or the mode box at the foot of the view) shows the frame as it will be rendered. Each frame it renders is kept (Preferences: <b>Render View Image Cache</b>), so going back to it, or playing, does not render it again.</li>
+<li><b>Auto Render</b>: the Render View renders the frame again after each change. Off, it keeps what it rendered, marked out of date, until <b>View &gt; Render Current Frame</b>.</li>
+<li><b>Preview Resolution</b> (beside the mode box in the Render View) renders at a half, a quarter or an eighth of the size, quicker. <b>Progressive Render Preview</b> shows a rough picture at once and the full frame a moment later.</li>
+<li><b>Time limits</b> (Preferences: Effect Render Timeout, Render Timeout): past them the Normal View leaves out the effects, then the layers, still to be drawn, and says so at the foot of the view. <b>View &gt; Disable View Timeout</b> draws everything for now.</li>
+</ul>
+<h2>Writing frames</h2>
+<ul>
+<li><b>Formats</b>: PNG, Targa (TGA), TIFF, Photoshop (PSD), OpenEXR (linear light, half float), SGI, DPX (10-bit), JPEG and BMP. Those marked <i>with transparency</i> keep the clear parts clear.</li>
+<li><b>Each layer apart</b>: a Photoshop file can hold every layer of drawings in the frame as a layer of its own, as well as the frame as a whole (the Export Images box, or the <b>Layers</b> column of Scene &gt; Write Outputs).</li>
+<li><b>Write outputs</b> (Scene &gt; Write Outputs) are renders kept with the scene; <b>File &gt; Export &gt; Render Write Nodes</b> (Ctrl+Shift+Y) makes all of them that are on, asking first when frames are already there.</li>
+<li><b>Scene &gt; Render &gt; Auto Render Write</b>: each frame the Render View renders in full is also written by the write outputs of images that are on.</li>
+<li><b>Number of Rendering Threads</b> (Preferences &gt; Render): how many frames are rendered at once for exports, write outputs, movies and the Preview Manager; 0 uses all of the computer's cores.</li>
+</ul>
+<h2>Smooth edges</h2>
+<ul>
+<li><b>Layer Properties &gt; Drawing &gt; Antialiasing</b>: <b>Low</b> draws hard edges, <b>Very High</b> works the edges out at twice the size. The <b>Exponent</b> makes the soft edge harder (above 1) or softer (below 1). <b>Pictures: Nearest</b> keeps each pixel of the layer's pictures square when they are scaled.</li>
+<li>New drawing layers start with the quality and exponent set in Preferences &gt; Render.</li>
+</ul>
+<p><a href="index.html">Contents</a></p>
+</body></html>

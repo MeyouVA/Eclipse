@@ -3,6 +3,7 @@
 #include "canvas/CanvasPaintPrivate.h"
 #include "model/scene/StrokePrivate.h"
 
+#include <array>
 #include <atomic>
 #include <QPainter>
 #include <QPainterPath>
@@ -26,6 +27,19 @@ using namespace canvas_paint;
 
 using namespace canvas_paint_shared;
 
+namespace {
+
+// Preferences > Render: a gradient or textured colour shown in the Camera view as its colour alone, to be quicker.
+QBrush flatInView(Scene const& scene, QBrush const& brush, int swatch)
+{
+    if (brush.style() == Qt::SolidPattern || !leftOut(Canvas::ViewTextures))
+        return brush;
+    Swatch const* const s = scene.findSwatch(swatch);
+    return s ? QBrush(s->color) : brush;
+}
+
+}  // namespace
+
 void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing const& drawing, QColor const* tint)
 {
     auto paintPicture = [&painter](Picture const& picture) {
@@ -48,7 +62,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             painter.drawLine(box.topLeft(), box.bottomRight());
             painter.drawLine(box.topRight(), box.bottomLeft());
         } else {
-            painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+            painter.setRenderHint(QPainter::SmoothPixmapTransform, !gNearestPictures && !leftOut(Canvas::ViewSmoothPictures));
             PictureWash const& wash = pictureWashState();
             painter.drawImage(box, !picture.painted && wash.percent > 0 ? washedPicture(picture.image, wash.percent, wash.colour) : picture.image);
         }
@@ -70,13 +84,13 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
         bool const withPictures = placed && sheet == Drawing::LineSheet;
         // Paint that follows its lines: with its fine edge, on the lines themselves (unless things are moving).
         bool fine = false;
-        if (Canvas::s_fineFills)
+        if (gFineFills)
             for (Fill const& fill : fills)
                 fine = fine || (fill.follows && fill.contours.isEmpty());
         QVector<Stroke> const walls = fine ? Canvas::wallsOf(drawing, sheet) : QVector<Stroke>();
         quint64 const key = fine ? Canvas::wallsKey(walls) : 0;
         auto drawFill = [&](Fill const& fill) {
-            QBrush const brush = tint ? QBrush(*tint) : scene.brushFor(fill);
+            QBrush const brush = tint ? QBrush(*tint) : flatInView(scene, scene.brushFor(fill), fill.swatch);
             if (!fine || !fill.follows || !fill.contours.isEmpty()) {
                 Canvas::paintFill(painter, fill, brush);
                 return;
@@ -90,7 +104,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             for (Fill const& fill : fills)
                 drawFill(fill);
             for (Stroke const& stroke : strokes)
-                Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : scene.brushFor(stroke));
+                Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : flatInView(scene, scene.brushFor(stroke), stroke.swatch));
             continue;
         }
         // From the bottom of the order up: areas under lines of the same place, each list in its own order.
@@ -115,7 +129,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             else if (item.kind == 0)
                 drawFill(fills[item.index]);
             else
-                Canvas::paintStroke(painter, strokes[item.index], tint ? QBrush(*tint) : scene.brushFor(strokes[item.index]));
+                Canvas::paintStroke(painter, strokes[item.index], tint ? QBrush(*tint) : flatInView(scene, scene.brushFor(strokes[item.index]), strokes[item.index].swatch));
         }
     }
 }
@@ -148,7 +162,7 @@ void Canvas::paintDrawing(QPainter& painter, Scene const& scene, Drawing const& 
 
 void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, int frame)
 {
-    static int depth = 0;       // symbols inside symbols: so deep and no deeper (and never round in a ring)
+    static thread_local int depth = 0;       // symbols inside symbols: so deep and no deeper (and never round in a ring)
     Scene::Symbol const* const symbol = scene.findSymbol(symbolId);
     if (!symbol || depth >= Scene::kSymbolDepth)
         return;
@@ -173,6 +187,34 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
 // While a layer with a blend mode is painted alone, to be mixed with what is under it as a whole.
 static thread_local bool tPaintingToBlend = false;
 static thread_local bool tOverridden = false;
+static thread_local bool tSmoothed = false;
+
+namespace {
+
+// The soft edge of what is painted made harder (above 1) or softer (below 1): the part-covered pixels' coverage raised to it.
+void antialiasExponent(QImage& image, double exponent)
+{
+    std::array<int, 256> curve{};
+    for (int a = 0; a < 256; ++a)
+        curve[size_t(a)] = int(std::lround(255.0 * std::pow(a / 255.0, exponent)));
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            int const a = qAlpha(row[x]);
+            if (a == 0 || a == 255)
+                continue;
+            int const to = curve[size_t(a)];
+            if (to == 0) {
+                row[x] = 0;
+                continue;
+            }
+            auto scaled = [a, to](int c) { return std::min(to, c * to / a); };
+            row[x] = qRgba(scaled(qRed(row[x])), scaled(qGreen(row[x])), scaled(qBlue(row[x])), to);
+        }
+    }
+}
+
+}  // namespace
 
 void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int frame, Drawing const& drawing, double opacity,
                                QTransform const& sceneToDevice, bool everySheet, bool cameraClipping)
@@ -180,6 +222,9 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     Layer const& layer = scene.layers[l];
     painter.save();
     auto const restore = qScopeGuard([&painter] { painter.restore(); });
+    bool const nearestBefore = gNearestPictures;
+    gNearestPictures = layer.textureFilter == Layer::FilterNearest;
+    auto const restoreNearest = qScopeGuard([nearestBefore] { gNearestPictures = nearestBefore; });
     if (cameraClipping && scene.cameraIndex() >= 0 && layer.holdsDrawings() && !drawing.isEmpty()) {
         QRectF const bounds = drawing.bounds().adjusted(-2, -2, 2, 2);
         QPolygonF const clipped = scene.cameraClip(l, frame, bounds);
@@ -221,6 +266,39 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         painter.save();
         painter.resetTransform();
         painter.setCompositionMode(kModes[std::clamp(layer.blend, 0, int(Layer::BlendCount) - 1)]);
+        painter.drawImage(0, 0, alone);
+        painter.restore();
+        return;
+    }
+    // Its vector render options: hard edges; or the edges worked out at twice the size; their soft edge made harder or softer.
+    if (layer.antialiasing == Layer::AntialiasLow)
+        painter.setRenderHint(QPainter::Antialiasing, false);
+    bool const veryHigh = layer.antialiasing == Layer::AntialiasVeryHigh && painter.testRenderHint(QPainter::Antialiasing);
+    bool const exponent = std::abs(layer.antialiasExponent - 1.0) > 1e-6;
+    if ((veryHigh || exponent) && !tSmoothed && opacity > 0.0 && painter.device()) {
+        QPaintDevice* const device = painter.device();
+        double const dpr = device->devicePixelRatioF();
+        int const times = veryHigh ? 2 : 1;
+        QSize const size(int(device->width() * dpr), int(device->height() * dpr));
+        QImage alone(size * times, QImage::Format_ARGB32_Premultiplied);
+        alone.setDevicePixelRatio(dpr * times);
+        alone.fill(Qt::transparent);
+        {
+            QPainter off(&alone);
+            off.setRenderHints(painter.renderHints());
+            off.setTransform(painter.transform());
+            off.setClipRegion(painter.clipRegion(), painter.hasClipping() ? Qt::ReplaceClip : Qt::NoClip);
+            tSmoothed = true;
+            paintLayerDrawing(off, scene, l, frame, drawing, opacity, sceneToDevice, everySheet, cameraClipping);
+            tSmoothed = false;
+        }
+        if (times > 1)
+            alone = alone.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        if (exponent)
+            antialiasExponent(alone, layer.antialiasExponent);
+        alone.setDevicePixelRatio(dpr);
+        painter.save();
+        painter.resetTransform();
         painter.drawImage(0, 0, alone);
         painter.restore();
         return;

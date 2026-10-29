@@ -400,12 +400,43 @@ void MainWindow::createCameraView()
         mode->setToolTip(tr("Normal: the frame as you work on it.  Render: as it will be rendered.\n"
                             "Matte: white where the frame is painted, black where it is clear.  Depth: each layer as light as it is near the camera."));
         mode->setFocusPolicy(Qt::NoFocus);
-        connect(mode, &QComboBox::currentIndexChanged, m_canvas, [this](int index) {
+        // The Render View's own controls: render the frame again, Auto Render, and the preview resolution.
+        QWidget* const renderControls = new QWidget(status);
+        renderControls->setObjectName(QStringLiteral("RenderViewControls"));
+        QHBoxLayout* const renderRow = new QHBoxLayout(renderControls);
+        renderRow->setContentsMargins(0, 0, 0, 0);
+        renderRow->setSpacing(1);
+        for (char const* id : {"RenderCurrentFrame", "ViewAutoRender"})
+            if (QAction* const a = m_actions->action(QLatin1String(id))) {
+                QToolButton* const b = new QToolButton(renderControls);
+                b->setObjectName(QStringLiteral("Status") + QLatin1String(id));
+                b->setDefaultAction(a);
+                b->setAutoRaise(true);
+                b->setIconSize(QSize(18, 18));
+                renderRow->addWidget(b);
+            }
+        QComboBox* const resolution = new QComboBox(renderControls);
+        resolution->setObjectName(QStringLiteral("PreviewResolution"));
+        resolution->addItem(tr("Full"), 1);
+        resolution->addItem(tr("1/2"), 2);
+        resolution->addItem(tr("1/4"), 4);
+        resolution->addItem(tr("1/8"), 8);
+        resolution->setFocusPolicy(Qt::NoFocus);
+        resolution->setToolTip(tr("Preview Resolution\nFactor by which the render resolution is scaled\ndown when the camera view is in render mode."));
+        connect(resolution, &QComboBox::currentIndexChanged, m_canvas, [this, resolution](int) { m_canvas->setPreviewReduction(resolution->currentData().toInt()); });
+        renderRow->addWidget(resolution);
+        renderControls->setVisible(false);
+        connect(mode, &QComboBox::currentIndexChanged, m_canvas, [this, renderControls](int index) {
             m_canvas->setViewMode(Canvas::ViewMode(index));
             m_actions->setChecked(QStringLiteral("MatteView"), index == int(Canvas::ViewMatte));
+            m_actions->setChecked(QStringLiteral("ViewNormalMode"), index == int(Canvas::ViewNormal));
+            m_actions->setChecked(QStringLiteral("ViewRenderMode"), index == int(Canvas::ViewRender));
+            renderControls->setVisible(index == int(Canvas::ViewRender));
         });
+        connect(m_canvas, &Canvas::frameRendered, this, &MainWindow::writeRenderedFrame);
         row->addSpacing(6);
         row->addWidget(mode);
+        row->addWidget(renderControls);
         // Snapshots: the frame as rendered, kept; shown in place of the frame while the button is down, to compare.
         QToolButton* const take = new QToolButton(status);
         take->setObjectName(QStringLiteral("TakeSnapshot"));

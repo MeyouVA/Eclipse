@@ -201,6 +201,8 @@ int Scene::addLayer(QString const& name, int at, Layer::Kind kind)
         if (!peg) {
             layer.animatable = Layer::newLayers.animatable;
             layer.embeddedPivot = Layer::newLayers.embeddedPivot;
+            layer.antialiasing = Layer::newLayers.antialiasing;
+            layer.antialiasExponent = Layer::newLayers.antialiasExponent;
         }
     }
     if (kind == Layer::Quadmap) {

@@ -83,6 +83,7 @@ public:
         QString format = QStringLiteral("png");     // of the images
         int percent = 100;          // of the scene's size
         bool enabled = true;
+        bool layers = false;        // a multi-layer write: in a layered format, each layer of drawings apart too
         bool operator==(Write const&) const = default;
     };
     QVector<Write> writes;

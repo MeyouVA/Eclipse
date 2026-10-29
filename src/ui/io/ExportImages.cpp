@@ -4,9 +4,11 @@
 #include <functional>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -19,6 +21,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPainter>
+#include <QProgressDialog>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QHeaderView>
@@ -29,6 +32,8 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
+#include "canvas/FrameRender.h"
+#include "render/images/ImageFiles.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
 #include "ui/timeline/Timeline.h"
@@ -39,36 +44,72 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
     Scene const scene = m_document->scene();
     int const first = std::clamp(options.first, 0, scene.frameCount() - 1);
     int const last = options.last < 0 ? scene.frameCount() - 1 : std::clamp(options.last, first, scene.frameCount() - 1);
-    double const scale = std::clamp(options.percent, 1, 400) / 100.0;
-    QSize const size(std::max(1, qRound(scene.width * scale)), std::max(1, qRound(scene.height * scale)));
-    QString const format = options.format.toLower();
+    QSize const size = FrameRender::sizeAt(scene, std::clamp(options.percent, 1, 1000) / 100.0);
+    ImageFiles::Format const* const format = ImageFiles::find(options.format);
+    if (!format) {
+        if (error)
+            *error = tr("Unknown image format: %1").arg(options.format);
+        return 0;
+    }
     if (!QDir().mkpath(options.folder)) {
         if (error)
             *error = tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(options.folder));
         return 0;
     }
-    int written = 0;
-    for (int f = first; f <= last; ++f) {
-        QImage image(size, QImage::Format_ARGB32_Premultiplied);
-        image.fill(Qt::transparent);
-        {
-            QPainter painter(&image);
-            painter.setRenderHint(QPainter::Antialiasing, !options.preview);
-            painter.scale(scale, scale);
-            Canvas::paintFrame(painter, scene, f);
+    // Each layer apart as well (a layered format): the scene with only that layer of drawings shown, on nothing.
+    bool const layered = options.layers && format->layers;
+    QVector<Scene> alone(layered ? scene.layers.size() : 0);
+    if (layered)
+        for (int l = 0; l < scene.layers.size(); ++l) {
+            Layer const& layer = scene.layers[l];
+            if (!layer.holdsDrawings() && layer.kind != Layer::ColourCard)
+                continue;
+            Scene& only = alone[l];
+            only = scene;
+            only.background = Qt::transparent;
+            for (int other = 0; other < only.layers.size(); ++other)
+                if (other != l && (only.layers[other].holdsDrawings() || only.layers[other].kind == Layer::ColourCard))
+                    only.layers[other].visible = false;
         }
-        QString const file = QDir(options.folder).filePath(QStringLiteral("%1_%2.%3").arg(options.name).arg(f + 1, 4, 10, QLatin1Char('0')).arg(format));
-        // A JPEG has no transparency and wants the plain layout.
-        bool const ok = format == QLatin1String("jpg") ? image.convertToFormat(QImage::Format_RGB32).save(file, "JPG", 92) : image.save(file);
-        if (!ok) {
-            if (error)
-                *error = tr("Could not write %1.").arg(QDir::toNativeSeparators(file));
-            break;
+    auto fileOf = [&](int f) {
+        return QDir(options.folder).filePath(QStringLiteral("%1_%2.%3").arg(options.name).arg(f + 1, 4, 10, QLatin1Char('0')).arg(format->suffix));
+    };
+    QVector<int> frames;
+    for (int f = first; f <= last; ++f)
+        frames.push_back(f);
+    std::atomic<int> written{0};
+    auto keep = [&](int f, QImage const& image) -> QString {
+        QString why;
+        bool ok = false;
+        if (layered) {
+            QVector<ImageFiles::Layer> parts;
+            for (int l : scene.drawOrder(f))
+                if (l < alone.size() && !alone[l].layers.isEmpty() && scene.enabled(l))
+                    parts.push_back({scene.layers[l].name, FrameRender::frame(alone[l], f, size, options.preview)});
+            ok = ImageFiles::saveLayered(parts, image, fileOf(f), &why);
+        } else {
+            ok = ImageFiles::save(image, fileOf(f), format->suffix, &why);
         }
+        if (!ok)
+            return why.isEmpty() ? tr("Could not write %1.").arg(QDir::toNativeSeparators(fileOf(f))) : why;
         ++written;
-        if (written % 8 == 0)
+        return QString();
+    };
+    auto progress = [&](int done) {
+        if (options.progress) {
+            options.progress->setValue(done);
+            QApplication::processEvents();
+            if (options.progress->wasCanceled())
+                return false;
+        } else {
             QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-    }
+        }
+        statusBar()->showMessage(tr("Rendered frame %1").arg(first + done), 1000);
+        return true;
+    };
+    QString why;
+    if (!FrameRender::render(scene, frames, size, options.preview, keep, progress, &why) && error)
+        *error = why.isEmpty() ? tr("Stopped.") : why;
     return written;
 }
 
@@ -90,10 +131,19 @@ void MainWindow::askExportImages(bool preview)
     folderRow->addWidget(browse);
     QLineEdit* const name = new QLineEdit(m_path.isEmpty() ? QStringLiteral("frame") : QFileInfo(m_path).completeBaseName(), &dialog);
     QComboBox* const format = new QComboBox(&dialog);
-    format->addItem(tr("PNG (with transparency)"), QStringLiteral("png"));
-    format->addItem(tr("JPEG"), QStringLiteral("jpg"));
-    format->addItem(tr("TIFF"), QStringLiteral("tif"));
-    format->addItem(tr("BMP"), QStringLiteral("bmp"));
+    format->setObjectName(QStringLiteral("ExportFormat"));
+    for (ImageFiles::Format const& f : ImageFiles::formats())
+        format->addItem(f.alpha ? tr("%1 (with transparency)").arg(f.name) : f.name, f.suffix);
+    // A layered format can keep each layer of drawings apart, as well as the frame as a whole.
+    QCheckBox* const layers = new QCheckBox(tr("Each layer apart too (Photoshop layers)"), &dialog);
+    layers->setObjectName(QStringLiteral("ExportLayers"));
+    layers->setToolTip(tr("A multi-layer write: every layer of drawings in the frame as a layer of its own, the frame as a whole as well."));
+    auto showLayers = [format, layers] {
+        ImageFiles::Format const* const f = ImageFiles::find(format->currentData().toString());
+        layers->setEnabled(f && f->layers);
+    };
+    connect(format, &QComboBox::currentIndexChanged, &dialog, showLayers);
+    showLayers();
     QSpinBox* const from = new QSpinBox(&dialog);
     from->setRange(1, scene.frameCount());
     from->setValue(playStart() + 1);
@@ -131,6 +181,7 @@ void MainWindow::askExportImages(bool preview)
     form->addRow(tr("Folder"), folderRow);
     form->addRow(tr("File name"), name);
     form->addRow(tr("Format"), format);
+    form->addRow(QString(), layers);
     form->addRow(tr("From frame"), from);
     form->addRow(tr("To frame"), to);
     form->addRow(QString(), rangeRow);
@@ -149,12 +200,18 @@ void MainWindow::askExportImages(bool preview)
     options.last = std::max(from->value(), to->value()) - 1;
     options.percent = resolution->currentData().toInt();
     options.preview = preview;
+    options.layers = layers->isEnabled() && layers->isChecked();
     stop();
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+    int const wanted = options.last - options.first + 1;
+    QProgressDialog progress(tr("Rendering scene..."), tr("Cancel"), 0, wanted, this);
+    progress.setObjectName(QStringLiteral("RenderProgress"));
+    progress.setWindowTitle(preview ? tr("Export OpenGL Frames") : tr("Export Images"));
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(400);
+    options.progress = &progress;
     QString error;
     int const written = exportImages(options, &error);
-    QApplication::restoreOverrideCursor();
-    int const wanted = options.last - options.first + 1;
+    progress.reset();
     if (written == wanted)
         statusBar()->showMessage(tr("Exported %1 frames to %2").arg(written).arg(QDir::toNativeSeparators(options.folder)), 6000);
     else
@@ -206,16 +263,21 @@ void MainWindow::onActionExportAudio()
         QMessageBox::critical(this, tr("Eclipse"), tr("The sound could not be written.\n%1").arg(error));
 }
 
-int MainWindow::renderWrites(QString* error)
+QString MainWindow::writeFolder(QString const& path) const
+{
+    QDir const home = m_path.isEmpty() ? QDir::current() : QFileInfo(m_path).absoluteDir();
+    return QDir::cleanPath(home.absoluteFilePath(path.trimmed()));
+}
+
+int MainWindow::renderWrites(QString* error, QProgressDialog* progress)
 {
     Scene const scene = m_document->scene();
-    QDir const home = m_path.isEmpty() ? QDir::current() : QFileInfo(m_path).absoluteDir();
     int made = 0;
     QStringList problems;
     for (Scene::Write const& w : scene.writes) {
         if (!w.enabled || w.path.trimmed().isEmpty())
             continue;
-        QString const where = QDir::cleanPath(home.absoluteFilePath(w.path.trimmed()));
+        QString const where = writeFolder(w.path);
         QString why;
         bool ok = false;
         if (w.movie) {
@@ -229,6 +291,10 @@ int MainWindow::renderWrites(QString* error)
             images.name = w.name.trimmed().isEmpty() ? QStringLiteral("frame") : w.name.trimmed();
             images.format = w.format;
             images.percent = std::clamp(w.percent, 1, 1000);
+            images.layers = w.layers;
+            images.progress = progress;
+            if (progress)
+                progress->setLabelText(tr("Rendering scene... (%1)").arg(w.name));
             QDir().mkpath(where);
             ok = exportImages(images, &why) == scene.frameCount();
         }
@@ -244,15 +310,33 @@ int MainWindow::renderWrites(QString* error)
 
 void MainWindow::onActionRenderWrites()
 {
-    if (m_document->scene().writes.isEmpty()) {
+    Scene const& scene = m_document->scene();
+    if (scene.writes.isEmpty()) {
         statusBar()->showMessage(tr("The scene has no write outputs: add them with Scene > Write Outputs."), 7000);
         onActionWriteOutputs();
         return;
     }
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+    if (std::none_of(scene.writes.cbegin(), scene.writes.cend(), [](Scene::Write const& w) { return w.enabled && !w.path.trimmed().isEmpty(); })) {
+        QMessageBox::information(this, tr("Render Write Nodes"), tr("Render requested with no write module enabled."));
+        return;
+    }
+    // Frames already there from an earlier render: made again only when asked.
+    bool already = false;
+    for (Scene::Write const& w : scene.writes)
+        if (w.enabled && !w.movie && !w.path.trimmed().isEmpty() && !QDir(writeFolder(w.path)).entryList({QStringLiteral("*.") + w.format}, QDir::Files).isEmpty())
+            already = true;
+    if (already && QMessageBox::question(this, tr("Render Write Nodes"), tr("Some frames have already been rendered. Do you want to render these frames again?"))
+                       != QMessageBox::Yes)
+        return;
+    stop();
+    QProgressDialog progress(tr("Rendering scene..."), tr("Cancel"), 0, scene.frameCount(), this);
+    progress.setObjectName(QStringLiteral("RenderProgress"));
+    progress.setWindowTitle(tr("Render Write Nodes"));
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(400);
     QString error;
-    int const made = renderWrites(&error);
-    QApplication::restoreOverrideCursor();
+    int const made = renderWrites(&error, &progress);
+    progress.reset();
     if (!error.isEmpty())
         QMessageBox::warning(this, tr("Render Write Nodes"), tr("%n output(s) made. These could not be:", nullptr, made) + QLatin1Char('\n') + error);
     else
@@ -265,9 +349,9 @@ void MainWindow::onActionWriteOutputs()
     QDialog dialog(this);
     dialog.setObjectName(QStringLiteral("WriteOutputsDialog"));
     dialog.setWindowTitle(tr("Write Outputs"));
-    QTableWidget* const table = new QTableWidget(0, 6, &dialog);
+    QTableWidget* const table = new QTableWidget(0, 7, &dialog);
     table->setObjectName(QStringLiteral("WriteOutputsTable"));
-    table->setHorizontalHeaderLabels({tr("On"), tr("Name"), tr("Kind"), tr("Folder or file"), tr("Images as"), tr("Size %")});
+    table->setHorizontalHeaderLabels({tr("On"), tr("Name"), tr("Kind"), tr("Folder or file"), tr("Images as"), tr("Size %"), tr("Layers")});
     table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
     table->verticalHeader()->setVisible(false);
     auto addRow = [table](Scene::Write const& w) {
@@ -283,13 +367,19 @@ void MainWindow::onActionWriteOutputs()
         table->setCellWidget(row, 2, kind);
         table->setItem(row, 3, new QTableWidgetItem(w.path));
         QComboBox* const format = new QComboBox(table);
-        format->addItems({QStringLiteral("png"), QStringLiteral("jpg"), QStringLiteral("tga"), QStringLiteral("tif"), QStringLiteral("bmp")});
-        format->setCurrentText(w.format);
+        for (ImageFiles::Format const& f : ImageFiles::formats())
+            format->addItem(f.suffix);
+        ImageFiles::Format const* const known = ImageFiles::find(w.format);
+        format->setCurrentText(known ? known->suffix : QStringLiteral("png"));
         table->setCellWidget(row, 4, format);
         QSpinBox* const size = new QSpinBox(table);
         size->setRange(1, 1000);
         size->setValue(w.percent);
         table->setCellWidget(row, 5, size);
+        QTableWidgetItem* const layers = new QTableWidgetItem;
+        layers->setCheckState(w.layers ? Qt::Checked : Qt::Unchecked);
+        layers->setToolTip(QObject::tr("Multi-layer write: in a layered format (psd), each layer of drawings apart too."));
+        table->setItem(row, 6, layers);
     };
     for (Scene::Write const& w : std::as_const(writes))
         addRow(w);
@@ -332,6 +422,7 @@ void MainWindow::onActionWriteOutputs()
         w.path = table->item(r, 3)->text().trimmed();
         w.format = static_cast<QComboBox*>(table->cellWidget(r, 4))->currentText();
         w.percent = static_cast<QSpinBox*>(table->cellWidget(r, 5))->value();
+        w.layers = table->item(r, 6)->checkState() == Qt::Checked;
         made.push_back(w);
     }
     m_document->setWrites(made);
