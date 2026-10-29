@@ -86,6 +86,8 @@
   <shortcut id="shortcut.safeArea" text="Safe Area" value=""/>
   <shortcut id="shortcut.lightTable" text="Light Table" value="Shift+L"/>
   <shortcut id="shortcut.showControl" text="Show Control" value="Shift+F11"/>
+  <shortcut id="shortcut.hideInViews" text="Hide Selected" value="Alt+H"/>
+  <shortcut id="shortcut.showHiddenInViews" text="Show Hidden" value="Shift+Alt+H"/>
   <shortcut id="shortcut.hideAllControls" text="Hide All Controls" value="Shift+C"/>
   <shortcut id="shortcut.drawingOnTop" text="Current Drawing on Top" value=""/>
   <shortcut id="shortcut.cameraMask" text="Camera Mask" value=""/>

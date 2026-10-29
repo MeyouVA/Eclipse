@@ -20,6 +20,7 @@ Canvas::Canvas(Document* document, QWidget* parent) : QWidget(parent), m_documen
     setMouseTracking(true);     // the status bar says where the pointer is
     connect(m_document, &Document::changed, this, &Canvas::onDocumentChanged);
     connect(m_document, &Document::resetDone, this, &Canvas::cancelInput);
+    connect(m_document, &Document::resetDone, this, [this] { setViewHidden({}); });
     updateCursor();
 }
 

@@ -124,6 +124,9 @@ struct Layer {
     // Separate: width and height are scaled each on its own; locked, they keep in proportion (and the layer cannot be skewed).
     bool separateScale = true;
     bool ignoreParentScale = false;
+    // How the camera sees it (and what hangs under it): as placed, turned to face it, carried along with it, or flat on its plane.
+    enum CameraAlignment { AlignNormal, FaceCamera, PinToCamera, ProjectOnCameraPlane, AlignmentCount };
+    int cameraAlignment = AlignNormal;
     bool angleLimited = false;
     double minAngle = -180.0;
     double maxAngle = 180.0;

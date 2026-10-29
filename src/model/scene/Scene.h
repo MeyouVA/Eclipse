@@ -213,6 +213,10 @@ public:
     // The part of a drawing inside the camera's clipping planes, in drawing coordinates.
     QPolygonF cameraClip(int layer, int frame, QRectF bounds) const;
     QTransform depthTransform(double z, int frame) const;
+    // The Layer::CameraAlignment that holds for a layer: its own, else that of the nearest layer it hangs under that has one.
+    int cameraAlignmentOf(int layer) const;
+    // How much bigger (or smaller) depth makes a layer look through the camera: blurs with a truck factor are scaled by it.
+    double truckFactor(int layer, int frame) const;
     // By how much (1: not at all).
     double depthScale(double z, int frame) const;
     QVector<int> drawOrder(int frame) const;

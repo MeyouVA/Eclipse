@@ -103,6 +103,7 @@ private:
     class QCheckBox* m_particleRecolour = nullptr;
     class QCheckBox* m_particleFollow = nullptr;
     QCheckBox* m_animated;
+    QCheckBox* m_truck;
     QLabel* m_offsetLabel;
     QDoubleSpinBox* m_offsetX;
     QDoubleSpinBox* m_offsetY;

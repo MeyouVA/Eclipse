@@ -100,6 +100,9 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     m_invert->setToolTip(tr("Keep what lies outside the matte instead."));
     m_animated = new QCheckBox(tr("Animate"), this);
     m_animated->setToolTip(tr("When ticked, changing the amount sets a keyframe on the current frame, and the amount glides between keyframes."));
+    m_truck = new QCheckBox(tr("Truck Factor"), this);
+    m_truck->setObjectName(QStringLiteral("EffectTruckFactor"));
+    m_truck->setToolTip(tr("The blur grows as the layer comes nearer the camera and shrinks as it goes further away, as the layer itself does."));
     m_offsetLabel = new QLabel(tr("Offset"), this);
     m_offsetX = new QDoubleSpinBox(this);
     m_offsetY = new QDoubleSpinBox(this);
@@ -133,6 +136,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     amountRow->addWidget(m_color);
     amountRow->addWidget(m_endColor);
     amountRow->addWidget(m_animated);
+    amountRow->addWidget(m_truck);
     QHBoxLayout* const offsetRow = new QHBoxLayout;
     offsetRow->addWidget(m_offsetLabel);
     offsetRow->addWidget(m_offsetX, 1);
@@ -286,6 +290,8 @@ void EffectsPanel::showEditors()
         }
     }
     m_animated->setChecked(valid && e.animated);
+    m_truck->setVisible(valid && (e.type == Effect::Blur || e.type == Effect::DirectionalBlur || e.type == Effect::MatteBlur));
+    m_truck->setChecked(valid && e.truckFactor);
     m_color->setVisible(coloured);
     m_endColor->setVisible(graded);
     if (graded)

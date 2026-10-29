@@ -52,6 +52,14 @@ void LayerPanel::buildTransformOptions()
     m_embeddedPivot->addItems({tr("Don't Use Embedded Pivot"), tr("Apply Embedded Pivot on Drawing Layer"), tr("Apply Embedded Pivot on Parent Peg")});
     m_embeddedPivot->setToolTip(tr("Drawing Pivot: whether the pivots set on the drawings (Drawing Pivot tool) are used, by this layer or by the peg it is attached to."));
     column->addWidget(m_embeddedPivot);
+    m_cameraAlignment = new QComboBox(m_transformRow);
+    m_cameraAlignment->setObjectName(QStringLiteral("LayerCameraAlignment"));
+    m_cameraAlignment->addItems({tr("Camera Alignment: Normal"), tr("Face Camera"), tr("Pin To Camera (Overlay)"), tr("Project on Camera Plane")});
+    m_cameraAlignment->setToolTip(tr("How the camera sees the layer and what is attached to it.\n"
+                                     "Face Camera: however it is turned in space, it stays square to the camera.\n"
+                                     "Pin To Camera: it moves, turns and zooms with the camera, so it holds still in the picture.\n"
+                                     "Project on Camera Plane: its depth only sets what is in front; it is not made bigger or smaller by it."));
+    column->addWidget(m_cameraAlignment);
     m_form->insertRow(m_form->rowCount() - 1, tr("Transformation"), m_transformRow);
 
     auto flag = [this](QCheckBox* box, QString const& on, QString const& off, void (*set)(Layer&, bool)) {
@@ -92,6 +100,10 @@ void LayerPanel::buildTransformOptions()
         if (!m_refreshing)
             m_document->editLayers({m_layer}, tr("Change Drawing Pivot"), [index](Layer& l) { l.embeddedPivot = index; });
     });
+    connect(m_cameraAlignment, &QComboBox::currentIndexChanged, this, [this](int index) {
+        if (!m_refreshing)
+            m_document->editLayers({m_layer}, tr("Change Camera Alignment"), [index](Layer& l) { l.cameraAlignment = index; });
+    });
 }
 
 void LayerPanel::refreshTransformOptions(Layer const& layer)
@@ -111,6 +123,7 @@ void LayerPanel::refreshTransformOptions(Layer const& layer)
     m_embeddedPivot->setCurrentIndex(std::clamp(layer.embeddedPivot, 0, 2));
     // (A peg takes a drawing's pivot from a layer attached to it, as that layer says.)
     m_embeddedPivot->setVisible(layer.holdsDrawings());
+    m_cameraAlignment->setCurrentIndex(std::clamp(layer.cameraAlignment, 0, int(Layer::AlignmentCount) - 1));
     m_scaleY->setEnabled(layer.separateScale && !m_scaleY->property("driven").toBool());
     if (m_skew)
         m_skew->setEnabled(layer.separateScale && !m_skew->property("driven").toBool());

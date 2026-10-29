@@ -281,8 +281,15 @@ QTransform Canvas::worldOf(int layer, int frame) const
 QTransform Canvas::parentSeen() const
 {
     Scene const& scene = m_document->scene();
-    QTransform const flat = scene.flatTransform(scene.parentIndex(m_layer), m_frame);
+    int const parent = scene.parentIndex(m_layer);
+    QTransform flat = scene.flatTransform(parent, m_frame);
     if (scene.layers[m_layer].kind == Layer::Camera)
+        return flat;
+    int const align = scene.cameraAlignmentOf(m_layer);
+    // (Pinned to the camera by its own setting: the camera carries it, though not what it hangs under.)
+    if (align == Layer::PinToCamera && scene.cameraAlignmentOf(parent) != Layer::PinToCamera && scene.cameraIndex() >= 0)
+        flat = flat * scene.cameraTransform(m_frame).inverted();
+    if (align == Layer::ProjectOnCameraPlane)
         return flat;
     return flat * scene.depthTransform(scene.depthOf(m_layer, m_frame), m_frame);
 }

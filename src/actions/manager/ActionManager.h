@@ -120,6 +120,9 @@ private:
     QHash<QString, Node> m_items;      // every command, by id: the element that has the slot
     QHash<QString, QAction*> m_actions;
     QHash<QString, QString> m_actionShortcut;  // command id -> shortcut id
+    // The main menu bar: a menu title's Alt+letter gives way to a command that has that key.
+    QPointer<QMenuBar> m_menuBar;
+    void refreshMnemonics();
     QHash<QString, QActionGroup*> m_groups;
     QVector<Shortcut> m_shortcuts;
     QString m_directory;

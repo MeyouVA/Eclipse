@@ -125,6 +125,7 @@ QJsonObject MainWindow::projectUiState() const
 
 void MainWindow::restoreProjectUi(QJsonObject const& state)
 {
+    m_canvas->setViewHidden({});
     if (state["version"].toInt() != 1) {
         bool const outlines = settings().value(QStringLiteral("prefs/outlineLocked"), false).toBool();
         bool const bbox = settings().value(QStringLiteral("prefs/bboxSelection"), false).toBool();

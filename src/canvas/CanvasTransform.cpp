@@ -59,7 +59,7 @@ int Canvas::layerUnder(QPointF scenePos) const
         int const l = order[place];
         Layer const& layer = scene.layers[l];
         int const index = layer.drawingAt(m_frame);
-        if (!layer.visible || index == Layer::kNoDrawing)
+        if (!layer.visible || index == Layer::kNoDrawing || hiddenInView(l))
             continue;
         QPointF const p = scene.worldTransform(l, m_frame).inverted().map(scenePos);
         Drawing const d = shown(l, m_frame, layer.drawings[index]);

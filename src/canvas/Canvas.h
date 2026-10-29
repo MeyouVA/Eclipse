@@ -469,6 +469,10 @@ public slots:
         update();
     }
     bool bboxSelectionStyle() const { return m_bboxSelection; }
+    // Hide Selected / Show Hidden: layers left out of the Camera and scene planning views (never out of what is rendered).
+    void setViewHidden(QSet<int> const& ids);
+    QSet<int> viewHidden() const { return m_viewHidden; }
+    bool hiddenInView(int layer) const;
     void onActionShowSafeArea(bool on);
     void onActionLightTable(bool on);
     // The layer being drawn on painted over the others, whatever its place among them.
@@ -652,6 +656,7 @@ signals:
     void pointPicked(int thicknessPercent);
     // The view is closer or further than it was.
     void zoomChanged();
+    void viewHiddenChanged();
     void showControlChanged(bool on);
     void planningControlsChanged();
     void artChanged(int art);

@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QMenu>
 #include <QMenuBar>
+#include <QSet>
 #include <QMetaMethod>
 #include <QSettings>
 #include <QToolBar>
@@ -336,9 +337,30 @@ void ActionManager::populateMenuBar(QString const& menuId, QMenuBar* bar)
         if (child.type != Node::Menu)
             continue;
         QMenu* const menu = bar->addMenu(child.value("text"));
+        menu->menuAction()->setProperty("title", child.value("text"));
         fillMenu(menu, child);
         if (child.attr.contains(QStringLiteral("aboutToShowSlot")))
             connect(menu, &QMenu::aboutToShow, this, [this, child, menu] { invoke(child, false, menu); });
+    }
+    m_menuBar = bar;
+    refreshMnemonics();
+}
+
+void ActionManager::refreshMnemonics()
+{
+    if (!m_menuBar)
+        return;
+    QSet<QKeySequence> taken;
+    for (QAction const* a : std::as_const(m_actions))
+        for (QKeySequence const& key : a->shortcuts())
+            taken.insert(key);
+    for (QAction* title : m_menuBar->actions()) {
+        QString const text = title->property("title").toString();
+        int const at = text.indexOf(QLatin1Char('&'));
+        if (text.isEmpty() || at < 0 || at + 1 >= text.size())
+            continue;
+        bool const clashes = taken.contains(QKeySequence(QStringLiteral("Alt+") + text.at(at + 1).toUpper()));
+        title->setText(clashes ? QString(text).remove(at, 1) : text);
     }
 }
 
@@ -593,4 +615,5 @@ void ActionManager::setShortcut(QString const& id, QKeySequence const& key)
     for (auto it = m_actionShortcut.constBegin(); it != m_actionShortcut.constEnd(); ++it)
         if (it.value() == id)
             applyShortcut(m_actions.value(it.key()), id);
+    refreshMnemonics();
 }

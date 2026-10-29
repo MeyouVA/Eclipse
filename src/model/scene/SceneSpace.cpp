@@ -134,8 +134,64 @@ QTransform withoutScale(QTransform const& m)
     return QTransform(m.m11() / sx, m.m12() / sx, m.m21() / sy, m.m22() / sy, m.dx(), m.dy());
 }
 
-// From a layer to the scene, in space.
+// From a layer to the scene on its own plane, before any camera alignment.
+QTransform flatChain(Scene const& scene, int layer, int frame, PoseOverride const* over)
+{
+    QTransform t;
+    for (int guard = 0; layer >= 0 && layer < scene.layers.size() && guard < 256; ++guard, layer = scene.parentIndex(layer)) {
+        t = t * localFor(scene, layer, frame, over);
+        int const parent = scene.parentIndex(layer);
+        if (parent >= 0 && scene.layers[layer].parentBone >= 0)
+            t = t * Deform::boneTransform(scene.layers[parent].bones, poseFor(scene, parent, frame, over).bend, scene.layers[layer].parentBone);
+        if (parent >= 0 && scene.layers[layer].ignoreParentScale)
+            return t * withoutScale(flatChain(scene, parent, frame, over));
+    }
+    return t;
+}
+
+// Turning about a point as the active camera is turned (or, `back`, the other way, as the camera sees it).
+Mat4 cameraTurn(Scene const& scene, int frame, PoseOverride const* over, double x, double y, double z, bool back)
+{
+    int const camera = scene.cameraIndex();
+    Pose const pose = camera >= 0 ? poseFor(scene, camera, frame, over) : Pose();
+    if (pose.rotX == 0.0 && pose.rotY == 0.0)
+        return Mat4();
+    if (back)
+        return Mat4::move(-x, -y, -z) * Mat4::aboutX(-pose.rotX) * Mat4::aboutY(-pose.rotY) * Mat4::move(x, y, z);
+    return Mat4::move(-x, -y, -z) * Mat4::aboutY(pose.rotY) * Mat4::aboutX(pose.rotX) * Mat4::move(x, y, z);
+}
+
+Mat4 spaceChain(Scene const& scene, int layer, int frame, PoseOverride const* over);
+
+// From a layer to the scene, in space: as it hangs, then as its camera alignment has it.
 Mat4 spaceOf(Scene const& scene, int layer, int frame, PoseOverride const* over)
+{
+    Mat4 t = spaceChain(scene, layer, frame, over);
+    int const camera = scene.cameraIndex();
+    if (camera < 0 || layer < 0 || layer >= scene.layers.size())
+        return t;
+    int const align = scene.cameraAlignmentOf(layer);
+    if (align == Layer::PinToCamera) {
+        // Carried by the camera: placed on its picture, at its depth, and turned with it.
+        QTransform const carried = flatChain(scene, camera, frame, over);
+        QPointF const centre = carried.map(QPointF(scene.width / 2.0, scene.height / 2.0));
+        double const depth = scene.depthOf(camera, frame, over);
+        return t * Mat4::flat(carried) * Mat4::move(0, 0, depth) * cameraTurn(scene, frame, over, centre.x(), centre.y(), depth, false);
+    }
+    if (align == Layer::FaceCamera) {
+        // Where its pivot is, kept; how it is tilted, undone - and turned as the camera is, so it faces it square.
+        QPointF const pivot = scene.pivotOf(layer, frame);
+        double x, y, z;
+        t.map(pivot, x, y, z);
+        QTransform const flat = flatChain(scene, layer, frame, over);
+        QPointF const at = flat.map(pivot);
+        return Mat4::flat(flat * QTransform::fromTranslate(x - at.x(), y - at.y())) * Mat4::move(0, 0, z) * cameraTurn(scene, frame, over, x, y, z, false);
+    }
+    return t;
+}
+
+// From a layer to the scene, in space, as it hangs.
+Mat4 spaceChain(Scene const& scene, int layer, int frame, PoseOverride const* over)
 {
     Mat4 t;
     for (int guard = 0; layer >= 0 && layer < scene.layers.size() && guard < 256; ++guard, layer = scene.parentIndex(layer)) {
@@ -158,6 +214,23 @@ Mat4 spaceOf(Scene const& scene, int layer, int frame, PoseOverride const* over)
 }
 
 }  // namespace
+
+int Scene::cameraAlignmentOf(int layer) const
+{
+    if (layer < 0 || layer >= layers.size() || layers[layer].kind == Layer::Camera)
+        return Layer::AlignNormal;
+    for (int guard = 0; layer >= 0 && layer < layers.size() && guard < 256; ++guard, layer = parentIndex(layer))
+        if (layers[layer].kind != Layer::Camera && layers[layer].cameraAlignment != Layer::AlignNormal)
+            return layers[layer].cameraAlignment;
+    return Layer::AlignNormal;
+}
+
+double Scene::truckFactor(int layer, int frame) const
+{
+    if (layer < 0 || layer >= layers.size() || cameraAlignmentOf(layer) == Layer::ProjectOnCameraPlane)
+        return 1.0;
+    return depthScale(depthOf(layer, frame), frame);
+}
 
 double Layer::fovAt(int frame) const
 {
@@ -220,9 +293,10 @@ double Scene::depthOf(int layer, int frame, PoseOverride const* over) const
         return z;
     }
     double z = 0.0;
+    bool const pinned = layers[layer].kind != Layer::Camera && cameraAlignmentOf(layer) == Layer::PinToCamera && cameraIndex() >= 0;
     for (int guard = 0; layer >= 0 && layer < layers.size() && guard < 256; ++guard, layer = parentIndex(layer))
         z += poseFor(*this, layer, frame, over).z;
-    return z;
+    return pinned ? z + depthOf(cameraIndex(), frame, over) : z;
 }
 
 double Scene::focalDistance(int frame) const
@@ -377,7 +451,7 @@ QTransform Scene::worldTransform(int layer, int frame, PoseOverride const* over)
                     * Mat4::move(centre.x(), centre.y(), cameraDepth);
         }
         space = space * Mat4::flat(lens);
-        if (!orthographic) {
+        if (!orthographic && cameraAlignmentOf(layer) != Layer::ProjectOnCameraPlane) {
             Mat4 projection;
             projection.m[2][3] = -1.0 / distance;
             space = space * Mat4::move(-middle.x(), -middle.y(), -cameraDepth) * projection * Mat4::move(middle.x(), middle.y(), 0);
@@ -386,20 +460,18 @@ QTransform Scene::worldTransform(int layer, int frame, PoseOverride const* over)
                                  space.m[3][0], space.m[3][1], space.m[3][3]);
         return picture * lens.inverted();
     }
+    if (cameraAlignmentOf(layer) == Layer::ProjectOnCameraPlane)
+        return flatTransform(layer, frame, over);
     return flatTransform(layer, frame, over) * depthTransform(depthOf(layer, frame, over), frame);
 }
 
 QTransform Scene::flatTransform(int layer, int frame, PoseOverride const* over) const
 {
-    QTransform t;
-    for (int guard = 0; layer >= 0 && layer < layers.size() && guard < 256; ++guard, layer = parentIndex(layer)) {
-        t = t * localFor(*this, layer, frame, over);
-        int const parent = parentIndex(layer);
-        if (parent >= 0 && layers[layer].parentBone >= 0)
-            t = t * Deform::boneTransform(layers[parent].bones, poseFor(*this, parent, frame, over).bend, layers[layer].parentBone);
-        if (parent >= 0 && layers[layer].ignoreParentScale)
-            return t * withoutScale(flatTransform(parent, frame, over));
-    }
+    QTransform const t = flatChain(*this, layer, frame, over);
+    int const camera = cameraIndex();
+    // Pinned to the camera: what the camera does, the layer does too.
+    if (camera >= 0 && layer >= 0 && layer < layers.size() && cameraAlignmentOf(layer) == Layer::PinToCamera)
+        return t * flatChain(*this, camera, frame, over);
     return t;
 }
 

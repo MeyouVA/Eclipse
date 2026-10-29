@@ -1,16 +1,23 @@
 // Eclipse - project view settings independent of animation edits.
 #include "canvas/Canvas.h"
+#include <QJsonArray>
 #include <QJsonObject>
 #include <cmath>
 
 QJsonObject Canvas::viewState() const
 {
-    return {{"zoom", m_zoom}, {"panX", m_pan.x()}, {"panY", m_pan.y()}, {"rotation", m_viewRotation},
+    QJsonArray hidden;
+    for (int id : m_viewHidden)
+        hidden.append(id);
+    QJsonObject state{{"zoom", m_zoom}, {"panX", m_pan.x()}, {"panY", m_pan.y()}, {"rotation", m_viewRotation},
             {"mirrored", m_mirror}, {"drawing", m_drawingView}, {"otherSet", m_otherViewSet},
             {"otherZoom", m_otherZoom}, {"otherX", m_otherPan.x()}, {"otherY", m_otherPan.y()}, {"otherRotation", m_otherRotation},
             {"mode", int(m_viewMode)}, {"art", int(m_art)}, {"allArt", m_previewAllArt}, {"onion", m_onionSkin},
             {"grid", m_grid}, {"gridKind", m_gridKind}, {"backlight", m_backlight},
             {"outlineLocked", m_outlineLocked}, {"bboxSelection", m_bboxSelection}};
+    if (!hidden.isEmpty())
+        state["viewHidden"] = hidden;
+    return state;
 }
 
 void Canvas::restoreViewState(QJsonObject const& state)
@@ -39,6 +46,11 @@ void Canvas::restoreViewState(QJsonObject const& state)
     m_backlight = state["backlight"].toBool();
     m_outlineLocked = state["outlineLocked"].toBool(m_outlineLocked);
     m_bboxSelection = state["bboxSelection"].toBool(m_bboxSelection);
+    QSet<int> hidden;
+    for (QJsonValue const& id : state["viewHidden"].toArray())
+        if (id.toInt() > 0)
+            hidden.insert(id.toInt());
+    setViewHidden(hidden);
     m_fitted = false;
     settingChanged();
     emit artChanged(int(m_art));

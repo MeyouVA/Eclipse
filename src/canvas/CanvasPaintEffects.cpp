@@ -26,7 +26,8 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
     Effect const& e = layer.effects[i];
     if (!e.enabled)
         return;
-    double const amount = layer.effectAmount(i, pose);
+    bool const trucked = e.truckFactor && (e.type == Effect::Blur || e.type == Effect::DirectionalBlur || e.type == Effect::MatteBlur);
+    double const amount = layer.effectAmount(i, pose) * (trucked ? scene.truckFactor(l, frame) : 1.0);
     if ((e.type == Effect::Blur && !blursEnabled()) || (e.type == Effect::Focus && !focusEnabled())) {
         // (Switched off in the preferences: the picture goes through as it is.)
     } else if (e.type == Effect::Blur) {

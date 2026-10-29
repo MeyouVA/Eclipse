@@ -234,8 +234,8 @@ void Canvas::paintView()
     std::iota(stacked.begin(), stacked.end(), 0);
     bool heldBack = false;
     for (int l : m_drawingView ? stacked : scene.drawOrder(m_frame)) {
-        if (!scene.inDisplay(l))
-            continue;      // (not in what the display shows)
+        if (!scene.inDisplay(l) || (!m_drawingView && hiddenInView(l)))
+            continue;      // (not in what the display shows, or hidden from the view)
         if (m_currentOnTop && !m_playing && l == m_layer)
             heldBack = true;
         else

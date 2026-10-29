@@ -288,6 +288,7 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
     e.color = QColor(eo["color"].toString("#ff000000"));
     e.matte = eo["matte"].toInt(0);
     e.invert = eo["invert"].toBool(false);
+    e.truckFactor = eo["truckFactor"].toBool(false);
     e.channel = std::clamp(eo["channel"].toInt(0), 0, 3);
     if (QJsonArray const area = eo["area"].toArray(); area.size() == 4)
         e.area = QRectF(area[0].toDouble(), area[1].toDouble(), std::max(0.0, area[2].toDouble()), std::max(0.0, area[3].toDouble()));
@@ -388,6 +389,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.separatePosition = lo["separatePosition"].toBool(false);
     layer.separateScale = lo["separateScale"].toBool(true);
     layer.ignoreParentScale = lo["ignoreParentScale"].toBool(false);
+    layer.cameraAlignment = std::clamp(lo["cameraAlignment"].toInt(Layer::AlignNormal), 0, int(Layer::AlignmentCount) - 1);
     if (QJsonArray const limits = lo["angleLimits"].toArray(); limits.size() == 2) {
         layer.angleLimited = true;
         layer.minAngle = limits[0].toDouble();

@@ -424,6 +424,7 @@ void MainWindow::createCameraView()
         updateStatus();
     });
     panel->layout()->addWidget(status);
+    connect(m_canvas, &Canvas::viewHiddenChanged, this, &MainWindow::refreshViewHidden);
     connect(m_canvas, &Canvas::zoomChanged, this, [this] { m_zoomLabel->setText(QStringLiteral("%1%").arg(qRound(m_canvas->zoomPercent()))); });
     layout->addWidget(viewFrame(panel, camera), 1);
     // The middle of the window holds it; it can be taken out into a window of its own, or closed.

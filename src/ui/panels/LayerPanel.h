@@ -110,6 +110,7 @@ private:
     QDoubleSpinBox* m_minAngle = nullptr;
     QDoubleSpinBox* m_maxAngle = nullptr;
     QComboBox* m_embeddedPivot = nullptr;
+    QComboBox* m_cameraAlignment = nullptr;
     class QFormLayout* m_form;
     EffectsPanel* m_effects;
 };

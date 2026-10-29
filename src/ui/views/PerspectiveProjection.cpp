@@ -1,4 +1,5 @@
 #include "ui/views/PerspectiveView.h"
+#include "canvas/Canvas.h"
 #include "model/document/Commands.h"
 #include "model/geometry/Deform.h"
 #include <cmath>
@@ -100,7 +101,8 @@ bool PerspectiveView::projectSegment(Point a, Point b, QLineF& line) const
 QPolygonF PerspectiveView::layerPolygon(int layer, QTransform* projection, Drawing* displayed) const
 {
     Scene const& scene = m_document->scene();
-    if (layer < 0 || layer >= scene.layers.size() || !scene.layers[layer].holdsDrawings() || !scene.enabled(layer))
+    if (layer < 0 || layer >= scene.layers.size() || !scene.layers[layer].holdsDrawings() || !scene.enabled(layer)
+        || (m_drawingCanvas && m_drawingCanvas->hiddenInView(layer)))
         return {};
     Layer const& item = scene.layers[layer];
     int const index = item.drawingAt(m_frame);

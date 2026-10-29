@@ -186,6 +186,8 @@ QJsonObject effectToJson(Effect const& e)
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
                     {"matte", e.matte}, {"invert", e.invert}};
+    if (e.truckFactor)
+        one["truckFactor"] = true;
     if (e.type == Effect::Gradient)
         one["endColor"] = e.endColor.name(QColor::HexArgb);
     if (e.type == Effect::ChannelSelector)
@@ -564,6 +566,8 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["separateScale"] = false;
     if (layer.ignoreParentScale)
         layerObject["ignoreParentScale"] = true;
+    if (layer.cameraAlignment != Layer::AlignNormal)
+        layerObject["cameraAlignment"] = layer.cameraAlignment;
     if (layer.angleLimited)
         layerObject["angleLimits"] = QJsonArray{layer.minAngle, layer.maxAngle};
     if (!layer.animatable)

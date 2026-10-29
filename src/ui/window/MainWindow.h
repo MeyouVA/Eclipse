@@ -268,6 +268,10 @@ public slots:
     // The shortcuts and Scripts toolbar buttons the scripts were given.
     void refreshScriptCommands();
     void onActionOpenPreviewManager();
+    // Camera and scene planning views: hide the selected layers from them, or show again all that were hidden.
+    void onActionHideSelectedInViews();
+    void onActionShowHiddenInViews();
+    void refreshViewHidden();
     void onActionRenderPreview();
     void onShowScripts(QMenu* menu);
     void onActionAutoRender(bool on);

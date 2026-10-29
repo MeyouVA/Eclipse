@@ -328,6 +328,10 @@ void EffectsPanel::connectEditors()
         if (!m_rebuilding)
             edit([id](Effect& e) { e.matte = id; });
     });
+    connect(m_truck, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_rebuilding)
+            edit([on](Effect& e) { e.truckFactor = on; });
+    });
     connect(m_invert, &QCheckBox::toggled, this, [this](bool on) {
         if (!m_rebuilding)
             edit([on](Effect& e) { e.invert = on; });

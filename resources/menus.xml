@@ -852,6 +852,8 @@
   <submenu id="menu.grid" text="Grid"/>
   <item id="OpenPreviewManager" text="Preview Manager..." responder="window" slot="onActionOpenPreviewManager()"/>
   <item id="ShowControl"/>
+  <item id="HideSelectedLayers" text="Hide Selected" shortcut="shortcut.hideInViews" responder="window" slot="onActionHideSelectedInViews()"/>
+  <item id="ShowHiddenLayers" text="Show Hidden" shortcut="shortcut.showHiddenInViews" responder="window" slot="onActionShowHiddenInViews()"/>
   <item id="ShowStrokes" icon="view/showstrokes" text="Show Strokes" shortcut="shortcut.showStrokes" checkable="true" responder="camera" slot="onActionShowStrokes(bool)"/>
   <item id="ShowStrokesWash" icon="view/strokeswash" text="Show Strokes with Colour Wash" shortcut="shortcut.showStrokesWash" checkable="true" responder="camera" slot="onActionShowStrokesWash(bool)"/>
   <separator/>
@@ -1649,6 +1651,8 @@
   <item id="CameraCone"/>
   <item id="OpenPreviewManager"/>
   <item id="ShowControl"/>
+  <item id="HideSelectedLayers"/>
+  <item id="ShowHiddenLayers"/>
   <item id="NoZDragging"/>
   <separator/>
   <item id="InsertCamera"/>

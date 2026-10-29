@@ -83,7 +83,7 @@ QVector<DepthView::Mark> DepthView::marks() const
             found.push_back(mark);
             continue;
         }
-        if (!layer.holdsDrawings() || !scene.enabled(l))
+        if (!layer.holdsDrawings() || !scene.enabled(l) || (m_canvas && m_canvas->hiddenInView(l)))
             continue;
         int const index = layer.drawingAt(m_frame);
         if (index == Layer::kNoDrawing || layer.drawings[index].isEmpty())

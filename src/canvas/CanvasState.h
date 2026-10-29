@@ -7,6 +7,7 @@
 #include <QPainterPath>
 #include <QPointer>
 #include <QPolygonF>
+#include <QSet>
 #include <QTransform>
 #include <QVector>
 
@@ -103,6 +104,8 @@ protected:
     bool m_backlight = false;
     bool m_outlineLocked = false;
     bool m_bboxSelection = false;
+    // Layers (by id) hidden from the Camera and scene planning views only, and what hangs under them.
+    QSet<int> m_viewHidden;
     bool m_safeArea = false;
     bool m_lightTable = false;
     bool m_currentOnTop = false;

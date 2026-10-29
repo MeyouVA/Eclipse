@@ -24,6 +24,8 @@ struct Effect {
     QPointF offset;             // shadow: where it falls, in scene units
     int matte = 0;              // cutter: the id of the layer whose drawing cuts this one; particles: the layer whose drawing
                                 // they bounce off (0: none)
+    // Blurs: the radius grows and shrinks with how big depth makes the layer look through the camera.
+    bool truckFactor = false;
     bool invert = false;        // cutter: keep what lies outside the matte instead of inside
     int channel = 0;            // channel selector: 0 red, 1 green, 2 blue, 3 opacity
     QRectF area;                // crop: what is kept, in scene units
