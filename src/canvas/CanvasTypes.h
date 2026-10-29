@@ -44,6 +44,8 @@ struct CanvasTypes {
         ShiftTrace,
         // Click in the drawing: its own pivot goes there (used where the layer says so).
         DrawingPivot,
+        // Dragged: the camera's framing moves for the whole scene (every keyframe at once, none added); Alt: in depth.
+        StaticCamera,
     };
     // Which sheet of the drawing the tools work on.
     enum Art { LineArt, ColourArt, OverlayArt, UnderlayArt };
@@ -69,6 +71,7 @@ struct CanvasTypes {
     // The Transform tool: its options and the preferences that say how it looks and works.
     struct TransformOptions {
         bool pegSelection = false;      // a drawing clicked: the peg it is attached to is picked
+        bool elementMode = false;       // a drawing clicked: that layer itself is moved, whatever would pass it by
         bool lockSelection = false;     // clicks in the view do not change which layers are picked
         bool hideControls = false;
         bool pivotFixed = false;        // Disable Pivot Manipulator
@@ -128,6 +131,6 @@ struct CanvasTypes {
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom, DragTrace, DragLayerPick
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragStaticCamera, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom, DragTrace, DragLayerPick
     };
 };

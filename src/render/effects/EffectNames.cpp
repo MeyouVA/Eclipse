@@ -91,6 +91,10 @@ QString name(Effect const& effect, Scene const& scene)
         int const l = scene.layerIndex(effect.matte);
         return QObject::tr("Apply Peg  %1").arg(l >= 0 ? scene.layers[l].name : QObject::tr("(none)"));
     }
+    case Effect::ApplyCamera: {
+        int const l = scene.layerIndex(effect.matte);
+        return QObject::tr("Apply Camera  %1").arg(l >= 0 ? scene.layers[l].name : QObject::tr("(none)"));
+    }
     case Effect::ScaleOutput:
         return QObject::tr("Scale Output  %1%").arg(int(std::lround(effect.amount * 100.0)));
     case Effect::Focus:

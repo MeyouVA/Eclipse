@@ -33,6 +33,8 @@
 #include <QMenu>
 #include <QStatusBar>
 #include <QToolBar>
+#include <QToolButton>
+#include <QVBoxLayout>
 
 void MainWindow::onActionCameraCone(bool on)
 {
@@ -40,6 +42,44 @@ void MainWindow::onActionCameraCone(bool on)
         view->setCameraCone(on);
     for (PerspectiveView* view : findChildren<PerspectiveView*>())
         view->setCameraCone(on);
+    for (QToolButton* button : findChildren<QToolButton*>(QStringLiteral("PlanningShowCamera"))) {
+        QSignalBlocker const quiet(button);
+        button->setChecked(on);
+    }
+}
+
+// A planning view with its strip underneath: Show/Hide Camera for that view alone, and Reset View.
+QWidget* MainWindow::planningPanel(QWidget* view, std::function<void(bool)> const& showCamera, std::function<void()> const& resetView)
+{
+    QWidget* const panel = new QWidget(this);
+    panel->setObjectName(view->objectName() + QStringLiteral("Panel"));
+    QVBoxLayout* const column = new QVBoxLayout(panel);
+    column->setContentsMargins(0, 0, 0, 0);
+    column->setSpacing(0);
+    column->addWidget(view, 1);
+    QWidget* const strip = new QWidget(panel);
+    strip->setObjectName(QStringLiteral("PlanningStrip"));
+    QHBoxLayout* const across = new QHBoxLayout(strip);
+    across->setContentsMargins(4, 2, 4, 2);
+    QToolButton* const camera = new QToolButton(strip);
+    camera->setObjectName(QStringLiteral("PlanningShowCamera"));
+    camera->setText(tr("Camera"));
+    camera->setToolTip(tr("Show/Hide Camera"));
+    camera->setCheckable(true);
+    camera->setChecked(true);
+    camera->setFocusPolicy(Qt::NoFocus);
+    connect(camera, &QToolButton::toggled, view, showCamera);
+    QToolButton* const reset = new QToolButton(strip);
+    reset->setObjectName(QStringLiteral("PlanningResetView"));
+    reset->setText(tr("Reset View"));
+    reset->setToolTip(tr("Reset View: the view back to where it starts"));
+    reset->setFocusPolicy(Qt::NoFocus);
+    connect(reset, &QToolButton::clicked, view, resetView);
+    across->addWidget(camera);
+    across->addWidget(reset);
+    across->addStretch(1);
+    column->addWidget(strip);
+    return panel;
 }
 
 void MainWindow::createWindowsMenuViews()
@@ -167,7 +207,8 @@ void MainWindow::createWindowsMenuViews()
         });
         connect(view, &PerspectiveView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
         planningMenu(view, QStringLiteral("perspectiveView"));
-        addView(tr("Perspective"), QStringLiteral("PerspectiveViewDock"), view, Qt::RightDockWidgetArea)->hide();
+        QWidget* const panel = planningPanel(view, [view](bool on) { view->setCameraCone(on); }, [view] { view->onActionResetView(); });
+        addView(tr("Perspective"), QStringLiteral("PerspectiveViewDock"), panel, Qt::RightDockWidgetArea)->hide();
     }
     // Top and Side: the scene from above and from the side, to set how far each layer stands from the camera.
     for (DepthView::Mode mode : {DepthView::Top, DepthView::Side}) {
@@ -181,7 +222,8 @@ void MainWindow::createWindowsMenuViews()
                 view->setCurrentCell(l, f);
         });
         connect(view, &DepthView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
-        addView(mode == DepthView::Top ? tr("Top") : tr("Side"), mode == DepthView::Top ? QStringLiteral("TopViewDock") : QStringLiteral("SideViewDock"), view,
+        QWidget* const panel = planningPanel(view, [view](bool on) { view->setCameraCone(on); }, [view] { view->onActionResetView(); });
+        addView(mode == DepthView::Top ? tr("Top") : tr("Side"), mode == DepthView::Top ? QStringLiteral("TopViewDock") : QStringLiteral("SideViewDock"), panel,
              Qt::RightDockWidgetArea)->hide();
     }
     m_playViews = settings().value(QStringLiteral("play/views")).toStringList();

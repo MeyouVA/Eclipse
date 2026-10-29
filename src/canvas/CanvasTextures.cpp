@@ -380,3 +380,73 @@ QVector<int> Canvas::contourPointsPicked() const
             picked.push_back(i);
     return picked;
 }
+
+void Canvas::onActionAdjustLineTexture()
+{
+    Drawing const* const d = currentDrawing();
+    int first = -1;
+    if (selecting() && d)
+        for (int i : std::as_const(m_selStrokes))
+            if (first < 0 && i >= 0 && i < d->strokes.size() && d->strokes[i].width > 0.0f)
+                first = i;
+    if (first < 0) {
+        emit message(tr("Select pencil lines with the Select tool."));
+        return;
+    }
+    Stroke const& shown = d->strokes[first];
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("AdjustLineTextureDialog"));
+    dialog.setWindowTitle(tr("Adjust Line Texture"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QComboBox* const kind = new QComboBox(&dialog);
+    kind->setObjectName(QStringLiteral("LineTextureKind"));
+    for (int k : PencilTexture::kinds())
+        kind->addItem(PencilTexture::icon(k), k == 0 ? tr("None (a solid line)") : PencilTexture::name(k), k);
+    kind->setCurrentIndex(std::max(0, kind->findData(shown.texture)));
+    form->addRow(tr("Texture"), kind);
+    QSpinBox* const amount = new QSpinBox(&dialog);
+    amount->setObjectName(QStringLiteral("LineTextureAmount"));
+    amount->setRange(0, 100);
+    amount->setSuffix(QStringLiteral(" %"));
+    amount->setValue(int(std::lround(shown.textureAmount * 100.0f)));
+    amount->setToolTip(tr("How much of the texture shows (0: a solid line)."));
+    form->addRow(tr("Opacity"), amount);
+    QCheckBox* const crisp = new QCheckBox(tr("Crisp edges"), &dialog);
+    crisp->setObjectName(QStringLiteral("LineTextureCrisp"));
+    crisp->setChecked(shown.textureCrisp);
+    form->addRow(crisp);
+    QSpinBox* const low = new QSpinBox(&dialog);
+    QSpinBox* const high = new QSpinBox(&dialog);
+    low->setObjectName(QStringLiteral("LineTextureLow"));
+    high->setObjectName(QStringLiteral("LineTextureHigh"));
+    for (QSpinBox* box : {low, high}) {
+        box->setRange(0, 100);
+        box->setSuffix(QStringLiteral(" %"));
+    }
+    low->setValue(int(std::lround(shown.textureLow * 100.0f)));
+    high->setValue(int(std::lround(shown.textureHigh * 100.0f)));
+    low->setToolTip(tr("Grain fainter than this leaves no ink."));
+    high->setToolTip(tr("Grain at least this strong is solid ink."));
+    form->addRow(tr("Ramp from"), low);
+    form->addRow(tr("Ramp to"), high);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    int const texture = kind->currentData().toInt();
+    float const opacity = float(amount->value()) / 100.0f;
+    bool const sharp = crisp->isChecked();
+    float const from = float(std::min(low->value(), high->value())) / 100.0f;
+    float const to = float(std::max(low->value(), high->value())) / 100.0f;
+    restyleSelection(tr("Adjust Line Texture"), [=](Stroke& s) {
+        if (s.width <= 0.0f)
+            return;
+        s.texture = texture;
+        s.textureAmount = opacity;
+        s.textureCrisp = sharp;
+        s.textureLow = from;
+        s.textureHigh = to;
+    });
+}

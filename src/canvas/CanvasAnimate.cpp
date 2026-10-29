@@ -33,6 +33,8 @@ int Canvas::animationTarget(int layer) const
     if (layer < 0 || layer >= scene.layers.size())
         return layer;
     Layer const& l = scene.layers[layer];
+    if (m_tx.elementMode)
+        return layer;
     bool const passBy = (m_tx.pegSelection && l.kind != Layer::Peg && l.kind != Layer::Camera) || (l.holdsDrawings() && !l.animatable);
     if (!passBy)
         return layer;
@@ -133,7 +135,19 @@ bool Canvas::penUpLayerPick()
 void Canvas::onActionPegSelectionMode(bool on)
 {
     m_tx.pegSelection = on;
+    if (on)
+        m_tx.elementMode = false;
+    emit selectionModesChanged(m_tx.pegSelection, m_tx.elementMode);
     emit message(on ? tr("Peg Selection Mode: clicking a drawing picks the peg it is attached to.") : QString());
+}
+
+void Canvas::onActionElementMode(bool on)
+{
+    m_tx.elementMode = on;
+    if (on)
+        m_tx.pegSelection = false;
+    emit selectionModesChanged(m_tx.pegSelection, m_tx.elementMode);
+    emit message(on ? tr("Element Mode: the drawing layer clicked is the one moved, even one set not to animate with the animation tools.") : QString());
 }
 
 void Canvas::onActionLockSelection(bool on)

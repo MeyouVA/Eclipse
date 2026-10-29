@@ -316,6 +316,16 @@ Drawing Canvas::previewDrawing() const
     return shown;
 }
 
+QTransform Canvas::viewedThrough(Scene const& scene, int camera, int frame)
+{
+    if (camera < 0 || camera >= scene.layers.size() || scene.layers[camera].kind != Layer::Camera)
+        return scene.cameraTransform(frame);
+    Scene viewed = scene;
+    viewed.layers[camera].cameraAvailable = true;
+    viewed.activeCamera = scene.layers[camera].id;
+    return viewed.cameraTransform(frame);
+}
+
 bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
 {
     NodeGraph const& graph = scene.graph;
@@ -416,7 +426,23 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
         } else if (n && n->kind == GraphNode::EffectNode) {
             out = input(id, 0);
             Effect const& e = n->effect;
-            double const amount = n->amountAt(frame);
+            double amount = n->amountAt(frame);
+            if (e.truckFactor && Effect::trucks(e.type)) {
+                // The layer the picture comes from (along the first inputs): its depth sizes the blur.
+                int from = id;
+                int fed = -1;
+                for (int guard = 0; guard < 256 && fed < 0; ++guard) {
+                    GraphCable const* const c = graph.into(from, 0);
+                    GraphNode const* const up = c ? graph.node(c->from) : nullptr;
+                    if (!up)
+                        break;
+                    if (up->kind == GraphNode::LayerNode)
+                        fed = scene.layerIndex(up->layer);
+                    from = c->from;
+                }
+                if (fed >= 0)
+                    amount *= scene.truckFactor(fed, frame);
+            }
             if (!e.enabled) {
                 // (Turned off: the picture goes through as it is.)
             } else if ((e.type == Effect::Blur && !blursEnabled()) || (e.type == Effect::Focus && !focusEnabled())) {
@@ -436,7 +462,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
             } else if (e.type == Effect::Grain) {
                 Effects::grain(out, amount, quint32(e.seed) * 7919u + quint32(frame));
             } else if (e.type == Effect::RadialBlur) {
-                Effects::radialBlur(out, amount);
+                Effects::radialBlur(out, std::min(amount, 1.0));
             } else if (e.type == Effect::ColourScale) {
                 Effects::colourScale(out, e.color, amount);
             } else if (e.type == Effect::Negate) {
@@ -470,6 +496,33 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 if (int const peg = scene.layerIndex(e.matte); peg >= 0) {
                     QTransform const toDevice = camera * base * QTransform::fromScale(dpr, dpr);
                     Effects::transformImage(out, toDevice.inverted() * scene.worldTransform(peg, frame) * toDevice);
+                }
+            } else if (e.type == Effect::ApplyCamera) {
+                int const other = scene.layerIndex(e.matte);
+                if (other >= 0 && scene.layers[other].kind == Layer::Camera && e.cameraViewpoint && !e.flattenDepth) {
+                    // Each layer of what comes in, seen in its own depth from the other camera: that part of the graph drawn again through it.
+                    if (GraphCable const* const c = graph.into(id, 0)) {
+                        Scene viewed = scene;
+                        viewed.layers[other].cameraAvailable = true;
+                        viewed.activeCamera = scene.layers[other].id;
+                        viewed.graph.cables.removeIf([display](GraphCable const& cable) { return cable.to == display && cable.toPort == 0; });
+                        viewed.graph.cables.push_back(GraphCable{c->from, c->fromPort, display, 0});
+                        QImage again(size, QImage::Format_ARGB32_Premultiplied);
+                        again.fill(Qt::transparent);
+                        {
+                            QPainter ap(&again);
+                            ap.setRenderHints(painter.renderHints());
+                            ap.setTransform(base * QTransform::fromScale(dpr, dpr));
+                            paintGraph(ap, viewed, frame);
+                        }
+                        again.setDevicePixelRatio(dpr);
+                        out = again;
+                    }
+                } else if (other >= 0 && scene.layers[other].kind == Layer::Camera) {
+                    // Flat: the picture as it is, seen through the other camera (or moved with it, as with a peg).
+                    QTransform const toDevice = camera * base * QTransform::fromScale(dpr, dpr);
+                    QTransform const through = e.cameraViewpoint ? viewedThrough(scene, other, frame) * camera.inverted() : scene.worldTransform(other, frame);
+                    Effects::transformImage(out, toDevice.inverted() * through * toDevice);
                 }
             } else if (e.type == Effect::ScaleOutput) {
                 Effects::scaleOutput(out, amount);

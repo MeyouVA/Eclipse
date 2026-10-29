@@ -24,6 +24,8 @@ QList<Entry> const& entries()
         {"rotationControl2", "Camera", "Rotation Control 2", QColor(255, 200, 80)},
         {"scaleControl", "Camera", "Scale Control", QColor(90, 170, 250)},
         {"skewControl", "Camera", "Skew Control", QColor(170, 120, 240)},
+        {"cameraDrawingLabel", "Camera", "Drawing Tool Label", QColor(255, 128, 48)},
+        {"cameraWireframe", "Camera", "Deformation Mesh Wireframe", QColor(90, 220, 140)},
         {"timelineBackground", "Timeline", "Background", QColor(62, 62, 62)},
         {"timelineCurrentLayer", "Timeline", "Current Layer", QColor(96, 96, 96)},
         {"timelineExposed", "Timeline", "Exposed Cell", QColor(122, 122, 122)},

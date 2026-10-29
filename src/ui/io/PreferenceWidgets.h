@@ -13,6 +13,7 @@ struct PreferenceWidgets {
     QSpinBox* undoLevels = nullptr;
     QDoubleSpinBox* minimumFov = nullptr;
     QDoubleSpinBox* maximumFov = nullptr;
+    QCheckBox* pasteForceKeys = nullptr;
     QCheckBox* keepBackup = nullptr;
     QCheckBox* compress = nullptr;
     QSpinBox* quiet = nullptr;
@@ -36,6 +37,7 @@ struct PreferenceWidgets {
     QCheckBox* washDrawing = nullptr;
     QSpinBox* washPercent = nullptr;
     QPushButton* washColour = nullptr;
+    QCheckBox* washStalePreview = nullptr;
     QSpinBox* nudge = nullptr;
     QCheckBox* frameOne = nullptr;
     QSpinBox* gridAcross = nullptr;

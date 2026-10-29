@@ -121,6 +121,7 @@ private:
     QVector<QWidget*> m_lineOptionBoxes;
     void addLineOptionRows();
     QCheckBox* m_scaleThickness = nullptr;
+    QCheckBox* m_tipToCamera = nullptr;
     QCheckBox* m_shapeFill = nullptr;
     QLayout* m_cornersRow = nullptr;
     QLayout* m_minSizeRow = nullptr;

@@ -241,6 +241,8 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
         e.type = Effect::Script;
     else if (type == QLatin1String("external"))
         e.type = Effect::External;
+    else if (type == QLatin1String("applyCamera"))
+        e.type = Effect::ApplyCamera;
     else
         return false;  // an effect of a newer version: left out rather than guessed at
     e.enabled = eo["enabled"].toBool(true);
@@ -289,6 +291,8 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
     e.matte = eo["matte"].toInt(0);
     e.invert = eo["invert"].toBool(false);
     e.truckFactor = eo["truckFactor"].toBool(false);
+    e.cameraViewpoint = eo["cameraViewpoint"].toBool(true);
+    e.flattenDepth = eo["flattenDepth"].toBool(false);
     e.channel = std::clamp(eo["channel"].toInt(0), 0, 3);
     if (QJsonArray const area = eo["area"].toArray(); area.size() == 4)
         e.area = QRectF(area[0].toDouble(), area[1].toDouble(), std::max(0.0, area[2].toDouble()), std::max(0.0, area[3].toDouble()));
@@ -505,6 +509,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.boneLength = std::max(1.0, lo["boneLength"].toDouble(200.0));
     layer.fov = std::clamp(lo["fov"].toDouble(Layer::kDefaultFov), Layer::kMinFov, Layer::kMaxFov);
     layer.nearPlane = std::max(0.0, lo["nearPlane"].toDouble());
+    layer.cameraAvailable = lo["cameraAvailable"].toBool(true);
     layer.farPlane = std::max(0.0, lo["farPlane"].toDouble());
     if (layer.farPlane > 0.0 && layer.farPlane <= layer.nearPlane)
         layer.farPlane = 0.0;

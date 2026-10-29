@@ -17,6 +17,16 @@
 bool Canvas::penUpTool(Drag drag)
 {
     Q_UNUSED(drag);
+if (drag == DragStaticCamera) {
+    QPointF by;
+    double depth = 0.0;
+    staticCameraOffset(by, depth);
+    m_drag = DragNone;
+    if (QLineF(m_splineFrom, m_splineNow).length() >= 1.0)
+        m_document->offsetCamera(m_document->scene().cameraIndex(), by, depth);
+    update();
+    return true;
+}
 if (drag == DragSplineOffset) {
     QPointF const by = splineOffset();
     m_drag = DragNone;

@@ -117,7 +117,9 @@ CellBlock CellBlock::repeated(int times) const
     return out;
 }
 
-CellBlock Document::copyCells(QVector<int> const& layers, int first, int last) const
+bool CellBlock::forceEdgeKeys = true;
+
+CellBlock Document::copyCells(QVector<int> const& layers, int first, int last, bool edgeKeys) const
 {
     CellBlock block;
     first = std::max(first, 0);
@@ -156,6 +158,19 @@ CellBlock Document::copyCells(QVector<int> const& layers, int first, int last) c
                 point.drawing = int(seen.indexOf(point.drawing));
             key.pose.points.removeIf([](PointMove const& point) { return point.drawing < 0; });
             row.keys.push_back(key);
+        }
+        if (edgeKeys && !layer.keys.isEmpty()) {
+            // Keyframes where the block begins and ends, holding the motion as it is there (pose only: no points of drawings).
+            for (int f : {first, last}) {
+                if (std::any_of(row.keys.begin(), row.keys.end(), [&](Keyframe const& k) { return k.frame == f - first; }))
+                    continue;
+                Keyframe edge;
+                edge.frame = f - first;
+                edge.pose = layer.poseAt(f);
+                edge.pose.points.clear();
+                row.keys.push_back(edge);
+            }
+            std::sort(row.keys.begin(), row.keys.end(), [](Keyframe const& a, Keyframe const& b) { return a.frame < b.frame; });
         }
         row.layerName = layer.name;
         row.pivot = layer.pivot;

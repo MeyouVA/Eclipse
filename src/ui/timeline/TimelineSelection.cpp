@@ -154,7 +154,7 @@ bool Timeline::canPasteCells()
 
 void Timeline::copy()
 {
-    cellClipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame());
+    cellClipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame(), CellBlock::forceEdgeKeys);
     Canvas::setArtworkCopiedLast(false);
 }
 

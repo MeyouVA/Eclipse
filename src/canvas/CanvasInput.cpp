@@ -1,5 +1,8 @@
 // Eclipse - the Camera view: mouse, tablet, wheel and keys.
 #include "canvas/Canvas.h"
+#include <QFileInfo>
+#include <QImageReader>
+#include <QUrl>
 
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -94,14 +97,33 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
     }
 }
 
+QStringList Canvas::pictureFiles(QList<QUrl> const& urls)
+{
+    QList<QByteArray> const readable = QImageReader::supportedImageFormats();
+    QStringList files;
+    for (QUrl const& url : urls)
+        if (url.isLocalFile() && readable.contains(QFileInfo(url.toLocalFile()).suffix().toLower().toLatin1()))
+            files << url.toLocalFile();
+    return files;
+}
+
 void Canvas::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-template")))
+    if (event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-template"))
+        || (!m_drawingView && event->mimeData()->hasUrls() && !pictureFiles(event->mimeData()->urls()).isEmpty()))
         event->acceptProposedAction();
 }
 
 void Canvas::dropEvent(QDropEvent* event)
 {
+    if (!m_drawingView && event->mimeData()->hasUrls()) {
+        QStringList const files = pictureFiles(event->mimeData()->urls());
+        if (!files.isEmpty()) {
+            event->acceptProposedAction();
+            emit filesDropped(files, toScene(event->position()));
+            return;
+        }
+    }
     if (!event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-template")))
         return;
     event->acceptProposedAction();

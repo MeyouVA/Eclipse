@@ -38,6 +38,8 @@ struct CellBlock {
     int frames = 0;
     QVector<Row> rows;
     bool isEmpty() const { return frames <= 0 || rows.isEmpty(); }
+    // Preferences: copied for pasting, an animated layer's block has keyframes where it begins and ends (the motion pasted as it was).
+    ECLIPSE_MODEL_API static bool forceEdgeKeys;
     // Pasted, the block leaves the keyframes where it lands as they are (Paste Special without keyframes).
     bool leaveKeys = false;
     // The same cells from the last frame to the first.
@@ -339,6 +341,8 @@ public:
     void moveControlPoint(int layer, int key, int control, QPointF to);
     void moveControlPointInSpace(int layer, int key, int control, QPointF to, double depth);
     bool offsetPath(int layer, QPointF by);
+    // Static Camera Transform: every keyframe of the camera (and its path) moved by the same amount; one without keyframes gets one that holds.
+    bool offsetCamera(int camera, QPointF by, double depth);
     void removeControlPoint(int layer, int key, int control);
     // How far a control point stands towards the camera: the path bends in depth through it.
     void setControlPointDepth(int layer, int key, int control, double z);
@@ -387,7 +391,7 @@ public:
 
     // ---- blocks of cells ----------------------------------------------------------------
     // What is in the frames `first`..`last` of these layers.
-    CellBlock copyCells(QVector<int> const& layers, int first, int last) const;
+    CellBlock copyCells(QVector<int> const& layers, int first, int last, bool edgeKeys = false) const;
     // Empties those cells: no drawing shown, no keyframe.
     void clearCells(QVector<int> const& layers, int first, int last, QString const& text);
     void pasteCells(QVector<int> const& layers, int frame, CellBlock const& block);
@@ -455,6 +459,8 @@ private:
 
     // Runs `edit` on a copy of the scene and pushes the result as one undo step.
     template <class Edit> void apply(QString const& text, Edit edit);
+    // Camera angles an edit changed (keyed, or through a column only camera angles follow) kept within the preference limits.
+    void limitFov(Scene& after) const;
     void setScene(Scene const& scene);
     void replaceDrawing(int layer, int frame, Drawing const& drawing, QString const& text, bool posed);
 

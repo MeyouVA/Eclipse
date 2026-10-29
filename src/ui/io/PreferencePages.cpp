@@ -107,6 +107,11 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.minimumFov->setMaximum(w.maximumFov->value());
     w.generalLayout->addRow(tr("Minimum camera field of view"), w.minimumFov);
     w.generalLayout->addRow(tr("Maximum camera field of view"), w.maximumFov);
+    w.pasteForceKeys = new QCheckBox(tr("Pasting creates start/end keyframes"), w.general);
+    w.pasteForceKeys->setObjectName(QStringLiteral("PrefPasteForceKeys"));
+    w.pasteForceKeys->setToolTip(tr("Cells of an animated layer copied and pasted come with keyframes where they begin and end, so the motion pasted is the motion copied."));
+    w.pasteForceKeys->setChecked(s.value(QStringLiteral("prefs/pasteForceKeys"), true).toBool());
+    w.generalLayout->addRow(w.pasteForceKeys);
     w.keepBackup = new QCheckBox(tr("Keep a backup of the scene file when saving"), w.general);
     w.keepBackup->setObjectName(QStringLiteral("PrefKeepBackup"));
     w.keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));
@@ -252,6 +257,11 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
         if (colour.isValid()) showWashColour(colour);
     });
     w.cameraLayout->addRow(tr("Background wash colour"), w.washColour);
+    w.washStalePreview = new QCheckBox(tr("Enable for Out of Date Previews"), w.camera);
+    w.washStalePreview->setObjectName(QStringLiteral("PrefWashStalePreview"));
+    w.washStalePreview->setChecked(s.value(QStringLiteral("prefs/washStalePreview"), false).toBool());
+    w.washStalePreview->setToolTip(tr("A rendered preview the scene has changed since is still played back, washed with the wash colour and amount, until it is rendered again. Off, it is dropped."));
+    w.cameraLayout->addRow(w.washStalePreview);
     w.nudge = new QSpinBox(w.camera);
     w.nudge->setObjectName(QStringLiteral("PrefNudge"));
     w.nudge->setRange(1, 100);

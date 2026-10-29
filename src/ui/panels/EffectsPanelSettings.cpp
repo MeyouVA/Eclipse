@@ -334,6 +334,11 @@ void EffectsPanel::connectEditors()
     });
     connect(m_invert, &QCheckBox::toggled, this, [this](bool on) {
         if (!m_rebuilding)
-            edit([on](Effect& e) { e.invert = on; });
+            edit([on](Effect& e) {
+                if (e.type == Effect::ApplyCamera)
+                    e.cameraViewpoint = on;
+                else
+                    e.invert = on;
+            });
     });
 }

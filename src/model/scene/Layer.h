@@ -97,6 +97,8 @@ struct Layer {
     double fov = kDefaultFov;
     double nearPlane = 0.0;
     double farPlane = 0.0;
+    // A camera that is not available is never the one the scene is seen through (Scene > Camera passes it by).
+    bool cameraAvailable = true;
     // The angle on a frame: that of the keyframes when they say, else the one above.
     double fovAt(int frame) const;
     QVector<QPointF> quad;

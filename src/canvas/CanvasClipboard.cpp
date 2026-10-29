@@ -15,6 +15,10 @@
 static Drawing s_clipboard;
 // The colours it was drawn in, as the scene it was copied from had them: to find or make them again where it is pasted.
 static QVector<Swatch> s_clipboardColours;
+// Where the copied artwork was in the scene (Camera view only), so that Paste in Place keeps it there in another layer.
+static QTransform s_clipboardWorld;
+static bool s_clipboardPlaced = false;
+static int s_clipboardLayer = 0;
 
 void Canvas::deleteSelection()
 {
@@ -185,6 +189,9 @@ void Canvas::copySelection()
         return;
     s_clipboard = Drawing();
     setArtworkCopiedLast(true);
+    s_clipboardPlaced = !m_drawingView;
+    s_clipboardWorld = s_clipboardPlaced ? worldOf(m_layer, m_frame) : QTransform();
+    s_clipboardLayer = m_layer >= 0 && m_layer < m_document->scene().layers.size() ? m_document->scene().layers[m_layer].id : 0;
     for (int i : m_selStrokes)
         s_clipboard.strokes.push_back(d->strokes[i]);
     for (int i : m_selFills)
@@ -282,6 +289,20 @@ void Canvas::pasteWithPlacement(bool inPlace)
     QVector<int> strokes, fills;
     Drawing placed = s_clipboard;
     placed.renewPointIdentities();
+    if (inPlace && s_clipboardPlaced && !m_drawingView && scene.layers[m_layer].id != s_clipboardLayer) {
+        QTransform const here = worldOf(m_layer, m_frame);
+        if (here.isInvertible() && s_clipboardWorld.isInvertible()) {
+            QTransform const move = s_clipboardWorld * here.inverted();
+            if (!move.isIdentity()) {
+                for (Fill& f : placed.fills)
+                    f.transform(move);
+                for (Stroke& s : placed.strokes)
+                    s.transform(move);
+                for (Picture& p : placed.pictures)
+                    p.transform(move);
+            }
+        }
+    }
     if (!inPlace && m_pasteBehaviour != 0) {
         QRectF const box = placed.bounds();
         QTransform const toView = layerViewTransform();

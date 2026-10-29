@@ -6,7 +6,7 @@
 struct Effect {
     enum Type { Blur, Tint, Cutter, Glow, Shadow, Particles, Transparency, DirectionalBlur, HueSaturation, BrightnessContrast, Grain, RadialBlur,
                 ColourScale, Negate, Median, Ripple, Tone, Highlight, Bloom, Pixelate, Turbulence, MatteGenerator, BlackWhite, MatteResize, MatteBlur, Gradient,
-                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, Script, External, TypeCount };
+                ChannelSelector, Crop, RemoveTransparency, MatteComposite, Blending, VariableBlur, MotionBlur, FieldChart, ColourCurves, Focus, ApplyPeg, ScaleOutput, Glue, Script, External, ApplyCamera, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -26,6 +26,10 @@ struct Effect {
                                 // they bounce off (0: none)
     // Blurs: the radius grows and shrinks with how big depth makes the layer look through the camera.
     bool truckFactor = false;
+    static bool trucks(Type t) { return t == Blur || t == DirectionalBlur || t == MatteBlur || t == RadialBlur; }
+    // Apply Camera: seen through the camera (off: moved with it as with a peg); in a graph, flattened first (off: each layer in its depth).
+    bool cameraViewpoint = true;
+    bool flattenDepth = false;
     bool invert = false;        // cutter: keep what lies outside the matte instead of inside
     int channel = 0;            // channel selector: 0 red, 1 green, 2 blue, 3 opacity
     QRectF area;                // crop: what is kept, in scene units

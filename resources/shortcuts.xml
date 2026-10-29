@@ -169,6 +169,7 @@
   <shortcut id="shortcut.selectCurrentTexture" text="Select Strokes with Current Pencil Texture" value=""/>
   <shortcut id="shortcut.pencilLineProperties" text="Edit Pencil Lines Properties" value=""/>
   <shortcut id="shortcut.lineTextureOpacity" text="Adjust Line Texture Opacity" value=""/>
+  <shortcut id="shortcut.adjustLineTexture" text="Adjust Line Texture" value=""/>
   <shortcut id="shortcut.invertSelection" text="Invert Selection" value="Ctrl+Shift+I"/>
   <shortcut id="shortcut.showStrokes" text="Show Strokes" value="K"/>
   <shortcut id="shortcut.showStrokesWash" text="Show Strokes with Colour Wash" value=""/>
@@ -189,6 +190,11 @@
   <shortcut id="shortcut.selectPrevKeyframePoint" text="Select Previous Keyframe/Point" value=""/>
   <shortcut id="shortcut.selectNextKeyframePoint" text="Select Next Keyframe/Point" value=""/>
   <shortcut id="shortcut.pegSelectionMode" text="Peg Selection Mode" value=""/>
+  <shortcut id="shortcut.elementMode" text="Element Mode" value=""/>
+  <shortcut id="shortcut.showDeformationMesh" text="Show Deformation Mesh" value=""/>
+  <shortcut id="shortcut.toolStaticCamera" text="Static Camera Transform Tool" value=""/>
+  <shortcut id="shortcut.toggleEditor" text="Toggle Editor" value="Shift+E"/>
+  <shortcut id="shortcut.permanentSelection" text="Permanent Selection" value=""/>
   <shortcut id="shortcut.lockSelection" text="Lock Selection" value=""/>
   <shortcut id="shortcut.toggleTransformControls" text="Show/Hide Transform Tool Controls" value=""/>
   <shortcut id="shortcut.movePivotToCursor" text="Move Element or Peg Pivot to Cursor" value=""/>

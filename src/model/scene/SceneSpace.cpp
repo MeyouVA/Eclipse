@@ -10,10 +10,10 @@
 int Scene::cameraIndex() const
 {
     int const chosen = layerIndex(activeCamera);
-    if (chosen >= 0 && layers[chosen].kind == Layer::Camera)
+    if (chosen >= 0 && layers[chosen].kind == Layer::Camera && layers[chosen].cameraAvailable)
         return chosen;
     for (int i = 0; i < layers.size(); ++i)
-        if (layers[i].kind == Layer::Camera)
+        if (layers[i].kind == Layer::Camera && layers[i].cameraAvailable)
             return i;
     return -1;
 }

@@ -1,5 +1,6 @@
 // Eclipse - the Node View's graph: a node's settings edited, and the graph painted.
 #include "ui/views/NodeView.h"
+#include "actions/theme/InterfaceColours.h"
 
 #include <QCheckBox>
 #include "ui/panels/ColourEditor.h"
@@ -111,6 +112,37 @@ void NodeView::editGraphNode(int id)
         peg->setCurrentIndex(std::max(0, peg->findData(e.matte)));
         form->addRow(tr("Peg"), peg);
     }
+    QComboBox* camera = nullptr;
+    QCheckBox* viewpoint = nullptr;
+    QCheckBox* flatten = nullptr;
+    if (e.type == Effect::ApplyCamera) {
+        Scene const& scene = m_document->scene();
+        camera = new QComboBox(&dialog);
+        camera->setObjectName(QStringLiteral("GraphEffectCamera"));
+        camera->addItem(tr("(none)"), 0);
+        for (int l : scene.cameras())
+            camera->addItem(scene.layers[l].name, scene.layers[l].id);
+        camera->setCurrentIndex(std::max(0, camera->findData(e.matte)));
+        form->addRow(tr("Camera"), camera);
+        viewpoint = new QCheckBox(tr("Apply Camera Viewpoint"), &dialog);
+        viewpoint->setObjectName(QStringLiteral("GraphEffectViewpoint"));
+        viewpoint->setToolTip(tr("Seen through the camera. Off, the picture moves with the camera instead, as with a peg."));
+        viewpoint->setChecked(e.cameraViewpoint);
+        form->addRow(viewpoint);
+        flatten = new QCheckBox(tr("Flatten Depth Buffer"), &dialog);
+        flatten->setObjectName(QStringLiteral("GraphEffectFlatten"));
+        flatten->setToolTip(tr("What comes in is seen as one flat picture. Off, each of its layers is seen from the camera in its own depth."));
+        flatten->setChecked(e.flattenDepth);
+        form->addRow(flatten);
+    }
+    QCheckBox* truck = nullptr;
+    if (Effect::trucks(e.type)) {
+        truck = new QCheckBox(tr("Truck Factor"), &dialog);
+        truck->setObjectName(QStringLiteral("GraphEffectTruckFactor"));
+        truck->setToolTip(tr("The blur grows as the layer that comes in nears the camera and shrinks as it goes further away."));
+        truck->setChecked(e.truckFactor);
+        form->addRow(truck);
+    }
     QComboBox* mode = nullptr;
     if (e.type == Effect::Blending) {
         mode = new QComboBox(&dialog);
@@ -160,6 +192,14 @@ void NodeView::editGraphNode(int id)
         e.blendMode = mode->currentIndex();
     if (peg)
         e.matte = peg->currentData().toInt();
+    if (camera)
+        e.matte = camera->currentData().toInt();
+    if (viewpoint)
+        e.cameraViewpoint = viewpoint->isChecked();
+    if (flatten)
+        e.flattenDepth = flatten->isChecked();
+    if (truck)
+        e.truckFactor = truck->isChecked();
     if (text)
         e.text = text->toPlainText();
     if (area[0])
@@ -177,6 +217,21 @@ void NodeView::editGraphNode(int id)
         e.invert = invert->isChecked();
     g.nodes[i].effect = e;
     m_document->setGraph(g, tr("Edit Effect Node"));
+}
+
+QString NodeView::graphPortName(GraphNode const& n, int port, bool input) const
+{
+    if (!input)
+        return n.kind == GraphNode::GroupIn ? tr("Into the group %1").arg(port + 1) : n.outputs() > 1 ? tr("Output %1").arg(port + 1) : tr("Output image");
+    if (n.kind == GraphNode::EffectNode) {
+        if (port == 0)
+            return tr("Input image");
+        Effect::Type const t = n.effect.type;
+        return t == Effect::Blending || t == Effect::Glue ? tr("Under") : tr("Matte");
+    }
+    if (n.kind == GraphNode::Display)
+        return tr("Image shown");
+    return tr("Input %1").arg(port + 1);
 }
 
 void NodeView::paintGraphMode(QPainter& p)
@@ -248,12 +303,16 @@ void NodeView::paintGraphMode(QPainter& p)
             p.drawText(card.adjusted(6 * m_zoom, 4 * m_zoom, -6 * m_zoom, -4 * m_zoom), Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, graphNodeName(n));
             continue;
         }
-        QColor const color = n.kind == GraphNode::LayerNode ? QColor(72, 92, 128) : n.kind == GraphNode::Composite ? QColor(96, 76, 128)
-                             : n.kind == GraphNode::EffectNode ? QColor(128, 70, 110) : n.kind == GraphNode::Display ? QColor(70, 72, 78)
-                                                                                                    : QColor(40, 118, 122);
+        int const shownLayer = n.kind == GraphNode::LayerNode ? m_document->scene().layerIndex(n.layer) : -1;
+        int const layerKind = shownLayer >= 0 ? m_document->scene().layers[shownLayer].kind : -1;
+        QColor const color = layerKind == Layer::Camera ? InterfaceColours::get("nodeCamera") : layerKind == Layer::Peg ? InterfaceColours::get("nodePeg")
+                             : layerKind == Layer::Sound ? InterfaceColours::get("nodeSound") : n.kind == GraphNode::LayerNode ? InterfaceColours::get("nodeDrawing")
+                             : n.kind == GraphNode::Composite ? InterfaceColours::get("nodeComposite") : n.kind == GraphNode::EffectNode ? InterfaceColours::get("nodeEffect")
+                             : n.kind == GraphNode::Display ? InterfaceColours::get("nodeDisplay") : InterfaceColours::get("nodeGroup");
         bool const off = n.kind == GraphNode::EffectNode && !n.effect.enabled;
         bool const chosen = n.id == m_graphNode || m_graphPicked.contains(n.id);
-        p.setPen(QPen(chosen ? QColor(255, 255, 255) : QColor(20, 21, 23), chosen ? 2.0 : 1.0));
+        QColor const border = layerKind == Layer::Camera ? InterfaceColours::get("nodeCameraBorder") : QColor(20, 21, 23);
+        p.setPen(QPen(chosen ? InterfaceColours::get("nodeSelected") : border, chosen ? 2.0 : 1.0));
         p.setBrush(off ? color.darker(190) : color);
         p.drawRoundedRect(r, 4 * m_zoom, 4 * m_zoom);
         p.setPen(off ? QColor(150, 150, 150) : QColor(245, 245, 245));

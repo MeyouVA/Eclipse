@@ -398,6 +398,19 @@ void MainWindow::onActionShowLayerProperties()
     }
 }
 
+void MainWindow::onActionToggleEditor()
+{
+    QDockWidget* const dock = dockOf("LayerPropertiesDock");
+    if (!dock)
+        return;
+    if (dock->isVisible() && !dock->visibleRegion().isEmpty()) {
+        dock->hide();
+        return;
+    }
+    showView(dock);
+    dock->raise();
+}
+
 void MainWindow::onActionShowMessageLog()
 {
     if (QDockWidget* const dock = dockOf("MessageLogDock")) {

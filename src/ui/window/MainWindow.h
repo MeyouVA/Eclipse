@@ -151,6 +151,7 @@ public:
     // The Camera view made to show a scene just made or opened, as the preferences say (fitted, or at its own size).
     void placeCameraView();
     int addDrawingLayer(QString const& name, bool wholeScene);
+    QWidget* planningPanel(QWidget* view, std::function<void(bool)> const& showCamera, std::function<void()> const& resetView);
     int autoSaveMinutes() const { return m_autoSaveMinutes; }
     // The view in the middle (Camera / Drawing) out in a window of its own, and back into the middle.
     void setCameraFloating(bool floating);
@@ -475,6 +476,12 @@ public slots:
     // Quick ease on the keyframes of the layers and frames selected: "in", "out", "both" or "none".
     void onActionSetEase(QString const& which);
     void onActionShowLayerProperties();
+    // Editor...: the properties of the current layer shown, or put away again when they are in front.
+    void onActionToggleEditor();
+    // Node View > Select in Camera...: the next layer clicked in the Camera view is attached to (or cabled into) the node picked.
+    void onActionSelectInCamera();
+    // Pictures dropped on the Camera view: a layer each, centred where they were let go (one step to undo).
+    int dropPicturesOnCamera(QStringList const& files, QPointF scenePos);
     void onActionShowMessageLog();
     void onActionDebugMode(bool on);
     bool debugMode() const { return m_debugMode; }
@@ -805,6 +812,11 @@ private:
     bool m_columnEditorNext = false;    // Column Properties opened as the Column Editor (with Apply/Next)
     LayerPanel* m_layerPanel = nullptr;
     NodeView* m_nodeView = nullptr;
+    // Select in Camera: the node waiting for a layer (a graph node's id, or a layer's), and the prompt shown meanwhile.
+    int m_cameraPickTarget = 0;
+    bool m_cameraPickGraph = false;
+    QPointer<QWidget> m_cameraPickPrompt;
+    void finishSelectInCamera(int picked);
     SubstitutionPanel* m_substitution = nullptr;
 
     QTimer m_playTimer;

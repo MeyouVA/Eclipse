@@ -63,7 +63,10 @@ PreviewManagerView::PreviewManagerView(Document* document, Canvas* canvas, QWidg
     });
     connect(m_document, &Document::changed, this, [this] {
         ++m_revision;
-        if (m_canvas->previewFrames() > 0) {
+        if (m_canvas->previewFrames() > 0 && m_canvas->washesStalePreview()) {
+            m_canvas->setPreviewStale(true);
+            showStatus(true);
+        } else if (m_canvas->previewFrames() > 0) {
             m_canvas->setPreview({});
             showStatus(true);
         }
@@ -278,6 +281,10 @@ void PreviewManagerView::clear()
 void PreviewManagerView::showStatus(bool stale)
 {
     int const frames = m_canvas->previewFrames();
+    if (frames > 0 && stale && m_canvas->previewStale()) {
+        m_status->setText(tr("The scene has changed since the preview was rendered: it plays washed until it is rendered again."));
+        return;
+    }
     if (frames == 0) {
         m_status->setText(stale ? tr("The scene has changed since the preview was rendered: render it again.") : tr("No preview. Render Preview keeps every frame of the scene, to play back without drawing each one again."));
         return;

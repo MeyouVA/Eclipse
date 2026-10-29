@@ -74,6 +74,7 @@ private:
     class QLayout* m_fovRow = nullptr;
     QWidget* m_clipRow = nullptr;
     QDoubleSpinBox* m_nearPlane = nullptr;
+    class QCheckBox* m_cameraAvailable = nullptr;
     QDoubleSpinBox* m_farPlane = nullptr;
     class QToolButton* m_functionButtons[9] = {};
     QDoubleSpinBox* m_scaleX;

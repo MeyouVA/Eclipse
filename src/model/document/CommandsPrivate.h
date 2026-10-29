@@ -24,6 +24,7 @@ template <class Edit> void Document::apply(QString const& text, Edit edit)
 {
     Scene after = m_scene;
     edit(after);
+    limitFov(after);
     for (Layer& layer : after.layers)
         layer.keepDrawingIdentitiesUnique();
     // (Synced layers keep the same timing.)

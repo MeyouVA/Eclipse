@@ -125,6 +125,7 @@ void MainWindow::applyPreferences()
     if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
         m_canvas->setArt(Canvas::LineArt);
     m_document->setUndoLevels(std::clamp(s.value(QStringLiteral("prefs/undoLevels"), 100).toInt(), 0, 10000));
+    CellBlock::forceEdgeKeys = s.value(QStringLiteral("prefs/pasteForceKeys"), true).toBool();
     m_document->setFovLimits(s.value(QStringLiteral("prefs/minimumFov"), Layer::kMinFov).toDouble(),
                              s.value(QStringLiteral("prefs/maximumFov"), Layer::kMaxFov).toDouble());
     if (m_layerPanel)
@@ -150,6 +151,7 @@ void MainWindow::applyPreferences()
     for (Canvas* const view : findChildren<Canvas*>()) {
         view->setBackgroundWash(s.value(QStringLiteral("prefs/washCamera"), false).toBool(), s.value(QStringLiteral("prefs/washDrawing"), false).toBool(),
                                 s.value(QStringLiteral("prefs/washPercent"), 50).toInt(), s.value(QStringLiteral("prefs/washColour"), QColor(Qt::white)).value<QColor>());
+        view->setWashStalePreview(s.value(QStringLiteral("prefs/washStalePreview"), false).toBool());
         view->setZoomOnMouse(s.value(QStringLiteral("prefs/zoomOnMouse"), false).toBool());
         view->setZoomLimits(s.value(QStringLiteral("prefs/zoomMin"), 2).toInt(), s.value(QStringLiteral("prefs/zoomMax"), 6400).toInt());
         view->setDefaultZoom(s.value(QStringLiteral("prefs/defaultZoom"), 100).toInt());
@@ -413,6 +415,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/undoLevels"), w.undoLevels->value());
     s.setValue(QStringLiteral("prefs/minimumFov"), w.minimumFov->value());
     s.setValue(QStringLiteral("prefs/maximumFov"), w.maximumFov->value());
+    s.setValue(QStringLiteral("prefs/pasteForceKeys"), w.pasteForceKeys->isChecked());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/outlineLocked"), w.outlineLocked->isChecked());
     s.setValue(QStringLiteral("prefs/bboxSelection"), w.bboxSelection->isChecked());
@@ -420,6 +423,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/washDrawing"), w.washDrawing->isChecked());
     s.setValue(QStringLiteral("prefs/washPercent"), w.washPercent->value());
     s.setValue(QStringLiteral("prefs/washColour"), w.washColour->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/washStalePreview"), w.washStalePreview->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), w.extend->isChecked());
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());

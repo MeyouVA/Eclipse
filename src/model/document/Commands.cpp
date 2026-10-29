@@ -337,6 +337,45 @@ void Document::setFrameCount(int count)
     apply(tr("Change Scene Length"), [&](Scene& s) { s.setFrameCount(count); });
 }
 
+void Document::limitFov(Scene& after) const
+{
+    auto limited = [this](double degrees) { return std::clamp(degrees, m_minimumFov, m_maximumFov); };
+    for (Layer& l : after.layers) {
+        if (l.kind != Layer::Camera)
+            continue;
+        int const was = m_scene.layerIndex(l.id);
+        Layer const* const before = was >= 0 ? &m_scene.layers[was] : nullptr;
+        if ((!before || before->fov != l.fov) && l.fov > 0.0)
+            l.fov = limited(l.fov);
+        for (Keyframe& key : l.keys) {
+            if (key.pose.fov <= 0.0)
+                continue;       // (not keyed: the camera's own angle)
+            // (A value the camera had before, on any of its keyframes, is left as it is: keys moved in time are not edits of it.)
+            bool const same = before && std::any_of(before->keys.begin(), before->keys.end(), [&](Keyframe const& k) { return k.pose.fov == key.pose.fov; });
+            if (!same)
+                key.pose.fov = limited(key.pose.fov);
+        }
+    }
+    for (FunctionColumn& column : after.functions) {
+        if (!column.hasPoints())
+            continue;
+        bool angles = false, others = false;
+        for (Layer const& l : after.layers)
+            for (ValueLink const& link : l.links)
+                if (link.function == column.id)
+                    (l.kind == Layer::Camera && link.value == Driver::Fov ? angles : others) = true;
+        if (!angles || others)
+            continue;           // (a column other values follow too is theirs as much: left alone)
+        int const was = m_scene.functionIndex(column.id);
+        Layer const* const before = was >= 0 ? &m_scene.functions[was].curve : nullptr;
+        for (Keyframe& key : column.curve.keys) {
+            bool const same = before && std::any_of(before->keys.begin(), before->keys.end(), [&](Keyframe const& k) { return k.pose.x == key.pose.x; });
+            if (!same)
+                key.pose.x = limited(key.pose.x);
+        }
+    }
+}
+
 void Document::setSceneSettings(int width, int height, double fps, double fov)
 {
     apply(tr("Scene Settings"), [&](Scene& s) {

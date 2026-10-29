@@ -605,7 +605,7 @@ void Xsheet::endGesture(bool)
 
 void Xsheet::copy()
 {
-    Timeline::clipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame());
+    Timeline::clipboard() = m_document->copyCells(selectedLayers(), selectionFirstFrame(), selectionLastFrame(), CellBlock::forceEdgeKeys);
     Canvas::setArtworkCopiedLast(false);
 }
 

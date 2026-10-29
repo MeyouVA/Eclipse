@@ -26,7 +26,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
     Effect const& e = layer.effects[i];
     if (!e.enabled)
         return;
-    bool const trucked = e.truckFactor && (e.type == Effect::Blur || e.type == Effect::DirectionalBlur || e.type == Effect::MatteBlur);
+    bool const trucked = e.truckFactor && Effect::trucks(e.type);
     double const amount = layer.effectAmount(i, pose) * (trucked ? scene.truckFactor(l, frame) : 1.0);
     if ((e.type == Effect::Blur && !blursEnabled()) || (e.type == Effect::Focus && !focusEnabled())) {
         // (Switched off in the preferences: the picture goes through as it is.)
@@ -49,7 +49,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
     } else if (e.type == Effect::Grain) {
         Effects::grain(image, amount, quint32(e.seed) * 7919u + quint32(frame));     // a new grain each frame
     } else if (e.type == Effect::RadialBlur) {
-        Effects::radialBlur(image, amount);
+        Effects::radialBlur(image, std::min(amount, 1.0));
     } else if (e.type == Effect::ColourScale) {
         Effects::colourScale(image, e.color, amount);
     } else if (e.type == Effect::Negate) {
@@ -109,6 +109,14 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         if (int const peg = scene.layerIndex(e.matte); peg >= 0 && peg != l) {
             QTransform const toDevice = sceneToDevice * QTransform::fromScale(dpr, dpr);
             Effects::transformImage(image, toDevice.inverted() * scene.worldTransform(peg, frame) * toDevice);
+        }
+    } else if (e.type == Effect::ApplyCamera) {
+        // The layer's picture seen through another camera instead of the scene's (or moved with it, as with a peg).
+        if (int const other = scene.layerIndex(e.matte); other >= 0 && scene.layers[other].kind == Layer::Camera) {
+            QTransform const toDevice = sceneToDevice * QTransform::fromScale(dpr, dpr);
+            QTransform const camera = scene.cameraTransform(frame);
+            QTransform const through = e.cameraViewpoint ? viewedThrough(scene, other, frame) * camera.inverted() : scene.worldTransform(other, frame);
+            Effects::transformImage(image, toDevice.inverted() * through * toDevice);
         }
     } else if (e.type == Effect::ScaleOutput) {
         Effects::scaleOutput(image, amount);

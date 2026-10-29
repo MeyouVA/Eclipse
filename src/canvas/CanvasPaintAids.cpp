@@ -108,6 +108,10 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
             painter.restore();
         }
         paintMorphHints(painter);
+    if (m_tool == StaticCamera && !m_playing && !m_drawingView) {
+        paintStaticCameraAid(painter);
+        return true;
+    }
     if (m_tool == DrawingPivot && !m_playing && !m_drawingView) {
         paintDrawingPivot(painter);
         return true;

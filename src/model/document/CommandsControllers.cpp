@@ -324,6 +324,48 @@ bool Document::offsetPath(int layer, QPointF by)
     return true;
 }
 
+bool Document::offsetCamera(int camera, QPointF by, double depth)
+{
+    if (camera < 0 || camera >= m_scene.layers.size() || m_scene.layers[camera].kind != Layer::Camera || (by.isNull() && depth == 0.0))
+        return false;
+    apply(tr("Static Camera Transform"), [&](Scene& s) {
+        Layer& l = s.layers[camera];
+        if (l.keys.isEmpty()) {
+            Keyframe held;
+            held.frame = 0;
+            held.pose = l.poseAt(0);
+            held.tween = false;
+            l.keys.push_back(held);
+        }
+        for (Keyframe& key : l.keys) {
+            key.pose.x += by.x();
+            key.pose.y += by.y();
+            key.pose.z += depth;
+            for (QPointF& control : key.controls)
+                control += by;
+            for (double& z : key.controlsZ)
+                z += depth;
+        }
+        // A value that follows a function column of its own goes with it; a column others follow too is left alone.
+        for (int value : {int(Driver::X), int(Driver::Y), int(Driver::Z)}) {
+            int const id = l.linkOf(value);
+            int const index = s.functionIndex(id);
+            double const amount = value == Driver::X ? by.x() : value == Driver::Y ? by.y() : depth;
+            if (index < 0 || amount == 0.0)
+                continue;
+            int users = 0;
+            for (Layer const& other : s.layers)
+                for (ValueLink const& link : other.links)
+                    users += link.function == id;
+            FunctionColumn& column = s.functions[index];
+            if (users == 1 && column.hasPoints())
+                for (Keyframe& key : column.curve.keys)
+                    key.pose.x += amount;
+        }
+    });
+    return true;
+}
+
 void Document::setWrites(QVector<Scene::Write> const& writes)
 {
     if (writes == m_scene.writes)

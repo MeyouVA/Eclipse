@@ -55,6 +55,7 @@ public slots:
     void onActionMoveBackward();
     void onActionClippingPlanes();
     void setCameraCone(bool on) { m_cameraCone = on; update(); }
+    bool cameraCone() const { return m_cameraCone; }
 
 signals:
     void layerPicked(int layer);

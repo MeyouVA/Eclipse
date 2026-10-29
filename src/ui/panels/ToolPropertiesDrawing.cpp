@@ -125,6 +125,20 @@ void ToolProperties::addSizeRows()
             action->setChecked(on);
     });
     m_form->addRow(m_lineFill);
+    // Pencil and Brush: the size is the size seen through the camera.
+    m_tipToCamera = new QCheckBox(tr("Adjust Tip to Camera"), this);
+    m_tipToCamera->setObjectName(QStringLiteral("ToolAdjustTipToCamera"));
+    m_tipToCamera->setToolTip(tr("The line comes out as thick as the size set looks in the camera, however the layer is scaled or how far it stands."));
+    m_canvas->setTipToCamera(Canvas::Pencil, settings().value(QStringLiteral("tools/pencilTipToCamera"), false).toBool());
+    m_canvas->setTipToCamera(Canvas::Brush, settings().value(QStringLiteral("tools/brushTipToCamera"), false).toBool());
+    connect(m_tipToCamera, &QCheckBox::toggled, this, [this](bool on) {
+        int const tool = m_canvas->tool();
+        if (tool != Canvas::Pencil && tool != Canvas::Brush)
+            return;
+        m_canvas->setTipToCamera(tool, on);
+        settings().setValue(tool == Canvas::Pencil ? QStringLiteral("tools/pencilTipToCamera") : QStringLiteral("tools/brushTipToCamera"), on);
+    });
+    m_form->addRow(m_tipToCamera);
     // The Select tool: lines scaled get thicker or thinner with it.
     m_scaleThickness = new QCheckBox(tr("Scale Pencil Line Thickness"), this);
     m_scaleThickness->setObjectName(QStringLiteral("SelectScaleThickness"));

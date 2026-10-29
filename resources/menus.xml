@@ -158,6 +158,7 @@
    <item id="LightTable" icon="view/lighttable" text="&amp;Light Table" shortcut="shortcut.lightTable" checkable="true" responder="camera" slot="onActionLightTable(bool)"/>
    <item id="Backlight" icon="view/backlight" text="&amp;Backlight" shortcut="shortcut.backlight" checkable="true" responder="camera" slot="onActionBacklight(bool)"/>
    <menu id="ViewShow" text="S&amp;how">
+    <item id="ShowDeformationMesh" text="Deformation Mesh" shortcut="shortcut.showDeformationMesh" checkable="true" responder="camera" slot="onActionShowDeformationMesh(bool)"/>
     <item id="ShowSafeArea" icon="view/safearea" text="Safe &amp;Area" shortcut="shortcut.safeArea" checkable="true" responder="camera" slot="onActionShowSafeArea(bool)"/>
     <item id="ProportionGrid" icon="view/proportiongrid" text="&amp;Proportion Grid" shortcut="shortcut.proportionGrid" checkable="true" responder="camera" slot="onActionProportionGrid(bool)"/>
     <item id="CameraMask" icon="view/cameramask" text="Camera Mas&amp;k" shortcut="shortcut.cameraMask" checkable="true" responder="camera" slot="onActionCameraMask(bool)"/>
@@ -309,6 +310,7 @@
    <item id="ExportTexture" icon="anim/textureexport" text="&amp;Export Texture..." responder="camera" slot="onActionExportTexture()"/>
    <item id="DeleteTexture" icon="anim/texturedelete" text="&amp;Delete Texture" responder="camera" slot="onActionDeleteTexture()"/>
    <item id="AdjustLineTextureOpacity" icon="anim/textureopacity" text="Adjust Line Texture &amp;Opacity..." shortcut="shortcut.lineTextureOpacity" responder="camera" slot="onActionAdjustLineTextureOpacity()"/>
+   <item id="AdjustLineTexture" icon="anim/textureopacity" text="Adjust Line &amp;Texture..." shortcut="shortcut.adjustLineTexture" responder="camera" slot="onActionAdjustLineTexture()"/>
    <menu id="DrawingPaint" text="&amp;Paint">
     <item id="UnpaintSelection" icon="anim/unpaintsel" text="&amp;Unpaint Selection" shortcut="shortcut.unpaintSelection" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaint"/>
     <item id="UnpaintSelectionAll" icon="anim/unpaintsel" text="Unpaint Selection on All Drawings" shortcut="shortcut.unpaintSelectionAll" responder="camera" slot="onActionSelectionArt(QString)" itemParameter="unpaintAll"/>
@@ -440,6 +442,7 @@
     <item id="ToolSplineOffset" icon="tool/splineoffset" text="S&amp;pline Offset" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="splineoffset"/>
     <item id="ToolRepositionDrawing" icon="tool/reposition" text="Reposition &amp;Drawing" shortcut="shortcut.toolRepositionDrawing" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="repositiondrawing"/>
     <item id="CaptureMotion" icon="anim/animateon" text="Capture &amp;Motion..." responder="window" slot="onActionCaptureMotion()"/>
+    <item id="ToolStaticCamera" icon="tool/splineoffset" text="Static Camera Transform" shortcut="shortcut.toolStaticCamera" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="staticcamera"/>
     <item id="ToolTurn3D" icon="tool/turn3d" text="Turn in Spa&amp;ce" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="turn3d"/>
    </menu>
    <menu id="AnimationCell" text="&amp;Cell">
@@ -538,6 +541,7 @@
    <item id="SelectNextKeyframePoint" icon="timeline/nextkey" text="Select Next Keyframe/P&amp;oint" shortcut="shortcut.selectNextKeyframePoint" responder="window" slot="onActionSelectPathPoint(QString)" itemParameter="next"/>
    <menu id="AnimationTransformOptions" text="Transform Tool O&amp;ptions">
     <item id="PegSelectionMode" text="&amp;Peg Selection Mode" shortcut="shortcut.pegSelectionMode" checkable="true" responder="camera" slot="onActionPegSelectionMode(bool)"/>
+    <item id="ElementMode" text="&amp;Element Mode" shortcut="shortcut.elementMode" checkable="true" responder="camera" slot="onActionElementMode(bool)"/>
     <item id="LockSelection" text="&amp;Lock Selection" shortcut="shortcut.lockSelection" checkable="true" responder="camera" slot="onActionLockSelection(bool)"/>
     <item id="ShowTransformControls" text="Show/Hide Transform Tool &amp;Controls" shortcut="shortcut.toggleTransformControls" checkable="true" checked="true" responder="camera" slot="onActionShowTransformControls(bool)"/>
     <item id="DisablePivotManipulator" text="&amp;Disable Pivot Manipulator" checkable="true" responder="camera" slot="onActionDisablePivotManipulator(bool)"/>
@@ -576,6 +580,7 @@
    </menu>
    <separator/>
    <item id="LayerProperties" icon="timeline/layerprops" text="Layer Proper&amp;ties..." responder="window" slot="onActionShowLayerProperties()"/>
+   <item id="LayerEditor" icon="timeline/layerprops" text="Editor..." shortcut="shortcut.toggleEditor" responder="window" slot="onActionToggleEditor()"/>
   </menu>
 
   <menu id="Scripts" text="Scri&amp;pts" responder="window" aboutToShowSlot="onShowScripts(QMenu*)"/>
@@ -657,6 +662,7 @@
   <item id="ToolSkew"/>
   <item id="ToolMaintainSize"/>
   <item id="ToolSplineOffset"/>
+  <item id="ToolStaticCamera"/>
   <item id="ToolRepositionDrawing"/>
   <item id="ToolDrawingPivot"/>
   <item id="ToolRigging"/>
@@ -683,7 +689,7 @@
   <item id="ToolEllipse" icon="tool/ellipse" text="E&amp;llipse" shortcut="shortcut.toolEllipse" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="ellipse"/>
   <item id="ToolStroke" icon="tool/stroke" text="Stro&amp;ke" shortcut="shortcut.toolStroke" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="stroke"/>
   <item id="ToolCloseGap" icon="tool/closegap" text="Close &amp;Gap" shortcut="shortcut.toolCloseGap" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="closegap"/>
-  <item id="ToolEditGradient" icon="tool/gradient" text="Edit Gra&amp;dient" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="gradient"/>
+  <item id="ToolEditGradient" icon="tool/gradient" text="Edit Gra&amp;dient/Texture" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="gradient"/>
   <item id="ToolLine" icon="tool/line" text="L&amp;ine" shortcut="shortcut.toolLine" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="line"/>
   <item id="ToolPolyline" icon="tool/polyline" text="Pol&amp;yline" shortcut="shortcut.toolPolyline" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="polyline"/>
   <item id="ToolText" icon="tool/text" text="Te&amp;xt" shortcut="shortcut.toolText" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="text"/>
@@ -828,6 +834,11 @@
   <menu id="CameraAnimation" text="Animation">
    <item id="SetEaseMultiple"/>
   </menu>
+  <item id="ElementMode"/>
+  <separator/>
+  <item id="TagLayers"/>
+  <item id="UntagLayers"/>
+  <separator/>
   <item id="InsertKeyframe"/>
   <item id="SetStopMotionKeyframe"/>
   <item id="SetMotionKeyframe"/>
@@ -844,11 +855,14 @@
   <item id="SelectWithCurrentColour" icon="edit/selectcolour" text="Select Strokes with Current Colour" shortcut="shortcut.selectCurrentColour" responder="camera" slot="onActionSelectWithCurrentColour()"/>
   <item id="SelectWithCurrentTexture" icon="edit/selecttexture" text="Select Strokes with Current Pencil Texture" shortcut="shortcut.selectCurrentTexture" responder="camera" slot="onActionSelectWithCurrentTexture()"/>
   <item id="InvertSelection" icon="edit/invertselection" text="Invert Selection" shortcut="shortcut.invertSelection" responder="camera" slot="onActionInvertSelection()"/>
+  <item id="PermanentSelection" text="Permanent Selection" shortcut="shortcut.permanentSelection" checkable="true" responder="camera" slot="onActionPermanentSelection(bool)"/>
+  <item id="AdjustLineTexture"/>
   <separator/>
   <item id="SwitchArt"/>
   <item id="PreviewAllArt"/>
   <separator/>
   <item id="LightTable"/>
+  <item id="TopLight"/>
   <submenu id="menu.grid" text="Grid"/>
   <item id="OpenPreviewManager" text="Preview Manager..." responder="window" slot="onActionOpenPreviewManager()"/>
   <item id="ShowControl"/>
@@ -864,6 +878,8 @@
   <separator/>
   <submenu id="menu.convert" text="Convert"/>
   <submenu id="menu.transform" text="Transform"/>
+  <separator/>
+  <item id="LayerEditor"/>
  </menu>
 
  <menu id="menu.timeline" text="Timeline Menu">
@@ -1562,6 +1578,7 @@
    <item id="NodeViewCableBezier" text="Bezier" responder="nodeView" slot="onActionCableStyle(QString)" itemParameter="bezier"/>
   </menu>
   <separator/>
+  <item id="NodeViewSelectInCamera" text="Select in Camera..." responder="window" slot="onActionSelectInCamera()"/>
   <item id="NodeViewWireGraph" text="Wire the Graph by Hand" responder="nodeView" slot="onActionWireGraph()"/>
  </menu>
 
@@ -1649,6 +1666,8 @@
   <item id="ResetView"/>
   <separator/>
   <item id="CameraCone"/>
+  <item id="PasteInPlace"/>
+  <item id="LayerEditor"/>
   <item id="OpenPreviewManager"/>
   <item id="ShowControl"/>
   <item id="HideSelectedLayers"/>

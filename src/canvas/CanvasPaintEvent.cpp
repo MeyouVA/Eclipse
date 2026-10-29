@@ -157,13 +157,21 @@ void Canvas::paintEvent(QPaintEvent*)
     canvas_paint::PictureWash const previousWash = wash;
     auto const restoreWash = qScopeGuard([&] { wash = previousWash; });
     bool const drawingTool = m_tool != Transform && m_tool != IK && m_tool != Rigging && m_tool != SplineOffset && m_tool != Turn3D
-                             && m_tool != Hand && m_tool != Zoom && m_tool != RotateView;
+                             && m_tool != Hand && m_tool != Zoom && m_tool != RotateView && m_tool != StaticCamera;
     wash.percent = !m_playing && !m_drawingView && !m_planeView && m_viewMode == ViewNormal && !m_showSnapshot
                         && (drawingTool ? m_washDrawing : m_washCamera) ? m_washPercent : 0;
     wash.colour = m_washColour;
     // (While anything moves - the pen, the playhead - paint is drawn with its quick edge.)
     s_fineFills = m_drag == DragNone && !m_playing;
     paintView();
+    if (!m_playing && !m_drawingView && !m_planeView && !m_showSnapshot) {
+        QPainter aids(this);
+        aids.setRenderHint(QPainter::Antialiasing, true);
+        if (m_deformationMesh)
+            paintDeformationMesh(aids);
+        if (drawingTool && m_viewMode == ViewNormal)
+            paintDrawingLabel(aids);
+    }
     s_fineFills = true;
     s_lineOpacity = 1.0;
     m_lastDrawMs = drawing.nsecsElapsed() / 1.0e6;
@@ -194,6 +202,12 @@ void Canvas::paintView()
     if (m_playing && m_usePreview && !m_drawingView && m_frame >= 0 && m_frame < m_preview.size() && !m_preview[m_frame].isNull()) {
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
         painter.drawImage(frameRect, m_preview[m_frame]);
+        if (m_previewStale) {
+            // Out of date: washed, so that it is not taken for the scene as it is now.
+            QColor wash = m_washColour;
+            wash.setAlphaF(std::clamp(m_washPercent, 0, 100) / 100.0f);
+            painter.fillRect(frameRect, wash);
+        }
         QPen border(QColor(70, 70, 70));
         border.setCosmetic(true);
         painter.setPen(border);
@@ -479,7 +493,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
         && layer.holdsDrawings()) {
         // The size of what the tool draws, round the pointer (as big as the layer is shown).
         QTransform const where = layerViewTransform();
-        double const radius = m_brushWidth / 2.0 * std::sqrt(std::abs(where.determinant()));
+        double const radius = tipWidth() / 2.0 * std::sqrt(std::abs(where.determinant()));
         painter.save();
         painter.resetTransform();
         painter.setRenderHint(QPainter::Antialiasing, true);

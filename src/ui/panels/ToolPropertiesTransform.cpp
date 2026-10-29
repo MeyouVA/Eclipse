@@ -29,7 +29,7 @@ void ToolProperties::addTransformRows()
         m_form->addRow(strip);
         m_transformRows.push_back(strip);
     };
-    row("TransformSelectionModes", tr("Selection"), {"PegSelectionMode", "LockSelection", "ShowTransformControls"});
+    row("TransformSelectionModes", tr("Selection"), {"PegSelectionMode", "ElementMode", "LockSelection", "ShowTransformControls"});
     row("TransformPivotOptions", tr("Pivot"), {"DisablePivotManipulator", "MovePivotToCursor"});
     row("TransformAnimateModes", tr("Animate"), {"AnimateCurrentFrame", "AnimateOnionRange", "AnimateOff"});
     row("TransformOperations", tr("Operations"), {"FlipHorizontalAnimation", "FlipVerticalAnimation", "FlipScaleX", "FlipScaleY", "Rotate90CW", "Rotate90CCW",

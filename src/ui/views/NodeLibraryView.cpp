@@ -99,6 +99,7 @@ NodeLibraryView::NodeLibraryView(QWidget* parent) : QWidget(parent)
         {QT_TR_NOOP("Colour Curves"), "effect:34", QT_TR_NOOP("Each colour level changed along a curve: for all three colours, or red, green and blue alone"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Focus"), "effect:35", QT_TR_NOOP("Depth of field: the layer blurred the further it stands from the depth in focus"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("Apply Peg Transformation"), "effect:36", QT_TR_NOOP("The picture moved as another layer (a peg) moves"), QT_TR_NOOP("Move")},
+        {QT_TR_NOOP("Apply Camera"), "effect:41", QT_TR_NOOP("What comes in, seen through a second camera (or moving with it); in a graph, each layer in its own depth"), QT_TR_NOOP("Move")},
         {QT_TR_NOOP("Scale Output"), "effect:37", QT_TR_NOOP("The picture made at a fraction of the resolution"), QT_TR_NOOP("Output")},
         {QT_TR_NOOP("Script"), "effect:39", QT_TR_NOOP("A JavaScript run on the picture each frame"), QT_TR_NOOP("Filter")},
         {QT_TR_NOOP("External"), "effect:40", QT_TR_NOOP("A program run on the picture each frame (it reads {in} and writes {out})"), QT_TR_NOOP("Filter")},

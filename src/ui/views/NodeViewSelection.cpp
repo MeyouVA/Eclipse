@@ -1,4 +1,6 @@
 #include "ui/views/NodeView.h"
+#include <QHelpEvent>
+#include <QToolTip>
 #include "model/document/Commands.h"
 #include "actions/theme/InterfaceColours.h"
 #include <QFocusEvent>
@@ -206,6 +208,25 @@ void NodeView::movePickedNodes(QPointF delta)
 
 bool NodeView::event(QEvent* event)
 {
+    if (event->type() == QEvent::ToolTip && graphMode()) {
+        // The port under the pointer: what it is for.
+        QPoint const at = static_cast<QHelpEvent*>(event)->pos();
+        for (GraphNode const& n : m_document->scene().graph.nodes) {
+            if (n.group != m_graphGroup || n.kind == GraphNode::Note)
+                continue;
+            for (int input = 0; input < 2; ++input)
+                for (int port = 0; port < (input ? n.inputs() : n.outputs()); ++port) {
+                    QPointF const place = input ? graphInPort(n.id, port) : graphOutPort(n.id, port);
+                    if (QLineF(place, QPointF(at)).length() <= 8.0) {
+                        QToolTip::showText(static_cast<QHelpEvent*>(event)->globalPos(), graphPortName(n, port, input), this);
+                        return true;
+                    }
+                }
+        }
+        QToolTip::hideText();
+        event->ignore();
+        return true;
+    }
     if (event->type() == QEvent::ShortcutOverride) {
         auto* key = static_cast<QKeyEvent*>(event);
         int const code = key->key();

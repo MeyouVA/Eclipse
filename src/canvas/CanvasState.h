@@ -258,6 +258,10 @@ protected:
     Stroke m_repaintPath;
     // Spline Offset: where the pen went down and where it is (in the view), and that as a move of the path.
     QPointF m_splineFrom, m_splineNow;
+    bool m_staticCameraDepth = false;   // the Static Camera Transform drag goes in depth (Alt)
+    bool m_deformationMesh = false;
+    bool m_pencilTipToCamera = false, m_brushTipToCamera = false;
+    bool m_washStalePreview = false, m_previewStale = false;
     QVector<QPointF> m_envRest, m_envNow;
     int m_envPoint = -1;
     int m_morphGroup = -1;

@@ -365,6 +365,7 @@ void Canvas::onActionCreateDrawingFromSelection()
 void Canvas::setPreview(QVector<QImage> const& frames)
 {
     m_preview = frames;
+    m_previewStale = false;
     update();
 }
 

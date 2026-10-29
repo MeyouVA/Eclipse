@@ -199,6 +199,28 @@ void MainWindow::setActiveView(QWidget* frame)
 
 bool MainWindow::eventFilter(QObject* object, QEvent* event)
 {
+    if (m_cameraPickPrompt && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::KeyPress)) {
+        // Select in Camera: the next click in the Camera view picks the layer; Escape (or a click elsewhere) lets go.
+        if (event->type() == QEvent::KeyPress && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
+            finishSelectInCamera(-1);
+            return true;
+        }
+        if (event->type() == QEvent::MouseButtonPress) {
+            auto* const press = static_cast<QMouseEvent*>(event);
+            if (object == m_canvas && press->button() == Qt::LeftButton) {
+                int const picked = m_canvas->layerAt(press->position());
+                if (picked < 0) {
+                    statusBar()->showMessage(tr("Nothing there: click a layer's artwork in the Camera view (Escape to stop)."), 4000);
+                    return true;
+                }
+                finishSelectInCamera(picked);
+                return true;
+            }
+            QWidget* const pressed = qobject_cast<QWidget*>(object);
+            if (pressed && pressed != m_cameraPickPrompt && !m_cameraPickPrompt->isAncestorOf(pressed) && pressed != m_canvas && !m_canvas->isAncestorOf(pressed))
+                finishSelectInCamera(-1);
+        }
+    }
     // (When the user last did anything: saving by itself waits for a pause.)
     switch (event->type()) {
     case QEvent::MouseButtonPress:
@@ -306,8 +328,10 @@ void MainWindow::onShowCameras(QMenu* menu)
     Scene const& scene = m_document->scene();
     QVector<int> const cameras = scene.cameras();
     for (int l : cameras) {
-        QAction* const a = menu->addAction(scene.layers[l].name);
+        bool const available = scene.layers[l].cameraAvailable;
+        QAction* const a = menu->addAction(available ? scene.layers[l].name : tr("%1 (not available)").arg(scene.layers[l].name));
         a->setCheckable(true);
+        a->setEnabled(available);
         a->setChecked(l == scene.cameraIndex());
         int const id = scene.layers[l].id;
         connect(a, &QAction::triggered, this, [this, id] { m_document->setActiveCamera(m_document->scene().layerIndex(id)); });

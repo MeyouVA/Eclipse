@@ -78,6 +78,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Scale Output")), &QAction::triggered, this, [this] { add(Effect::ScaleOutput); });
     connect(menu->addAction(tr("Script")), &QAction::triggered, this, [this] { add(Effect::Script); });
     connect(menu->addAction(tr("External")), &QAction::triggered, this, [this] { add(Effect::External); });
+    connect(menu->addAction(tr("Apply Camera")), &QAction::triggered, this, [this] { add(Effect::ApplyCamera); });
     addButton->setMenu(menu);
     QToolButton* const removeButton = new QToolButton(this);
     removeButton->setText(QStringLiteral("-"));
@@ -253,7 +254,8 @@ void EffectsPanel::showEditors()
     // What the amount is on this frame: the keyframes say, for an animated effect.
     double const amount = valid ? scene.layers[m_layer].effectAmount(row, scene.layers[m_layer].poseAt(m_frame)) : 0.0;
     m_rebuilding = true;
-    bool const pegged = valid && e.type == Effect::ApplyPeg;
+    bool const viewed = valid && e.type == Effect::ApplyCamera;
+    bool const pegged = valid && (e.type == Effect::ApplyPeg || viewed);
     bool const plain = valid && (e.type == Effect::ChannelSelector || e.type == Effect::Crop || e.type == Effect::MatteComposite || e.type == Effect::Blending
                                  || e.type == Effect::Glue
                                  || pegged);
@@ -290,7 +292,7 @@ void EffectsPanel::showEditors()
         }
     }
     m_animated->setChecked(valid && e.animated);
-    m_truck->setVisible(valid && (e.type == Effect::Blur || e.type == Effect::DirectionalBlur || e.type == Effect::MatteBlur));
+    m_truck->setVisible(valid && Effect::trucks(e.type));
     m_truck->setChecked(valid && e.truckFactor);
     m_color->setVisible(coloured);
     m_endColor->setVisible(graded);
@@ -331,23 +333,28 @@ void EffectsPanel::showEditors()
         }
     }
     m_matteLabel->setVisible(cutter || particles || shading || pegged);
-    m_matteLabel->setText(particles ? tr("Bounce Off") : pegged ? tr("Peg") : tr("Matte"));
+    m_matteLabel->setText(particles ? tr("Bounce Off") : viewed ? tr("Camera") : pegged ? tr("Peg") : tr("Matte"));
     m_matte->setVisible(cutter || particles || shading || pegged);
-    m_matte->setToolTip(pegged ? tr("The layer (a peg, mostly) whose motion on each frame moves this layer's picture as well.")
+    m_matte->setToolTip(viewed ? tr("The camera this layer's picture is seen through, instead of the scene's.")
+                        : pegged ? tr("The layer (a peg, mostly) whose motion on each frame moves this layer's picture as well.")
                         : particles ? tr("A layer whose drawing the particles bounce off (keeping as much of their speed as Bounce says).")
                         : shading ? tr("The layer whose drawing says where the shade (or the light) falls on this one.")
                                   : tr("The layer whose drawing cuts this one: only what lies inside it stays."));
-    m_invert->setVisible(cutter || shading || resizing || graded);
-    m_invert->setText(resizing ? tr("Shrink") : graded ? tr("Radial") : tr("Inverted"));
+    m_invert->setVisible(cutter || shading || resizing || graded || viewed);
+    m_invert->setText(viewed ? tr("Apply Camera Viewpoint") : resizing ? tr("Shrink") : graded ? tr("Radial") : tr("Inverted"));
     m_invert->setToolTip(resizing ? tr("Make what is painted smaller instead of bigger.") : graded ? tr("From the middle out, instead of from side to side.")
                                   : tr("Keep what lies outside the matte instead."));
     if (cutter || shading || resizing || graded)
         m_invert->setChecked(e.invert);
+    if (viewed) {
+        m_invert->setChecked(e.cameraViewpoint);
+        m_invert->setToolTip(tr("Seen through the camera. Off, the picture moves with the camera instead, as with a peg."));
+    }
     if (cutter || particles || shading || pegged) {
         m_matte->clear();
         m_matte->addItem(tr("(none)"), 0);
         for (int l = int(scene.layers.size()) - 1; l >= 0; --l)
-            if (l != m_layer && (pegged || scene.layers[l].holdsDrawings()))
+            if (l != m_layer && (viewed ? scene.layers[l].kind == Layer::Camera : pegged || scene.layers[l].holdsDrawings()))
                 m_matte->addItem(scene.layers[l].name, scene.layers[l].id);
         m_matte->setCurrentIndex(std::max(0, m_matte->findData(e.matte)));
     }

@@ -27,7 +27,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         update();
         return;
     }
-    if (m_drag == DragSplineOffset) {
+    if (m_drag == DragSplineOffset || m_drag == DragStaticCamera) {
         m_splineNow = widgetPos;
         update();
         return;

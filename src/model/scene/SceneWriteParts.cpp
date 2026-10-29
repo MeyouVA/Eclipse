@@ -181,13 +181,19 @@ QJsonObject effectToJson(Effect const& e)
                              : e.type == Effect::MotionBlur ? "motionBlur" : e.type == Effect::FieldChart ? "fieldChart"
                              : e.type == Effect::ColourCurves ? "colourCurves" : e.type == Effect::Focus ? "focus"
                              : e.type == Effect::ApplyPeg ? "applyPeg" : e.type == Effect::ScaleOutput ? "scaleOutput" : e.type == Effect::Glue ? "glue"
-                             : e.type == Effect::Script ? "script" : e.type == Effect::External ? "external"
+                             : e.type == Effect::Script ? "script" : e.type == Effect::External ? "external" : e.type == Effect::ApplyCamera ? "applyCamera"
                              : "cutter"},
                     {"enabled", e.enabled}, {"amount", e.amount}, {"animated", e.animated},
                     {"color", e.color.name(QColor::HexArgb)}, {"dx", e.offset.x()}, {"dy", e.offset.y()},
                     {"matte", e.matte}, {"invert", e.invert}};
     if (e.truckFactor)
         one["truckFactor"] = true;
+    if (e.type == Effect::ApplyCamera) {
+        if (!e.cameraViewpoint)
+            one["cameraViewpoint"] = false;
+        if (e.flattenDepth)
+            one["flattenDepth"] = true;
+    }
     if (e.type == Effect::Gradient)
         one["endColor"] = e.endColor.name(QColor::HexArgb);
     if (e.type == Effect::ChannelSelector)
@@ -568,6 +574,8 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["ignoreParentScale"] = true;
     if (layer.cameraAlignment != Layer::AlignNormal)
         layerObject["cameraAlignment"] = layer.cameraAlignment;
+    if (!layer.cameraAvailable)
+        layerObject["cameraAvailable"] = false;
     if (layer.angleLimited)
         layerObject["angleLimits"] = QJsonArray{layer.minAngle, layer.maxAngle};
     if (!layer.animatable)

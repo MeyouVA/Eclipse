@@ -188,6 +188,12 @@ void MainWindow::createViews()
     });
     connect(m_timeline, &Timeline::templateDropped, this, &MainWindow::dropTemplate);
     connect(m_canvas, &Canvas::templateDropped, this, [this](QString const& path) { dropTemplate(path, frame()); });
+    connect(m_canvas, &Canvas::filesDropped, this, &MainWindow::dropPicturesOnCamera);
+    connect(m_canvas, &Canvas::selectionModesChanged, this, [this](bool peg, bool element) {
+        m_actions->setChecked(QStringLiteral("PegSelectionMode"), peg);
+        m_actions->setChecked(QStringLiteral("ElementMode"), element);
+    });
+    connect(m_canvas, &Canvas::permanentSelectionChanged, this, [this](bool on) { m_actions->setChecked(QStringLiteral("PermanentSelection"), on); });
     addView(tr("Library"), QStringLiteral("LibraryDock"), m_library, Qt::RightDockWidgetArea)->hide();
 
     // Reference: pictures to look at while drawing (File > Import > To Reference View).

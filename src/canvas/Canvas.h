@@ -5,6 +5,7 @@
 
 #include "EclipseExport.h"
 
+#include <QUrl>
 #include <QTransform>
 #include <QFont>
 #include <QPointer>
@@ -140,7 +141,7 @@ public:
     // From the scene to the view (for checking where things are shown).
     QTransform viewTransformForTest() const { return viewTransform(); }
     void setPaintAllLayers(bool on) { m_paintLayers = on; }
-    void setPermanentSelection(bool on) { m_permanentSelection = on; }
+    void setPermanentSelection(bool on);
     void setStampScale(int percent)
     {
         m_stampScale = percent;
@@ -187,6 +188,33 @@ public:
     int animationTarget(int layer) const;
     static int changedParts(Pose const& a, Pose const& b);
     Q_INVOKABLE void onActionPegSelectionMode(bool on);
+    // Element Mode: the layer clicked is moved itself (Peg Selection Mode and Animate Using Animation Tools are passed over).
+    Q_INVOKABLE void onActionElementMode(bool on);
+    // View > Show > Deformation Mesh: the current layer's drawing with a lattice over it, bent as its deformers bend it.
+    Q_INVOKABLE void onActionShowDeformationMesh(bool on) { m_deformationMesh = on; update(); }
+    bool deformationMeshShown() const { return m_deformationMesh; }
+    // The lattice the deformation mesh shows (in the layer's coordinates, bent), empty when the layer is not deformed.
+    QVector<QPolygonF> deformationMesh(int layer, int frame) const;
+    // Adjust Tip to Camera (Pencil, Brush): the size set is the size seen through the camera, whatever the layer's scale or depth.
+    void setTipToCamera(int tool, bool on);
+    bool tipToCamera(int tool) const { return tool == Pencil ? m_pencilTipToCamera : tool == Brush ? m_brushTipToCamera : false; }
+    double tipWidth() const;
+    // The layer whose artwork is under a place of the view (-1: none).
+    int layerAt(QPointF widgetPos) const { return layerUnder(toScene(widgetPos)); }
+    // Which of `urls` are pictures that can be read in.
+    static QStringList pictureFiles(QList<QUrl> const& urls);
+    // Preferences: a preview the scene has changed since is still played, washed, until it is rendered again.
+    void setWashStalePreview(bool on) { m_washStalePreview = on; }
+    bool washesStalePreview() const { return m_washStalePreview; }
+    void setPreviewStale(bool stale) { m_previewStale = stale; update(); }
+    bool previewStale() const { return m_previewStale; }
+    bool elementMode() const { return m_tx.elementMode; }
+    // Select tool: what is selected stays selected on other frames (Permanent Selection), from the menus.
+    Q_INVOKABLE void onActionPermanentSelection(bool on) { setPermanentSelection(on); }
+    // The selected lines' pencil texture: which one, how much shows, crisp or soft, and its ramp, in one window.
+    Q_INVOKABLE void onActionAdjustLineTexture();
+    // The Static Camera Transform tool's drag: how far the camera goes in what it hangs from, and in depth.
+    void staticCameraOffset(QPointF& by, double& depth) const;
     Q_INVOKABLE void onActionLockSelection(bool on);
     Q_INVOKABLE void onActionShowTransformControls(bool on);
     Q_INVOKABLE void onActionDisablePivotManipulator(bool on);
@@ -268,6 +296,8 @@ public:
 
     // Renders one frame of a scene the way the canvas shows it, without the editing aids.
     static void paintFrame(QPainter& painter, Scene const& scene, int frame);
+    // From the scene to what camera `camera` (a layer) would show, as the scene's own camera does with cameraTransform.
+    static QTransform viewedThrough(Scene const& scene, int camera, int frame);
     static void setBlursEnabled(bool on);
     static bool blursEnabled();
     static void setFocusEnabled(bool on);
@@ -665,6 +695,8 @@ signals:
     void selectBothArtsChanged(bool on);
     // A template dragged out of the Library was let go over the view.
     void templateDropped(QString const& path);
+    // Pictures dragged in from outside, let go at `scenePos` (in the scene).
+    void filesDropped(QStringList const& files, QPointF scenePos);
     void lassoChanged(bool on);
     void showGuidesChanged(bool on);
     // The Text tool was pressed on words: this is the font they are in.
@@ -677,6 +709,9 @@ signals:
     void morphHereChanged();
     // Something the user should know (shown in the status bar).
     void message(QString const& text);
+    // Peg Selection Mode and Element Mode (one turns the other off), for the menus to show.
+    void selectionModesChanged(bool pegSelection, bool elementMode);
+    void permanentSelectionChanged(bool on);
     // The gap closed by the paint tools changed (from the Auto Gap Closing menu); a pencil texture taken by the eyedropper.
     void closeGapChanged(double size);
     void lineTextureTaken(int texture);
@@ -752,6 +787,9 @@ private:
     bool penUpLayerPick();
     void drawingPivotDown(QPointF widgetPos);
     void paintDrawingPivot(QPainter& painter);
+    void paintStaticCameraAid(QPainter& painter);
+    void paintDrawingLabel(QPainter& painter);
+    void paintDeformationMesh(QPainter& painter);
     // The line, rectangle or ellipse from where the drag began to `p`.
     void updateShape(QPointF p, Qt::KeyboardModifiers modifiers);
     void contourDown(QPointF p, Qt::KeyboardModifiers modifiers);

@@ -8,7 +8,7 @@
 
 void Canvas::penDown(QPointF widgetPos, float pressure, bool panning, Qt::KeyboardModifiers modifiers)
 {
-    static QVector<Tool> const looking = {Hand, Zoom, RotateView, Transform, IK, Rigging, Dropper, Morphing, SplineOffset, Turn3D, Reposition};
+    static QVector<Tool> const looking = {Hand, Zoom, RotateView, Transform, IK, Rigging, Dropper, Morphing, SplineOffset, Turn3D, Reposition, StaticCamera};
     Scene const& scene = m_document->scene();
     if (!panning && !m_spaceDown && !m_playing && !m_morphMacro && !looking.contains(m_tool)
         && m_layer >= 0 && m_layer < scene.layers.size() && !scene.layers[m_layer].locked
@@ -74,6 +74,16 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             m_turnFrom = widgetPos;
             m_drag = DragPoseTurn;
         }
+        return;
+    }
+    if (m_tool == StaticCamera) {
+        if (m_drawingView || m_document->scene().cameraIndex() < 0) {
+            emit message(tr("Static Camera Transform moves the camera the Camera view looks through: the scene has none."));
+            return;
+        }
+        m_drag = DragStaticCamera;
+        m_staticCameraDepth = modifiers & Qt::AltModifier;
+        m_splineFrom = m_splineNow = widgetPos;
         return;
     }
     if (m_tool == SplineOffset) {
@@ -324,7 +334,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
         m_stroke = Stroke();
         m_stroke.swatch = m_swatch;
         m_stroke.color = scene.resolve(m_swatch, Qt::black);
-        m_stroke.width = m_tool == StrokeTool ? 0.0f : float(m_brushWidth);
+        m_stroke.width = m_tool == StrokeTool ? 0.0f : float(tipWidth());
         m_stroke.join = m_join;
         m_stroke.capStart = m_capStart;
         m_stroke.capEnd = m_capEnd;

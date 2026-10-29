@@ -93,6 +93,8 @@ public:
     QVector<int> pickedGraphNodes() const;
     void addPickedGraphNode(int id);
     int groupGraphNodes(QVector<int> const& ids);
+    // What a port of a node takes or gives (shown when the pointer rests on it): "Input image", "Matte" ...
+    QString graphPortName(GraphNode const& node, int port, bool input) const;
 
 public slots:
     void onActionNavigator(QString const& position);

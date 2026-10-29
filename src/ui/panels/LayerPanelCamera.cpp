@@ -3,6 +3,7 @@
 
 #include "model/document/Commands.h"
 
+#include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -41,11 +42,21 @@ void LayerPanel::buildCameraOptions()
     };
     connect(m_nearPlane, &QDoubleSpinBox::valueChanged, this, changed);
     connect(m_farPlane, &QDoubleSpinBox::valueChanged, this, changed);
+    m_cameraAvailable = new QCheckBox(tr("Camera Available"), this);
+    m_cameraAvailable->setObjectName(QStringLiteral("CameraAvailable"));
+    m_cameraAvailable->setToolTip(tr("Off, the scene is never seen through this camera: Scene > Camera passes it by and the next available camera is used."));
+    m_form->insertRow(index + 2, QString(), m_cameraAvailable);
+    connect(m_cameraAvailable, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_refreshing)
+            m_document->editLayers({m_layer}, on ? tr("Make Camera Available") : tr("Make Camera Unavailable"), [on](Layer& layer) { layer.cameraAvailable = on; });
+    });
 }
 
 void LayerPanel::refreshCameraOptions(Layer const& layer)
 {
     m_form->setRowVisible(m_clipRow, layer.kind == Layer::Camera);
+    m_form->setRowVisible(m_cameraAvailable, layer.kind == Layer::Camera);
+    m_cameraAvailable->setChecked(layer.cameraAvailable);
     m_nearPlane->setValue(layer.nearPlane);
     m_farPlane->setValue(layer.farPlane);
 }

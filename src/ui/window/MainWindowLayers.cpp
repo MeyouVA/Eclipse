@@ -220,6 +220,9 @@ void MainWindow::onActionTagLayers(QString const& how)
 {
     bool const on = how == QLatin1String("tag");
     QVector<int> layers = m_timeline->selectedLayers();
+    // (From the Camera view, with nothing picked in the Timeline: the current layer.)
+    if (layers.isEmpty() && (on || how == QLatin1String("untag")) && layer() >= 0 && layer() < m_document->scene().layers.size())
+        layers.push_back(layer());
     if (how == QLatin1String("untagAll") || how == QLatin1String("untagOthers")) {
         QVector<int> const keep = how == QLatin1String("untagOthers") ? layers : QVector<int>();
         layers.clear();
