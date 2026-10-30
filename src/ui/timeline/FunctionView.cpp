@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QMenu>
 #include <QSignalBlocker>
 #include <QToolButton>
 #include <QTreeWidget>
@@ -13,6 +14,7 @@
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/InterfaceColours.h"
 #include "model/document/Commands.h"
+#include "ui/panels/ColourEditor.h"
 
 namespace {
 
@@ -50,6 +52,27 @@ FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent
     m_list->setFixedWidth(150);
     m_list->setRootIsDecorated(true);
     m_list->setIndentation(12);
+    // Right-click a value: Change Function Color (its curves drawn in a colour of the user's), or its own colour again.
+    m_list->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_list, &QWidget::customContextMenuRequested, this, [this](QPoint const& at) {
+        QTreeWidgetItem* const item = m_list->itemAt(at);
+        if (!item || !item->parent())
+            return;
+        Timeline::Parameter const which = Timeline::Parameter(item->data(0, Qt::UserRole).toInt());
+        QMenu menu(this);
+        QAction* const change = menu.addAction(tr("Change Function Color"));
+        QAction* const reset = menu.addAction(tr("Default Function Color"));
+        QAction* const chosen = menu.exec(m_list->viewport()->mapToGlobal(at));
+        if (chosen == change) {
+            QColor const colour = ColourEditor::getColour(FunctionGraph::colourOf(which), this, tr("Change Function Color"));
+            if (colour.isValid())
+                FunctionGraph::setUserColour(which, colour);
+        } else if (chosen == reset) {
+            FunctionGraph::setUserColour(which, QColor());
+        }
+        m_graph->update();
+        rebuildList();
+    });
     connect(m_list, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem* item) {
         if (m_filling)
             return;

@@ -1,7 +1,10 @@
 // Eclipse - the Function view's graph: what it shows, fitting, zoom, where things are on it, the points and their handles.
 #include "ui/timeline/FunctionView.h"
 
+#include <QSettings>
 #include <QWheelEvent>
+
+#include <algorithm>
 
 #include <cmath>
 
@@ -21,8 +24,37 @@ FunctionGraph::FunctionGraph(Document* document, QWidget* parent) : QWidget(pare
     fit();
 }
 
+namespace {
+
+QColor& userColour(int which)
+{
+    static QColor colours[Timeline::ParameterCount];
+    static bool read = false;
+    if (!read) {
+        read = true;
+        QSettings const s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+        for (int i = 0; i < Timeline::ParameterCount; ++i)
+            colours[i] = s.value(QStringLiteral("functionColours/%1").arg(i)).value<QColor>();
+    }
+    return colours[std::clamp(which, 0, Timeline::ParameterCount - 1)];
+}
+
+}  // namespace
+
+void FunctionGraph::setUserColour(Timeline::Parameter which, QColor const& colour)
+{
+    userColour(which) = colour;
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    if (colour.isValid())
+        s.setValue(QStringLiteral("functionColours/%1").arg(int(which)), colour);
+    else
+        s.remove(QStringLiteral("functionColours/%1").arg(int(which)));
+}
+
 QColor FunctionGraph::colourOf(Timeline::Parameter which)
 {
+    if (userColour(which).isValid())
+        return userColour(which);
     // Across, down and depth are the user's (the Colours page); the others are fixed.
     if (which == Timeline::PosX)
         return InterfaceColours::get("functionCurveX");

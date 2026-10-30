@@ -56,6 +56,8 @@ public:
     // Where a value's points are: the layer itself, or the bezier or ease column it is linked to (-1 - its place, pos x).
     QPair<int, int> sourceOf(int layer, int value) const;
     static QColor colourOf(Timeline::Parameter which);
+    // Change Function Color: a colour of the user's for a value's curves (an invalid colour: its own again); kept in the settings.
+    static void setUserColour(Timeline::Parameter which, QColor const& colour);
     // What a value is shown in: opacity in percent, the rest as they are.
     static double unitOf(int value) { return value == Timeline::Opacity ? 100.0 : 1.0; }
     // Where the keys of the Function Editor commands are kept (Preferences > Keyboard Shortcuts).

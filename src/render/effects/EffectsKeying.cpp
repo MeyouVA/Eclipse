@@ -73,7 +73,8 @@ void keep(QImage& image, Matte const& matte)
 QStringList Effects::colourOperations()
 {
     return {QObject::tr("Apply With Alpha"), QObject::tr("Replace"), QObject::tr("Add"), QObject::tr("Multiply"), QObject::tr("Screen"),
-            QObject::tr("Darken"), QObject::tr("Lighten"), QObject::tr("Difference"), QObject::tr("Subtract"), QObject::tr("Divide")};
+            QObject::tr("Darken"), QObject::tr("Lighten"), QObject::tr("Difference"), QObject::tr("Subtract"), QObject::tr("Divide"),
+            QObject::tr("Colour")};
 }
 
 QStringList Effects::alphaOperations()
@@ -116,16 +117,33 @@ void Effects::genericComposite(QImage& under, QImage const& top, int colourOpera
             double const both = s.a * d.a;
             double const cover = s.a + d.a - both;
             Straight out;
-            auto colour = [&](double sc, double dc) {
+            double mixed[3] = {mix(s.r, d.r), mix(s.g, d.g), mix(s.b, d.b)};
+            if (colourOperation == 10) {
+                // Colour: the hue and saturation of what comes in, the lightness of what is under it.
+                auto lum = [](double r, double g, double b) { return 0.3 * r + 0.59 * g + 0.11 * b; };
+                double const shift = lum(d.r, d.g, d.b) - lum(s.r, s.g, s.b);
+                double c[3] = {s.r + shift, s.g + shift, s.b + shift};
+                double const l = lum(c[0], c[1], c[2]), lo = std::min({c[0], c[1], c[2]}), hi = std::max({c[0], c[1], c[2]});
+                for (double& v : c) {
+                    if (lo < 0.0)
+                        v = l + (v - l) * l / std::max(1e-9, l - lo);
+                    if (hi > 1.0)
+                        v = l + (v - l) * (1.0 - l) / std::max(1e-9, hi - l);
+                }
+                mixed[0] = c[0];
+                mixed[1] = c[1];
+                mixed[2] = c[2];
+            }
+            auto colour = [&](double sc, double dc, double m) {
                 if (colourOperation == 1)
                     return s.a > 0.0 ? sc : dc;
                 if (cover <= 1e-9)
                     return 0.0;
-                return (sc * s.a * (1.0 - d.a) + dc * d.a * (1.0 - s.a) + mix(sc, dc) * both) / cover;
+                return (sc * s.a * (1.0 - d.a) + dc * d.a * (1.0 - s.a) + m * both) / cover;
             };
-            out.r = colour(s.r, d.r);
-            out.g = colour(s.g, d.g);
-            out.b = colour(s.b, d.b);
+            out.r = colour(s.r, d.r, mixed[0]);
+            out.g = colour(s.g, d.g, mixed[1]);
+            out.b = colour(s.b, d.b, mixed[2]);
             switch (alphaOperation) {
             case 1: out.a = s.a; break;
             case 2: out.a = std::min(1.0, s.a + d.a); break;
