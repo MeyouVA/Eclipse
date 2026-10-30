@@ -122,6 +122,12 @@ static Entry const kEffects[] = {
     {QT_TR_NOOP("Refract"), "effect:68", QT_TR_NOOP("Bends the picture through the bumps of the picture at its second input, as through glass or heat (in a graph wired by hand)"), QT_TR_NOOP("Deformation")},
     {QT_TR_NOOP("Shake"), "effect:69", QT_TR_NOOP("Moves and turns the picture about at random, smoothly"), QT_TR_NOOP("Move")},
     {QT_TR_NOOP("Quake"), "effect:70", QT_TR_NOOP("Jolts the picture about at random, each jolt held for some frames"), QT_TR_NOOP("Move")},
+    {QT_TR_NOOP("Hold Timing"), "effect:76", QT_TR_NOOP("Holds the pictures and moves of what comes in for so many frames (on twos, threes ...)"), QT_TR_NOOP("Timing")},
+    {QT_TR_NOOP("Hold Transformation Timing"), "effect:77", QT_TR_NOOP("Holds only the moves of what comes in for so many frames; the drawings change as they do"), QT_TR_NOOP("Timing")},
+    {QT_TR_NOOP("Retime"), "effect:78", QT_TR_NOOP("Shows what comes in as at another frame: so many frames on, or the frame a target says"), QT_TR_NOOP("Timing")},
+    {QT_TR_NOOP("Retime Transformation"), "effect:79", QT_TR_NOOP("Moves what comes in as at another frame, its drawings as they are"), QT_TR_NOOP("Timing")},
+    {QT_TR_NOOP("Loop"), "effect:80", QT_TR_NOOP("Loops the pictures and moves of what comes in: frames Loop Start to Loop End over and over"), QT_TR_NOOP("Timing")},
+    {QT_TR_NOOP("Loop Transformation"), "effect:81", QT_TR_NOOP("Loops only the moves of what comes in, to make cycles; the drawings change as they do"), QT_TR_NOOP("Timing")},
     {QT_TR_NOOP("Animate Pencil Texture"), "effect:73", QT_TR_NOOP("The grain of the pencil lines of the layer that comes in moved along them each frame (in a graph wired by hand)"), QT_TR_NOOP("Filter")},
 };
 
@@ -256,7 +262,7 @@ void NodeLibraryView::fillCategories(QString const& current)
     // The kinds there are, then the user's own (in italics).
     QSignalBlocker const quiet(m_categories);
     m_categories->clear();
-    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator"), tr("Combine"), tr("Misc"), tr("Blur"), tr("Colour-Correct"), tr("Light")});
+    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator"), tr("Combine"), tr("Misc"), tr("Blur"), tr("Colour-Correct"), tr("Light"), tr("Timing")});
     for (auto it = m_user.cbegin(); it != m_user.cend(); ++it) {
         QListWidgetItem* const item = new QListWidgetItem(it.key(), m_categories);
         QFont italic = item->font();

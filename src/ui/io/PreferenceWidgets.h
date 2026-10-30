@@ -38,6 +38,7 @@ struct PreferenceWidgets {
     QSpinBox* washPercent = nullptr;
     QPushButton* washColour = nullptr;
     QCheckBox* washStalePreview = nullptr;
+    QCheckBox* selectionShading = nullptr;
     QSpinBox* nudge = nullptr;
     QCheckBox* frameOne = nullptr;
     QSpinBox* gridAcross = nullptr;

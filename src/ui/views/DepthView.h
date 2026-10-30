@@ -43,6 +43,9 @@ public slots:
     void onActionResetView() { resetView(); }
     void onActionFrameSelected();
     void setCameraCone(bool on) { m_cameraCone = on; update(); }
+    // Preferences > Camera: Selection Shading (the selected layer shaded in the Top and Side views).
+    void setSelectionShading(bool on) { m_selectionShading = on; update(); }
+    bool selectionShading() const { return m_selectionShading; }
     bool cameraCone() const { return m_cameraCone; }
 
 signals:
@@ -96,6 +99,7 @@ private:
     QPointF m_pan;
     bool m_panning = false;
     bool m_cameraCone = true;
+    bool m_selectionShading = true;
     QPointF m_last;
     int m_layer = 0;
     int m_frame = 0;

@@ -35,6 +35,7 @@
   <shortcut id="shortcut.editShortcuts" text="Keyboard Shortcuts" value=""/>
   <shortcut id="shortcut.toggleFullscreen" text="Toggle Full Screen" value="Ctrl+F"/>
   <shortcut id="shortcut.velocityEditor" text="Toggle Velocity Editor" value="Shift+V"/>
+  <shortcut id="shortcut.shareFunctions" text="Share Functions" value=""/>
  </category>
  <category id="Playback" text="Playback">
   <shortcut id="shortcut.togglePlayback" text="Toggle Playback" value="Return"/>
@@ -278,6 +279,11 @@
   <shortcut id="shortcut.feZoomOutY" text="Zoom Out Y" value="5"/>
   <shortcut id="shortcut.feToggleGrid" text="Toggle Grid" value="G"/>
   <shortcut id="shortcut.feInsertPoint" text="Insert Point" value="I"/>
+  <shortcut id="shortcut.feNextKey" text="Select Next KeyFrame" value="'"/>
+  <shortcut id="shortcut.fePrevKey" text="Select Prev KeyFrame" value=";"/>
+  <shortcut id="shortcut.feLeftHandle" text="Select Left Handle" value="["/>
+  <shortcut id="shortcut.feRightHandle" text="Select Right Handle" value="]"/>
+  <shortcut id="shortcut.feStoppedSegment" text="Toggle Stop-Motion Segment" value=""/>
  </category>
  <category id="Drawing Mode" text="Drawing Mode">
   <shortcut id="shortcut.smooth" text="Smooth" value="Alt+Shift+S"/>

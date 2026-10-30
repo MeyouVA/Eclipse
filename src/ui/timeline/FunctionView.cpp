@@ -25,6 +25,8 @@ QVector<Timeline::Parameter> kindOf(QString const& kind)
         return {Timeline::Angle};
     if (kind == QLatin1String("scale"))
         return {Timeline::ScaleX, Timeline::ScaleY};
+    if (kind == QLatin1String("skew"))
+        return {Timeline::Skew};
     if (kind == QLatin1String("other"))
         return {Timeline::Skew, Timeline::Opacity, Timeline::Fov};
     QVector<Timeline::Parameter> all;
@@ -108,7 +110,7 @@ FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent
     QHBoxLayout* const kindRow = new QHBoxLayout(kinds);
     kindRow->setContentsMargins(2, 2, 2, 2);
     kindRow->setSpacing(2);
-    for (QString const& kind : {QStringLiteral("motion"), QStringLiteral("rotation"), QStringLiteral("scale"), QStringLiteral("other"), QStringLiteral("all")}) {
+    for (QString const& kind : {QStringLiteral("motion"), QStringLiteral("rotation"), QStringLiteral("scale"), QStringLiteral("skew"), QStringLiteral("other"), QStringLiteral("all")}) {
         QToolButton* const button = new QToolButton(kinds);
         button->setObjectName(QStringLiteral("FunctionKind_") + kind);
         button->setAutoRaise(true);

@@ -442,15 +442,5 @@ void FunctionEditor::toggleLock()
 
 void FunctionEditor::convertVelocity()
 {
-    FunctionColumn const* now = m_document->scene().function(m_id);
-    if (!now || now->velocity.keys.isEmpty())
-        return;
-    FunctionColumn changed = *now;
-    bool const allEased = std::all_of(changed.velocity.keys.cbegin(), changed.velocity.keys.cend(), [](Keyframe const& k) { return k.easeIn > 0.0 && k.easeOut > 0.0; });
-    for (Keyframe& k : changed.velocity.keys) {
-        k.easeIn = k.easeOut = allEased ? 0.0 : 0.33;
-        k.liftIn = k.liftOut = 0.0;
-        k.dropCurve(Driver::X);
-    }
-    m_document->setFunction(changed, changed.kind == FunctionColumn::Path3D ? tr("Convert velocity of 3dpath") : tr("Convert velobased"));
+    m_document->convertVelocity(m_id, false, false);
 }

@@ -263,6 +263,11 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.washStalePreview->setChecked(s.value(QStringLiteral("prefs/washStalePreview"), false).toBool());
     w.washStalePreview->setToolTip(tr("A rendered preview the scene has changed since is still played back, washed with the wash colour and amount, until it is rendered again. Off, it is dropped."));
     w.cameraLayout->addRow(w.washStalePreview);
+    w.selectionShading = new QCheckBox(tr("Selection Shading"), w.camera);
+    w.selectionShading->setObjectName(QStringLiteral("PrefSelectionShading"));
+    w.selectionShading->setToolTip(tr("The selected layer shaded in the Top and Side views."));
+    w.selectionShading->setChecked(s.value(QStringLiteral("prefs/selectionShading"), true).toBool());
+    w.cameraLayout->addRow(w.selectionShading);
     w.nudge = new QSpinBox(w.camera);
     w.nudge->setObjectName(QStringLiteral("PrefNudge"));
     w.nudge->setRange(1, 100);

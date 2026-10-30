@@ -23,6 +23,8 @@ LocalKey const kLocalKeys[] = {
     {"shortcut.feZoomOutY", "zoomOutY", "5"},   {"shortcut.feToggleGrid", "grid", "G"},    {"shortcut.feInsertPoint", "insert", "I"},
     {"shortcut.cut", "cut", "Ctrl+X"},          {"shortcut.copy", "copy", "Ctrl+C"},       {"shortcut.paste", "paste", "Ctrl+V"},
     {"shortcut.delete", "delete", "Del"},       {"shortcut.selectAll", "selectAll", "Ctrl+A"}, {"shortcut.deselectAll", "deselectAll", "Esc"},
+    {"shortcut.feNextKey", "nextKey", "'"},     {"shortcut.fePrevKey", "prevKey", ";"},    {"shortcut.feLeftHandle", "leftHandle", "["},
+    {"shortcut.feRightHandle", "rightHandle", "]"}, {"shortcut.feStoppedSegment", "stoppedSegment", ""},
 };
 
 }  // namespace
@@ -78,6 +80,12 @@ void FunctionGraph::runCommand(QString const& id)
         selectHandle(1);
     else if (id == QLatin1String("rightHandle"))
         selectHandle(2);
+    else if (id == QLatin1String("nextKey"))
+        selectNeighbour(true);
+    else if (id == QLatin1String("prevKey"))
+        selectNeighbour(false);
+    else if (id == QLatin1String("stoppedSegment"))
+        toggleStoppedSegment();
 }
 
 bool FunctionGraph::event(QEvent* event)

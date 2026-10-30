@@ -1,6 +1,8 @@
 // Eclipse - the document: function columns - made, changed, taken away, linked to layers' values, converted.
 #include "model/document/Commands.h"
 
+#include <algorithm>
+
 #include "model/document/CommandsPrivate.h"
 
 #include <cmath>
@@ -243,4 +245,71 @@ int Document::separatePath(int layer)
     }
     endMacro();
     return int(paths.size());
+}
+
+int Document::shareFunctions(QVector<int> const& layers)
+{
+    QVector<int> valid;
+    for (int l : layers)
+        if (l >= 0 && l < m_scene.layers.size() && !valid.contains(l))
+            valid.push_back(l);
+    if (valid.size() < 2)
+        return 0;
+    int const first = valid.first();
+    int const kind = FunctionColumn::defaultBezier ? FunctionColumn::Bezier : FunctionColumn::Ease;
+    int shared = 0;
+    beginMacro(tr("Share Functions"));
+    for (int value = 0; value < Driver::ValueCount; ++value) {
+        int id = m_scene.layers[first].linkOf(value);
+        if (id == 0 && !m_scene.layers[first].keysOf(value).isEmpty())
+            id = storeAsFunction(first, value, kind);
+        if (id == 0)
+            continue;
+        for (int i = 1; i < valid.size(); ++i)
+            linkValue(valid[i], value, id, tr("Share Functions"));
+        ++shared;
+    }
+    endMacro();
+    return shared;
+}
+
+int Document::convertFunctionRelinked(int id, int kind)
+{
+    beginMacro(tr("Convert Function Column"));
+    int const made = convertFunction(id, kind, true);
+    if (made != 0)
+        for (int l = 0; l < m_scene.layers.size(); ++l)
+            for (int value = 0; value < Driver::ValueCount; ++value)
+                if (m_scene.layers[l].linkOf(value) == id)
+                    linkValue(l, value, made, tr("Convert Function Column"));
+    endMacro();
+    return made;
+}
+
+int Document::convertVelocity(int id, bool intoNew, bool relink)
+{
+    FunctionColumn const* now = m_scene.function(id);
+    if (!now || now->velocity.keys.isEmpty())
+        return 0;
+    FunctionColumn changed = *now;
+    bool const allEased = std::all_of(changed.velocity.keys.cbegin(), changed.velocity.keys.cend(), [](Keyframe const& k) { return k.easeIn > 0.0 && k.easeOut > 0.0; });
+    for (Keyframe& k : changed.velocity.keys) {
+        k.easeIn = k.easeOut = allEased ? 0.0 : 0.33;
+        k.liftIn = k.liftOut = 0.0;
+        k.dropCurve(Driver::X);
+    }
+    QString const text = changed.kind == FunctionColumn::Path3D ? tr("Convert velocity of 3dpath") : tr("Convert velobased");
+    if (!intoNew) {
+        setFunction(changed, text);
+        return id;
+    }
+    beginMacro(text);
+    int const made = addFunction(changed, text);
+    if (relink)
+        for (int l = 0; l < m_scene.layers.size(); ++l)
+            for (int value = 0; value < Driver::ValueCount; ++value)
+                if (m_scene.layers[l].linkOf(value) == id)
+                    linkValue(l, value, made, text);
+    endMacro();
+    return made;
 }

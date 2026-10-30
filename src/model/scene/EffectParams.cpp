@@ -17,6 +17,21 @@ constexpr char kChannels[] = QT_TRANSLATE_NOOP("Effect", "Red|Green|Blue|Alpha|F
 QVector<P> const& table(Effect::Type type)
 {
     static QVector<P> const none;
+    static QVector<P> const hold = {
+        {"hold", QT_TRANSLATE_NOOP("Effect", "Hold"), P::Number, 1, 100, 2, nullptr, QT_TRANSLATE_NOOP("Effect", "Each picture held for so many frames (2: on twos).")},
+        {"start", QT_TRANSLATE_NOOP("Effect", "Start Frame"), P::Number, 1, 100000, 1, nullptr, QT_TRANSLATE_NOOP("Effect", "The frame the holds are counted from.")}};
+    static QVector<P> const loop = {
+        {"start", QT_TRANSLATE_NOOP("Effect", "Loop Start"), P::Number, 1, 100000, 1, nullptr, QT_TRANSLATE_NOOP("Effect", "The first frame of what comes in that is looped.")},
+        {"end", QT_TRANSLATE_NOOP("Effect", "Loop End"), P::Number, 1, 100000, 12, nullptr, QT_TRANSLATE_NOOP("Effect", "The last frame looped.")},
+        {"useOutput", QT_TRANSLATE_NOOP("Effect", "Use Output Range"), P::Toggle, 0, 1, 0, nullptr, QT_TRANSLATE_NOOP("Effect", "Loop only from Output Start to Output End; off, on every frame.")},
+        {"outStart", QT_TRANSLATE_NOOP("Effect", "Output Start"), P::Number, 1, 100000, 1, nullptr, nullptr},
+        {"outEnd", QT_TRANSLATE_NOOP("Effect", "Output End"), P::Number, 1, 100000, 100, nullptr, nullptr},
+        {"resume", QT_TRANSLATE_NOOP("Effect", "Resume Behaviour"), P::Choice, 0, 1, 0, QT_TRANSLATE_NOOP("Effect", "Continue From Looped Frame|Continue From Timeline Frame"),
+         QT_TRANSLATE_NOOP("Effect", "After the output range: on from the frame the loop had got to, or the frame of the timeline.")}};
+    static QVector<P> const retime = {
+        {"useTarget", QT_TRANSLATE_NOOP("Effect", "Retime Mode"), P::Choice, 0, 1, 0, QT_TRANSLATE_NOOP("Effect", "Frame Offset|Target Frame"),
+         QT_TRANSLATE_NOOP("Effect", "Frame Offset: each frame shows the frame so many frames on. Target Frame: the frame the (animatable) Target Frame says.")},
+        {"offset", QT_TRANSLATE_NOOP("Effect", "Frame Offset"), P::Number, -100000, 100000, 0, nullptr, QT_TRANSLATE_NOOP("Effect", "Frames on (or back, below 0).")}};
     static QVector<P> const directional = {
         {"falloff", QT_TRANSLATE_NOOP("Effect", "Falloff Rate"), P::Number, 0, 1, 0, nullptr, QT_TRANSLATE_NOOP("Effect", "How fast the trail fades along its length (0: evenly).")},
         {"trail", QT_TRANSLATE_NOOP("Effect", "Direction of trail"), P::Choice, 0, 2, 0, QT_TRANSLATE_NOOP("Effect", "Both Ways|Behind|Ahead"), nullptr},
@@ -190,6 +205,12 @@ QVector<P> const& table(Effect::Type type)
          QT_TRANSLATE_NOOP("Effect", "Offset Everything Consistently|Offset Each Drawing Uniquely|Offset Each Pencil Texture Uniquely"), nullptr},
         {"seed", QT_TRANSLATE_NOOP("Effect", "Random Seed"), P::Whole, 0, 99999, 1, nullptr, nullptr}};
     switch (type) {
+    case Effect::HoldTiming:
+    case Effect::HoldTransformationTiming: return hold;
+    case Effect::Retime:
+    case Effect::RetimeTransformation: return retime;
+    case Effect::Loop:
+    case Effect::LoopTransformation: return loop;
     case Effect::DirectionalBlur: return directional;
     case Effect::RadialBlur: return radial;
     case Effect::VariableBlur: return variable;
@@ -299,6 +320,12 @@ Effect::Amount Effect::amountOf(Type type)
     case ColourScreen:
     case ColourBanding: return {QT_TRANSLATE_NOOP("Effect", "Amount"), 1, 1.0, 1.0};
     case LookUpTable: return {QT_TRANSLATE_NOOP("Effect", "Mix"), 1, 1.0, 1.0};
+    case Retime:
+    case RetimeTransformation: return {QT_TRANSLATE_NOOP("Effect", "Target Frame"), 0, 1.0, 100000.0};
+    case HoldTiming:
+    case HoldTransformationTiming:
+    case Loop:
+    case LoopTransformation: return {nullptr, 0, 1.0, 1.0};
     case ColourOverride:
     case ColourSpace:
     case AnimatePencilTexture: return {nullptr, 0, 1.0, 1.0};

@@ -1,4 +1,5 @@
 #include "ui/views/PerspectiveView.h"
+#include <QScopeGuard>
 
 #include <QMouseEvent>
 #include <QApplication>
@@ -102,6 +103,13 @@ void PerspectiveView::paintEvent(QPaintEvent*)
     Scene const& scene = m_document->scene();
     QPainter painter(this);
     painter.fillRect(rect(), QColor(58, 58, 58));
+    // (Preferences > Colours > Scene Planning > Border Colour: round the view, over all else.)
+    auto const border = qScopeGuard([&painter, this] {
+        painter.resetTransform();
+        painter.setPen(InterfaceColours::get("planningBorder"));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRect(rect().adjusted(0, 0, -1, -1));
+    });
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
 

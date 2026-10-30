@@ -49,6 +49,12 @@ QString kindName(Effect::Type type)
     case Effect::AnimatePencilTexture: return QObject::tr("Animate Pencil Texture");
     case Effect::ColourSpace: return QObject::tr("Colour Space");
     case Effect::LookUpTable: return QObject::tr("Look-Up Table");
+    case Effect::HoldTiming: return QObject::tr("Hold Timing");
+    case Effect::HoldTransformationTiming: return QObject::tr("Hold Transformation Timing");
+    case Effect::Retime: return QObject::tr("Retime");
+    case Effect::RetimeTransformation: return QObject::tr("Retime Transformation");
+    case Effect::Loop: return QObject::tr("Loop");
+    case Effect::LoopTransformation: return QObject::tr("Loop Transformation");
     default: return name(Effect::made(type), Scene()).section(QStringLiteral("  "), 0, 0);
     }
 }
@@ -124,7 +130,7 @@ QString name(Effect const& effect, Scene const& scene)
         return QObject::tr("Colour Curves");
     case Effect::ApplyPeg: {
         int const l = scene.layerIndex(effect.matte);
-        return QObject::tr("Apply Peg  %1").arg(l >= 0 ? scene.layers[l].name : QObject::tr("(none)"));
+        return QObject::tr("Apply Peg  %1").arg(l >= 0 ? scene.layers[l].name : QObject::tr("No input peg connected"));
     }
     case Effect::ApplyCamera: {
         int const l = scene.layerIndex(effect.matte);
@@ -202,6 +208,12 @@ QString name(Effect const& effect, Scene const& scene)
     case Effect::IncreaseOpacity:
     case Effect::ColourSpace:
     case Effect::LookUpTable:
+    case Effect::HoldTiming:
+    case Effect::HoldTransformationTiming:
+    case Effect::Retime:
+    case Effect::RetimeTransformation:
+    case Effect::Loop:
+    case Effect::LoopTransformation:
     case Effect::AnimatePencilTexture: {
         Effect::Amount const a = Effect::amountOf(effect.type);
         QString const kind = kindName(effect.type);
@@ -210,6 +222,12 @@ QString name(Effect const& effect, Scene const& scene)
                                                      effect.toSpace.isEmpty() ? QObject::tr("(working)") : effect.toSpace);
         if (effect.type == Effect::LookUpTable)
             return QStringLiteral("%1  %2").arg(kind, effect.file.isEmpty() ? QObject::tr("(no file)") : QFileInfo(effect.file).fileName());
+        if (effect.type == Effect::HoldTiming || effect.type == Effect::HoldTransformationTiming)
+            return QObject::tr("%1  on %2s").arg(kind).arg(int(effect.value("hold")));
+        if (effect.type == Effect::Retime || effect.type == Effect::RetimeTransformation)
+            return effect.value("useTarget") > 0.5 ? kind : QObject::tr("%1  %2 frames").arg(kind).arg(int(effect.value("offset")));
+        if (effect.type == Effect::Loop || effect.type == Effect::LoopTransformation)
+            return QObject::tr("%1  %2-%3").arg(kind).arg(int(effect.value("start"))).arg(int(effect.value("end")));
         if (effect.type == Effect::ColourOverride)
             return QObject::tr("%1  %n colour(s)", nullptr, int(effect.overrides.size())).arg(kind);
         if (a.shown == 1 && effect.amount < 1.0)

@@ -14,6 +14,7 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QMessageBox>
 #include <QDir>
 #include <QLineEdit>
 #include "ui/panels/ColourSpaceBox.h"
@@ -97,7 +98,8 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
                                                  Effect::ColourBanding, Effect::Dither, Effect::IncreaseOpacity, Effect::ColourSpace, Effect::LookUpTable}},
         {QT_TR_NOOP("Light"), {Effect::Shine, Effect::LensFlare}},
         {QT_TR_NOOP("Generate"), {Effect::TurbulentNoise, Effect::Grid, Effect::BurnIn}},
-        {QT_TR_NOOP("Move"), {Effect::Shake, Effect::Quake}}};
+        {QT_TR_NOOP("Move"), {Effect::Shake, Effect::Quake}},
+        {QT_TR_NOOP("Timing"), {Effect::HoldTiming, Effect::HoldTransformationTiming, Effect::Retime, Effect::RetimeTransformation, Effect::Loop, Effect::LoopTransformation}}};
     for (Group const& group : groups) {
         QMenu* const sub = menu->addMenu(tr(group.name));
         for (Effect::Type kind : group.kinds)
@@ -209,6 +211,11 @@ void EffectsPanel::add(Effect::Type type)
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
+    // (A peg draws nothing for an effect to work on.)
+    if (scene.layers[m_layer].kind == Layer::Peg) {
+        QMessageBox::warning(this, tr("Add Effect"), tr("Effects cannot be inserted directly underneath pegs."));
+        return;
+    }
     Effect const e = Effect::made(type);
     QVector<Effect> effects = scene.layers[m_layer].effects;
     effects.push_back(e);

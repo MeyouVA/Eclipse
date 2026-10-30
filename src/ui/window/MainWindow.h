@@ -561,6 +561,7 @@ public slots:
     void onActionOpenFunctionEditor();
     void onActionConvertFunction(QString const& how);
     void onActionFunctionColumnsTag(QString const& how);
+    void onActionShareFunctions();
     void openFunctionEditor(int column);
     // The ease of the Set Ease for Multiple Parameters dialog given to the moves selected, for the kinds of value named.
     int easeSelection(QStringList const& kinds, QPointF leave, QPointF arrive);

@@ -123,6 +123,8 @@ public:
         bool fillGap = true;
         // Dropped or pasted into an exposure: the last drawing put down holds on over the rest of it (up to the next key exposure or empty frame).
         bool fillToKey = false;
+        // Force Keyframes at Function's Beginning and End: the layers pasted onto keep their motion outside the paste (a keyframe of it each side).
+        bool edgeKeys = false;
     };
     void pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse);
     void pasteSpecial(PasteOptions const& options);

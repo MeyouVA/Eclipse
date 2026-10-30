@@ -258,6 +258,12 @@ public:
     int convertFunction(int id, int kind, bool intoNew);
     // Create Separate beziers: the 3D path a layer's position is linked to made into a Bezier column for each of X, Y and Z (linked instead); how many were made.
     int separatePath(int layer);
+    // Share Functions: the animated values of the first layer kept in function columns (made when they are not), and the same values of the others linked to them; how many values.
+    int shareFunctions(QVector<int> const& layers);
+    // A column converted, as convertFunction; `relink` moves the values linked to the old column to the new one (Create a new column and update links).
+    int convertFunctionRelinked(int id, int kind);
+    // A 3D path's or velocity-based column's velocity points made eased, or Bezier again; into a new column (linked instead with `relink`) when asked.
+    int convertVelocity(int id, bool intoNew, bool relink);
     void setEffects(int layer, QVector<Effect> const& effects, QString const& text);
     // Takes effect `index` out, and its amounts out of the keyframes.
     void removeEffect(int layer, int index);

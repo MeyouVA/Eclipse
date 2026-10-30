@@ -125,6 +125,11 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
                          "When used with paste, extend the exposure of the dropped drawing up to the next key exposure or empty frame."));
     toKey->setChecked(options.fillToKey);
     more->addRow(toKey);
+    QCheckBox* const edges = new QCheckBox(tr("Force Keyframes at Function's Beginning and End"), advanced);
+    edges->setObjectName(QStringLiteral("PasteEdgeKeys"));
+    edges->setToolTip(tr("The layers pasted onto get keyframes where the paste begins and ends, so that their motion outside it stays as it was."));
+    edges->setChecked(options.edgeKeys);
+    more->addRow(edges);
     tabs->addTab(advanced, tr("Advanced"));
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -148,6 +153,7 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     options.currentSetOnly = synced->isChecked();
     options.fillGap = gap->isChecked();
     options.fillToKey = toKey->isChecked();
+    options.edgeKeys = edges->isChecked();
     m_timeline->setDragFill(options.fillGap, options.fillToKey);
     return true;
 }

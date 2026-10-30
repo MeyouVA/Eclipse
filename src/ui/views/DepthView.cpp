@@ -1,4 +1,5 @@
 #include "ui/views/DepthView.h"
+#include <QScopeGuard>
 
 #include <QMouseEvent>
 #include <QKeyEvent>
@@ -207,6 +208,13 @@ void DepthView::paintEvent(QPaintEvent*)
     Scene const& scene = m_document->scene();
     QPainter painter(this);
     painter.fillRect(rect(), QColor(58, 58, 58));
+    // (Preferences > Colours > Scene Planning > Border Colour: round the view, over all else.)
+    auto const border = qScopeGuard([&painter, this] {
+        painter.resetTransform();
+        painter.setPen(InterfaceColours::get("planningBorder"));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRect(rect().adjusted(0, 0, -1, -1));
+    });
     painter.setRenderHint(QPainter::Antialiasing, true);
     QVector<Mark> const all = marks();
     double back = 0.0, front = 0.0;
@@ -271,6 +279,11 @@ void DepthView::paintEvent(QPaintEvent*)
         QColor colour = scene.layers[mark.layer].trackColor.isValid() ? scene.layers[mark.layer].trackColor : QColor(214, 214, 214);
         if (current)
             colour = QColor(255, 190, 70);
+        if (current && m_selectionShading) {
+            // Selection Shading: a wide shade under the selected layer.
+            painter.setPen(QPen(InterfaceColours::get("planningSelection"), 16.0, Qt::SolidLine, Qt::RoundCap));
+            painter.drawLine(a, b);
+        }
         painter.setPen(QPen(QColor(20, 20, 20), current ? 5.5 : 4.5, Qt::SolidLine, Qt::RoundCap));
         painter.drawLine(a, b);
         painter.setPen(QPen(colour, current ? 3.5 : 2.5, Qt::SolidLine, Qt::RoundCap));

@@ -100,6 +100,20 @@ void MainWindow::onActionConvertFunction(QString const& how)
         statusBar()->showMessage(tr("There is no bezier, ease or local value connecting to the layer."), 5000);
         return;
     }
+    // The Xsheet Convert menus of each kind: the column as the other kind (Bezier and ease), or its velocity eased or Bezier (3D path, velocity-based).
+    if (how == QLatin1String("column") || how == QLatin1String("columnLinked") || how == QLatin1String("columnUnused")) {
+        bool const intoNew = how != QLatin1String("column"), relink = how == QLatin1String("columnLinked");
+        int made = 0;
+        if (from->kind == FunctionColumn::Bezier || from->kind == FunctionColumn::Ease) {
+            int const other = from->kind == FunctionColumn::Bezier ? FunctionColumn::Ease : FunctionColumn::Bezier;
+            made = relink ? m_document->convertFunctionRelinked(column, other) : m_document->convertFunction(column, other, intoNew);
+        } else if (from->kind == FunctionColumn::Path3D || from->kind == FunctionColumn::VeloBased) {
+            made = m_document->convertVelocity(column, intoNew, relink);
+        }
+        if (made == 0)
+            statusBar()->showMessage(tr("No velocity available to build a velocity based curve"), 5000);
+        return;
+    }
     int const kind = how.endsWith(QLatin1String("ase")) ? FunctionColumn::Ease : FunctionColumn::Bezier;
     bool const intoNew = how.startsWith(QLatin1String("new"));
     if (!intoNew && from->kind == kind) {
@@ -135,4 +149,17 @@ void MainWindow::onActionFunctionColumnsTag(QString const& how)
     if (changing.isEmpty())
         return;
     m_document->editLayers(changing, hidden ? tr("Function Columns Invisible") : tr("Function Columns Visible"), [hidden](Layer& layer) { layer.hiddenFunctions = hidden; });
+}
+
+void MainWindow::onActionShareFunctions()
+{
+    QVector<int> layers = m_xsheet->selectedLayers();
+    if (layers.size() < 2)
+        layers = m_timeline->selectedLayers();
+    if (layers.size() < 2) {
+        statusBar()->showMessage(tr("Select two layers or more: the others take the functions of the first."), 5000);
+        return;
+    }
+    if (m_document->shareFunctions(layers) == 0)
+        statusBar()->showMessage(tr("The first layer has no animated value to share."), 5000);
 }

@@ -195,6 +195,8 @@ public:
     Cms::Transform swatchTransform() const;
     Cms::Transform textureTransform() const;
     Cms::Transform pictureTransform(Layer const& layer, bool painted) const;
+    // Timing effects (Hold Timing, Retime and their Transformation kinds): the frame a layer's drawing, and its moves, are shown as at.
+    void timedFrames(int layer, int frame, int* drawingFrame, int* transformFrame) const;
     // A picture's own colour space put in the working space (the layer's when it has none).
     Cms::Transform pictureTransform(Layer const& layer, Picture const& picture) const;
     // A colour chosen like a palette colour (a colour-card's), as it is in the working space.

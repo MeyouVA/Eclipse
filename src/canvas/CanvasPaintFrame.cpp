@@ -174,7 +174,9 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
             QImage alone(wide, high, Deep::formatFor(device));
             alone.setDevicePixelRatio(dpr);
             alone.fill(Qt::transparent);
-            QTransform const onto = card ? base : scene.worldTransform(l, frame) * camera * base;
+            int drawnAt = frame, movedAt = frame;
+            scene.timedFrames(l, frame, &drawnAt, &movedAt);
+            QTransform const onto = card ? base : scene.worldTransform(l, movedAt) * camera * base;
             {
                 QPainter one(&alone);
                 one.setRenderHints(painter.renderHints());
@@ -185,9 +187,12 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
                     one.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
                 } else {
                     one.setTransform(onto);
-                    Pose const pose = scene.poseOf(l, frame);
+                    Pose const pose = scene.poseOf(l, movedAt);
+                    int const timedIndex = layer.drawingAt(drawnAt);
+                    if (timedIndex == Layer::kNoDrawing)
+                        continue;
                     paintLayerDrawing(one, scene, l, frame,
-                                      Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index)),
+                                      Deform::ridden(scene, l, movedAt, Deform::shown(layer.morphing(drawnAt) ? layer.shownAt(drawnAt) : layer.drawings[timedIndex], layer, pose, timedIndex)),
                                       layer.opacity * pose.opacity, camera * base);
                 }
             }
@@ -241,7 +246,9 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
     // The furthest first, so that what is nearer the camera covers it.
     for (int l : order) {
         Layer const& layer = scene.layers[l];
-        int const index = layer.drawingAt(frame);
+        int drawnAt = frame, movedAt = frame;
+        scene.timedFrames(l, frame, &drawnAt, &movedAt);
+        int const index = layer.drawingAt(drawnAt);
         if (layer.kind == Layer::ColourCard && scene.enabled(l)) {
             // The whole frame, whatever the camera does.
             QColor colour = scene.managedColour(layer.cardColor);
@@ -252,10 +259,10 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
         }
         if (!scene.enabled(l) || index == Layer::kNoDrawing)
             continue;
-        painter.setTransform(scene.worldTransform(l, frame) * camera * base);
-        Pose const pose = scene.poseOf(l, frame);
+        painter.setTransform(scene.worldTransform(l, movedAt) * camera * base);
+        Pose const pose = scene.poseOf(l, movedAt);
         paintLayerDrawing(painter, scene, l, frame,
-                          Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index)),
+                          Deform::ridden(scene, l, movedAt, Deform::shown(layer.morphing(drawnAt) ? layer.shownAt(drawnAt) : layer.drawings[index], layer, pose, index)),
                           layer.opacity * pose.opacity, camera * base);
     }
     painter.setTransform(base);
@@ -414,10 +421,11 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
             colour.setAlphaF(colour.alphaF() * float(layer.opacity));
             p.setTransform(base);
             p.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
-        } else if (int const index = layer.drawingAt(frame); index != Layer::kNoDrawing) {
-            p.setTransform(scene.worldTransform(l, frame) * camera * base);
-            Pose const pose = scene.poseOf(l, frame);
-            Drawing shown = Deform::ridden(scene, l, frame, Deform::shown(layer.morphing(frame) ? layer.shownAt(frame) : layer.drawings[index], layer, pose, index));
+        } else if (int drawnAt = frame, movedAt = frame; (scene.timedFrames(l, frame, &drawnAt, &movedAt), layer.drawingAt(drawnAt) != Layer::kNoDrawing)) {
+            int const index = layer.drawingAt(drawnAt);
+            p.setTransform(scene.worldTransform(l, movedAt) * camera * base);
+            Pose const pose = scene.poseOf(l, movedAt);
+            Drawing shown = Deform::ridden(scene, l, movedAt, Deform::shown(layer.morphing(drawnAt) ? layer.shownAt(drawnAt) : layer.drawings[index], layer, pose, index));
             if ((sheets & 0xf) != 0xf) {
                 // Only the art layers it gives (Line Art, Colour Art, Underlay, Overlay).
                 for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
@@ -590,6 +598,46 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 // (Turned off: the picture goes through as it is.)
             } else if (switchedOff(e.type)) {
                 // (Switched off in the preferences.)
+            } else if (e.type == Effect::HoldTiming || e.type == Effect::HoldTransformationTiming || e.type == Effect::Retime || e.type == Effect::RetimeTransformation
+                       || e.type == Effect::Loop || e.type == Effect::LoopTransformation) {
+                // Timing: each layer that leads into it shown as at other frames, and that part of the graph painted again.
+                if (GraphCable const* const c = graph.into(id, 0)) {
+                    Scene timed = scene;
+                    Effect given = e;
+                    if (given.value("useTarget") > 0.5) {
+                        // (The node's own target, now, as an offset each layer can carry.)
+                        given.setValue("useTarget", 0.0);
+                        given.setValue("offset", std::round(amount) - 1.0 - frame);
+                    }
+                    QSet<int> seen;
+                    std::function<void(int)> upstream = [&](int node) {
+                        if (seen.contains(node))
+                            return;
+                        seen.insert(node);
+                        GraphNode const* const g = graph.node(node);
+                        if (!g)
+                            return;
+                        if (g->kind == GraphNode::LayerNode)
+                            if (int const li = timed.layerIndex(g->layer); li >= 0)
+                                timed.layers[li].effects.push_back(given);
+                        for (int port = 0; port < g->inputs(); ++port)
+                            if (GraphCable const* const in = graph.into(node, port))
+                                upstream(in->from);
+                    };
+                    upstream(c->from);
+                    timed.graph.cables.removeIf([display](GraphCable const& cable) { return cable.to == display && cable.toPort == 0; });
+                    timed.graph.cables.push_back(GraphCable{c->from, c->fromPort, display, 0});
+                    QImage again(size, Deep::formatFor(painter.device()));
+                    again.fill(Qt::transparent);
+                    {
+                        QPainter tp(&again);
+                        tp.setRenderHints(painter.renderHints());
+                        tp.setTransform(base * QTransform::fromScale(dpr, dpr));
+                        paintGraph(tp, timed, frame);
+                    }
+                    again.setDevicePixelRatio(dpr);
+                    out = again;
+                }
             } else if (Effects::apply(out, e, context)) {
                 // (One of those done the same way on a layer and as a node.)
             } else if (e.type == Effect::ColourOverride || e.type == Effect::AnimatePencilTexture) {

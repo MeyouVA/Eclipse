@@ -81,8 +81,10 @@ void FunctionGraph::paintEvent(QPaintEvent*)
                     double const at = f + double(s) / between;
                     curve << QPointF(xOfFrame(at), yOfValue(valueOf(layer, which, at)));
                 }
+            // The other layers' curves: the background curve colours (Preferences > Colours > Function Editors).
             if (!main)
-                colour.setAlpha(150);
+                colour = InterfaceColours::get(param == Timeline::PosX ? "functionBgCurveX" : param == Timeline::PosY ? "functionBgCurveY"
+                                                   : param == Timeline::PosZ ? "functionBgCurveZ" : "functionBgCurve");
             QPen pen(colour, main ? 1.6 : 1.2);
             // A value that follows another layer (an attribute control): dashed, and no points to take hold of.
             if (!main || follows)

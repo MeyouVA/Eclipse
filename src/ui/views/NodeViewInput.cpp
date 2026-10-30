@@ -161,9 +161,10 @@ void NodeView::paintLayerMode(QPainter& p)
         p.setPen(QPen(QColor(235, 235, 235), 1));
         p.setBrush(layer.visible ? QColor(235, 235, 235) : QColor(Qt::transparent));
         p.drawRect(eye);
-        // Ports: in on top, out below.
-        p.setPen(QPen(InterfaceColours::get("nodePortImageDark"), 1));
-        p.setBrush(InterfaceColours::get("nodePortImage"));
+        // Ports: in on top, out below (a peg's carry moves: the peg port colours).
+        bool const pegPorts = layer.kind == Layer::Peg;
+        p.setPen(QPen(InterfaceColours::get(pegPorts ? "nodePortPegDark" : "nodePortImageDark"), 1));
+        p.setBrush(InterfaceColours::get(pegPorts ? "nodePortPeg" : "nodePortImage"));
         p.drawEllipse(QPointF(r.center().x(), r.top()), 3.5 * m_zoom, 3.5 * m_zoom);
         p.drawEllipse(QPointF(r.center().x(), r.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
     }

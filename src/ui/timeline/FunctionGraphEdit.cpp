@@ -313,6 +313,13 @@ void FunctionGraph::setSegment(int segment)
     m_document->endMacro();
 }
 
+void FunctionGraph::toggleStoppedSegment()
+{
+    if (m_selection.isEmpty())
+        return;
+    setSegment(curveAt(m_selection.first()).after == ValueCurve::Held ? ValueCurve::Curved : ValueCurve::Held);
+}
+
 void FunctionGraph::setCorner(bool corner)
 {
     if (m_selection.isEmpty())

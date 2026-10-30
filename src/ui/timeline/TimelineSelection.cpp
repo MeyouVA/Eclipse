@@ -220,6 +220,30 @@ void Timeline::pasteSpecial(PasteOptions const& options)
     block.pastePivot = options.pivot;
     block.offsetKeys = options.offsetKeys;
     block.currentSetOnly = options.currentSetOnly;
+    if (options.edgeKeys && options.keyframes) {
+        // Each layer pasted onto: keyframes where the paste begins and ends, as the layer is there now.
+        QVector<int> const selected = selectedLayers();
+        int const first = selectionFirstFrame(), last = first + block.frames - 1;
+        m_document->beginMacro(tr("Paste"));
+        int rows = 0;
+        for (int r = selected.isEmpty() ? -1 : rowOfLayer(selected.first()); r >= 0 && r < m_rows.size() && rows < block.rows.size(); ++r) {
+            if (isParamRow(r))
+                continue;
+            ++rows;
+            int const l = m_rows[r];
+            Scene const& scene = m_document->scene();
+            if (l < 0 || l >= scene.layers.size() || scene.layers[l].keys.isEmpty())
+                continue;
+            for (int f : {first, last})
+                if (scene.layers[l].keyIndex(f) < 0)
+                    m_document->setKeyframe(l, f, m_document->scene().layers[l].poseAt(f), tr("Paste"));
+        }
+        if (!options.fillToKey)
+            pasteBlock(block, first);
+        m_document->endMacro();
+        if (!options.fillToKey)
+            return;
+    }
     if (!options.fillToKey) {
         pasteBlock(block, selectionFirstFrame());
         return;

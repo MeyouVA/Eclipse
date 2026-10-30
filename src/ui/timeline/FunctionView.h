@@ -104,6 +104,8 @@ public:
     void pasteAtCurrentFrame();
     void deleteSelection();
     void setSegment(int segment);       // ValueCurve::Segment, on from each point selected
+    // Toggle Stop-Motion Segment: the points chosen held on to the next (or, when the first already is, curved again).
+    void toggleStoppedSegment();
     void setCorner(bool corner);
     void insertPoint();
     bool hasCopied() const { return !m_copied.isEmpty(); }

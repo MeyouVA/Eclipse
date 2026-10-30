@@ -1040,6 +1040,7 @@
    </menu>
   </menu>
   <menu id="TimelineMotion" text="Motion">
+   <item id="ShareFunctions" text="Share Functions" shortcut="shortcut.shareFunctions" responder="window" slot="onActionShareFunctions()"/>
    <item id="InsertKeyframe"/>
    <item id="InsertPositionKeyframe"/>
    <item id="DeleteKeyframe"/>
@@ -1312,6 +1313,7 @@
    <item id="SelectSyncedLayers"/>
    <separator/>
    <item id="SendToFunctionView" icon="function/all" text="Send to &amp;Function View" responder="window" slot="onActionSendToFunctionView()"/>
+   <item id="ShareFunctions"/>
    <separator/>
    <item id="XsheetGesturalDrag" icon="xsheet/gestural" text="&amp;Gestural Drag Mode" shortcut="shortcut.xsheetGestural" checkable="true" responder="window" slot="onActionXsheetGesturalDrag(bool)"/>
   </menu>
@@ -1543,9 +1545,14 @@
  </menu>
 
  <menu id="menu.xsheetHeader" text="Xsheet Header Menu">
+  <item id="ShareFunctions"/>
   <item id="SendToFunctionView"/>
   <item id="OpenFunctionEditor" icon="function/curved" text="Function &amp;Editor..." responder="window" slot="onActionOpenFunctionEditor()"/>
   <menu id="XsheetConvertVeloBased" text="Co&amp;nversion">
+   <item id="ConvertColumn" text="Convert the column" responder="window" slot="onActionConvertFunction(QString)" itemParameter="column"/>
+   <item id="ConvertColumnLinked" text="Create a new column and update links" responder="window" slot="onActionConvertFunction(QString)" itemParameter="columnLinked"/>
+   <item id="ConvertColumnUnused" text="Create a new unused column" responder="window" slot="onActionConvertFunction(QString)" itemParameter="columnUnused"/>
+   <separator/>
    <item id="ConvertToBezier" text="Convert to bezier" responder="window" slot="onActionConvertFunction(QString)" itemParameter="bezier"/>
    <item id="ConvertToEase" text="Convert to ease" responder="window" slot="onActionConvertFunction(QString)" itemParameter="ease"/>
    <item id="ConvertToNewBezier" text="Create to a new unused bezier column" responder="window" slot="onActionConvertFunction(QString)" itemParameter="newBezier"/>
@@ -1785,6 +1792,7 @@
     <item id="FunctionShowMotion" icon="function/motion" text="Show Motion" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="motion"/>
     <item id="FunctionShowRotation" icon="function/rotation" text="Show Rotation" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="rotation"/>
     <item id="FunctionShowScale" icon="function/scale" text="Show Scale" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="scale"/>
+    <item id="FunctionShowSkew" icon="function/other" text="Show Skew" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="skew"/>
     <item id="FunctionShowOther" icon="function/other" text="Show Other" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="other"/>
     <item id="FunctionShowAll" icon="function/all" text="Show All" checkable="true" responder="functionView" slot="onActionShowKind(QString)" itemParameter="all"/>
    </menu>
@@ -1852,6 +1860,14 @@
   <item id="HideSelectedLayers"/>
   <item id="ShowHiddenLayers"/>
   <item id="NoZDragging"/>
+  <separator/>
+  <item id="InsertKeyframe"/>
+  <item id="DeleteKeyframe"/>
+  <item id="SetStopMotionKeyframe"/>
+  <item id="SetMotionKeyframe"/>
+  <item id="SelectPrevKeyframePoint"/>
+  <item id="SelectNextKeyframePoint"/>
+  <submenu id="menu.animationTools" text="&amp;Animation Tools"/>
   <separator/>
   <item id="InsertCamera"/>
  </menu>

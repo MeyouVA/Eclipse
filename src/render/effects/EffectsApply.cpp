@@ -272,6 +272,14 @@ bool apply(QImage& image, Effect const& e, Context const& c)
             mixed(image, before, amount);
         return true;
     }
+    case Effect::HoldTiming:
+    case Effect::HoldTransformationTiming:
+    case Effect::Retime:
+    case Effect::RetimeTransformation:
+    case Effect::Loop:
+    case Effect::LoopTransformation:
+        // (Timing: which frame is shown is chosen where the layer is painted; the picture itself is left as it is.)
+        return true;
     default:
         return false;
     }

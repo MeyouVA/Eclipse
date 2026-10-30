@@ -13,7 +13,8 @@ struct Effect {
                 GenericComposite, LayerSelector, ChromaKey, DifferenceKeyer, LuminanceThreshold, ImageSwitch, Visibility,
                 GaussianBlur, BoxBlur, ZoomBlur, BokehBlur, AntiFlicker, ColourFade, ColourOverride, ChannelSwap, ColourLevels, ColourScreen, Contrast,
                 Gamma, ColourBanding, Dither, Shine, LensFlare, BurnIn, TurbulentNoise, Grid, Refract, Shake, Quake, UnsharpMask, IncreaseOpacity,
-                AnimatePencilTexture, ColourSpace, LookUpTable, TypeCount };
+                AnimatePencilTexture, ColourSpace, LookUpTable, HoldTiming, HoldTransformationTiming, Retime, RetimeTransformation,
+                Loop, LoopTransformation, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);

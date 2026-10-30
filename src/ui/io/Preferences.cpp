@@ -75,6 +75,8 @@ void MainWindow::applyPreferences()
     for (DepthView* view : findChildren<DepthView*>())
         view->setPlanningPreferences(s.value(QStringLiteral("prefs/planningDefaultZoom"), 100).toDouble() / 100.0,
                                      s.value(QStringLiteral("prefs/planningThumbnailSize"), 64).toInt());
+    for (DepthView* view : findChildren<DepthView*>())
+        view->setSelectionShading(s.value(QStringLiteral("prefs/selectionShading"), true).toBool());
     for (QWidget* const w : findChildren<QWidget*>())
         w->update();
     m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
@@ -425,6 +427,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/washPercent"), w.washPercent->value());
     s.setValue(QStringLiteral("prefs/washColour"), w.washColour->property("colour").value<QColor>());
     s.setValue(QStringLiteral("prefs/washStalePreview"), w.washStalePreview->isChecked());
+    s.setValue(QStringLiteral("prefs/selectionShading"), w.selectionShading->isChecked());
     s.setValue(QStringLiteral("prefs/extendExposure"), w.extend->isChecked());
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());
