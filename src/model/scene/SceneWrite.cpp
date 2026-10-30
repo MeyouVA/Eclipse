@@ -1,5 +1,6 @@
 // Eclipse - the scene: written to a file.
 #include "model/scene/TextureBank.h"
+#include "model/scene/SceneProject.h"
 #include "model/scene/Scene.h"
 
 #include <QBuffer>
@@ -262,13 +263,71 @@ QJsonObject Scene::toJson(QString const& folder) const
 
 bool Scene::save(QString const& path, QString* error) const
 {
+    return writeSceneFile(path, toJson(QFileInfo(path).absolutePath()), error);
+}
+
+// A file written only when what it holds has changed (so that a save rewrites only the drawings that were worked on).
+static bool writeIfChanged(QString const& path, QByteArray const& bytes, QString* error)
+{
+    QFile old(path);
+    if (old.size() == bytes.size() && old.open(QIODevice::ReadOnly) && old.readAll() == bytes)
+        return true;
+    old.close();
+    if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+        if (error)
+            *error = QStringLiteral("Could not make the folder %1").arg(QDir::toNativeSeparators(QFileInfo(path).absolutePath()));
+        return false;
+    }
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
+        if (error)
+            *error = QStringLiteral("%1: %2").arg(QDir::toNativeSeparators(path), file.errorString());
+        return false;
+    }
+    return true;
+}
+
+bool Scene::saveProject(QString const& path, QString* error) const
+{
+    QFileInfo const info(path);
+    QDir const folder = info.absoluteDir();
+    QString const name = info.completeBaseName();
+    // Another scene file beside the folder's own (a version of it): its files carry its name after theirs.
+    QString const owner = folder.dirName().compare(name, Qt::CaseInsensitive) == 0 ? QString() : QStringLiteral("@") + name;
+    QJsonObject whole = toJson(folder.absolutePath());
+    SceneProject::Split const split = SceneProject::split(whole, name, owner, compressFiles());
+    for (auto it = split.files.constBegin(); it != split.files.constEnd(); ++it)
+        if (!writeIfChanged(folder.filePath(it.key()), it.value(), error))
+            return false;
+    folder.mkpath(QLatin1String(SceneProject::kFrames));
+    if (!writeSceneFile(path, whole, error))
+        return false;
+    // The table of what the scene keeps in its folder; the files it kept last time and does not now are taken away.
+    QString const tablePath = folder.filePath(name + QLatin1Char('.') + QLatin1String(SceneProject::kTableSuffix));
+    QFile before(tablePath);
+    if (before.open(QIODevice::ReadOnly)) {
+        QJsonObject const old = QJsonDocument::fromJson(before.readAll()).object();
+        before.close();
+        for (QJsonValue const& f : old[QStringLiteral("files")].toArray()) {
+            QString const file = f.toString();
+            bool const ours = file.startsWith(QLatin1String(SceneProject::kElements) + QLatin1Char('/'))
+                              || file.startsWith(QLatin1String(SceneProject::kPalettes) + QLatin1Char('/'));
+            if (ours && !file.contains(QLatin1String("..")) && !split.files.contains(file))
+                QFile::remove(folder.filePath(file));
+        }
+    }
+    return writeIfChanged(tablePath, QJsonDocument(split.table).toJson(QJsonDocument::Indented), error);
+}
+
+bool Scene::writeSceneFile(QString const& path, QJsonObject const& whole, QString* error) const
+{
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) {
         if (error)
             *error = file.errorString();
         return false;
     }
-    QByteArray bytes = QJsonDocument(toJson(QFileInfo(path).absolutePath())).toJson(QJsonDocument::Compact);
+    QByteArray bytes = QJsonDocument(whole).toJson(QJsonDocument::Compact);
     // Packed (Preferences): a mark, then the scene zlib-packed.
     if (compressFiles())
         bytes = QByteArray("ECLZ") + qCompress(bytes, 9);

@@ -343,7 +343,14 @@ public:
     QVector<Symbol> symbolsUsed(QVector<Layer> const& by) const;
     static bool fromJson(QJsonObject const& json, Scene& out, QString* error, QString const& folder = QString());
     bool save(QString const& path, QString* error) const;
+    // Saved as a folder: the scene file, a file for each drawing under elements/, the palettes under palette-library/ (and frames/ for renders).
+    bool saveProject(QString const& path, QString* error) const;
+    bool writeSceneFile(QString const& path, QJsonObject const& whole, QString* error) const;
     static bool load(QString const& path, Scene& out, QString* error);
+    // The files of its folder the scene last loaded named but that could not be read.
+    static QStringList& lastMissingFiles();
+    // Whether the scene last loaded was saved as a folder (else it is an older scene kept all in one file).
+    static bool& lastLoadUsedFolder();
 
 private:
     int m_frameCount = 24;

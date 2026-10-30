@@ -33,6 +33,8 @@ QJsonObject effectToJson(Effect const& e);
 
 // A drawing as it is written (the pictures it shows put into `images`, once each).
 QJsonObject drawingToJson(Drawing const& d, QString const& folder, QJsonObject& images, QHash<qint64, QString>& imageKeys);
+// A picture read from a scene, with the PNG it was read from: written back as it is while the picture is unchanged.
+void rememberPng(QImage const& image, QByteArray const& png);
 
 // A keyframe as it is written.
 QJsonObject keyToJson(Keyframe const& k);

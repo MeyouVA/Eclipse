@@ -245,7 +245,7 @@ void MainWindow::onActionExportFrames()
 
 void MainWindow::onActionExportGif()
 {
-    QString const start = m_path.isEmpty() ? QStringLiteral("scene.gif") : QFileInfo(m_path).path() + QLatin1Char('/') + QFileInfo(m_path).completeBaseName() + QStringLiteral(".gif");
+    QString const start = m_path.isEmpty() ? QStringLiteral("scene.gif") : QFileInfo(m_path).path() + QStringLiteral("/frames/") + QFileInfo(m_path).completeBaseName() + QStringLiteral(".gif");
     QString path = QFileDialog::getSaveFileName(this, tr("Export Animated GIF"), start, tr("Animated GIF (*.gif)"));
     if (path.isEmpty())
         return;

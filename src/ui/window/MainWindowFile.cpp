@@ -122,6 +122,8 @@ bool MainWindow::openFile(QString const& path)
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not open %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;
     }
+    bool const oldFile = !Scene::lastLoadUsedFolder();
+    QStringList const missing = Scene::lastMissingFiles();
     stop();
     m_path = path;
     m_document->reset(scene);
@@ -136,7 +138,58 @@ bool MainWindow::openFile(QString const& path)
         if (m_path == opened)
             restoreProjectUi(ui);
     });
+    if (!missing.isEmpty())
+        QMessageBox::warning(this, tr("Eclipse"), tr("%n file(s) of the scene's folder could not be read; what they held is left empty:\n%1", nullptr, int(missing.size()))
+                                                      .arg(missing.mid(0, 12).join(QLatin1Char('\n'))));
+    if (oldFile)
+        offerSceneFolder();
     return true;
+}
+
+QString MainWindow::sceneFolderPath(QString const& path)
+{
+    // A scene keeps a folder of its own, named as it is: one that is not in it yet goes into one, beside where it was.
+    QFileInfo const info(path);
+    QString const name = info.completeBaseName();
+    if (info.absoluteDir().dirName().compare(name, Qt::CaseInsensitive) == 0)
+        return info.absoluteFilePath();
+    return info.absoluteDir().filePath(name + QLatin1Char('/') + info.fileName());
+}
+
+void MainWindow::offerSceneFolder()
+{
+    if (!settings().value(QStringLiteral("prefs/askConvertScenes"), true).toBool())
+        return;
+    QString const target = sceneFolderPath(m_path);
+    bool const moves = QDir::cleanPath(target) != QDir::cleanPath(QFileInfo(m_path).absoluteFilePath());
+    QString const kept = QFileInfo(m_path).absoluteDir().filePath(QFileInfo(m_path).completeBaseName() + QStringLiteral("_single-file.") + QFileInfo(m_path).suffix());
+    QString const question = tr("This scene is in the older format, kept all in one file.\n\n"
+                                "Convert it to a scene folder? Each drawing gets a file of its own under elements/, the palettes go in palette-library/ "
+                                "and renders in frames/.\n\n%1")
+                                 .arg(moves ? tr("The scene folder will be made at:\n%1\n(the old file stays where it is).").arg(QDir::toNativeSeparators(QFileInfo(target).absolutePath()))
+                                            : tr("The old file is kept as %1.").arg(QFileInfo(kept).fileName()));
+    if (QMessageBox::question(this, tr("Convert Scene"), question, QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) != QMessageBox::Yes)
+        return;
+    QString error;
+    if (moves) {
+        if (QFileInfo::exists(target)) {
+            QMessageBox::warning(this, tr("Convert Scene"), tr("%1 is there already; the scene was not converted.").arg(QDir::toNativeSeparators(target)));
+            return;
+        }
+        QDir().mkpath(QFileInfo(target).absolutePath());
+    } else {
+        QFile::remove(kept);
+        if (!QFile::copy(m_path, kept)) {
+            QMessageBox::warning(this, tr("Convert Scene"), tr("Could not keep the old file as %1; the scene was not converted.").arg(QDir::toNativeSeparators(kept)));
+            return;
+        }
+    }
+    bool const keepBackup = m_keepBackup;
+    m_keepBackup = false;           // (the old file is kept already)
+    bool const saved = saveTo(target);
+    m_keepBackup = keepBackup;
+    if (saved)
+        statusBar()->showMessage(tr("Converted to a scene folder: %1").arg(QDir::toNativeSeparators(target)), 8000);
 }
 
 void MainWindow::onActionOpenScene()
@@ -190,7 +243,7 @@ bool MainWindow::saveTo(QString const& path)
     }
     Scene saved = m_document->wholeScene();
     saved.uiState = projectUiState();
-    if (!saved.save(path, &error)) {
+    if (!saved.saveProject(path, &error)) {
         QMessageBox::critical(this, tr("Eclipse"), tr("Could not save %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;
     }
@@ -214,12 +267,14 @@ bool MainWindow::onActionSaveAs()
         return false;
     if (QFileInfo(path).suffix().isEmpty())
         path += QStringLiteral(".ecl");
+    path = sceneFolderPath(path);
+    QDir().mkpath(QFileInfo(path).absolutePath());
     return saveTo(path);
 }
 
 void MainWindow::onActionExportMovie()
 {
-    QString start = m_path.isEmpty() ? QStringLiteral("scene.mp4") : QFileInfo(m_path).path() + QLatin1Char('/') + QFileInfo(m_path).completeBaseName() + QStringLiteral(".mp4");
+    QString start = m_path.isEmpty() ? QStringLiteral("scene.mp4") : QFileInfo(m_path).path() + QStringLiteral("/frames/") + QFileInfo(m_path).completeBaseName() + QStringLiteral(".mp4");
     QString path = QFileDialog::getSaveFileName(this, tr("Export Movie"), start,
                                                 tr("H.264 Movie (*.mp4);;QuickTime Movie (*.mov);;WebM Movie (*.webm);;Animated GIF (*.gif)"));
     if (path.isEmpty())

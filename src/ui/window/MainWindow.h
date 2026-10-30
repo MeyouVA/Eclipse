@@ -171,6 +171,9 @@ public:
     int addReferences(QStringList const& files);
     // Returns the layer they went to, or -1 with a message.
     int importImages(ImageImport const& options, QString* error);
+    // Where a scene saved at `path` goes so that it has a folder of its own (named as it is); and, for a scene opened from an older single file, the offer to make it one.
+    static QString sceneFolderPath(QString const& path);
+    void offerSceneFolder();
     // A Photoshop file's layers as layers of the scene, in a group named after it; the index of the group, or -1 with `error` set.
     int importPsdLayers(ImageImport const& options, QString const& file, QString* error);
     int importMovie(QString const& path, QString* error);

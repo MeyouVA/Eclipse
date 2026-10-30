@@ -17,6 +17,7 @@ struct PreferenceWidgets {
     QCheckBox* confirmLayerDelete = nullptr;
     QCheckBox* syncBitmapColour = nullptr;
     QCheckBox* keepBackup = nullptr;
+    QCheckBox* askConvertScenes = nullptr;
     QCheckBox* compress = nullptr;
     QSpinBox* quiet = nullptr;
     QCheckBox* autoWorkspace = nullptr;

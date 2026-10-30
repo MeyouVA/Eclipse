@@ -1,6 +1,8 @@
 // Eclipse - the scene: read from a file.
 #include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
+#include "model/scene/SceneProject.h"
+#include "model/scene/SceneWriteParts.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -255,7 +257,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         QJsonObject const stored = json["images"].toObject();
         for (auto it = stored.begin(); it != stored.end(); ++it) {
             QImage image;
-            image.loadFromData(QByteArray::fromBase64(it.value().toString().toLatin1()), "PNG");
+            QByteArray const png = QByteArray::fromBase64(it.value().toString().toLatin1());
+            image.loadFromData(png, "PNG");
+            scene_write::rememberPng(image, png);
             images.insert(it.key(), image);
         }
     }
@@ -344,8 +348,21 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     return true;
 }
 
+bool& Scene::lastLoadUsedFolder()
+{
+    static thread_local bool used = false;
+    return used;
+}
+
+QStringList& Scene::lastMissingFiles()
+{
+    static thread_local QStringList missing;
+    return missing;
+}
+
 bool Scene::load(QString const& path, Scene& out, QString* error)
 {
+    lastMissingFiles().clear();
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         if (error)
@@ -369,7 +386,13 @@ bool Scene::load(QString const& path, Scene& out, QString* error)
             *error = parse.errorString();
         return false;
     }
-    if (!fromJson(doc.object(), out, error, QFileInfo(path).absolutePath()))
+    // A scene saved as a folder: its drawings, pictures and palettes read back from their files.
+    QJsonObject whole = doc.object();
+    QStringList missing;
+    lastLoadUsedFolder() = SceneProject::usesFolder(whole);
+    SceneProject::join(whole, QFileInfo(path).absolutePath(), &missing);
+    lastMissingFiles() = missing;
+    if (!fromJson(whole, out, error, QFileInfo(path).absolutePath()))
         return false;
     // The palettes linked to a file take the colours the file has now (another scene may have changed them).
     for (int i = 0; i < out.paletteLinks.size() && i < out.paletteNames.size(); ++i)

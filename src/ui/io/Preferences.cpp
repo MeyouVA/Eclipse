@@ -448,6 +448,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/proportionDown"), w.gridDown->value());
     s.setValue(QStringLiteral("prefs/safeMargin"), w.safe->value());
     s.setValue(QStringLiteral("prefs/keepBackup"), w.keepBackup->isChecked());
+    s.setValue(QStringLiteral("prefs/askConvertScenes"), w.askConvertScenes->isChecked());
     s.setValue(QStringLiteral("prefs/askAutoSave"), w.askAutoSave->isChecked());
     s.setValue(QStringLiteral("prefs/cameraZoom"), w.cameraZoom->currentIndex());
     s.setValue(QStringLiteral("prefs/timelineSound"), w.showSound->isChecked());

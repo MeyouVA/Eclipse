@@ -128,6 +128,11 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));
     w.keepBackup->setChecked(s.value(QStringLiteral("prefs/keepBackup"), true).toBool());
     w.generalLayout->addRow(w.keepBackup);
+    w.askConvertScenes = new QCheckBox(tr("Offer to convert older single-file scenes to scene folders"), w.general);
+    w.askConvertScenes->setObjectName(QStringLiteral("PrefAskConvertScenes"));
+    w.askConvertScenes->setToolTip(tr("A scene saved before scenes were kept as folders asks, when it is opened, whether to make it one."));
+    w.askConvertScenes->setChecked(s.value(QStringLiteral("prefs/askConvertScenes"), true).toBool());
+    w.generalLayout->addRow(w.askConvertScenes);
     w.editorsOnTop = new QCheckBox(tr("Editors always on top"), w.general);
     w.editorsOnTop->setObjectName(QStringLiteral("PrefEditorsOnTop"));
     w.editorsOnTop->setToolTip(tr("Function editors are always on top of the main window."));

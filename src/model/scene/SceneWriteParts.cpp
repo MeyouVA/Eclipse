@@ -4,6 +4,7 @@
 #include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
 #include <QBuffer>
+#include <QMutex>
 #include <QFileInfo>
 #include <QDir>
 #include "model/geometry/Deform.h"
@@ -307,6 +308,43 @@ QJsonObject effectToJson(Effect const& e)
     return one;
 }
 
+namespace {
+QMutex gPngLock;
+QHash<qint64, QByteArray> gPngs;
+qint64 gPngBytes = 0;
+}
+
+void rememberPng(QImage const& image, QByteArray const& png)
+{
+    if (image.isNull() || png.isEmpty())
+        return;
+    QMutexLocker const locked(&gPngLock);
+    if (gPngBytes + png.size() > 512LL * 1024 * 1024) {
+        gPngs.clear();
+        gPngBytes = 0;
+    }
+    if (!gPngs.contains(image.cacheKey())) {
+        gPngs.insert(image.cacheKey(), png);
+        gPngBytes += png.size();
+    }
+}
+
+// A picture as a PNG; kept from one save to the next while the picture is unchanged (its cache key changes when it is drawn on).
+static QByteArray pngOf(QImage const& image)
+{
+    {
+        QMutexLocker const locked(&gPngLock);
+        if (auto const found = gPngs.constFind(image.cacheKey()); found != gPngs.cend())
+            return *found;
+    }
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    image.save(&buffer, "PNG");
+    rememberPng(image, bytes);
+    return bytes;
+}
+
 QJsonObject drawingToJson(Drawing const& d, QString const& folder, QJsonObject& images, QHash<qint64, QString>& imageKeys)
 {
 QJsonArray strokes, fills;
@@ -375,11 +413,7 @@ if (!d.pictures.isEmpty()) {
             if (key.isEmpty()) {
                 key = QString::number(imageKeys.size() + 1);
                 imageKeys.insert(p.image.cacheKey(), key);
-                QByteArray bytes;
-                QBuffer buffer(&bytes);
-                buffer.open(QIODevice::WriteOnly);
-                p.image.save(&buffer, "PNG");
-                images[key] = QString::fromLatin1(bytes.toBase64());
+                images[key] = QString::fromLatin1(pngOf(p.image).toBase64());
             }
             picture["image"] = key;
         }
