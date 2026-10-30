@@ -372,6 +372,8 @@
     <item id="DeleteNonSelection" icon="anim/removeoutside" text="&amp;Delete Non Selection" shortcut="shortcut.deleteNonSelection" responder="camera" slot="onActionDeleteNonSelection()"/>
    </menu>
    <item id="ConvertToBitmap" icon="anim/smooth" text="Convert to &amp;Bitmap Drawing" shortcut="shortcut.convertToBitmap" responder="camera" slot="onActionConvertToBitmap()"/>
+   <item id="ConvertToVector" icon="anim/smooth" text="Convert to &amp;Vector Drawing" responder="camera" slot="onActionConvertToVector()"/>
+   <item id="ConvertToVectorLayer" text="Convert to Vector &amp;Layer" responder="camera" slot="onActionConvertToVectorLayer()"/>
    <item id="MatchArtLayerType" icon="anim/smooth" text="Convert Drawings to Match Art Layer Type" shortcut="shortcut.matchArtLayerType" responder="camera" slot="onActionMatchArtLayerType()"/>
    <item id="BitmapResolution" icon="anim/smooth" text="Change Bitmap Drawing Resol&amp;ution..." shortcut="shortcut.bitmapResolution" responder="camera" slot="onActionBitmapResolution()"/>
    <menu id="DrawingOptimize" text="&amp;Optimize">
@@ -662,6 +664,7 @@
   <item id="SwitchOverlayUnderlay" icon="art/switch" text="Switch To Overlay/Underlay Art" shortcut="shortcut.switchOverlayUnderlay" responder="camera" slot="onActionSwitchOverlayUnderlay()"/>
   <item id="ApplyToLineAndColourArt" icon="art/bothart" text="Apply Tool to Line and Colour Art" checkable="true" responder="camera" slot="setSelectBothArts(bool)"/>
   <item id="SnapToContour" icon="art/snapcontour" text="Snap to Contour" shortcut="shortcut.snapToContour" checkable="true" responder="camera" slot="onActionSnapToContour(bool)"/>
+  <item id="SnapAllLayers" text="Allow Snapping on all Drawing Layers" checkable="true" responder="camera" slot="onActionSnapAllLayers(bool)"/>
   <item id="SnapToGrid" icon="art/snapgrid" text="Snap to Grid" shortcut="shortcut.snapToGrid" checkable="true" responder="camera" slot="onActionSnapToGrid(bool)"/>
   <item id="SnapAndAlign" icon="art/snapalign" text="Snap and Align" shortcut="shortcut.snapAndAlign" checkable="true" responder="camera" slot="onActionSnapAndAlign(bool)"/>
   <item id="SwitchArt" icon="art/switch" text="Switch To Colour Art" shortcut="shortcut.switchArt" responder="camera" slot="onActionSwitchArt()"/>
@@ -973,6 +976,8 @@
   <item id="MoveLayerDown" icon="timeline/layerdown" text="Move Layer Down" shortcut="shortcut.moveLayerDown" responder="window" slot="onActionMoveLayerDown()"/>
   <item id="AttachLayer"/>
   <item id="DetachLayer"/>
+  <menu id="TimelineLinkLayer" text="Link Layer" responder="window" aboutToShowSlot="onShowLinkLayer(QMenu*)"/>
+  <menu id="TimelineUnlinkLayer" text="Unlink Layer" responder="window" aboutToShowSlot="onShowUnlinkLayer(QMenu*)"/>
   <item id="LayerPrefixSuffix" icon="timeline/renamelayer" text="Add Prefix/Suffix..." responder="window" slot="onActionLayerPrefixSuffix()"/>
   <menu id="TimelineSync" text="Clone and Sync">
    <item id="CloneLayer"/>
@@ -1119,6 +1124,10 @@
   <item id="DefaultTrackColour" icon="timeline/defaulttrackcolour" text="Default Track Colour" responder="window" slot="onActionDefaultTrackColour()"/>
   <separator/>
   <menu id="TimelineDrawings" text="Drawings">
+   <item id="MergeSelectedDrawings" text="Merge Selected Drawings" responder="window" slot="onActionMergeSelectedDrawings()"/>
+   <item id="MergeRangeStart" text="Set Merge Range Start Frame" responder="window" slot="onActionMergeRangeStart()"/>
+   <item id="MergeRangeEnd" text="Set Merge Range End Frame" responder="window" slot="onActionMergeRangeEnd()"/>
+   <separator/>
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>
    <item id="DeleteDrawing"/>
@@ -1159,6 +1168,7 @@
    <separator/>
    <item id="ClearExposure"/>
    <item id="CreateCycle"/>
+   <item id="DeleteSpecial" text="Delete Special..." responder="window" slot="onActionDeleteSpecial()"/>
    <item id="ClearExposureAndPull" icon="timeline/clearandpull" text="Clear Exposure and Pull" responder="window" slot="onActionClearExposureAndPull()"/>
   </menu>
   <separator/>

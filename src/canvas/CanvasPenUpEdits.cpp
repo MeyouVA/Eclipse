@@ -380,19 +380,24 @@ bool Canvas::penUpSelection(Drag drag)
         m_drag = DragNone;
         QString const text = drag == DragMove ? tr("Move") : drag == DragScale ? (m_tool == Perspective ? tr("Perspective") : tr("Scale")) : tr("Rotate");
         bool const everywhere = (m_applyAll || m_applyOnion) && m_tool == Select;
+        bool const otherLayers = (m_applySynced || m_applyVisible) && m_tool == Select;
         QSet<int> const onion = m_applyAll ? QSet<int>() : onionDrawings();
-        QRectF const region = everywhere ? selectionBounds() : QRectF();
+        QRectF const region = everywhere || otherLayers ? selectionBounds() : QRectF();
         QTransform const done = m_dragTransform;
         bool const all = m_tool == Reposition && !m_repositionCurrent;
-        if (everywhere || all)
+        if (everywhere || all || otherLayers)
             m_document->beginMacro(text);
         commitDrawing(edited, text);
+        if (otherLayers)
+            alsoInOtherLayers(region, &done, text);
         if (all) {
             repositionOthers(done, text);
             m_document->endMacro();
         }
         if (everywhere) {
             alsoInOtherDrawings(region, &done, text, m_applyAll ? nullptr : &onion);
+            m_document->endMacro();
+        } else if (otherLayers) {
             m_document->endMacro();
         }
     }

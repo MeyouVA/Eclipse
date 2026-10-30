@@ -71,7 +71,7 @@ void MainWindow::onActionAddDrawingLayer()
         QRadioButton* const vector = new QRadioButton(tr("Vector"), row);
         QRadioButton* const bitmap = new QRadioButton(tr("Bitmap"), row);
         // (Preferences: the line art of a new layer in pixels to begin with.)
-        bool const pixels = canBitmap && QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/lineArtBitmap"), false).toBool();
+        bool const pixels = canBitmap && qstrcmp(objectName, "LayerLineArt") == 0 && QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/lineArtBitmap"), false).toBool();
         vector->setChecked(!pixels);
         bitmap->setChecked(pixels);
         bitmap->setObjectName(QLatin1String(objectName) + QStringLiteral("Bitmap"));
@@ -97,6 +97,8 @@ void MainWindow::onActionAddDrawingLayer()
     form->addRow(tr("Number:"), number);
     form->addRow(tr("Line Art"), kinds("LayerLineArt", true));
     form->addRow(tr("Colour Art"), kinds("LayerColourArt", false));
+    form->addRow(tr("Overlay Art"), kinds("LayerOverlayArt", true));
+    form->addRow(tr("Underlay Art"), kinds("LayerUnderlayArt", true));
     form->addRow(wholeScene);
     QPushButton* const addAndClose = new QPushButton(tr("Add and Close"), &dialog);
     addAndClose->setObjectName(QStringLiteral("LayerAddAndClose"));
@@ -120,6 +122,14 @@ void MainWindow::onActionAddDrawingLayer()
             int const at = addDrawingLayer(n == 0 ? name->text() : QStringLiteral("%1_%2").arg(name->text().trimmed()).arg(n + 1), wholeScene->isChecked());
             if (bitmap && bitmap->isChecked())
                 m_document->setLayerBitmap(at, true);
+            // Overlay and underlay art: vector or bitmap of their own.
+            int sheets = 0;
+            if (QRadioButton* const over = dialog.findChild<QRadioButton*>(QStringLiteral("LayerOverlayArtBitmap")); over && over->isChecked())
+                sheets |= 1 << Drawing::OverlaySheet;
+            if (QRadioButton* const under = dialog.findChild<QRadioButton*>(QStringLiteral("LayerUnderlayArtBitmap")); under && under->isChecked())
+                sheets |= 1 << Drawing::UnderlaySheet;
+            if (sheets)
+                m_document->editLayers({at}, tr("Add Drawing Layer"), [sheets](Layer& l) { l.bitmapArt |= sheets; });
         }
         m_document->endMacro();
         name->setFocus();
@@ -189,6 +199,10 @@ void MainWindow::onActionAddParentPeg()
 
 void MainWindow::onActionDeleteLayer()
 {
+    // (Preferences > General: Ask before deleting layers.)
+    if (QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/confirmLayerDelete"), false).toBool()
+        && QMessageBox::question(this, tr("Delete Layers"), tr("You are about to delete Layer(s)\nPlease Confirm.")) != QMessageBox::Yes)
+        return;
     m_document->removeLayers(m_timeline->selectedLayers());
 }
 

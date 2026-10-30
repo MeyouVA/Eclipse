@@ -16,6 +16,7 @@
 #include <numeric>
 
 #include "model/document/Commands.h"
+#include "model/geometry/Vectorize.h"
 
 namespace {
 bool animatedSheet(Layer const& layer, int drawing, int sheet)
@@ -348,6 +349,86 @@ void Canvas::onActionConvertToBitmap()
     update();
 }
 
+bool Canvas::vectorizeSheet(Drawing& drawing, int sheet)
+{
+    bool any = false;
+    QVector<Picture> kept;
+    for (Picture const& pixels : std::as_const(drawing.pictures)) {
+        if (!pixels.painted || pixels.sheet != sheet || pixels.image.isNull()) {
+            kept.push_back(pixels);
+            continue;
+        }
+        any = true;
+        // Over white paper, then each colour's areas as a shape, placed where the pixels were.
+        QImage flat(pixels.image.size(), QImage::Format_RGB32);
+        flat.fill(Qt::white);
+        {
+            QPainter p(&flat);
+            p.drawImage(0, 0, pixels.image);
+        }
+        QTransform const placed = QTransform::fromScale(double(pixels.size.width()) / std::max(1, pixels.image.width()), double(pixels.size.height()) / std::max(1, pixels.image.height()))
+                                  * pixels.placement;
+        for (Vectorize::ColourShape const& area : Vectorize::traceColours(flat, 16, QColor(Qt::white))) {
+            Fill shape;
+            shape.color = area.colour;
+            shape.swatch = -1;
+            for (QPolygonF const& outline : area.outlines)
+                shape.outlines.push_back(placed.map(outline));
+            shape.giveContours(std::max(0.75, placed.m11()));
+            drawing.fillsOf(sheet).push_back(shape);
+        }
+    }
+    drawing.pictures = kept;
+    return any;
+}
+
+void Canvas::onActionConvertToVector()
+{
+    if (!canEditDrawing())
+        return;
+    Drawing const* const real = realDrawing();
+    if (!real) {
+        emit message(tr("The selection is not a bitmap drawing."));
+        return;
+    }
+    Drawing whole = *real;
+    if (!vectorizeSheet(whole, sheetOf(m_art))) {
+        emit message(tr("There is no bitmap art in this art layer to convert."));
+        return;
+    }
+    clearSelection();
+    m_committing = true;
+    keepWholeDrawing(whole, tr("Convert to Vector Drawing"));
+    m_committing = false;
+    update();
+}
+
+void Canvas::onActionConvertToVectorLayer()
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size() || !scene.layers[m_layer].holdsDrawings())
+        return;
+    Layer const layer = scene.layers[m_layer];
+    int const at = m_layer;
+    m_document->beginMacro(tr("Convert to Vector Layer"));
+    for (int index = 0; index < layer.drawings.size(); ++index) {
+        Drawing whole = layer.drawings[index];
+        bool any = false;
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+            any = vectorizeSheet(whole, sheet) || any;
+        if (any)
+            m_document->editLayers({at}, tr("Convert to Vector Layer"), [index, whole](Layer& l) {
+                if (index < l.drawings.size())
+                    l.drawings[index] = whole;
+            });
+    }
+    m_document->setLayerBitmap(at, false);
+    m_document->editLayers({at}, tr("Convert to Vector Layer"), [](Layer& l) { l.bitmapArt = 0; });
+    m_document->endMacro();
+    clearSelection();
+    update();
+}
+
 void Canvas::onActionMatchArtLayerType()
 {
     if (!canEditDrawing())
@@ -372,11 +453,15 @@ void Canvas::onActionMatchArtLayerType()
         done.insert(index);
         Drawing whole = layer.drawings[index];
         bool any = false;
-        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet)
+        for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
             if (layer.bitmapSheet(sheet) && (!whole.strokesOf(sheet).isEmpty() || !whole.fillsOf(sheet).isEmpty())) {
                 rasterize(whole, sheet, scene, bitmapFineness(), bitmapArea());
                 any = true;
+            } else if (!layer.bitmapSheet(sheet)) {
+                // (A vector art layer: its pixels traced into shapes.)
+                any = vectorizeSheet(whole, sheet) || any;
             }
+        }
         if (any) {
             m_committing = true;
             m_document->setDrawing(m_layer, frame, whole, tr("Convert Drawings to Match Art Layer Type"));

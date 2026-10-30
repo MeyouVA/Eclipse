@@ -113,6 +113,11 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.pasteForceKeys->setToolTip(tr("Cells of an animated layer copied and pasted come with keyframes where they begin and end, so the motion pasted is the motion copied."));
     w.pasteForceKeys->setChecked(s.value(QStringLiteral("prefs/pasteForceKeys"), true).toBool());
     w.generalLayout->addRow(w.pasteForceKeys);
+    w.confirmLayerDelete = new QCheckBox(tr("Ask before deleting layers"), w.general);
+    w.confirmLayerDelete->setObjectName(QStringLiteral("PrefConfirmLayerDelete"));
+    w.confirmLayerDelete->setToolTip(tr("Delete Layers asks first (You are about to delete Layer(s). Please Confirm.)."));
+    w.confirmLayerDelete->setChecked(s.value(QStringLiteral("prefs/confirmLayerDelete"), false).toBool());
+    w.generalLayout->addRow(w.confirmLayerDelete);
     w.keepBackup = new QCheckBox(tr("Keep a backup of the scene file when saving"), w.general);
     w.keepBackup->setObjectName(QStringLiteral("PrefKeepBackup"));
     w.keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));

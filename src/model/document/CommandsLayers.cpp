@@ -232,6 +232,63 @@ int Document::mergeLayers(QVector<int> const& layers)
     return at;
 }
 
+int Document::mergeDrawings(QVector<int> const& layers, int first, int last, bool* moved)
+{
+    QVector<int> in;
+    for (int l : layers)
+        if (l >= 0 && l < m_scene.layers.size() && m_scene.layers[l].holdsDrawings() && !m_scene.layers[l].bitmap && !in.contains(l))
+            in.push_back(l);
+    if (moved)
+        *moved = false;
+    if (in.size() < 2 || first > last)
+        return 0;
+    std::sort(in.begin(), in.end());    // back to front: the front layer is painted last
+    int const target = in.last();
+    int merged = 0;
+    bool repositioned = false;
+    apply(tr("Merge Selected Drawings"), [&](Scene& s) {
+        for (int f = std::max(0, first); f <= std::min(last, s.frameCount() - 1); ++f) {
+            QTransform const toTarget = s.worldTransform(target, f).isInvertible() ? s.worldTransform(target, f).inverted() : QTransform();
+            Drawing all;
+            int sources = 0;
+            for (int l : std::as_const(in)) {
+                int const index = s.layers[l].drawingAt(f);
+                if (index == Layer::kNoDrawing)
+                    continue;
+                ++sources;
+                QTransform const t = s.worldTransform(l, f) * toTarget;
+                repositioned = repositioned || (l != target && !t.isIdentity());
+                Drawing part = s.layers[l].drawings[index];
+                for (Picture& picture : part.pictures)
+                    picture.transform(t);
+                all.pictures += part.pictures;
+                for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                    for (Stroke& stroke : part.strokesOf(sheet))
+                        stroke.transform(t);
+                    for (Fill& fill : part.fillsOf(sheet))
+                        fill.transform(t);
+                    all.strokesOf(sheet) += part.strokesOf(sheet);
+                    all.fillsOf(sheet) += part.fillsOf(sheet);
+                }
+            }
+            if (sources < 2)
+                continue;
+            Layer& front = s.layers[target];
+            front.drawings.push_back(all);
+            if (front.cells.size() <= f)
+                front.cells.resize(f + 1, Layer::kNoDrawing);
+            front.cells[f] = int(front.drawings.size()) - 1;
+            for (int l : std::as_const(in))
+                if (l != target && f < s.layers[l].cells.size())
+                    s.layers[l].cells[f] = Layer::kNoDrawing;
+            ++merged;
+        }
+    });
+    if (moved)
+        *moved = repositioned;
+    return merged;
+}
+
 int Document::addBone(int current)
 {
     int at = -1;

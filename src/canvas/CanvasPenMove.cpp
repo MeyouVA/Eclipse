@@ -404,6 +404,17 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         }
         break;
     case DragThickness:
+        if (m_opacityMode && m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size()) {
+            Stroke& line = m_eraseArt.strokes[m_thickStroke];
+            if (m_thickKey >= 0 && m_thickKey < line.points.size()) {
+                QPointF const screenFrom = layerViewTransform().map(m_thickPress), screenNow = layerViewTransform().map(p);
+                m_thickMoved = m_thickMoved || QLineF(screenFrom, screenNow).length() > 2.0;
+                // A hundred pixels up: fully solid; down: gone.
+                line.points[m_thickKey].opacity = std::clamp(m_opacityStart + float((screenFrom.y() - screenNow.y()) / 100.0), 0.0f, 1.0f);
+                update();
+            }
+            break;
+        }
         if (m_thickStroke >= 0 && m_thickStroke < m_eraseArt.strokes.size()) {
             Stroke& line = m_eraseArt.strokes[m_thickStroke];
             if (m_thickKey >= 0 && m_thickKey < line.thickness.size() && line.width > 0.0f) {

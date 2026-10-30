@@ -144,6 +144,8 @@ private:
     QPushButton* m_weightClear = nullptr;       // all the painted weights of the layer taken away
     QSpinBox* m_envelopePoints = nullptr;
     QCheckBox* m_applyAll = nullptr;
+    QCheckBox* m_applySynced = nullptr;
+    QCheckBox* m_applyVisible = nullptr;
     QCheckBox* m_applyOnion = nullptr;
     QCheckBox* m_dropperAll = nullptr;
     QCheckBox* m_byColour = nullptr;

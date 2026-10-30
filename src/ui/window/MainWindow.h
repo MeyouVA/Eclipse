@@ -233,6 +233,15 @@ public slots:
     void onShowToolbars(QMenu* menu);
     void onShowWindows(QMenu* menu);
     void onShowCameras(QMenu* menu);
+    // Timeline: Link Layer (a layer that follows nothing put under the current one) and Unlink Layer (one of those under it let go).
+    void onShowLinkLayer(QMenu* menu);
+    // Timeline > Drawings: Merge Selected Drawings (the frames selected, or the merge range set), and setting that range.
+    void onActionMergeSelectedDrawings();
+    // Delete Special: of the cells selected, the exposure and/or the timed values (keyframes).
+    void onActionDeleteSpecial();
+    void onActionMergeRangeStart();
+    void onActionMergeRangeEnd();
+    void onShowUnlinkLayer(QMenu* menu);
     void onActionResetAllExceptZ();
     void onActionSet3DAnimationTiming();
     void onActionSnapshot3D();
@@ -662,6 +671,7 @@ protected:
     void showEvent(QShowEvent* event) override;
 
 private:
+    int m_mergeStart = -1, m_mergeEnd = -1;  // Set Merge Range Start/End Frame
     void startCaptureMotion(int target, int first, int last, int countdown, int fps);
     // The Preferences dialog's pages, each made into the widgets it is read back from.
     void preferencesGeneral(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);

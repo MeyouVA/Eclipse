@@ -484,3 +484,57 @@ void Canvas::alsoInOtherDrawings(QRectF const& region, QTransform const* transfo
     }
     m_committing = false;
 }
+
+void Canvas::alsoInOtherLayers(QRectF const& region, QTransform const* transform, QString const& text)
+{
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size() || region.isNull())
+        return;
+    int const sheet = sheetOf(m_art);
+    int const group = scene.layers[m_layer].syncGroup;
+    QTransform const here = worldOf(m_layer, m_frame);
+    QVector<int> others;
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        Layer const& layer = scene.layers[l];
+        if (l == m_layer || !layer.holdsDrawings() || layer.locked || layer.drawingAt(m_frame) == Layer::kNoDrawing)
+            continue;
+        if ((m_applySynced && group != 0 && layer.syncGroup == group) || (m_applyVisible && scene.shows(l)))
+            others.push_back(l);
+    }
+    m_committing = true;
+    for (int l : std::as_const(others)) {
+        Layer const& layer = m_document->scene().layers[l];
+        // From that layer's coordinates to this one's, and back.
+        QTransform const across = worldOf(l, m_frame) * (here.isInvertible() ? here.inverted() : QTransform());
+        if (!across.isInvertible())
+            continue;
+        QTransform const back = across.inverted();
+        QRectF const within = back.mapRect(region).adjusted(-1.5, -1.5, 1.5, 1.5);
+        QTransform const there = transform ? across * *transform * back : QTransform();
+        Drawing whole = layer.drawings[layer.drawingAt(m_frame)];
+        bool changed = false;
+        QVector<Stroke>& strokes = whole.strokesOf(sheet);
+        for (int i = int(strokes.size()) - 1; i >= 0; --i) {
+            if (!within.contains(strokes[i].bounds()))
+                continue;
+            changed = true;
+            if (transform)
+                strokes[i].transform(there);
+            else
+                strokes.removeAt(i);
+        }
+        QVector<Fill>& fills = whole.fillsOf(sheet);
+        for (int i = int(fills.size()) - 1; i >= 0; --i) {
+            if (!within.contains(fills[i].bounds()))
+                continue;
+            changed = true;
+            if (transform)
+                fills[i].transform(there);
+            else
+                fills.removeAt(i);
+        }
+        if (changed)
+            m_document->setDrawing(l, m_frame, whole, text);
+    }
+    m_committing = false;
+}

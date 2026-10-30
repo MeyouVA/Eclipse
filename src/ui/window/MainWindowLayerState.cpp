@@ -2,6 +2,7 @@
 #include "ui/window/MainWindow.h"
 
 #include "actions/manager/ActionManager.h"
+#include <QMenu>
 #include <QCheckBox>
 #include <QSpinBox>
 #include <QDialog>
@@ -528,4 +529,99 @@ void MainWindow::onActionColumnProperties()
         });
     }
     m_document->endMacro();
+}
+
+namespace {
+
+// The group a layer is in (the nearest Group above it), or -1.
+int groupAround(Scene const& scene, int l)
+{
+    for (int p = scene.parentIndex(l); p >= 0; p = scene.parentIndex(p))
+        if (scene.layers[p].kind == Layer::Group)
+            return p;
+    return -1;
+}
+
+}  // namespace
+
+void MainWindow::onShowLinkLayer(QMenu* menu)
+{
+    menu->clear();
+    Scene const& scene = m_document->scene();
+    int const l = layer();
+    if (l < 0 || l >= scene.layers.size())
+        return;
+    for (int i = int(scene.layers.size()) - 1; i >= 0; --i) {
+        if (i == l || scene.parentIndex(i) >= 0 || scene.isAncestor(i, l) || scene.layers[i].kind == Layer::Camera)
+            continue;
+        QAction* const a = menu->addAction(scene.layers[i].name);
+        int const parentId = scene.layers[l].id, childId = scene.layers[i].id;
+        bool const elsewhere = groupAround(scene, i) != (scene.layers[l].kind == Layer::Group ? l : groupAround(scene, l));
+        connect(a, &QAction::triggered, this, [this, parentId, childId, elsewhere] {
+            if (elsewhere) {
+                statusBar()->showMessage(tr("Cannot link layer from another group."), 6000);
+                return;
+            }
+            Scene const& now = m_document->scene();
+            int const p = now.layerIndex(parentId), c = now.layerIndex(childId);
+            if (p >= 0 && c >= 0)
+                m_document->setParent(c, p);
+        });
+    }
+    if (menu->isEmpty())
+        menu->addAction(tr("No Unconnected Layer Available"))->setEnabled(false);
+}
+
+void MainWindow::onShowUnlinkLayer(QMenu* menu)
+{
+    menu->clear();
+    Scene const& scene = m_document->scene();
+    int const l = layer();
+    if (l < 0 || l >= scene.layers.size())
+        return;
+    for (int i = int(scene.layers.size()) - 1; i >= 0; --i) {
+        if (scene.parentIndex(i) != l)
+            continue;
+        int const childId = scene.layers[i].id;
+        connect(menu->addAction(scene.layers[i].name), &QAction::triggered, this, [this, childId] {
+            if (int const c = m_document->scene().layerIndex(childId); c >= 0)
+                m_document->setParent(c, -1);
+        });
+    }
+    if (menu->isEmpty())
+        menu->addAction(tr("No Connected Layer Available"))->setEnabled(false);
+}
+
+void MainWindow::onActionMergeSelectedDrawings()
+{
+    QVector<int> const layers = m_timeline->selectedLayers();
+    int first = m_timeline->selectionFirstFrame(), last = m_timeline->selectionLastFrame();
+    // (A merge range set: it, instead of the frames selected.)
+    if (m_mergeStart >= 0 && m_mergeEnd >= m_mergeStart) {
+        first = m_mergeStart;
+        last = m_mergeEnd;
+    }
+    bool moved = false;
+    int const merged = m_document->mergeDrawings(layers, first, last, &moved);
+    if (merged == 0) {
+        statusBar()->showMessage(tr("Select two vector drawing layers or more, and the frames to merge."), 5000);
+        return;
+    }
+    statusBar()->showMessage(moved ? tr("Merged drawings have been repositioned") : tr("%n frame(s) merged.", nullptr, merged), 5000);
+}
+
+void MainWindow::onActionMergeRangeStart()
+{
+    m_mergeStart = frame();
+    if (m_mergeEnd < m_mergeStart)
+        m_mergeEnd = m_mergeStart;
+    statusBar()->showMessage(tr("Merge range: frames %1 to %2").arg(m_mergeStart + 1).arg(m_mergeEnd + 1), 4000);
+}
+
+void MainWindow::onActionMergeRangeEnd()
+{
+    m_mergeEnd = frame();
+    if (m_mergeStart < 0 || m_mergeStart > m_mergeEnd)
+        m_mergeStart = m_mergeEnd;
+    statusBar()->showMessage(tr("Merge range: frames %1 to %2").arg(m_mergeStart + 1).arg(m_mergeEnd + 1), 4000);
 }

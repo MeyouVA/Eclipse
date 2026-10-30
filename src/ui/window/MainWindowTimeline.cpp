@@ -273,3 +273,32 @@ void MainWindow::onActionDeleteSelectedDrawings()
     }
     m_document->endMacro();
 }
+
+void MainWindow::onActionDeleteSpecial()
+{
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("DeleteSpecial"));
+    dialog.setWindowTitle(tr("Delete Special"));
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    QCheckBox* const drawings = new QCheckBox(tr("Delete Drawings (the exposure)"), &dialog);
+    drawings->setObjectName(QStringLiteral("DeleteSpecialDrawings"));
+    drawings->setChecked(true);
+    QCheckBox* const timed = new QCheckBox(tr("Delete Timed Values"), &dialog);
+    timed->setObjectName(QStringLiteral("DeleteSpecialTimedValues"));
+    timed->setToolTip(tr("The keyframes of the frames selected."));
+    timed->setChecked(true);
+    layout->addWidget(drawings);
+    layout->addWidget(timed);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (dialog.exec() != QDialog::Accepted || (!drawings->isChecked() && !timed->isChecked()))
+        return;
+    m_document->beginMacro(tr("Delete Special"));
+    if (timed->isChecked())
+        onActionSelectionKeyframes(QStringLiteral("clear"));
+    if (drawings->isChecked())
+        onActionClearExposure();
+    m_document->endMacro();
+}

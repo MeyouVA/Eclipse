@@ -14,6 +14,7 @@ struct PreferenceWidgets {
     QDoubleSpinBox* minimumFov = nullptr;
     QDoubleSpinBox* maximumFov = nullptr;
     QCheckBox* pasteForceKeys = nullptr;
+    QCheckBox* confirmLayerDelete = nullptr;
     QCheckBox* keepBackup = nullptr;
     QCheckBox* compress = nullptr;
     QSpinBox* quiet = nullptr;

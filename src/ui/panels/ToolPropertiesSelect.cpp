@@ -101,6 +101,16 @@ void ToolProperties::addSelectRows()
                               "in the other drawings, whatever lies within the place the selection had."));
     connect(m_applyAll, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToAllDrawings);
     m_form->addRow(m_applyAll);
+    m_applySynced = new QCheckBox(tr("Apply to Synced Drawing Layers"), this);
+    m_applySynced->setObjectName(QStringLiteral("SelectSyncedLayers"));
+    m_applySynced->setToolTip(tr("Applies to Camera view only. What you move, scale, turn or delete is changed the same way on the layers synced with this one."));
+    connect(m_applySynced, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToSyncedLayers);
+    m_applyVisible = new QCheckBox(tr("Apply to Visible Drawing Layers"), this);
+    m_applyVisible->setObjectName(QStringLiteral("SelectVisibleLayers"));
+    m_applyVisible->setToolTip(tr("What you move, scale, turn or delete is changed the same way on every visible drawing layer, in the same place of the Camera view."));
+    connect(m_applyVisible, &QCheckBox::toggled, m_canvas, &Canvas::setApplyToVisibleLayers);
+    m_form->addRow(m_applySynced);
+    m_form->addRow(m_applyVisible);
     m_applyOnion = new QCheckBox(tr("Apply to Onion Skin Range"), this);
     m_applyOnion->setObjectName(QStringLiteral("SelectOnionRange"));
     m_applyOnion->setToolTip(tr("What you move, scale, turn or delete is changed the same way in the drawings the onion skin shows."));

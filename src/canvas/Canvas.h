@@ -267,6 +267,9 @@ public:
     void finishPolyline(bool keep);
 
     void setApplyToAllDrawings(bool on) { m_applyAll = on; }
+    // The Select tool: what is moved, scaled, turned or deleted changed the same in the layers synced with this one, or in every visible drawing layer.
+    void setApplyToSyncedLayers(bool on) { m_applySynced = on; }
+    void setApplyToVisibleLayers(bool on) { m_applyVisible = on; }
     // Onion skin by frame: the frames just before and after, instead of the neighbouring drawings.
     void setOnionByFrame(bool on);
     // The drawings before and after as outlines only: the edges of their paint and the paths of their lines.
@@ -349,6 +352,8 @@ public:
     // Whether the preferences leave this kind of effect out (blurs, focus, tone and highlight, colour override).
     static bool switchedOff(Effect::Type type);
     static bool paintGraph(QPainter& painter, Scene const& scene, int frame);
+    // The painted pixels of a drawing's art layer traced into filled shapes of their colours (the pixels gone); false when there were none.
+    static bool vectorizeSheet(Drawing& drawing, int sheet);
     static void paintDrawing(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity,
                              QColor const* tint = nullptr);
     static void paintLayerDrawing(QPainter& painter, Scene const& scene, int layer, int frame, Drawing const& drawing,
@@ -604,6 +609,9 @@ public slots:
     void onActionConvertToBitmap();
     // Layer: every drawing of the layer made as its art layers are - those that are bitmap ones painted into pixels.
     void onActionMatchArtLayerType();
+    // Bitmap art made vector: the painted pixels of the current art layer traced into shapes; and every drawing of the layer, which becomes a vector layer.
+    void onActionConvertToVector();
+    void onActionConvertToVectorLayer();
     // Drawing > Change Bitmap Drawing Resolution...: the pixels of the drawing finer or coarser.
     void onActionBitmapResolution();
     // The same, said how: so much finer (2: twice), on this drawing or every drawing of the layer.
@@ -620,6 +628,11 @@ public slots:
     void onActionCreateColourArt();
     // A point dragged with the Contour Editor goes onto a point of another line or contour that is near.
     void onActionSnapToContour(bool on) { m_snapContour = on; }
+    // Snap to Contour onto the art of every visible drawing layer, not only the current one's.
+    void onActionSnapAllLayers(bool on) { m_snapAllLayers = on; }
+    // The Pencil Editor's mode: Adjust Opacity (true) or Adjust Thickness.
+    void setPencilEditorOpacity(bool on);
+    bool pencilEditorOpacity() const { return m_opacityMode; }
     void setShowGuides(bool on)
     {
         if (m_showGuides == on)
@@ -821,6 +834,8 @@ private:
     // From the scene to the widget: through the camera of the scene, then the above.
     QTransform viewTransform() const;
     QPointF toScene(QPointF widgetPos) const;
+    // The same change in the other layers the Select tool applies to (synced, or visible), in each one's own coordinates.
+    void alsoInOtherLayers(QRectF const& region, QTransform const* transform, QString const& text);
     QTransform worldOf(int layer, int frame) const;
     // What is being dragged, for the scene to work with in place of what it has stored.
     PoseOverride dragged() const;

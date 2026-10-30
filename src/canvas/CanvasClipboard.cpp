@@ -128,6 +128,8 @@ void Canvas::deleteSelection()
     m_keepNoPictures = false;
     if (everywhere) {
         alsoInOtherDrawings(region, nullptr, tr("Delete"), m_applyAll ? nullptr : &onion);
+        if (m_applySynced || m_applyVisible)
+            alsoInOtherLayers(region, nullptr, tr("Delete"));
         m_document->endMacro();
     }
     setSelection({}, {});

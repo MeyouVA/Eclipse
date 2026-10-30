@@ -148,6 +148,28 @@ QPointF Canvas::snapped(QPointF p) const
     if (!m_snapContour || !d)
         return p;
     Stroke const* const mine = contourLine(*d);
+    // Allow Snapping on all Drawing Layers: the lines of the other visible layers too, brought into this layer's coordinates.
+    QVector<Stroke> theirs;
+    if (m_snapAllLayers && m_layer >= 0 && m_layer < m_document->scene().layers.size()) {
+        Scene const& scene = m_document->scene();
+        QTransform const here = worldOf(m_layer, m_frame);
+        for (int l = 0; l < scene.layers.size() && here.isInvertible(); ++l) {
+            Layer const& other = scene.layers[l];
+            int const index = other.drawingAt(m_frame);
+            if (l == m_layer || !other.holdsDrawings() || !scene.shows(l) || index == Layer::kNoDrawing)
+                continue;
+            QTransform const across = worldOf(l, m_frame) * here.inverted();
+            auto take = [&](Stroke line) {
+                line.transform(across);
+                theirs.push_back(line);
+            };
+            for (Stroke const& stroke : other.drawings[index].strokes)
+                take(stroke);
+            for (Fill const& fill : other.drawings[index].fills)
+                for (Stroke const& contour : fill.contours)
+                    take(contour);
+        }
+    }
     QPointF best = p;
     double nearest = 8.0 / m_zoom;
     auto look = [&](Stroke const& line) {
@@ -166,6 +188,8 @@ QPointF Canvas::snapped(QPointF p) const
     for (Fill const& fill : d->fills)
         for (Stroke const& contour : fill.contours)
             look(contour);
+    for (Stroke const& line : std::as_const(theirs))
+        look(line);
     if (best != p)
         return best;
     // No point near: the nearest place along another line, a little closer in.
@@ -192,5 +216,7 @@ QPointF Canvas::snapped(QPointF p) const
     for (Fill const& fill : d->fills)
         for (Stroke const& contour : fill.contours)
             along(contour);
+    for (Stroke const& line : std::as_const(theirs))
+        along(line);
     return best;
 }

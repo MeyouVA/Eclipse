@@ -181,6 +181,11 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         cancelInput();
         return;
     }
+    // The Pencil Editor: the up and down arrows switch between Adjust Thickness and Adjust Opacity.
+    if (m_tool == PencilEditor && m_drag == DragNone && event->modifiers() == Qt::NoModifier && (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)) {
+        setPencilEditorOpacity(!m_opacityMode);
+        return;
+    }
     // Alt and the up or down arrow: the lines selected a little thicker or thinner (Nudge Selection Thickness).
     if (m_tool == Select && hasSelection() && m_drag == DragNone && (event->modifiers() & Qt::AltModifier)
         && (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)) {

@@ -323,6 +323,9 @@ public:
     // The piece put onto the layers of the same names (Scene::pasteOnto); -1 when they are not all there.
     int pasteTemplateOnto(Scene const& piece, int frame, bool drawings = true, bool keys = true);
     int mergeLayers(QVector<int> const& layers);
+    // Merge Selected Drawings: on each frame from `first` to `last`, the drawings of the layers merged into the front one's (in its own coordinates),
+    // the others' cells there left empty; how many frames; `moved` says whether any came from a layer standing elsewhere (repositioned).
+    int mergeDrawings(QVector<int> const& layers, int first, int last, bool* moved = nullptr);
     int addBone(int current);
     // A quadmap just above `above`, its corners those of the frame.
     int addQuadmap(int above);

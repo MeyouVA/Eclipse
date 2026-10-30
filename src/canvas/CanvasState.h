@@ -129,6 +129,7 @@ protected:
     int m_textSpacing = 100;
     int m_textKerning = 100;
     bool m_applyAll = false;
+    bool m_applySynced = false, m_applyVisible = false;
     bool m_onionByFrame = false;
     bool m_onionOutlines = false;
     bool m_onionBrightnessAlpha = false;
@@ -181,6 +182,10 @@ protected:
     QPointF m_traceFrom, m_traceCentre;
     int m_traceWay = 0;     // 0 move, 1 turn (Ctrl), 2 scale (Alt)
     bool m_snapContour = false;
+    bool m_snapAllLayers = false;
+    // The Pencil Editor: Adjust Opacity instead of Adjust Thickness (Up/Down arrows switch); the opacity a dragged point started with.
+    bool m_opacityMode = false;
+    float m_opacityStart = 1.0f;
     bool m_showGuides = true;
     int m_activeGuide = -1;
     QPointF m_guideCentre;

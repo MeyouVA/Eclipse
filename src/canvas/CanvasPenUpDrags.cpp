@@ -127,7 +127,7 @@ if (drag == DragThickness) {
             }
         } else if (m_thickMoved) {
             Drawing const art = m_eraseArt;
-            commitDrawing(art, tr("Pencil Line Thickness"));
+            commitDrawing(art, m_opacityMode ? tr("Pencil Line Opacity") : tr("Pencil Line Thickness"));
         }
     }
     m_eraseArt = Drawing();
