@@ -34,6 +34,13 @@ Cms::Transform Scene::pictureTransform(Layer const& layer, bool painted) const
     return Cms::between(layer.colourSpace, workingSpace);
 }
 
+Cms::Transform Scene::pictureTransform(Layer const& layer, Picture const& picture) const
+{
+    if (!colourManaged || picture.painted || picture.colourSpace.isEmpty())
+        return pictureTransform(layer, picture.painted);
+    return Cms::between(picture.colourSpace, workingSpace);
+}
+
 QString Scene::outputSpace(QString const& writeSpace, QString const& format) const
 {
     if (!colourManaged)

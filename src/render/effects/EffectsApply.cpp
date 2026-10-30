@@ -9,12 +9,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include "colour/images/DeepPixels.h"
 
 namespace Effects {
 
-void variableBlur(QImage& image, QImage const& matte, double white, double black, bool keepInside)
+void variableBlur(QImage& image, QImage const& matteIn, double white, double black, bool keepInside)
 {
     detail::premultiplied(image);
+    QImage const matte = matteIn.format() == QImage::Format_ARGB32_Premultiplied ? matteIn : matteIn.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     QImage const original = image;
     if (black >= 0.5) {
         // Blurred `black` everywhere first, then towards `white` as the matte is lighter.
@@ -104,14 +106,18 @@ namespace {
 // `amount` of the way from what was there to what the effect made.
 void mixed(QImage& image, QImage const& before, double amount)
 {
-    int const k = std::clamp(int(std::lround(amount * 256.0)), 0, 256);
-    for (int y = 0; y < image.height() && y < before.height(); ++y) {
-        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
-        QRgb const* const was = reinterpret_cast<QRgb const*>(before.constScanLine(y));
-        for (int x = 0; x < image.width() && x < before.width(); ++x) {
-            QRgb const a = was[x], b = line[x];
-            auto mix = [k](int p, int q) { return p + ((q - p) * k >> 8); };
-            line[x] = qRgba(mix(qRed(a), qRed(b)), mix(qGreen(a), qGreen(b)), mix(qBlue(a), qBlue(b)), mix(qAlpha(a), qAlpha(b)));
+    // (The picture keeps the depth it had before the effect.)
+    QImage was = before;
+    Deep::prepare(was);
+    if (image.format() != was.format())
+        image = image.convertToFormat(was.format());
+    double const k = std::clamp(amount, 0.0, 1.0);
+    for (int y = 0; y < image.height() && y < was.height(); ++y) {
+        Deep::Line const line(image, y);
+        Deep::ConstLine const old(was, y);
+        for (int x = 0; x < image.width() && x < was.width(); ++x) {
+            Deep::Pixel const a = old[x], b = line[x];
+            line.set(x, {a.r + (b.r - a.r) * k, a.g + (b.g - a.g) * k, a.b + (b.b - a.b) * k, a.a + (b.a - a.a) * k});
         }
     }
 }

@@ -195,6 +195,8 @@ public:
     Cms::Transform swatchTransform() const;
     Cms::Transform textureTransform() const;
     Cms::Transform pictureTransform(Layer const& layer, bool painted) const;
+    // A picture's own colour space put in the working space (the layer's when it has none).
+    Cms::Transform pictureTransform(Layer const& layer, Picture const& picture) const;
     // A colour chosen like a palette colour (a colour-card's), as it is in the working space.
     QColor managedColour(QColor const& colour) const;
     // What a file is written in: the write's own colour space, or the working space (for EXR its linear form); empty when colour management is off.

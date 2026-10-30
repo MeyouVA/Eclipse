@@ -15,8 +15,8 @@ struct PictureWash { int percent = 0; QColor colour = Qt::white; };
 PictureWash& pictureWashState();
 void paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing const& drawing, QColor const* tint);
 QImage washedPicture(QImage const& image, int percent, QColor const& colour);
-// A picture put through a colour conversion (kept, so each is converted once).
-QImage convertedPicture(QImage const& image, Cms::Transform const& transform);
+// A picture put through a colour conversion (kept, so each is converted once); `deep` keeps 16 bits a channel.
+QImage convertedPicture(QImage const& image, Cms::Transform const& transform, bool deep = false);
 
 }  // namespace canvas_paint
 

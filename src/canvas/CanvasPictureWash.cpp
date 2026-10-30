@@ -30,19 +30,19 @@ QImage canvas_paint::washedPicture(QImage const& image, int percent, QColor cons
     return washed;
 }
 
-QImage canvas_paint::convertedPicture(QImage const& image, Cms::Transform const& transform)
+QImage canvas_paint::convertedPicture(QImage const& image, Cms::Transform const& transform, bool deep)
 {
     if (transform.isIdentity() || image.isNull())
         return image;
     static QMutex lock;
     static QCache<QPair<qint64, quint64>, QImage> cache(256 * 1024);
-    QPair<qint64, quint64> const key(image.cacheKey(), transform.id());
+    QPair<qint64, quint64> const key(image.cacheKey(), transform.id() * 2 + (deep ? 1 : 0));
     {
         QMutexLocker const locker(&lock);
         if (QImage const* const found = cache.object(key))
             return *found;
     }
-    QImage converted = transform.applied(image);
+    QImage converted = transform.applied(deep ? image.convertToFormat(QImage::Format_RGBA64_Premultiplied) : image);
     converted.setDevicePixelRatio(image.devicePixelRatio());
     int const cost = int(std::min<qsizetype>((converted.sizeInBytes() + 1023) / 1024, 256 * 1024 + 1));
     QMutexLocker const locker(&lock);

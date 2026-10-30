@@ -16,6 +16,7 @@
 #include "render/effects/Effects.h"
 #include "canvas/CanvasPaintShared.h"
 #include "canvas/CanvasPaintPrivate.h"
+#include "colour/images/DeepPixels.h"
 
 using namespace canvas_paint;
 
@@ -72,7 +73,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         Effects::matteResize(image, amount * pixelsPerUnit, e.invert);
     } else if (e.type == Effect::MotionBlur && !symbol) {
         int const back = std::clamp(int(std::lround(amount)), 0, 60);
-        QImage trail(size, QImage::Format_ARGB32_Premultiplied);
+        QImage trail(size, Deep::formatFor(painter.device()));
         trail.setDevicePixelRatio(dpr);
         trail.fill(Qt::transparent);
         {
@@ -131,7 +132,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         int const m = scene.layerIndex(e.matte);
         if (m < 0)
             return;  // no matte: nothing blurred
-        QImage where(size, QImage::Format_ARGB32_Premultiplied);
+        QImage where(size, Deep::formatFor(painter.device()));
         where.setDevicePixelRatio(dpr);
         where.fill(Qt::transparent);
         if (int const index = scene.layers[m].drawingAt(frame); index != Layer::kNoDrawing) {
@@ -145,7 +146,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         int const m = scene.layerIndex(e.matte);
         if (m < 0)
             return;  // no matte: nowhere to blur
-        QImage where(size, QImage::Format_ARGB32_Premultiplied);
+        QImage where(size, Deep::formatFor(painter.device()));
         where.setDevicePixelRatio(dpr);
         where.fill(e.invert ? Qt::black : Qt::transparent);
         if (int const index = scene.layers[m].drawingAt(frame); index != Layer::kNoDrawing) {
@@ -176,7 +177,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         int const m = scene.layerIndex(e.matte);
         if (m < 0)
             return;  // no matte: nowhere to shade
-        QImage where(size, QImage::Format_ARGB32_Premultiplied);
+        QImage where(size, Deep::formatFor(painter.device()));
         where.setDevicePixelRatio(dpr);
         where.fill(Qt::transparent);
         if (int const index = scene.layers[m].drawingAt(frame); index != Layer::kNoDrawing) {
@@ -187,7 +188,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         }
         if (e.invert) {
             // Outside the matte: the rest of the picture.
-            QImage outside(size, QImage::Format_ARGB32_Premultiplied);
+            QImage outside(size, Deep::formatFor(painter.device()));
             outside.setDevicePixelRatio(dpr);
             outside.fill(Qt::black);
             QPainter op(&outside);
@@ -214,7 +215,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
         int const m = scene.layerIndex(e.matte);
         if (m < 0)
             return;  // no matte: nothing is cut
-        QImage matte(size, QImage::Format_ARGB32_Premultiplied);
+        QImage matte(size, Deep::formatFor(painter.device()));
         matte.setDevicePixelRatio(dpr);
         matte.fill(Qt::transparent);
         int const index = scene.layers[m].drawingAt(frame);

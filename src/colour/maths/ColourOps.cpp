@@ -178,6 +178,8 @@ void hsv(float* rgb, bool back)
 
 void fixed(Op const& op, float* rgb, bool back)
 {
+    if (runAces(op, rgb, back))
+        return;
     double const X = rgb[0], Y = rgb[1], Z = rgb[2];
     switch (FixedStyle(op.style)) {
     case FixedStyle::RgbToHsv:
@@ -228,8 +230,9 @@ void fixed(Op const& op, float* rgb, bool back)
         return;
     }
     case FixedStyle::Rec2100Surround: {
+        // (Mirrored about black, as OpenColorIO, with the same smallest luminance.)
         double const gamma = back ? 1.0 / op.a[0] : op.a[0];
-        double const y = std::max(0.2627 * X + 0.6780 * Y + 0.0593 * Z, 1e-6);
+        double const y = std::max(std::abs(0.2627 * X + 0.6780 * Y + 0.0593 * Z), back ? std::pow(1e-4, op.a[0]) : 1e-4);
         double const scale = std::pow(y, gamma - 1.0);
         for (int c = 0; c < 3; ++c)
             rgb[c] = float(rgb[c] * scale);

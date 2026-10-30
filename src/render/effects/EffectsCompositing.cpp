@@ -16,6 +16,8 @@
 
 void Effects::channelSelect(QImage& image, int channel)
 {
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     for (int y = 0; y < image.height(); ++y) {
         QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
         for (int x = 0; x < image.width(); ++x) {
@@ -47,6 +49,8 @@ void Effects::crop(QImage& image, QRectF const& keep)
 
 void Effects::removeTransparency(QImage& image, double threshold)
 {
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     int const edge = std::clamp(int(std::lround(threshold * 255.0)), 0, 255);
     for (int y = 0; y < image.height(); ++y) {
         QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
@@ -64,6 +68,8 @@ void Effects::removeTransparency(QImage& image, double threshold)
 
 void Effects::matteComposite(QImage& image)
 {
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     for (int y = 0; y < image.height(); ++y) {
         QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
         for (int x = 0; x < image.width(); ++x) {
@@ -89,12 +95,15 @@ void Effects::blendOnto(QImage& under, QImage const& top, int mode)
 
 void Effects::variableBlur(QImage& image, QImage const& matte, double radius)
 {
+    if (image.format() != QImage::Format_ARGB32_Premultiplied)
+        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     QImage blurred = image;
     blur(blurred, radius);
+    QImage const matte8 = matte.format() == QImage::Format_ARGB32_Premultiplied ? matte : matte.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     for (int y = 0; y < image.height() && y < matte.height(); ++y) {
         QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
         QRgb const* const soft = reinterpret_cast<QRgb const*>(blurred.constScanLine(y));
-        QRgb const* const by = reinterpret_cast<QRgb const*>(matte.constScanLine(y));
+        QRgb const* const by = reinterpret_cast<QRgb const*>(matte8.constScanLine(y));
         for (int x = 0; x < image.width() && x < matte.width(); ++x) {
             // How much: the matte's brightness, where it is (premultiplied: its grey is already as faint as it is).
             int const k = (qRed(by[x]) * 299 + qGreen(by[x]) * 587 + qBlue(by[x]) * 114) / 1000;

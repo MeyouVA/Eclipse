@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include "colour/images/DeepPixels.h"
 
 namespace Effects {
 
@@ -51,10 +52,53 @@ static void boxBlur(QImage& image, int r)
         run(reinterpret_cast<QRgb*>(image.scanLine(0)) + x, h, lineBytes);
 }
 
+// The same box blur on a picture of 16 bits a channel.
+static void boxBlurDeep(QImage& image, int r)
+{
+    int const w = image.width(), h = image.height();
+    if (r < 1 || w < 1 || h < 1)
+        return;
+    int const span = 2 * r + 1;
+    QVector<QRgba64> buffer(std::max(w, h));
+    auto run = [&](uchar* first, int count, qsizetype stride) {
+        for (int i = 0; i < count; ++i)
+            buffer[i] = *reinterpret_cast<QRgba64*>(first + i * stride);
+        quint64 a = 0, red = 0, g = 0, b = 0;
+        auto take = [&](int i, bool add) {
+            if (i < 0 || i >= count)
+                return;
+            QRgba64 const c = buffer[i];
+            if (add) {
+                a += c.alpha(), red += c.red(), g += c.green(), b += c.blue();
+            } else {
+                a -= c.alpha(), red -= c.red(), g -= c.green(), b -= c.blue();
+            }
+        };
+        for (int i = -r; i <= r; ++i)
+            take(i, true);
+        for (int i = 0; i < count; ++i) {
+            *reinterpret_cast<QRgba64*>(first + i * stride) = QRgba64::fromRgba64(quint16(red / span), quint16(g / span), quint16(b / span), quint16(a / span));
+            take(i - r, false);
+            take(i + r + 1, true);
+        }
+    };
+    for (int y = 0; y < h; ++y)
+        run(image.scanLine(y), w, sizeof(QRgba64));
+    qsizetype const lineBytes = image.bytesPerLine();
+    for (int x = 0; x < w; ++x)
+        run(image.scanLine(0) + x * sizeof(QRgba64), h, lineBytes);
+}
+
 void blur(QImage& image, double radius)
 {
     if (radius < 0.5)
         return;
+    if (Deep::isDeep(image)) {
+        int const r = std::max(1, int(std::lround(radius * 0.6)));
+        for (int pass = 0; pass < 3; ++pass)
+            boxBlurDeep(image, std::min(r, 400));
+        return;
+    }
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
         image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     // Three box blurs in a row come very close to a true soft blur.
@@ -68,6 +112,18 @@ void tint(QImage& image, QColor const& color, double amount)
     amount = std::clamp(amount, 0.0, 1.0);
     if (amount <= 0.0)
         return;
+    if (Deep::isDeep(image)) {
+        for (int y = 0; y < image.height(); ++y) {
+            Deep::Line const row(image, y);
+            for (int x = 0; x < image.width(); ++x) {
+                Deep::Pixel const p = row[x];
+                if (p.a <= 0.0)
+                    continue;
+                row.set(x, {p.r + (color.redF() * p.a - p.r) * amount, p.g + (color.greenF() * p.a - p.g) * amount, p.b + (color.blueF() * p.a - p.b) * amount, p.a});
+            }
+        }
+        return;
+    }
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
         image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     int const k = int(std::lround(amount * 256.0));
@@ -90,6 +146,17 @@ void transparency(QImage& image, double amount)
     amount = std::clamp(amount, 0.0, 1.0);
     if (amount <= 0.0)
         return;
+    if (Deep::isDeep(image)) {
+        for (int y = 0; y < image.height(); ++y) {
+            Deep::Line const row(image, y);
+            for (int x = 0; x < image.width(); ++x) {
+                Deep::Pixel const p = row[x];
+                double const k = 1.0 - amount;
+                row.set(x, {p.r * k, p.g * k, p.b * k, p.a * k});
+            }
+        }
+        return;
+    }
     if (image.format() != QImage::Format_ARGB32_Premultiplied)
         image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     int const k = int(std::lround((1.0 - amount) * 256.0));

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include "colour/images/DeepPixels.h"
 
 namespace Effects {
 
@@ -210,21 +211,20 @@ void matteGenerator(QImage& image, double inner, double outer, QColor const& col
 
 void halo(QImage& image, QColor const& color, double radius, QPointF offset)
 {
-    if (image.format() != QImage::Format_ARGB32_Premultiplied)
-        image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-    // The shape of the picture, all in the one colour.
-    QImage soft(image.size(), QImage::Format_ARGB32_Premultiplied);
-    int const ca = color.alpha();
+    Deep::prepare(image);
+    // The shape of the picture, all in the one colour (as deep as the picture).
+    QImage soft(image.size(), image.format());
+    double const ca = color.alphaF();
     for (int y = 0; y < image.height(); ++y) {
-        QRgb const* const from = reinterpret_cast<QRgb const*>(image.constScanLine(y));
-        QRgb* const to = reinterpret_cast<QRgb*>(soft.scanLine(y));
+        Deep::ConstLine const from(image, y);
+        Deep::Line const to(soft, y);
         for (int x = 0; x < image.width(); ++x) {
-            int const a = qAlpha(from[x]) * ca / 255;
-            to[x] = qRgba(color.red() * a / 255, color.green() * a / 255, color.blue() * a / 255, a);
+            double const a = from.alpha(x) * ca;
+            to.set(x, {color.redF() * a, color.greenF() * a, color.blueF() * a, a});
         }
     }
     blur(soft, radius);
-    QImage out(image.size(), QImage::Format_ARGB32_Premultiplied);
+    QImage out(image.size(), image.format());
     out.fill(Qt::transparent);
     {
         QPainter painter(&out);

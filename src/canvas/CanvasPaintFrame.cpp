@@ -19,12 +19,13 @@
 #include "canvas/PencilTexture.h"
 #include "render/effects/Effects.h"
 #include "canvas/CanvasPaintShared.h"
+#include "colour/images/DeepPixels.h"
 
 using namespace canvas_paint_shared;
 
-static QRgb blendPixel(QRgb s, QRgb d, int mode)
+static Deep::Pixel blendPixel(Deep::Pixel const& s, Deep::Pixel const& d, int mode)
 {
-    double const sa = qAlpha(s) / 255.0, da = qAlpha(d) / 255.0;
+    double const sa = s.a, da = d.a;
     if (sa <= 0.0)
         return d;
     auto mix = [mode](double cs, double cb) {
@@ -48,13 +49,12 @@ static QRgb blendPixel(QRgb s, QRgb d, int mode)
         default: return cs;
         }
     };
-    auto one = [&](int sc, int dc) {
-        double const cs = sc / 255.0 / sa, cb = da > 0.0 ? dc / 255.0 / da : 0.0;
-        double const v = sc / 255.0 * (1.0 - da) + dc / 255.0 * (1.0 - sa) + sa * da * std::clamp(mix(std::min(cs, 1.0), std::min(cb, 1.0)), 0.0, 1.0);
-        return std::clamp(int(std::lround(v * 255.0)), 0, 255);
+    auto one = [&](double sc, double dc) {
+        double const cs = sc / sa, cb = da > 0.0 ? dc / da : 0.0;
+        return sc * (1.0 - da) + dc * (1.0 - sa) + sa * da * std::clamp(mix(std::min(cs, 1.0), std::min(cb, 1.0)), 0.0, 1.0);
     };
-    int const a = std::clamp(int(std::lround((sa + da - sa * da) * 255.0)), 0, 255);
-    return qRgba(std::min(one(qRed(s), qRed(d)), a), std::min(one(qGreen(s), qGreen(d)), a), std::min(one(qBlue(s), qBlue(d)), a), a);
+    double const a = std::clamp(sa + da - sa * da, 0.0, 1.0);
+    return {std::min(one(s.r, d.r), a), std::min(one(s.g, d.g), a), std::min(one(s.b, d.b), a), a};
 }
 
 void Canvas::setBlursEnabled(bool on)
@@ -154,7 +154,7 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
         QPaintDevice* const device = painter.device();
         double const dpr = device->devicePixelRatioF();
         int const wide = int(device->width() * dpr), high = int(device->height() * dpr);
-        QImage built(wide, high, QImage::Format_ARGB32_Premultiplied);
+        QImage built(wide, high, Deep::formatFor(device));
         built.fill(Qt::transparent);
         {
             // The ground of the frame in it too, for a layer with a blend mode to be mixed with.
@@ -171,7 +171,7 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
             bool const card = layer.kind == Layer::ColourCard;
             if (!scene.enabled(l) || (!card && index == Layer::kNoDrawing))
                 continue;
-            QImage alone(wide, high, QImage::Format_ARGB32_Premultiplied);
+            QImage alone(wide, high, Deep::formatFor(device));
             alone.setDevicePixelRatio(dpr);
             alone.fill(Qt::transparent);
             QTransform const onto = card ? base : scene.worldTransform(l, frame) * camera * base;
@@ -197,35 +197,35 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
             QTransform const back = onto.isInvertible() ? onto.inverted() : QTransform();
             int const blend = card ? int(Layer::BlendNormal) : layer.blend;
             for (int y = 0; y < high; ++y) {
-                QRgb const* const from = reinterpret_cast<QRgb const*>(alone.constScanLine(y));
-                QRgb* const to = reinterpret_cast<QRgb*>(built.scanLine(y));
+                Deep::ConstLine const from(alone, y);
+                Deep::Line const to(built, y);
                 float* const depth = nearest.data() + qsizetype(y) * wide;
                 for (int x = 0; x < wide; ++x) {
-                    QRgb const s = from[x];
-                    int const sa = qAlpha(s);
-                    if (sa == 0)
+                    Deep::Pixel const s = from[x];
+                    double const sa = s.a;
+                    if (sa <= 0.0)
                         continue;
                     float z = float(c);
                     if (a != 0.0 || b != 0.0) {
                         QPointF const local = back.map(QPointF((x + 0.5) / dpr, (y + 0.5) / dpr));
                         z = float(a * local.x() + b * local.y() + c);
                     }
-                    QRgb const d = to[x];
+                    Deep::Pixel const d = to[x];
                     if (z >= depth[x] - 0.5f && blend != Layer::BlendNormal) {
                         // In front of what is there, and mixed with it as the layer's blend mode says.
-                        to[x] = blendPixel(s, d, blend);
-                        if (sa > 127)
+                        to.set(x, blendPixel(s, d, blend));
+                        if (sa > 0.5)
                             depth[x] = z;
                     } else if (z >= depth[x] - 0.5f) {
                         // In front of what is there: over it.
-                        int const keep = 255 - sa;
-                        to[x] = qRgba(qRed(s) + qRed(d) * keep / 255, qGreen(s) + qGreen(d) * keep / 255, qBlue(s) + qBlue(d) * keep / 255, sa + qAlpha(d) * keep / 255);
-                        if (sa > 127)
+                        double const keep = 1.0 - sa;
+                        to.set(x, {s.r + d.r * keep, s.g + d.g * keep, s.b + d.b * keep, sa + d.a * keep});
+                        if (sa > 0.5)
                             depth[x] = z;
                     } else {
                         // Behind it: under it.
-                        int const keep = 255 - qAlpha(d);
-                        to[x] = qRgba(qRed(d) + qRed(s) * keep / 255, qGreen(d) + qGreen(s) * keep / 255, qBlue(d) + qBlue(s) * keep / 255, qAlpha(d) + sa * keep / 255);
+                        double const keep = 1.0 - d.a;
+                        to.set(x, {d.r + s.r * keep, d.g + s.g * keep, d.b + s.b * keep, d.a + sa * keep});
                     }
                 }
             }
@@ -395,7 +395,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
     // A blur is so many scene units wide: in the picture that depends on how big the frame is drawn.
     double const pixelsPerUnit = std::sqrt(std::abs((camera * base).determinant())) * dpr;
     auto blank = [&] {
-        QImage image(size, QImage::Format_ARGB32_Premultiplied);
+        QImage image(size, Deep::formatFor(painter.device()));
         image.setDevicePixelRatio(dpr);
         image.fill(Qt::transparent);
         return image;
@@ -546,12 +546,15 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                     p.drawImage(0, 0, over);
                     continue;
                 }
-                for (int y = 0; y < out.height(); ++y) {
-                    QRgb const* const s = reinterpret_cast<QRgb const*>(over.constScanLine(y));
-                    QRgb* const d = reinterpret_cast<QRgb*>(out.scanLine(y));
-                    for (int x = 0; x < out.width(); ++x)
-                        if (qAlpha(s[x]) > 0)
-                            d[x] = blendPixel(s[x], d[x], blend);
+                QImage overPrepared = over;
+                Deep::prepare(overPrepared);
+                Deep::prepare(out);
+                for (int y = 0; y < out.height() && y < overPrepared.height(); ++y) {
+                    Deep::ConstLine const s(overPrepared, y);
+                    Deep::Line const d(out, y);
+                    for (int x = 0; x < out.width() && x < overPrepared.width(); ++x)
+                        if (s.alpha(x) > 0.0)
+                            d.set(x, blendPixel(s[x], d[x], blend));
                 }
             }
         } else if (n && n->kind == GraphNode::EffectNode) {
@@ -666,7 +669,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                         viewed.activeCamera = scene.layers[other].id;
                         viewed.graph.cables.removeIf([display](GraphCable const& cable) { return cable.to == display && cable.toPort == 0; });
                         viewed.graph.cables.push_back(GraphCable{c->from, c->fromPort, display, 0});
-                        QImage again(size, QImage::Format_ARGB32_Premultiplied);
+                        QImage again(size, Deep::formatFor(painter.device()));
                         again.fill(Qt::transparent);
                         {
                             QPainter ap(&again);
@@ -705,6 +708,8 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 out = under;
             } else if (e.type == Effect::VariableBlur) {
                 QImage matte = input(id, 1);
+                if (matte.format() != QImage::Format_ARGB32_Premultiplied)
+                    matte = matte.convertToFormat(QImage::Format_ARGB32_Premultiplied);
                 if (e.invert) {
                     // Outside the matte: blurred most where it is darkest.
                     for (int y = 0; y < matte.height(); ++y) {

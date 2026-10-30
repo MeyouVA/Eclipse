@@ -21,13 +21,14 @@ public:
     QColor apply(QColor const& colour) const;
     // A colour of 8 bits a channel, not multiplied by its alpha.
     QRgb applyStraight(QRgb colour) const;
-    // Converts a picture in place (8 bits a channel, or float); its alpha is kept.
+    // Converts a picture in place (8 or 16 bits a channel, or float; it keeps its format); its alpha is kept.
     void apply(QImage* image) const;
     QImage applied(QImage const& image) const;
     // The picture converted with floats kept (RGBA32FPx4, multiplied by alpha): for files that keep more than 8 bits.
     QImage toFloat(QImage const& image) const;
 
 private:
+    void applyDeep(QImage* image) const;
     struct Data;
     std::shared_ptr<Data const> d;
 };

@@ -7,10 +7,12 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QMutex>
+#include <QRgba64>
 
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <mutex>
 #include <vector>
 
 namespace {
@@ -22,6 +24,16 @@ std::atomic<quint64> gNextId{1};
 quint8 toByte(float v)
 {
     return quint8(std::clamp(int(std::lround(v * 255.0f)), 0, 255));
+}
+
+quint16 toWord(float v)
+{
+    return quint16(std::clamp(int(std::lround(v * 65535.0f)), 0, 65535));
+}
+
+bool isDeep(QImage::Format f)
+{
+    return f == QImage::Format_RGBA64_Premultiplied || f == QImage::Format_RGBA64 || f == QImage::Format_RGBX64;
 }
 
 struct Kept {
@@ -52,6 +64,9 @@ struct Transform::Data {
     quint64 id = 0;
     bool perChannel = false;
     std::array<std::array<quint8, 256>, 3> table{};
+    // For pictures of 16 bits a channel: the same tables with a value for each of their 65536 levels (made the first time they are wanted).
+    mutable std::once_flag deepMade;
+    mutable std::vector<quint16> deepTable;
 };
 
 Transform::Transform(Chain chain)
@@ -121,6 +136,10 @@ void Transform::apply(QImage* image) const
         *image = toFloat(*image);
         return;
     }
+    if (isDeep(f)) {
+        applyDeep(image);
+        return;
+    }
     if (f != QImage::Format_ARGB32_Premultiplied && f != QImage::Format_ARGB32 && f != QImage::Format_RGB32)
         *image = image->convertToFormat(image->hasAlphaChannel() ? QImage::Format_ARGB32_Premultiplied : QImage::Format_RGB32);
     bool const premultiplied = image->format() == QImage::Format_ARGB32_Premultiplied;
@@ -154,6 +173,53 @@ void Transform::apply(QImage* image) const
                 }
             }
             row[x] = premultiplied && a < 255 ? qPremultiply(outColour) : outColour;
+        }
+    }
+}
+
+void Transform::applyDeep(QImage* image) const
+{
+    bool const premultiplied = image->format() == QImage::Format_RGBA64_Premultiplied;
+    if (d->perChannel)
+        std::call_once(d->deepMade, [this] {
+            d->deepTable.resize(3 * 65536);
+            for (int v = 0; v < 65536; ++v) {
+                float rgb[3] = {v / 65535.0f, v / 65535.0f, v / 65535.0f};
+                run(d->chain, rgb);
+                for (int c = 0; c < 3; ++c)
+                    d->deepTable[size_t(c * 65536 + v)] = toWord(rgb[c]);
+            }
+        });
+    // (Otherwise each colour is worked out once and kept in a cache, as for 8 bits.)
+    std::vector<quint64> keys, values;
+    if (!d->perChannel) {
+        keys.assign(65536, ~quint64(0));
+        values.assign(65536, 0);
+    }
+    for (int y = 0; y < image->height(); ++y) {
+        QRgba64* const row = reinterpret_cast<QRgba64*>(image->scanLine(y));
+        for (int x = 0; x < image->width(); ++x) {
+            QRgba64 const c = row[x];
+            quint16 const a = c.alpha();
+            if (premultiplied && a == 0)
+                continue;
+            QRgba64 const straight = premultiplied && a < 65535 ? c.unpremultiplied() : c;
+            QRgba64 outColour;
+            if (d->perChannel) {
+                outColour = QRgba64::fromRgba64(d->deepTable[straight.red()], d->deepTable[size_t(65536 + straight.green())], d->deepTable[size_t(2 * 65536 + straight.blue())], a);
+            } else {
+                quint64 const key = quint64(straight.red()) | quint64(straight.green()) << 16 | quint64(straight.blue()) << 32;
+                quint32 const slot = quint32(((key * 0x9E3779B97F4A7C15ull) >> 48) & 0xffffu);
+                if (keys[slot] != key) {
+                    float rgb[3] = {straight.red() / 65535.0f, straight.green() / 65535.0f, straight.blue() / 65535.0f};
+                    run(d->chain, rgb);
+                    keys[slot] = key;
+                    values[slot] = quint64(toWord(rgb[0])) | quint64(toWord(rgb[1])) << 16 | quint64(toWord(rgb[2])) << 32;
+                }
+                quint64 const v = values[slot];
+                outColour = QRgba64::fromRgba64(quint16(v), quint16(v >> 16), quint16(v >> 32), a);
+            }
+            row[x] = premultiplied && a < 65535 ? outColour.premultiplied() : outColour;
         }
     }
 }

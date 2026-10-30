@@ -44,7 +44,8 @@ QSize sizeAt(Scene const& scene, double scale)
 
 QImage frame(Scene const& scene, int f, QSize size, bool quick, QColor const& under)
 {
-    QImage image(size, QImage::Format_ARGB32_Premultiplied);
+    // (Colour managed: painted with 16 bits a channel, so that light kept linear does not band in the darks.)
+    QImage image(size, scene.colourManaged ? QImage::Format_RGBA64_Premultiplied : QImage::Format_ARGB32_Premultiplied);
     image.fill(under);
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing, !quick);
@@ -56,10 +57,15 @@ QImage frame(Scene const& scene, int f, QSize size, bool quick, QColor const& un
 
 QImage inSpace(Scene const& scene, QImage const& image, QString const& space, bool floats)
 {
+    // A picture of 16 bits a channel comes out with 8 (or floats): converted first, so the 8 bits are of the colour space written.
+    bool const deep = image.format() == QImage::Format_RGBA64_Premultiplied;
     if (space.isEmpty())
-        return image;
+        return deep && !floats ? image.convertToFormat(QImage::Format_ARGB32_Premultiplied) : image;
     Cms::Transform const out = scene.outputTransform(space);
-    return floats ? out.toFloat(image) : out.applied(image);
+    if (floats)
+        return out.toFloat(image);
+    QImage converted = out.applied(image);
+    return deep ? converted.convertToFormat(QImage::Format_ARGB32_Premultiplied) : converted;
 }
 
 bool render(Scene const& scene, QVector<int> const& frames, QSize size, bool quick,

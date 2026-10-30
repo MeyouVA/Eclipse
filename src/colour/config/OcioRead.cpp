@@ -261,6 +261,33 @@ public:
             else if (style == QLatin1String("REC2100_SURROUND")) {
                 op.style = int(FixedStyle::Rec2100Surround);
                 op.a = {n.numbers(QStringLiteral("params"), 1, 1.0).value(0, 1.0), 0, 0};
+            } else if (style == QLatin1String("ACES_GLOW03") || style == QLatin1String("ACES_GLOW10")) {
+                op.style = int(FixedStyle::AcesGlow);
+                op.a = style == QLatin1String("ACES_GLOW03") ? std::array<double, 3>{0.075, 0.1, 0} : std::array<double, 3>{0.05, 0.08, 0};
+            } else if (style == QLatin1String("ACES_REDMOD03") || style == QLatin1String("ACES_REDMOD10")) {
+                op.style = int(FixedStyle::AcesRedMod);
+                bool const old = style == QLatin1String("ACES_REDMOD03");
+                op.a = old ? std::array<double, 3>{0.85, 0.03, 120.0} : std::array<double, 3>{0.82, 0.03, 135.0};
+                op.b = {old ? 1.0 : 0.0, 0, 0};
+            } else if (style == QLatin1String("ACES_DARKTODIM10")) {
+                op.style = int(FixedStyle::AcesDarkToDim);
+                op.a = {0.9811, 0, 0};
+            } else if (style == QLatin1String("ACES_GAMUTCOMP13")) {
+                QVector<double> const p = n.numbers(QStringLiteral("params"), 7, 0.0);
+                if (!n.has(QStringLiteral("params")))
+                    return fail(said("ACES_GamutComp13 needs 7 parameters."));
+                op.style = int(FixedStyle::AcesGamutComp);
+                op.a = {p[0], p[1], p[2]};
+                op.b = {p[3], p[4], p[5]};
+                op.c = {p[6], 0, 0};
+            } else if (style == QLatin1String("ACES_OUTPUTTRANSFORM20")) {
+                QVector<double> const p = n.numbers(QStringLiteral("params"), 9, 0.0);
+                if (!n.has(QStringLiteral("params")))
+                    return fail(said("ACES_OutputTransform20 needs 9 parameters."));
+                op.style = int(FixedStyle::AcesOutputTwo);
+                op.a = {p[0], p[1], p[2]};
+                op.b = {p[3], p[4], p[5]};
+                op.c = {p[6], p[7], p[8]};
             } else
                 return fail(said("Eclipse cannot do the fixed function '%1'.").arg(n.str(QStringLiteral("style"))));
             *out << op;

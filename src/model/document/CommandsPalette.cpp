@@ -217,7 +217,8 @@ bool Document::relinkFile(QString const& from, QString const& to)
     }
     if (!used)
         return false;
-    QImage const image(to);     // null when it is no picture: a sound, say
+    // (Null when it is no picture - a sound, say; read through its own profile for the pictures that ask for that.)
+    QImage const image = readPictureFile(to, false), profiled = readPictureFile(to, true);
     apply(tr("Relink File"), [&](Scene& s) {
         for (Layer& layer : s.layers) {
             if (layer.kind == Layer::Sound && layer.soundFile == from)
@@ -227,7 +228,7 @@ bool Document::relinkFile(QString const& from, QString const& to)
                     if (!picture.linked || picture.file != from)
                         continue;
                     picture.file = to;
-                    picture.image = image;
+                    picture.image = picture.ownProfile ? profiled : image;
                     if (!image.isNull() && picture.size.isEmpty())
                         picture.size = image.size();
                 }

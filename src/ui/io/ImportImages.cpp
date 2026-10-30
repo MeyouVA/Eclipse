@@ -498,18 +498,12 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         if (image.isNull())
             return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), reader.errorString()));
         if (options.convertColour && !unconverted) {
-            if (options.sourceSpace.isEmpty() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb)) {
-                // (A linked picture is read again from its file, so its own profile cannot be put into it here.)
-                if (options.linked)
-                    unconverted = true;
-                else
-                    image.convertToColorSpace(QColorSpace(QColorSpace::SRgb));
-            }
-            // Onto an existing layer: the pixels put in that layer's colour space now.
+            // The file's own profile: to sRGB now (a linked picture is read through it again each time its file is read).
+            if (options.sourceSpace.isEmpty() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb))
+                image.convertToColorSpace(QColorSpace(QColorSpace::SRgb));
+            // Onto an existing layer: the pixels put in that layer's colour space now (a linked one keeps its own colour space instead).
             if (target >= 0 && !options.linked && !options.vectorize)
                 Cms::between(fromSpace, layerSpace).apply(&image);
-            else if (target >= 0 && options.linked && fromSpace.compare(layerSpace, Qt::CaseInsensitive) != 0)
-                unconverted = true;
         }
         image = readTransparency(image, QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/importTransparency"), 0).toInt());
         double const across = double(scene.width) / image.width(), down = double(scene.height) / image.height();
@@ -555,6 +549,11 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
             picture.image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
             picture.file = QFileInfo(file).absoluteFilePath();
             picture.linked = options.linked;
+            if (options.linked && options.convertColour && !unconverted) {
+                picture.ownProfile = options.sourceSpace.isEmpty();
+                if (target >= 0 && fromSpace.compare(layerSpace, Qt::CaseInsensitive) != 0)
+                    picture.colourSpace = fromSpace;
+            }
             picture.size = image.size();
             picture.placement = placement;
             drawing.pictures.push_back(picture);

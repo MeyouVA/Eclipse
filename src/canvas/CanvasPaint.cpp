@@ -23,6 +23,7 @@
 #include "render/effects/Effects.h"
 #include "canvas/CanvasPaintShared.h"
 #include "colour/images/ColourTransform.h"
+#include "colour/images/DeepPixels.h"
 
 using namespace canvas_paint;
 
@@ -93,7 +94,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
     }
     bool const managing = managed.any();
     auto brushOf = [&](QBrush const& brush) { return managing ? managedBrush(brush, managed) : brush; };
-    auto paintPicture = [&painter, &managed, managing](Picture const& picture) {
+    auto paintPicture = [&painter, &managed, managing, &scene, tint](Picture const& picture) {
         painter.save();
         painter.setTransform(picture.placement, true);
         if (!picture.clip.isEmpty()) {
@@ -115,8 +116,11 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
         } else {
             painter.setRenderHint(QPainter::SmoothPixmapTransform, !gNearestPictures && !leftOut(Canvas::ViewSmoothPictures));
             PictureWash const& wash = pictureWashState();
-            Cms::Transform const& t = picture.painted ? managed.colours : managed.pictures;
-            QImage const shown = managing && !t.isIdentity() ? convertedPicture(picture.image, t) : picture.image;
+            // (A picture with a colour space of its own - a linked one, say - is converted from that.)
+            bool const ownSpace = !picture.painted && !picture.colourSpace.isEmpty() && scene.colourManaged && gPictureLayer && !tint;
+            Cms::Transform const own = ownSpace ? scene.pictureTransform(*gPictureLayer, picture) : Cms::Transform();
+            Cms::Transform const& t = picture.painted ? managed.colours : ownSpace ? own : managed.pictures;
+            QImage const shown = (managing || ownSpace) && !t.isIdentity() ? convertedPicture(picture.image, t, Deep::isDeep(painter.device())) : picture.image;
             painter.drawImage(box, !picture.painted && wash.percent > 0 ? washedPicture(shown, wash.percent, wash.colour) : shown);
         }
         painter.restore();
@@ -197,7 +201,7 @@ void Canvas::paintDrawing(QPainter& painter, Scene const& scene, Drawing const& 
     }
     QPaintDevice* const device = painter.device();
     double const dpr = device->devicePixelRatioF();
-    QImage image(QSize(int(device->width() * dpr), int(device->height() * dpr)), QImage::Format_ARGB32_Premultiplied);
+    QImage image(QSize(int(device->width() * dpr), int(device->height() * dpr)), Deep::formatFor(device));
     image.setDevicePixelRatio(dpr);
     image.fill(Qt::transparent);
     {
@@ -247,22 +251,16 @@ namespace {
 // The soft edge of what is painted made harder (above 1) or softer (below 1): the part-covered pixels' coverage raised to it.
 void antialiasExponent(QImage& image, double exponent)
 {
-    std::array<int, 256> curve{};
-    for (int a = 0; a < 256; ++a)
-        curve[size_t(a)] = int(std::lround(255.0 * std::pow(a / 255.0, exponent)));
+    Deep::prepare(image);
     for (int y = 0; y < image.height(); ++y) {
-        QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        Deep::Line const row(image, y);
         for (int x = 0; x < image.width(); ++x) {
-            int const a = qAlpha(row[x]);
-            if (a == 0 || a == 255)
+            Deep::Pixel p = row[x];
+            if (p.a <= 0.0 || p.a >= 1.0)
                 continue;
-            int const to = curve[size_t(a)];
-            if (to == 0) {
-                row[x] = 0;
-                continue;
-            }
-            auto scaled = [a, to](int c) { return std::min(to, c * to / a); };
-            row[x] = qRgba(scaled(qRed(row[x])), scaled(qGreen(row[x])), scaled(qBlue(row[x])), to);
+            double const to = std::pow(p.a, exponent), k = to / p.a;
+            p = {p.r * k, p.g * k, p.b * k, to};
+            row.set(x, p);
         }
     }
 }
@@ -309,7 +307,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             QPainter::CompositionMode_Plus};
         QPaintDevice* const device = painter.device();
         double const dpr = device->devicePixelRatioF();
-        QImage alone(QSize(int(device->width() * dpr), int(device->height() * dpr)), QImage::Format_ARGB32_Premultiplied);
+        QImage alone(QSize(int(device->width() * dpr), int(device->height() * dpr)), Deep::formatFor(device));
         alone.setDevicePixelRatio(dpr);
         alone.fill(Qt::transparent);
         {
@@ -338,7 +336,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         double const dpr = device->devicePixelRatioF();
         int const times = veryHigh ? 2 : 1;
         QSize const size(int(device->width() * dpr), int(device->height() * dpr));
-        QImage alone(size * times, QImage::Format_ARGB32_Premultiplied);
+        QImage alone(size * times, Deep::formatFor(device));
         alone.setDevicePixelRatio(dpr * times);
         alone.fill(Qt::transparent);
         {
@@ -407,7 +405,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         // Faint: painted whole in a picture of its own and blended once, as a drawing is.
         QPaintDevice* const device = painter.device();
         double const dpr = device->devicePixelRatioF();
-        QImage image(QSize(int(device->width() * dpr), int(device->height() * dpr)), QImage::Format_ARGB32_Premultiplied);
+        QImage image(QSize(int(device->width() * dpr), int(device->height() * dpr)), Deep::formatFor(device));
         image.setDevicePixelRatio(dpr);
         image.fill(Qt::transparent);
         {
@@ -433,7 +431,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     QPaintDevice* const device = painter.device();
     double const dpr = device->devicePixelRatioF();
     QSize const size(int(device->width() * dpr), int(device->height() * dpr));
-    QImage image(size, QImage::Format_ARGB32_Premultiplied);
+    QImage image(size, Deep::formatFor(device));
     image.setDevicePixelRatio(dpr);
     image.fill(Qt::transparent);
     {
@@ -465,7 +463,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                 QRectF const whole(QPointF(0, 0), QSizeF(size) / dpr);
                 area = symbol ? whole : base.mapRect(drawing.bounds()).adjusted(-4, -4, 4, 4) & whole;
                 if (!area.isEmpty()) {
-                    plain = QImage((area.size() * dpr).toSize().expandedTo(QSize(1, 1)), QImage::Format_ARGB32_Premultiplied);
+                    plain = QImage((area.size() * dpr).toSize().expandedTo(QSize(1, 1)), Deep::formatFor(device));
                     plain.setDevicePixelRatio(dpr);
                     plain.fill(Qt::transparent);
                     QPainter once(&plain);

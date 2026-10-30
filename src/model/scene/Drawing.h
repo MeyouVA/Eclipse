@@ -68,6 +68,9 @@ struct Picture {
     QImage image;           // null when the file of a linked picture could not be read
     QString file;
     bool linked = false;
+    // Colour management: read through the profile in its file (to sRGB) each time the file is read; and the colour space of its pixels (empty: the layer's).
+    bool ownProfile = false;
+    QString colourSpace;
     // The pixels a bitmap layer is painted in: made by the program, painted on by the brush.
     bool painted = false;
     int sheet = 2;
@@ -80,6 +83,9 @@ struct Picture {
     QRectF bounds() const { return placement.mapRect(QRectF(QPointF(0, 0), QSizeF(size))); }
     void transform(QTransform const& t) { placement = placement * t; }
 };
+
+// The pixels of a picture file; with `ownProfile`, taken from the colour profile the file carries to sRGB.
+QImage readPictureFile(QString const& file, bool ownProfile);
 
 struct Drawing {
     QVector<Picture> pictures;

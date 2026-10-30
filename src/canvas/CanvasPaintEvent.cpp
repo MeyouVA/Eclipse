@@ -178,7 +178,8 @@ void Canvas::paintEvent(QPaintEvent*)
     QImage working;
     if (!display.isIdentity()) {
         qreal const dpr = devicePixelRatioF();
-        working = QImage(QSize(int(std::ceil(width() * dpr)), int(std::ceil(height() * dpr))), QImage::Format_ARGB32_Premultiplied);
+        // (16 bits a channel: the working space may keep light linear, and 8 bits of that band in the darks.)
+        working = QImage(QSize(int(std::ceil(width() * dpr)), int(std::ceil(height() * dpr))), QImage::Format_RGBA64_Premultiplied);
         working.setDevicePixelRatio(dpr);
         m_viewTarget = &working;
     }

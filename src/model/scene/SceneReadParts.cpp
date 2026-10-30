@@ -8,6 +8,7 @@
 #include <QDir>
 #include "model/geometry/Deform.h"
 #include <QFile>
+#include <QColorSpace>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <algorithm>
@@ -406,6 +407,8 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
         Picture p;
         p.file = found(folder, po["file"].toString(), po["relative"].toString());
         p.linked = po["linked"].toBool(false);
+        p.ownProfile = po["ownProfile"].toBool(false);
+        p.colourSpace = po["colourSpace"].toString();
         p.painted = po["painted"].toBool(false);
         p.sheet = std::clamp(po["sheet"].toInt(Drawing::LineSheet), 0, Drawing::SheetCount - 1);
         p.order = po["order"].toInt(-1);
@@ -423,7 +426,7 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
             p.placement = QTransform(m[0].toDouble(), m[1].toDouble(), m[2].toDouble(), m[3].toDouble(), m[4].toDouble(), m[5].toDouble(),
                                      m[6].toDouble(), m[7].toDouble(), m[8].toDouble());
         if (p.linked)
-            p.image = QImage(p.file);       // null when the file has gone: the place is kept
+            p.image = readPictureFile(p.file, p.ownProfile);       // null when the file has gone: the place is kept
         else if (po.contains("image"))
             p.image = images.value(po["image"].toString());
         else
@@ -768,3 +771,11 @@ void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool ex
 }
 
 }  // namespace scene_read
+
+QImage readPictureFile(QString const& file, bool ownProfile)
+{
+    QImage image(file);
+    if (ownProfile && !image.isNull() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb))
+        image.convertToColorSpace(QColorSpace(QColorSpace::SRgb));
+    return image;
+}

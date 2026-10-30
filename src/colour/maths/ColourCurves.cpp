@@ -23,6 +23,7 @@ constexpr double kPqC3 = 2392.0 / 4096.0 * 32.0;
 constexpr double kHlgA = 0.17883277;
 constexpr double kHlgB = 0.28466892;
 constexpr double kHlgC = 0.55991073;
+constexpr double kAppleR0 = -0.05641088, kAppleRt = 0.01, kAppleC = 47.28711236, kAppleBeta = 0.00964052, kAppleGamma = 0.08550479, kAppleDelta = 0.69336945;
 
 }  // namespace
 
@@ -44,6 +45,9 @@ QString curveName(Curve curve)
     case Curve::AcesCct: return QStringLiteral("ACEScct");
     case Curve::ProPhoto: return QStringLiteral("ProPhoto");
     case Curve::LStar: return QStringLiteral("L*");
+    case Curve::AppleLog: return QStringLiteral("Apple Log");
+    case Curve::CanonLog2: return QStringLiteral("Canon Log 2");
+    case Curve::CanonLog3: return QStringLiteral("Canon Log 3");
     }
     return {};
 }
@@ -75,15 +79,30 @@ double decode(Curve curve, double v)
     case Curve::AcesCc:
         if (v < (9.72 - 15.0) / 17.52)
             return (std::pow(2.0, v * 17.52 - 9.72) - std::pow(2.0, -16.0)) * 2.0;
-        return std::min(std::pow(2.0, v * 17.52 - 9.72), 65504.0);
+        return std::pow(2.0, v * 17.52 - 9.72);
     case Curve::AcesCct:
         if (v <= 0.155251141552511)
             return (v - 0.0729055341958355) / 10.5402377416545;
-        return std::min(std::pow(2.0, v * 17.52 - 9.72), 65504.0);
+        return std::pow(2.0, v * 17.52 - 9.72);
     case Curve::ProPhoto:
         return mirrored(v, [](double x) { return x < 16.0 / 512.0 ? x / 16.0 : std::pow(x, 1.8); });
     case Curve::LStar:
         return mirrored(v, [](double x) { return x > 0.08 ? std::pow((x + 0.16) / 1.16, 3.0) : x * 2700.0 / 24389.0; });
+    case Curve::AppleLog: {
+        double const pt = kAppleC * (kAppleRt - kAppleR0) * (kAppleRt - kAppleR0);
+        if (v >= pt)
+            return std::pow(2.0, (v - kAppleDelta) / kAppleGamma) - kAppleBeta;
+        return v >= 0.0 ? std::sqrt(v / kAppleC) + kAppleR0 : kAppleR0;
+    }
+    case Curve::CanonLog2:
+        return 0.9 * (v < 0.092864125 ? -(std::pow(10.0, (0.092864125 - v) / 0.24136077) - 1.0) / 87.09937546
+                                      : (std::pow(10.0, (v - 0.092864125) / 0.24136077) - 1.0) / 87.09937546);
+    case Curve::CanonLog3:
+        if (v < 0.097465473)
+            return 0.9 * -(std::pow(10.0, (0.12783901 - v) / 0.36726845) - 1.0) / 14.98325;
+        if (v <= 0.15277891)
+            return 0.9 * (v - 0.12512219) / 1.9754798;
+        return 0.9 * (std::pow(10.0, (v - 0.12240537) / 0.36726845) - 1.0) / 14.98325;
     }
     return v;
 }
@@ -107,7 +126,7 @@ double encode(Curve curve, double v)
         return mirrored(v, [](double x) { return std::pow(x, 1.0 / 2.6); });
     case Curve::Pq:
         return mirrored(v, [](double x) {
-            double const y = std::pow(std::min(x / 100.0, 1.0), kPqM1);
+            double const y = std::pow(x / 100.0, kPqM1);
             return std::pow((kPqC1 + kPqC2 * y) / (1.0 + kPqC3 * y), kPqM2);
         });
     case Curve::Hlg:
@@ -126,6 +145,22 @@ double encode(Curve curve, double v)
         return mirrored(v, [](double x) { return x < 1.0 / 512.0 ? x * 16.0 : std::pow(x, 1.0 / 1.8); });
     case Curve::LStar:
         return mirrored(v, [](double x) { return x > 216.0 / 24389.0 ? 1.16 * std::cbrt(x) - 0.16 : x * 24389.0 / 2700.0; });
+    case Curve::AppleLog:
+        if (v >= kAppleRt)
+            return kAppleGamma * std::log2(v + kAppleBeta) + kAppleDelta;
+        return v >= kAppleR0 ? kAppleC * (v - kAppleR0) * (v - kAppleR0) : 0.0;
+    case Curve::CanonLog2: {
+        double const x = v / 0.9;
+        return x < 0.0 ? -0.24136077 * std::log10(1.0 - x * 87.09937546) + 0.092864125 : 0.24136077 * std::log10(x * 87.09937546 + 1.0) + 0.092864125;
+    }
+    case Curve::CanonLog3: {
+        double const x = v / 0.9;
+        if (x < -0.014)
+            return -0.36726845 * std::log10(1.0 - 14.98325 * x) + 0.12783901;
+        if (x <= 0.014)
+            return 1.9754798 * x + 0.12512219;
+        return 0.36726845 * std::log10(14.98325 * x + 1.0) + 0.12240537;
+    }
     }
     return v;
 }

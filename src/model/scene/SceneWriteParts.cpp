@@ -354,8 +354,12 @@ if (!d.pictures.isEmpty()) {
             }
             picture["clip"] = clip;
         }
+        if (!p.colourSpace.isEmpty())
+            picture["colourSpace"] = p.colourSpace;
         if (p.linked) {
             picture["linked"] = true;
+            if (p.ownProfile)
+                picture["ownProfile"] = true;
             if (QString const relative = pathFrom(folder, p.file); !relative.isEmpty())
                 picture["relative"] = relative;
         } else {

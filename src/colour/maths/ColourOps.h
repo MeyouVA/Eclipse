@@ -29,6 +29,9 @@ enum class Curve {
     AcesCct,
     ProPhoto,       // ROMM RGB
     LStar,          // CIE L*
+    AppleLog,
+    CanonLog2,      // light scaled by 0.9, as the camera makers' own transforms
+    CanonLog3,
 };
 QString curveName(Curve curve);
 // Light from a coded value, and back.
@@ -78,7 +81,21 @@ enum class FixedStyle {
     XyzToUvy,
     XyzToLuv,
     Rec2100Surround,    // gamma in `a[0]`
+    AcesGlow,           // a: gain, middle
+    AcesRedMod,         // a: scale, pivot, width; b[0] 1 keeps the hue (the 0.3 version)
+    AcesDarkToDim,      // a[0]: gamma
+    AcesGamutComp,      // a: limits (cyan, magenta, yellow), b: thresholds, c[0]: power
+    AcesToneScale,      // b[0]: 0 the RRT's, 1 the 48-nit ODT's, 2 the single-stage one for luminances a (lowest, middle, highest)
+    AcesRollWhite,      // a: new white, width
+    AdxDensity,         // ADX density to log exposure
+    AcesOutputTwo,      // the ACES 2 output transform: a peak luminance, then the limiting primaries and white (a[1..2], b, c)
 };
+
+// The ACES fixed functions (FixedStyle::AcesGlow and on); false when the style is not one of them.
+bool runAces(Op const& op, float* rgb, bool back);
+void runAcesTwo(Op const& op, float* rgb, bool back);
+// The ACES 2 tables of a display at an entry (hue + 1): the reach of AP1, the cusp's J and M.
+std::array<double, 3> acesTwoTables(Op const& op, int entry);
 
 using Chain = QVector<Op>;
 

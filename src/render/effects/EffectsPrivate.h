@@ -4,6 +4,8 @@
 #include <QImage>
 #include <QColor>
 
+#include "colour/images/DeepPixels.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -19,6 +21,22 @@ inline void premultiplied(QImage& image)
 template <class Change>
 void perPixel(QImage& image, Change&& change, bool clear = false)
 {
+    if (Deep::isDeep(image)) {
+        // (16 bits a channel: kept so, with the same sums in doubles.)
+        for (int y = 0; y < image.height(); ++y) {
+            Deep::Line const row(image, y);
+            for (int x = 0; x < image.width(); ++x) {
+                Deep::Pixel const p = row[x];
+                if (p.a <= 0.0 && !clear)
+                    continue;
+                double r = p.a > 0.0 ? p.r / p.a : 0.0, g = p.a > 0.0 ? p.g / p.a : 0.0, b = p.a > 0.0 ? p.b / p.a : 0.0, al = p.a;
+                change(r, g, b, al, x, y);
+                al = std::clamp(al, 0.0, 1.0);
+                row.set(x, {std::clamp(r, 0.0, 1.0) * al, std::clamp(g, 0.0, 1.0) * al, std::clamp(b, 0.0, 1.0) * al, al});
+            }
+        }
+        return;
+    }
     premultiplied(image);
     for (int y = 0; y < image.height(); ++y) {
         QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
