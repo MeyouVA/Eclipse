@@ -13,6 +13,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <cmath>
 
 #include "actions/theme/InterfaceColours.h"
@@ -284,6 +285,13 @@ VelocityEditor::VelocityEditor(Document* document, QWidget* parent) : QWidget(pa
     m_what = new QLabel(this);
     m_what->setObjectName(QStringLiteral("VelocityWhat"));
     m_curve = new EaseCurveEdit(this);
+    // Apply velocity on X, Y or Z: when the value is linked to a function column, the velocity of that column.
+    m_channel = new QComboBox(this);
+    m_channel->setObjectName(QStringLiteral("VelocityChannel"));
+    m_channel->addItems({tr("Keyframes"), tr("X"), tr("Y"), tr("Z")});
+    m_channel->setToolTip(tr("Keyframes: the layer's own. X, Y, Z: the function column the value is linked to."));
+    connect(m_channel, &QComboBox::currentIndexChanged, this, &VelocityEditor::refresh);
+    layout->addWidget(m_channel);
     layout->addWidget(m_what);
     layout->addWidget(m_curve, 1);
     connect(m_curve, &EaseCurveEdit::edited, this, &VelocityEditor::commit);
@@ -302,27 +310,56 @@ void VelocityEditor::refresh()
 {
     Scene const& scene = m_document->scene();
     m_from = m_to = -1;
-    if (m_layer >= 0 && m_layer < scene.layers.size()) {
-        QVector<Keyframe> const& keys = scene.layers[m_layer].keys;
-        int k = -1;
-        for (int i = 0; i < keys.size(); ++i)
-            if (keys[i].frame <= m_frame)
-                k = i;
-        if (k >= 0 && k + 1 < keys.size()) {
-            m_from = keys[k].frame;
-            m_to = keys[k + 1].frame;
+    m_column = 0;
+    setWindowTitle(tr("Velocity Editor"));
+    if (m_layer < 0 || m_layer >= scene.layers.size()) {
+        m_curve->setEnabled(false);
+        m_what->setText(tr("No velocity available: the layer has no move from a keyframe here."));
+        return;
+    }
+    Layer const* owner = &scene.layers[m_layer];
+    int const which = m_channel->currentIndex();
+    if (which > 0) {
+        int const value = which == 1 ? Driver::X : which == 2 ? Driver::Y : Driver::Z;
+        FunctionColumn const* c = scene.function(scene.layers[m_layer].linkOf(value));
+        if (!c || c->kind == FunctionColumn::Expression) {
+            m_curve->setEnabled(false);
+            m_what->setText(c ? tr("No velocity available: an expression has no points.") : tr("No velocity column set"));
+            return;
         }
+        m_column = c->id;
+        owner = c->hasPoints() && c->kind != FunctionColumn::VeloBased ? &c->curve : &c->velocity;
+        setWindowTitle(tr("Velocity Editor - %1").arg(FunctionColumn::kindName(c->kind)));
+    }
+    QVector<Keyframe> const& keys = owner->keys;
+    int k = -1;
+    for (int i = 0; i < keys.size(); ++i)
+        if (keys[i].frame <= m_frame)
+            k = i;
+    if (k >= 0 && k + 1 < keys.size()) {
+        m_from = keys[k].frame;
+        m_to = keys[k + 1].frame;
     }
     m_curve->setEnabled(m_from >= 0);
     if (m_from < 0) {
         m_what->setText(tr("No velocity available: the layer has no move from a keyframe here."));
         return;
     }
-    m_what->setText(tr("%1: frames %2 to %3").arg(scene.layers[m_layer].name).arg(m_from + 1).arg(m_to + 1));
+    m_what->setText(tr("%1: frames %2 to %3").arg(m_column ? scene.function(m_column)->name : scene.layers[m_layer].name).arg(m_from + 1).arg(m_to + 1));
+    Keyframe const& a = keys[k];
+    Keyframe const& b = keys[k + 1];
+    ValueCurve const* const ca = m_column ? a.curveOf(Driver::X) : nullptr;
+    ValueCurve const* const cb = m_column ? b.curveOf(Driver::X) : nullptr;
+    if (ca || cb) {
+        // Points with handles of their own: the handles, in shares of the time and the way between the two points.
+        double const span = std::max(1, b.frame - a.frame), way = b.pose.x - a.pose.x;
+        double const dy = std::abs(way) > 1e-9 ? way : 1.0;
+        QPointF const leave = ca ? QPointF(ca->out.x() / span, ca->out.y() / dy) : QPointF(0, 0);
+        QPointF const arrive = cb ? QPointF(1.0 + cb->in.x() / span, 1.0 + cb->in.y() / dy) : QPointF(1, 1);
+        m_curve->setHandles(leave, arrive);
+        return;
+    }
     // The keyframes' ease as handles (see easedProgress).
-    Layer const& l = scene.layers[m_layer];
-    Keyframe const& a = l.keys[l.keyIndex(m_from)];
-    Keyframe const& b = l.keys[l.keyIndex(m_to)];
     double const out = std::clamp(a.easeOut, 0.0, 1.0), in = std::clamp(b.easeIn, 0.0, 1.0);
     QPointF const leave(out * 0.8, (out > 0.0 || a.liftOut != 0.0 ? 0.0 : out * 0.8) + a.liftOut);
     double const x2 = 1.0 - in * 0.8;
@@ -335,11 +372,47 @@ void VelocityEditor::commit()
     Scene const& scene = m_document->scene();
     if (m_from < 0 || m_layer < 0 || m_layer >= scene.layers.size())
         return;
+    QPointF const leave = m_curve->leave(), arrive = m_curve->arrive();
+    double const easeOut = std::clamp(leave.x() / 0.8, 0.0, 1.0), easeIn = std::clamp((1.0 - arrive.x()) / 0.8, 0.0, 1.0);
+    if (m_column) {
+        FunctionColumn const* now = scene.function(m_column);
+        if (!now)
+            return;
+        FunctionColumn changed = *now;
+        bool const points = changed.hasPoints() && changed.kind != FunctionColumn::VeloBased;
+        Layer& owner = points ? changed.curve : changed.velocity;
+        int const ia = owner.keyIndex(m_from), ib = owner.keyIndex(m_to);
+        if (ia < 0 || ib < 0)
+            return;
+        Keyframe& a = owner.keys[ia];
+        Keyframe& b = owner.keys[ib];
+        if (a.curveOf(Driver::X) || b.curveOf(Driver::X)) {
+            // Handles of their own: set from the curve's (each turned apart from the other side's, which stays as it was).
+            double const span = std::max(1, b.frame - a.frame), way = b.pose.x - a.pose.x;
+            double const dy = std::abs(way) > 1e-9 ? way : 1.0;
+            ValueCurve ca = a.curveOf(Driver::X) ? *a.curveOf(Driver::X) : ValueCurve{Driver::X, {}, {}, false, ValueCurve::Curved};
+            ValueCurve cb = b.curveOf(Driver::X) ? *b.curveOf(Driver::X) : ValueCurve{Driver::X, {}, {}, false, ValueCurve::Curved};
+            ca.out = QPointF(leave.x() * span, leave.y() * dy);
+            ca.after = ValueCurve::Curved;
+            ca.corner = true;
+            cb.in = QPointF((arrive.x() - 1.0) * span, (arrive.y() - 1.0) * dy);
+            cb.corner = true;
+            a.setCurve(ca);
+            b.setCurve(cb);
+        } else {
+            a.easeOut = easeOut;
+            a.liftOut = leave.y();
+            b.easeIn = easeIn;
+            b.liftIn = arrive.y() - 1.0;
+        }
+        int const which = m_channel->currentIndex();
+        QString const text = !points ? tr("Apply velocity changed") : which == 1 ? tr("Apply velocity on X") : which == 2 ? tr("Apply velocity on Y") : tr("Apply velocity on Z");
+        m_document->setFunction(changed, text);
+        return;
+    }
     Layer const& l = scene.layers[m_layer];
     Keyframe const a = l.keys[l.keyIndex(m_from)];
     Keyframe const b = l.keys[l.keyIndex(m_to)];
-    QPointF const leave = m_curve->leave(), arrive = m_curve->arrive();
-    double const easeOut = std::clamp(leave.x() / 0.8, 0.0, 1.0), easeIn = std::clamp((1.0 - arrive.x()) / 0.8, 0.0, 1.0);
     m_document->beginMacro(tr("Apply Velocity Editor"));
     m_document->setKeyEase(m_layer, m_from, a.easeIn, easeOut, a.liftIn, leave.y());
     m_document->setKeyEase(m_layer, m_to, easeIn, b.easeOut, arrive.y() - 1.0, b.liftOut);

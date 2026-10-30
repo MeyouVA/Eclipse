@@ -104,6 +104,7 @@ QList<Entry> const& entries()
         {"functionBackground", "Function Editors", "Background", QColor(58, 58, 58)},
         {"functionPlot", "Function Editors", "Graph", QColor(46, 46, 46)},
         {"functionGrid", "Function Editors", "Grid", QColor(64, 64, 64)},
+        {"functionForeground", "Function Editors", "Foreground Curve", QColor(235, 200, 90)},
         {"functionAxis", "Function Editors", "Zero Line", QColor(110, 110, 110)},
         {"functionCurrentFrame", "Function Editors", "Current Frame", QColor(224, 36, 36)},
         {"functionCurveX", "Function Editors", "X Curve", QColor(232, 96, 84)},

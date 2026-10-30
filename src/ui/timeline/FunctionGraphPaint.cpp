@@ -73,7 +73,7 @@ void FunctionGraph::paintEvent(QPaintEvent*)
             if (++curves > m_loadLimit)
                 break;
             QPair<int, int> const source = sourceOf(layer, which);
-            QColor colour = source.first < 0 ? InterfaceColours::get("functionColumn") : colourOf(param);
+            QColor colour = layer < 0 ? InterfaceColours::get("functionForeground") : source.first < 0 ? InterfaceColours::get("functionColumn") : colourOf(param);
             bool const follows = driven(layer, which);
             QPolygonF curve;
             for (int f = firstFrame; f <= lastFrame; ++f)

@@ -36,9 +36,11 @@ private:
     void removePoint();
     void addVelocityPoint();
     void removeVelocityPoint();
+    void convertVelocity();
 
     Document* m_document;
     int m_id;
+    int m_shownKind = 0;
     int m_frame = 0;
     bool m_filling = false;
     QLineEdit* m_name;

@@ -88,6 +88,8 @@ public:
     // The keyframes the move goes between (frames), or -1 when there is none.
     int fromFrame() const { return m_from; }
     int toFrame() const { return m_to; }
+    // What is edited: the layer's keyframes (0), or the function column its X, Y or Z is linked to (1..3).
+    QComboBox* channel() const { return m_channel; }
 
 private:
     void refresh();
@@ -95,5 +97,7 @@ private:
     Document* m_document;
     EaseCurveEdit* m_curve;
     QLabel* m_what;
+    QComboBox* m_channel;
     int m_layer = 0, m_frame = 0, m_from = -1, m_to = -1;
+    int m_column = 0;       // the function column edited (0: the layer's keyframes)
 };

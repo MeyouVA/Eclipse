@@ -85,6 +85,13 @@ void LayerPanel::fillFunctionMenu(QMenu* menu, int value)
         a->setObjectName(QStringLiteral("LinkNew_") + QString::number(kind));
         connect(a, &QAction::triggered, this, [this, layer, value, kind] { m_document->storeAsFunction(layer, value, kind); });
     }
+    // A 3D path: a Bezier column for each of the position values it drives instead.
+    if (FunctionColumn const* c = scene.function(linked); c && c->kind == FunctionColumn::Path3D) {
+        menu->addSeparator();
+        QAction* const separate = menu->addAction(tr("Create Separate beziers"));
+        separate->setObjectName(QStringLiteral("SeparatePath"));
+        connect(separate, &QAction::triggered, this, [this, layer] { m_document->separatePath(layer); });
+    }
     addAttributeCommands(menu, value);
 }
 

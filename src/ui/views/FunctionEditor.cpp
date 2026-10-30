@@ -2,6 +2,8 @@
 #include "ui/views/FunctionEditor.h"
 
 #include <QCheckBox>
+
+#include <algorithm>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -60,6 +62,8 @@ void fillRow(QTableWidget* table, int row, QVector<QString> const& cells)
 
 FunctionEditor::FunctionEditor(Document* document, int column, QWidget* parent) : QDialog(parent), m_document(document), m_id(column)
 {
+    if (FunctionColumn const* c = document->scene().function(column))
+        m_shownKind = c->kind;
     setObjectName(QStringLiteral("FunctionEditor"));
     FunctionColumn const* c = m_document->scene().function(m_id);
     int const kind = c ? c->kind : FunctionColumn::Bezier;
@@ -138,8 +142,13 @@ FunctionEditor::FunctionEditor(Document* document, int column, QWidget* parent) 
         add->setObjectName(QStringLiteral("FunctionAddVelocity"));
         QPushButton* const remove = new QPushButton(tr("Remove Velocity Point"), this);
         remove->setObjectName(QStringLiteral("FunctionRemoveVelocity"));
+        QPushButton* const convert = new QPushButton(tr("Convert Velocity"), this);
+        convert->setObjectName(QStringLiteral("FunctionConvertVelocity"));
+        convert->setToolTip(tr("The velocity points made eased (an ease in and out of a third), or, when they all are, Bezier again."));
         buttons->addWidget(add);
         buttons->addWidget(remove);
+        buttons->addWidget(convert);
+        connect(convert, &QPushButton::clicked, this, &FunctionEditor::convertVelocity);
         buttons->addStretch(1);
         layout->addLayout(buttons);
         connect(add, &QPushButton::clicked, this, &FunctionEditor::addVelocityPoint);
@@ -182,7 +191,10 @@ void FunctionEditor::refresh()
     Scene const& scene = m_document->scene();
     FunctionColumn const* c = scene.function(m_id);
     if (!c) {
-        m_message->setText(tr("This function column is gone."));
+        // (Each kind of editor says so in its own words.)
+        static char const* const kNone[] = {QT_TR_NOOP("No Bezier Available"), QT_TR_NOOP("No Ease Available"), QT_TR_NOOP("No Velobased Available"),
+                                            QT_TR_NOOP("No Expression Available"), QT_TR_NOOP("This function column is gone.")};
+        m_message->setText(tr(kNone[std::clamp(m_shownKind, 0, 4)]));
         setEnabled(false);
         return;
     }
@@ -426,4 +438,19 @@ void FunctionEditor::toggleLock()
     changed.path[row].frame = lock ? m_frame : -1;
     changed.path[row].locked = lock;
     m_document->setFunction(changed, tr("Lock/Unlock Point"));
+}
+
+void FunctionEditor::convertVelocity()
+{
+    FunctionColumn const* now = m_document->scene().function(m_id);
+    if (!now || now->velocity.keys.isEmpty())
+        return;
+    FunctionColumn changed = *now;
+    bool const allEased = std::all_of(changed.velocity.keys.cbegin(), changed.velocity.keys.cend(), [](Keyframe const& k) { return k.easeIn > 0.0 && k.easeOut > 0.0; });
+    for (Keyframe& k : changed.velocity.keys) {
+        k.easeIn = k.easeOut = allEased ? 0.0 : 0.33;
+        k.liftIn = k.liftOut = 0.0;
+        k.dropCurve(Driver::X);
+    }
+    m_document->setFunction(changed, changed.kind == FunctionColumn::Path3D ? tr("Convert velocity of 3dpath") : tr("Convert velobased"));
 }

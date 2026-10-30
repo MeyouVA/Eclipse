@@ -256,6 +256,8 @@ public:
     int storeAsFunction(int layer, int value, int kind);
     // A column made another kind, its values kept (sampled on each frame when they must be); in a new column when `intoNew`.
     int convertFunction(int id, int kind, bool intoNew);
+    // Create Separate beziers: the 3D path a layer's position is linked to made into a Bezier column for each of X, Y and Z (linked instead); how many were made.
+    int separatePath(int layer);
     void setEffects(int layer, QVector<Effect> const& effects, QString const& text);
     // Takes effect `index` out, and its amounts out of the keyframes.
     void removeEffect(int layer, int index);

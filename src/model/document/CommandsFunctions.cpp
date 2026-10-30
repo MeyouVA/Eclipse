@@ -53,6 +53,27 @@ QVector<Keyframe> sampled(FunctionColumn const& column, Scene const& scene)
     return keys;
 }
 
+// One value a column gives (a 3D path: across, down or depth) on every frame, as points.
+QVector<Keyframe> sampledValue(FunctionColumn const& column, int value, Scene const& scene)
+{
+    int const last = scene.frameCount() - 1;
+    QVector<double> v(last + 1);
+    for (int f = 0; f <= last; ++f)
+        v[f] = column.valueFor(value, f, scene);
+    QVector<Keyframe> keys;
+    for (int f = 0; f <= last; ++f) {
+        bool const between = f > 0 && f < last && std::abs(v[f] - (v[f - 1] + v[f + 1]) / 2.0) < 1e-9;
+        if (!between) {
+            keys.push_back(pointKey(f, v[f]));
+            ValueCurve straight;
+            straight.value = Driver::X;
+            straight.after = ValueCurve::Straight;
+            keys.last().setCurve(straight);
+        }
+    }
+    return keys;
+}
+
 }  // namespace
 
 int Document::addFunction(FunctionColumn column, QString const& text)
@@ -198,4 +219,28 @@ int Document::convertFunction(int id, int kind, bool intoNew)
     }
     setFunction(made, tr("Convert Function Column"));
     return id;
+}
+
+int Document::separatePath(int layer)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return 0;
+    // (Copies: each step below replaces the scene's vectors.)
+    QVector<QPair<int, FunctionColumn>> paths;
+    for (int value : {int(Driver::X), int(Driver::Y), int(Driver::Z)})
+        if (FunctionColumn const* c = m_scene.function(m_scene.layers[layer].linkOf(value)); c && c->kind == FunctionColumn::Path3D)
+            paths.push_back({value, *c});
+    if (paths.isEmpty())
+        return 0;
+    beginMacro(tr("Create Separate beziers"));
+    for (auto const& [value, path] : std::as_const(paths)) {
+        FunctionColumn made;
+        made.kind = FunctionColumn::Bezier;
+        made.name = path.name + (value == Driver::X ? QStringLiteral("_x") : value == Driver::Y ? QStringLiteral("_y") : QStringLiteral("_z"));
+        made.curve.keys = sampledValue(path, value, m_scene);
+        int const id = addFunction(made, tr("Create Separate beziers"));
+        linkValue(layer, value, id, tr("Create Separate beziers"));
+    }
+    endMacro();
+    return int(paths.size());
 }
