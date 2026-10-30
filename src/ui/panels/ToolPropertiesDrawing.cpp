@@ -484,6 +484,7 @@ QToolButton* ToolProperties::textureButton(QString const& name)
     button->setPopupMode(QToolButton::InstantPopup);
     QMenu* const menu = new QMenu(button);
     menu->addAction(tr("Import Texture from Picture..."), m_canvas, &Canvas::onActionImportTexture);
+    menu->addAction(tr("Import Brushes..."), m_canvas, &Canvas::onActionImportBrushTextures);
     menu->addAction(tr("New Texture..."), m_canvas, &Canvas::onActionNewTexture);
     menu->addSeparator();
     menu->addAction(tr("Rename Texture..."), m_canvas, &Canvas::onActionRenameTexture);

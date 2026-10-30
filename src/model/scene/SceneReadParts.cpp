@@ -630,6 +630,15 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.alignment = std::clamp(lo["alignment"].toInt(0), 0, 3);
     layer.turnBeforeAlignment = lo["turnBeforeAlignment"].toBool(false);
     layer.flipHorizontal = lo["flipHorizontal"].toBool(false);
+    layer.lineMultiply = lo["lineMultiply"].toDouble(1.0);
+    layer.lineAdd = lo["lineAdd"].toDouble(0.0);
+    layer.lineMin = lo["lineMin"].toDouble(0.0);
+    layer.lineMax = lo["lineMax"].toDouble(0.0);
+    layer.lineZoomIndependent = lo["lineZoomIndependent"].toBool(false);
+    layer.readColour = lo["readColour"].toBool(true);
+    layer.tileHorizontal = lo["tileHorizontal"].toBool(false);
+    layer.tileVertical = lo["tileVertical"].toBool(false);
+    layer.bitmapMultiplier = std::clamp(lo["bitmapMultiplier"].toDouble(1.0), 0.0, 1.0);
     layer.flipVertical = lo["flipVertical"].toBool(false);
     if (QJsonArray const clip = lo["clip"].toArray(); clip.size() == 2) {
         layer.clipping = true;

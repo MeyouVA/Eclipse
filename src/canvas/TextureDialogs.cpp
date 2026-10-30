@@ -17,6 +17,7 @@
 
 #include <functional>
 
+#include "canvas/Canvas.h"
 #include "canvas/PencilTexture.h"
 #include "actions/theme/AppSettings.h"
 
@@ -96,6 +97,29 @@ int TextureDialogs::importTexture(QWidget* parent)
             form.addRow(note);
         },
         [&] { return PencilTexture::grainFromPicture(picture, light && light->isChecked()); });
+}
+
+int TextureDialogs::importBrushes(QWidget* parent)
+{
+    QString const file = QFileDialog::getOpenFileName(parent, QObject::tr("Import Brushes"), settings().value(QStringLiteral("paths/texture")).toString(),
+                                                      QObject::tr("Photoshop brushes (*.abr)"));
+    if (file.isEmpty())
+        return 0;
+    settings().setValue(QStringLiteral("paths/texture"), QFileInfo(file).absolutePath());
+    QString why;
+    QVector<QImage> const tips = Canvas::readAbr(file, &why);
+    if (tips.isEmpty()) {
+        QMessageBox::warning(parent, QObject::tr("Import Brushes"), why.isEmpty() ? QObject::tr("No brushes could be read from that file.") : why);
+        return 0;
+    }
+    int first = 0;
+    QString const base = QFileInfo(file).completeBaseName();
+    for (int i = 0; i < tips.size(); ++i) {
+        int const id = PencilTexture::keep(tips.size() == 1 ? base : QStringLiteral("%1 %2").arg(base).arg(i + 1), PencilTexture::grainFromPicture(tips[i], true), 0.5);
+        if (!first)
+            first = id;
+    }
+    return first;
 }
 
 int TextureDialogs::newTexture(QWidget* parent)

@@ -140,6 +140,9 @@ private:
     QComboBox* m_antialiasing = nullptr;
     QDoubleSpinBox* m_antialiasExponent = nullptr;
     QComboBox* m_textureFilter = nullptr;
+    QDoubleSpinBox *m_lineMultiply = nullptr, *m_lineAdd = nullptr, *m_lineMin = nullptr, *m_lineMax = nullptr;
+    QDoubleSpinBox* m_bitmapMultiplier = nullptr;
+    QCheckBox *m_lineZoom = nullptr, *m_readColour = nullptr, *m_tileH = nullptr, *m_tileV = nullptr;
     QComboBox* m_colourSpace = nullptr;
     QDoubleSpinBox* m_clipY = nullptr;
     QWidget* m_publishedBox = nullptr;

@@ -8,6 +8,8 @@
 #include <QSet>
 #include <QInputDialog>
 #include <QFile>
+#include <QColorDialog>
+#include <QSettings>
 
 #include <QImage>
 #include <QPainter>
@@ -17,8 +19,14 @@
 
 #include "model/document/Commands.h"
 
-void Canvas::commitPenStroke(Stroke const& stroke, double tolerance)
+void Canvas::commitPenStroke(Stroke const& drawn, double tolerance)
 {
+    // Independent Bitmap Colour: on a bitmap layer the stroke is in the bitmap colour.
+    Stroke stroke = drawn;
+    if (m_independentBitmap && bitmapNow()) {
+        stroke.swatch = Scene::kNoSwatch;
+        stroke.color = m_bitmapColour;
+    }
     // Overlay Brush Mode: kept only where the artwork of the layers chosen is.
     QPainterPath const mask = m_overlayBrush && (m_tool == Brush || m_tool == Pencil) ? overlayMask() : QPainterPath();
     QVector<QPolygonF> maskShape;
@@ -407,4 +415,39 @@ void Canvas::finishPolyline(bool keep)
             m_document->endMacro();
         }
     }
+}
+
+void Canvas::setSwatch(int id)
+{
+    m_swatch = id;
+    // Preferences: the bitmap colour kept the same as the colour chosen in the palette.
+    if (m_independentBitmap && QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/syncBitmapColour"), false).toBool())
+        if (Swatch const* const swatch = m_document ? m_document->scene().findSwatch(id) : nullptr)
+            m_bitmapColour = swatch->color;
+    if (m_highlightColour)
+        update();
+}
+
+void Canvas::onActionIndependentBitmapColour(bool on)
+{
+    m_independentBitmap = on;
+    emit message(on ? tr("Bitmap layers are painted in the bitmap colour (Colours > Bitmap Colour...).")
+                    : tr("Bitmap layers are painted in the colour chosen in the palette."));
+    emit toolSettingsChanged();
+}
+
+void Canvas::onActionBitmapColour()
+{
+    QColor const chosen = QColorDialog::getColor(m_bitmapColour, this, tr("Bitmap Colour"), QColorDialog::ShowAlphaChannel);
+    if (!chosen.isValid())
+        return;
+    setBitmapColour(chosen);
+    if (!m_independentBitmap)
+        onActionIndependentBitmapColour(true);
+}
+
+void Canvas::setBitmapColour(QColor const& colour)
+{
+    m_bitmapColour = colour;
+    emit toolSettingsChanged();
 }

@@ -93,6 +93,24 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             managed.pictures = scene.pictureTransform(*gPictureLayer, false);
     }
     bool const managing = managed.any();
+    // The layer's Line Thickness (thread_local gLineScale: how much the layer is scaled, for Zoom Independent).
+    Layer const* const lineLayer = gPictureLayer;
+    bool const reshaped = lineLayer && lineLayer->linesReshaped();
+    auto paintLine = [&painter, lineLayer, reshaped](Stroke const& stroke, QBrush const& brush) {
+        if (!reshaped || stroke.width <= 0.0f) {
+            Canvas::paintStroke(painter, stroke, brush);
+            return;
+        }
+        Stroke shown = stroke;
+        double width = stroke.width * lineLayer->lineMultiply + lineLayer->lineAdd;
+        if (lineLayer->lineZoomIndependent && gLineScale > 1e-9)
+            width /= gLineScale;
+        width = std::max(width, lineLayer->lineMin);
+        if (lineLayer->lineMax > 0.0)
+            width = std::min(width, lineLayer->lineMax);
+        shown.width = float(std::max(0.0, width));
+        Canvas::paintStroke(painter, shown, brush);
+    };
     auto brushOf = [&](QBrush const& brush) { return managing ? managedBrush(brush, managed) : brush; };
     auto paintPicture = [&painter, &managed, managing, &scene, tint](Picture const& picture) {
         painter.save();
@@ -120,8 +138,37 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             bool const ownSpace = !picture.painted && !picture.colourSpace.isEmpty() && scene.colourManaged && gPictureLayer && !tint;
             Cms::Transform const own = ownSpace ? scene.pictureTransform(*gPictureLayer, picture) : Cms::Transform();
             Cms::Transform const& t = picture.painted ? managed.colours : ownSpace ? own : managed.pictures;
-            QImage const shown = (managing || ownSpace) && !t.isIdentity() ? convertedPicture(picture.image, t, Deep::isDeep(painter.device())) : picture.image;
-            painter.drawImage(box, !picture.painted && wash.percent > 0 ? washedPicture(shown, wash.percent, wash.colour) : shown);
+            QImage shown = (managing || ownSpace) && !t.isIdentity() ? convertedPicture(picture.image, t, Deep::isDeep(painter.device())) : picture.image;
+            Layer const* const owner = gPictureLayer;
+            if (owner && !picture.painted && !owner->readColour) {
+                // Read Colour off: only the picture's shape, in black.
+                QImage shape(shown.size(), QImage::Format_ARGB32_Premultiplied);
+                shape.fill(Qt::black);
+                QPainter mask(&shape);
+                mask.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                mask.drawImage(0, 0, shown);
+                mask.end();
+                shape.setDevicePixelRatio(shown.devicePixelRatio());
+                shown = shape;
+            }
+            QImage const drawn = !picture.painted && wash.percent > 0 ? washedPicture(shown, wash.percent, wash.colour) : shown;
+            if (owner && owner->bitmapMultiplier < 1.0)
+                painter.setOpacity(painter.opacity() * std::max(0.0, owner->bitmapMultiplier));
+            if (owner && !picture.painted && (owner->tileHorizontal || owner->tileVertical) && painter.device() && !box.isEmpty()) {
+                // Tiled: the picture repeated across and/or down over all the view shows.
+                QRectF const area = painter.worldTransform().isInvertible()
+                                        ? painter.worldTransform().inverted().mapRect(QRectF(0, 0, painter.device()->width(), painter.device()->height()))
+                                        : box;
+                int const x0 = owner->tileHorizontal ? std::max(-200, int(std::floor(area.left() / box.width()))) : 0;
+                int const x1 = owner->tileHorizontal ? std::min(200, int(std::ceil(area.right() / box.width()))) : 0;
+                int const y0 = owner->tileVertical ? std::max(-200, int(std::floor(area.top() / box.height()))) : 0;
+                int const y1 = owner->tileVertical ? std::min(200, int(std::ceil(area.bottom() / box.height()))) : 0;
+                for (int j = y0; j <= y1; ++j)
+                    for (int i = x0; i <= x1; ++i)
+                        painter.drawImage(box.translated(i * box.width(), j * box.height()), drawn);
+            } else {
+                painter.drawImage(box, drawn);
+            }
         }
         painter.restore();
     };
@@ -161,7 +208,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             for (Fill const& fill : fills)
                 drawFill(fill);
             for (Stroke const& stroke : strokes)
-                Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : brushOf(flatInView(scene, scene.brushFor(stroke), stroke.swatch)));
+                paintLine(stroke, tint ? QBrush(*tint) : brushOf(flatInView(scene, scene.brushFor(stroke), stroke.swatch)));
             continue;
         }
         // From the bottom of the order up: areas under lines of the same place, each list in its own order.
@@ -186,7 +233,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             else if (item.kind == 0)
                 drawFill(fills[item.index]);
             else
-                Canvas::paintStroke(painter, strokes[item.index], tint ? QBrush(*tint) : brushOf(flatInView(scene, scene.brushFor(strokes[item.index]), strokes[item.index].swatch)));
+                paintLine(strokes[item.index], tint ? QBrush(*tint) : brushOf(flatInView(scene, scene.brushFor(strokes[item.index]), strokes[item.index].swatch)));
         }
     }
 }
@@ -277,9 +324,12 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     gNearestPictures = layer.textureFilter == Layer::FilterNearest;
     Layer const* const pictureLayerBefore = gPictureLayer;
     gPictureLayer = &layer;
-    auto const restoreNearest = qScopeGuard([nearestBefore, pictureLayerBefore] {
+    double const lineScaleBefore = gLineScale;
+    gLineScale = layer.lineZoomIndependent ? std::sqrt(std::abs(scene.worldTransform(l, frame).determinant())) : 1.0;
+    auto const restoreNearest = qScopeGuard([nearestBefore, pictureLayerBefore, lineScaleBefore] {
         gNearestPictures = nearestBefore;
         gPictureLayer = pictureLayerBefore;
+        gLineScale = lineScaleBefore;
     });
     if (cameraClipping && scene.cameraIndex() >= 0 && layer.holdsDrawings() && !drawing.isEmpty()) {
         QRectF const bounds = drawing.bounds().adjusted(-2, -2, 2, 2);

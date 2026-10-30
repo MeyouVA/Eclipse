@@ -213,6 +213,14 @@ void MainWindow::onActionSceneSettings()
     srgbPalettes->setToolTip(tr("When enabled, bitmap drawings and colour swatches in palettes are read using the sRGB colour space before being converted to the working colour space."));
     colourForm->addRow(srgbPalettes);
     form->addRow(colour);
+    QSpinBox* const density = new QSpinBox(&dialog);
+    density->setObjectName(QStringLiteral("SceneBitmapResolution"));
+    density->setRange(25, 400);
+    density->setSingleStep(25);
+    density->setSuffix(tr(" %"));
+    density->setValue(scene.bitmapResolution);
+    density->setToolTip(tr("Default Bitmap Drawings Texture Pixel Density: how fine the pixels of a layer made bitmap are, 100 % being a pixel for each unit of the scene."));
+    form->addRow(tr("Bitmap Texture Pixel Density"), density);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -223,6 +231,7 @@ void MainWindow::onActionSceneSettings()
         m_document->setOrthographic(projection->currentIndex() == 1);
         m_document->setFovAcross(fit->currentIndex() == 1);
         m_document->setColourManagement(colour->isChecked(), ColourSpaceBox::chosen(working), ColourSpaceBox::chosen(textures), srgbPalettes->isChecked());
+        m_document->setDefaultBitmapResolution(density->value());
         m_document->endMacro();
         m_canvas->fitToWindow();
     }

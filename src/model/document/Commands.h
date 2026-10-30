@@ -460,6 +460,8 @@ public:
     void setSceneSettings(int width, int height, double fps, double fov = 0.0);
     // Scene Settings > Colour: colour space management on or off, the working colour space, how texture swatches and palette colours are read.
     void setColourManagement(bool on, QString const& working, QString const& textures, bool palettesInSrgb);
+    // Scene Settings: the Texture Pixel Density a layer made bitmap starts with.
+    void setDefaultBitmapResolution(int percent);
 
 signals:
     void changed();

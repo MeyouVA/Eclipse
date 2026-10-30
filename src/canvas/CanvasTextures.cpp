@@ -204,6 +204,11 @@ void Canvas::onActionImportTexture()
     takeUpTexture(TextureDialogs::importTexture(this));
 }
 
+void Canvas::onActionImportBrushTextures()
+{
+    takeUpTexture(TextureDialogs::importBrushes(this));
+}
+
 void Canvas::onActionNewTexture()
 {
     takeUpTexture(TextureDialogs::newTexture(this));

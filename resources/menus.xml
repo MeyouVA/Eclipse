@@ -49,6 +49,7 @@
    </menu>
    <separator/>
    <menu id="FileOptimize" text="Optimi&amp;ze">
+    <item id="OptimizeDrawings" text="Optimize &amp;Drawings..." responder="camera" slot="onActionOptimizeDrawings()"/>
     <item id="OptimizePalettes"/>
    </menu>
    <separator/>
@@ -318,6 +319,7 @@
    <item id="PencilLineWiggle" icon="anim/pencilprops" text="Pencil Line &amp;Wiggle..." shortcut="shortcut.pencilLineWiggle" responder="camera" slot="onActionPencilLineWiggle()"/>
    <item id="PencilLineProperties" icon="anim/pencilprops" text="Edit Pencil &amp;Lines Properties..." shortcut="shortcut.pencilLineProperties" responder="camera" slot="onActionPencilLineProperties()"/>
    <item id="ImportTexture" icon="anim/textureimport" text="&amp;Import Texture from Picture..." responder="camera" slot="onActionImportTexture()"/>
+   <item id="ImportBrushTextures" text="Import Brushes as Textures..." responder="camera" slot="onActionImportBrushTextures()"/>
    <item id="NewTexture" icon="anim/texturenew" text="&amp;New Texture..." responder="camera" slot="onActionNewTexture()"/>
    <item id="RenameTexture" icon="anim/texturerename" text="&amp;Rename Texture..." responder="camera" slot="onActionRenameTexture()"/>
    <item id="ExportTexture" icon="anim/textureexport" text="&amp;Export Texture..." responder="camera" slot="onActionExportTexture()"/>
@@ -385,6 +387,8 @@
     <item id="RemoveInvisibleLines" icon="anim/smooth" text="Remove &amp;Invisible Lines" shortcut="shortcut.removeInvisibleLines" responder="camera" slot="onActionRemoveInvisibleLines()"/>
     <item id="Smooth" icon="anim/smooth" text="&amp;Smooth" shortcut="shortcut.smooth" responder="camera" slot="onActionSmooth()"/>
     <item id="SmoothFast" icon="anim/smooth" text="Smooth &amp;Fast" shortcut="shortcut.smoothFast" responder="camera" slot="onActionSmoothFast()"/>
+    <item id="CropBrushTextures" text="&amp;Crop Brush Textures" responder="camera" slot="onActionCropBrushTextures()"/>
+    <item id="ReduceTextureResolution" text="Reduce Drawing Te&amp;xture Resolution..." responder="camera" slot="onActionReduceTextureResolution()"/>
     <separator/>
     <item id="PumpThickness" icon="anim/smooth" text="&amp;Pump Selection Thickness" shortcut="shortcut.pumpThickness" responder="camera" slot="onActionPumpThickness()"/>
     <item id="DeflateThickness" icon="anim/smooth" text="&amp;Deflate Selection Thickness" shortcut="shortcut.deflateThickness" responder="camera" slot="onActionDeflateThickness()"/>
@@ -1265,6 +1269,8 @@
   <item id="NewGradientColour" text="New &amp;Gradient" responder="paletteView" slot="onActionNewGradient()"/>
   <item id="EditGradientColour" text="Edit Gr&amp;adient..." responder="paletteView" slot="onActionEditGradient()"/>
   <item id="NewDefaultColour" text="New De&amp;fault Colour" responder="paletteView" slot="onActionNewDefaultColour()"/>
+  <item id="IndependentBitmapColour" text="Independent &amp;Bitmap Colour" checkable="true" responder="camera" slot="onActionIndependentBitmapColour(bool)"/>
+  <item id="BitmapColour" text="Bitmap Colo&amp;ur..." responder="camera" slot="onActionBitmapColour()"/>
   <item id="RecolourDrawings" text="&amp;Recolour Drawings..." shortcut="shortcut.recolourDrawings" responder="paletteView" slot="onActionRecolourDrawings()"/>
   <separator/>
   <item id="ProtectColour" text="Pr&amp;otect Colour" checkable="true" shortcut="shortcut.protectColour" responder="paletteView" slot="onActionProtectColour()"/>

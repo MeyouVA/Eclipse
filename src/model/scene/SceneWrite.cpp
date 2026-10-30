@@ -204,6 +204,8 @@ QJsonObject Scene::toJson(QString const& folder) const
         whole["textureSpace"] = textureSpace;
     if (!palettesInSrgb)
         whole["palettesInSrgb"] = false;
+    if (bitmapResolution != 100)
+        whole["bitmapResolution"] = bitmapResolution;
     if (!functions.isEmpty()) {
         QJsonArray columns;
         for (FunctionColumn const& c : functions) {

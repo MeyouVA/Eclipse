@@ -84,7 +84,21 @@ void Document::setLayerBitmap(int layer, bool bitmap)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].bitmap == bitmap)
         return;
-    apply(bitmap ? tr("Make Bitmap Layer") : tr("Make Vector Layer"), [&](Scene& s) { s.layers[layer].bitmap = bitmap; });
+    apply(bitmap ? tr("Make Bitmap Layer") : tr("Make Vector Layer"), [&](Scene& s) {
+        Layer& l = s.layers[layer];
+        // (A layer with no pixels yet takes the scene's Texture Pixel Density.)
+        if (bitmap && l.bitmapResolution == 100 && std::none_of(l.drawings.cbegin(), l.drawings.cend(), [](Drawing const& d) { return !d.pictures.isEmpty(); }))
+            l.bitmapResolution = s.bitmapResolution;
+        l.bitmap = bitmap;
+    });
+}
+
+void Document::setDefaultBitmapResolution(int percent)
+{
+    percent = std::clamp(percent, 25, 400);
+    if (m_scene.bitmapResolution == percent)
+        return;
+    apply(tr("Default Texture Pixel Density"), [percent](Scene& s) { s.bitmapResolution = percent; });
 }
 
 void Document::setLayerSolo(int layer, bool solo)

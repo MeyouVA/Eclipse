@@ -27,6 +27,9 @@ protected:
     BitmapTip m_bitmapTip = BitmapRound;
     Tool m_tool = Brush;
     int m_swatch = Scene::kNoSwatch;
+    // Independent Bitmap Colour: bitmap layers painted in a colour of their own, not the swatch's.
+    bool m_independentBitmap = false;
+    QColor m_bitmapColour = Qt::black;
     double m_brushWidth = 6.0;
     bool m_brushOutline = false;
     int m_stabiliser = StabiliserOff;

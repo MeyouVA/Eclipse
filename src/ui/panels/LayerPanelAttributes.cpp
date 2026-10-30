@@ -239,6 +239,73 @@ void LayerPanel::buildAttributeSections()
         m_document->editLayers({m_layer}, tr("Colour Space"), [space](Layer& l) { l.colourSpace = space; });
     });
     drawing->addRow(tr("Colour Space"), m_colourSpace);
+    // Line Thickness: its vector lines' thickness multiplied, added to, and kept between a least and a most (0: no limit).
+    QHBoxLayout* const lines = new QHBoxLayout;
+    m_lineMultiply = number(0.0, 100.0, 0.1, 2);
+    m_lineMultiply->setObjectName(QStringLiteral("LayerLineMultiply"));
+    m_lineAdd = number(-1000.0, 1000.0, 0.5, 2);
+    m_lineAdd->setObjectName(QStringLiteral("LayerLineAdd"));
+    m_lineMin = number(0.0, 1000.0, 0.5, 2);
+    m_lineMin->setObjectName(QStringLiteral("LayerLineMin"));
+    m_lineMax = number(0.0, 1000.0, 0.5, 2);
+    m_lineMax->setObjectName(QStringLiteral("LayerLineMax"));
+    m_lineZoom = new QCheckBox(tr("Zoom Independent"), m_drawingBox);
+    m_lineZoom->setObjectName(QStringLiteral("LayerLineZoomIndependent"));
+    m_lineZoom->setToolTip(tr("Its lines keep their thickness however much the layer is scaled."));
+    lines->addWidget(new QLabel(tr("Multiply"), m_drawingBox));
+    lines->addWidget(m_lineMultiply, 1);
+    lines->addWidget(new QLabel(tr("Add"), m_drawingBox));
+    lines->addWidget(m_lineAdd, 1);
+    QHBoxLayout* const limits = new QHBoxLayout;
+    limits->addWidget(new QLabel(tr("Min"), m_drawingBox));
+    limits->addWidget(m_lineMin, 1);
+    limits->addWidget(new QLabel(tr("Max"), m_drawingBox));
+    limits->addWidget(m_lineMax, 1);
+    limits->addWidget(m_lineZoom);
+    auto thickness = [this] {
+        if (m_refreshing)
+            return;
+        double const mult = m_lineMultiply->value(), add = m_lineAdd->value(), least = m_lineMin->value(), most = m_lineMax->value();
+        bool const zoom = m_lineZoom->isChecked();
+        m_document->editLayers({m_layer}, tr("Line Thickness"), [mult, add, least, most, zoom](Layer& l) {
+            l.lineMultiply = mult;
+            l.lineAdd = add;
+            l.lineMin = least;
+            l.lineMax = most;
+            l.lineZoomIndependent = zoom;
+        });
+    };
+    for (QDoubleSpinBox* box : {m_lineMultiply, m_lineAdd, m_lineMin, m_lineMax})
+        connect(box, &QDoubleSpinBox::valueChanged, this, thickness);
+    connect(m_lineZoom, &QCheckBox::toggled, this, thickness);
+    drawing->addRow(tr("Line Thickness"), lines);
+    drawing->addRow(QString(), limits);
+    // Bitmap file options: its pictures' colours read or only their shape, and the pictures repeated across or down.
+    QHBoxLayout* const pictureRow = new QHBoxLayout;
+    Switch const pictureSwitches[] = {{&m_readColour, QT_TR_NOOP("Read Colour"), "LayerReadColour", &Layer::readColour},
+                                      {&m_tileH, QT_TR_NOOP("Tile Horizontally"), "LayerTileHorizontal", &Layer::tileHorizontal},
+                                      {&m_tileV, QT_TR_NOOP("Tile Vertically"), "LayerTileVertical", &Layer::tileVertical}};
+    for (Switch const& s : pictureSwitches) {
+        *s.box = new QCheckBox(tr(s.text), m_drawingBox);
+        (*s.box)->setObjectName(QLatin1String(s.name));
+        bool Layer::*const field = s.field;
+        QString const text = tr(s.text);
+        connect(*s.box, &QCheckBox::toggled, this, [this, field, text](bool on) {
+            if (!m_refreshing)
+                m_document->editLayers({m_layer}, text, [field, on](Layer& l) { l.*field = on; });
+        });
+        pictureRow->addWidget(*s.box);
+    }
+    m_readColour->setToolTip(tr("Off: its pictures show only their shape, in black."));
+    m_bitmapMultiplier = number(0.0, 1.0, 0.05, 2);
+    m_bitmapMultiplier->setObjectName(QStringLiteral("LayerBitmapMultiplier"));
+    m_bitmapMultiplier->setToolTip(tr("Bitmap Options: Multiplier - how solid its pictures are, 1 as they are."));
+    connect(m_bitmapMultiplier, &QDoubleSpinBox::valueChanged, this, [this](double v) {
+        if (!m_refreshing)
+            m_document->editLayers({m_layer}, tr("Bitmap Multiplier"), [v](Layer& l) { l.bitmapMultiplier = v; });
+    });
+    drawing->addRow(tr("Pictures"), pictureRow);
+    drawing->addRow(tr("Multiplier"), m_bitmapMultiplier);
     m_form->addRow(tr("Drawing"), m_drawingBox);
 
     // ---- a group: the values published on it ----
@@ -298,7 +365,8 @@ void LayerPanel::refreshAttributeSections(Layer const& layer)
     m_drawingBox->setVisible(drawing || layer.kind == Layer::Peg);
     m_enable3d->setChecked(layer.enable3d);
     for (QWidget* w : std::initializer_list<QWidget*>{m_alignment, m_turnBefore, m_flipH, m_flipV, m_clipping, m_clipX, m_clipY, m_antialiasing,
-                                                      m_antialiasExponent, m_textureFilter})
+                                                      m_antialiasExponent, m_textureFilter, m_lineMultiply, m_lineAdd, m_lineMin, m_lineMax, m_lineZoom,
+                                                      m_readColour, m_tileH, m_tileV, m_bitmapMultiplier})
         w->setEnabled(drawing);
     m_alignment->setCurrentIndex(std::clamp(layer.alignment, 0, 3));
     m_turnBefore->setChecked(layer.turnBeforeAlignment);
@@ -312,6 +380,15 @@ void LayerPanel::refreshAttributeSections(Layer const& layer)
     m_textureFilter->setCurrentIndex(std::clamp(layer.textureFilter, 0, 1));
     ColourSpaceBox::fill(m_colourSpace, layer.colourSpace, tr("Scene Working Colour Space"));
     m_colourSpace->setEnabled(drawing);
+    m_lineMultiply->setValue(layer.lineMultiply);
+    m_lineAdd->setValue(layer.lineAdd);
+    m_lineMin->setValue(layer.lineMin);
+    m_lineMax->setValue(layer.lineMax);
+    m_lineZoom->setChecked(layer.lineZoomIndependent);
+    m_readColour->setChecked(layer.readColour);
+    m_tileH->setChecked(layer.tileHorizontal);
+    m_tileV->setChecked(layer.tileVertical);
+    m_bitmapMultiplier->setValue(layer.bitmapMultiplier);
     if (QLayout* const turn = m_turnRow)
         for (int i = 0; i < turn->count(); ++i)
             if (QWidget* const w = turn->itemAt(i)->widget())

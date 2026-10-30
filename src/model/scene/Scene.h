@@ -54,6 +54,7 @@ public:
     bool colourManaged = false;
     QString workingSpace = QStringLiteral("sRGB");
     QString textureSpace = QStringLiteral("sRGB");     // texture swatches are read in it, then put in the working space
+    int bitmapResolution = 100;                        // Texture Pixel Density a layer made bitmap starts with (per cent)
     bool palettesInSrgb = true;                        // palette colours (and painted bitmaps) are sRGB, put in the working space; off: taken as working-space colours
     struct Controller {
         struct State {

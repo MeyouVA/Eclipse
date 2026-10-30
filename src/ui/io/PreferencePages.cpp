@@ -118,6 +118,11 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.confirmLayerDelete->setToolTip(tr("Delete Layers asks first (You are about to delete Layer(s). Please Confirm.)."));
     w.confirmLayerDelete->setChecked(s.value(QStringLiteral("prefs/confirmLayerDelete"), false).toBool());
     w.generalLayout->addRow(w.confirmLayerDelete);
+    w.syncBitmapColour = new QCheckBox(tr("Keep the bitmap colour in sync with the vector colour"), w.general);
+    w.syncBitmapColour->setObjectName(QStringLiteral("PrefSyncBitmapColour"));
+    w.syncBitmapColour->setToolTip(tr("With Independent Bitmap Colour on, choosing a colour in the palette makes it the bitmap colour too."));
+    w.syncBitmapColour->setChecked(s.value(QStringLiteral("prefs/syncBitmapColour"), false).toBool());
+    w.generalLayout->addRow(w.syncBitmapColour);
     w.keepBackup = new QCheckBox(tr("Keep a backup of the scene file when saving"), w.general);
     w.keepBackup->setObjectName(QStringLiteral("PrefKeepBackup"));
     w.keepBackup->setToolTip(tr("Before a scene is saved over, the file as it was is kept beside it, with ~ after its name."));

@@ -20,6 +20,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QLabel>
 #include "canvas/CanvasTidyShared.h"
 
 using namespace canvas_tidy_shared;
@@ -471,4 +472,147 @@ void Canvas::onActionCopyArtSettings()
     m_copyArt = {from->currentIndex(), to->currentIndex(), clear->isChecked(), all->isChecked()};
     QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
     s.setValue(QStringLiteral("tools/copyArt"), QStringLiteral("%1,%2,%3,%4").arg(m_copyArt.from).arg(m_copyArt.to).arg(int(m_copyArt.clearFirst)).arg(int(m_copyArt.allDrawings)));
+}
+
+void Canvas::onActionOptimizeDrawings()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Optimize Drawings"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QCheckBox* const flatten = new QCheckBox(tr("Flatten the lines of every drawing"), &dialog);
+    flatten->setObjectName(QStringLiteral("OptimizeFlatten"));
+    flatten->setChecked(true);
+    QCheckBox* const invisible = new QCheckBox(tr("Remove invisible lines"), &dialog);
+    invisible->setObjectName(QStringLiteral("OptimizeInvisible"));
+    invisible->setToolTip(tr("Lines with no thickness (the edges of paint) are taken out; the paint stays."));
+    QCheckBox* const crop = new QCheckBox(tr("Crop the pictures of drawings to what shows"), &dialog);
+    crop->setObjectName(QStringLiteral("OptimizeCrop"));
+    crop->setChecked(true);
+    form->addRow(new QLabel(tr("Every drawing of every drawing layer of the scene is optimized."), &dialog));
+    form->addRow(flatten);
+    form->addRow(invisible);
+    form->addRow(crop);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    Scene const& scene = m_document->scene();
+    QVector<int> layers;
+    for (int l = 0; l < scene.layers.size(); ++l)
+        if (scene.layers[l].holdsDrawings() && !scene.layers[l].showsSymbol() && !scene.layers[l].locked)
+            layers.push_back(l);
+    if (layers.isEmpty())
+        return;
+    m_document->beginMacro(tr("Optimize Drawings"));
+    if (flatten->isChecked()) {
+        int const wasLayer = m_layer;
+        for (int l : std::as_const(layers))
+            if (!m_document->scene().layers[l].bitmap) {
+                m_layer = l;
+                onActionFlattenAllDrawings();
+            }
+        m_layer = wasLayer;
+    }
+    bool const dropInvisible = invisible->isChecked(), cropping = crop->isChecked();
+    if (dropInvisible || cropping)
+        m_document->editLayers(layers, tr("Optimize Drawings"), [dropInvisible, cropping](Layer& layer) {
+            for (Drawing& d : layer.drawings) {
+                if (dropInvisible)
+                    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                        QVector<Stroke>& lines = d.strokesOf(sheet);
+                        lines.erase(std::remove_if(lines.begin(), lines.end(), [](Stroke const& s) { return s.width <= 0.0f; }), lines.end());
+                    }
+                if (cropping)
+                    cropPictures(d);
+            }
+        });
+    m_document->endMacro();
+    clearSelection();
+    update();
+    emit message(tr("The drawings of %n layer(s) were optimized.", nullptr, int(layers.size())));
+}
+
+int Canvas::cropPictures(Drawing& drawing)
+{
+    int cropped = 0;
+    for (Picture& picture : drawing.pictures) {
+        if (picture.image.isNull() || picture.linked || !picture.image.hasAlphaChannel())
+            continue;
+        QImage const image = picture.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        int left = image.width(), top = image.height(), right = -1, bottom = -1;
+        for (int y = 0; y < image.height(); ++y) {
+            QRgb const* const row = reinterpret_cast<QRgb const*>(image.constScanLine(y));
+            for (int x = 0; x < image.width(); ++x)
+                if (qAlpha(row[x]) != 0) {
+                    left = std::min(left, x);
+                    right = std::max(right, x);
+                    top = std::min(top, y);
+                    bottom = std::max(bottom, y);
+                }
+        }
+        if (right < 0 || (left == 0 && top == 0 && right == image.width() - 1 && bottom == image.height() - 1))
+            continue;
+        QRect const kept(QPoint(left, top), QPoint(right, bottom));
+        QSizeF const shown = picture.size.isEmpty() ? QSizeF(image.size()) : QSizeF(picture.size);
+        double const sx = shown.width() / image.width(), sy = shown.height() / image.height();
+        QPointF const offset(left * sx, top * sy);
+        picture.image = picture.image.copy(kept);
+        picture.size = QSize(std::max(1, int(std::lround(kept.width() * sx))), std::max(1, int(std::lround(kept.height() * sy))));
+        picture.placement = QTransform::fromTranslate(offset.x(), offset.y()) * picture.placement;
+        for (QPolygonF& ring : picture.clip)
+            ring.translate(-offset);
+        ++cropped;
+    }
+    return cropped;
+}
+
+int Canvas::reducePictures(Drawing& drawing, int percent)
+{
+    int reduced = 0;
+    for (Picture& picture : drawing.pictures) {
+        if (picture.image.isNull() || picture.linked)
+            continue;
+        QSize const fewer(std::max(1, picture.image.width() * percent / 100), std::max(1, picture.image.height() * percent / 100));
+        if (fewer == picture.image.size())
+            continue;
+        if (picture.size.isEmpty())
+            picture.size = picture.image.size();
+        picture.image = picture.image.scaled(fewer, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        ++reduced;
+    }
+    return reduced;
+}
+
+void Canvas::onActionCropBrushTextures()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || !canEditDrawing())
+        return;
+    Drawing edited = *d;
+    if (cropPictures(edited) == 0) {
+        emit message(tr("There is nothing to crop in this drawing."));
+        return;
+    }
+    commitDrawing(edited, tr("Crop Brush Textures"));
+}
+
+void Canvas::onActionReduceTextureResolution()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || !canEditDrawing())
+        return;
+    if (d->pictures.isEmpty()) {
+        emit message(tr("This drawing has no textures to reduce."));
+        return;
+    }
+    bool ok = false;
+    int const percent = QInputDialog::getInt(this, tr("Reduce Drawing Texture Resolution"), tr("Keep this much of the pixels (%):"), 50, 5, 99, 5, &ok);
+    if (!ok)
+        return;
+    Drawing edited = *d;
+    if (reducePictures(edited, percent) == 0)
+        return;
+    commitDrawing(edited, tr("Reduce Drawing Texture Resolution"));
 }

@@ -620,6 +620,24 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["turnBeforeAlignment"] = true;
     if (layer.flipHorizontal)
         layerObject["flipHorizontal"] = true;
+    if (layer.lineMultiply != 1.0)
+        layerObject["lineMultiply"] = layer.lineMultiply;
+    if (layer.lineAdd != 0.0)
+        layerObject["lineAdd"] = layer.lineAdd;
+    if (layer.lineMin > 0.0)
+        layerObject["lineMin"] = layer.lineMin;
+    if (layer.lineMax > 0.0)
+        layerObject["lineMax"] = layer.lineMax;
+    if (layer.lineZoomIndependent)
+        layerObject["lineZoomIndependent"] = true;
+    if (!layer.readColour)
+        layerObject["readColour"] = false;
+    if (layer.tileHorizontal)
+        layerObject["tileHorizontal"] = true;
+    if (layer.tileVertical)
+        layerObject["tileVertical"] = true;
+    if (layer.bitmapMultiplier != 1.0)
+        layerObject["bitmapMultiplier"] = layer.bitmapMultiplier;
     if (layer.flipVertical)
         layerObject["flipVertical"] = true;
     if (layer.clipping)

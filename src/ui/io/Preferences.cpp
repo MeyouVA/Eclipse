@@ -420,6 +420,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/maximumFov"), w.maximumFov->value());
     s.setValue(QStringLiteral("prefs/pasteForceKeys"), w.pasteForceKeys->isChecked());
     s.setValue(QStringLiteral("prefs/confirmLayerDelete"), w.confirmLayerDelete->isChecked());
+    s.setValue(QStringLiteral("prefs/syncBitmapColour"), w.syncBitmapColour->isChecked());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());
     s.setValue(QStringLiteral("prefs/outlineLocked"), w.outlineLocked->isChecked());
     s.setValue(QStringLiteral("prefs/bboxSelection"), w.bboxSelection->isChecked());

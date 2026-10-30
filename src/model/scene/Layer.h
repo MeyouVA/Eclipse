@@ -117,6 +117,14 @@ struct Layer {
     double antialiasExponent = 1.0;
     enum TextureFilter { FilterSmooth, FilterNearest };
     int textureFilter = FilterSmooth;
+    // Line Thickness: its vector lines' thickness multiplied, added to and held between a least and a most (0: none); Zoom Independent keeps it as the layer is scaled.
+    double lineMultiply = 1.0, lineAdd = 0.0, lineMin = 0.0, lineMax = 0.0;
+    bool lineZoomIndependent = false;
+    bool linesReshaped() const { return lineMultiply != 1.0 || lineAdd != 0.0 || lineMin > 0.0 || lineMax > 0.0 || lineZoomIndependent; }
+    // Bitmap File Options: its pictures' colours read (off: only their shape, in black), and the pictures repeated across and down.
+    bool readColour = true;
+    bool tileHorizontal = false, tileVertical = false;
+    double bitmapMultiplier = 1.0;  // Bitmap Options: how solid its pictures are, multiplied
     // The colour space its pictures are read in (empty: the scene's working space: not converted).
     QString colourSpace;
     QVector<Effect> effects;

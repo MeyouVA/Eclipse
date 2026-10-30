@@ -37,12 +37,16 @@ public:
     void setLeader(Canvas* leader);
     void followSettings(Canvas const& leader);
     // The palette swatch new strokes and fills are linked to.
-    void setSwatch(int id)
-    {
-        m_swatch = id;
-        if (m_highlightColour)
-            update();
-    }
+    void setSwatch(int id);
+    // The pictures of a drawing cut to their parts that are not clear; and scaled to `percent` of their pixels (same size in the scene).
+    static int cropPictures(Drawing& drawing);
+    static int reducePictures(Drawing& drawing, int percent);
+    // Independent Bitmap Colour: on, bitmap layers are painted in the bitmap colour; that colour.
+    Q_INVOKABLE void onActionIndependentBitmapColour(bool on);
+    Q_INVOKABLE void onActionBitmapColour();
+    bool independentBitmapColour() const { return m_independentBitmap; }
+    QColor bitmapColour() const { return m_bitmapColour; }
+    void setBitmapColour(QColor const& colour);
     // Preferences: the Brush, the Eraser and the Pencil show a circle as big as what they draw round the pointer.
     void setBrushOutline(bool on);
     // Where the line goes next, from where it is towards the pen, at that strength.
@@ -605,6 +609,11 @@ public slots:
     void onActionFlattenRemoveExtra();
     // The lines with no thickness of the art in hand (of the selection, when there is one) taken away.
     void onActionRemoveInvisibleLines();
+    // File > Optimize > Optimize Drawings: every drawing of the scene flattened, rid of its invisible lines, its pictures cropped.
+    void onActionOptimizeDrawings();
+    // Drawing > Optimize: the drawing's pictures cut to what of them shows, or made of fewer pixels.
+    void onActionCropBrushTextures();
+    void onActionReduceTextureResolution();
     // Drawing > Convert > Convert to Bitmap Drawing: the art layer being worked on, painted into its pixels.
     void onActionConvertToBitmap();
     // Layer: every drawing of the layer made as its art layers are - those that are bitmap ones painted into pixels.
@@ -714,6 +723,8 @@ public slots:
     void onActionPencilLineProperties();
     // Textures of your own: one from a picture, one put together here, and the one in hand thrown away.
     void onActionImportTexture();
+    // Import Brushes to Vector Brush / Pencil: a Photoshop brush file's tips kept as textures, the first one in hand.
+    void onActionImportBrushTextures();
     void onActionNewTexture();
     void onActionDeleteTexture();
     void onActionRenameTexture();

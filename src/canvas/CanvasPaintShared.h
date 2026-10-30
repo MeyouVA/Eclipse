@@ -44,6 +44,8 @@ inline std::atomic<unsigned> gRenderOff{0};
 inline thread_local bool gNearestPictures = false;
 // The layer being painted: its pictures are read in its colour space (Layer Properties: Colour Space).
 inline thread_local Layer const* gPictureLayer = nullptr;
+// How much the layer painted is scaled (Line Thickness: Zoom Independent).
+inline thread_local double gLineScale = 1.0;
 
 // The Camera view's time limit for effects (Preferences > Render): past it, effects are left out of the picture being drawn.
 inline thread_local bool gEffectsTimed = false;
