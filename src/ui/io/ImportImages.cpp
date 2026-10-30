@@ -1,6 +1,7 @@
 // Eclipse - importing: Flash movies and documents, 3D models, from a scanner.
 #include "ui/window/MainWindow.h"
 #include <QColorSpace>
+#include <QHash>
 #include <QStatusBar>
 #include "colour/images/ColourTransform.h"
 
@@ -522,6 +523,120 @@ static QColor toneBetween(QImage const& image, int line, int below)
     return n ? QColor(int(r / n), int(g / n), int(b / n)) : QColor(160, 160, 160);
 }
 
+// A blend mode of Photoshop's (its four letters) as the layer's.
+static int blendOf(QByteArray const& key)
+{
+    static QHash<QByteArray, int> const modes = {{"mul ", Layer::BlendMultiply}, {"scrn", Layer::BlendScreen}, {"over", Layer::BlendOverlay},
+                                                {"dark", Layer::BlendDarken}, {"lite", Layer::BlendLighten}, {"div ", Layer::BlendColourDodge},
+                                                {"idiv", Layer::BlendColourBurn}, {"hLit", Layer::BlendHardLight}, {"sLit", Layer::BlendSoftLight},
+                                                {"diff", Layer::BlendDifference}, {"smud", Layer::BlendExclusion}, {"lddg", Layer::BlendAdd}};
+    return modes.value(key, Layer::BlendNormal);
+}
+
+int MainWindow::importPsdLayers(ImageImport const& options, QString const& file, QString* error)
+{
+    Psd::Layered psd;
+    QString why;
+    if (!Psd::readLayers(file, psd, &why)) {
+        if (error)
+            *error = tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), why);
+        return -1;
+    }
+    Scene const& scene = m_document->scene();
+    // The whole picture placed as the import's alignment says; each layer at its place in it.
+    double const across = double(scene.width) / psd.size.width(), down = double(scene.height) / psd.size.height();
+    double const scale = !options.fit ? 1.0 : options.pan ? std::max(across, down) : std::min(across, down);
+    QTransform placement = QTransform::fromScale(scale, scale);
+    placement *= QTransform::fromTranslate((scene.width - psd.size.width() * scale) / 2.0, (scene.height - psd.size.height() * scale) / 2.0);
+    QString const space = options.convertColour ? (options.sourceSpace.isEmpty() ? QStringLiteral("sRGB") : options.sourceSpace) : QString();
+    QVector<Layer> layers;
+    QVector<int> parents;
+    QVector<QVector<int>> open{{}};     // the layers of each group not yet closed, the outermost first
+    int skipped = 0, styled = 0;
+    auto made = [&](Psd::Layer const& from, Layer::Kind kind) {
+        Layer layer;
+        layer.kind = kind;
+        layer.name = from.name.isEmpty() ? tr("Layer") : from.name;
+        layer.visible = from.visible;
+        layer.opacity = from.opacity;
+        layer.blend = blendOf(from.blend);
+        layer.collapsed = from.closed;
+        if (kind == Layer::DrawingLayer && !space.isEmpty() && Cms::config()->space(space))
+            layer.colourSpace = space;
+        layers.push_back(layer);
+        parents.push_back(-1);
+        open.last().push_back(int(layers.size()) - 1);
+        return int(layers.size()) - 1;
+    };
+    for (Psd::Layer const& from : std::as_const(psd.layers)) {
+        switch (from.kind) {
+        case Psd::Layer::GroupEnd:
+            open.push_back({});
+            break;
+        case Psd::Layer::GroupStart: {
+            QVector<int> const inside = open.size() > 1 ? open.takeLast() : QVector<int>();
+            int const group = made(from, Layer::Group);
+            for (int child : inside)
+                parents[child] = group;
+            break;
+        }
+        case Psd::Layer::Adjustment:
+            ++skipped;
+            break;
+        case Psd::Layer::Pixels: {
+            int const at = made(from, Layer::DrawingLayer);
+            Drawing drawing;
+            if (!from.image.isNull()) {
+                Picture picture;
+                picture.image = from.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                picture.file = QFileInfo(file).absoluteFilePath();
+                picture.size = from.image.size();
+                picture.placement = QTransform::fromTranslate(from.at.x(), from.at.y()) * placement;
+                drawing.pictures.push_back(picture);
+            }
+            layers[at].drawings = {drawing};
+            styled += from.styled;
+            break;
+        }
+        }
+    }
+    // Groups never closed (a damaged file): their layers left where they are.
+    while (open.size() > 1) {
+        QVector<int> const loose = open.takeLast();
+        open.last() += loose;
+    }
+    if (layers.isEmpty()) {
+        if (error)
+            *error = tr("%1 has no layers to import.").arg(QDir::toNativeSeparators(file));
+        return -1;
+    }
+    if (layers.size() > 1) {
+        // All of them in a group named after the file.
+        Layer group;
+        group.kind = Layer::Group;
+        group.name = QFileInfo(file).completeBaseName();
+        for (int top : std::as_const(open.first()))
+            parents[top] = int(layers.size());
+        layers.push_back(group);
+        parents.push_back(-1);
+    }
+    int const at = m_document->importLayers(layers, parents, 0, options.hold, tr("Import Photoshop Layers"));
+    if (at < 0) {
+        if (error)
+            *error = tr("The layers of %1 could not be added.").arg(QDir::toNativeSeparators(file));
+        return -1;
+    }
+    QStringList notes;
+    if (skipped)
+        notes << tr("%n adjustment or fill layer(s) left out (they hold no pixels).", nullptr, skipped);
+    if (styled)
+        notes << tr("%n layer(s) have layer styles, which are not imported.", nullptr, styled);
+    statusBar()->showMessage(notes.isEmpty() ? tr("Imported %n layer(s) from %1.", nullptr, int(layers.size())).arg(QFileInfo(file).fileName()) : notes.join(QLatin1Char(' ')), 8000);
+    m_timeline->clearRange();
+    m_timeline->setCurrentCell(at, 0);
+    return at;
+}
+
 int MainWindow::importImages(ImageImport const& options, QString* error)
 {
     auto fail = [&](QString const& why) {
@@ -532,6 +647,27 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
     Scene const& scene = m_document->scene();
     if (options.files.isEmpty())
         return fail(tr("No file was chosen."));
+    if (options.psdLayers && options.newLayer && !options.vectorize && !options.linked) {
+        // Photoshop files layer by layer; the other files as usual.
+        ImageImport rest = options;
+        rest.psdLayers = false;
+        rest.files.clear();
+        int last = -1;
+        m_document->beginMacro(tr("Import Images"));
+        for (QString const& file : options.files) {
+            if (!Psd::isPsd(file)) {
+                rest.files << file;
+                continue;
+            }
+            last = importPsdLayers(options, file, error);
+            if (last < 0)
+                break;
+        }
+        if (last >= 0 && !rest.files.isEmpty())
+            last = importImages(rest, error);
+        m_document->endMacro();
+        return last;
+    }
     int const target = options.newLayer ? -1 : layer();
     if (target >= 0 && !scene.layers[target].holdsDrawings())
         return fail(tr("The current layer does not hold drawings. Choose a drawing layer, or import to a new layer."));

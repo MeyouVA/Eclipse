@@ -139,6 +139,7 @@ public:
         int hold = 1;               // frames each picture is shown for
         bool convertColour = false; // Convert Image Colour Space on Import: the pictures read in `sourceSpace`
         QString sourceSpace;        // empty: the file's own profile (else sRGB)
+        bool psdLayers = false;     // Photoshop files onto new layers: each of their layers a layer of its own, their groups groups
     };
     // ---- the Library ------------------------------------------------------------------------
     // The layers selected in the Timeline (with everything attached to them), over the frames
@@ -170,6 +171,8 @@ public:
     int addReferences(QStringList const& files);
     // Returns the layer they went to, or -1 with a message.
     int importImages(ImageImport const& options, QString* error);
+    // A Photoshop file's layers as layers of the scene, in a group named after it; the index of the group, or -1 with `error` set.
+    int importPsdLayers(ImageImport const& options, QString const& file, QString* error);
     int importMovie(QString const& path, QString* error);
     struct ImageExport {
         QString folder;

@@ -319,6 +319,8 @@ public:
     // The same with several layers: the group goes over the front one of them.
     int groupLayers(QVector<int> const& layers);
     int importDrawings(int layer, QString const& name, int frame, QVector<Drawing> const& drawings, int hold = 1);
+    // New layers put on top, as one step: each attached to the one `parents` gives (an index into `layers`, -1 for none), its first drawing shown from `frame` for `hold` frames; the index of the last.
+    int importLayers(QVector<Layer> const& layers, QVector<int> const& parents, int frame, int hold, QString const& undoText);
     int insertTemplate(Scene const& piece, int frame);
     // The piece put onto the layers of the same names (Scene::pasteOnto); -1 when they are not all there.
     int pasteTemplateOnto(Scene const& piece, int frame, bool drawings = true, bool keys = true);

@@ -129,6 +129,18 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     connect(centre, &QRadioButton::toggled, threshold, thresholdUsed);
     QFormLayout* const asLayout = new QFormLayout(asBox);
     asLayout->addRow(bitmap);
+    // Photoshop files: each of their layers a layer of its own (onto new layers, kept as bitmaps).
+    QCheckBox* const psdLayers = new QCheckBox(tr("Photoshop Files: Import Each Layer as a Layer"), asBox);
+    psdLayers->setObjectName(QStringLiteral("ImportPsdLayers"));
+    psdLayers->setToolTip(tr("Each layer of a PSD or PSB file becomes a layer of its own, with its name, place, opacity, blend mode, masks and groups,\n"
+                             "all in a group named after the file. Off: the file's flattened picture."));
+    psdLayers->setChecked(QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/importPsdLayers"), true).toBool());
+    psdLayers->setEnabled(!linked);
+    auto psdUsable = [psdLayers, bitmap, newLayer, linked] { psdLayers->setEnabled(!linked && bitmap->isChecked() && newLayer->isChecked()); };
+    connect(bitmap, &QRadioButton::toggled, psdLayers, psdUsable);
+    connect(newLayer, &QRadioButton::toggled, psdLayers, psdUsable);
+    connect(psdLayers, &QCheckBox::toggled, psdLayers, [](bool on) { QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("prefs/importPsdLayers"), on); });
+    asLayout->addRow(psdLayers);
     asLayout->addRow(vector);
     asLayout->addRow(centre);
     asLayout->addRow(tr("Threshold (darker than this is line)"), threshold);
@@ -214,6 +226,7 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     options.centreLines = centre->isChecked();
     options.colours = colourVector->isChecked() ? colourCount->value() : 0;
     options.threshold = threshold->value();
+    options.psdLayers = psdLayers->isChecked();
     options.colourArtThreshold = colourArt->value();
     options.smoothPasses = smoothing->value();
     options.linked = linked;

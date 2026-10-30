@@ -235,6 +235,38 @@ int Document::importDrawings(int layer, QString const& name, int frame, QVector<
     return at;
 }
 
+int Document::importLayers(QVector<Layer> const& layers, QVector<int> const& parents, int frame, int hold, QString const& undoText)
+{
+    if (layers.isEmpty() || parents.size() != layers.size() || frame < 0)
+        return -1;
+    hold = std::max(1, hold);
+    int last = -1;
+    apply(undoText, [&](Scene& s) {
+        if (frame + hold > s.frameCount())
+            s.setFrameCount(frame + hold);
+        QVector<int> added;
+        for (Layer const& given : layers) {
+            int const at = s.addLayer(given.name, int(s.layers.size()), given.kind);
+            Layer& made = s.layers[at];
+            made.drawings = given.drawings;
+            made.visible = given.visible;
+            made.opacity = given.opacity;
+            made.blend = given.blend;
+            made.collapsed = given.collapsed;
+            made.colourSpace = given.colourSpace;
+            if (!made.drawings.isEmpty())
+                for (int h = 0; h < hold; ++h)
+                    made.cells[frame + h] = 0;
+            added.push_back(at);
+            last = at;
+        }
+        for (int i = 0; i < added.size(); ++i)
+            if (parents[i] >= 0 && parents[i] < added.size())
+                s.layers[added[i]].parent = s.layers[added[parents[i]]].id;
+    });
+    return last;
+}
+
 void Document::substituteDrawing(int layer, int frame, int drawing)
 {
     if (!validCell(m_scene, layer, frame))
