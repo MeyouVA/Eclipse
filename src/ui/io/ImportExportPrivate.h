@@ -49,4 +49,4 @@
 #include "ui/timeline/Timeline.h"
 
 inline QString const kImageFilter =
-    QStringLiteral("Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.tga *.webp *.svg);;All Files (*)");
+    QStringLiteral("Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.tga *.webp *.svg *.psd *.psb *.psdt);;All Files (*)");

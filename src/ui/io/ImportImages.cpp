@@ -653,6 +653,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         rest.psdLayers = false;
         rest.files.clear();
         int last = -1;
+        bool failed = false;
         m_document->beginMacro(tr("Import Images"));
         for (QString const& file : options.files) {
             if (!Psd::isPsd(file)) {
@@ -660,10 +661,11 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
                 continue;
             }
             last = importPsdLayers(options, file, error);
-            if (last < 0)
+            failed = last < 0;
+            if (failed)
                 break;
         }
-        if (last >= 0 && !rest.files.isEmpty())
+        if (!failed && !rest.files.isEmpty())
             last = importImages(rest, error);
         m_document->endMacro();
         return last;
