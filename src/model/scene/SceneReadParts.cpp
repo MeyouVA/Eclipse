@@ -4,6 +4,7 @@
 
 #include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
+#include "model/scene/PsdRead.h"
 #include <QFileInfo>
 #include <QDir>
 #include "model/geometry/Deform.h"
@@ -787,6 +788,8 @@ void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool ex
 QImage readPictureFile(QString const& file, bool ownProfile)
 {
     QImage image(file);
+    if (image.isNull() && Psd::isPsd(file))
+        image = Psd::read(file);
     if (ownProfile && !image.isNull() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb))
         image.convertToColorSpace(QColorSpace(QColorSpace::SRgb));
     return image;

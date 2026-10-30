@@ -40,6 +40,7 @@
 #include "ui/io/Scanner.h"
 #include "model/geometry/Model3D.h"
 #include "model/geometry/Vectorize.h"
+#include "model/scene/PsdRead.h"
 #include "canvas/Canvas.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
@@ -546,8 +547,11 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         QImageReader reader(file);
         reader.setAutoTransform(true);      // a photograph taken with the camera on its side
         QImage image = reader.read();
+        QString why = reader.errorString();
+        if (image.isNull() && Psd::isPsd(file))
+            image = Psd::read(file, &why);     // Photoshop files: their flattened picture
         if (image.isNull())
-            return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), reader.errorString()));
+            return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), why));
         if (options.convertColour && !unconverted) {
             // The file's own profile: to sRGB now (a linked picture is read through it again each time its file is read).
             if (options.sourceSpace.isEmpty() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb))
