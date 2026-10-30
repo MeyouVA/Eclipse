@@ -370,6 +370,9 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
     for (QJsonValue const& ov : eo["overrides"].toArray())
         if (QJsonArray const o = ov.toArray(); o.size() == 2 && QColor(o[1].toString()).isValid())
             e.overrides.push_back(qMakePair(o[0].toInt(), QColor(o[1].toString())));
+    for (QJsonValue const& ov : eo["overrideImages"].toArray())
+        if (QJsonArray const o = ov.toArray(); o.size() == 2 && !o[1].toString().isEmpty())
+            e.overrideImages.insert(o[0].toInt(), o[1].toString());
     QJsonArray const curves = eo["curves"].toArray();
     for (int c = 0; c < 4 && c < curves.size(); ++c)
         for (QJsonValue const& v : curves[c].toArray())

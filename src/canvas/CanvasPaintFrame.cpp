@@ -436,7 +436,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
                 shown.pictures.removeIf([&](Picture const& pic) { return !(sheets & (1 << (pic.painted ? pic.sheet : int(Drawing::LineSheet)))); });
             }
             if (recolour)
-                Effects::overrideColours(shown, *recolour);
+                Effects::overrideColours(shown, *recolour, drawnAt);
             if (n->symbolLayer && layer.showsSymbol()) {
                 Scene selected = scene;
                 for (Scene::Symbol& symbol : selected.symbols)

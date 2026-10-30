@@ -5,6 +5,10 @@
 #include "colour/images/ColourTransform.h"
 
 #include <QHash>
+#include <QDir>
+#include <QFileInfo>
+#include <QMutex>
+#include <QRegularExpression>
 #include <QPainter>
 
 #include <algorithm>
@@ -74,7 +78,38 @@ void matteBlurred(QImage& image, Effect const& e, double radius)
     });
 }
 
-void overrideColours(Drawing& drawing, Effect const& e)
+QImage sequenceFrame(QString const& first, int frame)
+{
+    static QMutex lock;
+    static QHash<QString, QImage> pictures;
+    static QHash<QString, int> lengths;
+    QMutexLocker const locked(&lock);
+    QFileInfo const info(first);
+    QRegularExpressionMatch const digits = QRegularExpression(QStringLiteral("(\\d+)$")).match(info.completeBaseName());
+    auto numbered = [&](int n) {
+        if (!digits.hasMatch())
+            return first;
+        QString const base = info.completeBaseName().left(digits.capturedStart(1));
+        QString const number = QStringLiteral("%1").arg(n, int(digits.capturedLength(1)), 10, QLatin1Char('0'));
+        return info.dir().filePath(base + number + (info.suffix().isEmpty() ? QString() : QLatin1Char('.') + info.suffix()));
+    };
+    int const start = digits.hasMatch() ? digits.captured(1).toInt() : 0;
+    if (!lengths.contains(first)) {
+        int n = 1;
+        while (digits.hasMatch() && n < 10000 && QFileInfo::exists(numbered(start + n)))
+            ++n;
+        lengths.insert(first, n);
+    }
+    QString const file = numbered(start + std::max(0, frame) % lengths.value(first));
+    if (!pictures.contains(file)) {
+        if (pictures.size() > 64)
+            pictures.clear();
+        pictures.insert(file, QImage(file).convertToFormat(QImage::Format_ARGB32_Premultiplied));
+    }
+    return pictures.value(file);
+}
+
+void overrideColours(Drawing& drawing, Effect const& e, int frame)
 {
     QHash<int, QColor> instead;
     for (QPair<int, QColor> const& o : e.overrides)
@@ -85,9 +120,30 @@ void overrideColours(Drawing& drawing, Effect const& e)
         drawing.pictures.clear();
     for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
         if (only) {
-            drawing.strokesOf(sheet).removeIf([&](Stroke const& s) { return !instead.contains(s.swatch); });
-            drawing.fillsOf(sheet).removeIf([&](Fill const& f) { return !instead.contains(f.swatch); });
+            drawing.strokesOf(sheet).removeIf([&](Stroke const& s) { return !instead.contains(s.swatch) && !e.overrideImages.contains(s.swatch); });
+            drawing.fillsOf(sheet).removeIf([&](Fill const& f) { return !instead.contains(f.swatch) && !e.overrideImages.contains(f.swatch); });
         }
+        // The areas of a colour given a picture sequence: that picture, cut to their shape, at the bottom of their art layer.
+        drawing.fillsOf(sheet).removeIf([&](Fill const& f) {
+            auto const found = e.overrideImages.constFind(f.swatch);
+            if (found == e.overrideImages.cend() || f.outlines.isEmpty())
+                return false;
+            QRectF bounds;
+            for (QPolygonF const& outline : f.outlines)
+                bounds |= outline.boundingRect();
+            if (bounds.isEmpty())
+                return false;
+            Picture picture;
+            picture.image = sequenceFrame(*found, frame);
+            picture.painted = true;
+            picture.sheet = sheet;
+            picture.size = QSize(std::max(1, int(std::ceil(bounds.width()))), std::max(1, int(std::ceil(bounds.height()))));
+            picture.placement = QTransform::fromTranslate(bounds.left(), bounds.top());
+            for (QPolygonF const& outline : f.outlines)
+                picture.clip.push_back(outline.translated(-bounds.topLeft()));
+            drawing.pictures.push_back(picture);
+            return true;
+        });
         for (Stroke& s : drawing.strokesOf(sheet))
             if (auto const found = instead.constFind(s.swatch); found != instead.cend()) {
                 s.swatch = Scene::kNoSwatch;

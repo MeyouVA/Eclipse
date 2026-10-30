@@ -9,6 +9,8 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
+#include <QMessageBox>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QDoubleSpinBox>
@@ -293,9 +295,9 @@ void NodeView::editGraphNode(int id)
     QTableWidget* overrides = nullptr;
     if (type == Effect::ColourOverride) {
         Scene const& scene = m_document->scene();
-        overrides = new QTableWidget(int(scene.palette.size()), 2, &dialog);
+        overrides = new QTableWidget(int(scene.palette.size()), 3, &dialog);
         overrides->setObjectName(QStringLiteral("GraphEffectOverrides"));
-        overrides->setHorizontalHeaderLabels({tr("Colour"), tr("Shown in")});
+        overrides->setHorizontalHeaderLabels({tr("Colour"), tr("Shown in"), tr("Picture Sequence")});
         overrides->verticalHeader()->hide();
         overrides->horizontalHeader()->setStretchLastSection(true);
         overrides->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -321,7 +323,30 @@ void NodeView::editGraphNode(int id)
             shown->setBackground(instead);
             shown->setForeground(instead.lightnessF() > 0.5 ? Qt::black : Qt::white);
             overrides->setItem(row, 1, shown);
+            QString const sequence = e.overrideImages.value(swatch.id);
+            QTableWidgetItem* const images = new QTableWidgetItem(sequence.isEmpty() ? tr("(none)") : QFileInfo(sequence).fileName());
+            images->setData(Qt::UserRole, sequence);
+            images->setToolTip(sequence.isEmpty() ? tr("Click to show this colour as a picture sequence: its first picture, the numbered ones after it the frames after.")
+                                                  : sequence);
+            overrides->setItem(row, 2, images);
         }
+        // The third column: a picture sequence the colour is shown as (chosen again with nothing chosen: none).
+        connect(overrides, &QTableWidget::cellClicked, &dialog, [overrides, &dialog](int row, int column) {
+            if (column != 2)
+                return;
+            QTableWidgetItem* const images = overrides->item(row, 2);
+            QString const was = images->data(Qt::UserRole).toString();
+            QString const chosen = QFileDialog::getOpenFileName(&dialog, tr("Picture Sequence (its first picture)"), was,
+                                                                tr("Pictures (*.png *.jpg *.jpeg *.tga *.tif *.tiff *.bmp *.psd *.exr);;All Files (*)"));
+            if (chosen.isEmpty() && !was.isEmpty()
+                && QMessageBox::question(&dialog, tr("Picture Sequence"), tr("Show this colour without its picture sequence?")) != QMessageBox::Yes)
+                return;
+            images->setData(Qt::UserRole, chosen);
+            images->setText(chosen.isEmpty() ? tr("(none)") : QFileInfo(chosen).fileName());
+            images->setToolTip(chosen);
+            if (!chosen.isEmpty())
+                overrides->item(row, 0)->setCheckState(Qt::Checked);
+        });
         // A click on the second column picks the colour it is shown in instead (and ticks it).
         connect(overrides, &QTableWidget::cellClicked, &dialog, [overrides, &dialog](int row, int column) {
             if (column != 1)
@@ -384,6 +409,11 @@ void NodeView::editGraphNode(int id)
         for (int row = 0; row < overrides->rowCount(); ++row)
             if (overrides->item(row, 0)->checkState() == Qt::Checked)
                 e.overrides.push_back(qMakePair(overrides->item(row, 0)->data(Qt::UserRole).toInt(), overrides->item(row, 1)->data(Qt::UserRole).value<QColor>()));
+        e.overrideImages.clear();
+        for (int row = 0; row < overrides->rowCount(); ++row)
+            if (QString const sequence = overrides->item(row, 2)->data(Qt::UserRole).toString();
+                overrides->item(row, 0)->checkState() == Qt::Checked && !sequence.isEmpty())
+                e.overrideImages.insert(overrides->item(row, 0)->data(Qt::UserRole).toInt(), sequence);
     }
     if (colourOperation) {
         e.colourOperation = colourOperation->currentIndex();

@@ -88,6 +88,8 @@ struct Effect {
     static Amount amountOf(Type type);
     // Colour-Override: the colours (swatch ids) shown in another colour instead.
     QVector<QPair<int, QColor>> overrides;
+    // ... or shown as a picture sequence instead: the file of its first picture, the numbered files after it the frames after.
+    QMap<int, QString> overrideImages;
     QString text;               // script: the script; external: the command line
     QString fromSpace, toSpace; // Colour Space: the colour space the picture is taken to be in, and the one it is put in
     QString file;               // Look-Up Table: the LUT file

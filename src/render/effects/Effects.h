@@ -158,7 +158,10 @@ void variableBlur(QImage& image, QImage const& matte, double white, double black
 // Matte Blur's blurred picture: blurred round or one way, and coloured, as its settings say.
 void matteBlurred(QImage& image, Effect const& e, double radius);
 // The lines and areas of a drawing in the colours a Colour-Override gives instead (only those, with Only the Colours Listed).
-void overrideColours(Drawing& drawing, Effect const& e);
+// (Colours given a picture sequence: their areas painted with its picture for `frame`, cut to their shape.)
+void overrideColours(Drawing& drawing, Effect const& e, int frame = 0);
+// The picture of a numbered sequence for a frame: `first` is its first file, the sequence going round when it runs out.
+QImage sequenceFrame(QString const& first, int frame);
 // Where Shake and Quake put the picture on a frame: a move (pixels) and a turn (degrees) about a pivot.
 QTransform shaken(Effect const& e, int at, double amount, double pixelsPerUnit, QPointF pivot);
 

@@ -254,6 +254,12 @@ QJsonObject effectToJson(Effect const& e)
             overrides.append(QJsonArray{o.first, o.second.name(QColor::HexArgb)});
         one["overrides"] = overrides;
     }
+    if (!e.overrideImages.isEmpty()) {
+        QJsonArray images;
+        for (auto o = e.overrideImages.constBegin(); o != e.overrideImages.constEnd(); ++o)
+            images.append(QJsonArray{o.key(), o.value()});
+        one["overrideImages"] = images;
+    }
     if (e.type == Effect::ColourCurves) {
         QJsonArray curves;
         for (QVector<QPointF> const& curve : e.curves) {
