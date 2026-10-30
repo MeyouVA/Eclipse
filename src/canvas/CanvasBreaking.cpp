@@ -153,10 +153,10 @@ void Canvas::onActionStoreColourGradient()
         emit message(tr("Colour gradient stored: paint with Use Stored Colour Gradient lies the same way."));
     };
     for (int i : std::as_const(m_selFills))
-        if (Swatch const* const s = m_document->scene().findSwatch(d->fills[i].swatch); s && s->isGradient())
+        if (Swatch const* const s = m_document->scene().findSwatch(d->fills[i].swatch); (s && s->isGradient()) || d->fills[i].gradPlaced)
             return keep(d->fills[i].gradPlaced, d->fills[i].gradFrom, d->fills[i].gradTo, d->fills[i].bounds());
     for (int i : std::as_const(m_selStrokes))
-        if (Swatch const* const s = m_document->scene().findSwatch(d->strokes[i].swatch); s && s->isGradient())
+        if (Swatch const* const s = m_document->scene().findSwatch(d->strokes[i].swatch); (s && s->isGradient()) || d->strokes[i].gradPlaced)
             return keep(d->strokes[i].gradPlaced, d->strokes[i].gradFrom, d->strokes[i].gradTo, d->strokes[i].bounds());
     emit message(tr("Nothing selected is painted with a gradient."));
 }

@@ -1,5 +1,6 @@
 // Eclipse - the Layer Properties view: the function buttons beside the values - shown, sent to the Function Editor, linked.
 #include "ui/panels/LayerPanel.h"
+#include <QMessageBox>
 
 #include <QApplication>
 #include <QMenu>
@@ -60,6 +61,21 @@ void LayerPanel::fillFunctionMenu(QMenu* menu, int value)
     local->setCheckable(true);
     local->setChecked(linked == 0);
     connect(local, &QAction::triggered, this, [this, layer, value] { m_document->linkValue(layer, value, 0, tr("Unlink Function Column")); });
+    // The column a value is linked to, kept to link another value to it.
+    QAction* const copyLink = menu->addAction(tr("Copy Function Link"));
+    copyLink->setObjectName(QStringLiteral("CopyFunctionLink"));
+    connect(copyLink, &QAction::triggered, this, [this, linked] {
+        if (linked == 0) {
+            QMessageBox::information(this, tr("Copy Function Link"), tr("Cannot copy local value. You need to create a function beforehand."));
+            return;
+        }
+        s_copiedFunction = linked;
+    });
+    QAction* const pasteLink = menu->addAction(tr("Paste Function Link"));
+    pasteLink->setObjectName(QStringLiteral("PasteFunctionLink"));
+    FunctionColumn const* const copied = scene.function(s_copiedFunction);
+    pasteLink->setEnabled(copied && (copied->kind != FunctionColumn::Path3D || position));
+    connect(pasteLink, &QAction::triggered, this, [this, layer, value] { m_document->linkValue(layer, value, s_copiedFunction, tr("Paste Function Link")); });
     if (!scene.functions.isEmpty())
         menu->addSeparator();
     for (FunctionColumn const& column : scene.functions) {

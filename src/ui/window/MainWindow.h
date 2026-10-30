@@ -272,6 +272,9 @@ public slots:
     void onActionGlobalFrame(QString const& way);
     // File > Export > Layout Image: the frame as it is, every layer or those selected in the Timeline, written to a picture file.
     void onActionExportLayoutImage();
+    // File > Export > Publish for Game Engine: the frames packed in one picture (a sprite sheet) with a JSON file saying where each is.
+    void onActionPublishGameEngine();
+    bool publishSpriteSheet(QString const& path, int percent, QString* error);
     void onActionExportLayoutImageFromSelection();
     bool exportLayoutImage(QString const& path, bool selectedOnly, QString* error);
     void onActionDuplicateSymbol();

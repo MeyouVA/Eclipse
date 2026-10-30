@@ -126,6 +126,14 @@
   <item id="AnimateOff"/>
  </toolbar>
 
+ <toolbar id="FlipToolbar" text="Flip">
+  <item id="FlipHorizontal"/>
+  <item id="FlipVertical"/>
+  <item id="Rotate90CW"/>
+  <item id="Rotate90CCW"/>
+  <item id="Rotate180"/>
+ </toolbar>
+
  <toolbar id="PlaybackToolbar" text="Playback">
   <item id="PlayToggle"/>
   <item id="PlayLoop"/>

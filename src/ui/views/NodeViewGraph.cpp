@@ -351,6 +351,36 @@ void NodeView::onActionStackLayers()
     update();
 }
 
+void NodeView::onActionGlueSelection()
+{
+    QVector<int> const picked = pickedGraphNodes();
+    NodeGraph g = m_document->scene().graph;
+    GraphNode const* const first = picked.size() == 2 ? g.node(picked[0]) : nullptr;
+    GraphNode const* const second = picked.size() == 2 ? g.node(picked[1]) : nullptr;
+    if (!graphMode() || !first || !second || first->group != second->group || first->outputs() < 1 || second->outputs() < 1) {
+        emit statusMessage(tr("No selection to glue: pick two nodes in the same group."));
+        return;
+    }
+    GraphNode glue;
+    glue.id = g.nextId();
+    glue.kind = GraphNode::EffectNode;
+    glue.effect = Effect::made(Effect::Glue);
+    glue.group = first->group;
+    glue.at = (first->at + second->at) / 2.0 + QPointF(0.0, 90.0);
+    int const a = first->id, b = second->id;
+    // What the second fed now comes from the glue; the first goes into the glue only.
+    for (GraphCable& c : g.cables)
+        if (c.from == b && c.fromPort == 0)
+            c.from = glue.id;
+    g.cables.erase(std::remove_if(g.cables.begin(), g.cables.end(), [a](GraphCable const& c) { return c.from == a && c.fromPort == 0; }), g.cables.end());
+    g.nodes.push_back(glue);
+    g.cables.push_back({a, 0, glue.id, 0});
+    g.cables.push_back({b, 0, glue.id, 1});
+    m_document->setGraph(g, tr("Glue Selection"));
+    pickGraphNode(glue.id);
+    update();
+}
+
 int NodeView::addGraphNode(GraphNode node, QPointF graphPos)
 {
     NodeGraph g = m_document->scene().graph;

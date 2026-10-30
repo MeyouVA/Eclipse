@@ -392,6 +392,13 @@ void FunctionGraph::resetView()
     update();
 }
 
+void FunctionGraph::fitValues()
+{
+    m_zoomed = false;
+    fit();
+    update();
+}
+
 void FunctionGraph::resetZoom()
 {
     // All of the frames, and as many values as the curves need, about the value the graph had been slid to.

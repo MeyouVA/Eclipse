@@ -40,6 +40,7 @@
     <item id="ExportFrames" icon="file/exportframes" text="&amp;Images..." shortcut="shortcut.exportFrames" responder="window" slot="onActionExportFrames()"/>
     <item id="ExportMovie" icon="file/exportmovie" text="&amp;Movie..." shortcut="shortcut.exportMovie" responder="window" slot="onActionExportMovie()"/>
     <item id="ExportGif" icon="file/exportgif" text="Animated &amp;GIF..." shortcut="shortcut.exportGif" responder="window" slot="onActionExportGif()"/>
+    <item id="PublishGameEngine" icon="file/exportframes" text="Publish for &amp;Game Engine..." responder="window" slot="onActionPublishGameEngine()" tooltip="Opens the Publish for Game Engine dialog box: the frames in one sprite sheet with a JSON file saying where each is."/>
     <item id="ExportLayoutImage" icon="file/exportframes" text="&amp;Layout Image..." responder="window" slot="onActionExportLayoutImage()" tooltip="The frame as it is, every layer, written to a picture file."/>
     <item id="ExportLayoutImageSelection" icon="file/exportframes" text="Layout Image from &amp;Selection..." responder="window" slot="onActionExportLayoutImageFromSelection()" tooltip="The frame as it is, only the layers selected in the Timeline, written to a picture file."/>
     <item id="ExportSwf" icon="file/exportmovie" text="&amp;SWF..." responder="window" slot="onActionExportSwf()"/>
@@ -294,6 +295,9 @@
    <item id="Flatten" icon="anim/flatten" text="&amp;Flatten" shortcut="shortcut.flatten" responder="camera" slot="onActionFlatten()"/>
    <item id="GroupArtwork" icon="anim/groupart" text="&amp;Group" responder="camera" slot="onActionGroupArtwork()"/>
    <item id="UngroupArtwork" icon="anim/ungroupart" text="&amp;Ungroup" responder="camera" slot="onActionUngroupArtwork()"/>
+   <item id="CopyGradientMatrix" text="Copy Te&amp;xture/Gradient Matrix" responder="camera" slot="onActionCopyGradientMatrix()" tooltip="Keep where the gradient (or texture) of what is selected lies."/>
+   <item id="PasteGradientMatrix" text="Paste Textu&amp;re/Gradient Matrix" responder="camera" slot="onActionPasteGradientMatrix()" tooltip="Lay the gradient (or texture) of what is selected as the one copied lies."/>
+   <item id="FilterSelection" text="Filter Current Se&amp;lection..." responder="camera" slot="onActionFilterSelection()" tooltip="Keep only part of the selection: its lines, its paint, its pictures, or the colour in hand."/>
    <item id="CreateBreakingTriangles" text="Create Brea&amp;king Triangles" responder="camera" slot="onActionCreateBreakingTriangles()" tooltip="Brush shapes broken where they branch: a triangle at each branching, and a piece for each branch."/>
    <item id="CreateStamp" icon="anim/stampcreate" text="Create Stamp from Se&amp;lection" shortcut="shortcut.createStamp" responder="camera" slot="onActionCreateStamp()"/>
    <item id="CreateStampDrawings" icon="anim/stampcreate" text="Create Stamp from Selected &amp;Drawings" responder="window" slot="onActionCreateStampFromDrawings()"/>
@@ -1683,6 +1687,7 @@
    <item id="NodeViewResetZoom" icon="view/resetzoom" text="Reset Zoom" responder="nodeView" slot="onActionResetZoom()"/>
    <item id="NodeViewResetPan" icon="view/resetpan" text="Reset Pan" responder="nodeView" slot="onActionResetPan()"/>
    <item id="NodeViewResetView" icon="view/resetview" text="Reset View" responder="nodeView" slot="onActionResetView()"/>
+   <item id="NodeViewGlueSelection" text="Glue Selection" responder="nodeView" slot="onActionGlueSelection()" tooltip="The two nodes picked joined by a Glue node."/>
    <item id="NodeViewCentreOnSelection" icon="timeline/viewselected" text="Centre on Selection" responder="nodeView" slot="onActionCentreOnSelection()"/>
    <item id="NodeViewShowAll" text="Show All Nodes" responder="nodeView" slot="onActionResetView()"/>
    <separator/>
@@ -1805,6 +1810,8 @@
    <item id="FunctionResetZoom" icon="view/resetzoom" text="Reset Zoom" responder="functionView" slot="onActionResetZoom()"/>
    <item id="FunctionResetPan" icon="view/resetpan" text="Reset Pan" responder="functionView" slot="onActionResetPan()"/>
    <item id="FunctionResetView" icon="view/resetview" text="Reset View" responder="functionView" slot="onActionResetView()"/>
+   <item id="FunctionNormalizeView" text="Normalize View" responder="functionView" slot="onActionNormalizeView()" tooltip="Fit the values to the curves shown, the frames left as they are."/>
+   <item id="FunctionResetViewVertically" text="Reset View Vertically" responder="functionView" slot="onActionResetViewVertically()"/>
   </menu>
   <menu id="FunctionListMenu" text="Function List">
    <item id="FunctionAutoLoad" text="Auto Load Selection" checkable="true" checked="true" responder="functionView" slot="onActionAutoLoad(bool)"/>

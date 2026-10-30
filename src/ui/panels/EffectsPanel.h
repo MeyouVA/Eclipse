@@ -67,6 +67,7 @@ private:
     void rebuild();
     void showEditors();
     void add(Effect::Type type);
+    void addEffect(Effect const& made);
     void removeCurrent();
     // The effect picked (none picked: all of them) copied; the effects copied added to the layer, after its own.
 public:

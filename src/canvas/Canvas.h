@@ -591,6 +591,11 @@ public slots:
     void onActionCreateBreakingTriangles();
     // Select tool: the gradient of the area (or line) selected kept, for Use Stored Colour Gradient.
     void onActionStoreColourGradient();
+    // Edit > Copy / Paste Texture/Gradient Matrix: where the gradient of what is selected lies, kept, and given to what is selected.
+    void onActionCopyGradientMatrix() { onActionStoreColourGradient(); }
+    void onActionPasteGradientMatrix();
+    // Edit > Filter Current Selection: what is selected kept to its lines, its paint, its pictures or the colour in hand.
+    void onActionFilterSelection();
     // The Brush's paper texture: its scale (percent), aligned with the drawing's paper or not, additive or not.
     void setBrushTextureScale(int percent);
     void setBrushTextureAligned(bool on);

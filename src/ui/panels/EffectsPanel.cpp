@@ -51,6 +51,37 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     connect(menu->addAction(tr("Glow")), &QAction::triggered, this, [this] { add(Effect::Glow); });
     connect(menu->addAction(tr("Drop Shadow")), &QAction::triggered, this, [this] { add(Effect::Shadow); });
     connect(menu->addAction(tr("Particles")), &QAction::triggered, this, [this] { add(Effect::Particles); });
+    {
+        // Particles made ready: Fire (rising, short-lived, turning red and small) and Rain (falling fast across a wide band, in the wind).
+        QMenu* const presets = menu->addMenu(tr("Particle Presets"));
+        connect(presets->addAction(tr("Fire")), &QAction::triggered, this, [this] {
+            Effect e = Effect::made(Effect::Particles);
+            e.life = 18;
+            e.speed = 4.0;
+            e.spread = 35.0;
+            e.direction = 90.0;
+            e.gravity = -0.15;
+            e.endSize = 0.25;
+            e.endColor = QColor(200, 40, 10);
+            e.regionWidth = 60.0;
+            e.regionHeight = 12.0;
+            addEffect(e);
+        });
+        connect(presets->addAction(tr("Rain")), &QAction::triggered, this, [this] {
+            Effect e = Effect::made(Effect::Particles);
+            e.life = 30;
+            e.speed = 18.0;
+            e.spread = 4.0;
+            e.direction = 270.0;
+            e.gravity = 0.6;
+            e.endSize = 1.0;
+            e.endColor = QColor(150, 170, 200);
+            e.wind = 1.5;
+            e.regionWidth = 1600.0;
+            e.regionHeight = 10.0;
+            addEffect(e);
+        });
+    }
     connect(menu->addAction(tr("Transparency")), &QAction::triggered, this, [this] { add(Effect::Transparency); });
     connect(menu->addAction(tr("Directional Blur")), &QAction::triggered, this, [this] { add(Effect::DirectionalBlur); });
     connect(menu->addAction(tr("Hue-Saturation")), &QAction::triggered, this, [this] { add(Effect::HueSaturation); });
@@ -208,6 +239,11 @@ void EffectsPanel::setCurrentCell(int layer, int frame)
 
 void EffectsPanel::add(Effect::Type type)
 {
+    addEffect(Effect::made(type));
+}
+
+void EffectsPanel::addEffect(Effect const& made)
+{
     Scene const& scene = m_document->scene();
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return;
@@ -216,7 +252,7 @@ void EffectsPanel::add(Effect::Type type)
         QMessageBox::warning(this, tr("Add Effect"), tr("Effects cannot be inserted directly underneath pegs."));
         return;
     }
-    Effect const e = Effect::made(type);
+    Effect const& e = made;
     QVector<Effect> effects = scene.layers[m_layer].effects;
     effects.push_back(e);
     m_document->setEffects(m_layer, effects, tr("Add Effect"));

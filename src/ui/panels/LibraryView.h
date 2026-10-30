@@ -53,6 +53,8 @@ public:
     static bool isTemplate(QString const& path);
     // Reads the folder again (a template was saved or deleted).
     void refresh();
+    // How the templates are shown: 0 icons with their names, 1 icons alone, 2 a list.
+    void setItemsView(int mode);
     // How big the pictures of the templates are, as a percentage (50..200).
     void setThumbnailScale(int percent);
     QSize thumbnailSize() const;
@@ -88,4 +90,5 @@ private:
     Scene m_shown;              // the template chosen, read
     QString m_shownPath;
     QHash<QString, QImage> m_thumbnails;    // by path and time of the file
+    int m_thumbnailPercent = 100;           // Preferences: how big the thumbnails are
 };

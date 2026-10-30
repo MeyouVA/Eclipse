@@ -38,6 +38,7 @@ public slots:
     void setPublishMode(bool on);
 
 private:
+    static inline int s_copiedFunction = 0;     // Copy Function Link: the column copied
     void refresh();
     void applyPose();
     void applyPivot();

@@ -180,6 +180,8 @@ public:
     QPointF graphTransformOut(int id) const;
     // The nodes picked together (Ctrl+click adds one or takes it away).
     QVector<int> pickedGraphNodes() const;
+    // Glue Selection: the two nodes picked joined by a Glue node (the first glued onto the second, which it replaces where that went).
+    Q_INVOKABLE void onActionGlueSelection();
     void addPickedGraphNode(int id);
     int groupGraphNodes(QVector<int> const& ids);
     // The nodes grouped, with a composite inside taking whatever left them, so the group gives one picture (its id; 0: none).

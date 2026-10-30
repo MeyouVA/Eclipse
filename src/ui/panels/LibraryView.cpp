@@ -1,4 +1,5 @@
 #include "ui/panels/LibraryView.h"
+#include "actions/theme/AppSettings.h"
 #include <algorithm>
 
 #include <functional>
@@ -196,6 +197,14 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     folderBar->addWidget(addFolderButton);
     folderBar->addWidget(newFolderButton);
     folderBar->addWidget(removeFolderButton);
+    QToolButton* const viewButton = small(QStringLiteral("\u2630"), tr("How the templates are shown"), "LibraryViewMode");
+    viewButton->setPopupMode(QToolButton::InstantPopup);
+    QMenu* const viewMenu = new QMenu(viewButton);
+    connect(viewMenu->addAction(tr("View Icons with Names")), &QAction::triggered, this, [this] { setItemsView(0); });
+    connect(viewMenu->addAction(tr("View as Icons")), &QAction::triggered, this, [this] { setItemsView(1); });
+    connect(viewMenu->addAction(tr("View as List")), &QAction::triggered, this, [this] { setItemsView(2); });
+    viewButton->setMenu(viewMenu);
+    folderBar->addWidget(viewButton);
     leftLayout->addLayout(folderBar);
     leftLayout->addWidget(m_folderList, 1);
     QSplitter* const lists = new QSplitter(Qt::Horizontal, this);
@@ -446,7 +455,25 @@ void LibraryView::refresh()
                 m_items->setCurrentItem(item);
         }
     }
+    setItemsView(settings().value(QStringLiteral("library/itemsView"), 0).toInt());
     showTemplate();
+}
+
+void LibraryView::setItemsView(int mode)
+{
+    mode = std::clamp(mode, 0, 2);
+    settings().setValue(QStringLiteral("library/itemsView"), mode);
+    // (As big as Preferences say thumbnails are; half that in a list.)
+    QSize const full(96 * m_thumbnailPercent / 100, 54 * m_thumbnailPercent / 100);
+    m_items->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
+    m_items->setIconSize(mode == 2 ? full / 2 : full);
+    m_items->setGridSize(mode == 2 ? QSize() : mode == 1 ? full + QSize(8, 8) : full + QSize(16, 28));
+    for (int i = 0; i < m_items->count(); ++i) {
+        QListWidgetItem* const item = m_items->item(i);
+        if (!item->data(Qt::UserRole + 9).isValid())
+            item->setData(Qt::UserRole + 9, item->text());
+        item->setText(mode == 1 ? QString() : item->data(Qt::UserRole + 9).toString());
+    }
 }
 
 QStringList LibraryView::templates() const
@@ -557,11 +584,9 @@ bool LibraryView::deleteCurrent(bool ask)
 void LibraryView::setThumbnailScale(int percent)
 {
     percent = std::clamp(percent, 50, 200);
-    QSize const icon(96 * percent / 100, 54 * percent / 100);
-    if (icon == m_items->iconSize())
+    if (percent == m_thumbnailPercent)
         return;
-    m_items->setIconSize(icon);
-    m_items->setGridSize(QSize(icon.width() + 16, icon.height() + 28));
+    m_thumbnailPercent = percent;
     m_thumbnails.clear();
     refresh();
 }

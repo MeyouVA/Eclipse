@@ -80,6 +80,8 @@ public:
     QJsonObject viewState() const;
     void restoreViewState(QJsonObject const& state);
     void resetView();
+    // The values fitted round the curves again, the frames shown left as they are.
+    void fitValues();
     void resetZoom();
     void resetPan();
     // Closer (factor below 1) or further, about the middle: along the frames, along the values.
@@ -239,6 +241,8 @@ public slots:
     void onActionResetZoom() { m_graph->resetZoom(); }
     void onActionResetPan() { m_graph->resetPan(); }
     void onActionResetView() { m_graph->resetView(); }
+    void onActionNormalizeView() { m_graph->fitValues(); }
+    void onActionResetViewVertically() { m_graph->fitValues(); }
     void onActionZoomIn() { m_graph->zoomFrames(1.0 / 1.25), m_graph->zoomValues(1.0 / 1.25); }
     void onActionZoomOut() { m_graph->zoomFrames(1.25), m_graph->zoomValues(1.25); }
     void onActionZoomInX() { m_graph->zoomFrames(1.0 / 1.25); }
