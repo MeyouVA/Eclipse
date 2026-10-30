@@ -42,6 +42,8 @@ inline thread_local bool gFineFills = true;
 inline std::atomic<unsigned> gRenderOff{0};
 // Painting a layer whose pictures are scaled to the nearest pixel (Layer Properties: Texture Filter).
 inline thread_local bool gNearestPictures = false;
+// The layer being painted: its pictures are read in its colour space (Layer Properties: Colour Space).
+inline thread_local Layer const* gPictureLayer = nullptr;
 
 // The Camera view's time limit for effects (Preferences > Render): past it, effects are left out of the picture being drawn.
 inline thread_local bool gEffectsTimed = false;

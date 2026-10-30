@@ -357,6 +357,12 @@ bool effectFromJson(QJsonObject const& eo, Effect& e)
     e.showInRender = eo["showInRender"].toBool(true);
     if (e.type == Effect::Script || e.type == Effect::External || e.type == Effect::BurnIn)
         e.text = eo["text"].toString();
+    if (e.type == Effect::ColourSpace) {
+        e.fromSpace = eo["from"].toString();
+        e.toSpace = eo["to"].toString();
+    }
+    if (e.type == Effect::LookUpTable)
+        e.file = eo["file"].toString();
     QJsonObject const values = eo["values"].toObject();
     for (auto v = values.constBegin(); v != values.constEnd(); ++v)
         e.setValue(v.key(), v.value().toDouble());
@@ -630,6 +636,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.antialiasing = std::clamp(lo["antialiasing"].toInt(Layer::AntialiasHigh), 0, int(Layer::AntialiasVeryHigh));
     layer.antialiasExponent = std::clamp(lo["antialiasExponent"].toDouble(1.0), 0.1, 10.0);
     layer.textureFilter = std::clamp(lo["textureFilter"].toInt(Layer::FilterSmooth), 0, int(Layer::FilterNearest));
+    layer.colourSpace = lo["colourSpace"].toString();
     QJsonArray const pivot = lo["pivot"].toArray();
     layer.pivot = pivot.size() == 2 ? QPointF(pivot[0].toDouble(), pivot[1].toDouble())
                                     : QPointF(width / 2.0, height / 2.0);

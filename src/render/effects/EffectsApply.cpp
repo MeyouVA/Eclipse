@@ -2,6 +2,8 @@
 #include "render/effects/Effects.h"
 #include "render/effects/EffectsPrivate.h"
 
+#include "colour/images/ColourTransform.h"
+
 #include <QHash>
 #include <QPainter>
 
@@ -96,6 +98,25 @@ void overrideColours(Drawing& drawing, Effect const& e)
             }
     }
 }
+
+namespace {
+
+// `amount` of the way from what was there to what the effect made.
+void mixed(QImage& image, QImage const& before, double amount)
+{
+    int const k = std::clamp(int(std::lround(amount * 256.0)), 0, 256);
+    for (int y = 0; y < image.height() && y < before.height(); ++y) {
+        QRgb* const line = reinterpret_cast<QRgb*>(image.scanLine(y));
+        QRgb const* const was = reinterpret_cast<QRgb const*>(before.constScanLine(y));
+        for (int x = 0; x < image.width() && x < before.width(); ++x) {
+            QRgb const a = was[x], b = line[x];
+            auto mix = [k](int p, int q) { return p + ((q - p) * k >> 8); };
+            line[x] = qRgba(mix(qRed(a), qRed(b)), mix(qGreen(a), qGreen(b)), mix(qBlue(a), qBlue(b)), mix(qAlpha(a), qAlpha(b)));
+        }
+    }
+}
+
+}  // namespace
 
 bool apply(QImage& image, Effect const& e, Context const& c)
 {
@@ -225,6 +246,26 @@ bool apply(QImage& image, Effect const& e, Context const& c)
     case Effect::IncreaseOpacity:
         increaseOpacity(image, amount);
         return true;
+    case Effect::ColourSpace: {
+        // (No name: the scene's working space; without colour management there is nothing to convert from or to.)
+        QString const from = e.fromSpace.isEmpty() ? c.workingSpace : e.fromSpace;
+        QString const to = e.toSpace.isEmpty() ? c.workingSpace : e.toSpace;
+        if (!from.isEmpty() && !to.isEmpty())
+            Cms::between(from, to).apply(&image);
+        return true;
+    }
+    case Effect::LookUpTable: {
+        if (e.file.isEmpty())
+            return true;
+        Cms::Transform const lut = Cms::ofLut(e.file);
+        if (lut.isIdentity())
+            return true;
+        QImage const before = image;
+        lut.apply(&image);
+        if (amount < 1.0)
+            mixed(image, before, amount);
+        return true;
+    }
     default:
         return false;
     }

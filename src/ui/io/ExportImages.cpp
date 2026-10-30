@@ -34,6 +34,7 @@
 #include "canvas/Canvas.h"
 #include "canvas/FrameRender.h"
 #include "render/images/ImageFiles.h"
+#include "ui/panels/ColourSpaceBox.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
 #include "ui/timeline/Timeline.h"
@@ -74,6 +75,17 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
     auto fileOf = [&](int f) {
         return QDir(options.folder).filePath(QStringLiteral("%1_%2.%3").arg(options.name).arg(f + 1, 4, 10, QLatin1Char('0')).arg(format->suffix));
     };
+    // Colour management: from the working space to the files' own (EXR keeps the light in floats).
+    QString const space = scene.outputSpace(options.colourSpace, format->suffix);
+    bool const floats = !space.isEmpty() && format->suffix == QLatin1String("exr");
+    QString spaceProblem;
+    if (!space.isEmpty())
+        scene.outputTransform(space, &spaceProblem);
+    if (!spaceProblem.isEmpty()) {
+        if (error)
+            *error = spaceProblem;
+        return 0;
+    }
     QVector<int> frames;
     for (int f = first; f <= last; ++f)
         frames.push_back(f);
@@ -85,10 +97,10 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
             QVector<ImageFiles::Layer> parts;
             for (int l : scene.drawOrder(f))
                 if (l < alone.size() && !alone[l].layers.isEmpty() && scene.enabled(l))
-                    parts.push_back({scene.layers[l].name, FrameRender::frame(alone[l], f, size, options.preview)});
-            ok = ImageFiles::saveLayered(parts, image, fileOf(f), &why);
+                    parts.push_back({scene.layers[l].name, FrameRender::inSpace(scene, FrameRender::frame(alone[l], f, size, options.preview), space, false)});
+            ok = ImageFiles::saveLayered(parts, FrameRender::inSpace(scene, image, space, false), fileOf(f), &why, space);
         } else {
-            ok = ImageFiles::save(image, fileOf(f), format->suffix, &why);
+            ok = ImageFiles::save(FrameRender::inSpace(scene, image, space, floats), fileOf(f), format->suffix, &why, 92, space);
         }
         if (!ok)
             return why.isEmpty() ? tr("Could not write %1.").arg(QDir::toNativeSeparators(fileOf(f))) : why;
@@ -144,6 +156,12 @@ void MainWindow::askExportImages(bool preview)
     };
     connect(format, &QComboBox::currentIndexChanged, &dialog, showLayers);
     showLayers();
+    // Colour management on: the colour space the files are written in.
+    QComboBox* const space = ColourSpaceBox::make(&dialog, QStringLiteral("ExportColourSpace"), {}, tr("Scene Working Colour Space"));
+    space->setToolTip(tr("The colour space the pictures are written in (an EXR is written in the scene's linear space unless another is chosen)."));
+    space->setEnabled(scene.colourManaged);
+    if (!scene.colourManaged)
+        space->setItemText(0, tr("No Colour Space Management"));
     QSpinBox* const from = new QSpinBox(&dialog);
     from->setRange(1, scene.frameCount());
     from->setValue(playStart() + 1);
@@ -182,6 +200,7 @@ void MainWindow::askExportImages(bool preview)
     form->addRow(tr("File name"), name);
     form->addRow(tr("Format"), format);
     form->addRow(QString(), layers);
+    form->addRow(tr("Colour Space"), space);
     form->addRow(tr("From frame"), from);
     form->addRow(tr("To frame"), to);
     form->addRow(QString(), rangeRow);
@@ -201,6 +220,7 @@ void MainWindow::askExportImages(bool preview)
     options.percent = resolution->currentData().toInt();
     options.preview = preview;
     options.layers = layers->isEnabled() && layers->isChecked();
+    options.colourSpace = ColourSpaceBox::chosen(space);
     stop();
     int const wanted = options.last - options.first + 1;
     QProgressDialog progress(tr("Rendering scene..."), tr("Cancel"), 0, wanted, this);
@@ -283,6 +303,7 @@ int MainWindow::renderWrites(QString* error, QProgressDialog* progress)
         if (w.movie) {
             MovieExport::Options options;
             options.scale = std::clamp(w.percent, 1, 1000) / 100.0;
+            options.colourSpace = scene.outputSpace(w.colourSpace, QString());
             QDir().mkpath(QFileInfo(where).absolutePath());
             ok = MovieExport::write(scene, where, nullptr, &why, options);
         } else {
@@ -292,6 +313,7 @@ int MainWindow::renderWrites(QString* error, QProgressDialog* progress)
             images.format = w.format;
             images.percent = std::clamp(w.percent, 1, 1000);
             images.layers = w.layers;
+            images.colourSpace = w.colourSpace;
             images.progress = progress;
             if (progress)
                 progress->setLabelText(tr("Rendering scene... (%1)").arg(w.name));
@@ -349,9 +371,9 @@ void MainWindow::onActionWriteOutputs()
     QDialog dialog(this);
     dialog.setObjectName(QStringLiteral("WriteOutputsDialog"));
     dialog.setWindowTitle(tr("Write Outputs"));
-    QTableWidget* const table = new QTableWidget(0, 7, &dialog);
+    QTableWidget* const table = new QTableWidget(0, 8, &dialog);
     table->setObjectName(QStringLiteral("WriteOutputsTable"));
-    table->setHorizontalHeaderLabels({tr("On"), tr("Name"), tr("Kind"), tr("Folder or file"), tr("Images as"), tr("Size %"), tr("Layers")});
+    table->setHorizontalHeaderLabels({tr("On"), tr("Name"), tr("Kind"), tr("Folder or file"), tr("Images as"), tr("Size %"), tr("Layers"), tr("Colour Space")});
     table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
     table->verticalHeader()->setVisible(false);
     auto addRow = [table](Scene::Write const& w) {
@@ -380,6 +402,9 @@ void MainWindow::onActionWriteOutputs()
         layers->setCheckState(w.layers ? Qt::Checked : Qt::Unchecked);
         layers->setToolTip(QObject::tr("Multi-layer write: in a layered format (psd), each layer of drawings apart too."));
         table->setItem(row, 6, layers);
+        QComboBox* const space = ColourSpaceBox::make(table, QString(), w.colourSpace, QObject::tr("Scene Working Colour Space"));
+        space->setToolTip(QObject::tr("The colour space the frames are written in, with colour space management on (Scene Settings: Colour)."));
+        table->setCellWidget(row, 7, space);
     };
     for (Scene::Write const& w : std::as_const(writes))
         addRow(w);
@@ -410,7 +435,7 @@ void MainWindow::onActionWriteOutputs()
     layout->addWidget(table, 1);
     layout->addLayout(row);
     layout->addWidget(buttons);
-    dialog.resize(760, 320);
+    dialog.resize(900, 320);
     if (dialog.exec() != QDialog::Accepted)
         return;
     QVector<Scene::Write> made;
@@ -423,6 +448,7 @@ void MainWindow::onActionWriteOutputs()
         w.format = static_cast<QComboBox*>(table->cellWidget(r, 4))->currentText();
         w.percent = static_cast<QSpinBox*>(table->cellWidget(r, 5))->value();
         w.layers = table->item(r, 6)->checkState() == Qt::Checked;
+        w.colourSpace = ColourSpaceBox::chosen(static_cast<QComboBox*>(table->cellWidget(r, 7)));
         made.push_back(w);
     }
     m_document->setWrites(made);

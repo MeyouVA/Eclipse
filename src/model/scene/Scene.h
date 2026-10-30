@@ -13,6 +13,10 @@
 #include <QJsonObject>
 #include <QSet>
 
+namespace Cms {
+class Transform;
+}
+
 class Scene {
 public:
     Scene();
@@ -46,6 +50,11 @@ public:
     int beatsPerBar = 0;
     // Toggle Solo Mode: off, the solo layers are not singled out (their switches are kept).
     bool soloMode = true;
+    // Scene Settings > Colour: off, colours are taken as they are; on, as colours of `workingSpace`, where layers are put together.
+    bool colourManaged = false;
+    QString workingSpace = QStringLiteral("sRGB");
+    QString textureSpace = QStringLiteral("sRGB");     // texture swatches are read in it, then put in the working space
+    bool palettesInSrgb = true;                        // palette colours (and painted bitmaps) are sRGB, put in the working space; off: taken as working-space colours
     struct Controller {
         struct State {
             QString name;
@@ -84,6 +93,7 @@ public:
         int percent = 100;          // of the scene's size
         bool enabled = true;
         bool layers = false;        // a multi-layer write: in a layered format, each layer of drawings apart too
+        QString colourSpace;        // what the files are written in (empty: the working space; for EXR, the scene's linear space)
         bool operator==(Write const&) const = default;
     };
     QVector<Write> writes;
@@ -181,6 +191,15 @@ public:
 
     static constexpr int kNoSwatch = -1;
     QColor resolve(int swatch, QColor const& fallback) const;
+    // Colour management: the conversions into the working space of palette colours, texture swatches and a layer's pictures (none when it is off).
+    Cms::Transform swatchTransform() const;
+    Cms::Transform textureTransform() const;
+    Cms::Transform pictureTransform(Layer const& layer, bool painted) const;
+    // A colour chosen like a palette colour (a colour-card's), as it is in the working space.
+    QColor managedColour(QColor const& colour) const;
+    // What a file is written in: the write's own colour space, or the working space (for EXR its linear form); empty when colour management is off.
+    QString outputSpace(QString const& writeSpace, QString const& format) const;
+    Cms::Transform outputTransform(QString const& space, QString* error = nullptr) const;
     // What an area or a line is painted with: its colour, or the gradient of its swatch.
     QBrush brushFor(Fill const& fill) const;
     QBrush brushFor(Stroke const& stroke) const;

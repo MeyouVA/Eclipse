@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg PrintSupport Qml)
 
-# Eclipse is seven libraries and a small program that starts them (see src/EclipseExport.h).
+# Eclipse is eight libraries and a small program that starts them (see src/EclipseExport.h).
 # Each folder of src is a module, sorted into sub-folders by what the files are for; a source
 # file put anywhere under a module's folder is built into that module.
 # The libraries land beside the programs, where Windows looks for them.
@@ -27,9 +27,13 @@ function(eclipse_module name folder define)
     endif()
 endfunction()
 
+# Colour management: colour spaces, OpenColorIO configurations, look-up tables and ICC profiles.
+eclipse_module(EclipseColour colour ECLIPSE_COLOUR_BUILD)
+target_link_libraries(EclipseColour PUBLIC Qt6::Core Qt6::Gui)
+
 # The scene: layers, drawings, keyframes, and the commands that change them.
 eclipse_module(EclipseModel model ECLIPSE_MODEL_BUILD)
-target_link_libraries(EclipseModel PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets)
+target_link_libraries(EclipseModel PUBLIC EclipseColour Qt6::Core Qt6::Gui Qt6::Widgets)
 
 # Sound: reading, mixing, playing; lip-sync detection.
 eclipse_module(EclipseAudio audio ECLIPSE_AUDIO_BUILD)

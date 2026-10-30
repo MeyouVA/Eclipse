@@ -1,7 +1,9 @@
 // Eclipse - the main window: the Scene menu - frames, length, settings; bringing in a sound.
 #include <QLabel>
 #include "ui/window/MainWindow.h"
+#include "ui/panels/ColourSpaceBox.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QApplication>
 #include <QDialog>
@@ -11,6 +13,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QSpinBox>
@@ -191,6 +194,25 @@ void MainWindow::onActionSceneSettings()
         if (known[index - 1].orthographic)
             projection->setCurrentIndex(1);
     });
+    // Colour: the colour space layers are put together in, and how palettes and texture swatches are read.
+    QGroupBox* const colour = new QGroupBox(tr("Colour Space Management"), &dialog);
+    colour->setObjectName(QStringLiteral("SceneColourManagement"));
+    colour->setCheckable(true);
+    colour->setChecked(scene.colourManaged);
+    colour->setToolTip(tr("Off: colours are used as they are (No Colour Space Management)."));
+    QFormLayout* const colourForm = new QFormLayout(colour);
+    QComboBox* const working = ColourSpaceBox::make(colour, QStringLiteral("SceneWorkingSpace"), scene.workingSpace);
+    working->setToolTip(tr("Defines the colour space used for compositing scene elements and effects together."));
+    colourForm->addRow(tr("Working Colour Space"), working);
+    QComboBox* const textures = ColourSpaceBox::make(colour, QStringLiteral("SceneTextureSpace"), scene.textureSpace);
+    textures->setToolTip(tr("This colour space is used to read texture swatches from palettes before converting them to the scene working colour space."));
+    colourForm->addRow(tr("Texture Swatches Colour Space"), textures);
+    QCheckBox* const srgbPalettes = new QCheckBox(tr("Use Palettes Definition in sRGB Colour Space"), colour);
+    srgbPalettes->setObjectName(QStringLiteral("ScenePalettesInSrgb"));
+    srgbPalettes->setChecked(scene.palettesInSrgb);
+    srgbPalettes->setToolTip(tr("When enabled, bitmap drawings and colour swatches in palettes are read using the sRGB colour space before being converted to the working colour space."));
+    colourForm->addRow(srgbPalettes);
+    form->addRow(colour);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -200,6 +222,7 @@ void MainWindow::onActionSceneSettings()
         m_document->setSceneSettings(width->value(), height->value(), fps->value(), fovEdited ? fov->value() : scene.fov);
         m_document->setOrthographic(projection->currentIndex() == 1);
         m_document->setFovAcross(fit->currentIndex() == 1);
+        m_document->setColourManagement(colour->isChecked(), ColourSpaceBox::chosen(working), ColourSpaceBox::chosen(textures), srgbPalettes->isChecked());
         m_document->endMacro();
         m_canvas->fitToWindow();
     }

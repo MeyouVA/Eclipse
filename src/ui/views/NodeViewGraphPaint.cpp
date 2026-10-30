@@ -7,6 +7,10 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDir>
+#include <QFileDialog>
+#include <QHBoxLayout>
+#include <QLineEdit>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QInputDialog>
@@ -27,6 +31,8 @@
 #include "render/effects/Effects.h"
 #include "ui/panels/EffectsPanel.h"
 #include "ui/panels/EffectParamsEditor.h"
+#include "colour/luts/Luts.h"
+#include "ui/panels/ColourSpaceBox.h"
 
 #include <QCoreApplication>
 #include <QHeaderView>
@@ -332,6 +338,32 @@ void NodeView::editGraphNode(int id)
         });
         form->addRow(overrides);
     }
+    // Colour Space: from and to; Look-Up Table: its file.
+    QComboBox* fromSpace = nullptr;
+    QComboBox* toSpace = nullptr;
+    if (type == Effect::ColourSpace) {
+        fromSpace = ColourSpaceBox::make(&dialog, QStringLiteral("GraphEffectFromSpace"), e.fromSpace, tr("Scene Working Colour Space"));
+        form->addRow(tr("From"), fromSpace);
+        toSpace = ColourSpaceBox::make(&dialog, QStringLiteral("GraphEffectToSpace"), e.toSpace, tr("Scene Working Colour Space"));
+        form->addRow(tr("To"), toSpace);
+    }
+    QLineEdit* lutFile = nullptr;
+    if (type == Effect::LookUpTable) {
+        QWidget* const row = new QWidget(&dialog);
+        QHBoxLayout* const line = new QHBoxLayout(row);
+        line->setContentsMargins(0, 0, 0, 0);
+        lutFile = new QLineEdit(QDir::toNativeSeparators(e.file), row);
+        lutFile->setObjectName(QStringLiteral("GraphEffectLutFile"));
+        QPushButton* const browse = new QPushButton(tr("Browse..."), row);
+        line->addWidget(lutFile, 1);
+        line->addWidget(browse);
+        connect(browse, &QPushButton::clicked, &dialog, [lutFile, &dialog] {
+            QString const file = QFileDialog::getOpenFileName(&dialog, tr("Look-Up Table"), lutFile->text(), Cms::Luts::filter());
+            if (!file.isEmpty())
+                lutFile->setText(QDir::toNativeSeparators(file));
+        });
+        form->addRow(tr("LUT File"), row);
+    }
     // The named settings of the kinds that have them.
     EffectParamsEditor* params = nullptr;
     if (!Effect::params(type).isEmpty()) {
@@ -394,6 +426,12 @@ void NodeView::editGraphNode(int id)
         e.truckFactor = truck->isChecked();
     if (text)
         e.text = text->toPlainText();
+    if (fromSpace) {
+        e.fromSpace = ColourSpaceBox::chosen(fromSpace);
+        e.toSpace = ColourSpaceBox::chosen(toSpace);
+    }
+    if (lutFile)
+        e.file = QDir::fromNativeSeparators(lutFile->text().trimmed());
     if (area[0])
         e.area = QRectF(area[0]->value(), area[1]->value(), area[2]->value(), area[3]->value());
     for (int c = 0; c < 4; ++c)

@@ -376,6 +376,19 @@ void Document::limitFov(Scene& after) const
     }
 }
 
+void Document::setColourManagement(bool on, QString const& working, QString const& textures, bool palettesInSrgb)
+{
+    Scene const& now = scene();
+    if (now.colourManaged == on && now.workingSpace == working && now.textureSpace == textures && now.palettesInSrgb == palettesInSrgb)
+        return;
+    apply(tr("Set Working Colour Space"), [&](Scene& s) {
+        s.colourManaged = on;
+        s.workingSpace = working.isEmpty() ? QStringLiteral("sRGB") : working;
+        s.textureSpace = textures.isEmpty() ? QStringLiteral("sRGB") : textures;
+        s.palettesInSrgb = palettesInSrgb;
+    });
+}
+
 void Document::setSceneSettings(int width, int height, double fps, double fov)
 {
     apply(tr("Scene Settings"), [&](Scene& s) {

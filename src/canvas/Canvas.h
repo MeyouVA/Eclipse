@@ -16,6 +16,7 @@
 
 #include "canvas/CanvasSettings.h"
 #include "model/scene/Scene.h"
+#include "colour/images/ColourTransform.h"
 
 class Document;
 class QMenu;
@@ -332,6 +333,17 @@ public:
         m_viewQuality = quality;
         update();
     }
+    // The display and view the Camera view shows the working space through (colour management on).
+    void setViewColourSpace(QString const& display, QString const& view)
+    {
+        m_viewDisplay = display;
+        m_viewView = view;
+        update();
+    }
+    QString viewDisplay() const { return m_viewDisplay; }
+    QString viewView() const { return m_viewView; }
+    // What the Camera view is put through on its way to the screen (none when the scene is not colour managed).
+    Cms::Transform viewColourTransform(QString* error = nullptr) const;
     static void setRenderSwitch(RenderSwitch which, bool on);
     static bool renderSwitch(RenderSwitch which);
     // Whether the preferences leave this kind of effect out (blurs, focus, tone and highlight, colour override).

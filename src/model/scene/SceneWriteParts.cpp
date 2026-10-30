@@ -166,7 +166,7 @@ char const* effectTypeName(Effect::Type type)
 {
     static char const* const names[] = {"gaussianBlur", "boxBlur", "zoomBlur", "bokehBlur", "antiFlicker", "colourFade", "colourOverride", "channelSwap",
                                         "colourLevels", "colourScreen", "contrast", "gamma", "colourBanding", "dither", "shine", "lensFlare", "burnIn",
-                                        "turbulentNoise", "grid", "refract", "shake", "quake", "unsharpMask", "increaseOpacity", "animatePencilTexture"};
+                                        "turbulentNoise", "grid", "refract", "shake", "quake", "unsharpMask", "increaseOpacity", "animatePencilTexture", "colourSpace", "lookUpTable"};
     static_assert(sizeof(names) / sizeof(names[0]) == Effect::TypeCount - Effect::GaussianBlur);
     return type >= Effect::GaussianBlur && type < Effect::TypeCount ? names[type - Effect::GaussianBlur] : "";
 }
@@ -235,6 +235,12 @@ QJsonObject effectToJson(Effect const& e)
     }
     if (e.type == Effect::Script || e.type == Effect::External || e.type == Effect::BurnIn)
         one["text"] = e.text;
+    if (e.type == Effect::ColourSpace) {
+        one["from"] = e.fromSpace;
+        one["to"] = e.toSpace;
+    }
+    if (e.type == Effect::LookUpTable)
+        one["file"] = e.file;
     if (!e.values.isEmpty()) {
         QJsonObject values;
         for (auto v = e.values.cbegin(); v != e.values.cend(); ++v)
@@ -619,6 +625,8 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["antialiasExponent"] = layer.antialiasExponent;
     if (layer.textureFilter != Layer::FilterSmooth)
         layerObject["textureFilter"] = layer.textureFilter;
+    if (!layer.colourSpace.isEmpty())
+        layerObject["colourSpace"] = layer.colourSpace;
     if (!layer.frameMarks.isEmpty()) {
         QJsonArray marks;
         for (auto it = layer.frameMarks.constBegin(); it != layer.frameMarks.constEnd(); ++it)

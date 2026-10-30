@@ -1,5 +1,8 @@
 // Eclipse - importing: Flash movies and documents, 3D models, from a scanner.
 #include "ui/window/MainWindow.h"
+#include <QColorSpace>
+#include <QStatusBar>
+#include "colour/images/ColourTransform.h"
 
 #include <functional>
 
@@ -482,12 +485,32 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         return fail(tr("The current layer does not hold drawings. Choose a drawing layer, or import to a new layer."));
 
     QVector<Drawing> drawings;
+    // Convert Image Colour Space on Import: the space the pictures are read in (the file's own profile is taken to sRGB first).
+    QString const fromSpace = options.convertColour ? (options.sourceSpace.isEmpty() ? QStringLiteral("sRGB") : options.sourceSpace) : QString();
+    QString const layerSpace = target >= 0 ? (scene.layers[target].colourSpace.isEmpty() ? scene.workingSpace : scene.layers[target].colourSpace) : QString();
+    bool unconverted = false;
+    if (!fromSpace.isEmpty() && !Cms::config()->space(fromSpace))
+        unconverted = true;
     for (QString const& file : options.files) {
         QImageReader reader(file);
         reader.setAutoTransform(true);      // a photograph taken with the camera on its side
         QImage image = reader.read();
         if (image.isNull())
             return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), reader.errorString()));
+        if (options.convertColour && !unconverted) {
+            if (options.sourceSpace.isEmpty() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb)) {
+                // (A linked picture is read again from its file, so its own profile cannot be put into it here.)
+                if (options.linked)
+                    unconverted = true;
+                else
+                    image.convertToColorSpace(QColorSpace(QColorSpace::SRgb));
+            }
+            // Onto an existing layer: the pixels put in that layer's colour space now.
+            if (target >= 0 && !options.linked && !options.vectorize)
+                Cms::between(fromSpace, layerSpace).apply(&image);
+            else if (target >= 0 && options.linked && fromSpace.compare(layerSpace, Qt::CaseInsensitive) != 0)
+                unconverted = true;
+        }
         image = readTransparency(image, QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/importTransparency"), 0).toInt());
         double const across = double(scene.width) / image.width(), down = double(scene.height) / image.height();
         double const scale = !options.fit ? 1.0 : options.pan ? std::max(across, down) : std::min(across, down);
@@ -539,9 +562,16 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         drawings.push_back(drawing);
     }
     QString const name = options.layerName.trimmed().isEmpty() ? QFileInfo(options.files.first()).completeBaseName() : options.layerName.trimmed();
+    m_document->beginMacro(tr("Import Images"));
     int const at = m_document->importDrawings(target, name, options.newLayer ? 0 : frame(), drawings, options.hold);
+    // A new layer reads its pictures in their source colour space from now on (Layer Properties: Colour Space).
+    if (at >= 0 && target < 0 && !fromSpace.isEmpty() && !unconverted && !options.vectorize)
+        m_document->editLayers({at}, tr("Colour Space"), [fromSpace](Layer& l) { l.colourSpace = fromSpace; });
+    m_document->endMacro();
     if (at < 0)
         return fail(tr("The pictures could not be put on that layer."));
+    if (unconverted)
+        statusBar()->showMessage(tr("Unsupported colour space conversion for this import. The colour correction has not been applied."), 8000);
     m_timeline->clearRange();
     m_timeline->setCurrentCell(at, options.newLayer ? 0 : frame());
     return at;

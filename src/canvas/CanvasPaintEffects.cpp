@@ -34,6 +34,7 @@ void Canvas::applyLayerEffect(QImage& image, int i, LayerEffectSpace const& spac
     context.frame = QTransform::fromScale(dpr, dpr).mapRect(sceneToDevice.mapRect(QRectF(0, 0, scene.width, scene.height)));
     context.at = frame;
     context.fps = scene.fps;
+    context.workingSpace = scene.workingSpace;
     if (switchedOff(e.type)) {
         // (Switched off in the preferences: the picture goes through as it is.)
     } else if (Effects::apply(image, e, context)) {

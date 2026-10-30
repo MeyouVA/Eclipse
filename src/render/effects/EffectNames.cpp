@@ -3,6 +3,7 @@
 
 #include <QColor>
 #include <QDir>
+#include <QFileInfo>
 #include <QImage>
 #include <QJSEngine>
 #include <QPainter>
@@ -46,6 +47,8 @@ QString kindName(Effect::Type type)
     case Effect::UnsharpMask: return QObject::tr("Unsharp Mask");
     case Effect::IncreaseOpacity: return QObject::tr("Increase Opacity");
     case Effect::AnimatePencilTexture: return QObject::tr("Animate Pencil Texture");
+    case Effect::ColourSpace: return QObject::tr("Colour Space");
+    case Effect::LookUpTable: return QObject::tr("Look-Up Table");
     default: return name(Effect::made(type), Scene()).section(QStringLiteral("  "), 0, 0);
     }
 }
@@ -197,9 +200,16 @@ QString name(Effect const& effect, Scene const& scene)
     case Effect::Quake:
     case Effect::UnsharpMask:
     case Effect::IncreaseOpacity:
+    case Effect::ColourSpace:
+    case Effect::LookUpTable:
     case Effect::AnimatePencilTexture: {
         Effect::Amount const a = Effect::amountOf(effect.type);
         QString const kind = kindName(effect.type);
+        if (effect.type == Effect::ColourSpace)
+            return QStringLiteral("%1  %2 > %3").arg(kind, effect.fromSpace.isEmpty() ? QObject::tr("(working)") : effect.fromSpace,
+                                                     effect.toSpace.isEmpty() ? QObject::tr("(working)") : effect.toSpace);
+        if (effect.type == Effect::LookUpTable)
+            return QStringLiteral("%1  %2").arg(kind, effect.file.isEmpty() ? QObject::tr("(no file)") : QFileInfo(effect.file).fileName());
         if (effect.type == Effect::ColourOverride)
             return QObject::tr("%1  %n colour(s)", nullptr, int(effect.overrides.size())).arg(kind);
         if (a.shown == 1 && effect.amount < 1.0)

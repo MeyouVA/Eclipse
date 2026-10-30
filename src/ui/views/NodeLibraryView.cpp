@@ -112,6 +112,8 @@ static Entry const kEffects[] = {
     {QT_TR_NOOP("Colour Banding"), "effect:61", QT_TR_NOOP("Turns the picture into bands of up to four colours by how light it is"), QT_TR_NOOP("Colour-Correct")},
     {QT_TR_NOOP("Dither"), "effect:62", QT_TR_NOOP("A fine noise that hides the steps between colours"), QT_TR_NOOP("Colour-Correct")},
     {QT_TR_NOOP("Increase Opacity"), "effect:72", QT_TR_NOOP("Makes the picture more opaque by a factor"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Colour Space"), "effect:74", QT_TR_NOOP("Converts the picture from one colour space to another (Scene Settings: Colour)"), QT_TR_NOOP("Colour-Correct")},
+    {QT_TR_NOOP("Look-Up Table"), "effect:75", QT_TR_NOOP("Changes the colours through a LUT file: .cube, .3dl, .spi1d, .spi3d, .csp, .clf, .cdl and more"), QT_TR_NOOP("Colour-Correct")},
     {QT_TR_NOOP("Shine"), "effect:63", QT_TR_NOOP("Rays of light coming from the bright parts, away from a light"), QT_TR_NOOP("Light")},
     {QT_TR_NOOP("Lens Flare"), "effect:64", QT_TR_NOOP("The rings and glow of a light shining into the lens"), QT_TR_NOOP("Light")},
     {QT_TR_NOOP("Burn-In"), "effect:65", QT_TR_NOOP("Text over the frame: its number, the scene's name, the time code"), QT_TR_NOOP("Generator")},

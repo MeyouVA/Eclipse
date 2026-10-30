@@ -173,7 +173,22 @@ void Canvas::paintEvent(QPaintEvent*)
     gEffectsTimed = m_effectsTimeout > 0 && !m_timeoutOff && m_viewMode == ViewNormal;
     gEffectsTimedOut = false;
     gEffectsDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(m_effectsTimeout);
+    // Colour management: the picture is made in the working space, then put in the display's colour space.
+    Cms::Transform const display = viewColourTransform();
+    QImage working;
+    if (!display.isIdentity()) {
+        qreal const dpr = devicePixelRatioF();
+        working = QImage(QSize(int(std::ceil(width() * dpr)), int(std::ceil(height() * dpr))), QImage::Format_ARGB32_Premultiplied);
+        working.setDevicePixelRatio(dpr);
+        m_viewTarget = &working;
+    }
     paintView();
+    if (m_viewTarget) {
+        m_viewTarget = nullptr;
+        display.apply(&working);
+        QPainter shown(this);
+        shown.drawImage(QPointF(0, 0), working);
+    }
     m_timedOut = gEffectsTimedOut;
     gEffectsTimed = false;
     gEffectsTimedOut = false;
@@ -211,10 +226,27 @@ void Canvas::paintEvent(QPaintEvent*)
     }
 }
 
+Cms::Transform Canvas::viewColourTransform(QString* error) const
+{
+    Scene const& scene = m_document->scene();
+    if (!scene.colourManaged)
+        return {};
+    std::shared_ptr<Cms::Config const> const c = Cms::config();
+    QString display = m_viewDisplay;
+    if (display.isEmpty() || !c->displayNames().contains(display))
+        display = c->displayNames().value(0);
+    QString view = m_viewView;
+    if (view.isEmpty() || !c->viewNames(display).contains(view))
+        view = c->viewNames(display).value(0);
+    if (display.isEmpty() || view.isEmpty())
+        return {};
+    return Cms::toDisplay(scene.workingSpace, display, view, error);
+}
+
 void Canvas::paintView()
 {
     Scene const& scene = m_document->scene();
-    QPainter painter(this);
+    QPainter painter(m_viewTarget ? m_viewTarget : static_cast<QPaintDevice*>(this));
     painter.fillRect(rect(), m_backdrop);
     painter.setRenderHint(QPainter::Antialiasing, m_viewAntialias);
     painter.setTransform(cameraViewTransform());
@@ -388,7 +420,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
     if (m_drawingView && l != m_layer && (!m_lightTable || !layer.holdsDrawings()))
         return;
     if (layer.kind == Layer::ColourCard && scene.shows(l)) {
-        QColor colour = layer.cardColor;
+        QColor colour = scene.managedColour(layer.cardColor);
         colour.setAlphaF(colour.alphaF() * float(layer.opacity));
         painter.setTransform(cameraViewTransform());
         painter.fillRect(frameRect, colour);

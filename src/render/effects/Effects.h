@@ -102,6 +102,7 @@ struct Context {
     int at = 0;                     // the frame drawn
     double fps = 24.0;
     QImage second;                  // what comes in at a node's second input (none for a layer's effect)
+    QString workingSpace;           // the scene's working colour space
 };
 // Does `effect` to `image` when it is one of those; false when it is not (it is done where it is drawn).
 bool apply(QImage& image, Effect const& effect, Context const& context);

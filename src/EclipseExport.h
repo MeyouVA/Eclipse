@@ -1,6 +1,7 @@
 // Eclipse - what each module shows to the others.
 //
-// Eclipse is built as seven libraries and a small program that starts them:
+// Eclipse is built as eight libraries and a small program that starts them:
+//   EclipseColour   src/colour    colour management: colour spaces, OpenColorIO configurations, LUTs, ICC profiles
 //   EclipseModel    src/model     the scene: layers, drawings, keyframes, and the commands that change them
 //                     scene/        what a scene is made of, and reading and writing it
 //                     document/     the scene in hand, and every change to it as a step that can be undone
@@ -31,6 +32,12 @@
 #pragma once
 
 #include <QtCore/qglobal.h>
+
+#if defined(ECLIPSE_COLOUR_BUILD)
+#    define ECLIPSE_COLOUR_API Q_DECL_EXPORT
+#else
+#    define ECLIPSE_COLOUR_API Q_DECL_IMPORT
+#endif
 
 #if defined(ECLIPSE_MODEL_BUILD)
 #    define ECLIPSE_MODEL_API Q_DECL_EXPORT

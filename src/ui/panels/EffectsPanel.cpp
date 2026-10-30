@@ -15,6 +15,8 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QDir>
+#include <QLineEdit>
+#include "ui/panels/ColourSpaceBox.h"
 #include <QJSEngine>
 #include <QMouseEvent>
 #include <QPlainTextEdit>
@@ -92,7 +94,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
     QVector<Group> const groups = {
         {QT_TR_NOOP("More Blurs"), {Effect::GaussianBlur, Effect::BoxBlur, Effect::ZoomBlur, Effect::BokehBlur, Effect::AntiFlicker, Effect::UnsharpMask}},
         {QT_TR_NOOP("More Colour Corrections"), {Effect::ColourFade, Effect::ChannelSwap, Effect::ColourLevels, Effect::ColourScreen, Effect::Contrast, Effect::Gamma,
-                                                 Effect::ColourBanding, Effect::Dither, Effect::IncreaseOpacity}},
+                                                 Effect::ColourBanding, Effect::Dither, Effect::IncreaseOpacity, Effect::ColourSpace, Effect::LookUpTable}},
         {QT_TR_NOOP("Light"), {Effect::Shine, Effect::LensFlare}},
         {QT_TR_NOOP("Generate"), {Effect::TurbulentNoise, Effect::Grid, Effect::BurnIn}},
         {QT_TR_NOOP("Move"), {Effect::Shake, Effect::Quake}}};
@@ -285,7 +287,7 @@ void EffectsPanel::showEditors()
     bool const viewed = valid && e.type == Effect::ApplyCamera;
     bool const pegged = valid && (e.type == Effect::ApplyPeg || viewed);
     bool const plain = valid && (e.type == Effect::ChannelSelector || e.type == Effect::Crop || e.type == Effect::MatteComposite || e.type == Effect::Blending
-                                 || e.type == Effect::Glue
+                                 || e.type == Effect::Glue || e.type == Effect::ColourSpace
                                  || pegged);
     bool const curving = valid && e.type == Effect::ColourCurves;
     m_amountLabel->setVisible(valid && !cutter && !plain);
@@ -300,7 +302,20 @@ void EffectsPanel::showEditors()
         m_more->setVisible(m_more->isVisibleTo(this) || texted);
         m_moreForm->setRowVisible(m_text, texted);
         m_moreForm->setRowVisible(m_textApply, texted);
-        m_moreForm->setRowVisible(m_textSays, texted);
+        bool const spaced = valid && e.type == Effect::ColourSpace, looked = valid && e.type == Effect::LookUpTable;
+        m_more->setVisible(m_more->isVisibleTo(this) || spaced || looked);
+        m_moreForm->setRowVisible(m_textSays, texted || looked);
+        m_moreForm->setRowVisible(m_fromSpace, spaced);
+        m_moreForm->setRowVisible(m_toSpace, spaced);
+        m_moreForm->setRowVisible(m_lutRow, looked);
+        if (spaced) {
+            ColourSpaceBox::fill(m_fromSpace, e.fromSpace, tr("Scene Working Colour Space"));
+            ColourSpaceBox::fill(m_toSpace, e.toSpace, tr("Scene Working Colour Space"));
+        }
+        if (looked && m_lutFile->text() != QDir::toNativeSeparators(e.file))
+            m_lutFile->setText(QDir::toNativeSeparators(e.file));
+        if (!texted && !looked)
+            m_textSays->clear();
         if (texted && m_text->toPlainText() != e.text)
             m_text->setPlainText(e.text);
         if (texted)

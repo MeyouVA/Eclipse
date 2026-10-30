@@ -1,5 +1,6 @@
 // Eclipse - importing images: the options asked for, and the images brought in.
 #include "ui/window/MainWindow.h"
+#include "ui/panels/ColourSpaceBox.h"
 
 #include <functional>
 
@@ -139,6 +140,18 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     connect(colourVector, &QRadioButton::toggled, leavePaper, &QCheckBox::setEnabled);
     connect(colourVector, &QRadioButton::toggled, paper, &QPushButton::setEnabled);
     asLayout->addRow(leavePaper, paper);
+    // Colour management: the colour space the pictures are read in.
+    QSettings const prefs(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    QCheckBox* const convert = new QCheckBox(tr("Convert Image Colour Space on Import"), asBox);
+    convert->setObjectName(QStringLiteral("ImportConvertColour"));
+    convert->setChecked(prefs.value(QStringLiteral("prefs/convertOnImport"), false).toBool());
+    convert->setToolTip(tr("The pictures are read in their source colour space, then put in the scene's working colour space."));
+    QComboBox* const source = ColourSpaceBox::make(asBox, QStringLiteral("ImportSourceSpace"), prefs.value(QStringLiteral("prefs/importSourceSpace")).toString(),
+                                                   tr("From the File (its own profile, else sRGB)"));
+    source->setEnabled(convert->isChecked());
+    connect(convert, &QCheckBox::toggled, source, &QComboBox::setEnabled);
+    asLayout->addRow(convert);
+    asLayout->addRow(tr("Source Colour Space:"), source);
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     buttons->button(QDialogButtonBox::Ok)->setEnabled(false);
@@ -186,6 +199,8 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     options.threshold = threshold->value();
     options.linked = linked;
     options.hold = hold->value();
+    options.convertColour = convert->isChecked();
+    options.sourceSpace = ColourSpaceBox::chosen(source);
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QString error;
     int const at = importImages(options, &error);

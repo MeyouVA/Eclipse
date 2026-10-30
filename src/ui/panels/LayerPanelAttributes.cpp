@@ -20,6 +20,7 @@
 
 #include "actions/theme/InterfaceColours.h"
 #include "model/document/Commands.h"
+#include "ui/panels/ColourSpaceBox.h"
 
 QString LayerPanel::valueName(int value)
 {
@@ -228,6 +229,16 @@ void LayerPanel::buildAttributeSections()
     connect(m_antialiasExponent, &QDoubleSpinBox::valueChanged, this, smoothed);
     connect(m_textureFilter, &QComboBox::currentIndexChanged, this, smoothed);
     drawing->addRow(tr("Antialiasing"), smooth);
+    // The colour space its pictures are read in, put in the scene's working space (Scene Settings: Colour).
+    m_colourSpace = ColourSpaceBox::make(m_drawingBox, QStringLiteral("LayerColourSpace"), {}, tr("Scene Working Colour Space"));
+    m_colourSpace->setToolTip(tr("The colour space the pictures of this layer are read in, before they are put in the working colour space."));
+    connect(m_colourSpace, &QComboBox::activated, this, [this] {
+        if (m_refreshing)
+            return;
+        QString const space = ColourSpaceBox::chosen(m_colourSpace);
+        m_document->editLayers({m_layer}, tr("Colour Space"), [space](Layer& l) { l.colourSpace = space; });
+    });
+    drawing->addRow(tr("Colour Space"), m_colourSpace);
     m_form->addRow(tr("Drawing"), m_drawingBox);
 
     // ---- a group: the values published on it ----
@@ -299,6 +310,8 @@ void LayerPanel::refreshAttributeSections(Layer const& layer)
     m_antialiasing->setCurrentIndex(std::clamp(layer.antialiasing, 0, 3));
     m_antialiasExponent->setValue(layer.antialiasExponent);
     m_textureFilter->setCurrentIndex(std::clamp(layer.textureFilter, 0, 1));
+    ColourSpaceBox::fill(m_colourSpace, layer.colourSpace, tr("Scene Working Colour Space"));
+    m_colourSpace->setEnabled(drawing);
     if (QLayout* const turn = m_turnRow)
         for (int i = 0; i < turn->count(); ++i)
             if (QWidget* const w = turn->itemAt(i)->widget())

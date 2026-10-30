@@ -218,6 +218,9 @@ protected:
     // The Camera view's time limits (milliseconds, 0: none): past them its effects are left out, then the layers not yet drawn.
     int m_effectsTimeout = 0, m_drawTimeout = 0;
     bool m_viewAntialias = true, m_viewQuality = false;
+    // Colour Space View: the display and view the Camera view is shown through (empty: the first of the configuration).
+    QString m_viewDisplay, m_viewView;
+    QPaintDevice* m_viewTarget = nullptr;
     bool m_timeoutOff = false;
     bool m_timedOut = false, m_incomplete = false;
     QImage m_snapshot;

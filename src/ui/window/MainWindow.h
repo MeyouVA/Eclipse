@@ -46,6 +46,7 @@ struct MovieChoices {
     int speed = 1;
     int audioKbps = 192;
     bool transparentBackground = false;
+    QString colourSpace;    // empty: the working space
 };
 
 class ECLIPSE_UI_API MainWindow : public QMainWindow {
@@ -134,6 +135,8 @@ public:
         int colours = 0;            // when vectorising: 0 for black and white, else flat shapes of at most this many colours
         bool linked = false;        // read from the file each time, not kept in the scene
         int hold = 1;               // frames each picture is shown for
+        bool convertColour = false; // Convert Image Colour Space on Import: the pictures read in `sourceSpace`
+        QString sourceSpace;        // empty: the file's own profile (else sRGB)
     };
     // ---- the Library ------------------------------------------------------------------------
     // The layers selected in the Timeline (with everything attached to them), over the frames
@@ -174,6 +177,7 @@ public:
         int percent = 100;          // of the scene's resolution
         bool preview = false;       // quick: no smoothing of edges
         bool layers = false;        // in a layered format, each layer of drawings apart too
+        QString colourSpace;        // the files' colour space (empty: the working space; EXR: its linear form)
         QProgressDialog* progress = nullptr;    // told how many are done; its Cancel stops the render
     };
     // Returns how many were written; fewer than asked means it stopped, with a message.
@@ -193,6 +197,10 @@ public:
     int lipSyncLead() const;
     // The same, from the words said (see LipSync::fromText); the text is kept for the next time.
     int lipSyncFromWords(int soundLayer, QString const& words);
+
+signals:
+    // The colour configuration in use was changed (Preferences > Colour Management).
+    void colourConfigChanged();
 
 public slots:
     void onActionCameraCone(bool on);
@@ -668,6 +676,9 @@ private:
     void preferencesTimeline(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesRender(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void applyRenderPreferences(class QSettings const& s);
+    void preferencesColourManagement(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void saveColourPreferences(struct PreferenceWidgets& w, class QSettings& s);
+    void applyColourPreferences(class QSettings const& s);
     void preferencesTools(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesNodeView(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void saveNodePreferences(struct PreferenceWidgets& w, class QSettings& s);

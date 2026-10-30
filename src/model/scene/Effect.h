@@ -13,7 +13,7 @@ struct Effect {
                 GenericComposite, LayerSelector, ChromaKey, DifferenceKeyer, LuminanceThreshold, ImageSwitch, Visibility,
                 GaussianBlur, BoxBlur, ZoomBlur, BokehBlur, AntiFlicker, ColourFade, ColourOverride, ChannelSwap, ColourLevels, ColourScreen, Contrast,
                 Gamma, ColourBanding, Dither, Shine, LensFlare, BurnIn, TurbulentNoise, Grid, Refract, Shake, Quake, UnsharpMask, IncreaseOpacity,
-                AnimatePencilTexture, TypeCount };
+                AnimatePencilTexture, ColourSpace, LookUpTable, TypeCount };
     Type type = Blur;
     // A new effect of that kind, as it starts out.
     static Effect made(Type type);
@@ -88,6 +88,8 @@ struct Effect {
     // Colour-Override: the colours (swatch ids) shown in another colour instead.
     QVector<QPair<int, QColor>> overrides;
     QString text;               // script: the script; external: the command line
+    QString fromSpace, toSpace; // Colour Space: the colour space the picture is taken to be in, and the one it is put in
+    QString file;               // Look-Up Table: the LUT file
     int life = 24;
     double speed = 6.0;
     double spread = 60.0;

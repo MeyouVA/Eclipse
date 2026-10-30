@@ -26,6 +26,7 @@
 #include "canvas/Canvas.h"
 #include "ui/panels/LayerPanel.h"
 #include "ui/io/MovieExport.h"
+#include "ui/panels/ColourSpaceBox.h"
 #include "ui/views/NodeView.h"
 #include "ui/panels/SubstitutionPanel.h"
 #include "ui/timeline/Timeline.h"
@@ -306,6 +307,14 @@ void MainWindow::onActionExportMovie()
     form->addRow(transparent);
     form->addRow(tr("Encoding"), speed);
     form->addRow(tr("Sound"), audio);
+    // Colour management on: the colour space the frames are put in for the movie.
+    Scene const& managed = m_document->scene();
+    QComboBox* const space = ColourSpaceBox::make(&dialog, QStringLiteral("MovieColourSpace"), {}, tr("Scene Working Colour Space"));
+    space->setEnabled(managed.colourManaged);
+    if (!managed.colourManaged)
+        space->setItemText(0, tr("No Colour Space Management"));
+    space->setToolTip(tr("The colour space the movie's frames are put in (most players take sRGB or Rec.709)."));
+    form->addRow(tr("Colour Space"), space);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -323,6 +332,7 @@ void MainWindow::onActionExportMovie()
     choices.speed = speed->currentData().toInt();
     choices.audioKbps = audio->currentData().toInt();
     choices.transparentBackground = transparent->isEnabled() && transparent->isChecked();
+    choices.colourSpace = ColourSpaceBox::chosen(space);
     exportMovieTo(path, &choices);
 }
 
@@ -341,6 +351,7 @@ void MainWindow::exportMovieTo(QString const& path, MovieChoices const* choices)
         options.audioKbps = choices->audioKbps;
         options.transparentBackground = choices->transparentBackground;
     }
+    options.colourSpace = scene.outputSpace(choices ? choices->colourSpace : QString(), QString());
     QProgressDialog progress(tr("Exporting movie..."), tr("Stop"), 0, scene.frameCount(), this);
     progress.setWindowModality(Qt::WindowModal);
     progress.setMinimumDuration(300);

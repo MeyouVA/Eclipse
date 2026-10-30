@@ -140,8 +140,9 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
             frames.push_back(f);
         QVector<QImage> batch(frames.size());
         QImage* const held = batch.data();
-        FrameRender::render(rendered, frames, QSize(wide, high), false, [held, at](int f, QImage const& picture) {
-            held[f - at] = picture;
+        QString const space = options.colourSpace;
+        FrameRender::render(rendered, frames, QSize(wide, high), false, [held, at, &rendered, space](int f, QImage const& picture) {
+            held[f - at] = FrameRender::inSpace(rendered, picture, space, false);
             return QString();
         }, nullptr);
         for (int i = 0; i < batch.size(); ++i) {

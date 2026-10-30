@@ -140,6 +140,7 @@ private:
     QComboBox* m_antialiasing = nullptr;
     QDoubleSpinBox* m_antialiasExponent = nullptr;
     QComboBox* m_textureFilter = nullptr;
+    QComboBox* m_colourSpace = nullptr;
     QDoubleSpinBox* m_clipY = nullptr;
     QWidget* m_publishedBox = nullptr;
     QWidget* m_customBox = nullptr;

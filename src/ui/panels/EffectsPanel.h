@@ -14,6 +14,7 @@ class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
 class QLabel;
+class QLineEdit;
 class QListWidget;
 class QPushButton;
 
@@ -119,6 +120,11 @@ private:
     QPlainTextEdit* m_text = nullptr;
     QPushButton* m_textApply = nullptr;
     QLabel* m_textSays = nullptr;
+    // Colour Space: from and to; Look-Up Table: its file.
+    QComboBox* m_fromSpace = nullptr;
+    QComboBox* m_toSpace = nullptr;
+    QWidget* m_lutRow = nullptr;
+    QLineEdit* m_lutFile = nullptr;
     // The named settings of the kinds that have them.
     class EffectParamsEditor* m_params = nullptr;
 };

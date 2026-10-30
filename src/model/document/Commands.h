@@ -447,6 +447,8 @@ public:
     void endMacro();
     // `fov` (above 0): the angle of view of the camera size; a camera that had the old one, and does not key it, takes it.
     void setSceneSettings(int width, int height, double fps, double fov = 0.0);
+    // Scene Settings > Colour: colour space management on or off, the working colour space, how texture swatches and palette colours are read.
+    void setColourManagement(bool on, QString const& working, QString const& textures, bool palettesInSrgb);
 
 signals:
     void changed();

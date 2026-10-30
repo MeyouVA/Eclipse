@@ -23,6 +23,7 @@
 #include "audio/sound/Sound.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
+#include "canvas/FrameRender.h"
 #include "render/images/ImageFiles.h"
 #include "ui/views/DepthView.h"
 #include "ui/views/PerspectiveView.h"
@@ -123,6 +124,7 @@ QString MainWindow::recordForPlay(QString* error)
     options.last = playStop();
     options.scale = 0.5;        // quick to make and to play: it is for looking at the movement
     options.quality = 23;
+    options.colourSpace = scene.outputSpace(QString(), QString());
     QProgressDialog progress(tr("Recording..."), tr("Stop"), 0, scene.frameCount(), this);
     progress.setWindowModality(Qt::WindowModal);
     progress.setMinimumDuration(300);
@@ -414,8 +416,11 @@ void MainWindow::writeRenderedFrame(int at, QImage const& image)
         QString const name = w.name.trimmed().isEmpty() ? QStringLiteral("frame") : w.name.trimmed();
         QString const file = QDir(folder).filePath(QStringLiteral("%1_%2.%3").arg(name).arg(at + 1, 4, 10, QLatin1Char('0')).arg(w.format));
         QImage const sized = w.percent == 100 ? image : image.scaled(image.size() * (w.percent / 100.0), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        Scene const& scene = m_document->scene();
+        QString const space = scene.outputSpace(w.colourSpace, w.format);
+        QImage const written = FrameRender::inSpace(scene, sized, space, !space.isEmpty() && w.format.compare(QLatin1String("exr"), Qt::CaseInsensitive) == 0);
         QString why;
-        if (ImageFiles::save(sized, file, w.format, &why))
+        if (ImageFiles::save(written, file, w.format, &why, 92, space))
             ++made;
         else
             problems << why;

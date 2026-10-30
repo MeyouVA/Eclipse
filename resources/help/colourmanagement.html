@@ -1,0 +1,33 @@
+<html><head><meta charset="utf-8"><title>Colour management</title><style>body { background: #2b2b2e; color: #d6d8dc; font-family: 'Segoe UI', sans-serif; font-size: 10pt; margin: 14px; } h1 { color: #ffffff; font-size: 16pt; } h2 { color: #7fd0de; font-size: 12pt; margin-top: 16px; } a { color: #6fc3d6; } b { color: #ffffff; } li { margin-bottom: 4px; }</style></head><body>
+<p><a href="index.html">Contents</a></p>
+<h1>Colour management</h1>
+<p>Colour management says what the numbers of a colour mean: which red, which green, how light. It is off in a new scene, and then every colour is used as it is.</p>
+<h2>The scene's colour spaces</h2>
+<ul>
+<li><b>Scene &gt; Scene Settings &gt; Colour Space Management</b> turns it on. The <b>Working Colour Space</b> is the one layers and effects are put together in: sRGB, as most screens are, or a linear one such as ACEScg or Linear Rec.709, where light adds up as it does in a camera.</li>
+<li><b>Use Palettes Definition in sRGB Colour Space</b>: palette colours (and bitmaps painted in Eclipse) are taken to be sRGB colours and put in the working colour space. Off, they are taken as colours of the working space itself.</li>
+<li><b>Texture Swatches Colour Space</b>: the colour space texture swatches are read in.</li>
+<li><b>Layer Properties &gt; Drawing &gt; Colour Space</b>: the colour space a layer's pictures are read in (Scene Working Colour Space: they are not converted). New layers start with Preferences &gt; Colour Management &gt; <b>New Layer Colour Space</b>.</li>
+<li><b>Convert Image Colour Space on Import</b> (File &gt; Import &gt; Images): the pictures are read in their <b>Source Colour Space</b>; <i>From the File</i> uses the profile the file carries (sRGB when it has none).</li>
+</ul>
+<h2>On the screen</h2>
+<ul>
+<li>The <b>Colour Space View</b> box at the foot of the Camera view picks the display (and view) the working space is shown through: sRGB for most screens, Display P3 for wide-gamut ones, Rec.709 or Rec.2020 for video monitors, and the HDR ones.</li>
+</ul>
+<h2>Writing frames</h2>
+<ul>
+<li>Export Images, Scene &gt; Write Outputs (<b>Colour Space</b> column) and Export Movie each have a <b>Colour Space</b> for the files: the working space unless another is chosen. An EXR keeps its light in floats, in the scene's linear space unless told otherwise, and says its primaries (chromaticities).</li>
+<li>PNG, JPEG, TIFF and PSD files carry an ICC profile of their colour space, so other programs show them as Eclipse does.</li>
+</ul>
+<h2>Effects</h2>
+<ul>
+<li><b>Colour Space</b> (Colour-Correct) converts a layer's picture, or a node's, from one colour space to another.</li>
+<li><b>Look-Up Table</b> changes the colours through a LUT file: .cube, .3dl, .spi1d, .spi3d, .spimtx, .csp, Discreet .lut, Common LUT Format (.clf, .ctf) and colour decisions (.cdl, .cc, .ccc). <b>Mix</b> sets how much of it is used.</li>
+</ul>
+<h2>Configurations and profiles</h2>
+<ul>
+<li>Eclipse knows the usual colour spaces itself (ACES, sRGB, Display P3, Rec.709, Rec.2020, Adobe RGB, DCI-P3, ProPhoto, PQ and HLG). <b>Preferences &gt; Colour Management &gt; Colour configuration</b> can name an OpenColorIO configuration (.ocio) instead, as studios share; when none is set, the OCIO environment variable is used. A part of a configuration Eclipse cannot do (some ACES output transforms, grading transforms) is listed there, and the rest is used.</li>
+<li><b>ICC profiles</b> added there (those made of a matrix and curves) become colour spaces of their own.</li>
+</ul>
+<p><a href="index.html">Contents</a></p>
+</body></html>

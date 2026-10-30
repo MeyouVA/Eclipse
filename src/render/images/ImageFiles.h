@@ -21,8 +21,8 @@ QVector<Format> const& formats();
 // The format with this suffix (lower case, "tiff" taken as "tif"), or nullptr.
 Format const* find(QString const& suffix);
 
-// Writes `image` to `path` in `format` (a suffix from formats()); false with the reason in `error` when it cannot.
-bool save(QImage const& image, QString const& path, QString const& format, QString* error = nullptr, int jpegQuality = 92);
+// Writes `image` to `path` in `format` (a suffix); false with the reason when it cannot; `colourSpace` is said in the file where the format can (ICC, EXR chromaticities).
+bool save(QImage const& image, QString const& path, QString const& format, QString* error = nullptr, int jpegQuality = 92, QString const& colourSpace = {});
 
 // One layer of a layered file, the size of the picture.
 struct Layer {
@@ -31,6 +31,6 @@ struct Layer {
     bool visible = true;
 };
 // A Photoshop file holding `layers` (bottom first) and `composite` as the flat picture.
-bool saveLayered(QVector<Layer> const& layers, QImage const& composite, QString const& path, QString* error = nullptr);
+bool saveLayered(QVector<Layer> const& layers, QImage const& composite, QString const& path, QString* error = nullptr, QString const& colourSpace = {});
 
 }  // namespace ImageFiles

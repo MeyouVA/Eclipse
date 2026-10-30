@@ -1,11 +1,14 @@
 // Eclipse - writing rendered frames as picture files.
 #include "render/images/ImageFiles.h"
 
+#include "colour/icc/Icc.h"
+
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QColorSpace>
 #include <QSaveFile>
 
 #include <algorithm>
@@ -135,11 +138,12 @@ QByteArray tga(QImage const& source)
 }
 
 // Baseline TIFF: one strip of 8-bit red, green, blue and (unassociated) alpha, not packed.
-QByteArray tiff(QImage const& source)
+QByteArray tiff(QImage const& source, QByteArray const& icc)
 {
     QImage const image = straight(source);
     quint32 const w = quint32(image.width()), h = quint32(image.height());
     quint32 const pixels = w * h * 4;
+    bool const profiled = !icc.isEmpty();
     Bytes out;
     out.text("II");
     out.u16(42);
@@ -148,14 +152,18 @@ QByteArray tiff(QImage const& source)
         quint16 tag, type;
         quint32 count, value;
     };
-    int const count = 14;
-    quint32 const ifdEnd = 8 + 2 + count * 12 + 4;
+    int const count = profiled ? 15 : 14;
+    quint32 const ifdEnd = 8 + 2 + quint32(count) * 12 + 4;
     quint32 const bits = ifdEnd, resolution = bits + 8, data = resolution + 16;
-    Entry const entries[count] = {
+    // (The colour profile, when there is one, after the pixels: tag 34675.)
+    quint32 const profileAt = (data + pixels + 1) / 2 * 2;
+    Entry const entries[15] = {
         {256, 4, 1, w}, {257, 4, 1, h}, {258, 3, 4, bits}, {259, 3, 1, 1}, {262, 3, 1, 2}, {273, 4, 1, data}, {277, 3, 1, 4},
-        {278, 4, 1, h}, {279, 4, 1, pixels}, {282, 5, 1, resolution}, {283, 5, 1, resolution + 8}, {284, 3, 1, 1}, {296, 3, 1, 2}, {338, 3, 1, 2}};
-    out.u16(count);
-    for (Entry const& e : entries) {
+        {278, 4, 1, h}, {279, 4, 1, pixels}, {282, 5, 1, resolution}, {283, 5, 1, resolution + 8}, {284, 3, 1, 1}, {296, 3, 1, 2}, {338, 3, 1, 2},
+        {34675, 7, quint32(icc.size()), profileAt}};
+    out.u16(quint32(count));
+    for (int i = 0; i < count; ++i) {
+        Entry const& e = entries[i];
         out.u16(e.tag);
         out.u16(e.type);
         out.u32(e.count);
@@ -182,6 +190,11 @@ QByteArray tiff(QImage const& source)
             out.u8(qBlue(row[x]));
             out.u8(qAlpha(row[x]));
         }
+    }
+    if (profiled) {
+        while (quint32(out.data.size()) < profileAt)
+            out.u8(0);
+        out.data += icc;
     }
     return out.data;
 }
@@ -274,9 +287,11 @@ QByteArray box(int right, int bottom)
 }
 
 // OpenEXR: linear light, half floats, the colours multiplied by the alpha as the format has them; not packed.
-QByteArray exr(QImage const& source)
+QByteArray exr(QImage const& source, Cms::Primaries const& chromaticities)
 {
-    QImage const image = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    // A float picture is taken as it is (already in its colour space); one of 8 bits a channel is sRGB, made linear here.
+    bool const floats = source.depth() >= 64;
+    QImage const image = floats ? source.convertToFormat(QImage::Format_RGBA32FPx4_Premultiplied) : source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     int const w = image.width(), h = image.height();
     Bytes out;
     out.u32(20000630);
@@ -293,6 +308,13 @@ QByteArray exr(QImage const& source)
     }
     channels.u8(0);
     attribute(out, "channels", "chlist", channels.data);
+    if (chromaticities.valid()) {
+        Bytes c;
+        for (double v : {chromaticities.rx, chromaticities.ry, chromaticities.gx, chromaticities.gy, chromaticities.bx, chromaticities.by, chromaticities.wx,
+                         chromaticities.wy})
+            c.f32(float(v));
+        attribute(out, "chromaticities", "chromaticities", c.data);
+    }
     attribute(out, "compression", "compression", QByteArray(1, '\0'));
     attribute(out, "dataWindow", "box2i", box(w - 1, h - 1));
     attribute(out, "displayWindow", "box2i", box(w - 1, h - 1));
@@ -314,6 +336,14 @@ QByteArray exr(QImage const& source)
     for (int y = 0; y < h; ++y) {
         out.u32(quint32(y));
         out.u32(quint32(lineBytes));
+        if (floats) {
+            float const* const line = reinterpret_cast<float const*>(image.constScanLine(y));
+            // (The file keeps A, B, G, R; the picture has R, G, B, A.)
+            for (int channel : {3, 2, 1, 0})
+                for (int x = 0; x < w; ++x)
+                    out.u16(half(line[x * 4 + channel]));
+            continue;
+        }
         QRgb const* const row = reinterpret_cast<QRgb const*>(image.constScanLine(y));
         for (int channel = 0; channel < 4; ++channel)
             for (int x = 0; x < w; ++x) {
@@ -404,7 +434,7 @@ QByteArray plane(QImage const& image, int channel)
     return bytes;
 }
 
-QByteArray psd(QVector<ImageFiles::Layer> const& layers, QImage const& compositeSource)
+QByteArray psd(QVector<ImageFiles::Layer> const& layers, QImage const& compositeSource, QByteArray const& icc)
 {
     QImage const composite = straight(compositeSource);
     Bytes out;
@@ -418,7 +448,22 @@ QByteArray psd(QVector<ImageFiles::Layer> const& layers, QImage const& composite
     out.u16(8);
     out.u16(3);
     out.u32(0);
-    out.u32(0);
+    if (icc.isEmpty()) {
+        out.u32(0);
+    } else {
+        // Image resources: the colour profile (resource 1039), with an empty name.
+        Bytes res;
+        res.big = true;
+        res.text("8BIM");
+        res.u16(1039);
+        res.u16(0);
+        res.u32(quint32(icc.size()));
+        res.data += icc;
+        if (res.data.size() % 2)
+            res.u8(0);
+        out.u32(quint32(res.data.size()));
+        out.data += res.data;
+    }
     if (layers.isEmpty()) {
         out.u32(0);
     } else {
@@ -501,7 +546,7 @@ Format const* find(QString const& suffix)
     return nullptr;
 }
 
-bool save(QImage const& image, QString const& path, QString const& format, QString* error, int jpegQuality)
+bool save(QImage const& image, QString const& path, QString const& format, QString* error, int jpegQuality, QString const& colourSpace)
 {
     Format const* const f = find(format);
     if (!f) {
@@ -515,34 +560,46 @@ bool save(QImage const& image, QString const& path, QString const& format, QStri
         return false;
     }
     QString const name = QFileInfo(path).completeBaseName();
+    QByteArray const icc = colourSpace.isEmpty() ? QByteArray() : Cms::Icc::profileOf(colourSpace);
     if (f->suffix == QLatin1String("tga"))
         return writeFile(path, tga(image), error);
     if (f->suffix == QLatin1String("tif"))
-        return writeFile(path, tiff(image), error);
+        return writeFile(path, tiff(image, icc), error);
     if (f->suffix == QLatin1String("sgi"))
         return writeFile(path, sgi(image, name), error);
-    if (f->suffix == QLatin1String("exr"))
-        return writeFile(path, exr(image), error);
+    if (f->suffix == QLatin1String("exr")) {
+        // (Without colour management the file is linear sRGB, so its primaries are those of Rec.709.)
+        Cms::Space const* const s = colourSpace.isEmpty() ? nullptr : Cms::config()->space(colourSpace);
+        Cms::Primaries const primaries = s ? s->primaries : colourSpace.isEmpty() ? Cms::rec709Primaries() : Cms::Primaries();
+        return writeFile(path, exr(image, primaries), error);
+    }
     if (f->suffix == QLatin1String("dpx"))
         return writeFile(path, dpx(image, name), error);
     if (f->suffix == QLatin1String("psd"))
-        return writeFile(path, psd({}, image), error);
-    bool const ok = f->suffix == QLatin1String("jpg") ? image.convertToFormat(QImage::Format_RGB32).save(path, "JPG", jpegQuality)
-                    : f->suffix == QLatin1String("bmp")  ? image.convertToFormat(QImage::Format_RGB32).save(path, "BMP")
-                                                         : image.save(path, "PNG");
+        return writeFile(path, psd({}, image, icc), error);
+    // PNG and JPEG: Qt writes the profile the picture is tagged with.
+    QImage tagged = f->suffix == QLatin1String("png") ? image : image.convertToFormat(QImage::Format_RGB32);
+    if (!icc.isEmpty() && f->suffix != QLatin1String("bmp")) {
+        QColorSpace const space = QColorSpace::fromIccProfile(icc);
+        if (space.isValid())
+            tagged.setColorSpace(space);
+    }
+    bool const ok = f->suffix == QLatin1String("jpg") ? tagged.save(path, "JPG", jpegQuality)
+                    : f->suffix == QLatin1String("bmp")  ? tagged.save(path, "BMP")
+                                                         : tagged.save(path, "PNG");
     if (!ok && error)
         *error = said("Error when writing image to %1").arg(QDir::toNativeSeparators(path));
     return ok;
 }
 
-bool saveLayered(QVector<Layer> const& layers, QImage const& composite, QString const& path, QString* error)
+bool saveLayered(QVector<Layer> const& layers, QImage const& composite, QString const& path, QString* error, QString const& colourSpace)
 {
     if (composite.isNull()) {
         if (error)
             *error = said("There is no picture to write to %1").arg(QDir::toNativeSeparators(path));
         return false;
     }
-    return writeFile(path, psd(layers, composite), error);
+    return writeFile(path, psd(layers, composite, colourSpace.isEmpty() ? QByteArray() : Cms::Icc::profileOf(colourSpace)), error);
 }
 
 }  // namespace ImageFiles

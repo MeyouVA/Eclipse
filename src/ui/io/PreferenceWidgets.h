@@ -174,6 +174,13 @@ struct PreferenceWidgets {
     QCheckBox* gridOnDefault = nullptr;
     QCheckBox* onionOthers = nullptr;
     QCheckBox* onionEnhanced = nullptr;
+    QGroupBox* colourPage = nullptr;
+    QLineEdit* colourConfig = nullptr;
+    QLabel* colourConfigStatus = nullptr;
+    QListWidget* iccProfiles = nullptr;
+    QComboBox* newLayerSpace = nullptr;
+    QCheckBox* convertOnImport = nullptr;
+    QComboBox* importSourceSpace = nullptr;
     QGroupBox* soundPage = nullptr;
     QCheckBox* soundOn = nullptr;
     QCheckBox* scrub = nullptr;

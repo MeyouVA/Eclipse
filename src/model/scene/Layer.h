@@ -117,6 +117,8 @@ struct Layer {
     double antialiasExponent = 1.0;
     enum TextureFilter { FilterSmooth, FilterNearest };
     int textureFilter = FilterSmooth;
+    // The colour space its pictures are read in (empty: the scene's working space: not converted).
+    QString colourSpace;
     QVector<Effect> effects;
     double effectAmount(int index, Pose const& pose) const;
     QColor cardColor = Qt::white;   // a colour-card: its colour
@@ -180,6 +182,8 @@ struct Layer {
         // Of drawing layers: how smooth their edges are, and how hard their soft edge (Antialiasing Quality and Exponent).
         int antialiasing = 2;
         double antialiasExponent = 1.0;
+        // Preferences > Colour Management: New Layer Colour Space (empty: the working space).
+        QString colourSpace;
     };
     ECLIPSE_MODEL_API static NewLayerDefaults newLayers;
     double limitedAngle(double angle) const { return angleLimited ? std::clamp(angle, std::min(minAngle, maxAngle), std::max(minAngle, maxAngle)) : angle; }

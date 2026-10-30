@@ -179,7 +179,7 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
                 QPainter one(&alone);
                 one.setRenderHints(painter.renderHints());
                 if (card) {
-                    QColor colour = layer.cardColor;
+                    QColor colour = scene.managedColour(layer.cardColor);
                     colour.setAlphaF(colour.alphaF() * float(layer.opacity));
                     one.setTransform(base);
                     one.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
@@ -244,7 +244,7 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
         int const index = layer.drawingAt(frame);
         if (layer.kind == Layer::ColourCard && scene.enabled(l)) {
             // The whole frame, whatever the camera does.
-            QColor colour = layer.cardColor;
+            QColor colour = scene.managedColour(layer.cardColor);
             colour.setAlphaF(colour.alphaF() * float(layer.opacity));
             painter.setTransform(base);
             painter.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
@@ -410,7 +410,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
         QPainter p(&out);
         p.setRenderHints(painter.renderHints());
         if (layer.kind == Layer::ColourCard) {
-            QColor colour = layer.cardColor;
+            QColor colour = scene.managedColour(layer.cardColor);
             colour.setAlphaF(colour.alphaF() * float(layer.opacity));
             p.setTransform(base);
             p.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
@@ -580,6 +580,7 @@ bool Canvas::paintGraph(QPainter& painter, Scene const& scene, int frame)
             context.frame = QTransform::fromScale(dpr, dpr).mapRect((camera * base).mapRect(QRectF(0, 0, scene.width, scene.height)));
             context.at = frame;
             context.fps = scene.fps;
+            context.workingSpace = scene.workingSpace;
             if (e.type == Effect::Refract)
                 context.second = input(id, 1);
             if (!e.enabled) {

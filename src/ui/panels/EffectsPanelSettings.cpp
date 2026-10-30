@@ -8,7 +8,9 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
+#include <QFileDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QMenu>
 #include <QDir>
@@ -25,6 +27,9 @@
 #include <algorithm>
 #include <cmath>
 #include "model/document/Commands.h"
+#include "colour/images/ColourTransform.h"
+#include "colour/luts/Luts.h"
+#include "ui/panels/ColourSpaceBox.h"
 
 #include <algorithm>
 #include <cmath>
@@ -130,6 +135,49 @@ void EffectsPanel::addMoreSettings(QVBoxLayout* layout)
         }
         edit([text](Effect& e) { e.text = text; });
         m_textSays->setText(says);
+    });
+    // Colour Space: what the picture is taken to be in, and what it is put in.
+    QString const working = tr("Scene Working Colour Space");
+    m_fromSpace = ColourSpaceBox::make(m_more, QStringLiteral("EffectFromSpace"), {}, working);
+    m_fromSpace->setToolTip(tr("Source Colour Space: the colour space the picture is taken to be in."));
+    m_moreForm->addRow(tr("From"), m_fromSpace);
+    m_toSpace = ColourSpaceBox::make(m_more, QStringLiteral("EffectToSpace"), {}, working);
+    m_toSpace->setToolTip(tr("The colour space the picture is put in."));
+    m_moreForm->addRow(tr("To"), m_toSpace);
+    for (QComboBox* box : {m_fromSpace, m_toSpace})
+        connect(box, &QComboBox::activated, this, [this] {
+            QString const from = ColourSpaceBox::chosen(m_fromSpace), to = ColourSpaceBox::chosen(m_toSpace);
+            edit([from, to](Effect& e) {
+                e.fromSpace = from;
+                e.toSpace = to;
+            });
+        });
+    // Look-Up Table: the file, typed or browsed for.
+    m_lutRow = new QWidget(m_more);
+    QHBoxLayout* const lutLine = new QHBoxLayout(m_lutRow);
+    lutLine->setContentsMargins(0, 0, 0, 0);
+    m_lutFile = new QLineEdit(m_lutRow);
+    m_lutFile->setObjectName(QStringLiteral("EffectLutFile"));
+    m_lutFile->setToolTip(tr("The LUT file: %1").arg(Cms::Luts::filter()));
+    QPushButton* const browse = new QPushButton(tr("Browse..."), m_lutRow);
+    browse->setObjectName(QStringLiteral("EffectLutBrowse"));
+    lutLine->addWidget(m_lutFile, 1);
+    lutLine->addWidget(browse);
+    m_moreForm->addRow(tr("LUT File"), m_lutRow);
+    auto useLut = [this](QString const& file) {
+        QString why;
+        if (!file.isEmpty())
+            Cms::ofLut(file, &why);
+        m_textSays->setText(why);
+        edit([file](Effect& e) { e.file = file; });
+    };
+    connect(m_lutFile, &QLineEdit::editingFinished, this, [this, useLut] { useLut(m_lutFile->text().trimmed()); });
+    connect(browse, &QPushButton::clicked, this, [this, useLut] {
+        QString const file = QFileDialog::getOpenFileName(this, tr("Look-Up Table"), m_lutFile->text(), Cms::Luts::filter());
+        if (file.isEmpty())
+            return;
+        m_lutFile->setText(QDir::toNativeSeparators(file));
+        useLut(file);
     });
     connect(m_curve, &ColourCurveEdit::edited, this, [this](QVector<QPointF> const& points) {
         int const which = std::clamp(m_curveWhich->currentIndex(), 0, 3);

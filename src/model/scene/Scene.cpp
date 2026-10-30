@@ -203,6 +203,7 @@ int Scene::addLayer(QString const& name, int at, Layer::Kind kind)
             layer.embeddedPivot = Layer::newLayers.embeddedPivot;
             layer.antialiasing = Layer::newLayers.antialiasing;
             layer.antialiasExponent = Layer::newLayers.antialiasExponent;
+            layer.colourSpace = Layer::newLayers.colourSpace;
         }
     }
     if (kind == Layer::Quadmap) {

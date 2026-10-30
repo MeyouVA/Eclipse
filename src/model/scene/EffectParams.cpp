@@ -298,7 +298,9 @@ Effect::Amount Effect::amountOf(Type type)
     case ChannelSwap:
     case ColourScreen:
     case ColourBanding: return {QT_TRANSLATE_NOOP("Effect", "Amount"), 1, 1.0, 1.0};
+    case LookUpTable: return {QT_TRANSLATE_NOOP("Effect", "Mix"), 1, 1.0, 1.0};
     case ColourOverride:
+    case ColourSpace:
     case AnimatePencilTexture: return {nullptr, 0, 1.0, 1.0};
     default: return {nullptr, -1, 0.0, 0.0};
     }

@@ -136,7 +136,7 @@ Open an "x64 Native Tools Command Prompt for VS", then:
 ```bat
 cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
 cmake --build out
-C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --no-translations out\Eclipse.exe out\EclipseUi.dll out\EclipseCanvas.dll out\EclipseActions.dll out\EclipseFormats.dll out\EclipseRender.dll out\EclipseAudio.dll out\EclipseModel.dll
+C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --no-translations out\Eclipse.exe out\EclipseUi.dll out\EclipseCanvas.dll out\EclipseActions.dll out\EclipseFormats.dll out\EclipseRender.dll out\EclipseAudio.dll out\EclipseModel.dll out\EclipseColour.dll
 ```
 
 Replace the Qt path with yours. The last line copies the Qt files next to the program and
@@ -144,11 +144,12 @@ only has to be run once.
 
 ## How the code is laid out
 
-Eclipse is seven libraries and a small program that starts them. Each folder under `src`
+Eclipse is eight libraries and a small program that starts them. Each folder under `src`
 is one module:
 
 | Module | Folder | What is in it |
 |---|---|---|
+| `EclipseColour.dll` | `src/colour` | Colour management: colour spaces, OpenColorIO configurations, look-up tables and ICC profiles |
 | `EclipseModel.dll` | `src/model` | The scene: layers, drawings, keyframes, and every change to them as a step that can be undone |
 | `EclipseAudio.dll` | `src/audio` | Reading, mixing and playing sound; lip-sync detection |
 | `EclipseFormats.dll` | `src/formats` | Other programs' files: Flash `.fla` and `.swf` in, `.swf` out, Flash video, zip archives |

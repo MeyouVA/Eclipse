@@ -1,11 +1,13 @@
 // Eclipse - the main window: its views put in their panels; the Camera view and the Timeline with their toolbars.
 #include "ui/window/MainWindow.h"
+#include "colour/spaces/ColourConfig.h"
 #include <QScrollArea>
 #include "model/geometry/Deform.h"
 
 #include <QApplication>
 #include <QSignalBlocker>
 #include <QComboBox>
+#include <QSettings>
 #include <QDockWidget>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -437,6 +439,53 @@ void MainWindow::createCameraView()
         row->addSpacing(6);
         row->addWidget(mode);
         row->addWidget(renderControls);
+        // Colour Space View: the display and view the Camera view shows the working space through.
+        QComboBox* const viewSpace = new QComboBox(status);
+        viewSpace->setObjectName(QStringLiteral("ViewColourSpace"));
+        viewSpace->setFocusPolicy(Qt::NoFocus);
+        viewSpace->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        viewSpace->setMinimumContentsLength(9);
+        viewSpace->setToolTip(tr("Colour Space View\nColour Space used in the camera view."));
+        {
+            QSettings const s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+            m_canvas->setViewColourSpace(s.value(QStringLiteral("view/colourDisplay")).toString(), s.value(QStringLiteral("view/colourView")).toString());
+        }
+        auto fillViewSpace = [this, viewSpace] {
+            QSignalBlocker const quiet(viewSpace);
+            viewSpace->clear();
+            if (!m_document->scene().colourManaged) {
+                viewSpace->addItem(tr("No Colour Space Management"));
+                viewSpace->setEnabled(false);
+                viewSpace->setVisible(false);
+                return;
+            }
+            viewSpace->setEnabled(true);
+            viewSpace->setVisible(true);
+            std::shared_ptr<Cms::Config const> const c = Cms::config();
+            for (QString const& display : c->displayNames()) {
+                QStringList const views = c->viewNames(display);
+                for (QString const& view : views)
+                    viewSpace->addItem(views.size() == 1 || view == display ? display : tr("%1 / %2").arg(display, view), QStringList{display, view});
+            }
+            int at = viewSpace->findData(QStringList{m_canvas->viewDisplay(), m_canvas->viewView()});
+            viewSpace->setCurrentIndex(std::max(at, 0));
+            QString why;
+            m_canvas->viewColourTransform(&why);
+            viewSpace->setToolTip(why.isEmpty() ? tr("Colour Space View\nColour Space used in the camera view.") : tr("Colour Space Unavailable: %1").arg(why));
+        };
+        connect(viewSpace, &QComboBox::activated, m_canvas, [this, viewSpace] {
+            QStringList const chosen = viewSpace->currentData().toStringList();
+            if (chosen.size() != 2)
+                return;
+            m_canvas->setViewColourSpace(chosen[0], chosen[1]);
+            QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+            s.setValue(QStringLiteral("view/colourDisplay"), chosen[0]);
+            s.setValue(QStringLiteral("view/colourView"), chosen[1]);
+        });
+        connect(m_document, &Document::changed, viewSpace, fillViewSpace);
+        connect(this, &MainWindow::colourConfigChanged, viewSpace, fillViewSpace);
+        fillViewSpace();
+        row->addWidget(viewSpace);
         // Snapshots: the frame as rendered, kept; shown in place of the frame while the button is down, to compare.
         QToolButton* const take = new QToolButton(status);
         take->setObjectName(QStringLiteral("TakeSnapshot"));

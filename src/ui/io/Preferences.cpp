@@ -222,6 +222,7 @@ void MainWindow::applyPreferences()
     Canvas::setToneHighlightEnabled(s.value(QStringLiteral("prefs/renderToneHighlight"), true).toBool());
     Canvas::setColourOverrideEnabled(s.value(QStringLiteral("prefs/renderColourOverride"), true).toBool());
     applyRenderPreferences(s);
+    applyColourPreferences(s);
     m_canvas->update();
     m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
@@ -315,6 +316,7 @@ void MainWindow::onActionPreferences()
     preferencesAdvanced(w, s, dialog);
     preferencesTimeline(w, s, dialog);
     preferencesRender(w, s, dialog);
+    preferencesColourManagement(w, s, dialog);
     preferencesTools(w, s, dialog);
     preferencesNodeView(w, s, dialog);
     preferencesOnion(w, s, dialog);
@@ -362,7 +364,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.soundPage, w.advanced}) {
+    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.colourPage, w.soundPage, w.advanced}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -399,6 +401,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/smoothing"), w.smoothing->value());
     s.setValue(QStringLiteral("prefs/corners"), w.corners->value());
     saveNodePreferences(w, s);
+    saveColourPreferences(w, s);
     s.setValue(QStringLiteral("prefs/onionPrevious"), w.onionCountBefore->value());
     s.setValue(QStringLiteral("prefs/onionNext"), w.onionCountAfter->value());
     s.setValue(QStringLiteral("prefs/onionOpacity"), w.onionStrength->value());

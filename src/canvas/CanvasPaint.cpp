@@ -22,6 +22,7 @@
 #include "canvas/PencilTexture.h"
 #include "render/effects/Effects.h"
 #include "canvas/CanvasPaintShared.h"
+#include "colour/images/ColourTransform.h"
 
 using namespace canvas_paint;
 
@@ -38,11 +39,61 @@ QBrush flatInView(Scene const& scene, QBrush const& brush, int swatch)
     return s ? QBrush(s->color) : brush;
 }
 
+// The conversions of the colour management in use while a drawing is painted.
+struct Managed {
+    Cms::Transform colours, textures, pictures;
+    bool any() const { return !colours.isIdentity() || !textures.isIdentity() || !pictures.isIdentity(); }
+};
+
+// A palette colour, gradient or texture put in the working space.
+QBrush managedBrush(QBrush brush, Managed const& m)
+{
+    switch (brush.style()) {
+    case Qt::NoBrush:
+        return brush;
+    case Qt::LinearGradientPattern:
+    case Qt::RadialGradientPattern:
+    case Qt::ConicalGradientPattern: {
+        if (m.colours.isIdentity() || !brush.gradient())
+            return brush;
+        QGradient g = *brush.gradient();
+        QGradientStops stops = g.stops();
+        for (QGradientStop& stop : stops)
+            stop.second = m.colours.apply(stop.second);
+        g.setStops(stops);
+        QBrush out(g);
+        out.setTransform(brush.transform());
+        return out;
+    }
+    case Qt::TexturePattern: {
+        if (m.textures.isIdentity())
+            return brush;
+        QBrush out(convertedPicture(brush.textureImage(), m.textures));
+        out.setTransform(brush.transform());
+        return out;
+    }
+    default:
+        if (!m.colours.isIdentity())
+            brush.setColor(m.colours.apply(brush.color()));
+        return brush;
+    }
+}
+
 }  // namespace
 
 void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Drawing const& drawing, QColor const* tint)
 {
-    auto paintPicture = [&painter](Picture const& picture) {
+    // Colour management: palette colours, textures and pictures put in the working space.
+    Managed managed;
+    if (scene.colourManaged && !tint) {
+        managed.colours = scene.swatchTransform();
+        managed.textures = scene.textureTransform();
+        if (gPictureLayer)
+            managed.pictures = scene.pictureTransform(*gPictureLayer, false);
+    }
+    bool const managing = managed.any();
+    auto brushOf = [&](QBrush const& brush) { return managing ? managedBrush(brush, managed) : brush; };
+    auto paintPicture = [&painter, &managed, managing](Picture const& picture) {
         painter.save();
         painter.setTransform(picture.placement, true);
         if (!picture.clip.isEmpty()) {
@@ -64,7 +115,9 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
         } else {
             painter.setRenderHint(QPainter::SmoothPixmapTransform, !gNearestPictures && !leftOut(Canvas::ViewSmoothPictures));
             PictureWash const& wash = pictureWashState();
-            painter.drawImage(box, !picture.painted && wash.percent > 0 ? washedPicture(picture.image, wash.percent, wash.colour) : picture.image);
+            Cms::Transform const& t = picture.painted ? managed.colours : managed.pictures;
+            QImage const shown = managing && !t.isIdentity() ? convertedPicture(picture.image, t) : picture.image;
+            painter.drawImage(box, !picture.painted && wash.percent > 0 ? washedPicture(shown, wash.percent, wash.colour) : shown);
         }
         painter.restore();
     };
@@ -90,7 +143,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
         QVector<Stroke> const walls = fine ? Canvas::wallsOf(drawing, sheet) : QVector<Stroke>();
         quint64 const key = fine ? Canvas::wallsKey(walls) : 0;
         auto drawFill = [&](Fill const& fill) {
-            QBrush const brush = tint ? QBrush(*tint) : flatInView(scene, scene.brushFor(fill), fill.swatch);
+            QBrush const brush = tint ? QBrush(*tint) : brushOf(flatInView(scene, scene.brushFor(fill), fill.swatch));
             if (!fine || !fill.follows || !fill.contours.isEmpty()) {
                 Canvas::paintFill(painter, fill, brush);
                 return;
@@ -104,7 +157,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             for (Fill const& fill : fills)
                 drawFill(fill);
             for (Stroke const& stroke : strokes)
-                Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : flatInView(scene, scene.brushFor(stroke), stroke.swatch));
+                Canvas::paintStroke(painter, stroke, tint ? QBrush(*tint) : brushOf(flatInView(scene, scene.brushFor(stroke), stroke.swatch)));
             continue;
         }
         // From the bottom of the order up: areas under lines of the same place, each list in its own order.
@@ -129,7 +182,7 @@ void canvas_paint::paintDrawingOpaque(QPainter& painter, Scene const& scene, Dra
             else if (item.kind == 0)
                 drawFill(fills[item.index]);
             else
-                Canvas::paintStroke(painter, strokes[item.index], tint ? QBrush(*tint) : flatInView(scene, scene.brushFor(strokes[item.index]), strokes[item.index].swatch));
+                Canvas::paintStroke(painter, strokes[item.index], tint ? QBrush(*tint) : brushOf(flatInView(scene, scene.brushFor(strokes[item.index]), strokes[item.index].swatch)));
         }
     }
 }
@@ -224,7 +277,12 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     auto const restore = qScopeGuard([&painter] { painter.restore(); });
     bool const nearestBefore = gNearestPictures;
     gNearestPictures = layer.textureFilter == Layer::FilterNearest;
-    auto const restoreNearest = qScopeGuard([nearestBefore] { gNearestPictures = nearestBefore; });
+    Layer const* const pictureLayerBefore = gPictureLayer;
+    gPictureLayer = &layer;
+    auto const restoreNearest = qScopeGuard([nearestBefore, pictureLayerBefore] {
+        gNearestPictures = nearestBefore;
+        gPictureLayer = pictureLayerBefore;
+    });
     if (cameraClipping && scene.cameraIndex() >= 0 && layer.holdsDrawings() && !drawing.isEmpty()) {
         QRectF const bounds = drawing.bounds().adjusted(-2, -2, 2, 2);
         QPolygonF const clipped = scene.cameraClip(l, frame, bounds);

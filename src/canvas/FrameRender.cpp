@@ -11,6 +11,7 @@
 #include <cmath>
 
 #include "canvas/Canvas.h"
+#include "colour/images/ColourTransform.h"
 
 namespace {
 
@@ -51,6 +52,14 @@ QImage frame(Scene const& scene, int f, QSize size, bool quick, QColor const& un
     Canvas::paintFrame(painter, scene, f);
     painter.end();
     return image;
+}
+
+QImage inSpace(Scene const& scene, QImage const& image, QString const& space, bool floats)
+{
+    if (space.isEmpty())
+        return image;
+    Cms::Transform const out = scene.outputTransform(space);
+    return floats ? out.toFloat(image) : out.applied(image);
 }
 
 bool render(Scene const& scene, QVector<int> const& frames, QSize size, bool quick,

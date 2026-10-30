@@ -37,6 +37,10 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.fps = std::clamp(json["fps"].toDouble(24.0), 1.0, 240.0);
     scene.orthographic = json["orthographic"].toBool(false);
     scene.soloMode = json["soloMode"].toBool(true);
+    scene.colourManaged = json["colourManaged"].toBool(false);
+    scene.workingSpace = json["workingSpace"].toString(QStringLiteral("sRGB"));
+    scene.textureSpace = json["textureSpace"].toString(QStringLiteral("sRGB"));
+    scene.palettesInSrgb = json["palettesInSrgb"].toBool(true);
     scene.framesPerBeat = std::clamp(json["framesPerBeat"].toInt(0), 0, 1000);
     scene.beatsPerBar = std::clamp(json["beatsPerBar"].toInt(0), 0, 1000);
     for (QJsonValue const& mv : json["sheetMarkers"].toArray()) {
@@ -77,6 +81,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         w.percent = std::clamp(wo["percent"].toInt(100), 1, 1000);
         w.enabled = wo["enabled"].toBool(true);
         w.layers = wo["layers"].toBool(false);
+        w.colourSpace = wo["colourSpace"].toString();
         scene.writes.push_back(w);
     }
     for (QJsonValue const& cv : json["controllers"].toArray()) {

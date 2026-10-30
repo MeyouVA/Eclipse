@@ -163,6 +163,8 @@ QJsonObject Scene::toJson(QString const& folder) const
         QJsonObject wo{{"name", w.name}, {"movie", w.movie}, {"path", w.path}, {"format", w.format}, {"percent", w.percent}, {"enabled", w.enabled}};
         if (w.layers)
             wo["layers"] = true;
+        if (!w.colourSpace.isEmpty())
+            wo["colourSpace"] = w.colourSpace;
         writeArray.append(wo);
     }
     QJsonObject whole{{"format", "eclipse-scene"},
@@ -193,6 +195,15 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"frames", m_frameCount},
                        {"background", background.name(QColor::HexArgb)},
                        {"layers", layerArray}};
+    // (Written only when they are not as a new scene has them, so older scenes read the same.)
+    if (colourManaged)
+        whole["colourManaged"] = true;
+    if (workingSpace != QLatin1String("sRGB"))
+        whole["workingSpace"] = workingSpace;
+    if (textureSpace != QLatin1String("sRGB"))
+        whole["textureSpace"] = textureSpace;
+    if (!palettesInSrgb)
+        whole["palettesInSrgb"] = false;
     if (!functions.isEmpty()) {
         QJsonArray columns;
         for (FunctionColumn const& c : functions) {
