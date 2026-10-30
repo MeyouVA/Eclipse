@@ -413,6 +413,10 @@ void MainWindow::exportMovieTo(QString const& path, MovieChoices const* choices)
         options.timecode = choices->timecode;
     }
     options.timecodeFont = settings().value(QStringLiteral("prefs/timecodeFont"), QStringLiteral("Arial")).toString();
+    options.timecodeColour = settings().value(QStringLiteral("prefs/timecodeColour"), QColor(Qt::white)).value<QColor>();
+    options.timecodeBackground = settings().value(QStringLiteral("prefs/timecodeBackground"), QColor(0, 0, 0, 170)).value<QColor>();
+    options.timecodeHeight = settings().value(QStringLiteral("prefs/timecodeHeight"), 4).toInt();
+    options.timecodePosition = settings().value(QStringLiteral("prefs/timecodePosition"), 4).toInt();
     options.colourSpace = scene.outputSpace(choices ? choices->colourSpace : QString(), QString());
     QProgressDialog progress(tr("Exporting movie..."), tr("Stop"), 0, scene.frameCount(), this);
     progress.setWindowModality(Qt::WindowModal);

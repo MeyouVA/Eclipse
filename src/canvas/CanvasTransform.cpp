@@ -370,7 +370,8 @@ void Canvas::paintTransformAids(QPainter& painter)
     TransformOptions const& o = m_tx;
     painter.resetTransform();
     painter.setRenderHint(QPainter::Antialiasing, true);
-    QColor const accent = InterfaceColours::get("transformTool");
+    // (In the colour of the animate mode: the current frame, the onion skin range, or off.)
+    QColor const accent = InterfaceColours::get(m_animateRange ? "pegAnimateRange" : m_animate ? "transformTool" : "pegAnimateOff");
     QColor const handle = InterfaceColours::get("transformHandle");
     if (m_drag == DragLayerPick && m_layerPick.size() >= 2) {
         QPen pick(accent);

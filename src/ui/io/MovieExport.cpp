@@ -156,11 +156,15 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
                                          .arg(frameNow / perSecond % 60, 2, 10, QLatin1Char('0')).arg(frameNow % perSecond, 2, 10, QLatin1Char('0'));
                 QPainter p(&batch[i]);
                 QFont font(options.timecodeFont.isEmpty() ? QStringLiteral("Arial") : options.timecodeFont);
-                font.setPixelSize(std::max(10, batch[i].height() / 24));
+                font.setPixelSize(std::max(8, batch[i].height() * std::clamp(options.timecodeHeight, 1, 50) / 100));
                 p.setFont(font);
-                QRect const band = p.fontMetrics().boundingRect(code).adjusted(-6, -3, 6, 3).translated(12, batch[i].height() - 12 - p.fontMetrics().descent());
-                p.fillRect(band, QColor(0, 0, 0, 170));
-                p.setPen(Qt::white);
+                QRect band = p.fontMetrics().boundingRect(code).adjusted(-6, -3, 6, 3);
+                int const place = std::clamp(options.timecodePosition, 0, 5), margin = 12;
+                int const left = place % 3 == 0 ? margin : place % 3 == 1 ? (batch[i].width() - band.width()) / 2 : batch[i].width() - band.width() - margin;
+                int const top = place < 3 ? margin : batch[i].height() - band.height() - margin;
+                band.moveTopLeft(QPoint(left, top));
+                p.fillRect(band, options.timecodeBackground);
+                p.setPen(options.timecodeColour);
                 p.drawText(band, Qt::AlignCenter, code);
             }
             QImage const image = batch[i].convertToFormat(QImage::Format_RGBA8888);

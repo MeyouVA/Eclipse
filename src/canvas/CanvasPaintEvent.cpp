@@ -458,7 +458,9 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
             paintLayerDrawing(off, scene, l, m_frame, art, opacity, view, everySheet, !m_drawingView);
             off.resetTransform();
             off.setCompositionMode(QPainter::CompositionMode_SourceAtop);
-            off.fillRect(QRectF(QPointF(), QSizeF(image.size()) / dpr), QColor(235, 45, 180, 90));
+            QColor tint = InterfaceColours::get("cameraHighlight");
+            tint.setAlphaF(std::clamp(m_highlightIntensity / 100.0, 0.0, 1.0));
+            off.fillRect(QRectF(QPointF(), QSizeF(image.size()) / dpr), tint);
         }
         painter.save();
         painter.resetTransform();

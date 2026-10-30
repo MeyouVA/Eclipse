@@ -193,8 +193,15 @@ void Canvas::paintBones(QPainter& painter, QVector<QPointF> const& joints, int p
     QColor const bone = m_boneColour, dark(20, 40, 28);
     painter.resetTransform();
     for (int i = 0; i + 1 < joints.size(); ++i) {
-        // A bone is a long kite: wide near where it starts, a point where it ends.
+        // A bone is a long kite: wide near where it starts, a point where it ends (shown as joints: a line between them).
         QPointF const a = toWidget.map(joints[i]), b = toWidget.map(joints[i + 1]);
+        if (m_bonesAsJoints) {
+            painter.setPen(QPen(dark, 3.0));
+            painter.drawLine(a, b);
+            painter.setPen(QPen(bone, 1.4));
+            painter.drawLine(a, b);
+            continue;
+        }
         QPointF const along = b - a;
         double const length = std::hypot(along.x(), along.y());
         if (length < 1.0)

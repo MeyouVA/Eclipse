@@ -108,7 +108,14 @@ protected:
     int m_fieldsDown = 12;
     bool m_gridOutline = false;
     bool m_gridUnder = false;
-    bool m_gridWorld = true;            // World Grid: the grid stands with the frame; off, it goes with the layer drawn on
+    bool m_gridWorld = true;
+    int m_highlightIntensity = 35;      // the selected layer's highlight, how strong (percent)
+    int m_highlightColourOpacity = 18;  // Highlight Selected Colour: how much of the other colours shows (percent)
+    bool m_invertScroll = false;        // the wheel zooms the other way
+    bool m_bonesAsJoints = false;       // bones shown as their joints joined by a line
+    bool m_gestures = false;            // a pinch on a touch screen or pad zooms the view
+    int m_touchSensitivity = 100;
+    int m_gridColumns = 0, m_gridRows = 24;     // the square grid: so many columns (0: square cells) and rows            // World Grid: the grid stands with the frame; off, it goes with the layer drawn on
     int m_textIndent = 0;               // the Text tool: how far in its first line starts, in units of the scene
     bool m_backlight = false;
     QColor m_backlightColour = QColor(34, 34, 38);

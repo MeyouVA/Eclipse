@@ -73,17 +73,18 @@ void Canvas::paintGridLines(QPainter& painter, QRectF const& frameRect) const
         return;
     }
     if (m_gridKind == 3) {
-        // Squares, a twelfth of half the height each, counted out from the middle.
-        double const cell = h / 24.0;
-        for (int i = 0; w / 2 + i * cell <= w + 1e-6; ++i) {
+        // Squares (or the divisions of the preferences), counted out from the middle.
+        int const rows = m_gridRows;
+        double const down = h / rows, across = m_gridColumns > 0 ? w / m_gridColumns : down;
+        for (int i = 0; w / 2 + i * across <= w + 1e-6; ++i) {
             painter.setPen(i == 0 ? strong : thin);
-            painter.drawLine(QPointF(w / 2 + i * cell, 0), QPointF(w / 2 + i * cell, h));
+            painter.drawLine(QPointF(w / 2 + i * across, 0), QPointF(w / 2 + i * across, h));
             if (i > 0)
-                painter.drawLine(QPointF(w / 2 - i * cell, 0), QPointF(w / 2 - i * cell, h));
+                painter.drawLine(QPointF(w / 2 - i * across, 0), QPointF(w / 2 - i * across, h));
         }
-        for (int i = 1; i < 24; ++i) {
-            painter.setPen(i == 12 ? strong : thin);
-            painter.drawLine(QPointF(0, h * i / 24.0), QPointF(w, h * i / 24.0));
+        for (int i = 1; i < rows; ++i) {
+            painter.setPen(2 * i == rows ? strong : thin);
+            painter.drawLine(QPointF(0, h * i / rows), QPointF(w, h * i / rows));
         }
         return;
     }

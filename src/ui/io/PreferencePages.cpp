@@ -138,6 +138,59 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.timecodeFont->setCurrentFont(QFont(s.value(QStringLiteral("prefs/timecodeFont"), QStringLiteral("Arial")).toString()));
     w.timecodeFont->setToolTip(tr("The font of the time code written on movies (Export Movie: Burn in Time Code)."));
     w.generalLayout->addRow(tr("Time Code Font"), w.timecodeFont);
+    auto colourButton = [&dialog](QWidget* parent, char const* name, QColor const& colour, QString const& title) {
+        QPushButton* const button = new QPushButton(parent);
+        button->setObjectName(QLatin1String(name));
+        auto show = [button](QColor const& c) {
+            button->setProperty("colour", c);
+            button->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px; min-width: 60px;").arg(c.name()));
+        };
+        show(colour);
+        QObject::connect(button, &QPushButton::clicked, &dialog, [button, show, title, &dialog] {
+            QColor const c = ColourEditor::getColour(button->property("colour").value<QColor>(), &dialog, title);
+            if (c.isValid())
+                show(c);
+        });
+        return button;
+    };
+    w.timecodeColour = colourButton(w.general, "PrefTimecodeColour", s.value(QStringLiteral("prefs/timecodeColour"), QColor(Qt::white)).value<QColor>(), tr("Time Code Colour"));
+    w.timecodeBackground = colourButton(w.general, "PrefTimecodeBackground", s.value(QStringLiteral("prefs/timecodeBackground"), QColor(0, 0, 0, 170)).value<QColor>(),
+                                        tr("Time Code Background Colour"));
+    w.timecodeHeight = new QSpinBox(w.general);
+    w.timecodeHeight->setObjectName(QStringLiteral("PrefTimecodeHeight"));
+    w.timecodeHeight->setRange(1, 50);
+    w.timecodeHeight->setSuffix(tr(" % of the frame"));
+    w.timecodeHeight->setValue(s.value(QStringLiteral("prefs/timecodeHeight"), 4).toInt());
+    w.timecodePosition = new QComboBox(w.general);
+    w.timecodePosition->setObjectName(QStringLiteral("PrefTimecodePosition"));
+    w.timecodePosition->addItems({tr("Top Left"), tr("Top Centre"), tr("Top Right"), tr("Bottom Left"), tr("Bottom Centre"), tr("Bottom Right")});
+    w.timecodePosition->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/timecodePosition"), 4).toInt(), 0, 5));
+    QHBoxLayout* const timecodeRow = new QHBoxLayout;
+    timecodeRow->addWidget(w.timecodeColour);
+    timecodeRow->addWidget(w.timecodeBackground);
+    timecodeRow->addWidget(w.timecodeHeight);
+    timecodeRow->addWidget(w.timecodePosition);
+    w.generalLayout->addRow(tr("Time Code: Colour, Background, Height, Position"), timecodeRow);
+    // The wheel, and touch.
+    w.invertScroll = new QCheckBox(tr("Invert Scroll Direction"), w.general);
+    w.invertScroll->setObjectName(QStringLiteral("PrefInvertScroll"));
+    w.invertScroll->setChecked(s.value(QStringLiteral("prefs/invertScroll"), false).toBool());
+    w.gestures = new QCheckBox(tr("Support Gestures"), w.general);
+    w.gestures->setObjectName(QStringLiteral("PrefGestures"));
+    w.gestures->setToolTip(tr("Touch Interface: a pinch on a touch screen or pad zooms the Camera view."));
+    w.gestures->setChecked(s.value(QStringLiteral("prefs/gestures"), false).toBool());
+    w.touchSensitivity = new QSpinBox(w.general);
+    w.touchSensitivity->setObjectName(QStringLiteral("PrefTouchSensitivity"));
+    w.touchSensitivity->setRange(10, 400);
+    w.touchSensitivity->setSuffix(QStringLiteral(" %"));
+    w.touchSensitivity->setPrefix(tr("Touch Sensitivity "));
+    w.touchSensitivity->setValue(s.value(QStringLiteral("prefs/touchSensitivity"), 100).toInt());
+    QHBoxLayout* const touchRow = new QHBoxLayout;
+    touchRow->addWidget(w.invertScroll);
+    touchRow->addWidget(w.gestures);
+    touchRow->addWidget(w.touchSensitivity);
+    touchRow->addStretch(1);
+    w.generalLayout->addRow(tr("Touch Interface"), touchRow);
     w.editorsOnTop = new QCheckBox(tr("Editors always on top"), w.general);
     w.editorsOnTop->setObjectName(QStringLiteral("PrefEditorsOnTop"));
     w.editorsOnTop->setToolTip(tr("Function editors are always on top of the main window."));

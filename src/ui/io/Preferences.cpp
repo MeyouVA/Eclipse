@@ -1,5 +1,8 @@
 // Eclipse - the main window: preferences - applied, the dialog, preference sets, languages, the style editor.
 #include "ui/window/MainWindow.h"
+#include <QInputDialog>
+#include <QStandardPaths>
+#include "model/scene/SceneProject.h"
 
 #include <functional>
 
@@ -72,6 +75,9 @@ void MainWindow::applyPreferences()
     QSettings const s = preferences();
     // The colours the views paint with: read again, and every view painted with them.
     InterfaceColours::reload();
+    // Generate Thumbnails Automatically: the Xsheet shows the drawings' thumbnails.
+    if (m_xsheet && s.value(QStringLiteral("prefs/autoThumbnails"), false).toBool())
+        m_xsheet->setThumbnails(true);
     for (DepthView* view : findChildren<DepthView*>())
         view->setPlanningPreferences(s.value(QStringLiteral("prefs/planningDefaultZoom"), 100).toDouble() / 100.0,
                                      s.value(QStringLiteral("prefs/planningThumbnailSize"), 64).toInt());
@@ -161,6 +167,11 @@ void MainWindow::applyPreferences()
         view->setQuickCloseUpFactor(s.value(QStringLiteral("prefs/quickCloseUp"), 4.0).toDouble());
         view->setPaperZoom(s.value(QStringLiteral("prefs/paperZoom"), false).toBool(), s.value(QStringLiteral("prefs/screenPpi"), 96).toInt());
         view->setPaperZoomMost(s.value(QStringLiteral("prefs/paperZoomMost"), 4).toInt());
+        view->setHighlightStrengths(s.value(QStringLiteral("prefs/highlightIntensity"), 35).toInt(), s.value(QStringLiteral("prefs/highlightColourOpacity"), 18).toInt());
+        view->setInvertScroll(s.value(QStringLiteral("prefs/invertScroll"), false).toBool());
+        view->setBonesAsJoints(s.value(QStringLiteral("prefs/bonesAsJoints"), false).toBool());
+        view->setGestures(s.value(QStringLiteral("prefs/gestures"), false).toBool(), s.value(QStringLiteral("prefs/touchSensitivity"), 100).toInt());
+        view->setSquareGridDivisions(s.value(QStringLiteral("prefs/gridColumns"), 0).toInt(), s.value(QStringLiteral("prefs/gridRows"), 24).toInt());
         view->setBacklightColour(s.value(QStringLiteral("prefs/backlightColour"), QColor(34, 34, 38)).value<QColor>());
         if (view->magnifying())
             view->onActionMagnifier(true);
@@ -334,6 +345,55 @@ void MainWindow::onActionPreferences()
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    // Presets: preference sets kept by name beside Eclipse's settings - taken up when chosen, made from the preferences now, taken away.
+    QDir const presetFolder(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/preference-presets"));
+    w.presets = new QComboBox(&dialog);
+    w.presets->setObjectName(QStringLiteral("PrefPresets"));
+    w.presets->addItem(tr("(choose a preset)"));
+    for (QFileInfo const& one : presetFolder.entryInfoList({QStringLiteral("*.eclprefs")}, QDir::Files, QDir::Name))
+        w.presets->addItem(one.completeBaseName(), one.absoluteFilePath());
+    QPushButton* const createPreset = new QPushButton(tr("Create..."), &dialog);
+    createPreset->setObjectName(QStringLiteral("PrefCreatePreset"));
+    QPushButton* const removePreset = new QPushButton(tr("Remove"), &dialog);
+    removePreset->setObjectName(QStringLiteral("PrefRemovePreset"));
+    QHBoxLayout* const presetRow = new QHBoxLayout;
+    presetRow->addWidget(new QLabel(tr("Presets:"), &dialog));
+    presetRow->addWidget(w.presets, 1);
+    presetRow->addWidget(createPreset);
+    presetRow->addWidget(removePreset);
+    connect(createPreset, &QPushButton::clicked, &dialog, [this, &dialog, presetFolder, &w] {
+        bool ok = false;
+        QString const name = QInputDialog::getText(&dialog, tr("Create Preset"), tr("Name of the preset (the preferences as they are saved now):"), QLineEdit::Normal, QString(), &ok).trimmed();
+        if (!ok || name.isEmpty())
+            return;
+        presetFolder.mkpath(QStringLiteral("."));
+        QString const path = presetFolder.filePath(SceneProject::fileName(name, QStringLiteral("preset")) + QStringLiteral(".eclprefs"));
+        if (!savePreferenceSet(path)) {
+            QMessageBox::warning(&dialog, tr("Create Preset"), tr("Error while writing preference file: %1").arg(path));
+            return;
+        }
+        if (w.presets->findData(path) < 0)
+            w.presets->addItem(QFileInfo(path).completeBaseName(), path);
+        w.presets->setCurrentIndex(w.presets->findData(path));
+    });
+    connect(removePreset, &QPushButton::clicked, &dialog, [&w] {
+        int const index = w.presets->currentIndex();
+        if (index <= 0)
+            return;
+        QFile::remove(w.presets->itemData(index).toString());
+        w.presets->removeItem(index);
+    });
+    bool presetChosen = false;
+    connect(w.presets, &QComboBox::activated, &dialog, [this, &dialog, &w, &presetChosen](int index) {
+        if (index <= 0)
+            return;
+        if (!loadPreferenceSet(w.presets->itemData(index).toString())) {
+            QMessageBox::warning(&dialog, tr("Presets"), tr("Unable to open preference file: %1").arg(w.presets->itemData(index).toString()));
+            return;
+        }
+        presetChosen = true;
+        dialog.reject();
+    });
     // Preference sets: every preference saved to a file and loaded back; or all of them as they were to begin with.
     QPushButton* const saveSet = buttons->addButton(tr("Save..."), QDialogButtonBox::ActionRole);
     saveSet->setObjectName(QStringLiteral("PrefSaveSet"));
@@ -378,11 +438,12 @@ void MainWindow::onActionPreferences()
     }
     tabs->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/lastTab"), 0).toInt(), 0, tabs->count() - 1));
     QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addLayout(presetRow);
     layout->addWidget(tabs);
     layout->addWidget(buttons);
     int const result = dialog.exec();
     s.setValue(QStringLiteral("prefs/lastTab"), tabs->currentIndex());
-    if (reopen) {
+    if (reopen || presetChosen) {
         // (Preferences loaded or put back: in effect now, and shown again.)
         applyPreferences();
         QTimer::singleShot(0, this, &MainWindow::onActionPreferences);
@@ -462,6 +523,19 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/keepBackup"), w.keepBackup->isChecked());
     s.setValue(QStringLiteral("prefs/askConvertScenes"), w.askConvertScenes->isChecked());
     s.setValue(QStringLiteral("prefs/timecodeFont"), w.timecodeFont->currentFont().family());
+    s.setValue(QStringLiteral("prefs/timecodeColour"), w.timecodeColour->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/timecodeBackground"), w.timecodeBackground->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/timecodeHeight"), w.timecodeHeight->value());
+    s.setValue(QStringLiteral("prefs/timecodePosition"), w.timecodePosition->currentIndex());
+    s.setValue(QStringLiteral("prefs/invertScroll"), w.invertScroll->isChecked());
+    s.setValue(QStringLiteral("prefs/gestures"), w.gestures->isChecked());
+    s.setValue(QStringLiteral("prefs/touchSensitivity"), w.touchSensitivity->value());
+    s.setValue(QStringLiteral("prefs/bonesAsJoints"), w.bonesAsJoints->isChecked());
+    s.setValue(QStringLiteral("prefs/highlightIntensity"), w.highlightIntensity->value());
+    s.setValue(QStringLiteral("prefs/highlightColourOpacity"), w.highlightColourOpacity->value());
+    s.setValue(QStringLiteral("prefs/gridColumns"), w.gridColumns->value());
+    s.setValue(QStringLiteral("prefs/gridRows"), w.gridRows->value());
+    s.setValue(QStringLiteral("prefs/autoThumbnails"), w.autoThumbnails->isChecked());
     s.setValue(QStringLiteral("prefs/askAutoSave"), w.askAutoSave->isChecked());
     s.setValue(QStringLiteral("prefs/cameraZoom"), w.cameraZoom->currentIndex());
     s.setValue(QStringLiteral("prefs/timelineSound"), w.showSound->isChecked());

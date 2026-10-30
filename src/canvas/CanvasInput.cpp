@@ -1,5 +1,6 @@
 // Eclipse - the Camera view: mouse, tablet, wheel and keys.
 #include "canvas/Canvas.h"
+#include <QGestureEvent>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QUrl>
@@ -33,8 +34,37 @@ bool Canvas::eventFilter(QObject* object, QEvent* event)
     return QWidget::eventFilter(object, event);
 }
 
+void Canvas::setGestures(bool on, int sensitivity)
+{
+    m_touchSensitivity = std::clamp(sensitivity, 10, 400);
+    if (on == m_gestures)
+        return;
+    m_gestures = on;
+    if (on)
+        grabGesture(Qt::PinchGesture);
+    else
+        ungrabGesture(Qt::PinchGesture);
+    setAttribute(Qt::WA_AcceptTouchEvents, on);
+}
+
 bool Canvas::event(QEvent* event)
 {
+    // A pinch: the view zoomed about the middle of the fingers, as much as the touch sensitivity says.
+    if (m_gestures && event->type() == QEvent::Gesture) {
+        auto* const gesture = static_cast<QGestureEvent*>(event);
+        if (auto* const pinch = static_cast<QPinchGesture*>(gesture->gesture(Qt::PinchGesture))) {
+            double const scaled = std::pow(pinch->scaleFactor(), m_touchSensitivity / 100.0);
+            QPointF const anchor = mapFromGlobal(pinch->centerPoint().toPoint());
+            QPointF const scenePoint = toScene(anchor);
+            m_zoom = std::clamp(m_zoom * scaled, m_zoomMin, zoomMost());
+            m_pan += anchor - viewTransform().map(scenePoint);
+            m_fitted = false;
+            emit zoomChanged();
+            update();
+            event->accept();
+            return true;
+        }
+    }
     if (event->type() == QEvent::ShortcutOverride && m_bending) {
         int const key = static_cast<QKeyEvent*>(event)->key();
         if (key == Qt::Key_Return || key == Qt::Key_Enter) { event->accept(); return true; }
@@ -150,7 +180,7 @@ void Canvas::wheelEvent(QWheelEvent* event)
     // Zoom about the pointer: the scene point under it stays under it.
     QPointF const anchor = event->position();
     QPointF const scenePoint = toScene(anchor);
-    double const factor = std::pow(1.0015, event->angleDelta().y());
+    double const factor = std::pow(1.0015, (m_invertScroll ? -1 : 1) * event->angleDelta().y());
     m_zoom = std::clamp(m_zoom * factor, m_zoomMin, zoomMost());
     emit zoomChanged();
     m_fitted = false;

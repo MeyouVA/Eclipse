@@ -97,6 +97,20 @@ public:
     int fieldsAcross() const { return m_fieldsAcross; }
     int fieldsDown() const { return m_fieldsDown; }
     bool backlight() const { return m_backlight; }
+    void setHighlightStrengths(int intensity, int colourOpacity)
+    {
+        m_highlightIntensity = std::clamp(intensity, 0, 100);
+        m_highlightColourOpacity = std::clamp(colourOpacity, 0, 100);
+        settingChanged();
+    }
+    void setInvertScroll(bool on) { m_invertScroll = on; }
+    void setBonesAsJoints(bool on) { m_bonesAsJoints = on; settingChanged(); }
+    void setSquareGridDivisions(int columns, int rows)
+    {
+        m_gridColumns = std::clamp(columns, 0, 400);
+        m_gridRows = std::clamp(rows, 2, 400);
+        settingChanged();
+    }
     void setBacklightColour(QColor const& colour) { m_backlightColour = colour.isValid() ? colour : QColor(34, 34, 38); settingChanged(); }
     QColor backlightColour() const { return m_backlightColour; }
     void setPaperZoomMost(int most) { m_paperZoomMost = std::clamp(most, 1, 64); }

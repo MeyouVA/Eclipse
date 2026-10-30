@@ -599,6 +599,16 @@ void NodeView::paintGraphMode(QPainter& p)
         QColor const border = nodeBorder(&n, shownLayer);
         p.setPen(QPen(chosen ? InterfaceColours::get("nodeSelected") : border, chosen ? 2.0 : 1.0));
         p.setBrush(off ? color.darker(190) : color);
+        {
+            // Its shadow, a little below and to the right.
+            QPen const pen = p.pen();
+            QBrush const brush = p.brush();
+            p.setPen(Qt::NoPen);
+            p.setBrush(InterfaceColours::get("nodeShadow"));
+            p.drawRoundedRect(r.translated(3 * m_zoom, 3 * m_zoom), 4 * m_zoom, 4 * m_zoom);
+            p.setPen(pen);
+            p.setBrush(brush);
+        }
         p.drawRoundedRect(r, 4 * m_zoom, 4 * m_zoom);
         p.setPen(off ? QColor(150, 150, 150) : QColor(245, 245, 245));
         bool const editor = showsEditor(shownLayer, &n);

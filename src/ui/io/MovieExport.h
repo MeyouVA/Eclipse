@@ -2,6 +2,7 @@
 // layers mixed), by handing the frames to ffmpeg.
 #pragma once
 
+#include <QColor>
 #include <QString>
 #include <QStringList>
 
@@ -26,6 +27,10 @@ struct Options {
     QString colourSpace;    // the colour space the frames are put in from the working space (empty: as they are)
     bool timecode = false;  // the time code (hours:minutes:seconds:frames) written on each frame, in its corner
     QString timecodeFont;   // in this font (empty: Arial)
+    QColor timecodeColour = Qt::white;
+    QColor timecodeBackground = QColor(0, 0, 0, 170);
+    int timecodeHeight = 4;         // the text's height, as a percentage of the frame's
+    int timecodePosition = 4;       // 0 top left, 1 top centre, 2 top right, 3 bottom left, 4 bottom centre, 5 bottom right
 };
 
 // What ffmpeg is told about the encoding of a movie of that kind (by its extension), with sound or without.

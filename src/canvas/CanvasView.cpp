@@ -341,7 +341,7 @@ Drawing Canvas::shown(int layer, int frame, Drawing const& drawing) const
         if (swatch == m_swatch)
             return;
         colour = scene.resolve(swatch, colour);
-        colour.setAlphaF(colour.alphaF() * 0.18f);
+        colour.setAlphaF(colour.alphaF() * float(m_highlightColourOpacity) / 100.0f);
         swatch = Scene::kNoSwatch;
     };
     for (int sheet : {int(Drawing::UnderlaySheet), int(Drawing::ColourSheet), int(Drawing::LineSheet), int(Drawing::OverlaySheet)}) {

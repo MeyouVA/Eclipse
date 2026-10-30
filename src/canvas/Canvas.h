@@ -562,6 +562,8 @@ public slots:
     // Behind the drawings instead of over them.
     void onActionGridUnderlay(bool on);
     void onActionGridWorld(bool on);
+    // Touch: a pinch zooms the view, so much for so much pinching.
+    void setGestures(bool on, int sensitivity);
     // Drawing > Change Vector Drawing Brush Resolution: the pictures of the brush in this drawing, or every drawing of the layer, made of more or fewer pixels.
     void onActionChangeBrushResolution();
     // Everything drawn shown as a dark shape, to judge its outline.

@@ -126,11 +126,12 @@ void Canvas::paintMotionPath(QPainter& painter)
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(QColor(20, 20, 20), 3));
     painter.drawPolyline(path);
-    painter.setPen(QPen(QColor(120, 200, 255), 1.4));
+    QColor const spline = InterfaceColours::get("cameraSpline");
+    painter.setPen(QPen(spline, 1.4));
     painter.drawPolyline(path);
     // A tick on each frame, so that the speed can be read off; a square on each keyframe.
     QColor const keyColour = InterfaceColours::get("cameraKeyframe"), pointColour = InterfaceColours::get("controlPoint");
-    painter.setPen(QPen(QColor(120, 200, 255), 1));
+    painter.setPen(QPen(spline, 1));
     for (QPointF const& at : std::as_const(path))
         painter.drawEllipse(at, 1.5, 1.5);
     for (QPointF const& at : std::as_const(keys)) {

@@ -86,6 +86,12 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
                 p.setPen(line);
                 p.drawLine(x + cw - 1, y, x + cw - 1, y + rh - 1);
             }
+            // The scene's tempo: a line at each beat, a stronger one at each bar.
+            if (scene.framesPerBeat > 0 && (f + 1) % scene.framesPerBeat == 0) {
+                bool const bar = scene.beatsPerBar > 0 && (f + 1) % (scene.framesPerBeat * scene.beatsPerBar) == 0;
+                p.setPen(InterfaceColours::get(bar ? "timelineTempoBar" : "timelineTempoBeat"));
+                p.drawLine(x + cw - 1, y, x + cw - 1, y + rh - 1);
+            }
         }
         if (!param && thumbnailsShown(layerIndex))
             paintThumbnails(p, space, layerIndex, y, rh);
