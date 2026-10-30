@@ -103,8 +103,10 @@ void MainWindow::onActionEditSymbol()
     if (m_playTimer.isActive())
         stop();
     m_canvas->clearSelection();
+    GlobalFrame const around{scene.layers[layer()].cells, frame()};
     if (!m_document->enterSymbol(scene.layers[layer()].symbolId))
         return;
+    m_globalFrames.push_back(around);
     m_timeline->clearRange();
     m_timeline->setCurrentCell(int(m_document->scene().layers.size()) - 1, std::clamp(inside, 0, m_document->scene().frameCount() - 1));
     updateTitle();
@@ -120,6 +122,7 @@ void MainWindow::onActionLeaveSymbol()
         stop();
     m_canvas->clearSelection();
     QString const was = m_document->symbolTrail().last();
+    int const globalFrame = m_globalFrames.isEmpty() ? -1 : m_globalFrames.takeLast().frame;
     m_document->leaveSymbol();
     // Back on a layer that shows it, if there is one.
     int back = int(m_document->scene().layers.size()) - 1;
@@ -129,9 +132,25 @@ void MainWindow::onActionLeaveSymbol()
             back = l;
     }
     m_timeline->clearRange();
-    m_timeline->setCurrentCell(back, std::clamp(frame(), 0, m_document->scene().frameCount() - 1));
+    m_timeline->setCurrentCell(back, std::clamp(globalFrame >= 0 ? globalFrame : frame(), 0, m_document->scene().frameCount() - 1));
     updateTitle();
     updateActionStates();
+}
+
+void MainWindow::onActionGlobalFrame(QString const& way)
+{
+    if (!m_document->insideSymbol() || m_globalFrames.isEmpty()) {
+        statusBar()->showMessage(tr("Go to Global Frame works inside a symbol (Edit > Symbol > Edit Symbol)."), 4000);
+        return;
+    }
+    GlobalFrame& around = m_globalFrames.last();
+    int const next = std::clamp(around.frame + (way == QLatin1String("previous") ? -1 : 1), 0, std::max(0, int(around.cells.size()) - 1));
+    around.frame = next;
+    int const inside = around.cells.value(next, -1);
+    if (inside >= 0)
+        m_timeline->setCurrentCell(layer(), std::clamp(inside, 0, m_document->scene().frameCount() - 1));
+    statusBar()->showMessage(inside >= 0 ? tr("Global frame %1: the symbol's frame %2.").arg(next + 1).arg(inside + 1)
+                                         : tr("Global frame %1: the symbol is not shown there.").arg(next + 1), 4000);
 }
 
 void MainWindow::onActionAddSyncedLayer()

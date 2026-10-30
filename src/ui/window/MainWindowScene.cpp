@@ -8,6 +8,9 @@
 #include <QApplication>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <algorithm>
+#include "actions/theme/AppSettings.h"
+#include <QPushButton>
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
@@ -222,6 +225,18 @@ void MainWindow::onActionSceneSettings()
     density->setToolTip(tr("Default Bitmap Drawings Texture Pixel Density: how fine the pixels of a layer made bitmap are, 100 % being a pixel for each unit of the scene."));
     form->addRow(tr("Bitmap Texture Pixel Density"), density);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    // Save As Defaults: the size, rate and angle typed here are those new scenes start with (a resolution of the user's own, chosen).
+    QPushButton* const defaults = buttons->addButton(tr("Save &As Defaults"), QDialogButtonBox::ActionRole);
+    defaults->setObjectName(QStringLiteral("SceneSaveAsDefaults"));
+    connect(defaults, &QPushButton::clicked, &dialog, [this, width, height, fps, fov] {
+        QString const name = tr("Scene Defaults");
+        QStringList lines = settings().value(QStringLiteral("resolutions/custom")).toStringList();
+        lines.erase(std::remove_if(lines.begin(), lines.end(), [&name](QString const& line) { return line.section(QLatin1Char('|'), 0, 0) == name; }), lines.end());
+        lines << QStringLiteral("%1|%2|%3|%4|%5").arg(name).arg(width->value()).arg(height->value()).arg(QString::number(fps->value(), 'g', 6)).arg(QString::number(fov->value(), 'g', 6));
+        settings().setValue(QStringLiteral("resolutions/custom"), lines);
+        settings().setValue(QStringLiteral("welcome/resolution"), name);
+        statusBar()->showMessage(tr("New scenes will start at %1 x %2, %3 fps.").arg(width->value()).arg(height->value()).arg(fps->value()), 5000);
+    });
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);

@@ -268,6 +268,12 @@ public slots:
     void onActionInsertSymbol();
     void onActionEditSymbol();
     void onActionLeaveSymbol();
+    // Inside a symbol: the frame of the scene around it, a step back or on - the symbol shown at the frame it shows there.
+    void onActionGlobalFrame(QString const& way);
+    // File > Export > Layout Image: the frame as it is, every layer or those selected in the Timeline, written to a picture file.
+    void onActionExportLayoutImage();
+    void onActionExportLayoutImageFromSelection();
+    bool exportLayoutImage(QString const& path, bool selectedOnly, QString* error);
     void onActionDuplicateSymbol();
     void onActionCloneLayer();
     void onActionCloneLayerTiming();
@@ -902,6 +908,12 @@ private:
     bool m_persistWorkspaces = false;  // set once the saved arrangement has been restored
     QComboBox* m_workspaceBox = nullptr;
     Xsheet* m_xsheet = nullptr;
+    // Inside symbols: for each one entered, the cells of the layer showing it and the frame of the scene around it.
+    struct GlobalFrame {
+        QVector<int> cells;
+        int frame = 0;
+    };
+    QVector<GlobalFrame> m_globalFrames;
     class QListWidget* m_xsheetList = nullptr;
     bool m_xsheetMirroring = false;     // the Xsheet is setting the Timeline's cell or block
     bool m_columnEditorNext = false;    // Column Properties opened as the Column Editor (with Apply/Next)

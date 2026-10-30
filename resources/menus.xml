@@ -40,6 +40,8 @@
     <item id="ExportFrames" icon="file/exportframes" text="&amp;Images..." shortcut="shortcut.exportFrames" responder="window" slot="onActionExportFrames()"/>
     <item id="ExportMovie" icon="file/exportmovie" text="&amp;Movie..." shortcut="shortcut.exportMovie" responder="window" slot="onActionExportMovie()"/>
     <item id="ExportGif" icon="file/exportgif" text="Animated &amp;GIF..." shortcut="shortcut.exportGif" responder="window" slot="onActionExportGif()"/>
+    <item id="ExportLayoutImage" icon="file/exportframes" text="&amp;Layout Image..." responder="window" slot="onActionExportLayoutImage()" tooltip="The frame as it is, every layer, written to a picture file."/>
+    <item id="ExportLayoutImageSelection" icon="file/exportframes" text="Layout Image from &amp;Selection..." responder="window" slot="onActionExportLayoutImageFromSelection()" tooltip="The frame as it is, only the layers selected in the Timeline, written to a picture file."/>
     <item id="ExportSwf" icon="file/exportmovie" text="&amp;SWF..." responder="window" slot="onActionExportSwf()"/>
     <item id="ExportOpenGLFrames" icon="file/exportopengl" text="&amp;OpenGL Frames..." responder="window" slot="onActionExportOpenGLFrames()"/>
     <separator/>
@@ -94,6 +96,8 @@
     <item id="InsertSymbol" icon="edit/symbolinsert" text="&amp;Insert Symbol..." responder="window" slot="onActionInsertSymbol()"/>
     <separator/>
     <item id="EditSymbol" icon="edit/symboledit" text="&amp;Edit Symbol" shortcut="shortcut.editSymbol" responder="window" slot="onActionEditSymbol()"/>
+    <item id="GlobalFramePrevious" text="Go to &amp;Previous Global Frame" responder="window" slot="onActionGlobalFrame(QString)" itemParameter="previous" tooltip="Go to previous frame in the top scene"/>
+    <item id="GlobalFrameNext" text="Go to &amp;Next Global Frame" responder="window" slot="onActionGlobalFrame(QString)" itemParameter="next" tooltip="Go to next frame in the top scene"/>
     <item id="LeaveSymbol" icon="edit/symbolleave" text="&amp;Leave Symbol" shortcut="shortcut.leaveSymbol" responder="window" slot="onActionLeaveSymbol()"/>
     <separator/>
     <item id="AddSyncedLayer" icon="timeline/addsynced" text="Add S&amp;ynced Drawing Layer" responder="window" slot="onActionAddSyncedLayer()"/>
