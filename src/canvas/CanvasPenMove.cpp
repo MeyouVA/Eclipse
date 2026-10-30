@@ -225,7 +225,13 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         if (m_dragPose.warp.size() < layer.warp.size())
             m_dragPose.warp.resize(layer.warp.size());
         int const point = m_warpIndex / 3 * 3;
-        if (m_warpIndex == point)
+        if (m_warpIndex == point && m_controlSelect && m_warpPickedLayer == layer.id && m_warpPicked.size() > 1 && m_warpPicked.contains(point)) {
+            // The points picked together go as far as the one in hand (their handles with them).
+            QPointF const by = target - layer.warp[point] - m_dragPose.warp[point];
+            for (int other : std::as_const(m_warpPicked))
+                if (other >= 0 && other < layer.warp.size())
+                    m_dragPose.warp[other] += by;
+        } else if (m_warpIndex == point)
             m_dragPose.warp[point] = target - layer.warp[point];
         else
             m_dragPose.warp[m_warpIndex] = target - (layer.warp[point] + m_dragPose.warp[point]) - layer.warp[m_warpIndex];
@@ -473,6 +479,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     }
     case DragPaint:
+    case DragControlBox:
     case DragMarquee:
         m_dragNow = p;
         if (m_dragLasso && (m_lassoPath.isEmpty() || QLineF(m_lassoPath.last(), p).length() * m_zoom >= 2.0))

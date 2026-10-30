@@ -57,6 +57,14 @@ struct PreferenceWidgets {
     QDoubleSpinBox* quickCloseUp = nullptr;
     QCheckBox* paperZoom = nullptr;
     QSpinBox* screenPpi = nullptr;
+    QSpinBox* paperZoomMost = nullptr;
+    QDoubleSpinBox* magnifyZoom = nullptr;
+    QSpinBox* magnifyWidth = nullptr;
+    QSpinBox* magnifyHeight = nullptr;
+    QSpinBox* magnifyOffsetX = nullptr;
+    QSpinBox* magnifyOffsetY = nullptr;
+    QPushButton* backlightColour = nullptr;
+    QComboBox* drawingThumbnails = nullptr;
     QGroupBox* sheet = nullptr;
     QGroupBox* animationPage = nullptr;
     QHash<QString, QWidget*> animation;     // the Animation page's settings, by key

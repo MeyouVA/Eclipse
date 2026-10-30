@@ -159,6 +159,7 @@
    <submenu id="menu.onionSkin" text="Onion &amp;Skin"/>
    <item id="LightTable" icon="view/lighttable" text="&amp;Light Table" shortcut="shortcut.lightTable" checkable="true" responder="camera" slot="onActionLightTable(bool)"/>
    <item id="Backlight" icon="view/backlight" text="&amp;Backlight" shortcut="shortcut.backlight" checkable="true" responder="camera" slot="onActionBacklight(bool)"/>
+   <item id="Magnifier" text="&amp;Magnifier" checkable="true" responder="camera" slot="onActionMagnifier(bool)" tooltip="A box beside the pointer showing what is under it, enlarged (Preferences: Camera, Paper Zoom)."/>
    <item id="MatteView" text="&amp;Matte View" checkable="true" responder="window" slot="onActionMatteView(bool)" tooltip="Show only the matte: white where the frame is painted, black where it is clear."/>
    <separator/>
    <item id="ViewNormalMode" text="&amp;Normal View" checkable="true" checked="true" shortcut="shortcut.normalView" responder="window" slot="onActionCameraViewMode(QString)" itemParameter="normal" tooltip="The frame as you work on it, drawn quickly: what Preferences &gt; Render leaves out of the view is left out."/>
@@ -289,6 +290,7 @@
    <item id="Flatten" icon="anim/flatten" text="&amp;Flatten" shortcut="shortcut.flatten" responder="camera" slot="onActionFlatten()"/>
    <item id="GroupArtwork" icon="anim/groupart" text="&amp;Group" responder="camera" slot="onActionGroupArtwork()"/>
    <item id="UngroupArtwork" icon="anim/ungroupart" text="&amp;Ungroup" responder="camera" slot="onActionUngroupArtwork()"/>
+   <item id="CreateBreakingTriangles" text="Create Brea&amp;king Triangles" responder="camera" slot="onActionCreateBreakingTriangles()" tooltip="Brush shapes broken where they branch: a triangle at each branching, and a piece for each branch."/>
    <item id="CreateStamp" icon="anim/stampcreate" text="Create Stamp from Se&amp;lection" shortcut="shortcut.createStamp" responder="camera" slot="onActionCreateStamp()"/>
    <item id="CreateStampDrawings" icon="anim/stampcreate" text="Create Stamp from Selected &amp;Drawings" responder="window" slot="onActionCreateStampFromDrawings()"/>
    <item id="IncrementBrushSize" icon="tool/sizeup" text="&amp;Increase Brush Size" shortcut="shortcut.incrementBrushSize" responder="window" slot="onActionChangeBrushSize(QString)" itemParameter="up"/>

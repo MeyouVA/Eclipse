@@ -486,7 +486,29 @@ void MainWindow::setDrawingWindowShown(bool on)
         layout->setContentsMargins(0, 0, 0, 0);
         layout->setSpacing(0);
         layout->addWidget(bar);
-        layout->addWidget(view, 1);
+        QString const side = settings().value(QStringLiteral("prefs/drawingThumbnails"), QStringLiteral("left")).toString();
+        if (side == QLatin1String("none")) {
+            layout->addWidget(view, 1);
+        } else {
+            SubstitutionPanel* const thumbnails = new SubstitutionPanel(m_document, window);
+            thumbnails->setObjectName(QStringLiteral("DrawingWindowThumbnails"));
+            thumbnails->setCurrentCell(layer(), frame());
+            connect(m_timeline, &Timeline::currentCellChanged, thumbnails, &SubstitutionPanel::setCurrentCell);
+            bool const across = side == QLatin1String("top") || side == QLatin1String("bottom");
+            if (across)
+                thumbnails->setMaximumHeight(170);
+            else
+                thumbnails->setMaximumWidth(190);
+            QBoxLayout* const row = new QBoxLayout(across ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
+            row->setSpacing(0);
+            bool const first = side == QLatin1String("left") || side == QLatin1String("top");
+            if (first)
+                row->addWidget(thumbnails);
+            row->addWidget(view, 1);
+            if (!first)
+                row->addWidget(thumbnails);
+            layout->addLayout(row, 1);
+        }
         window->resize(700, 520);
         window->move(mapToGlobal(QPoint(width() - 760, 80)));
     }

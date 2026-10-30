@@ -274,7 +274,7 @@ void Canvas::paintSelectionAids(QPainter& painter)
 void Canvas::paintMarquee(QPainter& painter)
 {
     // The box (or lasso) being dragged round what is to be picked.
-    if (m_drag != DragMarquee && m_drag != DragPaint && m_drag != DragPointMarquee)
+    if (m_drag != DragMarquee && m_drag != DragPaint && m_drag != DragPointMarquee && m_drag != DragControlBox)
         return;
     QColor const accent(64, 156, 255);
     painter.save();

@@ -160,6 +160,10 @@ void MainWindow::applyPreferences()
         view->setDefaultZoom(s.value(QStringLiteral("prefs/defaultZoom"), 100).toInt());
         view->setQuickCloseUpFactor(s.value(QStringLiteral("prefs/quickCloseUp"), 4.0).toDouble());
         view->setPaperZoom(s.value(QStringLiteral("prefs/paperZoom"), false).toBool(), s.value(QStringLiteral("prefs/screenPpi"), 96).toInt());
+        view->setPaperZoomMost(s.value(QStringLiteral("prefs/paperZoomMost"), 4).toInt());
+        view->setBacklightColour(s.value(QStringLiteral("prefs/backlightColour"), QColor(34, 34, 38)).value<QColor>());
+        if (view->magnifying())
+            view->onActionMagnifier(true);
         emit view->zoomChanged();
     }
     m_actions->setChecked(QStringLiteral("LockTimelineRuler"), m_timeline->rulerLocked());
@@ -442,6 +446,14 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/quickCloseUp"), w.quickCloseUp->value());
     s.setValue(QStringLiteral("prefs/paperZoom"), w.paperZoom->isChecked());
     s.setValue(QStringLiteral("prefs/screenPpi"), w.screenPpi->value());
+    s.setValue(QStringLiteral("prefs/paperZoomMost"), w.paperZoomMost->value());
+    s.setValue(QStringLiteral("prefs/magnifyZoom"), w.magnifyZoom->value());
+    s.setValue(QStringLiteral("prefs/magnifyWidth"), w.magnifyWidth->value());
+    s.setValue(QStringLiteral("prefs/magnifyHeight"), w.magnifyHeight->value());
+    s.setValue(QStringLiteral("prefs/magnifyOffsetX"), w.magnifyOffsetX->value());
+    s.setValue(QStringLiteral("prefs/magnifyOffsetY"), w.magnifyOffsetY->value());
+    s.setValue(QStringLiteral("prefs/backlightColour"), w.backlightColour->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/drawingThumbnails"), w.drawingThumbnails->currentData().toString());
     s.setValue(QStringLiteral("prefs/pressureFeel"), w.pressureFeel->value());
     s.setValue(QStringLiteral("prefs/nameByFrame"), w.byFrame->isChecked());
     s.setValue(QStringLiteral("prefs/proportionAcross"), w.gridAcross->value());

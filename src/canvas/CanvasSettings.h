@@ -94,6 +94,10 @@ public:
     int fieldsAcross() const { return m_fieldsAcross; }
     int fieldsDown() const { return m_fieldsDown; }
     bool backlight() const { return m_backlight; }
+    void setBacklightColour(QColor const& colour) { m_backlightColour = colour.isValid() ? colour : QColor(34, 34, 38); settingChanged(); }
+    QColor backlightColour() const { return m_backlightColour; }
+    void setPaperZoomMost(int most) { m_paperZoomMost = std::clamp(most, 1, 64); }
+    int paperZoomMost() const { return m_paperZoomMost; }
     // ---- selection (Select tool) --------------------------------------------------------
     QVector<int> const& selectedStrokes() const { return m_selStrokes; }
     QVector<int> const& selectedFills() const { return m_selFills; }
@@ -339,6 +343,30 @@ public:
     bool hidesManipulator() const { return m_hideManipulator; }
     // The Envelope tool: the handles of the outline's points (its advanced controls), shown and pulled, or not.
     void setEnvelopeAdvanced(bool on) { m_envAdvanced = on; settingChanged(); }
+    void setControlSelection(bool on) { m_controlSelect = on; m_warpPicked.clear(); settingChanged(); }
+    bool controlSelection() const { return m_controlSelect; }
+    QVector<int> pickedControls() const { return m_warpPicked; }
+    void setEnvelopeGrid(bool on, int rows, int columns)
+    {
+        m_envGrid = on;
+        m_envRows = std::clamp(rows, 1, 16);
+        m_envCols = std::clamp(columns, 1, 16);
+        settingChanged();
+    }
+    bool envelopeGrid() const { return m_envGrid; }
+    int envelopeRows() const { return m_envRows; }
+    int envelopeColumns() const { return m_envCols; }
+    void setRetrace(bool on) { m_retrace = on; }
+    bool retrace() const { return m_retrace; }
+    void setRetraceSettings(int least, int most, int offset, int tilt, int probability, int noise)
+    {
+        m_retraceMin = std::clamp(least, 0, 100);
+        m_retraceMax = std::clamp(most, m_retraceMin, 100);
+        m_retraceOffset = std::clamp(offset, 1, 200);
+        m_retraceTilt = std::clamp(tilt, 0, 180);
+        m_retraceProbability = std::clamp(probability, 0, 100);
+        m_retraceNoise = std::clamp(noise, 0, 100);
+    }
     bool envelopeAdvanced() const { return m_envAdvanced; }
     void setContourControls(bool on) { m_ceControls = on; settingChanged(); }
     bool contourControls() const { return m_ceControls; }

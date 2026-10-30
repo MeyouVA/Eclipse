@@ -370,6 +370,45 @@ void MainWindow::preferencesCamera(PreferenceWidgets& w, QSettings& s, QDialog& 
     w.screenPpi->setEnabled(w.paperZoom->isChecked());
     connect(w.paperZoom, &QCheckBox::toggled, w.screenPpi, &QWidget::setEnabled);
     w.cameraLayout->addRow(tr("Number of Pixels per Inch"), w.screenPpi);
+    w.paperZoomMost = new QSpinBox(w.camera);
+    w.paperZoomMost->setObjectName(QStringLiteral("PrefPaperZoomMost"));
+    w.paperZoomMost->setRange(1, 64);
+    w.paperZoomMost->setPrefix(QStringLiteral("x"));
+    w.paperZoomMost->setValue(s.value(QStringLiteral("prefs/paperZoomMost"), 4).toInt());
+    w.paperZoomMost->setToolTip(tr("With paper zoom: the most the view zooms in, in times the frame's real size."));
+    w.paperZoomMost->setEnabled(w.paperZoom->isChecked());
+    connect(w.paperZoom, &QCheckBox::toggled, w.paperZoomMost, &QWidget::setEnabled);
+    w.cameraLayout->addRow(tr("Maximum Zoom Level"), w.paperZoomMost);
+    // The magnifier (View > Magnifier): how much it enlarges, how big it is, and where it sits from the pointer.
+    w.magnifyZoom = new QDoubleSpinBox(w.camera);
+    w.magnifyZoom->setObjectName(QStringLiteral("PrefMagnifyZoom"));
+    w.magnifyZoom->setRange(1.0, 16.0);
+    w.magnifyZoom->setSingleStep(0.5);
+    w.magnifyZoom->setPrefix(QStringLiteral("x"));
+    w.magnifyZoom->setValue(s.value(QStringLiteral("prefs/magnifyZoom"), 2.0).toDouble());
+    w.cameraLayout->addRow(tr("Magnifier Zoom Factor"), w.magnifyZoom);
+    auto pixels = [&w](char const* name, int least, int most, int value) {
+        QSpinBox* const box = new QSpinBox(w.camera);
+        box->setObjectName(QLatin1String(name));
+        box->setRange(least, most);
+        box->setSuffix(tr(" px"));
+        box->setValue(value);
+        return box;
+    };
+    w.magnifyWidth = pixels("PrefMagnifyWidth", 40, 800, s.value(QStringLiteral("prefs/magnifyWidth"), 150).toInt());
+    w.magnifyHeight = pixels("PrefMagnifyHeight", 40, 800, s.value(QStringLiteral("prefs/magnifyHeight"), 150).toInt());
+    w.magnifyOffsetX = pixels("PrefMagnifyOffsetX", -800, 800, s.value(QStringLiteral("prefs/magnifyOffsetX"), -90).toInt());
+    w.magnifyOffsetY = pixels("PrefMagnifyOffsetY", -800, 800, s.value(QStringLiteral("prefs/magnifyOffsetY"), 90).toInt());
+    w.magnifyOffsetX->setToolTip(tr("How far across from the pointer the middle of the magnifier is."));
+    w.magnifyOffsetY->setToolTip(tr("How far down from the pointer the middle of the magnifier is."));
+    QHBoxLayout* const magnifySize = new QHBoxLayout;
+    magnifySize->addWidget(w.magnifyWidth);
+    magnifySize->addWidget(w.magnifyHeight);
+    w.cameraLayout->addRow(tr("Magnifier Width and Height"), magnifySize);
+    QHBoxLayout* const magnifyOffset = new QHBoxLayout;
+    magnifyOffset->addWidget(w.magnifyOffsetX);
+    magnifyOffset->addWidget(w.magnifyOffsetY);
+    w.cameraLayout->addRow(tr("Magnifier Offset"), magnifyOffset);
 
     Q_UNUSED(s);
     Q_UNUSED(dialog);

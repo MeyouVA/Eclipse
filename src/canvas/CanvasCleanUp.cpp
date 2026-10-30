@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include <QRandomGenerator>
+#include <numbers>
 #include <functional>
 
 #include <QCheckBox>
@@ -159,6 +160,40 @@ void Canvas::repositionOthers(QTransform const& done, QString const& text)
         }
         if (changed)
             m_document->setDrawing(m_layer, f, whole, text);
+    }
+    // Apply to Synced Drawing Layers: every drawing of the layers synced with this one, moved the same way (as seen in the Camera view).
+    if (m_applySynced) {
+        Scene const& now = m_document->scene();
+        int const group = now.layers[m_layer].syncGroup;
+        QTransform const here = worldOf(m_layer, m_frame);
+        for (int l = 0; group != 0 && here.isInvertible() && l < now.layers.size(); ++l) {
+            Layer const& layer = m_document->scene().layers[l];
+            if (l == m_layer || layer.syncGroup != group || !layer.holdsDrawings() || layer.locked)
+                continue;
+            QTransform const across = worldOf(l, m_frame) * here.inverted();
+            if (!across.isInvertible())
+                continue;
+            QTransform const there = across * done * across.inverted();
+            QVector<Drawing> const theirs = layer.drawings;
+            QVector<int> const theirCells = layer.cells;
+            QVector<bool> moved(theirs.size(), false);
+            for (int f = 0; f < theirCells.size(); ++f) {
+                int const index = theirCells[f];
+                if (index < 0 || index >= theirs.size() || moved[index])
+                    continue;
+                moved[index] = true;
+                Drawing whole = theirs[index];
+                for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+                    for (Stroke& stroke : whole.strokesOf(sheet))
+                        stroke.transform(there);
+                    for (Fill& fill : whole.fillsOf(sheet))
+                        fill.transform(there);
+                }
+                for (Picture& picture : whole.pictures)
+                    picture.placement = picture.placement * there;
+                m_document->setDrawing(l, f, whole, text);
+            }
+        }
     }
     m_committing = false;
 }
@@ -423,7 +458,37 @@ void Canvas::smoothAt(QPointF p)
 {
     // As far round the pen as the size in Tool Properties.
     double const reach = std::max(m_brushWidth / 2.0, 4.0 / std::max(m_zoom, 1e-6));
+    // Retrace: each point the rub reaches (once a rub) maybe moved, its handles turned and its thickness changed, at random.
+    auto jitter = [&](Stroke& line, qint64 id) {
+        bool any = false;
+        QRandomGenerator* const random = QRandomGenerator::global();
+        double const most = m_retraceOffset / std::max(m_zoom, 1e-6);
+        for (int k = 0; k < line.points.size(); ++k) {
+            StrokePoint& point = line.points[k];
+            qint64 const key = id * 100000 + k;
+            if (QLineF(point.pos, p).length() > reach || m_retraced.contains(key))
+                continue;
+            m_retraced.insert(key);
+            if (int(random->bounded(100)) >= m_retraceProbability)
+                continue;
+            double const share = (m_retraceMin + random->generateDouble() * (m_retraceMax - m_retraceMin)) / 100.0;
+            double const way = random->generateDouble() * 2.0 * std::numbers::pi;
+            point.pos += QPointF(std::cos(way), std::sin(way)) * most * share;
+            if (m_retraceTilt > 0) {
+                QTransform const turn = QTransform().rotate((random->generateDouble() * 2.0 - 1.0) * m_retraceTilt);
+                point.in = turn.map(point.in);
+                point.out = turn.map(point.out);
+            }
+            if (m_retraceNoise > 0 && line.thickness.isEmpty())
+                point.pressure = std::clamp(float(point.pressure * (1.0 + (random->generateDouble() * 2.0 - 1.0) * m_retraceNoise / 100.0)), 0.05f, 4.0f);
+            any = true;
+        }
+        return any;
+    };
+    qint64 lineId = 0;
     auto settle = [&](Stroke& line) {
+        if (m_retrace)
+            return jitter(line, lineId);
         int const n = int(line.points.size());
         if (n < 3)
             return false;
@@ -464,15 +529,19 @@ void Canvas::smoothAt(QPointF p)
                     m_onlyLine = -2 - i;
     }
     for (int i = 0; i < m_eraseArt.strokes.size(); ++i)
-        if (!m_singleNow || m_onlyLine == i)
+        if (!m_singleNow || m_onlyLine == i) {
+            lineId = i;
             m_inked = settle(m_eraseArt.strokes[i]) || m_inked;
+        }
     for (int i = 0; i < m_eraseArt.fills.size(); ++i) {
         Fill& fill = m_eraseArt.fills[i];
         if (m_singleNow && m_onlyLine != -2 - i)
             continue;
         bool changed = false;
-        for (Stroke& contour : fill.contours)
-            changed = settle(contour) || changed;
+        for (int c = 0; c < fill.contours.size(); ++c) {
+            lineId = 1000000 + qint64(i) * 1000 + c;
+            changed = settle(fill.contours[c]) || changed;
+        }
         if (changed) {
             fill.rebuild();
             m_inked = true;

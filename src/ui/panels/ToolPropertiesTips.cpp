@@ -320,6 +320,22 @@ void ToolProperties::addSnapRows()
     });
     m_form->addRow(m_snapMaster);
     // The Select tool: no box and no handles round what is selected.
+    m_controlSelectBox = new QCheckBox(tr("Control Selection Mode"), this);
+    m_controlSelectBox->setObjectName(QStringLiteral("TransformControlSelect"));
+    m_controlSelectBox->setToolTip(tr("Enable the group selection of controls with the lasso or marquee: drag round a deformer's points to pick them\n"
+                                      "(Shift adds to them, Alt switches lasso and box), then drag one to move them together."));
+    m_controlSelectBox->setChecked(settings().value(QStringLiteral("tools/controlSelect"), false).toBool());
+    m_canvas->setControlSelection(m_controlSelectBox->isChecked());
+    connect(m_controlSelectBox, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setControlSelection(on);
+        settings().setValue(QStringLiteral("tools/controlSelect"), on);
+    });
+    m_form->addRow(m_controlSelectBox);
+    m_storeGradient = new QPushButton(tr("Store Colour Gradient"), this);
+    m_storeGradient->setObjectName(QStringLiteral("SelectStoreGradient"));
+    m_storeGradient->setToolTip(tr("Record the selected colour gradient's position: paint put down with Use Stored Colour Gradient lies the same way."));
+    connect(m_storeGradient, &QPushButton::clicked, m_canvas, &Canvas::onActionStoreColourGradient);
+    m_form->addRow(m_storeGradient);
     m_hideManipulator = new QCheckBox(tr("Hide Manipulator Controls"), this);
     m_hideManipulator->setObjectName(QStringLiteral("SelectHideManipulator"));
     m_hideManipulator->setToolTip(tr("Hides the bounding box and manipulator controls when an element is selected."));
@@ -368,6 +384,33 @@ void ToolProperties::addSnapRows()
         settings().setValue(QStringLiteral("tools/envelopeAdvanced"), on);
     });
     m_form->addRow(m_envAdvanced);
+    // The Envelope tool's deformation grid: rows and columns of points over what is selected.
+    m_envGridBox = new QCheckBox(tr("Deformation Grid"), this);
+    m_envGridBox->setObjectName(QStringLiteral("EnvelopeGrid"));
+    m_envGridBox->setToolTip(tr("A grid of points over what is selected, each pulling the part of it in its cells; off, an outline round it."));
+    m_envGridBox->setChecked(settings().value(QStringLiteral("tools/envelopeGrid"), false).toBool());
+    m_form->addRow(m_envGridBox);
+    auto applyGrid = [this] {
+        m_canvas->setEnvelopeGrid(m_envGridBox->isChecked(), settings().value(QStringLiteral("tools/envelopeRows"), 2).toInt(),
+                                  settings().value(QStringLiteral("tools/envelopeColumns"), 2).toInt());
+    };
+    m_envRowsRow = addSetting(tr("Rows"), tr("Adds more rows to the deformation grid."), 1, 16, settings().value(QStringLiteral("tools/envelopeRows"), 2).toInt(), QString(),
+                              [applyGrid](int v) {
+                                  settings().setValue(QStringLiteral("tools/envelopeRows"), v);
+                                  applyGrid();
+                              });
+    m_envColumnsRow = addSetting(tr("Columns"), tr("Adds more columns to the deformation grid."), 1, 16,
+                                 settings().value(QStringLiteral("tools/envelopeColumns"), 2).toInt(), QString(), [applyGrid](int v) {
+                                     settings().setValue(QStringLiteral("tools/envelopeColumns"), v);
+                                     applyGrid();
+                                 });
+    applyGrid();
+    connect(m_envGridBox, &QCheckBox::toggled, this, [this, applyGrid](bool on) {
+        settings().setValue(QStringLiteral("tools/envelopeGrid"), on);
+        applyGrid();
+        m_form->setRowVisible(m_envRowsRow, on && m_envGridBox->isVisible());
+        m_form->setRowVisible(m_envColumnsRow, on && m_envGridBox->isVisible());
+    });
     // The Cutter: its gestures, and the ends it leaves on the lines it cuts.
     m_cutterRow = new QWidget(this);
     {

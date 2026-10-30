@@ -178,7 +178,9 @@ void Canvas::paintWarp(QPainter& painter, QVector<QPointF> const& points, bool c
     }
     for (int i = 0; i < count; ++i) {
         painter.setPen(QPen(dark, 1));
-        painter.setBrush(i * 3 == picked ? QColor(Qt::white) : line);
+        bool const together = m_tool == Transform && m_controlSelect && m_layer >= 0 && m_layer < m_document->scene().layers.size()
+                              && m_document->scene().layers[m_layer].id == m_warpPickedLayer && m_warpPicked.contains(i * 3);
+        painter.setBrush(i * 3 == picked || together ? QColor(Qt::white) : line);
         painter.drawEllipse(toWidget.map(points[i * 3]), i == 0 ? 6.0 : 5.0, i == 0 ? 6.0 : 5.0);
     }
 }

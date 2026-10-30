@@ -12,6 +12,11 @@ double Canvas::zoomUnit() const
     return m_paperZoom && across > 0.0 ? 12.0 * m_screenPpi / across : 1.0;
 }
 
+double Canvas::zoomMost() const
+{
+    return m_paperZoom ? std::min(m_zoomMax, m_paperZoomMost * zoomUnit()) : m_zoomMax;
+}
+
 double Canvas::zoomPercent() const
 {
     return m_zoom / zoomUnit() * 100.0;
@@ -40,7 +45,7 @@ void Canvas::zoomToolMove(QPointF widgetPos)
     if (!m_zoomMoved && std::abs(dy) < 4.0)
         return;
     m_zoomMoved = true;
-    double const wanted = std::clamp(m_zoomStart * std::exp(-dy / 150.0), m_zoomMin, m_zoomMax);
+    double const wanted = std::clamp(m_zoomStart * std::exp(-dy / 150.0), m_zoomMin, zoomMost());
     zoomAt(m_zoomFrom, wanted / m_zoom);
 }
 

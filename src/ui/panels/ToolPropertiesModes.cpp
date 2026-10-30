@@ -188,6 +188,48 @@ void ToolProperties::addStylusRows()
         settings().setValue(QStringLiteral("tools/singleStroke"), on);
     });
     m_form->addRow(m_singleStrokeBox);
+    // The Smooth Editor's Retrace: the lines rubbed jittered as if traced again by hand, not smoothed.
+    m_retraceBox = new QCheckBox(tr("Retrace"), this);
+    m_retraceBox->setObjectName(QStringLiteral("SmoothRetrace"));
+    m_retraceBox->setToolTip(tr("The lines rubbed are jittered as if traced again by hand (a boiling line), instead of smoothed."));
+    m_retraceBox->setChecked(settings().value(QStringLiteral("tools/retrace"), false).toBool());
+    m_canvas->setRetrace(m_retraceBox->isChecked());
+    m_form->addRow(m_retraceBox);
+    struct RetraceSetting {
+        char const* label;
+        char const* tip;
+        char const* key;
+        int least, most, start;
+        char const* suffix;
+    };
+    static RetraceSetting const retraceSettings[] = {
+        {QT_TR_NOOP("min:"), QT_TR_NOOP("The least a point is moved, as a share of the maximum offset."), "retraceMin", 0, 100, 20, " %"},
+        {QT_TR_NOOP("max:"), QT_TR_NOOP("The most a point is moved, as a share of the maximum offset."), "retraceMax", 0, 100, 100, " %"},
+        {QT_TR_NOOP("Maximum offset"), QT_TR_NOOP("How far (in pixels of the screen) a point can be moved."), "retraceOffset", 1, 60, 4, " px"},
+        {QT_TR_NOOP("Maximum Tilt Angle"), QT_TR_NOOP("How far a point's handles can be turned, one way or the other."), "retraceTilt", 0, 90, 15, QT_TR_NOOP(" deg")},
+        {QT_TR_NOOP("Probability of a point to move"), QT_TR_NOOP("How likely each point the rub reaches is to be moved."), "retraceProbability", 0, 100, 50, " %"},
+        {QT_TR_NOOP("Noise Max:"), QT_TR_NOOP("How much the thickness can change at a point, thicker or thinner."), "retraceNoise", 0, 100, 20, " %"}};
+    auto applyRetrace = [this] {
+        QSettings const s = settings();
+        auto value = [&s](char const* key, int start) { return s.value(QStringLiteral("tools/") + QLatin1String(key), start).toInt(); };
+        m_canvas->setRetraceSettings(value("retraceMin", 20), value("retraceMax", 100), value("retraceOffset", 4), value("retraceTilt", 15),
+                                     value("retraceProbability", 50), value("retraceNoise", 20));
+    };
+    for (RetraceSetting const& r : retraceSettings) {
+        QString const key = QStringLiteral("tools/") + QLatin1String(r.key);
+        m_retraceRows.push_back(addSetting(tr(r.label), tr(r.tip), r.least, r.most, settings().value(key, r.start).toInt(), tr(r.suffix),
+                                           [key, applyRetrace](int v) {
+                                               settings().setValue(key, v);
+                                               applyRetrace();
+                                           }));
+    }
+    applyRetrace();
+    connect(m_retraceBox, &QCheckBox::toggled, this, [this](bool on) {
+        m_canvas->setRetrace(on);
+        settings().setValue(QStringLiteral("tools/retrace"), on);
+        for (QLayout* row : std::as_const(m_retraceRows))
+            m_form->setRowVisible(row, on && m_retraceBox->isVisible());
+    });
     // The shape tools on a bitmap layer: smooth or hard edges.
     m_edgeType = new QComboBox(this);
     m_edgeType->setObjectName(QStringLiteral("EdgeType"));

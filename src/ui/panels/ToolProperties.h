@@ -171,6 +171,13 @@ private:
     QWidget* m_pressureSmoothRow = nullptr;
     QWidget* m_pencilOpacityRow = nullptr;
     QCheckBox* m_singleStrokeBox = nullptr;
+    QCheckBox* m_retraceBox = nullptr;
+    QVector<QLayout*> m_retraceRows;
+    QCheckBox* m_envGridBox = nullptr;
+    QLayout* m_envRowsRow = nullptr;
+    QLayout* m_envColumnsRow = nullptr;
+    QPushButton* m_storeGradient = nullptr;
+    QCheckBox* m_controlSelectBox = nullptr;
     QComboBox* m_edgeType = nullptr;
     QCheckBox* m_overlayBox = nullptr;
     QSpinBox* m_stampScale = nullptr;

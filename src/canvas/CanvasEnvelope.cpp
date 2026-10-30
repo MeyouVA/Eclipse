@@ -37,6 +37,74 @@ QVector<QPointF> Canvas::selectionEnvelope() const
     return Deform::envelopeAround(chosen, std::clamp(m_envCount, 4, 32), 6.0 / std::max(m_zoom, 1e-6));
 }
 
+QVector<QPointF> Canvas::selectionGrid(QRectF* box) const
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || !hasSelection())
+        return {};
+    QRectF around;
+    for (int i : m_selStrokes)
+        around |= d->strokes[i].bounds();
+    for (int i : m_selFills)
+        around |= d->fills[i].bounds();
+    if (around.isNull())
+        return {};
+    double const room = 6.0 / std::max(m_zoom, 1e-6);
+    around.adjust(-room, -room, room, room);
+    if (box)
+        *box = around;
+    QVector<QPointF> points;
+    for (int row = 0; row <= m_envRows; ++row)
+        for (int column = 0; column <= m_envCols; ++column)
+            points.push_back(QPointF(around.left() + around.width() * column / m_envCols, around.top() + around.height() * row / m_envRows));
+    return points;
+}
+
+QPointF Canvas::gridMapped(QPointF q, QRectF const& box, int rows, int columns, QVector<QPointF> const& now)
+{
+    if (box.width() <= 0.0 || box.height() <= 0.0 || now.size() != (rows + 1) * (columns + 1))
+        return q;
+    // Its cell of the grid as it stood, and where in the cell it is; the cell's corners as they are now, mixed so.
+    double const u = (q.x() - box.left()) / box.width() * columns, v = (q.y() - box.top()) / box.height() * rows;
+    int const column = std::clamp(int(std::floor(u)), 0, columns - 1), row = std::clamp(int(std::floor(v)), 0, rows - 1);
+    double const fu = u - column, fv = v - row;
+    auto at = [&](int r, int c) { return now[r * (columns + 1) + c]; };
+    return at(row, column) * ((1 - fu) * (1 - fv)) + at(row, column + 1) * (fu * (1 - fv)) + at(row + 1, column) * ((1 - fu) * fv)
+           + at(row + 1, column + 1) * (fu * fv);
+}
+
+// A line or an area's outline bent: each point (and the ends of its handles) to where `map` puts it.
+template <class Map> static void bentLine(Stroke& line, Map const& map)
+{
+    for (StrokePoint& point : line.points) {
+        QPointF const was = point.pos, to = map(was);
+        point.in = map(was + point.in) - to;
+        point.out = map(was + point.out) - to;
+        point.pos = to;
+    }
+}
+
+template <class Map> static void bentArt(Drawing& art, Map const& map)
+{
+    for (Stroke& line : art.strokes)
+        bentLine(line, map);
+    for (Fill& fill : art.fills) {
+        if (!fill.contours.isEmpty()) {
+            for (Stroke& contour : fill.contours)
+                bentLine(contour, map);
+            fill.rebuild();
+        } else {
+            for (QPolygonF& outline : fill.outlines)
+                for (QPointF& q : outline)
+                    q = map(q);
+        }
+        if (fill.gradPlaced) {
+            fill.gradFrom = map(fill.gradFrom);
+            fill.gradTo = map(fill.gradTo);
+        }
+    }
+}
+
 QPointF Canvas::envelopePointInView(int point) const
 {
     QVector<QPointF> const points = m_drag == DragEnvelope ? m_envNow : selectionEnvelope();
@@ -53,8 +121,27 @@ QPointF Canvas::envelopeHandleInView(bool after) const
 
 bool Canvas::envelopeDown(QPointF widgetPos)
 {
-    QVector<QPointF> const points = selectionEnvelope();
     QTransform const view = layerViewTransform();
+    if (m_envGrid) {
+        // The deformation grid: a point of it taken hold of.
+        QVector<QPointF> const grid = selectionGrid(&m_envGridRect);
+        // (The nearest point to the pen, of those near enough: on a small grid they crowd together.)
+        int nearest = -1;
+        double best = 8.0;
+        for (int i = 0; i < grid.size(); ++i)
+            if (double const d = QLineF(view.map(grid[i]), widgetPos).length(); d <= best) {
+                best = d;
+                nearest = i;
+            }
+        if (nearest < 0)
+            return false;
+        m_envRest = m_envNow = grid;
+        m_envPoint = nearest;
+        m_eraseArt = *currentDrawing();
+        m_drag = DragEnvelope;
+        return true;
+    }
+    QVector<QPointF> const points = selectionEnvelope();
     // A handle of the point pressed last: the outline is led another way through its point.
     if (m_envAdvanced && m_envPicked >= 0 && m_envPicked + 2 < points.size()) {
         for (int which : {1, 2}) {
@@ -85,6 +172,27 @@ void Canvas::envelopeMove(QPointF p)
     Drawing const* const d = currentDrawing();
     if (!d || m_envPoint < 0 || m_envPoint >= m_envNow.size())
         return;
+    if (m_envGrid) {
+        // The grid point goes with the pen; what is selected follows the cells it is in.
+        m_envNow = m_envRest;
+        m_envNow[m_envPoint] = p;
+        Drawing chosen;
+        for (int i : std::as_const(m_selStrokes))
+            chosen.strokes.push_back(d->strokes[i]);
+        for (int i : std::as_const(m_selFills))
+            chosen.fills.push_back(d->fills[i]);
+        QRectF const box = m_envGridRect;
+        int const rows = m_envRows, columns = m_envCols;
+        QVector<QPointF> const now = m_envNow;
+        bentArt(chosen, [&](QPointF q) { return gridMapped(q, box, rows, columns, now); });
+        m_eraseArt = *d;
+        for (int k = 0; k < m_selStrokes.size(); ++k)
+            m_eraseArt.strokes[m_selStrokes[k]] = chosen.strokes[k];
+        for (int k = 0; k < m_selFills.size(); ++k)
+            m_eraseArt.fills[m_selFills[k]] = chosen.fills[k];
+        update();
+        return;
+    }
     // The point goes with the pen; the curve is led smoothly through it and its two neighbours again.
     m_envNow = m_envRest;
     if (m_envPoint % 3 != 0) {

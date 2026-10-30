@@ -515,7 +515,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
     // The light table: while drawing, the layers that are not being drawn on are faint.
     double const faint = m_lightTable && !m_playing && l != m_layer && m_tool != Transform && m_tool != IK && m_tool != Rigging ? m_lightWash / 100.0 : 1.0;
     if (index != Layer::kNoDrawing && layer.morphing(m_frame)) {
-        static QColor const dark(34, 34, 38);
+        QColor const dark = m_backlightColour;
         Drawing const made = shown(l, m_frame, layer.shownAt(m_frame));
         if (outlined)
             paintLockedOutline(painter, l, made);
@@ -528,7 +528,7 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
     }
     if (index != Layer::kNoDrawing && !m_playing && m_backlight) {
         // Backlight: everything drawn as one dark shape, as if lit from behind.
-        static QColor const dark(34, 34, 38);
+        QColor const dark = m_backlightColour;
         paintDrawing(painter, scene, shown(l, m_frame, l == m_layer && erasing ? withArt(m_eraseArt) : l == m_layer && transforming ? followedPreview() : layerDrawing(l, index)), 1.0, &dark);
     } else if (outlined) {
         Drawing const lines = layer.showsSymbol() ? scene.symbolPicture(layer.symbolId, index) : shown(l, m_frame, layerDrawing(l, index));
@@ -665,7 +665,32 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
             painter.restore();
         }
     }
-    if (l == m_layer && m_tool == Envelope && !m_playing && hasSelection()) {
+    if (l == m_layer && m_tool == Envelope && !m_playing && hasSelection() && m_envGrid) {
+        // The deformation grid over what is selected: its lines, and its points to take hold of.
+        QVector<QPointF> const points = m_drag == DragEnvelope ? m_envNow : selectionGrid();
+        if (points.size() == (m_envRows + 1) * (m_envCols + 1)) {
+            QTransform const where = layerViewTransform();
+            painter.save();
+            painter.resetTransform();
+            painter.setPen(QPen(QColor(240, 160, 60), 1.2));
+            auto at = [&](int r, int c) { return where.map(points[r * (m_envCols + 1) + c]); };
+            for (int r = 0; r <= m_envRows; ++r)
+                for (int c = 0; c <= m_envCols; ++c) {
+                    if (c < m_envCols)
+                        painter.drawLine(at(r, c), at(r, c + 1));
+                    if (r < m_envRows)
+                        painter.drawLine(at(r, c), at(r + 1, c));
+                }
+            painter.setPen(QPen(QColor(20, 20, 20), 1.0));
+            for (int i = 0; i < points.size(); ++i) {
+                QPointF const p = where.map(points[i]);
+                painter.setBrush(i == m_envPoint ? QColor(255, 255, 255) : QColor(240, 160, 60));
+                painter.drawRect(QRectF(p.x() - 3.5, p.y() - 3.5, 7, 7));
+            }
+            painter.restore();
+        }
+    }
+    if (l == m_layer && m_tool == Envelope && !m_playing && hasSelection() && !m_envGrid) {
         // The outline round what is selected, and its points to take hold of.
         QVector<QPointF> const points = m_drag == DragEnvelope ? m_envNow : selectionEnvelope();
         if (points.size() >= 9) {

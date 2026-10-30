@@ -580,6 +580,22 @@ public slots:
     bool hiddenInView(int layer) const;
     void onActionShowSafeArea(bool on);
     void onActionLightTable(bool on);
+    // View > Magnifier: a box beside the pointer showing what is under it, enlarged (Preferences: Paper Zoom).
+    void onActionMagnifier(bool on);
+    // Drawing > Create Breaking Triangles: brush shapes broken where they branch, a triangle at each branching and a piece for each branch.
+    void onActionCreateBreakingTriangles();
+    // Select tool: the gradient of the area (or line) selected kept, for Use Stored Colour Gradient.
+    void onActionStoreColourGradient();
+    // The areas `which` of a drawing broken at their branchings (the drawing's units drawn so many pixels each to find them); how many branchings.
+    static int breakAtJunctions(Drawing& drawing, QVector<int> const& which, double pixelsPerUnit);
+    // The Envelope tool's grid: its points over what is selected, row by row (and the box they stand on).
+    QVector<QPointF> selectionGrid(QRectF* box = nullptr) const;
+    // A place under the grid moved: where it goes as the points the grid stood on went from `rest` to `now`.
+    static QPointF gridMapped(QPointF q, QRectF const& box, int rows, int columns, QVector<QPointF> const& now);
+    void updateMagnifier(QPointF widgetPos);
+    bool magnifying() const;
+    // The most the view zooms in: with paper zoom, no more than so many times the frame's real size.
+    double zoomMost() const;
     // The layer being drawn on painted over the others, whatever its place among them.
     void onActionCurrentDrawingOnTop(bool on);
     // What lies outside the camera frame darkened.

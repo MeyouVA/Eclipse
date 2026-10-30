@@ -7,6 +7,7 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QGridLayout>
+#include <QGroupBox>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
@@ -188,27 +189,36 @@ EaseMultipleDialog::EaseMultipleDialog(QWidget* parent) : QDialog(parent)
     m_outValue = box("EaseOutValue");
     m_inTime = box("EaseInTime");
     m_inValue = box("EaseInValue");
-    numbers->addWidget(new QLabel(tr("Ease Out (right)"), this), 0, 0);
-    numbers->addWidget(m_outTime, 0, 1);
-    numbers->addWidget(m_outValue, 0, 2);
-    numbers->addWidget(new QLabel(tr("Ease In (left)"), this), 1, 0);
-    numbers->addWidget(m_inTime, 1, 1);
-    numbers->addWidget(m_inValue, 1, 2);
+    numbers->addWidget(new QLabel(tr("Time Ratio"), this), 0, 1);
+    numbers->addWidget(new QLabel(tr("Value Ratio"), this), 0, 2);
+    numbers->addWidget(new QLabel(tr("Ease Out (right)"), this), 1, 0);
+    numbers->addWidget(m_outTime, 1, 1);
+    numbers->addWidget(m_outValue, 1, 2);
+    numbers->addWidget(new QLabel(tr("Ease In (left)"), this), 2, 0);
+    numbers->addWidget(m_inTime, 2, 1);
+    numbers->addWidget(m_inValue, 2, 2);
+    m_outTime->setToolTip(tr("Right Time Ratio: how far into the move the ease-out handle reaches."));
+    m_outValue->setToolTip(tr("Right Value Ratio: how far along the change the ease-out handle reaches."));
+    m_inTime->setToolTip(tr("Left Time Ratio: how far back from the end the ease-in handle reaches."));
+    m_inValue->setToolTip(tr("Left Value Ratio: how far back along the change the ease-in handle reaches."));
     layout->addLayout(numbers);
-    // The kinds of value it is given to.
-    QGridLayout* const kinds = new QGridLayout;
+    // The kinds of value it is given to: the filters of the functions eased.
+    QGroupBox* const filters = new QGroupBox(tr("Filters"), this);
+    filters->setObjectName(QStringLiteral("EaseFilters"));
+    filters->setToolTip(tr("The functions eased: those of the kinds ticked."));
+    QGridLayout* const kinds = new QGridLayout(filters);
     QStringList const names = {tr("Motion"), tr("Rotation"), tr("Scale"), tr("Skew"), tr("Morphing"), tr("Other")};
     QStringList const ids = {QStringLiteral("motion"), QStringLiteral("rotation"), QStringLiteral("scale"), QStringLiteral("skew"),
                              QStringLiteral("morphing"), QStringLiteral("other")};
     for (int i = 0; i < names.size(); ++i) {
-        QCheckBox* const tick = new QCheckBox(names[i], this);
+        QCheckBox* const tick = new QCheckBox(names[i], filters);
         tick->setObjectName(QStringLiteral("EaseKind_") + ids[i]);
         tick->setProperty("kind", ids[i]);
         tick->setChecked(true);
         kinds->addWidget(tick, i / 3, i % 3);
         m_kinds.push_back(tick);
     }
-    layout->addLayout(kinds);
+    layout->addWidget(filters);
     QDialogButtonBox* const buttons = new QDialogButtonBox(this);
     QPushButton* const apply = buttons->addButton(tr("Apply"), QDialogButtonBox::ApplyRole);
     QPushButton* const previous = buttons->addButton(tr("Apply/Previous"), QDialogButtonBox::ActionRole);

@@ -209,8 +209,23 @@ void Canvas::transformDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers)
     if (!o.hideControls && current.hasWarp()) {
         int const at = warpAt(Deform::posedWarp(current.warp, m_dragPose.warp), widgetPos);
         if (at >= 0) {
+            // Control Selection Mode: a point not picked yet is picked (with Shift, along with the others).
+            if (m_controlSelect && at % 3 == 0 && (m_warpPickedLayer != current.id || !m_warpPicked.contains(at))) {
+                if (!(modifiers & Qt::ShiftModifier) || m_warpPickedLayer != current.id)
+                    m_warpPicked.clear();
+                m_warpPicked.push_back(at);
+                m_warpPickedLayer = current.id;
+            }
             m_warpIndex = at;
             m_drag = DragWarp;
+            return;
+        }
+        if (m_controlSelect) {
+            m_drag = DragControlBox;
+            m_dragLasso = m_lasso != bool(modifiers & Qt::AltModifier);
+            m_dragStart = m_dragNow = toLayer(widgetPos);
+            m_lassoPath = QPolygonF({m_dragStart});
+            m_controlBoxAdds = bool(modifiers & Qt::ShiftModifier);
             return;
         }
     }

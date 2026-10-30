@@ -86,6 +86,8 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
     if (m_tool == Stamp || (m_brushOutline && (m_tool == Brush || m_tool == Eraser || m_tool == Pencil)))
         update();       // the stamp (or the brush's size) is shown under the pointer
     m_hoverKnown = true;
+    if (magnifying())
+        updateMagnifier(event->position());
     if (drawingGuide())
         update();       // its lines follow the pointer
     if (!m_tabletActive && m_drag != DragNone)
@@ -149,7 +151,7 @@ void Canvas::wheelEvent(QWheelEvent* event)
     QPointF const anchor = event->position();
     QPointF const scenePoint = toScene(anchor);
     double const factor = std::pow(1.0015, event->angleDelta().y());
-    m_zoom = std::clamp(m_zoom * factor, m_zoomMin, m_zoomMax);
+    m_zoom = std::clamp(m_zoom * factor, m_zoomMin, zoomMost());
     emit zoomChanged();
     m_fitted = false;
     QPointF const moved = viewTransform().map(scenePoint);

@@ -226,6 +226,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             m_eraseArt = *d;
             m_inked = false;
             m_drag = DragSmooth;
+            m_retraced.clear();
             m_singleNow = m_singleStroke != bool(modifiers & Qt::ShiftModifier);
             m_onlyLine = -1;
             smoothAt(p);

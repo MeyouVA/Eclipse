@@ -1,5 +1,6 @@
 // Eclipse - the Camera view: the pen let go after the tools that finish at once, and after drawing a line or a shape.
 #include "canvas/Canvas.h"
+#include "model/geometry/Deform.h"
 #include <QCheckBox>
 #include <QSpinBox>
 #include <QFormLayout>
@@ -66,6 +67,28 @@ if (drag == DragGuide) {
     m_guideLine = -1;
     if (moved != m_document->scene().guides)
         m_document->setGuides(moved, tr("Move Guide"));
+    update();
+    return true;
+}
+if (drag == DragControlBox) {
+    // The deformer's points inside the box (or lasso) are picked.
+    m_drag = DragNone;
+    Scene const& scene = m_document->scene();
+    if (m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].hasWarp()) {
+        Layer const& layer = scene.layers[m_layer];
+        QVector<QPointF> const points = Deform::posedWarp(layer.warp, poseOf(m_layer, m_frame).warp);
+        QRectF const box = QRectF(m_dragStart, m_dragNow).normalized();
+        if (!m_controlBoxAdds || m_warpPickedLayer != layer.id)
+            m_warpPicked.clear();
+        m_warpPickedLayer = layer.id;
+        for (int i = 0; i + 2 < points.size(); i += 3) {
+            bool const inside = m_dragLasso && m_lassoPath.size() >= 3 ? m_lassoPath.containsPoint(points[i], Qt::OddEvenFill) : box.contains(points[i]);
+            if (inside && !m_warpPicked.contains(i))
+                m_warpPicked.push_back(i);
+        }
+        emit message(tr("%n control point(s) picked: drag one to move them together.", nullptr, int(m_warpPicked.size())));
+    }
+    m_lassoPath.clear();
     update();
     return true;
 }

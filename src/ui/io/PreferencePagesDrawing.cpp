@@ -84,6 +84,30 @@ void MainWindow::preferencesDrawing(PreferenceWidgets& w, QSettings& s, QDialog&
     w.lightShadeCamera->setEnabled(w.lightShade->isChecked());
     connect(w.lightShade, &QCheckBox::toggled, w.lightShadeCamera, &QWidget::setEnabled);
     w.drawingLayout->addRow(w.lightShadeCamera);
+    w.backlightColour = new QPushButton(w.drawing);
+    w.backlightColour->setObjectName(QStringLiteral("PrefBacklightColour"));
+    auto showBacklight = [button = w.backlightColour](QColor const& colour) {
+        button->setProperty("colour", colour);
+        button->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px; min-width: 60px;").arg(colour.name()));
+    };
+    showBacklight(s.value(QStringLiteral("prefs/backlightColour"), QColor(34, 34, 38)).value<QColor>());
+    connect(w.backlightColour, &QPushButton::clicked, &dialog, [button = w.backlightColour, showBacklight, &dialog] {
+        QColor const colour = ColourEditor::getColour(button->property("colour").value<QColor>(), &dialog, tr("Backlight Colour"));
+        if (colour.isValid())
+            showBacklight(colour);
+    });
+    w.backlightColour->setToolTip(tr("View > Backlight: the colour the drawings are shown in, as if lit from behind."));
+    w.drawingLayout->addRow(tr("Backlight Colour"), w.backlightColour);
+    w.drawingThumbnails = new QComboBox(w.drawing);
+    w.drawingThumbnails->setObjectName(QStringLiteral("PrefDrawingThumbnails"));
+    w.drawingThumbnails->addItem(tr("Left"), QStringLiteral("left"));
+    w.drawingThumbnails->addItem(tr("Right"), QStringLiteral("right"));
+    w.drawingThumbnails->addItem(tr("Top"), QStringLiteral("top"));
+    w.drawingThumbnails->addItem(tr("Bottom"), QStringLiteral("bottom"));
+    w.drawingThumbnails->addItem(tr("Hidden"), QStringLiteral("none"));
+    w.drawingThumbnails->setCurrentIndex(std::max(0, w.drawingThumbnails->findData(s.value(QStringLiteral("prefs/drawingThumbnails"), QStringLiteral("left")).toString())));
+    w.drawingThumbnails->setToolTip(tr("The Drawing window: the side its thumbnails of the layer's drawings are on."));
+    w.drawingLayout->addRow(tr("Thumbnail View Location"), w.drawingThumbnails);
     w.gridOnDefault = new QCheckBox(tr("Grid On By Default"), w.drawing);
     w.gridOnDefault->setObjectName(QStringLiteral("PrefGridOnDefault"));
     w.gridOnDefault->setToolTip(tr("The grid is shown when Eclipse starts."));

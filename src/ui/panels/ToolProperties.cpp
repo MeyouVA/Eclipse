@@ -412,7 +412,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_textRow, text);
     m_form->setRowVisible(m_paraRow, text);
     m_form->setRowVisible(m_applyAll, tool == T::Select);
-    m_form->setRowVisible(m_applySynced, tool == T::Select);
+    m_form->setRowVisible(m_applySynced, tool == T::Select || tool == T::Reposition);
     m_form->setRowVisible(m_applyVisible, tool == T::Select);
     m_form->setRowVisible(m_applyOnion, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
@@ -452,6 +452,15 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_pressureSmoothRow, brush || pencil);
     m_form->setRowVisible(m_pencilOpacityRow, pencil);
     m_form->setRowVisible(m_singleStrokeBox, tool == T::SmoothEditor || tool == T::PencilRetouch);
+    m_form->setRowVisible(m_retraceBox, tool == T::SmoothEditor);
+    for (QLayout* row : std::as_const(m_retraceRows))
+        m_form->setRowVisible(row, tool == T::SmoothEditor && m_retraceBox->isChecked());
+    m_form->setRowVisible(m_envGridBox, tool == T::Envelope);
+    m_form->setRowVisible(m_envRowsRow, tool == T::Envelope && m_envGridBox->isChecked());
+    m_form->setRowVisible(m_envColumnsRow, tool == T::Envelope && m_envGridBox->isChecked());
+    m_form->setRowVisible(m_envToolRow, tool == T::Envelope && !m_envGridBox->isChecked());
+    m_form->setRowVisible(m_storeGradient, tool == T::Select);
+    m_form->setRowVisible(m_controlSelectBox, tool == T::Transform);
     m_form->setRowVisible(m_edgeType, shape);
     m_form->setRowVisible(m_overlayBox, brush || pencil);
     // The Pencil Retouch tool's size is the reach of its rub.

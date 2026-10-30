@@ -113,7 +113,7 @@ void Canvas::zoomBy(double factor)
 void Canvas::zoomAt(QPointF anchor, double factor)
 {
     QPointF const scenePoint = toScene(anchor);
-    m_zoom = std::clamp(m_zoom * factor, m_zoomMin, m_zoomMax);
+    m_zoom = std::clamp(m_zoom * factor, m_zoomMin, zoomMost());
     emit zoomChanged();
     m_fitted = false;
     m_pan += anchor - viewTransform().map(scenePoint);

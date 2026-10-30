@@ -106,6 +106,13 @@ protected:
     bool m_gridOutline = false;
     bool m_gridUnder = false;
     bool m_backlight = false;
+    QColor m_backlightColour = QColor(34, 34, 38);
+    // Paper zoom: the most it zooms in (times the frame's real size). The magnifier: on, how much it enlarges, its size and where it is from the pointer.
+    int m_paperZoomMost = 4;
+    QWidget* m_magnifier = nullptr;
+    double m_magnifyZoom = 2.0;
+    QSize m_magnifySize = QSize(150, 150);
+    QPoint m_magnifyOffset = QPoint(-90, 90);
     bool m_outlineLocked = false;
     bool m_bboxSelection = false;
     // Layers (by id) hidden from the Camera and scene planning views only, and what hangs under them.
@@ -198,6 +205,15 @@ protected:
     bool m_guidesLocked = false;
     bool m_selectByColour = false;
     int m_envCount = 8;
+    // The Envelope tool's deformation grid: on, so many rows and columns of points over what is selected (off: the outline round it).
+    bool m_envGrid = false;
+    int m_envRows = 2, m_envCols = 2;
+    QRectF m_envGridRect;
+    // The Smooth Editor's Retrace: what is rubbed is jittered as if traced again by hand - each point, as likely as the probability,
+    // moved between the least and the most share of the offset, its handles turned up to the tilt, its thickness changed up to the noise.
+    bool m_retrace = false;
+    int m_retraceMin = 20, m_retraceMax = 100, m_retraceOffset = 4, m_retraceTilt = 15, m_retraceProbability = 50, m_retraceNoise = 20;
+    QSet<qint64> m_retraced;            // the points jittered already in this rub
     double m_gapSize = 2.0;
     bool m_paintAll = false;
     bool m_paintLayers = false;
@@ -363,6 +379,11 @@ protected:
     bool m_polyActive = false;   // a polyline is being laid down, in m_stroke
     QPointF m_polyHover;         // where its next point would go (layer coordinates)
     int m_quadCorner = -1;          // the corner of the quadmap being dragged
+    // Control Selection Mode: the deformer's points picked together with a box or lasso (of the layer with that id), moved as one.
+    bool m_controlSelect = false;
+    QVector<int> m_warpPicked;
+    int m_warpPickedLayer = 0;
+    bool m_controlBoxAdds = false;  // (Shift) the points in the box are picked as well as those picked already
     QVector<QPointF> m_dragQuad;    // and where its corners are meanwhile
     class TextEntry* m_textEntry = nullptr;   // where the Text tool is being typed into
     QPointF m_textAt;                         // and where the words will stand (layer coordinates)
