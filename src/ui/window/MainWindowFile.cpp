@@ -326,6 +326,9 @@ void MainWindow::onActionExportMovie()
         codec->setCurrentIndex(codec->findData(3));
     }
     codec->setEnabled(movieKind == QLatin1String("mp4") || movieKind == QLatin1String("mov"));
+    QCheckBox* const timecode = new QCheckBox(tr("Burn in Time Code"), &dialog);
+    timecode->setObjectName(QStringLiteral("MovieTimecode"));
+    timecode->setToolTip(tr("The time code (hours:minutes:seconds:frames) written on each frame, in the font of Preferences > General: Time Code Font."));
     QCheckBox* const transparent = new QCheckBox(tr("Transparent background"), &dialog);
     transparent->setObjectName(QStringLiteral("MovieTransparentBackground"));
     transparent->setChecked(movieKind == QLatin1String("mov"));
@@ -360,6 +363,7 @@ void MainWindow::onActionExportMovie()
     form->addRow(tr("Quality"), quality);
     form->addRow(tr("Codec"), codec);
     form->addRow(transparent);
+    form->addRow(timecode);
     form->addRow(tr("Encoding"), speed);
     form->addRow(tr("Sound"), audio);
     // Colour management on: the colour space the frames are put in for the movie.
@@ -387,6 +391,7 @@ void MainWindow::onActionExportMovie()
     choices.speed = speed->currentData().toInt();
     choices.audioKbps = audio->currentData().toInt();
     choices.transparentBackground = transparent->isEnabled() && transparent->isChecked();
+    choices.timecode = timecode->isChecked();
     choices.colourSpace = ColourSpaceBox::chosen(space);
     exportMovieTo(path, &choices);
 }
@@ -405,7 +410,9 @@ void MainWindow::exportMovieTo(QString const& path, MovieChoices const* choices)
         options.speed = choices->speed;
         options.audioKbps = choices->audioKbps;
         options.transparentBackground = choices->transparentBackground;
+        options.timecode = choices->timecode;
     }
+    options.timecodeFont = settings().value(QStringLiteral("prefs/timecodeFont"), QStringLiteral("Arial")).toString();
     options.colourSpace = scene.outputSpace(choices ? choices->colourSpace : QString(), QString());
     QProgressDialog progress(tr("Exporting movie..."), tr("Stop"), 0, scene.frameCount(), this);
     progress.setWindowModality(Qt::WindowModal);

@@ -56,6 +56,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     m_document = new Document(this);
     createViews();
+    refreshPresetShortcuts();
     createCollapseArrows();
     if (centralWidget())
         centralWidget()->installEventFilter(this);

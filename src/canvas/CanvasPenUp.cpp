@@ -53,11 +53,7 @@ void Canvas::commitPenStroke(Stroke const& drawn, double tolerance)
         Fill shape;
         if (asShape) {
             shape = Fill::fromStroke(stroke, std::max(tolerance * 0.5, 0.05));
-            shape.texture = m_brushTexture;
-            shape.textureAmount = float(m_brushTextureAmount) / 100.0f;
-            shape.textureCrisp = m_brushTextureCrisp;
-            shape.textureLow = float(m_brushRampLow) / 100.0f;
-            shape.textureHigh = float(m_brushRampHigh) / 100.0f;
+            brushTextureOn(shape);
             if (shape.outlines.isEmpty())
                 return;
         }
@@ -83,6 +79,9 @@ void Canvas::commitPenStroke(Stroke const& drawn, double tolerance)
                 piece.textureCrisp = shape.textureCrisp;
                 piece.textureLow = shape.textureLow;
                 piece.textureHigh = shape.textureHigh;
+                piece.textureScale = shape.textureScale;
+                piece.textureAligned = shape.textureAligned;
+                piece.textureSeed = shape.textureSeed;
             }
             if (!piece.outlines.isEmpty())
                 paintFill(onto, piece, scene.brushFor(shape));
@@ -153,11 +152,7 @@ void Canvas::commitPenStroke(Stroke const& drawn, double tolerance)
     if (m_tool == Brush && m_brushShapes) {
         double const fine = std::max(tolerance * 0.5, 0.05);
         Fill shape = Fill::fromStroke(stroke, fine);
-        shape.texture = m_brushTexture;
-        shape.textureAmount = float(m_brushTextureAmount) / 100.0f;
-        shape.textureCrisp = m_brushTextureCrisp;
-        shape.textureLow = float(m_brushRampLow) / 100.0f;
-        shape.textureHigh = float(m_brushRampHigh) / 100.0f;
+        brushTextureOn(shape);
         if (!shape.outlines.isEmpty()) {
             Drawing art = currentDrawing() ? *currentDrawing() : Drawing();
             // Drawn behind, the stroke is the one that gives way: what lies over it is cut out of it.
@@ -173,11 +168,14 @@ void Canvas::commitPenStroke(Stroke const& drawn, double tolerance)
                     if (!under.overlaps(shape)) {
                         kept.push_back(under);
                     } else if (under.swatch == shape.swatch && under.color == shape.color && under.texture == shape.texture
-                               && (shape.texture == 0 || (under.textureAmount == shape.textureAmount && under.textureCrisp == shape.textureCrisp
-                                                           && under.textureLow == shape.textureLow && under.textureHigh == shape.textureHigh))) {
+                               && (shape.texture == 0 || (!shape.textureAdditive && under.textureAmount == shape.textureAmount && under.textureCrisp == shape.textureCrisp
+                                                           && under.textureLow == shape.textureLow && under.textureHigh == shape.textureHigh
+                                                           && under.textureScale == shape.textureScale && under.textureAligned == shape.textureAligned))) {
                         for (Fill& piece : mine)
                             if (piece.mergeWith(under, fine))
                                 break;
+                    } else if (!m_drawBehind && shape.textureAdditive && shape.texture != 0 && under.swatch == shape.swatch && under.color == shape.color) {
+                        kept.push_back(under);      // Additive: the paint under it stays whole, the new grain built up on it
                     } else if (m_drawBehind) {
                         kept.push_back(under);
                         QVector<Fill> left;
@@ -239,6 +237,27 @@ void Canvas::keepStroke(Stroke const& stroke, bool fromPen, double tolerance)
     }
     if (!mirrors.isEmpty())
         m_document->endMacro();
+    // The Stroke tool, Apply to Synced Drawing Layers: the same line on the layers synced with this one, where it falls on them.
+    if (m_tool == StrokeTool && m_applySynced) {
+        Scene const& scene = m_document->scene();
+        int const group = m_layer >= 0 && m_layer < scene.layers.size() ? scene.layers[m_layer].syncGroup : 0;
+        QTransform const here = worldOf(m_layer, m_frame);
+        for (int l = 0; group != 0 && l < m_document->scene().layers.size(); ++l) {
+            Layer const& layer = m_document->scene().layers[l];
+            int const index = layer.drawingAt(m_frame);
+            if (l == m_layer || layer.syncGroup != group || !layer.holdsDrawings() || layer.locked || index == Layer::kNoDrawing)
+                continue;
+            QTransform const there = worldOf(l, m_frame);
+            if (!there.isInvertible())
+                continue;
+            Drawing whole = layer.drawings[index];
+            Stroke placed = stroke;
+            placed.transform(here * there.inverted());
+            placed.order = Drawing::orderOnTop(whole.fills, whole.strokes);
+            whole.strokes.push_back(placed);
+            m_document->setDrawing(l, m_frame, whole, tr("Draw Stroke"));
+        }
+    }
 }
 
 QPointF Canvas::stabilised(QPointF line, QPointF pen, int strength)

@@ -46,6 +46,7 @@ struct MovieChoices {
     int speed = 1;
     int audioKbps = 192;
     bool transparentBackground = false;
+    bool timecode = false;  // the time code written on each frame
     QString colourSpace;    // empty: the working space
 };
 
@@ -658,6 +659,13 @@ public slots:
     // The size in hand, kept under a name among the presets of the tool.
     void onActionNewToolPreset();
     void onActionManagePresets();
+    // A preset of your own, more than its size: the tool and the colour it takes up, its icon, its shortcut, a script it runs and its texture.
+    void onActionPresetDetails(QString const& kind, QString const& name);
+    // Tool presets: colours they take up that are gone from the palettes, put back; how many.
+    int onActionRecoverLostColours();
+    // A preset of your own taken up (clicked, or by its shortcut): what its details say besides its size.
+    void applyPresetDetails(QString const& kind, QString const& name);
+    void refreshPresetShortcuts();
     // The size of the Brush, the Pencil or the Eraser, a step bigger ("up") or smaller ("down").
     void onActionChangeBrushSize(QString const& way);
     // Tool Preset Shortcut #n: the n-th preset of the tool in hand (as Tool Properties lists them) taken up.

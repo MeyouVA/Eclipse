@@ -571,6 +571,46 @@ void ToolProperties::addBrushRows()
         settings().setValue(QStringLiteral("tools/brushTextureCrisp"), on);
     });
     m_form->addRow(m_paperCrisp);
+    // The paper texture's scale, and whether its grain is laid with the drawing's paper and built up on the paint under it.
+    {
+        QHBoxLayout* const row = new QHBoxLayout;
+        QSpinBox* const scale = new QSpinBox(this);
+        scale->setObjectName(QStringLiteral("BrushTextureScale"));
+        scale->setRange(10, 1000);
+        scale->setSuffix(QStringLiteral(" %"));
+        scale->setToolTip(tr("Paper Texture Scale: how big its grain is. Applies to new strokes and to selected ones."));
+        scale->setValue(settings().value(QStringLiteral("tools/brushTextureScale"), 100).toInt());
+        QCheckBox* const aligned = new QCheckBox(tr("Aligned"), this);
+        aligned->setObjectName(QStringLiteral("BrushTextureAligned"));
+        aligned->setToolTip(tr("Aligned: every stroke's grain is laid as the drawing's one paper is. Off: each stroke's grain is shifted, as dabs on paper are."));
+        aligned->setChecked(settings().value(QStringLiteral("tools/brushTextureAligned"), true).toBool());
+        QCheckBox* const additive = new QCheckBox(tr("Additive"), this);
+        additive->setObjectName(QStringLiteral("BrushTextureAdditive"));
+        additive->setToolTip(tr("Additive: a stroke's grain builds up on the paint of its colour under it, instead of being joined to it."));
+        additive->setChecked(settings().value(QStringLiteral("tools/brushTextureAdditive"), false).toBool());
+        m_canvas->setBrushTextureScale(scale->value());
+        m_canvas->setBrushTextureAligned(aligned->isChecked());
+        m_canvas->setBrushTextureAdditive(additive->isChecked());
+        connect(scale, &QSpinBox::valueChanged, this, [this](int v) {
+            m_canvas->setBrushTextureScale(v);
+            settings().setValue(QStringLiteral("tools/brushTextureScale"), v);
+        });
+        connect(aligned, &QCheckBox::toggled, this, [this](bool on) {
+            m_canvas->setBrushTextureAligned(on);
+            settings().setValue(QStringLiteral("tools/brushTextureAligned"), on);
+        });
+        connect(additive, &QCheckBox::toggled, this, [this](bool on) {
+            m_canvas->setBrushTextureAdditive(on);
+            settings().setValue(QStringLiteral("tools/brushTextureAdditive"), on);
+        });
+        row->addWidget(new QLabel(tr("Scale"), this));
+        row->addWidget(scale);
+        row->addWidget(aligned);
+        row->addWidget(additive);
+        row->addStretch(1);
+        m_form->addRow(row);
+        m_paperOptions = row;
+    }
     m_paperRamp = rampRow(QStringLiteral("BrushTextureRamp"), true);
     m_form->addRow(m_paperRamp);
 }

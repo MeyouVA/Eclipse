@@ -63,6 +63,18 @@ void MainWindow::onActionNewToolPreset()
     else
         list << QStringLiteral("%1|%2").arg(name).arg(int(m_canvas->brushWidth()));
     s.setValue(QStringLiteral("presets/") + kind, list);
+    // Its details, ready to be switched on (Manage Presets > Details): the tool, the colour and the texture in hand now.
+    QVariantMap details;
+    details[QStringLiteral("tool")] = int(m_canvas->tool());
+    if (Swatch const* const swatch = m_document->scene().findSwatch(m_palette ? m_palette->currentSwatch() : Scene::kNoSwatch)) {
+        details[QStringLiteral("swatch")] = swatch->id;
+        details[QStringLiteral("colour")] = swatch->color;
+        details[QStringLiteral("colourName")] = swatch->name;
+    }
+    int const texture = kind == QLatin1String("brush") ? m_canvas->brushTexture() : kind == QLatin1String("pencil") ? m_canvas->lineTexture() : 0;
+    details[QStringLiteral("texture")] = texture;
+    details[QStringLiteral("setTexture")] = texture != 0;
+    s.setValue(QStringLiteral("presetDetails/%1/%2").arg(kind, name), details);
     if (m_refreshToolProperties)
         m_refreshToolProperties();
 }
@@ -103,11 +115,27 @@ void MainWindow::onActionManagePresets()
         QString const key = QStringLiteral("presets/") + item->data(Qt::UserRole).toString();
         QStringList presets = s.value(key).toStringList();
         int const index = item->data(Qt::UserRole + 1).toInt();
-        if (index >= 0 && index < presets.size())
+        if (index >= 0 && index < presets.size()) {
+            s.remove(QStringLiteral("presetDetails/%1/%2").arg(item->data(Qt::UserRole).toString(), presets[index].section(QLatin1Char('|'), 0, 0)));
             presets.removeAt(index);
+        }
         s.setValue(key, presets);
         fill();
     });
+    QPushButton* const details = buttons->addButton(tr("Details..."), QDialogButtonBox::ActionRole);
+    details->setObjectName(QStringLiteral("PresetDetails"));
+    connect(details, &QPushButton::clicked, &dialog, [this, list] {
+        QListWidgetItem* const item = list->currentItem();
+        if (!item || item->data(Qt::UserRole).toString().isEmpty())
+            return;
+        QStringList const presets = settings().value(QStringLiteral("presets/") + item->data(Qt::UserRole).toString()).toStringList();
+        int const index = item->data(Qt::UserRole + 1).toInt();
+        if (index >= 0 && index < presets.size())
+            onActionPresetDetails(item->data(Qt::UserRole).toString(), presets[index].section(QLatin1Char('|'), 0, 0));
+    });
+    QPushButton* const recover = buttons->addButton(tr("Recover Lost Colours"), QDialogButtonBox::ActionRole);
+    recover->setObjectName(QStringLiteral("RecoverLostColours"));
+    connect(recover, &QPushButton::clicked, this, &MainWindow::onActionRecoverLostColours);
     QPushButton* const rename = buttons->addButton(tr("Rename..."), QDialogButtonBox::ActionRole);
     rename->setObjectName(QStringLiteral("RenamePreset"));
     connect(rename, &QPushButton::clicked, &dialog, [list, fill, &dialog] {
@@ -125,6 +153,11 @@ void MainWindow::onActionManagePresets()
         QString const name = QInputDialog::getText(&dialog, tr("Rename Preset"), tr("Name:"), QLineEdit::Normal, parts.value(0), &ok).trimmed();
         if (!ok || name.isEmpty() || name.contains(QLatin1Char('|')))
             return;
+        QString const kindNow = item->data(Qt::UserRole).toString();
+        QVariant const kept = s.value(QStringLiteral("presetDetails/%1/%2").arg(kindNow, parts[0]));
+        s.remove(QStringLiteral("presetDetails/%1/%2").arg(kindNow, parts[0]));
+        if (kept.isValid())
+            s.setValue(QStringLiteral("presetDetails/%1/%2").arg(kindNow, name), kept);
         parts[0] = name;
         presets[index] = parts.join(QLatin1Char('|'));
         s.setValue(key, presets);

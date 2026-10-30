@@ -284,6 +284,9 @@ void ToolProperties::addPresetRows()
         QListWidgetItem* const item = m_presets->itemAt(at);
         QAction* const update = menu.addAction(tr("Update Preset"));
         update->setEnabled(item && item->data(Qt::UserRole + 4).isValid());
+        QAction* const details = menu.addAction(tr("Details..."));
+        details->setEnabled(item && item->data(Qt::UserRole + 7).isValid());
+        QAction* const recover = menu.addAction(tr("Recover Lost Colours"));
         menu.addSeparator();
         QAction* const views[5] = {menu.addAction(tr("Small Thumbnail")), menu.addAction(tr("Large Thumbnail")), menu.addAction(tr("Detail View")),
                                    menu.addAction(tr("Swatch Mode")), menu.addAction(tr("Swatch Mode (Small)"))};
@@ -295,6 +298,11 @@ void ToolProperties::addPresetRows()
         QAction* const chosen = menu.exec(m_presets->viewport()->mapToGlobal(at));
         if (chosen == update && item)
             updatePreset(item->data(Qt::UserRole + 4).toInt());
+        if (chosen == details && item)
+            QMetaObject::invokeMethod(window(), "onActionPresetDetails", Q_ARG(QString, item->data(Qt::UserRole + 8).toString()),
+                                      Q_ARG(QString, item->data(Qt::UserRole + 7).toString()));
+        if (chosen == recover)
+            QMetaObject::invokeMethod(window(), "onActionRecoverLostColours");
         for (int v = 0; v < 5; ++v)
             if (chosen == views[v])
                 setPresetView(v);
@@ -317,6 +325,10 @@ void ToolProperties::addPresetRows()
         QVariant const smoothing = item->data(Qt::UserRole + 1);
         if (QSpinBox* const box = findChild<QSpinBox*>(tr("Smoothing")); box && smoothing.isValid())
             box->setValue(smoothing.toInt());
+        // And what its details say: its tool, colour, texture, script.
+        if (item->data(Qt::UserRole + 7).isValid())
+            QMetaObject::invokeMethod(window(), "applyPresetDetails", Qt::QueuedConnection, Q_ARG(QString, item->data(Qt::UserRole + 8).toString()),
+                                      Q_ARG(QString, item->data(Qt::UserRole + 7).toString()));
     });
     connect(m_presets, &QListWidget::currentItemChanged, this, [this](QListWidgetItem* item) {
         if (item)
@@ -397,6 +409,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_drawBehind, brush);
     m_form->setRowVisible(static_cast<QLayout*>(m_paperRow), brush);
     m_form->setRowVisible(m_paperCrisp, brush);
+    m_form->setRowVisible(m_paperOptions, brush);
     m_form->setRowVisible(m_paperRamp, brush);
     m_drawBehind->setChecked(m_canvas->drawBehind());
     m_autoFlatten->setChecked(m_canvas->autoFlatten());
@@ -412,7 +425,7 @@ void ToolProperties::showFor(int tool)
     m_form->setRowVisible(m_textRow, text);
     m_form->setRowVisible(m_paraRow, text);
     m_form->setRowVisible(m_applyAll, tool == T::Select);
-    m_form->setRowVisible(m_applySynced, tool == T::Select || tool == T::Reposition);
+    m_form->setRowVisible(m_applySynced, tool == T::Select || tool == T::Reposition || tool == T::StrokeTool);
     m_form->setRowVisible(m_applyVisible, tool == T::Select);
     m_form->setRowVisible(m_applyOnion, tool == T::Select);
     m_form->setRowVisible(m_dropperAll, tool == T::Dropper);
@@ -525,7 +538,13 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
             QIcon icon;
             icon.addPixmap(picture, QIcon::Normal);
             icon.addPixmap(picture, QIcon::Selected);
+            QString const kind = QLatin1String(brush ? "brush" : eraser ? "eraser" : "pencil");
+            QString const ownIcon = settings().value(QStringLiteral("presetDetails/%1/%2").arg(kind, parts[0])).toMap().value(QStringLiteral("icon")).toString();
+            if (!ownIcon.isEmpty() && !QIcon(ownIcon).isNull())
+                icon = QIcon(ownIcon);     // its own icon, chosen in its details
             QListWidgetItem* const item = new QListWidgetItem(icon, tr("%1   (%2)").arg(parts[0]).arg(width), m_presets);
+            item->setData(Qt::UserRole + 7, parts[0]);
+            item->setData(Qt::UserRole + 8, kind);
             item->setData(Qt::UserRole, width);
             if (parts.size() == 3)
                 item->setData(Qt::UserRole + 1, parts[2].toInt());

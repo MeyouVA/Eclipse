@@ -204,7 +204,19 @@ QVector<P> const& table(Effect::Type type)
         {"kind", QT_TRANSLATE_NOOP("Effect", "Offset Type"), P::Choice, 0, 2, 0,
          QT_TRANSLATE_NOOP("Effect", "Offset Everything Consistently|Offset Each Drawing Uniquely|Offset Each Pencil Texture Uniquely"), nullptr},
         {"seed", QT_TRANSLATE_NOOP("Effect", "Random Seed"), P::Whole, 0, 99999, 1, nullptr, nullptr}};
+    static QVector<P> const shapeCurve = {
+        {"x1", QT_TRANSLATE_NOOP("Effect", "Position 1 X"), P::Number, -10000, 10000, -200, nullptr, QT_TRANSLATE_NOOP("Effect", "Where the curve starts, from the middle of the camera frame, in scene units.")},
+        {"y1", QT_TRANSLATE_NOOP("Effect", "Position 1 Y"), P::Number, -10000, 10000, 0, nullptr, nullptr},
+        {"lx", QT_TRANSLATE_NOOP("Effect", "Left Handle Offset X"), P::Number, -10000, 10000, 80, nullptr, QT_TRANSLATE_NOOP("Effect", "The handle that leads the curve out of its start, from the start.")},
+        {"ly", QT_TRANSLATE_NOOP("Effect", "Left Handle Offset Y"), P::Number, -10000, 10000, -120, nullptr, nullptr},
+        {"x2", QT_TRANSLATE_NOOP("Effect", "Position 2 X"), P::Number, -10000, 10000, 200, nullptr, QT_TRANSLATE_NOOP("Effect", "Where the curve ends.")},
+        {"y2", QT_TRANSLATE_NOOP("Effect", "Position 2 Y"), P::Number, -10000, 10000, 0, nullptr, nullptr},
+        {"rx", QT_TRANSLATE_NOOP("Effect", "Right Handle Offset X"), P::Number, -10000, 10000, -80, nullptr, QT_TRANSLATE_NOOP("Effect", "The handle that leads the curve into its end, from the end.")},
+        {"ry", QT_TRANSLATE_NOOP("Effect", "Right Handle Offset Y"), P::Number, -10000, 10000, -120, nullptr, nullptr},
+        {"colour", QT_TRANSLATE_NOOP("Effect", "Colour"), P::Colour, 0, kWhite, 4278190080.0, nullptr, nullptr},
+        {"close", QT_TRANSLATE_NOOP("Effect", "Close Shape Contour"), P::Toggle, 0, 1, 0, nullptr, QT_TRANSLATE_NOOP("Effect", "On: the curve comes back to its start and the shape it makes is filled.")}};
     switch (type) {
+    case Effect::ShapeCurve: return shapeCurve;
     case Effect::HoldTiming:
     case Effect::HoldTransformationTiming: return hold;
     case Effect::Retime:
@@ -326,6 +338,7 @@ Effect::Amount Effect::amountOf(Type type)
     case HoldTransformationTiming:
     case Loop:
     case LoopTransformation: return {nullptr, 0, 1.0, 1.0};
+    case ShapeCurve: return {QT_TRANSLATE_NOOP("Effect", "Line Width"), 2, 6.0, 500.0};
     case ColourOverride:
     case ColourSpace:
     case AnimatePencilTexture: return {nullptr, 0, 1.0, 1.0};

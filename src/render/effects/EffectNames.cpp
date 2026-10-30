@@ -55,6 +55,7 @@ QString kindName(Effect::Type type)
     case Effect::RetimeTransformation: return QObject::tr("Retime Transformation");
     case Effect::Loop: return QObject::tr("Loop");
     case Effect::LoopTransformation: return QObject::tr("Loop Transformation");
+    case Effect::ShapeCurve: return QObject::tr("Shape-Curve");
     default: return name(Effect::made(type), Scene()).section(QStringLiteral("  "), 0, 0);
     }
 }
@@ -214,6 +215,7 @@ QString name(Effect const& effect, Scene const& scene)
     case Effect::RetimeTransformation:
     case Effect::Loop:
     case Effect::LoopTransformation:
+    case Effect::ShapeCurve:
     case Effect::AnimatePencilTexture: {
         Effect::Amount const a = Effect::amountOf(effect.type);
         QString const kind = kindName(effect.type);

@@ -73,7 +73,7 @@ void Canvas::addText(QPointF layerPos, QString const& text)
     for (int i = 0; i < lines.size(); ++i) {
         // Each line starts at the place, is centred on it, or ends at it.
         double const wide = metrics.horizontalAdvance(lines[i]);
-        double const shift = m_textAlign == 1 ? -wide / 2.0 : m_textAlign == 2 ? -wide : 0.0;
+        double const shift = (m_textAlign == 1 ? -wide / 2.0 : m_textAlign == 2 ? -wide : 0.0) + (i == 0 && (m_textAlign == 0 || m_textAlign == 3) ? m_textIndent : 0.0);
         QFont set = spaced;
         // Justified: every line but the last is spread, between its words, to the width of the widest.
         int const gaps = int(lines[i].trimmed().count(QChar(0x20)));
@@ -95,12 +95,13 @@ void Canvas::addText(QPointF layerPos, QString const& text)
     letters.textAlign = m_textAlign;
     letters.textSpacing = spacing;
     letters.textKerning = m_textKerning;
+    letters.textIndent = m_textIndent;
     Drawing edited = currentDrawing() ? *currentDrawing() : Drawing();
     if (m_textEdit >= 0 && m_textEdit < edited.fills.size() && !edited.fills[m_textEdit].text.isEmpty()) {
         // Words taken up again: the new ones stand in their place, in their colour.
         Fill const& old = edited.fills[m_textEdit];
         if (old.text == text && old.textFont == letters.textFont && old.textAlign == letters.textAlign && old.textSpacing == letters.textSpacing
-            && old.textKerning == letters.textKerning)
+            && old.textKerning == letters.textKerning && old.textIndent == letters.textIndent)
             return;     // nothing was changed
         letters.swatch = old.swatch;
         letters.color = old.color;

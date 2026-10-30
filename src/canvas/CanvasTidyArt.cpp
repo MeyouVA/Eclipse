@@ -20,6 +20,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QSpinBox>
 #include <QLabel>
 #include "canvas/CanvasTidyShared.h"
 
@@ -596,6 +597,47 @@ void Canvas::onActionCropBrushTextures()
         return;
     }
     commitDrawing(edited, tr("Crop Brush Textures"));
+}
+
+void Canvas::onActionChangeBrushResolution()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d || !canEditDrawing())
+        return;
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("BrushResolutionDialog"));
+    dialog.setWindowTitle(tr("Change Vector Drawing Brush Resolution"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QComboBox* const scope = new QComboBox(&dialog);
+    scope->setObjectName(QStringLiteral("BrushResolutionScope"));
+    scope->addItem(tr("Change Vector Drawing Brush Texture Resolution (this drawing)"));
+    scope->addItem(tr("Change Vector Layer Brush Texture Resolution (every drawing of the layer)"));
+    form->addRow(tr("Choose"), scope);
+    QSpinBox* const percent = new QSpinBox(&dialog);
+    percent->setObjectName(QStringLiteral("BrushResolutionPercent"));
+    percent->setRange(10, 400);
+    percent->setValue(100);
+    percent->setSuffix(QStringLiteral(" %"));
+    percent->setToolTip(tr("The pixels the brush's pictures are made of, as a share of what they have now (the same size in the scene)."));
+    form->addRow(tr("Resolution"), percent);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted || percent->value() == 100)
+        return;
+    int const share = percent->value();
+    if (scope->currentIndex() == 0) {
+        Drawing edited = *d;
+        if (reducePictures(edited, share) > 0)
+            commitDrawing(edited, tr("Change Vector Drawing Brush Resolution"));
+        return;
+    }
+    m_document->editLayers({m_layer}, tr("Change Vector Layer Brush Resolution"), [share](Layer& layer) {
+        for (Drawing& drawing : layer.drawings)
+            reducePictures(drawing, share);
+    });
+    update();
 }
 
 void Canvas::onActionReduceTextureResolution()

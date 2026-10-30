@@ -561,6 +561,9 @@ public slots:
     void onActionGridOutlineOnly(bool on);
     // Behind the drawings instead of over them.
     void onActionGridUnderlay(bool on);
+    void onActionGridWorld(bool on);
+    // Drawing > Change Vector Drawing Brush Resolution: the pictures of the brush in this drawing, or every drawing of the layer, made of more or fewer pixels.
+    void onActionChangeBrushResolution();
     // Everything drawn shown as a dark shape, to judge its outline.
     void onActionBacklight(bool on);
     // Layers that are locked shown as outlines, so that they do not hide what is worked on.
@@ -586,6 +589,12 @@ public slots:
     void onActionCreateBreakingTriangles();
     // Select tool: the gradient of the area (or line) selected kept, for Use Stored Colour Gradient.
     void onActionStoreColourGradient();
+    // The Brush's paper texture: its scale (percent), aligned with the drawing's paper or not, additive or not.
+    void setBrushTextureScale(int percent);
+    void setBrushTextureAligned(bool on);
+    void setBrushTextureAdditive(bool on);
+    // A new brush shape given the Brush's paper texture settings.
+    void brushTextureOn(Fill& shape) const;
     // The areas `which` of a drawing broken at their branchings (the drawing's units drawn so many pixels each to find them); how many branchings.
     static int breakAtJunctions(Drawing& drawing, QVector<int> const& which, double pixelsPerUnit);
     // The Envelope tool's grid: its points over what is selected, row by row (and the box they stand on).
@@ -811,6 +820,7 @@ signals:
     // The Text tool was pressed on words: this is the font they are in.
     void textFontPicked(QFont const& font);
     void textLayoutPicked(int align, int spacingPercent, int kerningPercent);
+    void textIndentPicked(int units);
     void animateChanged(bool on);
     // Onion skin is on or off, or shows more or fewer drawings, or fainter ones.
     void onionChanged();
@@ -884,6 +894,7 @@ private:
     // The deformer at rest with the point being dragged by the Rigging tool where the pointer has it.
     QVector<QPointF> warpRestDragged() const;
     void paintWarp(QPainter& painter, QVector<QPointF> const& points, bool closed, int picked);
+    void paintGridLines(QPainter& painter, QRectF const& frameRect) const;
     void ikDown(QPointF widgetPos);
     // The IK tool on rigid bones: the bone in hand and those it hangs on turn so that its tip follows the pointer.
     void boneIkMove(QPointF widgetPos);

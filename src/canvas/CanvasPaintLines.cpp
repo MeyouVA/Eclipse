@@ -24,6 +24,11 @@ using namespace canvas_paint_shared;
 
 static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill const& fill, QBrush const& color)
 {
+    // A bit of the paper, in units of the scene (as fine as on a line a dozen units thick, times the texture's scale);
+    // not aligned, the paper is shifted for this area by its seed.
+    double const bit = 0.1875 * std::clamp(double(fill.textureScale), 0.1, 10.0);
+    QPointF const shift = fill.textureAligned ? QPointF()
+                                              : QPointF((fill.textureSeed & 0xffff) / 65535.0, ((fill.textureSeed >> 16) & 0xffff) / 65535.0) * (bit * 256.0);
     QTransform const world = painter.combinedTransform();
     double const ratio = painter.device() ? painter.device()->devicePixelRatioF() : 1.0;
     double const zoom = std::sqrt(std::abs(world.determinant())) * ratio;
@@ -52,9 +57,8 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
             p.setBrush(color);
             p.drawPath(path);
         } else {
-            // (As fine as on a line a dozen units thick.)
             QBrush flat(PencilTexture::paper(fill.texture));
-            flat.setTransform(QTransform::fromScale(0.1875, 0.1875));
+            flat.setTransform(QTransform::fromScale(bit, bit) * QTransform::fromTranslate(shift.x(), shift.y()));
             p.fillRect(covers, flat);
         }
     }
@@ -101,16 +105,15 @@ static void paintTexturedFill(QPainter& painter, QPainterPath const& path, Fill 
     double const amount = std::clamp(double(fill.textureAmount), 0.0, 1.0);
     if (fill.textureCrisp) {
         QImage const& paper = PencilTexture::paper(fill.texture);
-        double const bit = 0.1875;      // a bit of the paper, in units of the scene
         QTransform const back = world.inverted();
         for (int y = 0; y < high; ++y) {
             QRgb* const row = reinterpret_cast<QRgb*>(ink.scanLine(y));
             for (int x = 0; x < wide; ++x) {
                 if (row[x] == 0)
                     continue;
-                QPointF const place = back.map(QPointF((x + 0.5) / ratio + seen.left(), (y + 0.5) / ratio + seen.top()));
+                QPointF const place = back.map(QPointF((x + 0.5) / ratio + seen.left(), (y + 0.5) / ratio + seen.top())) - shift;
                 double const column = std::floor(place.x() / bit), line = std::floor(place.y() / bit);
-                QPointF const middle = (world.map(QPointF((column + 0.5) * bit, (line + 0.5) * bit)) - QPointF(seen.topLeft())) * ratio;
+                QPointF const middle = (world.map(QPointF((column + 0.5) * bit, (line + 0.5) * bit) + shift) - QPointF(seen.topLeft())) * ratio;
                 int const mx = std::clamp(int(std::floor(middle.x())), 0, wide - 1), my = std::clamp(int(std::floor(middle.y())), 0, high - 1);
                 int const px = ((int(column) % paper.width()) + paper.width()) % paper.width(), py = ((int(line) % paper.height()) + paper.height()) % paper.height();
                 double const texture = fill.textureRamp(qAlpha(reinterpret_cast<QRgb const*>(paper.constScanLine(py))[px]) / 255.0);

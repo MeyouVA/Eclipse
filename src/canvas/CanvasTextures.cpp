@@ -1,5 +1,8 @@
 // Eclipse - the Camera view: line ends and joints restyled, paper textures on lines and brushes, pencil line properties.
 #include "canvas/Canvas.h"
+#include <QSet>
+#include <QSettings>
+#include <QRandomGenerator>
 
 #include <QPainter>
 #include <QPainterPath>
@@ -120,6 +123,37 @@ void Canvas::setLineTextureCrisp(bool crisp)
     });
 }
 
+void Canvas::brushTextureOn(Fill& shape) const
+{
+    shape.texture = m_brushTexture;
+    shape.textureAmount = float(m_brushTextureAmount) / 100.0f;
+    shape.textureCrisp = m_brushTextureCrisp;
+    shape.textureLow = float(m_brushRampLow) / 100.0f;
+    shape.textureHigh = float(m_brushRampHigh) / 100.0f;
+    shape.textureScale = float(m_brushTextureScale) / 100.0f;
+    shape.textureAligned = m_brushTextureAligned;
+    shape.textureAdditive = m_brushTextureAdditive;
+    shape.textureSeed = m_brushTextureAligned ? 0u : QRandomGenerator::global()->generate();
+}
+
+void Canvas::setBrushTextureScale(int percent)
+{
+    m_brushTextureScale = std::clamp(percent, 10, 1000);
+    retextureSelectedFills(tr("Change Texture Scale"), false);
+}
+
+void Canvas::setBrushTextureAligned(bool on)
+{
+    m_brushTextureAligned = on;
+    retextureSelectedFills(tr("Change Texture Alignment"), false);
+}
+
+void Canvas::setBrushTextureAdditive(bool on)
+{
+    m_brushTextureAdditive = on;
+    retextureSelectedFills(tr("Change Texture Additive"), false);
+}
+
 void Canvas::setBrushTextureCrisp(bool crisp)
 {
     m_brushTextureCrisp = crisp;
@@ -162,7 +196,15 @@ void Canvas::retextureSelectedFills(QString const& text, bool kindToo)
         float const shows = kind != 0 ? float(m_brushTextureAmount) / 100.0f : fill.textureAmount;
         bool const crisp = kind != 0 ? m_brushTextureCrisp : fill.textureCrisp;
         float const low = kind != 0 ? float(m_brushRampLow) / 100.0f : fill.textureLow, high = kind != 0 ? float(m_brushRampHigh) / 100.0f : fill.textureHigh;
-        changed = changed || fill.texture != kind || fill.textureAmount != shows || fill.textureCrisp != crisp || fill.textureLow != low || fill.textureHigh != high;
+        float const scale = kind != 0 ? float(m_brushTextureScale) / 100.0f : fill.textureScale;
+        bool const aligned = kind != 0 ? m_brushTextureAligned : fill.textureAligned, additive = kind != 0 ? m_brushTextureAdditive : fill.textureAdditive;
+        changed = changed || fill.texture != kind || fill.textureAmount != shows || fill.textureCrisp != crisp || fill.textureLow != low || fill.textureHigh != high
+                  || fill.textureScale != scale || fill.textureAligned != aligned || fill.textureAdditive != additive;
+        fill.textureScale = scale;
+        if (fill.textureAligned != aligned)
+            fill.textureSeed = aligned ? 0u : QRandomGenerator::global()->generate();
+        fill.textureAligned = aligned;
+        fill.textureAdditive = additive;
         fill.textureLow = low;
         fill.textureHigh = high;
         fill.texture = kind;
@@ -254,6 +296,21 @@ void Canvas::onActionDeleteTexture()
         emit message(tr("Choose a texture of your own in Tool Properties to delete it (the ones that come with the program stay)."));
         return;
     }
+    {
+        QSettings presets(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+        presets.beginGroup(QStringLiteral("presetDetails"));
+        for (QString const& kind : presets.childGroups()) {
+            presets.beginGroup(kind);
+            for (QString const& name : presets.childKeys()) {
+                QVariantMap const details = presets.value(name).toMap();
+                if (details.value(QStringLiteral("setTexture")).toBool() && details.value(QStringLiteral("texture")).toInt() == id) {
+                    QMessageBox::warning(this, tr("Delete Texture"), tr("Selected texture is used by the brush preset '%1'.\n Therefore, it can not be deleted.").arg(name));
+                    return;
+                }
+            }
+            presets.endGroup();
+        }
+    }
     if (QMessageBox::question(this, tr("Delete Texture"),
                               tr("Delete the texture \"%1\"?\n\nWhat is drawn with it will be solid from then on.").arg(PencilTexture::name(id)))
         != QMessageBox::Yes)
@@ -298,6 +355,10 @@ void Canvas::onActionPencilLineProperties()
         for (int i : std::as_const(m_selStrokes))
             if (first < 0 && i >= 0 && i < d->strokes.size() && d->strokes[i].width > 0.0f)
                 first = i;
+    // (Nothing selected: the lines of every colour are worked on, shown as the first line of the drawing is.)
+    for (int i = 0; first < 0 && d && i < d->strokes.size(); ++i)
+        if (d->strokes[i].width > 0.0f && !hasSelection())
+            first = i;
     if (first < 0) {
         emit message(tr("Select pencil lines with the Select tool."));
         return;
@@ -349,6 +410,21 @@ void Canvas::onActionPencilLineProperties()
     form->addRow(tr("Thickness Multiplier"), multiplier);
     form->addRow(tipsToo);
     form->addRow(tr("Additional Tip Multiplier"), tipExtra);
+    // Which lines: those selected; every line of their colours (Apply to Colours); every line (Apply to All Colours) - here, or in every drawing.
+    QComboBox* const scope = new QComboBox(&dialog);
+    scope->setObjectName(QStringLiteral("PencilLineScope"));
+    scope->addItem(tr("The Selected Lines"));
+    scope->addItem(tr("Apply to Colours (every line of the colours selected)"));
+    scope->addItem(tr("Apply to All Colours (every pencil line)"));
+    scope->setItemData(2, tr("When checked, modifications are applied to all pencil lines, regardless of their color."), Qt::ToolTipRole);
+    scope->setCurrentIndex(hasSelection() ? 0 : 2);
+    form->addRow(tr("Lines"), scope);
+    QCheckBox* const allDrawings = new QCheckBox(tr("Apply to All Drawings"), &dialog);
+    allDrawings->setObjectName(QStringLiteral("PencilLineAllDrawings"));
+    allDrawings->setToolTip(tr("Apply the modifications to all the drawings of the layer."));
+    allDrawings->setEnabled(scope->currentIndex() != 0);
+    connect(scope, &QComboBox::currentIndexChanged, allDrawings, [allDrawings](int i) { allDrawings->setEnabled(i != 0); });
+    form->addRow(allDrawings);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -360,7 +436,7 @@ void Canvas::onActionPencilLineProperties()
     double const times = multiplier->value() / 100.0, tipTimes = tipExtra->value() / 100.0;
     bool const tips = tipsToo->isChecked();
     int const kind = texture->currentData().toInt(), corners = join->currentIndex();
-    restyleSelection(tr("Pencil Line Properties"), [=](Stroke& s) {
+    auto restyle = [=](Stroke& s) {
         if (s.width <= 0.0f)
             return;     // an invisible line stays one
         s.width = width;
@@ -370,7 +446,33 @@ void Canvas::onActionPencilLineProperties()
         s.join = Stroke::Join(corners);
         if (times != 1.0 || tipTimes != 1.0)
             multiplyThickness(s, times, tips, tipTimes);
-    });
+    };
+    if (scope->currentIndex() == 0) {
+        restyleSelection(tr("Pencil Line Properties"), restyle);
+        return;
+    }
+    // The colours of the lines selected (Apply to Colours), or none asked for (Apply to All Colours).
+    QSet<int> colours;
+    bool const every = scope->currentIndex() == 2;
+    for (int i : std::as_const(m_selStrokes))
+        if (i >= 0 && i < d->strokes.size())
+            colours.insert(d->strokes[i].swatch);
+    auto restyleDrawing = [=](Drawing& drawing) {
+        for (Stroke& s : drawing.strokes)
+            if (every || colours.contains(s.swatch))
+                restyle(s);
+    };
+    if (allDrawings->isChecked()) {
+        m_document->editLayers({m_layer}, tr("Pencil Line Properties"), [restyleDrawing](Layer& layer) {
+            for (Drawing& drawing : layer.drawings)
+                restyleDrawing(drawing);
+        });
+        update();
+        return;
+    }
+    Drawing edited = *d;
+    restyleDrawing(edited);
+    commitDrawing(edited, tr("Pencil Line Properties"));
 }
 
 QVector<int> Canvas::contourPointsPicked() const

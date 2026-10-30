@@ -70,6 +70,9 @@ protected:
     int m_lineTextureAmount = 100;
     bool m_lineTextureCrisp = false;
     bool m_brushTextureCrisp = false;
+    int m_brushTextureScale = 100;
+    bool m_brushTextureAligned = true;
+    bool m_brushTextureAdditive = false;
     int m_lineRampLow = 0, m_lineRampHigh = 100, m_brushRampLow = 0, m_brushRampHigh = 100;
     int m_brushTexture = 0;
     int m_brushTextureAmount = 100;
@@ -105,6 +108,8 @@ protected:
     int m_fieldsDown = 12;
     bool m_gridOutline = false;
     bool m_gridUnder = false;
+    bool m_gridWorld = true;            // World Grid: the grid stands with the frame; off, it goes with the layer drawn on
+    int m_textIndent = 0;               // the Text tool: how far in its first line starts, in units of the scene
     bool m_backlight = false;
     QColor m_backlightColour = QColor(34, 34, 38);
     // Paper zoom: the most it zooms in (times the frame's real size). The magnifier: on, how much it enlarges, its size and where it is from the pointer.

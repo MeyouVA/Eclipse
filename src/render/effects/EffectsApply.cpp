@@ -10,6 +10,7 @@
 #include <QMutex>
 #include <QRegularExpression>
 #include <QPainter>
+#include <QPainterPath>
 
 #include <algorithm>
 #include <cmath>
@@ -280,6 +281,24 @@ bool apply(QImage& image, Effect const& e, Context const& c)
         if (!e.flag("useSource"))
             colour = e.colourValue("colour");
         shine(image, place("x", "y"), amount * ppu, e.value("threshold"), e.value("falloff"), colour, e.value("gain"), e.flag("composite"));
+        return true;
+    }
+    case Effect::ShapeCurve: {
+        // A curve from Position 1 to Position 2, led by the handles; closed, back to its start and filled.
+        QPointF const from = place("x1", "y1"), to = place("x2", "y2");
+        QPainterPath curve(from);
+        curve.cubicTo(from + QPointF(e.value("lx"), e.value("ly")) * ppu, to + QPointF(e.value("rx"), e.value("ry")) * ppu, to);
+        QPainter p(&image);
+        p.setRenderHint(QPainter::Antialiasing);
+        QColor const colour = e.colourValue("colour");
+        if (e.flag("close")) {
+            curve.closeSubpath();
+            p.fillPath(curve, colour);
+        }
+        QPen pen(colour, std::max(0.1, amount * ppu));
+        pen.setCapStyle(Qt::RoundCap);
+        pen.setJoinStyle(Qt::RoundJoin);
+        p.strokePath(curve, pen);
         return true;
     }
     case Effect::LensFlare:

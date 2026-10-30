@@ -75,10 +75,18 @@ void ToolProperties::addTextRows()
         spacing->setValue(percent);
         kerning->setValue(letters);
     });
+    QSpinBox* const indent = new QSpinBox(this);
+    indent->setObjectName(QStringLiteral("TextIndent"));
+    indent->setRange(-2000, 2000);
+    indent->setPrefix(tr("Indent "));
+    indent->setToolTip(tr("Indent: how far in the first line starts, in units of the scene (left and justified text)."));
+    connect(indent, &QSpinBox::valueChanged, this, [this](int units) { m_canvas->setTextIndent(units); });
+    connect(m_canvas, &Canvas::textIndentPicked, indent, &QSpinBox::setValue);
     QHBoxLayout* const para = new QHBoxLayout;
     para->addWidget(align);
     para->addWidget(spacing);
     para->addWidget(kerning);
+    para->addWidget(indent);
     para->addStretch(1);
     m_form->addRow(tr("Lines"), para);
     m_paraRow = para;

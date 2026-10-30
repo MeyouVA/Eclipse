@@ -149,6 +149,20 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
             // (Told of each frame as it goes down the pipe, in order.)
             if (progress && !progress(at + i))
                 return abandon(QStringLiteral("Stopped."));
+            if (options.timecode) {
+                // Hours, minutes, seconds and frames, on a dark band at the bottom left.
+                int const frameNow = frames[i], perSecond = std::max(1, int(std::lround(scene.fps)));
+                QString const code = QStringLiteral("%1:%2:%3:%4").arg(frameNow / perSecond / 3600, 2, 10, QLatin1Char('0')).arg(frameNow / perSecond / 60 % 60, 2, 10, QLatin1Char('0'))
+                                         .arg(frameNow / perSecond % 60, 2, 10, QLatin1Char('0')).arg(frameNow % perSecond, 2, 10, QLatin1Char('0'));
+                QPainter p(&batch[i]);
+                QFont font(options.timecodeFont.isEmpty() ? QStringLiteral("Arial") : options.timecodeFont);
+                font.setPixelSize(std::max(10, batch[i].height() / 24));
+                p.setFont(font);
+                QRect const band = p.fontMetrics().boundingRect(code).adjusted(-6, -3, 6, 3).translated(12, batch[i].height() - 12 - p.fontMetrics().descent());
+                p.fillRect(band, QColor(0, 0, 0, 170));
+                p.setPen(Qt::white);
+                p.drawText(band, Qt::AlignCenter, code);
+            }
             QImage const image = batch[i].convertToFormat(QImage::Format_RGBA8888);
             // The lines of an image may be padded: send them one by one.
             for (int y = 0; y < image.height(); ++y)

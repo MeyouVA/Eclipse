@@ -81,6 +81,9 @@ public:
     int brushTextureLow() const { return m_brushRampLow; }
     int brushTextureHigh() const { return m_brushRampHigh; }
     bool brushTextureCrisp() const { return m_brushTextureCrisp; }
+    int brushTextureScale() const { return m_brushTextureScale; }
+    bool brushTextureAligned() const { return m_brushTextureAligned; }
+    bool brushTextureAdditive() const { return m_brushTextureAdditive; }
     bool onionSkin() const { return m_onionSkin; }
     bool drawingView() const { return m_drawingView; }
     int gridKind() const { return m_gridKind; }
@@ -280,6 +283,8 @@ public:
     int textLineSpacing() const { return m_textSpacing; }
     // And how far apart the letters are, likewise.
     void setTextKerning(int percent) { m_textKerning = std::clamp(percent, 50, 400); }
+    void setTextIndent(int units) { m_textIndent = std::clamp(units, -2000, 2000); }
+    int textIndent() const { return m_textIndent; }
     int textKerning() const { return m_textKerning; }
     bool appliesToAllDrawings() const { return m_applyAll; }
     int onionMark() const { return m_onionMark; }

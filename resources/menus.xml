@@ -391,6 +391,7 @@
     <item id="SmoothFast" icon="anim/smooth" text="Smooth &amp;Fast" shortcut="shortcut.smoothFast" responder="camera" slot="onActionSmoothFast()"/>
     <item id="CropBrushTextures" text="&amp;Crop Brush Textures" responder="camera" slot="onActionCropBrushTextures()"/>
     <item id="ReduceTextureResolution" text="Reduce Drawing Te&amp;xture Resolution..." responder="camera" slot="onActionReduceTextureResolution()"/>
+    <item id="ChangeBrushResolution" text="Change Vector Drawing &amp;Brush Resolution..." responder="camera" slot="onActionChangeBrushResolution()" tooltip="Change the brush resolution for the selected vector drawing(s): the pictures of the drawing, or of every drawing of the layer, made of more or fewer pixels."/>
     <separator/>
     <item id="PumpThickness" icon="anim/smooth" text="&amp;Pump Selection Thickness" shortcut="shortcut.pumpThickness" responder="camera" slot="onActionPumpThickness()"/>
     <item id="DeflateThickness" icon="anim/smooth" text="&amp;Deflate Selection Thickness" shortcut="shortcut.deflateThickness" responder="camera" slot="onActionDeflateThickness()"/>
@@ -681,6 +682,7 @@
   <item id="GridOutlineOnly" text="Grid &amp;Outline Only" checkable="true" responder="camera" slot="onActionGridOutlineOnly(bool)"/>
   <separator/>
   <item id="GridUnderlay" text="&amp;Underlay" checkable="true" responder="camera" slot="onActionGridUnderlay(bool)"/>
+  <item id="GridWorld" text="&amp;World Grid" checkable="true" checked="true" responder="camera" slot="onActionGridWorld(bool)" tooltip="The grid stands with the frame; off, it goes with the layer drawn on (moved, turned and scaled with it)."/>
   <separator/>
   <item id="Grid12" text="&amp;12 Field Grid" checkable="true" checked="true" group="gridkind" responder="camera" slot="onActionGridKind(int)" itemParameter="0"/>
   <item id="Grid16" text="1&amp;6 Field Grid" checkable="true" group="gridkind" responder="camera" slot="onActionGridKind(int)" itemParameter="1"/>

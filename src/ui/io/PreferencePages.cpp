@@ -133,6 +133,11 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.askConvertScenes->setToolTip(tr("A scene saved before scenes were kept as folders asks, when it is opened, whether to make it one."));
     w.askConvertScenes->setChecked(s.value(QStringLiteral("prefs/askConvertScenes"), true).toBool());
     w.generalLayout->addRow(w.askConvertScenes);
+    w.timecodeFont = new QFontComboBox(w.general);
+    w.timecodeFont->setObjectName(QStringLiteral("PrefTimecodeFont"));
+    w.timecodeFont->setCurrentFont(QFont(s.value(QStringLiteral("prefs/timecodeFont"), QStringLiteral("Arial")).toString()));
+    w.timecodeFont->setToolTip(tr("The font of the time code written on movies (Export Movie: Burn in Time Code)."));
+    w.generalLayout->addRow(tr("Time Code Font"), w.timecodeFont);
     w.editorsOnTop = new QCheckBox(tr("Editors always on top"), w.general);
     w.editorsOnTop->setObjectName(QStringLiteral("PrefEditorsOnTop"));
     w.editorsOnTop->setToolTip(tr("Function editors are always on top of the main window."));

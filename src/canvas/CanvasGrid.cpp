@@ -33,7 +33,26 @@ void Canvas::onActionGridUnderlay(bool on)
     update();
 }
 
+void Canvas::onActionGridWorld(bool on)
+{
+    m_gridWorld = on;
+    update();
+}
+
 void Canvas::paintGrid(QPainter& painter, QRectF const& frameRect) const
+{
+    // World Grid off: the grid goes with the layer drawn on, as it is moved, turned or scaled.
+    if (!m_gridWorld && !m_drawingView && m_layer >= 0 && m_layer < m_document->scene().layers.size()) {
+        painter.save();
+        painter.setTransform(layerViewTransform());
+        paintGridLines(painter, frameRect);
+        painter.restore();
+        return;
+    }
+    paintGridLines(painter, frameRect);
+}
+
+void Canvas::paintGridLines(QPainter& painter, QRectF const& frameRect) const
 {
     QColor const grid = InterfaceColours::get("canvasGrid");
     QPen thin(QColor(grid.red(), grid.green(), grid.blue(), grid.alpha() * 90 / 190));

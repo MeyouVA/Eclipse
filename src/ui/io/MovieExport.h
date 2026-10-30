@@ -24,6 +24,8 @@ struct Options {
     int audioKbps = 192;    // the sound's bit rate
     bool transparentBackground = false;
     QString colourSpace;    // the colour space the frames are put in from the working space (empty: as they are)
+    bool timecode = false;  // the time code (hours:minutes:seconds:frames) written on each frame, in its corner
+    QString timecodeFont;   // in this font (empty: Arial)
 };
 
 // What ffmpeg is told about the encoding of a movie of that kind (by its extension), with sound or without.

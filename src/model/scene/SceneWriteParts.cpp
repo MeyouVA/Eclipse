@@ -127,6 +127,14 @@ QJsonObject fillToJson(Fill const& f)
             o["textureCrisp"] = true;
         if (f.textureLow > 0.0f || f.textureHigh < 1.0f)
             o["textureRamp"] = QJsonArray{std::round(double(f.textureLow) * 1000.0) / 1000.0, std::round(double(f.textureHigh) * 1000.0) / 1000.0};
+        if (f.textureScale != 1.0f)
+            o["textureScale"] = std::round(double(f.textureScale) * 1000.0) / 1000.0;
+        if (!f.textureAligned) {
+            o["textureAligned"] = false;
+            o["textureSeed"] = qint64(f.textureSeed);
+        }
+        if (f.textureAdditive)
+            o["textureAdditive"] = true;
     }
     if (f.group != 0)
         o["group"] = f.group;
@@ -136,6 +144,8 @@ QJsonObject fillToJson(Fill const& f)
         o["textSpacing"] = f.textSpacing;
         if (f.textKerning != 100)
             o["textKerning"] = f.textKerning;
+        if (f.textIndent != 0.0)
+            o["textIndent"] = f.textIndent;
         o["textFont"] = f.textFont;
         o["textAt"] = QJsonArray{f.textAt.x(), f.textAt.y()};
         if (!f.textShape.isIdentity())
@@ -168,7 +178,7 @@ char const* effectTypeName(Effect::Type type)
     static char const* const names[] = {"gaussianBlur", "boxBlur", "zoomBlur", "bokehBlur", "antiFlicker", "colourFade", "colourOverride", "channelSwap",
                                         "colourLevels", "colourScreen", "contrast", "gamma", "colourBanding", "dither", "shine", "lensFlare", "burnIn",
                                         "turbulentNoise", "grid", "refract", "shake", "quake", "unsharpMask", "increaseOpacity", "animatePencilTexture", "colourSpace", "lookUpTable",
-                                        "holdTiming", "holdTransformationTiming", "retime", "retimeTransformation", "loop", "loopTransformation"};
+                                        "holdTiming", "holdTransformationTiming", "retime", "retimeTransformation", "loop", "loopTransformation", "shapeCurve"};
     static_assert(sizeof(names) / sizeof(names[0]) == Effect::TypeCount - Effect::GaussianBlur);
     return type >= Effect::GaussianBlur && type < Effect::TypeCount ? names[type - Effect::GaussianBlur] : "";
 }

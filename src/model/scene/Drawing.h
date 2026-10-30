@@ -18,6 +18,8 @@ struct Fill {
     double textSpacing = 1.0;
     // How far apart its letters stand, as a percentage of what the font gives.
     int textKerning = 100;
+    // How far in its first line starts (in units of the scene).
+    double textIndent = 0.0;
     QTransform textShape;
     int swatch = -1;
     int group = 0;
@@ -37,6 +39,12 @@ struct Fill {
     bool textureCrisp = false;
     float textureLow = 0.0f;
     float textureHigh = 1.0f;
+    // Its grain so many times as big; laid as the drawing's paper is (aligned) or shifted for this area alone (by its seed);
+    // additive: built up on the paint of its colour under it rather than joined to it.
+    float textureScale = 1.0f;
+    bool textureAligned = true;
+    bool textureAdditive = false;
+    quint32 textureSeed = 0;
     double textureRamp(double grain) const
     {
         if (textureLow <= 0.0f && textureHigh >= 1.0f)

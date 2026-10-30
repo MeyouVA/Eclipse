@@ -97,7 +97,7 @@ EffectsPanel::EffectsPanel(Document* document, QWidget* parent) : QWidget(parent
         {QT_TR_NOOP("More Colour Corrections"), {Effect::ColourFade, Effect::ChannelSwap, Effect::ColourLevels, Effect::ColourScreen, Effect::Contrast, Effect::Gamma,
                                                  Effect::ColourBanding, Effect::Dither, Effect::IncreaseOpacity, Effect::ColourSpace, Effect::LookUpTable}},
         {QT_TR_NOOP("Light"), {Effect::Shine, Effect::LensFlare}},
-        {QT_TR_NOOP("Generate"), {Effect::TurbulentNoise, Effect::Grid, Effect::BurnIn}},
+        {QT_TR_NOOP("Generate"), {Effect::TurbulentNoise, Effect::Grid, Effect::BurnIn, Effect::ShapeCurve}},
         {QT_TR_NOOP("Move"), {Effect::Shake, Effect::Quake}},
         {QT_TR_NOOP("Timing"), {Effect::HoldTiming, Effect::HoldTransformationTiming, Effect::Retime, Effect::RetimeTransformation, Effect::Loop, Effect::LoopTransformation}}};
     for (Group const& group : groups) {

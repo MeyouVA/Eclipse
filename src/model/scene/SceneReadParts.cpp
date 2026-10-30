@@ -43,6 +43,10 @@ Fill fillFromJson(QJsonObject const& o)
     f.texture = textureRead(o["texture"].toInt(0));
     f.textureAmount = float(std::clamp(o["textureAmount"].toDouble(1.0), 0.0, 1.0));
     f.textureCrisp = o["textureCrisp"].toBool(false);
+    f.textureScale = float(std::clamp(o["textureScale"].toDouble(1.0), 0.1, 10.0));
+    f.textureAligned = o["textureAligned"].toBool(true);
+    f.textureSeed = quint32(o["textureSeed"].toVariant().toLongLong());
+    f.textureAdditive = o["textureAdditive"].toBool(false);
     if (QJsonArray const ramp = o["textureRamp"].toArray(); ramp.size() == 2) {
         f.textureLow = float(std::clamp(ramp[0].toDouble(0.0), 0.0, 1.0));
         f.textureHigh = float(std::clamp(ramp[1].toDouble(1.0), double(f.textureLow), 1.0));
@@ -51,6 +55,7 @@ Fill fillFromJson(QJsonObject const& o)
     f.textAlign = std::clamp(o["textAlign"].toInt(0), 0, 3);
     f.textSpacing = std::clamp(o["textSpacing"].toDouble(1.0), 0.2, 10.0);
     f.textKerning = std::clamp(o["textKerning"].toInt(100), 50, 400);
+    f.textIndent = std::clamp(o["textIndent"].toDouble(0.0), -10000.0, 10000.0);
     f.textFont = o["textFont"].toString();
     f.textAt = QPointF(o["textAt"].toArray().at(0).toDouble(), o["textAt"].toArray().at(1).toDouble());
     if (QJsonArray const shape = o["textShape"].toArray(); shape.size() == 4)

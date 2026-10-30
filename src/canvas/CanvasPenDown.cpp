@@ -284,7 +284,9 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
             m_textAlign = fill.textAlign;
             m_textSpacing = int(std::lround(fill.textSpacing * 100.0));
             m_textKerning = fill.textKerning;
+            m_textIndent = int(std::lround(fill.textIndent));
             emit textLayoutPicked(m_textAlign, m_textSpacing, m_textKerning);
+            emit textIndentPicked(m_textIndent);
             beginText(layerViewTransform().map(fill.textAt), fill.textAt, fill.text);
             m_textEdit = words;
         } else {
