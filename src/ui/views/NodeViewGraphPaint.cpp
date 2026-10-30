@@ -560,7 +560,7 @@ void NodeView::paintGraphMode(QPainter& p)
             continue;
         }
         QColor const color = shownLayer >= 0 ? layerNodeColour(shownLayer)
-                             : n.kind == GraphNode::Composite ? InterfaceColours::get("nodeComposite") : n.kind == GraphNode::EffectNode ? InterfaceColours::get("nodeEffect")
+                             : n.kind == GraphNode::Composite ? InterfaceColours::get(n.passThrough ? "nodeNoFlatten" : "nodeComposite") : n.kind == GraphNode::EffectNode ? InterfaceColours::get("nodeEffect")
                              : n.kind == GraphNode::Display ? InterfaceColours::get("nodeDisplay")
                              : n.kind == GraphNode::GroupIn || n.kind == GraphNode::GroupOut ? InterfaceColours::get("nodeProxyPort")
                              : n.kind == GraphNode::Group ? InterfaceColours::get(effectGroup(n.id) ? "nodeGroupEffect" : "nodeGroup")

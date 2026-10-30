@@ -107,6 +107,8 @@ QColor NodeView::nodeBorder(GraphNode const* node, int l) const
         return InterfaceColours::get("nodeProxyPortDark");
     case GraphNode::Display:
         return InterfaceColours::get("nodeDisplayDark");
+    case GraphNode::Composite:
+        return InterfaceColours::get(node->passThrough ? "nodeNoFlattenDark" : "nodeDark");
     default:
         return InterfaceColours::get("nodeDark");
     }

@@ -73,6 +73,8 @@ QList<Entry> const& entries()
         {"nodeGroupEffectDark", "Node View", "Node Group Effect Dark Colour", QColor(20, 21, 23)},
         {"nodeEffect", "Node View", "Effect Nodes", QColor(128, 70, 110)},
         {"nodeComposite", "Node View", "Composite Nodes", QColor(96, 76, 128)},
+        {"nodeNoFlatten", "Node View", "Composite Nodes Light Colour When Not Flattening the Output", QColor(128, 96, 150)},
+        {"nodeNoFlattenDark", "Node View", "Composite Nodes Dark Colour When Not Flattening the Output", QColor(240, 200, 90)},
         {"nodeDisplay", "Node View", "I/O Nodes Light Colour", QColor(70, 72, 78)},
         {"nodeDisplayDark", "Node View", "I/O Nodes Dark Colour", QColor(20, 21, 23)},
         {"nodeProxyPort", "Node View", "Proxy Port Light Colour", QColor(52, 96, 100)},

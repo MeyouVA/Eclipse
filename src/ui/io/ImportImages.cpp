@@ -470,6 +470,57 @@ static QImage readTransparency(QImage const& read, int kind)
     return image;
 }
 
+// Each point moved half way towards the middle of its neighbours, `passes` times; an open line keeps its ends.
+static QPolygonF smoothed(QPolygonF line, int passes, bool closed)
+{
+    if (passes <= 0 || line.size() < 3)
+        return line;
+    // Long sides cut into steps of about 2 pixels first, so that only the corners are rounded.
+    QPolygonF even;
+    int const sides = int(line.size()) - (closed ? 0 : 1);
+    for (int i = 0; i < sides; ++i) {
+        QPointF const a = line[i], b = line[(i + 1) % line.size()];
+        int const steps = std::max(1, int(std::ceil(QLineF(a, b).length() / 2.0)));
+        for (int k = 0; k < steps; ++k)
+            even << a + (b - a) * (double(k) / steps);
+    }
+    if (!closed)
+        even << line.last();
+    line = even;
+    int const n = int(line.size());
+    for (int pass = 0; pass < passes; ++pass) {
+        QPolygonF const was = line;
+        for (int i = 0; i < n; ++i) {
+            if (!closed && (i == 0 || i == n - 1))
+                continue;
+            QPointF const before = was[(i + n - 1) % n], after = was[(i + 1) % n];
+            line[i] = was[i] * 0.5 + (before + after) * 0.25;
+        }
+    }
+    return line;
+}
+
+// The average colour of the pixels lighter than the line but darker than `below` (0..255 grey).
+static QColor toneBetween(QImage const& image, int line, int below)
+{
+    double r = 0, g = 0, b = 0;
+    qint64 n = 0;
+    QImage const rgb = image.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < rgb.height(); ++y) {
+        QRgb const* const row = reinterpret_cast<QRgb const*>(rgb.constScanLine(y));
+        for (int x = 0; x < rgb.width(); ++x) {
+            int const grey = qGray(row[x]);
+            if (qAlpha(row[x]) > 127 && grey >= line && grey < below) {
+                r += qRed(row[x]);
+                g += qGreen(row[x]);
+                b += qBlue(row[x]);
+                ++n;
+            }
+        }
+    }
+    return n ? QColor(int(r / n), int(g / n), int(b / n)) : QColor(160, 160, 160);
+}
+
 int MainWindow::importImages(ImageImport const& options, QString* error)
 {
     auto fail = [&](QString const& why) {
@@ -530,7 +581,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
                 line.color = scene.resolve(line.swatch, QColor(Qt::black));
                 line.width = float(std::max(1.0, traced.width * scale));
                 line.closed = traced.closed;
-                for (QPointF const& point : traced.points)
+                for (QPointF const& point : smoothed(QPolygonF(traced.points), options.smoothPasses, traced.closed))
                     line.points.push_back({placement.map(point), 1.0f});
                 if (line.points.size() >= 2)
                     drawing.strokes.push_back(line);
@@ -540,11 +591,24 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
             shape.swatch = m_palette->currentSwatch();
             shape.color = scene.resolve(shape.swatch, QColor(Qt::black));
             for (QPolygonF const& outline : Vectorize::trace(image, options.threshold))
-                shape.outlines.push_back(placement.map(outline));
-            shape.giveContours(kTraceTolerance);
+                shape.outlines.push_back(placement.map(smoothed(outline, options.smoothPasses, true)));
+            // (Smoothed outlines are kept point for point: thinned, the curve through what is left bulges past them.)
+            shape.giveContours(options.smoothPasses > 0 ? -1.0 : kTraceTolerance);
             if (!shape.outlines.isEmpty())
                 drawing.fills.push_back(shape);
-        } else {
+        }
+        int const colourBelow = options.colourArtThreshold * 255 / 100;
+        if (options.vectorize && options.colours == 0 && colourBelow > options.threshold) {
+            // Colour Art Threshold: the lighter tones, not line, a shape of their average colour on the Colour Art.
+            Fill tone;
+            tone.color = toneBetween(image, options.threshold, colourBelow);
+            for (QPolygonF const& outline : Vectorize::trace(image, colourBelow))
+                tone.outlines.push_back(placement.map(outline));
+            tone.giveContours(kTraceTolerance);
+            if (!tone.outlines.isEmpty())
+                drawing.colourFills.push_back(tone);
+        }
+        if (!options.vectorize) {
             Picture picture;
             picture.image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
             picture.file = QFileInfo(file).absoluteFilePath();

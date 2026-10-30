@@ -109,7 +109,22 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     threshold->setRange(1, 255);
     threshold->setValue(128);
     threshold->setEnabled(false);
-    auto thresholdUsed = [vector, centre, threshold] { threshold->setEnabled(vector->isChecked() || centre->isChecked()); };
+    QSpinBox* const colourArt = new QSpinBox(asBox);
+    colourArt->setObjectName(QStringLiteral("ImportColourArtThreshold"));
+    colourArt->setRange(0, 100);
+    colourArt->setSpecialValueText(tr("None"));
+    colourArt->setToolTip(tr("Tones lighter than the line but darker than this much of white are traced onto the Colour Art, in their colour."));
+    colourArt->setEnabled(false);
+    QSpinBox* const smoothing = new QSpinBox(asBox);
+    smoothing->setObjectName(QStringLiteral("ImportSmoothPasses"));
+    smoothing->setRange(0, 20);
+    smoothing->setToolTip(tr("How many times the traced line art is smoothed."));
+    smoothing->setEnabled(false);
+    auto thresholdUsed = [vector, centre, threshold, colourArt, smoothing] {
+        bool const on = vector->isChecked() || centre->isChecked();
+        for (QSpinBox* box : {threshold, colourArt, smoothing})
+            box->setEnabled(on);
+    };
     connect(vector, &QRadioButton::toggled, threshold, thresholdUsed);
     connect(centre, &QRadioButton::toggled, threshold, thresholdUsed);
     QFormLayout* const asLayout = new QFormLayout(asBox);
@@ -117,6 +132,8 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     asLayout->addRow(vector);
     asLayout->addRow(centre);
     asLayout->addRow(tr("Threshold (darker than this is line)"), threshold);
+    asLayout->addRow(tr("Colour Art Threshold (%)"), colourArt);
+    asLayout->addRow(tr("Smooth passes for line art"), smoothing);
     asLayout->addRow(colourVector);
     asLayout->addRow(tr("Colours at most"), colourCount);
     // The colour of the paper: left out, so that what is traced is the drawing and not the sheet it is on.
@@ -197,6 +214,8 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     options.centreLines = centre->isChecked();
     options.colours = colourVector->isChecked() ? colourCount->value() : 0;
     options.threshold = threshold->value();
+    options.colourArtThreshold = colourArt->value();
+    options.smoothPasses = smoothing->value();
     options.linked = linked;
     options.hold = hold->value();
     options.convertColour = convert->isChecked();
