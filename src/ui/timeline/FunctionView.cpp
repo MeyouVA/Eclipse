@@ -170,6 +170,24 @@ FunctionView::FunctionView(Document* document, QWidget* parent) : QWidget(parent
     strip->addWidget(m_frameBox);
     strip->addWidget(new QLabel(tr("Value"), m_strip));
     strip->addWidget(m_valueBox);
+    // The handles of the point selected, typed in.
+    char const* const handleNames[4] = {"FunctionLeftAngle", "FunctionLeftLength", "FunctionRightAngle", "FunctionRightLength"};
+    QString const handleLabels[4] = {tr("Left Angle"), tr("Left Length"), tr("Right Angle"), tr("Right Length")};
+    for (int i = 0; i < 4; ++i) {
+        QDoubleSpinBox* const box = new QDoubleSpinBox(m_strip);
+        box->setObjectName(QLatin1String(handleNames[i]));
+        box->setDecimals(2);
+        box->setRange(i % 2 == 0 ? -89.9 : 0.0, i % 2 == 0 ? 89.9 : 1e6);
+        box->setKeyboardTracking(false);
+        box->setToolTip(i % 2 == 0 ? tr("The angle of the handle, in degrees: its rise in value against the frames it reaches.") : tr("How far the handle reaches."));
+        strip->addWidget(new QLabel(handleLabels[i], m_strip));
+        strip->addWidget(box);
+        m_handleBoxes[i] = box;
+        connect(box, &QDoubleSpinBox::editingFinished, this, [this] {
+            if (!m_filling)
+                m_graph->setSelectedHandles(m_handleBoxes[0]->value(), m_handleBoxes[1]->value(), m_handleBoxes[2]->value(), m_handleBoxes[3]->value());
+        });
+    }
     strip->addStretch(1);
     auto typed = [this] {
         if (!m_filling)
@@ -431,6 +449,15 @@ void FunctionView::showSpot()
     } else {
         m_frameBox->clear();
         m_valueBox->clear();
+    }
+    double handles[4] = {};
+    bool const handled = m_graph->selectedHandles(handles[0], handles[1], handles[2], handles[3]);
+    for (int i = 0; i < 4; ++i) {
+        m_handleBoxes[i]->setEnabled(handled);
+        if (handled)
+            m_handleBoxes[i]->setValue(handles[i]);
+        else
+            m_handleBoxes[i]->clear();
     }
     m_filling = false;
     // The buttons for the shape of a curve, only while there are points to give it to.

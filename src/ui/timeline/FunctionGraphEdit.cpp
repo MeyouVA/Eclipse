@@ -4,6 +4,7 @@
 #include <QMap>
 
 #include <cmath>
+#include <QtMath>
 
 #include "model/document/Commands.h"
 
@@ -428,4 +429,35 @@ void FunctionGraph::insertPoint()
         m_document->setValueCurves(it.key(), it.value(), tr("Insert Point"));
     m_document->endMacro();
     setSelection(made);
+}
+
+bool FunctionGraph::selectedHandles(double& leftAngle, double& leftLength, double& rightAngle, double& rightLength) const
+{
+    if (m_selection.size() != 1 || m_handle != 0)
+        return false;
+    FunctionPoint const& p = m_selection.first();
+    ValueCurve const curve = curveAt(p);
+    double const unit = unitOf(p.value);
+    QPointF const in(-curve.in.x(), -curve.in.y() * unit), out(curve.out.x(), curve.out.y() * unit);
+    leftAngle = qRadiansToDegrees(std::atan2(in.y(), in.x()));
+    leftLength = std::hypot(in.x(), in.y());
+    rightAngle = qRadiansToDegrees(std::atan2(out.y(), out.x()));
+    rightLength = std::hypot(out.x(), out.y());
+    return true;
+}
+
+void FunctionGraph::setSelectedHandles(double leftAngle, double leftLength, double rightAngle, double rightLength)
+{
+    if (m_selection.size() != 1 || m_handle != 0)
+        return;
+    FunctionPoint const p = m_selection.first();
+    ValueCurve curve = curveAt(p);
+    double const unit = unitOf(p.value);
+    // (Angles kept short of upright, so a handle always reaches along the frames.)
+    double const left = qDegreesToRadians(std::clamp(leftAngle, -89.9, 89.9)), right = qDegreesToRadians(std::clamp(rightAngle, -89.9, 89.9));
+    curve.in = QPointF(-std::max(0.0, leftLength) * std::cos(left), -std::max(0.0, leftLength) * std::sin(left) / unit);
+    curve.out = QPointF(std::max(0.0, rightLength) * std::cos(right), std::max(0.0, rightLength) * std::sin(right) / unit);
+    curve.corner = std::abs(leftAngle - rightAngle) > 1e-6;
+    curve.after = ValueCurve::Curved;
+    m_document->setValueCurves(p.layer, {{p.frame, curve}}, tr("Set Handles"));
 }

@@ -116,6 +116,9 @@ public:
     // The point selected (or its handle): the frame (from 1) and value the boxes show, and those typed in them.
     bool selectedSpot(double& frame, double& value) const;
     void setSelectedSpot(double frame, double value);
+    // The point selected's handles as angles (degrees, of frames against values) and lengths: left reaching back, right on.
+    bool selectedHandles(double& leftAngle, double& leftLength, double& rightAngle, double& rightLength) const;
+    void setSelectedHandles(double leftAngle, double leftLength, double rightAngle, double rightLength);
 
 signals:
     void framePicked(int frame);
@@ -277,6 +280,7 @@ private:
     QTreeWidget* m_list;
     QDoubleSpinBox* m_frameBox;
     QDoubleSpinBox* m_valueBox;
+    QDoubleSpinBox* m_handleBoxes[4] = {};     // Left Angle, Left Length, Right Angle, Right Length
     QWidget* m_strip;
     QVector<QToolButton*> m_pointButtons;      // shown only while points are selected
     QVector<QToolButton*> m_kindButtons;
