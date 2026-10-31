@@ -65,6 +65,9 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     QRadioButton* const newLayer = new QRadioButton(tr("Create Single Layer Named:"), layerBox);
     QLineEdit* const layerName = new QLineEdit(layerBox);
     layerName->setPlaceholderText(tr("the name of the first file"));
+    QRadioButton* const byNames = new QRadioButton(tr("Create Layer(s) Based on Filenames"), layerBox);
+    byNames->setObjectName(QStringLiteral("ImportByFilenames"));
+    byNames->setToolTip(tr("Files named alike but for a number at the end (walk-1, walk-2, run-1) each go onto a layer of that name (walk, run)."));
     QRadioButton* const currentLayer = new QRadioButton(tr("Add to the Current Layer, from the Current Frame"), layerBox);
     currentLayer->setEnabled(m_document->scene().layers[layer()].holdsDrawings());
     newLayer->setChecked(true);
@@ -75,6 +78,7 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     nameRow->addWidget(layerName, 1);
     QFormLayout* const layerLayout = new QFormLayout(layerBox);
     layerLayout->addRow(nameRow);
+    layerLayout->addRow(byNames);
     layerLayout->addRow(currentLayer);
     layerLayout->addRow(tr("Frames for each image"), hold);
 
@@ -217,7 +221,8 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     ImageImport options;
     for (int i = 0; i < files->count(); ++i)
         options.files << files->item(i)->text();
-    options.newLayer = newLayer->isChecked();
+    options.newLayer = newLayer->isChecked() || byNames->isChecked();
+    options.byFilenames = byNames->isChecked();
     options.layerName = layerName->text();
     options.fit = alignment->currentIndex() != 2;
     options.pan = alignment->currentIndex() == 1;

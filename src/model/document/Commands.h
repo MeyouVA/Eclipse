@@ -35,6 +35,8 @@ struct CellBlock {
     bool offsetKeys = false;
     // Only the drawings of the drawing layer the layer pasted onto shows where the paste begins (synced layers).
     bool currentSetOnly = false;
+    // A drawing met by name and kept (timing only, create missing): it takes the pivot of the drawing copied.
+    bool updateDrawingPivot = false;
     int frames = 0;
     QVector<Row> rows;
     bool isEmpty() const { return frames <= 0 || rows.isEmpty(); }

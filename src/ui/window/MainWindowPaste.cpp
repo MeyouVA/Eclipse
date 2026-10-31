@@ -65,8 +65,13 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     mode->addItem(tr("Create drawings, renaming them with an underscore when the name is taken"), int(CellBlock::CreateRenamed));
     mode->setToolTip(tr("The drawings met by name in the layer pasted onto: used as they are, made where missing, overwritten, or made anew under names of their own."));
     mode->setCurrentIndex(std::max(0, mode->findData(options.drawingMode)));
+    QCheckBox* const drawingPivot = new QCheckBox(tr("Update Drawing Pivot"), basic);
+    drawingPivot->setObjectName(QStringLiteral("PasteDrawingPivot"));
+    drawingPivot->setToolTip(tr("A drawing already there under the same name, kept rather than replaced, takes the pivot of the drawing copied."));
+    drawingPivot->setChecked(options.updateDrawingPivot);
     form->addRow(drawings);
     form->addRow(tr("Drawings"), mode);
+    form->addRow(drawingPivot);
     form->addRow(keys);
     form->addRow(tr("Number of cycles"), cycles);
     form->addRow(reverse);
@@ -151,6 +156,7 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     options.matchNames = names->isChecked();
     options.offsetKeys = offset->isChecked();
     options.currentSetOnly = synced->isChecked();
+    options.updateDrawingPivot = drawingPivot->isChecked();
     options.fillGap = gap->isChecked();
     options.fillToKey = toKey->isChecked();
     options.edgeKeys = edges->isChecked();

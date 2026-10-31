@@ -647,6 +647,22 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
     Scene const& scene = m_document->scene();
     if (options.files.isEmpty())
         return fail(tr("No file was chosen."));
+    if (options.byFilenames && options.newLayer) {
+        // A layer for each run of files named alike.
+        int last = -1;
+        m_document->beginMacro(tr("Import Images"));
+        for (auto const& [name, run] : filesByName(options.files)) {
+            ImageImport one = options;
+            one.byFilenames = false;
+            one.files = run;
+            one.layerName = name;
+            last = importImages(one, error);
+            if (last < 0)
+                break;
+        }
+        m_document->endMacro();
+        return last;
+    }
     if (options.psdLayers && options.newLayer && !options.vectorize && !options.linked) {
         // Photoshop files layer by layer; the other files as usual.
         ImageImport rest = options;
@@ -838,4 +854,22 @@ void MainWindow::onActionImportScanner()
         return;
     }
     askImportImages(false, scanned);
+}
+
+QVector<QPair<QString, QStringList>> MainWindow::filesByName(QStringList const& files)
+{
+    static QRegularExpression const tail(QStringLiteral(R"([-_. ]*\d+$)"));
+    QVector<QPair<QString, QStringList>> runs;
+    for (QString const& file : files) {
+        QString name = QFileInfo(file).completeBaseName();
+        name.remove(tail);
+        if (name.isEmpty())
+            name = QFileInfo(file).completeBaseName();
+        auto found = std::find_if(runs.begin(), runs.end(), [&](auto const& run) { return run.first.compare(name, Qt::CaseInsensitive) == 0; });
+        if (found == runs.end())
+            runs.push_back({name, {file}});
+        else
+            found->second << file;
+    }
+    return runs;
 }

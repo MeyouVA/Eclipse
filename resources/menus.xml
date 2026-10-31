@@ -42,6 +42,7 @@
     <item id="ExportGif" icon="file/exportgif" text="Animated &amp;GIF..." shortcut="shortcut.exportGif" responder="window" slot="onActionExportGif()"/>
     <item id="PublishGameEngine" icon="file/exportframes" text="Publish for &amp;Game Engine..." responder="window" slot="onActionPublishGameEngine()" tooltip="Opens the Publish for Game Engine dialog box: the frames in one sprite sheet with a JSON file saying where each is."/>
     <item id="ExportLayoutImage" icon="file/exportframes" text="&amp;Layout Image..." responder="window" slot="onActionExportLayoutImage()" tooltip="The frame as it is, every layer, written to a picture file."/>
+    <item id="ExportDrawings" icon="file/exportframes" text="&amp;Drawings..." responder="window" slot="onActionExportDrawings()" tooltip="Output Drawings: each drawing of the layers selected as a file of its own, as PNG pictures or SVG lines."/>
     <item id="ExportLayoutImageSelection" icon="file/exportframes" text="Layout Image from &amp;Selection..." responder="window" slot="onActionExportLayoutImageFromSelection()" tooltip="The frame as it is, only the layers selected in the Timeline, written to a picture file."/>
     <item id="ExportSwf" icon="file/exportmovie" text="&amp;SWF..." responder="window" slot="onActionExportSwf()"/>
     <item id="ExportOpenGLFrames" icon="file/exportopengl" text="&amp;OpenGL Frames..." responder="window" slot="onActionExportOpenGLFrames()"/>
@@ -1070,6 +1071,8 @@
    <item id="SetStopMotionKeyframe"/>
    <item id="SetMotionKeyframe"/>
    <item id="StopMotionKeyframeMode"/>
+   <item id="CreateKeyframesOn" icon="timeline/addkey" text="Create Keyframes On..." responder="window" slot="onActionCreateKeysOn(QString)" itemParameter="keys" tooltip="A keyframe every few frames over the frames selected, on the layers selected."/>
+   <item id="CreateStepsOn" icon="timeline/stopmotionkey" text="Create Steps On..." responder="window" slot="onActionCreateKeysOn(QString)" itemParameter="steps" tooltip="A stop-motion keyframe every few frames over the frames selected: the motion held between them, on 2s, 3s or more."/>
    <separator/>
    <item id="SetEaseDialog"/>
    <item id="QuickEase" icon="anim/easeboth" text="Quick Ease" shortcut="shortcut.quickEase" responder="window" slot="onActionQuickEase(QString)" itemParameter="both"/>
@@ -1105,6 +1108,7 @@
    <item id="ToggleThumbnails" icon="timeline/viewall" text="Show/Hide Thumbnails" shortcut="shortcut.toggleThumbnails" responder="window" slot="onActionThumbnails(QString)" itemParameter="toggle"/>
    <item id="ShowAllThumbnails" icon="timeline/viewall" text="Show All Thumbnails" shortcut="shortcut.showAllThumbnails" responder="window" slot="onActionThumbnails(QString)" itemParameter="all"/>
    <item id="HideAllThumbnails" icon="timeline/viewall" text="Hide All Thumbnails" shortcut="shortcut.hideAllThumbnails" responder="window" slot="onActionThumbnails(QString)" itemParameter="none"/>
+   <item id="TimelineTogglePattern" icon="timeline/viewall" text="Toggle Pattern" checkable="true" responder="window" slot="onActionThumbnails(QString)" itemParameter="pattern"/>
   </menu>
   <menu id="TimelineShow" text="Show">
    <item id="TimelineShowDrawings" icon="timeline/viewall" text="Show &amp;Drawings" checkable="true" checked="true" responder="window" slot="onActionTimelineShowKind(QString)" itemParameter="drawings"/>

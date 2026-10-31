@@ -1,5 +1,6 @@
 #include "ui/panels/LibraryView.h"
 #include "actions/theme/AppSettings.h"
+#include "actions/theme/InterfaceColours.h"
 #include <algorithm>
 
 #include <functional>
@@ -81,7 +82,7 @@ bool LibraryView::isTemplate(QString const& path)
 static QImage otherPicture(QString const& path, QSize size)
 {
     QImage image(size, QImage::Format_ARGB32_Premultiplied);
-    image.fill(QColor(46, 46, 46));
+    image.fill(InterfaceColours::get("libraryThumbnailBackground"));
     if (size.isEmpty())
         return image;
     QPainter painter(&image);
@@ -112,7 +113,7 @@ static QImage otherPicture(QString const& path, QSize size)
 QImage LibraryView::picture(Scene const& scene, int frame, QSize size)
 {
     QImage image(size, QImage::Format_ARGB32_Premultiplied);
-    image.fill(QColor(46, 46, 46));
+    image.fill(InterfaceColours::get("libraryThumbnailBackground"));
     if (scene.width < 1 || scene.height < 1 || size.isEmpty())
         return image;
     // The frame of the scene, as large as fits, in the middle.

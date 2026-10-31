@@ -141,7 +141,10 @@ public:
         bool convertColour = false; // Convert Image Colour Space on Import: the pictures read in `sourceSpace`
         QString sourceSpace;        // empty: the file's own profile (else sRGB)
         bool psdLayers = false;     // Photoshop files onto new layers: each of their layers a layer of its own, their groups groups
+        bool byFilenames = false;   // Create Layer(s) Based on Filenames: files named alike (walk-1, walk-2) onto a layer of that name each
     };
+    // The files sorted into runs by name, the number at the end left out: walk-1.png, walk-2.png -> "walk".
+    static QVector<QPair<QString, QStringList>> filesByName(QStringList const& files);
     // ---- the Library ------------------------------------------------------------------------
     // The layers selected in the Timeline (with everything attached to them), over the frames
     // selected - or the whole scene when no frames are - written as a template file.
@@ -277,6 +280,9 @@ public slots:
     bool publishSpriteSheet(QString const& path, int percent, QString* error);
     void onActionExportLayoutImageFromSelection();
     bool exportLayoutImage(QString const& path, bool selectedOnly, QString* error);
+    // File > Export > Drawings: each drawing of the layers as a picture of its own (PNG) or as lines (SVG), named layer-drawing.
+    void onActionExportDrawings();
+    int exportDrawings(QString const& folder, QVector<int> const& layers, QString const& format, QString* error);
     void onActionDuplicateSymbol();
     void onActionCloneLayer();
     void onActionCloneLayerTiming();
@@ -614,6 +620,9 @@ public slots:
     void onActionUnsyncLayer();
     void onActionShowFunctions();
     void onActionShowManager();
+    // Create Keyframes On / Create Steps On: a keyframe every `every` frames over the frames selected ("steps": each one held to the next).
+    void onActionCreateKeysOn(QString const& kind);
+    int createKeysOn(QVector<int> const& layers, int first, int last, int every, bool steps);
     void onActionRippleMarkers(bool on);
     void onActionOverwriteDrop(bool on);
     // The Xsheet view (MainWindowXsheet).

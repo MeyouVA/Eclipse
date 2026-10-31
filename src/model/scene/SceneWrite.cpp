@@ -164,6 +164,8 @@ QJsonObject Scene::toJson(QString const& folder) const
         QJsonObject wo{{"name", w.name}, {"movie", w.movie}, {"path", w.path}, {"format", w.format}, {"percent", w.percent}, {"enabled", w.enabled}};
         if (w.layers)
             wo["layers"] = true;
+        if (w.keepFrames)
+            wo["keepFrames"] = true;
         if (!w.colourSpace.isEmpty())
             wo["colourSpace"] = w.colourSpace;
         writeArray.append(wo);

@@ -306,6 +306,19 @@ int MainWindow::renderWrites(QString* error, QProgressDialog* progress)
             options.colourSpace = scene.outputSpace(w.colourSpace, QString());
             QDir().mkpath(QFileInfo(where).absolutePath());
             ok = MovieExport::write(scene, where, nullptr, &why, options);
+            if (ok && w.keepFrames) {
+                // Output Movie and Keep Frames: the frames as images too, in a folder named after the movie.
+                QFileInfo const movie(where);
+                ImageExport images;
+                images.folder = movie.absolutePath() + QLatin1Char('/') + movie.completeBaseName() + QStringLiteral("_frames");
+                images.name = movie.completeBaseName();
+                images.format = w.format;
+                images.percent = std::clamp(w.percent, 1, 1000);
+                images.colourSpace = w.colourSpace;
+                images.progress = progress;
+                QDir().mkpath(images.folder);
+                ok = exportImages(images, &why) == scene.frameCount();
+            }
         } else {
             ImageExport images;
             images.folder = where;
@@ -384,8 +397,8 @@ void MainWindow::onActionWriteOutputs()
         table->setItem(row, 0, on);
         table->setItem(row, 1, new QTableWidgetItem(w.name));
         QComboBox* const kind = new QComboBox(table);
-        kind->addItems({QObject::tr("Images"), QObject::tr("Movie")});
-        kind->setCurrentIndex(w.movie ? 1 : 0);
+        kind->addItems({QObject::tr("Images"), QObject::tr("Movie"), QObject::tr("Movie and Keep Frames")});
+        kind->setCurrentIndex(w.movie ? (w.keepFrames ? 2 : 1) : 0);
         table->setCellWidget(row, 2, kind);
         table->setItem(row, 3, new QTableWidgetItem(w.path));
         QComboBox* const format = new QComboBox(table);
@@ -443,7 +456,9 @@ void MainWindow::onActionWriteOutputs()
         Scene::Write w;
         w.enabled = table->item(r, 0)->checkState() == Qt::Checked;
         w.name = table->item(r, 1)->text().trimmed();
-        w.movie = static_cast<QComboBox*>(table->cellWidget(r, 2))->currentIndex() == 1;
+        int const kindIndex = static_cast<QComboBox*>(table->cellWidget(r, 2))->currentIndex();
+        w.movie = kindIndex >= 1;
+        w.keepFrames = kindIndex == 2;
         w.path = table->item(r, 3)->text().trimmed();
         w.format = static_cast<QComboBox*>(table->cellWidget(r, 4))->currentText();
         w.percent = static_cast<QSpinBox*>(table->cellWidget(r, 5))->value();

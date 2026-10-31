@@ -5,6 +5,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QInputDialog>
 #include <QLineEdit>
 #include <QStatusBar>
 #include <QVBoxLayout>
@@ -12,6 +13,7 @@
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/AppSettings.h"
 #include "model/document/Commands.h"
+#include "ui/timeline/Timeline.h"
 
 namespace {
 
@@ -28,7 +30,11 @@ QColor markColour(QString const& name)
 
 void MainWindow::onActionThumbnails(QString const& which)
 {
-    // "toggle": the selected layers' tracks; "all" / "none": every drawing layer's.
+    // "toggle": the selected layers' tracks; "all" / "none": every drawing layer's; "pattern": a chequer behind them.
+    if (which == QLatin1String("pattern")) {
+        m_timeline->setThumbnailPattern(!m_timeline->thumbnailPattern());
+        return;
+    }
     Scene const& scene = m_document->scene();
     QVector<int> layers;
     if (which == QLatin1String("toggle")) {
@@ -301,4 +307,47 @@ void MainWindow::onActionDeleteSpecial()
     if (drawings->isChecked())
         onActionClearExposure();
     m_document->endMacro();
+}
+
+int MainWindow::createKeysOn(QVector<int> const& layers, int first, int last, int every, bool steps)
+{
+    every = std::max(1, every);
+    int made = 0;
+    m_document->beginMacro(steps ? tr("Create Steps On") : tr("Create Keyframes On"));
+    for (int l : layers) {
+        if (l < 0 || l >= m_document->scene().layers.size())
+            continue;
+        for (int f = first; f <= last; f += every) {
+            if (m_document->scene().layers[l].keyIndex(f) < 0) {
+                m_document->setKeyframe(l, f, m_document->scene().layers[l].poseAt(f), tr("Create Keyframes On"));
+                ++made;
+            }
+            if (m_document->scene().layers[l].keyIndex(f) >= 0)
+                m_document->setKeyTween(l, f, !steps);
+        }
+    }
+    m_document->endMacro();
+    return made;
+}
+
+void MainWindow::onActionCreateKeysOn(QString const& kind)
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty() && layer() >= 0)
+        layers = {layer()};
+    if (layers.isEmpty())
+        return;
+    // Over the frames selected; one frame picked: the whole scene.
+    int first = m_timeline->selectionFirstFrame(), last = m_timeline->selectionLastFrame();
+    if (first >= last) {
+        first = 0;
+        last = m_document->scene().frameCount() - 1;
+    }
+    bool const steps = kind == QLatin1String("steps");
+    bool ok = false;
+    int const every = QInputDialog::getInt(this, steps ? tr("Create Steps On") : tr("Create Keyframes On"), tr("A keyframe every (frames):"), 2, 1, 999, 1, &ok);
+    if (!ok)
+        return;
+    int const made = createKeysOn(layers, first, last, every, steps);
+    statusBar()->showMessage(tr("%n keyframe(s) made.", nullptr, made), 4000);
 }

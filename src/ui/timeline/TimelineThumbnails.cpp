@@ -5,15 +5,23 @@
 #include <QPainter>
 #include <QPixmap>
 
+#include "actions/theme/InterfaceColours.h"
 #include "canvas/Canvas.h"
 #include "model/document/Commands.h"
 
 namespace {
 
-QPixmap picture(Scene const& scene, Drawing const& drawing, QSize size)
+QPixmap picture(Scene const& scene, Drawing const& drawing, QSize size, bool pattern)
 {
     QPixmap pixmap(size);
-    pixmap.fill(Qt::white);
+    pixmap.fill(pattern ? QColor(205, 205, 205) : Qt::white);
+    if (pattern) {
+        QPainter chequer(&pixmap);
+        int const cell = 6;
+        for (int y = 0; y < size.height(); y += cell)
+            for (int x = ((y / cell) % 2) * cell; x < size.width(); x += 2 * cell)
+                chequer.fillRect(x, y, cell, cell, QColor(240, 240, 240));
+    }
     QRectF const bounds = drawing.bounds();
     if (bounds.isEmpty() || size.width() < 6 || size.height() < 6)
         return pixmap;
@@ -49,11 +57,20 @@ void Timeline::paintThumbnails(QPainter& p, TimelinePaintSpace const& space, int
         QSize const size(std::min(room, full.width()), height);
         quint64 const key = (quint64(quint32(layer.id)) << 32) | (quint64(quint32(d)) << 12) | quint64(size.width());
         if (!m_thumbnails.contains(key))
-            m_thumbnails.insert(key, picture(scene, layer.drawings[d], size));
+            m_thumbnails.insert(key, picture(scene, layer.drawings[d], size, m_thumbPattern));
         int const x = kHeaderWidth + f * space.cw - space.sx + 2;
         p.drawPixmap(x, y + 4, m_thumbnails.value(key));
         p.setPen(QColor(40, 40, 40));
         p.setBrush(Qt::NoBrush);
         p.drawRect(x, y + 4, size.width() - 1, size.height() - 1);
     }
+}
+
+void Timeline::setThumbnailPattern(bool on)
+{
+    if (m_thumbPattern == on)
+        return;
+    m_thumbPattern = on;
+    m_thumbnails.clear();
+    viewport()->update();
 }

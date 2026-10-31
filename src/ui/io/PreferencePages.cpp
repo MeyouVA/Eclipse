@@ -113,6 +113,11 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.pasteForceKeys->setToolTip(tr("Cells of an animated layer copied and pasted come with keyframes where they begin and end, so the motion pasted is the motion copied."));
     w.pasteForceKeys->setChecked(s.value(QStringLiteral("prefs/pasteForceKeys"), true).toBool());
     w.generalLayout->addRow(w.pasteForceKeys);
+    w.pasteEdgeKeys = new QCheckBox(tr("Paste/Drag & Drop Adds Keyframes at Beginning and End"), w.general);
+    w.pasteEdgeKeys->setObjectName(QStringLiteral("PrefPasteEdgeKeys"));
+    w.pasteEdgeKeys->setToolTip(tr("Cells pasted or dropped onto an animated layer give it keyframes where they begin and end, so its motion outside them stays as it was."));
+    w.pasteEdgeKeys->setChecked(s.value(QStringLiteral("prefs/pasteEdgeKeys"), false).toBool());
+    w.generalLayout->addRow(w.pasteEdgeKeys);
     w.confirmLayerDelete = new QCheckBox(tr("Ask before deleting layers"), w.general);
     w.confirmLayerDelete->setObjectName(QStringLiteral("PrefConfirmLayerDelete"));
     w.confirmLayerDelete->setToolTip(tr("Delete Layers asks first (You are about to delete Layer(s). Please Confirm.)."));

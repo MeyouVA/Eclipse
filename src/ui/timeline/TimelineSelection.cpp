@@ -78,14 +78,17 @@ void Timeline::moveSelection(int rows, int frames, bool copy, bool alt)
         if (l >= 0)
             landing.push_back(l);
     QVector<int> const cut = toKey ? exposuresCut(landing, first + frames + (last - first + 1)) : QVector<int>();
-    if (gap || toKey)
+    bool const edges = pasteAddsEdgeKeys();
+    if (gap || toKey || edges)
         m_document->beginMacro(copy ? tr("Copy Cells") : tr("Move Cells"));
+    if (edges)
+        addEdgeKeys(landing, first + frames, last + frames);
     m_document->moveCells(from, first, last, to, first + frames, copy, !m_overwriteDrop);
     if (toKey)
         holdOverCut(landing, cut, first + frames + (last - first + 1));
     if (gap)
         fillGap(from, first, last);
-    if (gap || toKey)
+    if (gap || toKey || edges)
         m_document->endMacro();
     // The block goes with its cells.
     m_extentRow = m_extentFrame = -1;
@@ -174,7 +177,31 @@ void Timeline::paste()
         pasteSpecial(m_preset);
         return;
     }
+    if (pasteAddsEdgeKeys()) {
+        PasteOptions options;
+        options.edgeKeys = true;
+        pasteSpecial(options);
+        return;
+    }
     pasteBlock(cellClipboard(), selectionFirstFrame());
+}
+
+bool& Timeline::pasteAddsEdgeKeys()
+{
+    static bool on = false;
+    return on;
+}
+
+void Timeline::addEdgeKeys(QVector<int> const& layers, int first, int last)
+{
+    for (int l : layers) {
+        Scene const& scene = m_document->scene();
+        if (l < 0 || l >= scene.layers.size() || scene.layers[l].keys.isEmpty())
+            continue;
+        for (int f : {first, last})
+            if (m_document->scene().layers[l].keyIndex(f) < 0)
+                m_document->setKeyframe(l, f, m_document->scene().layers[l].poseAt(f), tr("Paste"));
+    }
 }
 
 void Timeline::pasteBlock(CellBlock const& block, int frame)
@@ -220,6 +247,7 @@ void Timeline::pasteSpecial(PasteOptions const& options)
     block.pastePivot = options.pivot;
     block.offsetKeys = options.offsetKeys;
     block.currentSetOnly = options.currentSetOnly;
+    block.updateDrawingPivot = options.updateDrawingPivot;
     if (options.edgeKeys && options.keyframes) {
         // Each layer pasted onto: keyframes where the paste begins and ends, as the layer is there now.
         QVector<int> const selected = selectedLayers();
@@ -230,13 +258,7 @@ void Timeline::pasteSpecial(PasteOptions const& options)
             if (isParamRow(r))
                 continue;
             ++rows;
-            int const l = m_rows[r];
-            Scene const& scene = m_document->scene();
-            if (l < 0 || l >= scene.layers.size() || scene.layers[l].keys.isEmpty())
-                continue;
-            for (int f : {first, last})
-                if (scene.layers[l].keyIndex(f) < 0)
-                    m_document->setKeyframe(l, f, m_document->scene().layers[l].poseAt(f), tr("Paste"));
+            addEdgeKeys({m_rows[r]}, first, last);
         }
         if (!options.fillToKey)
             pasteBlock(block, first);

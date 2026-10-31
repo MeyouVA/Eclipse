@@ -41,6 +41,7 @@
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
 #include "canvas/FrameRender.h"
+#include "ui/timeline/Timeline.h"
 #include "ui/timeline/Xsheet.h"
 #include "ui/timeline/FunctionView.h"
 #include "ui/views/PreviewManagerView.h"
@@ -135,6 +136,7 @@ void MainWindow::applyPreferences()
         m_canvas->setArt(Canvas::LineArt);
     m_document->setUndoLevels(std::clamp(s.value(QStringLiteral("prefs/undoLevels"), 100).toInt(), 0, 10000));
     CellBlock::forceEdgeKeys = s.value(QStringLiteral("prefs/pasteForceKeys"), true).toBool();
+    Timeline::pasteAddsEdgeKeys() = s.value(QStringLiteral("prefs/pasteEdgeKeys"), false).toBool();
     m_document->setFovLimits(s.value(QStringLiteral("prefs/minimumFov"), Layer::kMinFov).toDouble(),
                              s.value(QStringLiteral("prefs/maximumFov"), Layer::kMaxFov).toDouble());
     if (m_layerPanel)
@@ -484,6 +486,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/minimumFov"), w.minimumFov->value());
     s.setValue(QStringLiteral("prefs/maximumFov"), w.maximumFov->value());
     s.setValue(QStringLiteral("prefs/pasteForceKeys"), w.pasteForceKeys->isChecked());
+    s.setValue(QStringLiteral("prefs/pasteEdgeKeys"), w.pasteEdgeKeys->isChecked());
     s.setValue(QStringLiteral("prefs/confirmLayerDelete"), w.confirmLayerDelete->isChecked());
     s.setValue(QStringLiteral("prefs/syncBitmapColour"), w.syncBitmapColour->isChecked());
     s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());

@@ -38,7 +38,7 @@ inline void emptyCells(Scene& s, QVector<int> const& layers, int first, int last
 }
 
 // Where the row's drawings go in the layer, as Paste Special asks: by their names, made, overwritten or renamed (-1: left out).
-inline QVector<int> placeDrawings(Layer& layer, CellBlock::Row const& row, int mode)
+inline QVector<int> placeDrawings(Layer& layer, CellBlock::Row const& row, int mode, bool updatePivot = false)
 {
     QVector<int> place(row.drawings.size(), -1);
     for (int i = 0; i < row.drawings.size(); ++i) {
@@ -47,6 +47,10 @@ inline QVector<int> placeDrawings(Layer& layer, CellBlock::Row const& row, int m
         for (int d = 0; d < layer.drawings.size() && found < 0; ++d)
             if (layer.drawingLabel(d) == label && layer.drawings[d].set == row.drawings[i].set)
                 found = d;
+        if (found >= 0 && updatePivot && (mode == CellBlock::TimingOnly || mode == CellBlock::CreateMissing)) {
+            layer.drawings[found].pivotSet = row.drawings[i].pivotSet;
+            layer.drawings[found].pivot = row.drawings[i].pivot;
+        }
         if (mode == CellBlock::TimingOnly) {
             place[i] = found;
             continue;
@@ -114,7 +118,7 @@ inline void putBlock(Scene& s, QVector<int> const& layers, int frame, CellBlock 
                 for (int i = 0; i < row.drawings.size(); ++i)
                     place.push_back(base + i);
             } else {
-                place = placeDrawings(layer, row, block.drawingMode);
+                place = placeDrawings(layer, row, block.drawingMode, block.updateDrawingPivot);
             }
             for (int f = begin; f < end; ++f) {
                 int const cell = row.cells[f - frame];

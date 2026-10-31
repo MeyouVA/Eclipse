@@ -93,6 +93,7 @@ QList<Entry> const& entries()
         {"nodeImageCable", "Node View", "Image Cable", QColor(111, 168, 232)},
         {"nodeWideCableInner", "Node View", "Wide Cable Inner Line", QColor(240, 200, 90)},
         {"nodeThumbnailBackground", "Node View", "Default Thumbnail Background", QColor(255, 255, 255)},
+        {"libraryThumbnailBackground", "Views", "Library Thumbnail Background", QColor(46, 46, 46)},
         {"nodeSelected", "Node View", "Element Selected", QColor(255, 255, 255)},
         {"nodeShadow", "Node View", "Node Shadow", QColor(0, 0, 0, 90)},
         {"backdropInnerStroke", "Backdrops", "Inner Stroke", QColor(0, 0, 0, 90)},

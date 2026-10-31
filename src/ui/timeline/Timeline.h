@@ -119,6 +119,7 @@ public:
         bool matchNames = false, pivot = false;
         bool offsetKeys = false;
         bool currentSetOnly = false;
+        bool updateDrawingPivot = false;
         // Alt-dragging cells out: the gap they leave holds the drawing before it.
         bool fillGap = true;
         // Dropped or pasted into an exposure: the last drawing put down holds on over the rest of it (up to the next key exposure or empty frame).
@@ -127,6 +128,10 @@ public:
         bool edgeKeys = false;
     };
     void pasteSpecial(bool drawings, bool keyframes, int cycles, bool reverse);
+    // Preference: a plain Paste or a drop of cells adds keyframes where it begins and ends on the animated layers it lands on.
+    static bool& pasteAddsEdgeKeys();
+    // Keyframes at first and last on these layers (those animated, where they have none), as each is there now.
+    void addEdgeKeys(QVector<int> const& layers, int first, int last);
     void pasteSpecial(PasteOptions const& options);
     // A paste preset: the plain Paste pastes as it says (none: as it always does).
     void setPastePreset(PasteOptions const* preset) { m_hasPreset = preset != nullptr; if (preset) m_preset = *preset; }
@@ -165,6 +170,9 @@ public:
     void setKindShown(int kind, bool shown);
     // Whether a layer's track shows thumbnails of its drawings (a drawing layer with them on).
     bool thumbnailsShown(int layer) const;
+    // Toggle Pattern: thumbnails on a chequer, to see what is see-through, or on the library thumbnail colour.
+    bool thumbnailPattern() const { return m_thumbPattern; }
+    void setThumbnailPattern(bool on);
     // Scrolls the list so that the current layer's row is in the middle.
     void centreOnSelection();
     // The layers that have a row, top to bottom.
@@ -286,6 +294,7 @@ private:
     QVector<int> m_hiddenKinds;
     QVector<int> m_shownIds;     // ShowSelected: the ids of the layers that were selected
     QVector<int> m_params;
+    bool m_thumbPattern = false;
     mutable QHash<quint64, QPixmap> m_thumbnails;   // the pictures of the thumbnails, made again when the scene changes
     QVector<int> m_rowTops;     // where each row starts, and after the last where they end
     QSet<int> m_open;          // the ids of the layers whose parameters are shown
