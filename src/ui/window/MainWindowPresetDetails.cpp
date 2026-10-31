@@ -21,6 +21,7 @@
 #include "actions/theme/AppSettings.h"
 #include "canvas/Canvas.h"
 #include "canvas/PencilTexture.h"
+#include "render/images/ImageFiles.h"
 #include "model/document/Commands.h"
 #include "ui/panels/ColourEditor.h"
 #include "ui/panels/PalettePanel.h"
@@ -106,10 +107,10 @@ void MainWindow::onActionPresetDetails(QString const& kind, QString const& name)
     icon->setObjectName(QStringLiteral("PresetIcon"));
     icon->setToolTip(tr("Click to change icon to show in icon mode"));
     QString iconFile = details.value(QStringLiteral("icon")).toString();
-    auto showIcon = [icon, &iconFile] { icon->setIcon(iconFile.isEmpty() ? QIcon() : QIcon(iconFile)); };
+    auto showIcon = [icon, &iconFile] { icon->setIcon(iconFile.isEmpty() ? QIcon() : QIcon(QPixmap::fromImage(ImageFiles::load(iconFile)))); };
     showIcon();
     connect(icon, &QPushButton::clicked, &dialog, [&dialog, &iconFile, showIcon] {
-        QString const chosen = QFileDialog::getOpenFileName(&dialog, tr("Select Custom Icon"), iconFile, tr("Pictures (*.png *.jpg *.svg *.ico *.bmp)"));
+        QString const chosen = QFileDialog::getOpenFileName(&dialog, tr("Select Custom Icon"), iconFile, ImageFiles::fileFilter());
         if (!chosen.isEmpty()) {
             iconFile = chosen;
             showIcon();

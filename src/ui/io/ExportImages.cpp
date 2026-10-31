@@ -77,7 +77,7 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
     };
     // Colour management: from the working space to the files' own (EXR keeps the light in floats).
     QString const space = scene.outputSpace(options.colourSpace, format->suffix);
-    bool const floats = !space.isEmpty() && format->suffix == QLatin1String("exr");
+    bool const floats = format->channelBits>8;
     QString spaceProblem;
     if (!space.isEmpty())
         scene.outputTransform(space, &spaceProblem);
@@ -97,8 +97,8 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
             QVector<ImageFiles::Layer> parts;
             for (int l : scene.drawOrder(f))
                 if (l < alone.size() && !alone[l].layers.isEmpty() && scene.enabled(l))
-                    parts.push_back({scene.layers[l].name, FrameRender::inSpace(scene, FrameRender::frame(alone[l], f, size, options.preview), space, false)});
-            ok = ImageFiles::saveLayered(parts, FrameRender::inSpace(scene, image, space, false), fileOf(f), &why, space);
+                    parts.push_back({scene.layers[l].name, FrameRender::inSpace(scene, FrameRender::frame(alone[l], f, size, options.preview), space, true)});
+            ok = ImageFiles::saveLayered(parts, FrameRender::inSpace(scene, image, space, true), fileOf(f), &why, space);
         } else {
             ok = ImageFiles::save(FrameRender::inSpace(scene, image, space, floats), fileOf(f), format->suffix, &why, 92, space);
         }
@@ -145,7 +145,7 @@ void MainWindow::askExportImages(bool preview)
     QComboBox* const format = new QComboBox(&dialog);
     format->setObjectName(QStringLiteral("ExportFormat"));
     for (ImageFiles::Format const& f : ImageFiles::formats())
-        format->addItem(f.alpha ? tr("%1 (with transparency)").arg(f.name) : f.name, f.suffix);
+        if (f.writable) format->addItem(f.alpha ? tr("%1 (with transparency)").arg(f.name) : f.name, f.suffix);
     // A layered format can keep each layer of drawings apart, as well as the frame as a whole.
     QCheckBox* const layers = new QCheckBox(tr("Each layer apart too (Photoshop layers)"), &dialog);
     layers->setObjectName(QStringLiteral("ExportLayers"));
@@ -403,7 +403,7 @@ void MainWindow::onActionWriteOutputs()
         table->setItem(row, 3, new QTableWidgetItem(w.path));
         QComboBox* const format = new QComboBox(table);
         for (ImageFiles::Format const& f : ImageFiles::formats())
-            format->addItem(f.suffix);
+            if (f.writable) format->addItem(f.suffix);
         ImageFiles::Format const* const known = ImageFiles::find(w.format);
         format->setCurrentText(known ? known->suffix : QStringLiteral("png"));
         table->setCellWidget(row, 4, format);

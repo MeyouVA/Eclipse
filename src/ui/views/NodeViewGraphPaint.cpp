@@ -1,5 +1,6 @@
 // Eclipse - the Node View's graph: a node's settings edited, and the graph painted.
 #include "ui/views/NodeView.h"
+#include "render/images/ImageFiles.h"
 #include "actions/theme/InterfaceColours.h"
 
 #include <QCheckBox>
@@ -337,7 +338,7 @@ void NodeView::editGraphNode(int id)
             QTableWidgetItem* const images = overrides->item(row, 2);
             QString const was = images->data(Qt::UserRole).toString();
             QString const chosen = QFileDialog::getOpenFileName(&dialog, tr("Picture Sequence (its first picture)"), was,
-                                                                tr("Pictures (*.png *.jpg *.jpeg *.tga *.tif *.tiff *.bmp *.psd *.exr);;All Files (*)"));
+                                                                ImageFiles::fileFilter());
             if (chosen.isEmpty() && !was.isEmpty()
                 && QMessageBox::question(&dialog, tr("Picture Sequence"), tr("Show this colour without its picture sequence?")) != QMessageBox::Yes)
                 return;

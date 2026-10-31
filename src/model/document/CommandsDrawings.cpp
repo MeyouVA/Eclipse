@@ -1,5 +1,6 @@
 // Eclipse - the document: drawings - new, duplicated, exposed, renamed, marked, imported, substituted; drivers baked, skins.
 #include "model/document/Commands.h"
+#include <limits>
 #include "model/geometry/Deform.h"
 
 #include "model/document/CommandsPrivate.h"
@@ -212,24 +213,32 @@ void Document::clearCell(int layer, int frame)
 
 int Document::importDrawings(int layer, QString const& name, int frame, QVector<Drawing> const& drawings, int hold)
 {
+    return importDrawingSequence(layer,name,frame,drawings,QVector<int>(drawings.size(),std::max(1,hold)));
+}
+
+int Document::importDrawingSequence(int layer, QString const& name, int frame, QVector<Drawing> const& drawings, QVector<int> const& holds)
+{
     if (drawings.isEmpty() || frame < 0)
         return -1;
     if (layer >= 0 && (layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings()))
         return -1;
-    hold = std::max(1, hold);
+    if(holds.size()!=drawings.size()) return -1;
+    qint64 end=frame;
+    for(int hold : holds) { if(hold<1) return -1; end+=hold; }
+    if(end>std::numeric_limits<int>::max()) return -1;
     int at = layer;
     apply(tr("Import"), [&](Scene& s) {
-        int const end = frame + int(drawings.size()) * hold;
         if (end > s.frameCount())
-            s.setFrameCount(end);
+            s.setFrameCount(int(end));
         if (at < 0)
             at = s.addLayer(name.isEmpty() ? tr("Drawing") : name, int(s.layers.size()), Layer::DrawingLayer);
         Layer& target = s.layers[at];
         int const base = int(target.drawings.size());
         target.drawings += drawings;
+        int cell=frame;
         for (int i = 0; i < drawings.size(); ++i)
-            for (int h = 0; h < hold; ++h)
-                target.cells[frame + i * hold + h] = base + i;
+            for (int h = 0; h < holds[i]; ++h)
+                target.cells[cell++] = base + i;
         target.compact();
     });
     return at;

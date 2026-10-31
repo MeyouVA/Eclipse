@@ -418,7 +418,8 @@ void MainWindow::writeRenderedFrame(int at, QImage const& image)
         QImage const sized = w.percent == 100 ? image : image.scaled(image.size() * (w.percent / 100.0), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         Scene const& scene = m_document->scene();
         QString const space = scene.outputSpace(w.colourSpace, w.format);
-        QImage const written = FrameRender::inSpace(scene, sized, space, !space.isEmpty() && w.format.compare(QLatin1String("exr"), Qt::CaseInsensitive) == 0);
+        ImageFiles::Format const* const format=ImageFiles::find(w.format);
+        QImage const written = FrameRender::inSpace(scene, sized, space, format && format->channelBits>8);
         QString why;
         if (ImageFiles::save(written, file, w.format, &why, 92, space))
             ++made;

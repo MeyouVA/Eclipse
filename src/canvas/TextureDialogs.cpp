@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QImageReader>
+#include "render/images/ImageFiles.h"
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -68,15 +69,12 @@ int ask(QWidget* parent, QString const& title, QString const& name, std::functio
 
 int TextureDialogs::importTexture(QWidget* parent)
 {
-    QString filter;
-    for (QByteArray const& format : QImageReader::supportedImageFormats())
-        filter += QStringLiteral("*.") + QString::fromLatin1(format) + QLatin1Char(' ');
     QString const file = QFileDialog::getOpenFileName(parent, QObject::tr("Import Texture from Picture"), settings().value(QStringLiteral("paths/texture")).toString(),
-                                                      QObject::tr("Pictures (%1)").arg(filter.trimmed()));
+                                                      ImageFiles::fileFilter());
     if (file.isEmpty())
         return 0;
     settings().setValue(QStringLiteral("paths/texture"), QFileInfo(file).absolutePath());
-    QImage const picture(file);
+    QImage const picture = ImageFiles::load(file);
     if (picture.isNull()) {
         QMessageBox::warning(parent, QObject::tr("Import Texture"), QObject::tr("That file could not be read as a picture."));
         return 0;

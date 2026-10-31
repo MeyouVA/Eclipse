@@ -1,5 +1,6 @@
 // Eclipse - templates: a piece of the scene saved to the Library, and one brought in.
 #include "ui/window/MainWindow.h"
+#include "render/images/ImageFiles.h"
 
 #include <functional>
 
@@ -151,6 +152,13 @@ void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
     QString error;
     // The library holds sounds and palettes too.
     QString const kind = QFileInfo(path).suffix().toLower();
+    if(auto const* format=ImageFiles::find(kind);format && format->readable) {
+        ImageImport options;
+        options.files={path};
+        int const at=importImages(options,&error);
+        if(at<0) statusBar()->showMessage(error,8000);
+        return;
+    }
     if (kind == QLatin1String("eclpal")) {
         if (m_palette->importPalette(path, &error))
             statusBar()->showMessage(tr("Palette %1 added to the scene.").arg(QFileInfo(path).completeBaseName()), 5000);

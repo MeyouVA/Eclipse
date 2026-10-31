@@ -1,5 +1,6 @@
 // Eclipse - the document: palettes and their colours.
 #include "model/document/Commands.h"
+#include <QColorSpace>
 
 #include "model/document/CommandsPrivate.h"
 
@@ -218,7 +219,16 @@ bool Document::relinkFile(QString const& from, QString const& to)
     if (!used)
         return false;
     // (Null when it is no picture - a sound, say; read through its own profile for the pictures that ask for that.)
-    QImage const image = readPictureFile(to, false), profiled = readPictureFile(to, true);
+    QHash<int,QImage> images, profiledImages;
+    for(Layer const& layer : m_scene.layers)
+        for(Drawing const& drawing : layer.drawings)
+            for(Picture const& picture : drawing.pictures)
+                if(picture.linked && picture.file==from && !images.contains(picture.sourceFrame)) {
+                    QImage const image=readPictureFile(to,false,picture.sourceFrame);
+                    QImage profiled=image;
+                    if(profiled.colorSpace().isValid() && profiled.colorSpace()!=QColorSpace(QColorSpace::SRgb)) profiled.convertToColorSpace(QColorSpace(QColorSpace::SRgb));
+                    images.insert(picture.sourceFrame,image); profiledImages.insert(picture.sourceFrame,profiled);
+                }
     apply(tr("Relink File"), [&](Scene& s) {
         for (Layer& layer : s.layers) {
             if (layer.kind == Layer::Sound && layer.soundFile == from)
@@ -228,9 +238,9 @@ bool Document::relinkFile(QString const& from, QString const& to)
                     if (!picture.linked || picture.file != from)
                         continue;
                     picture.file = to;
-                    picture.image = picture.ownProfile ? profiled : image;
-                    if (!image.isNull() && picture.size.isEmpty())
-                        picture.size = image.size();
+                    picture.image = picture.ownProfile ? profiledImages.value(picture.sourceFrame) : images.value(picture.sourceFrame);
+                    if (!picture.image.isNull() && picture.size.isEmpty())
+                        picture.size = picture.image.size();
                 }
             }
         }

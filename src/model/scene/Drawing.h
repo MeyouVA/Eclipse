@@ -76,6 +76,7 @@ struct Picture {
     QImage image;           // null when the file of a linked picture could not be read
     QString file;
     bool linked = false;
+    int sourceFrame = 0;
     // Colour management: read through the profile in its file (to sRGB) each time the file is read; and the colour space of its pixels (empty: the layer's).
     bool ownProfile = false;
     QString colourSpace;
@@ -93,7 +94,7 @@ struct Picture {
 };
 
 // The pixels of a picture file; with `ownProfile`, taken from the colour profile the file carries to sRGB.
-QImage readPictureFile(QString const& file, bool ownProfile);
+QImage readPictureFile(QString const& file, bool ownProfile, int sourceFrame = 0);
 
 struct Drawing {
     QVector<Picture> pictures;

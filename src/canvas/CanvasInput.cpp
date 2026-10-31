@@ -3,6 +3,7 @@
 #include <QGestureEvent>
 #include <QFileInfo>
 #include <QImageReader>
+#include "render/images/ImageFiles.h"
 #include <QUrl>
 
 #include <QKeyEvent>
@@ -131,11 +132,11 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
 
 QStringList Canvas::pictureFiles(QList<QUrl> const& urls)
 {
-    QList<QByteArray> const readable = QImageReader::supportedImageFormats();
     QStringList files;
     for (QUrl const& url : urls)
-        if (url.isLocalFile() && readable.contains(QFileInfo(url.toLocalFile()).suffix().toLower().toLatin1()))
-            files << url.toLocalFile();
+        if (url.isLocalFile())
+            if (ImageFiles::Format const* format = ImageFiles::find(QFileInfo(url.toLocalFile()).suffix()); format && format->readable)
+                files << url.toLocalFile();
     return files;
 }
 

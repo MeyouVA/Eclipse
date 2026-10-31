@@ -10,6 +10,7 @@
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QImageReader>
+#include "render/images/ImageFiles.h"
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
@@ -560,11 +561,10 @@ void MainWindow::onActionAnnotation(QString const& what)
         m_xsheet->beginNote();
     else if (what == QLatin1String("picture")) {
         QString const file = QFileDialog::getOpenFileName(this, tr("Select Annotation Bitmap File"), QString(),
-                                                          tr("Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)"));
+                                                          ImageFiles::fileFilter());
         if (file.isEmpty())
             return;
-        QImageReader reader(file);
-        QImage const image = reader.read();
+        QImage const image = ImageFiles::load(file);
         if (image.isNull() || !m_xsheet->addAnnotationPicture(image))
             QMessageBox::warning(this, tr("Annotation"), tr("The picture could not be read: %1").arg(QFileInfo(file).fileName()));
     }

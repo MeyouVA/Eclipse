@@ -1,5 +1,6 @@
 // Eclipse - reading the parts of a scene from its file.
 #include "model/scene/SceneReadParts.h"
+#include "render/images/ImageFiles.h"
 #include "model/scene/SceneWriteParts.h"
 
 #include "model/scene/TextureBank.h"
@@ -435,13 +436,14 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
             p.placement = QTransform(m[0].toDouble(), m[1].toDouble(), m[2].toDouble(), m[3].toDouble(), m[4].toDouble(), m[5].toDouble(),
                                      m[6].toDouble(), m[7].toDouble(), m[8].toDouble());
         if (p.linked)
-            p.image = readPictureFile(p.file, p.ownProfile);       // null when the file has gone: the place is kept
+            p.image = readPictureFile(p.file, p.ownProfile, po["sourceFrame"].toInt());
         else if (po.contains("image"))
             p.image = images.value(po["image"].toString());
         else
-            p.image.loadFromData(QByteArray::fromBase64(po["png"].toString().toLatin1()), "PNG");
+            p.image=ImageFiles::decodeEmbedded(QByteArray::fromBase64(po["png"].toString().toLatin1()));
         if (!p.image.isNull() && p.size.isEmpty())
             p.size = p.image.size();
+        p.sourceFrame=std::max(0,po["sourceFrame"].toInt());
         if (!p.size.isEmpty())
             d.pictures.push_back(p);
     }
@@ -790,11 +792,9 @@ void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool ex
 
 }  // namespace scene_read
 
-QImage readPictureFile(QString const& file, bool ownProfile)
+QImage readPictureFile(QString const& file, bool ownProfile, int sourceFrame)
 {
-    QImage image(file);
-    if (image.isNull() && Psd::isPsd(file))
-        image = Psd::read(file);
+    QImage image = ImageFiles::load(file,nullptr,sourceFrame);
     if (ownProfile && !image.isNull() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb))
         image.convertToColorSpace(QColorSpace(QColorSpace::SRgb));
     return image;

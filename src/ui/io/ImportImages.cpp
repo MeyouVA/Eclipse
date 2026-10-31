@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include <QApplication>
 #include <QCheckBox>
@@ -588,7 +589,7 @@ int MainWindow::importPsdLayers(ImageImport const& options, QString const& file,
             Drawing drawing;
             if (!from.image.isNull()) {
                 Picture picture;
-                picture.image = from.image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                picture.image = from.image;
                 picture.file = QFileInfo(file).absoluteFilePath();
                 picture.size = from.image.size();
                 picture.placement = QTransform::fromTranslate(from.at.x(), from.at.y()) * placement;
@@ -691,6 +692,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         return fail(tr("The current layer does not hold drawings. Choose a drawing layer, or import to a new layer."));
 
     QVector<Drawing> drawings;
+    QVector<int> holds;
     // Convert Image Colour Space on Import: the space the pictures are read in (the file's own profile is taken to sRGB first).
     QString const fromSpace = options.convertColour ? (options.sourceSpace.isEmpty() ? QStringLiteral("sRGB") : options.sourceSpace) : QString();
     QString const layerSpace = target >= 0 ? (scene.layers[target].colourSpace.isEmpty() ? scene.workingSpace : scene.layers[target].colourSpace) : QString();
@@ -698,14 +700,20 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
     if (!fromSpace.isEmpty() && !Cms::config()->space(fromSpace))
         unconverted = true;
     for (QString const& file : options.files) {
-        QImageReader reader(file);
-        reader.setAutoTransform(true);      // a photograph taken with the camera on its side
-        QImage image = reader.read();
-        QString why = reader.errorString();
-        if (image.isNull() && Psd::isPsd(file))
-            image = Psd::read(file, &why);     // Photoshop files: their flattened picture
-        if (image.isNull())
+        QString why;
+        QVector<ImageFiles::Frame> const frames=ImageFiles::readSequence(file,&why);
+        if (frames.isEmpty())
             return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), why));
+        qint64 milliseconds=0;
+        int previousFrame=0;
+        for(qsizetype sourceFrame=0;sourceFrame<frames.size();++sourceFrame) {
+        QImage image=frames[sourceFrame].image;
+        milliseconds+=std::max(1,frames[sourceFrame].delayMs);
+        int const nextFrame=int(std::min<qint64>(std::llround(double(milliseconds)*scene.fps/1000.0),std::numeric_limits<int>::max()));
+        qint64 const hold=qint64(frames.size()>1 ? std::max(1,nextFrame-previousFrame) : 1)*std::max(1,options.hold);
+        if(hold>std::numeric_limits<int>::max()) return fail(tr("The image animation duration is too long."));
+        holds.push_back(int(hold));
+        previousFrame=nextFrame;
         if (options.convertColour && !unconverted) {
             // The file's own profile: to sRGB now (a linked picture is read through it again each time its file is read).
             if (options.sourceSpace.isEmpty() && image.colorSpace().isValid() && image.colorSpace() != QColorSpace(QColorSpace::SRgb))
@@ -768,9 +776,10 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         }
         if (!options.vectorize) {
             Picture picture;
-            picture.image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            picture.image = image;
             picture.file = QFileInfo(file).absoluteFilePath();
             picture.linked = options.linked;
+            picture.sourceFrame=int(sourceFrame);
             if (options.linked && options.convertColour && !unconverted) {
                 picture.ownProfile = options.sourceSpace.isEmpty();
                 if (target >= 0 && fromSpace.compare(layerSpace, Qt::CaseInsensitive) != 0)
@@ -781,10 +790,11 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
             drawing.pictures.push_back(picture);
         }
         drawings.push_back(drawing);
+        }
     }
     QString const name = options.layerName.trimmed().isEmpty() ? QFileInfo(options.files.first()).completeBaseName() : options.layerName.trimmed();
     m_document->beginMacro(tr("Import Images"));
-    int const at = m_document->importDrawings(target, name, options.newLayer ? 0 : frame(), drawings, options.hold);
+    int const at = m_document->importDrawingSequence(target, name, options.newLayer ? 0 : frame(), drawings, holds);
     // A new layer reads its pictures in their source colour space from now on (Layer Properties: Colour Space).
     if (at >= 0 && target < 0 && !fromSpace.isEmpty() && !unconverted && !options.vectorize)
         m_document->editLayers({at}, tr("Colour Space"), [fromSpace](Layer& l) { l.colourSpace = fromSpace; });

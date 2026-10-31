@@ -1,5 +1,6 @@
 // Eclipse - writing the parts of a scene to its file.
 #include "model/scene/SceneWriteParts.h"
+#include "render/images/ImageFiles.h"
 
 #include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
@@ -339,7 +340,7 @@ void rememberPng(QImage const& image, QByteArray const& png)
     }
 }
 
-// A picture as a PNG; kept from one save to the next while the picture is unchanged (its cache key changes when it is drawn on).
+// Lossless PNG or floating-point TIFF, cached while the picture is unchanged.
 static QByteArray pngOf(QImage const& image)
 {
     {
@@ -347,10 +348,7 @@ static QByteArray pngOf(QImage const& image)
         if (auto const found = gPngs.constFind(image.cacheKey()); found != gPngs.cend())
             return *found;
     }
-    QByteArray bytes;
-    QBuffer buffer(&bytes);
-    buffer.open(QIODevice::WriteOnly);
-    image.save(&buffer, "PNG");
+    QByteArray const bytes=ImageFiles::encodeEmbedded(image);
     rememberPng(image, bytes);
     return bytes;
 }
@@ -393,6 +391,7 @@ if (!d.pictures.isEmpty()) {
                             {"placement", QJsonArray{t.m11(), t.m12(), t.m13(), t.m21(), t.m22(), t.m23(), t.m31(), t.m32(), t.m33()}}};
         if (p.painted)
             picture["painted"] = true;
+        if(p.sourceFrame>0) picture["sourceFrame"]=p.sourceFrame;
         if (p.painted && p.sheet != Drawing::LineSheet)
             picture["sheet"] = p.sheet;
         if (p.order >= 0)
@@ -418,7 +417,7 @@ if (!d.pictures.isEmpty()) {
             if (QString const relative = pathFrom(folder, p.file); !relative.isEmpty())
                 picture["relative"] = relative;
         } else {
-            // Kept in the scene file itself, as a PNG (once, however many pictures show it).
+            // Kept in the scene file itself once, however many pictures show it.
             QString key = imageKeys.value(p.image.cacheKey());
             if (key.isEmpty()) {
                 key = QString::number(imageKeys.size() + 1);

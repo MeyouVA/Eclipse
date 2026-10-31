@@ -1,5 +1,6 @@
 // Eclipse - pencil textures: the strips of grain, made by the program itself.
 #include "canvas/PencilTexture.h"
+#include "render/images/ImageFiles.h"
 
 #include <QMutex>
 
@@ -249,7 +250,7 @@ bool PencilTexture::exportTo(int id, QString const& path)
 
 int PencilTexture::importFile(QString const& path)
 {
-    QImage const picture(path);
+    QImage const picture = ImageFiles::load(path);
     if (picture.isNull() || picture.text(QStringLiteral("eclipse")) != QStringLiteral("texture"))
         return 0;
     bool ok = false;

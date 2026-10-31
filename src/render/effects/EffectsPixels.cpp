@@ -89,6 +89,22 @@ static void boxBlurDeep(QImage& image, int r)
         run(image.scanLine(0) + x * sizeof(QRgba64), h, lineBytes);
 }
 
+static void boxBlurFloat(QImage& image,int radius)
+{
+    int const w=image.width(),h=image.height();
+    QVector<Deep::Pixel> buffer(std::max(w,h));
+    auto run=[&](int count,auto read,auto write) {
+        for(int i=0;i<count;++i) buffer[i]=read(i);
+        Deep::Pixel sum;
+        auto take=[&](int i,double sign) { if(i>=0 && i<count) { auto p=buffer[i]; sum.r+=p.r*sign; sum.g+=p.g*sign; sum.b+=p.b*sign; sum.a+=p.a*sign; } };
+        for(int i=-radius;i<=radius;++i) take(i,1);
+        double const divisor=2.0*radius+1;
+        for(int i=0;i<count;++i) { write(i,Deep::Pixel{sum.r/divisor,sum.g/divisor,sum.b/divisor,sum.a/divisor}); take(i-radius,-1); take(i+radius+1,1); }
+    };
+    for(int y=0;y<h;++y) { Deep::Line row(image,y); run(w,[&](int x) { return row[x]; },[&](int x,Deep::Pixel p) { row.set(x,p); }); }
+    for(int x=0;x<w;++x) run(h,[&](int y) { return Deep::ConstLine(image,y)[x]; },[&](int y,Deep::Pixel p) { Deep::Line(image,y).set(x,p); });
+}
+
 void blur(QImage& image, double radius)
 {
     if (radius < 0.5)
@@ -96,7 +112,8 @@ void blur(QImage& image, double radius)
     if (Deep::isDeep(image)) {
         int const r = std::max(1, int(std::lround(radius * 0.6)));
         for (int pass = 0; pass < 3; ++pass)
-            boxBlurDeep(image, std::min(r, 400));
+            if(Deep::isFloat(image)) boxBlurFloat(image,std::min(r,400));
+            else boxBlurDeep(image, std::min(r, 400));
         return;
     }
     if (image.format() != QImage::Format_ARGB32_Premultiplied)

@@ -31,6 +31,9 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 function(eclipse_module name folder define)
     file(GLOB_RECURSE sources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/${folder}/*.cpp ${CMAKE_SOURCE_DIR}/src/${folder}/*.h)
+    if(name STREQUAL "EclipseRender")
+        list(FILTER sources EXCLUDE REGEX "/render/images/Image(Codecs|Embedded|Sequence|Apng)\\.cpp$")
+    endif()
     add_library(${name} SHARED ${sources} ${CMAKE_SOURCE_DIR}/src/EclipseExport.h)
     target_compile_definitions(${name} PRIVATE ${define})
     target_include_directories(${name} PUBLIC ${CMAKE_SOURCE_DIR}/src)
@@ -46,6 +49,7 @@ target_link_libraries(EclipseColour PUBLIC Qt6::Core Qt6::Gui)
 
 # The scene: layers, drawings, keyframes, and the commands that change them.
 eclipse_module(EclipseModel model ECLIPSE_MODEL_BUILD)
+target_sources(EclipseModel PRIVATE src/render/images/ImageCodecs.cpp src/render/images/ImageEmbedded.cpp src/render/images/ImageSequence.cpp src/render/images/ImageApng.cpp src/render/images/ImageFiles.h)
 target_link_libraries(EclipseModel PUBLIC EclipseColour Qt6::Core Qt6::Gui Qt6::Widgets)
 
 # Sound: reading, mixing, playing; lip-sync detection.

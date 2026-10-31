@@ -1,5 +1,6 @@
 // Eclipse - the Colour view: a colour added, changed, renamed, removed; the gradient editor.
 #include "ui/panels/PalettePanel.h"
+#include "render/images/ImageFiles.h"
 #include "ui/panels/GradientBar.h"
 
 #include "ui/panels/ColourEditor.h"
@@ -41,8 +42,8 @@ void PalettePanel::editColor(QListWidgetItem* item)
     }
     // A texture: another picture for it.
     if (swatch->isTexture()) {
-        QString const file = QFileDialog::getOpenFileName(this, tr("Texture"), QString(), tr("Pictures (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)"));
-        QImage const picture = file.isEmpty() ? QImage() : QImage(file);
+        QString const file = QFileDialog::getOpenFileName(this, tr("Texture"), QString(), ImageFiles::fileFilter());
+        QImage const picture = file.isEmpty() ? QImage() : ImageFiles::load(file);
         if (!picture.isNull())
             m_document->setSwatchTexture(id, picture);
         return;

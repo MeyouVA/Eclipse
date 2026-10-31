@@ -2,6 +2,7 @@
 #include "ui/window/MainWindow.h"
 
 #include <QDir>
+#include <QColorSpace>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QInputDialog>
@@ -13,12 +14,15 @@
 
 #include "canvas/Canvas.h"
 #include "model/document/Commands.h"
+#include "render/images/ImageFiles.h"
 #include "ui/timeline/Timeline.h"
 
 int MainWindow::exportDrawings(QString const& folder, QVector<int> const& layers, QString const& format, QString* error)
 {
     Scene const& scene = m_document->scene();
     bool const svg = format.compare(QLatin1String("svg"), Qt::CaseInsensitive) == 0;
+    ImageFiles::Format const* const imageFormat=ImageFiles::find(format);
+    if(!imageFormat || !imageFormat->writable) { if(error) *error=tr("Unsupported drawing output format: %1").arg(format); return 0; }
     if (!QDir().mkpath(folder)) {
         if (error)
             *error = tr("The folder %1 could not be made.").arg(QDir::toNativeSeparators(folder));
@@ -33,7 +37,7 @@ int MainWindow::exportDrawings(QString const& folder, QVector<int> const& layers
             // Names that cannot be file names lose the characters that stop them.
             QString name = layer.name + QLatin1Char('-') + layer.drawingLabel(d);
             name.replace(QRegularExpression(QStringLiteral(R"([\/:*?"<>|])")), QStringLiteral("_"));
-            QString const path = QDir(folder).filePath(name + (svg ? QStringLiteral(".svg") : QStringLiteral(".png")));
+            QString const path = QDir(folder).filePath(name + QLatin1Char('.') + imageFormat->suffix);
             if (svg) {
                 QSvgGenerator generator;
                 generator.setFileName(path);
@@ -50,13 +54,21 @@ int MainWindow::exportDrawings(QString const& folder, QVector<int> const& layers
                 Canvas::paintDrawing(painter, scene, layer.drawings[d], 1.0);
                 painter.end();
             } else {
-                QImage image(scene.width, scene.height, QImage::Format_ARGB32_Premultiplied);
+                QImage::Format pixels=QImage::Format_ARGB32_Premultiplied;
+                QColorSpace profile;
+                for(Picture const& picture : layer.drawings[d].pictures) {
+                    if(picture.image.pixelFormat().typeInterpretation()==QPixelFormat::FloatingPoint) pixels=QImage::Format_RGBA32FPx4_Premultiplied;
+                    else if(picture.image.depth()>32 && pixels!=QImage::Format_RGBA32FPx4_Premultiplied) pixels=QImage::Format_RGBA64_Premultiplied;
+                    if(picture.image.colorSpace().isValid()) profile=picture.image.colorSpace();
+                }
+                QImage image(scene.width, scene.height, pixels);
+                if(profile.isValid()) image.setColorSpace(profile);
                 image.fill(Qt::transparent);
                 QPainter painter(&image);
                 painter.setRenderHint(QPainter::Antialiasing, true);
                 Canvas::paintDrawing(painter, scene, layer.drawings[d], 1.0);
                 painter.end();
-                if (!image.save(path, "PNG")) {
+                if (!ImageFiles::save(image,path,imageFormat->suffix,error)) {
                     if (error)
                         *error = tr("%1 could not be written.").arg(QDir::toNativeSeparators(path));
                     return written;
@@ -80,7 +92,10 @@ void MainWindow::onActionExportDrawings()
         return;
     }
     bool ok = false;
-    QString const kind = QInputDialog::getItem(this, tr("Export Drawings"), tr("Drawings as:"), {tr("PNG pictures"), tr("SVG lines")}, 0, false, &ok);
+    QStringList names, formats;
+    for(ImageFiles::Format const& output : ImageFiles::formats())
+        if(output.writable) { names << (output.suffix==QLatin1String("svg") ? tr("SVG lines") : output.name); formats << output.suffix; }
+    QString const kind = QInputDialog::getItem(this, tr("Export Drawings"), tr("Drawings as:"), names, 0, false, &ok);
     if (!ok)
         return;
     QString const start = m_path.isEmpty() ? QDir::homePath() : QFileInfo(m_path).path() + QStringLiteral("/frames");
@@ -88,7 +103,7 @@ void MainWindow::onActionExportDrawings()
     if (folder.isEmpty())
         return;
     QString error;
-    int const written = exportDrawings(folder, layers, kind == tr("SVG lines") ? QStringLiteral("svg") : QStringLiteral("png"), &error);
+    int const written = exportDrawings(folder, layers, formats.value(names.indexOf(kind),QStringLiteral("png")), &error);
     if (!error.isEmpty())
         QMessageBox::warning(this, tr("Export Drawings"), error);
     else

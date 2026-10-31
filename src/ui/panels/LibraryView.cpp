@@ -33,6 +33,7 @@
 #include <QVBoxLayout>
 
 #include "canvas/Canvas.h"
+#include "render/images/ImageFiles.h"
 
 QString const LibraryView::kSuffix = QStringLiteral("ecltpl");
 QString const LibraryView::kMimeType = QStringLiteral("application/x-eclipse-template");
@@ -87,6 +88,11 @@ static QImage otherPicture(QString const& path, QSize size)
         return image;
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing, true);
+    if(auto const* format=ImageFiles::find(QFileInfo(path).suffix());format && format->readable) {
+        QImage const picture=ImageFiles::load(path).scaled(size,Qt::KeepAspectRatio,Qt::SmoothTransformation);
+        painter.drawImage(QPoint((size.width()-picture.width())/2,(size.height()-picture.height())/2),picture);
+        return image;
+    }
     if (QFileInfo(path).suffix().compare(QLatin1String("eclpal"), Qt::CaseInsensitive) == 0) {
         QFile file(path);
         QJsonArray const colours = file.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(file.readAll()).object()[QStringLiteral("colours")].toArray() : QJsonArray();
@@ -423,7 +429,12 @@ void LibraryView::refresh()
         QSignalBlocker const block(m_items);
         m_items->clear();
         QDir const dir(currentFolder());
-        for (QFileInfo const& file : dir.entryInfoList({QStringLiteral("*.") + kSuffix, QStringLiteral("*.wav"), QStringLiteral("*.eclpal")}, QDir::Files,
+        QStringList patterns{QStringLiteral("*.")+kSuffix,QStringLiteral("*.wav"),QStringLiteral("*.eclpal"),QStringLiteral("*.jpeg")};
+        for(auto const& format : ImageFiles::formats()) if(format.readable) {
+            patterns << QStringLiteral("*.")+format.suffix;
+            for(QString const& alias : format.aliases) patterns << QStringLiteral("*.")+alias;
+        }
+        for (QFileInfo const& file : dir.entryInfoList(patterns, QDir::Files,
                                                        QDir::Name | QDir::IgnoreCase)) {
             if (!wanted.isEmpty() && !file.completeBaseName().contains(wanted, Qt::CaseInsensitive))
                 continue;
@@ -518,6 +529,11 @@ void LibraryView::showTemplate()
         m_shown = Scene();
         m_preview->setPixmap(QPixmap::fromImage(otherPicture(path, QSize(std::max(160, m_preview->width()), std::max(120, m_preview->height())))));
         bool const palette = QFileInfo(path).suffix().compare(QLatin1String("eclpal"), Qt::CaseInsensitive) == 0;
+        if(auto const* format=ImageFiles::find(QFileInfo(path).suffix());format && format->readable) {
+            m_about->setText(tr("%1   -   an image: Insert adds it as a drawing layer").arg(QFileInfo(path).completeBaseName()));
+            m_scrub->setEnabled(false);
+            return;
+        }
         m_about->setText(palette ? tr("%1   -   a palette: Insert adds it to the scene's palettes").arg(QFileInfo(path).completeBaseName())
                                  : tr("%1   -   a sound: Insert puts it on a sound layer from the current frame").arg(QFileInfo(path).completeBaseName()));
         m_scrub->setEnabled(false);

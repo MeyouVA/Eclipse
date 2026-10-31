@@ -32,7 +32,7 @@ void perPixel(QImage& image, Change&& change, bool clear = false)
                 double r = p.a > 0.0 ? p.r / p.a : 0.0, g = p.a > 0.0 ? p.g / p.a : 0.0, b = p.a > 0.0 ? p.b / p.a : 0.0, al = p.a;
                 change(r, g, b, al, x, y);
                 al = std::clamp(al, 0.0, 1.0);
-                row.set(x, {std::clamp(r, 0.0, 1.0) * al, std::clamp(g, 0.0, 1.0) * al, std::clamp(b, 0.0, 1.0) * al, al});
+                row.set(x, Deep::isFloat(image) ? Deep::Pixel{r*al,g*al,b*al,al} : Deep::Pixel{std::clamp(r, 0.0, 1.0) * al, std::clamp(g, 0.0, 1.0) * al, std::clamp(b, 0.0, 1.0) * al, al});
             }
         }
         return;

@@ -2,6 +2,8 @@
 #include "model/scene/PsdRead.h"
 
 #include <QCoreApplication>
+#include <QColorSpace>
+#include <QRgba64>
 #include <QFile>
 #include <QPainter>
 #include <QPainterPath>
@@ -56,7 +58,23 @@ struct Bytes {
 struct Header {
     bool big = false;           // PSB: some lengths take eight bytes
     int channels = 0, width = 0, height = 0, depth = 8, mode = 3;
+    QColorSpace space;
 };
+
+QColorSpace colourSpace(QByteArray const& resources)
+{
+    Bytes bytes{resources};
+    while(bytes.has(12)) {
+        if(bytes.take(4)!="8BIM") break;
+        int const id=int(bytes.number(2)),name=int(bytes.number(1)); bytes.skip(quint64(name+((name+1)&1)));
+        quint64 const length=bytes.number(4);
+        QByteArray const data=bytes.take(qint64(length));
+        if(!bytes.ok) break;
+        if(id==1039) return QColorSpace::fromIccProfile(data);
+        if(length&1) bytes.skip(1);
+    }
+    return {};
+}
 
 QString modeName(int mode)
 {
@@ -202,6 +220,14 @@ bool readChannel(Bytes& b, qint64 length, int width, int height, Header const& h
 }
 
 // A channel's value at a pixel, 0..255 (32-bit colour, which is linear, made sRGB).
+float preciseAt(QByteArray const& plane,qint64 rowBytes,int depth,int x,int y)
+{
+    char const* row=plane.constData()+rowBytes*y;
+    if(depth==16) return float((quint32(quint8(row[x*2]))<<8)|quint8(row[x*2+1]))/65535.0f;
+    quint32 bits=0; for(int i=0;i<4;++i) bits=(bits<<8)|quint8(row[x*4+i]);
+    float value=0; std::memcpy(&value,&bits,4); return value;
+}
+
 int valueAt(QByteArray const& plane, qint64 rowBytes, int depth, int x, int y, bool colour)
 {
     char const* const row = plane.constData() + rowBytes * y;
@@ -229,7 +255,24 @@ QImage composed(Header const& h, int width, int height, QByteArray const* grey, 
     if (width <= 0 || height <= 0)
         return {};
     qint64 const rowBytes = rowBytesOf(width, h.depth);
+    if(h.depth>8) {
+        QImage image(width,height,h.depth==16?QImage::Format_RGBA64:QImage::Format_RGBA32FPx4);
+        if(image.isNull()) return {};
+        image.setColorSpace(h.space.isValid()?h.space:QColorSpace(h.depth==32?QColorSpace::SRgbLinear:QColorSpace::SRgb));
+        for(int y=0;y<height;++y) for(int x=0;x<width;++x) {
+            float values[4]={0,0,0,1};
+            for(int c=0;c<3;++c) {
+                QByteArray const* plane=rgb[0]&&rgb[1]&&rgb[2]?rgb[c]:grey;
+                if(plane) values[c]=preciseAt(*plane,rowBytes,h.depth,x,y);
+            }
+            if(alpha) values[3]=std::clamp(preciseAt(*alpha,rowBytes,h.depth,x,y),0.0f,1.0f);
+            if(h.depth==32) std::memcpy(reinterpret_cast<float*>(image.scanLine(y))+x*4,values,sizeof values);
+            else reinterpret_cast<QRgba64*>(image.scanLine(y))[x]=QRgba64::fromRgba64(quint16(std::lround(values[0]*65535)),quint16(std::lround(values[1]*65535)),quint16(std::lround(values[2]*65535)),quint16(std::lround(values[3]*65535)));
+        }
+        return image;
+    }
     QImage image(width, height, alpha ? QImage::Format_ARGB32 : QImage::Format_RGB32);
+    if(h.space.isValid()) image.setColorSpace(h.space);
     for (int y = 0; y < height; ++y) {
         QRgb* const out = reinterpret_cast<QRgb*>(image.scanLine(y));
         for (int x = 0; x < width; ++x) {
@@ -316,9 +359,20 @@ QPainterPath vectorMask(QByteArray const& body, QSize size, bool* inverted)
     return shape;
 }
 
+void maskedPrecise(QImage& image,QPoint at,std::function<float(int,int)> const& maskAt)
+{
+    QImage floats=image.convertToFormat(QImage::Format_RGBA32FPx4);
+    for(int y=0;y<floats.height();++y) for(int x=0;x<floats.width();++x) reinterpret_cast<float*>(floats.scanLine(y))[x*4+3]*=std::clamp(maskAt(at.x()+x,at.y()+y),0.0f,1.0f);
+    image=image.pixelFormat().typeInterpretation()==QPixelFormat::FloatingPoint?floats:floats.convertToFormat(QImage::Format_RGBA64);
+}
+
 // The alpha of `image` (at `at` in the picture) multiplied by a mask's values.
 void masked(QImage& image, QPoint at, std::function<int(int, int)> const& maskAt)
 {
+    if(image.depth()>32) {
+        maskedPrecise(image,at,[&](int x,int y) { return maskAt(x,y)/255.0f; });
+        return;
+    }
     image = image.convertToFormat(QImage::Format_ARGB32);
     for (int y = 0; y < image.height(); ++y) {
         QRgb* const row = reinterpret_cast<QRgb*>(image.scanLine(y));
@@ -473,9 +527,8 @@ bool readLayerInfo(Bytes& b, qint64 end, Header const& h, Psd::Layered& out, QSt
             QRect const box = r.maskBox;
             int const fallback = r.maskDefault;
             int const depth = h.depth;
-            masked(r.layer.image, r.layer.at, [&](int x, int y) {
-                return box.contains(x, y) ? valueAt(maskPlane, maskRow, depth, x - box.left(), y - box.top(), false) : fallback;
-            });
+            if(h.depth>8) maskedPrecise(r.layer.image,r.layer.at,[&](int x,int y) { return box.contains(x,y)?preciseAt(maskPlane,maskRow,depth,x-box.left(),y-box.top()):fallback/255.0f; });
+            else masked(r.layer.image, r.layer.at, [&](int x, int y) { return box.contains(x,y)?valueAt(maskPlane,maskRow,depth,x-box.left(),y-box.top(),false):fallback; });
         }
         if (r.hasVector) {
             // The vector mask drawn as a matte the size of the layer.
@@ -512,9 +565,8 @@ bool readLayerInfo(Bytes& b, qint64 end, Header const& h, Psd::Layered& out, QSt
         if (!layer.image.isNull()) {
             QImage const& under = base->image;
             QPoint const at = base->at;
-            masked(layer.image, layer.at, [&](int x, int y) {
-                return QRect(at, under.size()).contains(x, y) ? qAlpha(under.pixel(x - at.x(), y - at.y())) : 0;
-            });
+            if(layer.image.depth()>32) maskedPrecise(layer.image,layer.at,[&](int x,int y) { return QRect(at,under.size()).contains(x,y)?under.pixelColor(x-at.x(),y-at.y()).alphaF():0.0f; });
+            else masked(layer.image, layer.at, [&](int x, int y) { return QRect(at,under.size()).contains(x,y)?qAlpha(under.pixel(x-at.x(),y-at.y())):0; });
         }
     }
     for (Record const& r : std::as_const(records))
@@ -550,7 +602,7 @@ QImage read(QString const& file, QString* error)
     if (!readHeader(b, h, &why))
         return fail();
     b.skip(b.number(4));                    // colour mode data
-    b.skip(b.number(4));                    // image resources
+    h.space=colourSpace(b.take(qint64(b.number(4))));
     // The layers: only their count is wanted - below nought, the flat picture's first extra channel is its transparency.
     qint64 const layersLength = qint64(b.number(h.big ? 8 : 4));
     qint64 const afterLayers = b.at + layersLength;
@@ -608,7 +660,26 @@ QImage read(QString const& file, QString* error)
             rgb[c] = &planes[c];
     int const alphaChannel = colour ? 3 : 1;
     QByteArray const* alpha = transparent && h.channels > alphaChannel ? &planes[alphaChannel] : nullptr;
-    return composed(h, h.width, h.height, colour ? nullptr : &planes[0], rgb, alpha);
+    QImage image=composed(h,h.width,h.height,colour?nullptr:&planes[0],rgb,alpha);
+    if(alpha && !image.isNull() && layersLength>0) {
+        for(int y=0;y<image.height();++y) for(int x=0;x<image.width();++x) {
+            if(h.depth==32) {
+                float* p=reinterpret_cast<float*>(image.scanLine(y))+x*4;
+                if(p[3]>0 && p[3]<1) for(int c=0;c<3;++c) p[c]=(p[c]+p[3]-1)/p[3];
+            } else if(h.depth==16) {
+                QRgba64& p=reinterpret_cast<QRgba64*>(image.scanLine(y))[x];
+                int const a=p.alpha();
+                auto undo=[a](int v) { return quint16(a?std::clamp(std::lround((double(v)+a-65535)*65535/a),0L,65535L):0); };
+                p=QRgba64::fromRgba64(undo(p.red()),undo(p.green()),undo(p.blue()),quint16(a));
+            } else {
+                QRgb& p=reinterpret_cast<QRgb*>(image.scanLine(y))[x];
+                int const a=qAlpha(p);
+                auto undo=[a](int v) { return a?std::clamp(int(std::lround((double(v)+a-255)*255/a)),0,255):0; };
+                p=qRgba(undo(qRed(p)),undo(qGreen(p)),undo(qBlue(p)),a);
+            }
+        }
+    }
+    return image;
 }
 
 bool readLayers(QString const& file, Layered& out, QString* error)
@@ -631,7 +702,7 @@ bool readLayers(QString const& file, Layered& out, QString* error)
     out = Layered();
     out.size = QSize(h.width, h.height);
     b.skip(b.number(4));
-    b.skip(b.number(4));
+    h.space=colourSpace(b.take(qint64(b.number(4))));
     int const lengthSize = h.big ? 8 : 4;
     qint64 const layersLength = qint64(b.number(lengthSize));
     qint64 const afterLayers = b.at + layersLength;

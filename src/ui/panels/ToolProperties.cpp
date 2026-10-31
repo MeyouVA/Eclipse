@@ -19,6 +19,7 @@
 #include "actions/manager/ActionManager.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
+#include "render/images/ImageFiles.h"
 #include "ui/window/MainWindowPrivate.h"
 #include <QCheckBox>
 #include <QDoubleSpinBox>
@@ -540,8 +541,10 @@ void ToolProperties::listPresets(bool brush, bool eraser, bool draws)
             icon.addPixmap(picture, QIcon::Selected);
             QString const kind = QLatin1String(brush ? "brush" : eraser ? "eraser" : "pencil");
             QString const ownIcon = settings().value(QStringLiteral("presetDetails/%1/%2").arg(kind, parts[0])).toMap().value(QStringLiteral("icon")).toString();
-            if (!ownIcon.isEmpty() && !QIcon(ownIcon).isNull())
-                icon = QIcon(ownIcon);     // its own icon, chosen in its details
+            if (!ownIcon.isEmpty()) {
+                QImage const custom=ImageFiles::load(ownIcon);
+                if(!custom.isNull()) icon=QIcon(QPixmap::fromImage(custom));
+            }
             QListWidgetItem* const item = new QListWidgetItem(icon, tr("%1   (%2)").arg(parts[0]).arg(width), m_presets);
             item->setData(Qt::UserRole + 7, parts[0]);
             item->setData(Qt::UserRole + 8, kind);

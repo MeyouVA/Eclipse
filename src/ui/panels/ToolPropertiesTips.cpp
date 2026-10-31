@@ -1,6 +1,7 @@
 // Eclipse - Tool Properties: thickness stencils, bitmap brush tips and their shapes, snapping rows.
 // options, the Rigging tool's mode, the ends and corners of lines, the thickness of a point.
 #include "ui/panels/ToolProperties.h"
+#include "render/images/ImageFiles.h"
 
 #include <algorithm>
 
@@ -84,7 +85,7 @@ int ToolProperties::importBitmapTips(QString const& path, QComboBox* box)
     if (path.endsWith(QStringLiteral(".abr"), Qt::CaseInsensitive)) {
         tips = Canvas::readAbr(path, &why);
     } else {
-        QImage const picture(path);
+        QImage const picture = ImageFiles::load(path);
         if (!picture.isNull())
             tips.push_back(picture.convertToFormat(QImage::Format_Grayscale8));
     }

@@ -1,5 +1,6 @@
 // Eclipse - the Colour view: the commands of its Colours menu - copy, paste, new, edit, delete, textures, protection.
 #include "ui/panels/PalettePanel.h"
+#include "render/images/ImageFiles.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -20,7 +21,7 @@ QVector<Swatch> s_copied;
 
 QString picturesFilter()
 {
-    return QObject::tr("Pictures (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)");
+    return ImageFiles::fileFilter();
 }
 
 }  // namespace
@@ -154,7 +155,7 @@ void PalettePanel::onActionNewTexture()
     QString const file = QFileDialog::getOpenFileName(this, tr("New Texture"), QString(), picturesFilter());
     if (file.isEmpty())
         return;
-    QImage const picture(file);
+    QImage const picture = ImageFiles::load(file);
     if (picture.isNull()) {
         QMessageBox::warning(this, tr("New Texture"), tr("%1 could not be read as a picture.").arg(QFileInfo(file).fileName()));
         return;
@@ -169,7 +170,7 @@ void PalettePanel::onActionEditTexture()
         return;
     int const id = m_current;
     QString const file = QFileDialog::getOpenFileName(this, tr("Edit Texture"), QString(), picturesFilter());
-    QImage const picture = file.isEmpty() ? QImage() : QImage(file);
+    QImage const picture = file.isEmpty() ? QImage() : ImageFiles::load(file);
     if (!picture.isNull())
         m_document->setSwatchTexture(id, picture);
 }

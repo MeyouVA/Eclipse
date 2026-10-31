@@ -6,6 +6,7 @@
 #include <QImage>
 #include <QString>
 #include <QVector>
+#include <QStringList>
 
 namespace ImageFiles {
 
@@ -14,12 +15,32 @@ struct Format {
     QString name;           // as the format menus show it
     bool alpha = true;      // keeps transparency
     bool layers = false;    // can keep each layer of the scene apart
+    bool readable = true;
+    bool writable = true;
+    bool animated = false;
+    QStringList aliases;
+    int alphaBits = 8;
+    int channelBits = 8;
+    bool floating = false;
 };
 
-// The formats a render can be written in, the usual one first.
+// The shared picture format registry, with PNG first.
 QVector<Format> const& formats();
 // The format with this suffix (lower case, "tiff" taken as "tif"), or nullptr.
 Format const* find(QString const& suffix);
+QString fileFilter(bool writing = false);
+QImage load(QString const& path, QString* error = nullptr, int frame = 0);
+bool canRead(QString const& path);
+QByteArray encodeEmbedded(QImage const& image);
+QImage decodeEmbedded(QByteArray const& bytes);
+QString embeddedSuffix(QByteArray const& bytes);
+struct Frame {
+    QImage image;
+    int delayMs = 0;
+};
+QVector<Frame> readSequence(QString const& path, QString* error = nullptr);
+bool writeSequence(QVector<Frame> const& frames, QString const& path, QString const& format, QString* error = nullptr, int loops = 0);
+bool saveWithCodec(QImage const& image, QString const& path, QString const& format, QString* error, int quality);
 
 // Writes `image` to `path` in `format` (a suffix); false with the reason when it cannot; `colourSpace` is said in the file where the format can (ICC, EXR chromaticities).
 bool save(QImage const& image, QString const& path, QString const& format, QString* error = nullptr, int jpegQuality = 92, QString const& colourSpace = {});

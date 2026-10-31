@@ -42,7 +42,8 @@ QImage canvas_paint::convertedPicture(QImage const& image, Cms::Transform const&
         if (QImage const* const found = cache.object(key))
             return *found;
     }
-    QImage converted = transform.applied(deep ? image.convertToFormat(QImage::Format_RGBA64_Premultiplied) : image);
+    QImage converted = image.pixelFormat().typeInterpretation()==QPixelFormat::FloatingPoint ? transform.toFloat(image)
+        : transform.applied(deep ? image.convertToFormat(QImage::Format_RGBA64_Premultiplied) : image);
     converted.setDevicePixelRatio(image.devicePixelRatio());
     int const cost = int(std::min<qsizetype>((converted.sizeInBytes() + 1023) / 1024, 256 * 1024 + 1));
     QMutexLocker const locker(&lock);

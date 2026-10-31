@@ -1,6 +1,7 @@
 // Eclipse - Tool Properties: the size rows of the drawing tools, pressure ramps, paper textures, brush rows.
 // options, the Rigging tool's mode, the ends and corners of lines, the thickness of a point.
 #include "ui/panels/ToolProperties.h"
+#include "render/images/ImageFiles.h"
 
 #include <algorithm>
 
@@ -250,7 +251,7 @@ void ToolProperties::addBitmapBrushRows()
         QMenu* const menu = new QMenu(more);
         connect(menu->addAction(tr("Edit Tip...")), &QAction::triggered, this, [this] { editTipShape(); });
         connect(menu->addAction(tr("Import Tip from Picture...")), &QAction::triggered, this, [this, tip] {
-            QString const path = QFileDialog::getOpenFileName(this, tr("Import Tip from Picture"), QString(), tr("Pictures (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)"));
+            QString const path = QFileDialog::getOpenFileName(this, tr("Import Tip from Picture"), QString(), ImageFiles::fileFilter());
             if (!path.isEmpty())
                 importBitmapTips(path, tip);
         });

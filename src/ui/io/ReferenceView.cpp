@@ -240,7 +240,7 @@ int MainWindow::addReferences(QStringList const& files)
     QStringList list = m_document->scene().references;
     int read = 0;
     for (QString const& file : files) {
-        if (QImageReader(file).canRead() || Psd::isPsd(file)) {
+        if (ImageFiles::canRead(file)) {
             list << file;
             ++read;
         }
@@ -262,9 +262,7 @@ void MainWindow::syncReferences()
     m_referenceFiles = files;
     m_references->clear();
     for (QString const& file : files) {
-        QImageReader reader(file);
-        reader.setAutoTransform(true);
-        QImage const image = Psd::isPsd(file) ? Psd::read(file) : reader.read();
+        QImage const image = ImageFiles::load(file);
         // A picture whose file has gone keeps its place, so that the list still says what was there.
         QListWidgetItem* const item = image.isNull()
             ? new QListWidgetItem(tr("%1 (missing)").arg(QFileInfo(file).completeBaseName()), m_references)
@@ -367,7 +365,7 @@ void MainWindow::onActionReference(QString const& what)
         QDir const folder(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/references/default"));
         QStringList files;
         for (QFileInfo const& one : folder.entryInfoList(QDir::Files, QDir::Name))
-            if (!m_document->scene().references.contains(one.filePath()) && (QImageReader(one.filePath()).canRead() || Psd::isPsd(one.filePath())))
+            if (!m_document->scene().references.contains(one.filePath()) && ImageFiles::canRead(one.filePath()))
                 files << one.filePath();
         if (files.isEmpty())
             statusBar()->showMessage(tr("No default references: put pictures in %1").arg(QDir::toNativeSeparators(folder.path())), 6000);

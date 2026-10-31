@@ -47,6 +47,6 @@
 #include "ui/io/MovieExport.h"
 #include "ui/panels/PalettePanel.h"
 #include "ui/timeline/Timeline.h"
+#include "render/images/ImageFiles.h"
 
-inline QString const kImageFilter =
-    QStringLiteral("Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.tga *.webp *.svg *.psd *.psb *.psdt);;All Files (*)");
+inline QString const kImageFilter = ImageFiles::fileFilter();

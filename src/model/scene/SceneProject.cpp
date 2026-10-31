@@ -1,5 +1,6 @@
 // Eclipse - a scene kept as a folder: the scene file, a folder of elements (a file for each drawing, its pictures beside it), the palette library and frames.
 #include "model/scene/SceneProject.h"
+#include "render/images/ImageFiles.h"
 
 #include <QDir>
 #include <QFile>
@@ -75,8 +76,9 @@ void splitLayers(QJsonObject& scene, QString const& elements, QString const& own
                 if (key.isEmpty() || !images.contains(key))
                     continue;
                 if (!moved.contains(key)) {
-                    QString const file = QStringLiteral("%1-%2.png").arg(base).arg(p + 1);
-                    out.files.insert(file, QByteArray::fromBase64(images[key].toString().toLatin1()));
+                    QByteArray const encoded=QByteArray::fromBase64(images[key].toString().toLatin1());
+                    QString const file = QStringLiteral("%1-%2.%3").arg(base).arg(p + 1).arg(ImageFiles::embeddedSuffix(encoded));
+                    out.files.insert(file, encoded);
                     moved.insert(key, file);
                     imageFiles[file] = file;
                 }
@@ -114,8 +116,9 @@ void splitLayers(QJsonObject& scene, QString const& elements, QString const& own
     // Pictures named from elsewhere than a drawing: in a folder of their own.
     for (auto it = images.constBegin(); it != images.constEnd(); ++it)
         if (!moved.contains(it.key())) {
-            QString const file = QStringLiteral("%1/pictures/picture-%2%3.png").arg(elements, fileName(it.key(), QStringLiteral("0")), owner);
-            out.files.insert(file, QByteArray::fromBase64(it.value().toString().toLatin1()));
+            QByteArray const encoded=QByteArray::fromBase64(it.value().toString().toLatin1());
+            QString const file = QStringLiteral("%1/pictures/picture-%2%3.%4").arg(elements, fileName(it.key(), QStringLiteral("0")), owner, ImageFiles::embeddedSuffix(encoded));
+            out.files.insert(file, encoded);
             imageFiles[it.key()] = file;
         }
     if (!imageFiles.isEmpty())

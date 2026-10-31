@@ -30,7 +30,7 @@ bool MainWindow::exportLayoutImage(QString const& path, bool selectedOnly, QStri
 static QString layoutPath(QWidget* parent, QString const& scenePath, QString const& title)
 {
     QString start = scenePath.isEmpty() ? QStringLiteral("layout.png") : QFileInfo(scenePath).path() + QStringLiteral("/frames/") + QFileInfo(scenePath).completeBaseName() + QStringLiteral("_layout.png");
-    QString path = QFileDialog::getSaveFileName(parent, title, start, QObject::tr("Pictures (*.png *.jpg *.tga *.tif *.psd);;All Files (*)"));
+    QString path = QFileDialog::getSaveFileName(parent, title, start, ImageFiles::fileFilter(true));
     if (!path.isEmpty() && QFileInfo(path).suffix().isEmpty())
         path += QStringLiteral(".png");
     return path;

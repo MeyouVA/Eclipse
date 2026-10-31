@@ -1,6 +1,7 @@
 // Eclipse - the scene: read from a file.
 #include "model/scene/TextureBank.h"
 #include "model/scene/Scene.h"
+#include "render/images/ImageFiles.h"
 #include "model/scene/SceneProject.h"
 #include "model/scene/SceneWriteParts.h"
 
@@ -259,7 +260,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         for (auto it = stored.begin(); it != stored.end(); ++it) {
             QImage image;
             QByteArray const png = QByteArray::fromBase64(it.value().toString().toLatin1());
-            image.loadFromData(png, "PNG");
+            image=ImageFiles::decodeEmbedded(png);
             scene_write::rememberPng(image, png);
             images.insert(it.key(), image);
         }
