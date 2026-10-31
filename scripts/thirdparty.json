@@ -1,0 +1,72 @@
+[
+  {
+    "name": "ffmpeg",
+    "version": "8.1.3-9-g29e619e767",
+    "license": "GPL build; retain FFmpeg and bundled codec notices",
+    "purpose": "Movie and sound import/export, software H.264 and HEVC encoding",
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-win64-gpl-shared-8.1.zip",
+    "bytes": 90079410,
+    "sha256": "dfe81c3aa0a546ee81980b1b824486dd0fe0a1d452f00cb55135379a74be7bcf",
+    "archive": "ffmpeg-8.1.3-9-win64.zip",
+    "arm64": {
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-winarm64-gpl-shared-8.1.zip",
+      "bytes": 62150274,
+      "sha256": "31f35037625a8084085248fb47de2958678601ee9ab54e087234693616359c4b",
+      "archive": "ffmpeg-8.1.3-9-arm64.zip"
+    }
+  },
+  {
+    "name": "imagemagick",
+    "version": "7.1.2-34 Q16 HDRI",
+    "license": "ImageMagick License; bundled delegates retain their own licenses",
+    "purpose": "Additional image codecs, high-depth image conversion and animation frames",
+    "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-34/ImageMagick-7.1.2-34-portable-Q16-HDRI-x64.7z",
+    "bytes": 12019095,
+    "sha256": "8dcfd3644b7fc20a92aeedeb4798024e5947f25f4d7c0c313c883fbca3d723e6",
+    "archive": "imagemagick-7.1.2-34-x64.7z",
+    "arm64": {
+      "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-34/ImageMagick-7.1.2-34-portable-Q16-HDRI-arm64.7z",
+      "bytes": 12612722,
+      "sha256": "b9f5ac53a42f587dc205ce4601ab12d2631cf9945d277ff8c5035244fd581694",
+      "archive": "imagemagick-7.1.2-34-arm64.7z"
+    }
+  },
+  {
+    "name": "python",
+    "version": "3.13.11 embeddable",
+    "license": "PSF License Version 2; bundled components retain their own notices",
+    "purpose": "Existing Python console",
+    "url": "https://www.python.org/ftp/python/3.13.11/python-3.13.11-embed-amd64.zip",
+    "bytes": 10927990,
+    "sha256": "1ec066fb61ba5e8c73e29e048cd07c26850f74585e3a116005135b31b8004890",
+    "archive": "python-3.13.11-embed-amd64.zip",
+    "arm64": {
+      "url": "https://www.python.org/ftp/python/3.13.11/python-3.13.11-embed-arm64.zip",
+      "bytes": 10332155,
+      "sha256": "82e03e56e45fa76d1a6c4700434adb46a041f8291e1dfa23fdd9e9a43655c7bf",
+      "archive": "python-3.13.11-embed-arm64.zip"
+    }
+  },
+  {
+    "name": "x265",
+    "version": "4.2",
+    "source": true,
+    "license": "GPL-2.0-or-later",
+    "purpose": "HEVC encoding for HEIC image export",
+    "url": "https://download.videolan.org/videolan/x265/x265_4.2.tar.gz",
+    "bytes": 1833442,
+    "sha256": "40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210",
+    "archive": "x265_4.2.tar.gz"
+  },
+  {
+    "name": "libheif",
+    "version": "1.23.7",
+    "source": true,
+    "license": "LGPL-3.0-or-later",
+    "purpose": "HEIF container and alpha/profile support for HEIC image export",
+    "url": "https://github.com/strukturag/libheif/releases/download/v1.23.7/libheif-1.23.7.tar.gz",
+    "bytes": 2439383,
+    "sha256": "f7483e818503ea6224c8863e4a56ac02c7089021a98472c811c12aa19faf2475",
+    "archive": "libheif-1.23.7.tar.gz"
+  }
+]

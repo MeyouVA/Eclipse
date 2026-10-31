@@ -1,4 +1,5 @@
 #include "audio/sound/Sound.h"
+#include "platform/ThirdParty.h"
 
 #include <QDataStream>
 #include <QCryptographicHash>
@@ -27,7 +28,7 @@ namespace Sound {
 
 QString findFfmpeg()
 {
-    return QStandardPaths::findExecutable(QStringLiteral("ffmpeg"));
+    return ThirdParty::executable(QStringLiteral("ffmpeg"), QStringLiteral("ffmpeg"));
 }
 
 // ---- reading ------------------------------------------------------------------------------
@@ -66,7 +67,7 @@ static bool readWav(QString const& path, QVector<qint16>& out, QString* error)
         return fail("The file cannot be opened.");
     QByteArray const data = file.readAll();
     if (data.size() < 12 || !data.startsWith("RIFF") || data.mid(8, 4) != "WAVE")
-        return fail("Not a WAV file. Install ffmpeg to use other kinds of sound file.");
+        return fail("Not a WAV file. Install the bundled media tools using scripts/install_thirdparty.bat.");
     auto u16 = [&](qsizetype at) { return quint32(quint8(data[at])) | quint32(quint8(data[at + 1])) << 8; };
     auto u32 = [&](qsizetype at) { return u16(at) | u16(at + 2) << 16; };
 
@@ -87,7 +88,7 @@ static bool readWav(QString const& path, QVector<qint16>& out, QString* error)
     }
     // 0xFFFE is the "extensible" header, which for our purposes holds the same integers.
     if ((format != 1 && format != 0xFFFE) || channels < 1 || rate < 1000 || (bits != 8 && bits != 16 && bits != 24 && bits != 32) || pcm.isEmpty())
-        return fail("This kind of WAV file is not supported. Install ffmpeg to use it.");
+        return fail("This kind of WAV file needs the bundled media tools. Run scripts/install_thirdparty.bat.");
 
     int const bytesPer = bits / 8;
     qint64 const frames = pcm.size() / (bytesPer * channels);

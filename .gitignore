@@ -32,3 +32,6 @@ ui_log.txt
 build_log.txt
 devnotes/
 *_log*.txt
+
+# Third-party tools and libraries: installed by scripts/install_thirdparty.bat, never committed.
+/thirdparty/

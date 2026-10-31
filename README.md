@@ -142,6 +142,44 @@ C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --no-translations out\Eclipse.exe ou
 Replace the Qt path with yours. The last line copies the Qt files next to the program and
 only has to be run once.
 
+## Local third-party packages
+
+The pinned download plan is in `scripts/thirdparty.json`. Preview it without downloading:
+
+```bat
+scripts\install_thirdparty.bat
+```
+
+After reviewing and approving the packages, install them with:
+
+```bat
+scripts\install_thirdparty.bat -Install
+```
+
+The installer checks archive sizes and SHA-256 hashes before extraction, verifies existing
+installations before skipping them, and fails rather than replacing an unknown installation.
+It detects the native Windows CPU architecture even from an emulated shell. Intel and AMD
+64-bit CPUs use the same x64 packages; ARM64 uses pinned native ARM64 packages. Unsupported
+architectures fail clearly. Preview another target without downloading with
+`scripts\install_thirdparty.bat -Architecture arm64`; use `-Install` only after reviewing
+and approving that target's download list. Existing packages of another architecture are
+never silently replaced. Package selection does not change the Qt/MSVC build target.
+Packages and their original notices stay in the ignored `thirdparty/` directory; the installer
+also writes `thirdparty/LICENSES.md`. The FFmpeg package in this initial plan is a GPL build
+to provide software H.264 and HEVC encoders. Its notices and those of its bundled codecs must
+be retained. ImageMagick delegates and Python bundled components have their own notices too.
+
+The installer uses an existing 7-Zip installation for `.7z` packages and Windows `tar` for ZIP
+packages. It does not download an extractor automatically. FFmpeg is found only in the bundled
+packages, independent of PATH. The Python console prefers the bundled interpreter. Packaging
+copies runtime executables, DLLs, configuration and original notices into `Release/thirdparty`;
+download archives, development headers and import libraries are left out.
+
+Expanded format support is being implemented; installation alone does not enable every
+requested format. The build checks `thirdparty/qt` before `QT_ROOT` or the usual `C:/Qt`
+installation, and CMake searches `thirdparty` first. Qt 6 for MSVC is currently installed
+separately. No Qt SDK download is included in this plan.
+
 ## How the code is laid out
 
 Eclipse is eight libraries and a small program that starts them. Each folder under `src`

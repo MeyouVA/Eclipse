@@ -84,7 +84,7 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     QString const ffmpeg = Sound::findFfmpeg();
     if (ffmpeg.isEmpty())
         return fail(QStringLiteral("Movies are written by ffmpeg, which is not installed on this computer. "
-                                   "Install it (ffmpeg.org) or export the frames as images instead."));
+                                   "Install the bundled media tools using scripts/install_thirdparty.bat or export the frames as images instead."));
 
     // The sound goes to ffmpeg as a file beside the frames, which go down a pipe.
     QTemporaryDir scratch;

@@ -8,7 +8,7 @@ setlocal
 cd /d "%~dp0"
 call "%~dp0scripts\findtools.bat" || exit /b 1
 
-cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=%QT_ROOT%" || exit /b 1
+cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=%CMAKE_PREFIX_PATH%" || exit /b 1
 cmake --build out || exit /b 1
 rem Copy the Qt runtime next to the program the first time.
 rem (The libraries of Eclipse are looked at too: what only they use of Qt is needed as well.)

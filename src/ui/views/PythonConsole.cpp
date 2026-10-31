@@ -1,5 +1,6 @@
 // Eclipse - the Python Console.
 #include "ui/views/PythonConsole.h"
+#include "platform/ThirdParty.h"
 
 #include <QFileInfo>
 #include <QFontDatabase>
@@ -131,6 +132,8 @@ PythonConsole::~PythonConsole()
 
 QString PythonConsole::python() const
 {
+    if (QString const bundled = ThirdParty::executable(QStringLiteral("python"), QStringLiteral("python")); !bundled.isEmpty())
+        return bundled;
     // The Python launcher first (it finds the newest Python), then the program by its usual names.
     for (char const* name : {"py", "python3", "python"}) {
         QString const found = QStandardPaths::findExecutable(QLatin1String(name));

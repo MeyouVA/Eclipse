@@ -19,7 +19,7 @@ if exist Release\Eclipse.exe (
     )
 )
 
-cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=%QT_ROOT%" || exit /b 1
+cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=%CMAKE_PREFIX_PATH%" || exit /b 1
 cmake --build out --target Eclipse || exit /b 1
 
 if exist Release.new rmdir /s /q Release.new
@@ -35,6 +35,7 @@ copy /y out\EclipseActions.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseCanvas.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseUi.dll Release.new\ >nul || exit /b 1
 xcopy /e /i /q /y resources Release.new\resources >nul || exit /b 1
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\package_thirdparty.ps1 -Destination "%~dp0Release.new" || exit /b 1
 "%QT_ROOT%\bin\windeployqt.exe" --release --no-translations Release.new\Eclipse.exe Release.new\EclipseUi.dll Release.new\EclipseCanvas.dll Release.new\EclipseActions.dll Release.new\EclipseFormats.dll Release.new\EclipseRender.dll Release.new\EclipseAudio.dll Release.new\EclipseModel.dll Release.new\EclipseColour.dll >nul || exit /b 1
 
 if exist Release rmdir /s /q Release

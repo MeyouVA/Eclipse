@@ -20,6 +20,10 @@ call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 :have_compiler
 
 rem ---- Qt ------------------------------------------------------------------------------------------
+if exist "%~dp0..\thirdparty\qt\bin\windeployqt.exe" (
+    for %%i in ("%~dp0..\thirdparty\qt") do set "QT_ROOT=%%~fi"
+    goto :have_qt
+)
 if defined QT_ROOT if exist "%QT_ROOT%\bin\windeployqt.exe" goto :have_qt
 set "QT_ROOT="
 rem The newest Qt 6 for 64-bit MSVC under C:\Qt, which is where the Qt installer puts it.
@@ -34,4 +38,5 @@ if not defined QT_ROOT (
     exit /b 1
 )
 :have_qt
+set "CMAKE_PREFIX_PATH=%~dp0..\thirdparty;%QT_ROOT%"
 exit /b 0

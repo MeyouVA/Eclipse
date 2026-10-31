@@ -5,7 +5,20 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/thirdparty" "${CMAKE_SOURCE_DIR}/thirdparty/qt")
+if(EXISTS "${CMAKE_SOURCE_DIR}/thirdparty/qt/lib/cmake/Qt6/Qt6Config.cmake")
+    set(Qt6_DIR "${CMAKE_SOURCE_DIR}/thirdparty/qt/lib/cmake/Qt6" CACHE PATH "Bundled Qt configuration" FORCE)
+endif()
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg PrintSupport Qml)
+find_package(libheif CONFIG QUIET PATHS "${CMAKE_SOURCE_DIR}/thirdparty/heif/lib/cmake/libheif" NO_DEFAULT_PATH)
+if(TARGET heif)
+    add_executable(EclipseHeifTool src/media/HeifEncode.cpp)
+    target_link_libraries(EclipseHeifTool PRIVATE heif)
+    set_target_properties(EclipseHeifTool PROPERTIES OUTPUT_NAME "eclipse-heif" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/thirdparty/heif/bin")
+    if(MSVC)
+        target_compile_options(EclipseHeifTool PRIVATE /W4 /utf-8 /permissive-)
+    endif()
+endif()
 
 # Eclipse is eight libraries and a small program that starts them (see src/EclipseExport.h).
 # Each folder of src is a module, sorted into sub-folders by what the files are for; a source
@@ -65,6 +78,9 @@ endif()
 
 # The program: it starts the window.
 add_executable(Eclipse WIN32 src/app/main.cpp)
+if(TARGET EclipseHeifTool)
+    add_dependencies(Eclipse EclipseHeifTool)
+endif()
 if(WIN32)
     # The icon of the program file.
     target_sources(Eclipse PRIVATE src/app/Eclipse.rc)

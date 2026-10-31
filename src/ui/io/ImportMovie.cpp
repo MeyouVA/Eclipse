@@ -30,7 +30,7 @@ int MainWindow::importMovie(QString const& path, QString* error)
     };
     QString const ffmpeg = Sound::findFfmpeg();
     if (ffmpeg.isEmpty())
-        return fail(tr("Movies are read by ffmpeg, which is not installed on this computer. Install it (ffmpeg.org) and try again."));
+        return fail(tr("The bundled movie tools are missing. Run scripts/install_thirdparty.bat and try again."));
     if (m_path.isEmpty())
         return fail(tr("Save the scene first: the frames of the movie are kept in a folder beside it."));
     if (!QFileInfo::exists(path))
