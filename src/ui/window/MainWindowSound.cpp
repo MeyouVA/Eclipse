@@ -15,6 +15,7 @@
 #include "ui/timeline/Timeline.h"
 #include "ui/views/LipSyncView.h"
 #include "ui/views/SoundEditor.h"
+#include "ui/io/RawSoundImport.h"
 
 SoundEditor* MainWindow::openSoundEditor(int layer)
 {
@@ -26,9 +27,11 @@ SoundEditor* MainWindow::openSoundEditor(int layer)
         connect(m_soundEditor, &SoundEditor::mouthShape, this, &MainWindow::onActionMouthShape);
         connect(m_soundEditor, &SoundEditor::playLayer, this, &MainWindow::playSoundLayer);
         connect(m_soundEditor, &SoundEditor::importClip, this, [this](int l) {
-            QString const path = QFileDialog::getOpenFileName(this, tr("Select Sound File"), QFileInfo(m_path).path(),
+            QString path = QFileDialog::getOpenFileName(this, tr("Select Sound File"), QFileInfo(m_path).path(),
                                                               MediaFormats::audioFilter(), nullptr, QFileDialog::HideNameFilterDetails);
             QString error;
+            if(!path.isEmpty()) path=RawSoundImport::prepare(this,path,m_path,&error);
+            if(path.isEmpty() && !error.isEmpty()) QMessageBox::critical(this,tr("Import Sound Clip"),error);
             if (!path.isEmpty() && importSoundClip(l, path, &error) < 0)
                 QMessageBox::critical(this, tr("Import Sound Clip"), error);
         });

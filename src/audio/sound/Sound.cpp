@@ -166,6 +166,9 @@ std::shared_ptr<SoundData> loadPrecise(QString const& path, int rate, QString* e
     bool ok = !ffmpeg.isEmpty() && decodeWithFfmpeg(ffmpeg, filePath, data->precise, rate, &why);
     if (!ok)
         ok = readWav(filePath, data->precise, rate, ffmpeg.isEmpty() ? &why : nullptr);
+    if(ok && std::any_of(data->precise.cbegin(),data->precise.cend(),[](double sample) { return !std::isfinite(sample); })) {
+        ok=false; why=QStringLiteral("The sound contains non-finite samples. Check its encoding settings or repair the source file.");
+    }
     if (!ok || data->precise.isEmpty()) {
         if (error)
             *error = why.isEmpty() ? QStringLiteral("The file holds no sound.") : why;

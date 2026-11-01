@@ -2,6 +2,7 @@
 #include "ui/window/MainWindow.h"
 #include "render/images/ImageFiles.h"
 #include "model/media/MediaFormats.h"
+#include "ui/io/RawSoundImport.h"
 
 #include <functional>
 
@@ -153,7 +154,15 @@ void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
     QString error;
     // The library holds sounds and palettes too.
     QString const kind = QFileInfo(path).suffix().toLower();
-    if(auto const* format=ImageFiles::find(kind);format && format->readable) {
+    bool rawSound=false;
+    if(kind==QLatin1String("raw")) {
+        QStringList const choices{tr("Camera image"),tr("Raw audio")};
+        bool accepted=false;
+        QString const choice=QInputDialog::getItem(this,tr("Import RAW File"),tr("Import this file as:"),choices,0,false,&accepted);
+        if(!accepted) return;
+        rawSound=choice==choices.last();
+    }
+    if(auto const* format=ImageFiles::find(kind);format && format->readable && !rawSound) {
         ImageImport options;
         options.files={path};
         int const at=importImages(options,&error);
@@ -172,12 +181,14 @@ void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
         return;
     }
     if (MediaFormats::audio(kind)) {
-        if (!Sound::load(path, &error)) {
+        QString const sound=RawSoundImport::prepare(this,path,m_path,&error);
+        if(sound.isEmpty()) { if(!error.isEmpty()) statusBar()->showMessage(error,8000); return; }
+        if (!Sound::load(sound, &error)) {
             statusBar()->showMessage(tr("Could not read %1: %2").arg(QDir::toNativeSeparators(path), error), 8000);
             return;
         }
         int const start = std::clamp(frame, 0, m_document->scene().frameCount() - 1);
-        int const at = m_document->addSound(path, start);
+        int const at = m_document->addSound(sound, start);
         m_timeline->clearRange();
         m_timeline->setCurrentCell(at, start);
         return;

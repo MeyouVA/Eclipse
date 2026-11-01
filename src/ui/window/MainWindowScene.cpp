@@ -40,14 +40,21 @@
 #include "ui/views/PerspectiveView.h"
 
 #include "ui/window/MainWindowPrivate.h"
+#include "ui/io/RawSoundImport.h"
 #include <QStatusBar>
 
 void MainWindow::onActionImportSound()
 {
-    QString const path = QFileDialog::getOpenFileName(this, tr("Import Sound"), QFileInfo(m_path).path(),
+    QString path = QFileDialog::getOpenFileName(this, tr("Import Sound"), QFileInfo(m_path).path(),
                                                       MediaFormats::audioFilter(), nullptr, QFileDialog::HideNameFilterDetails);
     if (path.isEmpty())
         return;
+    QString rawError;
+    path=RawSoundImport::prepare(this,path,m_path,&rawError);
+    if(path.isEmpty()) {
+        if(!rawError.isEmpty()) QMessageBox::critical(this,tr("Import Sound"),rawError);
+        return;
+    }
     for(Layer const& existing : m_document->scene().layers) if(existing.kind==Layer::Sound)
         for(SoundClip const& clip : existing.clipsOfSound()) if(QFileInfo(clip.file)==QFileInfo(path)) {
             QMessageBox::information(this,tr("Import Sound"),tr("Sound %1 already exists in the project").arg(QFileInfo(path).fileName()));

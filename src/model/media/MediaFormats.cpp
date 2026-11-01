@@ -1,4 +1,5 @@
 #include "model/media/MediaFormats.h"
+#include "model/media/RawAudioFormat.h"
 
 namespace MediaFormats {
 QVector<Codec> const& videoCodecs()
@@ -77,6 +78,7 @@ QVector<Audio> const& audioFormats()
         {QStringLiteral("wv"),QStringLiteral("WavPack"),QStringLiteral("wv"),QStringLiteral("wavpack"),QStringLiteral("wv"),{},false,32,true,true},
         {QStringLiteral("mp2"),QStringLiteral("MPEG Layer II"),QStringLiteral("mp2"),QStringLiteral("mp2"),QStringLiteral("mp2"),{QStringLiteral("m1a"),QStringLiteral("m2a")}},
         {QStringLiteral("eac3"),QStringLiteral("Enhanced AC-3"),QStringLiteral("eac3"),QStringLiteral("eac3"),QStringLiteral("eac3")},
+        {QStringLiteral("raw-audio"),QStringLiteral("Raw audio (settings required)"),{}, {}, {},RawAudio::suffixes(),false,16,false,false,false},
         {QStringLiteral("legacy-audio"),QStringLiteral("Additional sound imports"),{}, {}, {},
          {QStringLiteral("amr"),QStringLiteral("awb"),QStringLiteral("dts"),QStringLiteral("ra"),QStringLiteral("ape"),QStringLiteral("mpc"),QStringLiteral("mp+"),QStringLiteral("tak"),QStringLiteral("shn"),QStringLiteral("voc"),QStringLiteral("aiff64"),QStringLiteral("rf64"),QStringLiteral("8svx"),QStringLiteral("iff"),QStringLiteral("svx"),QStringLiteral("sds"),QStringLiteral("xi"),QStringLiteral("it"),QStringLiteral("xm"),QStringLiteral("s3m"),QStringLiteral("mod"),QStringLiteral("stm"),QStringLiteral("mtm"),QStringLiteral("ult"),QStringLiteral("669"),QStringLiteral("acm"),QStringLiteral("adx"),QStringLiteral("ast"),QStringLiteral("aud"),QStringLiteral("vag"),QStringLiteral("rso"),QStringLiteral("mmf"),QStringLiteral("mlp"),QStringLiteral("thd"),QStringLiteral("truehd"),QStringLiteral("sbc"),QStringLiteral("latm"),QStringLiteral("loas"),QStringLiteral("302")},false,16,false,false,false}
     };

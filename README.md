@@ -117,6 +117,9 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
   Additional audio exports include AU, CAF, Wave64, SoX native, True Audio, WavPack, MP2 and
   Enhanced AC-3. Import lists additional compressed, tracker and legacy sound families; this
   does not guarantee every historical encoding within a container can be decoded.
+  Raw PCM/float, A-law, mu-law, VIDC and G.726 imports ask for encoding, byte order, rate,
+  channels and bytes to skip. Save the scene first: the decoded sound is kept as a precise
+  WAV in its audio folder. Sound clips and Library imports use the same settings.
 - Templates can be kept in a Library and dropped into other scenes.
 - Help pages are built in (Help > Eclipse Help, F1).
 
