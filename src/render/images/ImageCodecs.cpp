@@ -3,6 +3,7 @@
 #include "render/images/ImageApng.h"
 #include "platform/ThirdParty.h"
 #include "model/scene/PsdRead.h"
+#include "colour/icc/Icc.h"
 
 #include <QColorSpace>
 #include <QBuffer>
@@ -16,11 +17,43 @@
 #include <QTemporaryDir>
 #include <QtEndian>
 #include <cstring>
+#include <cmath>
 
 namespace {
 
 using ImageCodec::run;
 using ImageCodec::runProgram;
+
+QColorSpace exrSpace(QString const& path)
+{
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly)) return {};
+    QByteArray const header=file.read(8);
+    if(header.size()!=8 || qFromLittleEndian<quint32>(header.constData())!=20000630u) return {};
+    auto word=[&]() {
+        QByteArray value; char byte=0;
+        while(value.size()<256 && file.getChar(&byte)) { if(!byte) return value; value.append(byte); }
+        return QByteArray();
+    };
+    while(file.pos()<16*1024*1024 && !file.atEnd()) {
+        QByteArray const name=word(); if(name.isEmpty()) return {};
+        QByteArray const type=word(),lengthBytes=file.read(4);
+        if(type.isEmpty() || lengthBytes.size()!=4) return {};
+        quint32 const length=qFromLittleEndian<quint32>(lengthBytes.constData());
+        if(length>quint64(file.size()-file.pos())) return {};
+        if(name=="chromaticities" && type=="chromaticities" && length==32) {
+            QByteArray const data=file.read(32); float values[8];
+            if(data.size()!=32) return {};
+            for(int i=0;i<8;++i) { quint32 const bits=qFromLittleEndian<quint32>(data.constData()+i*4); std::memcpy(&values[i],&bits,4); if(!std::isfinite(values[i])) return {}; }
+            QColorSpace const space(QPointF(values[6],values[7]),QPointF(values[0],values[1]),QPointF(values[2],values[3]),QPointF(values[4],values[5]),QColorSpace::TransferFunction::Linear);
+            if(space.isValid()) return space;
+            Cms::Primaries const primaries{values[0],values[1],values[2],values[3],values[4],values[5],values[6],values[7]};
+            return QColorSpace::fromIccProfile(Cms::Icc::write(primaries,Cms::Curve::Linear,QStringLiteral("Linear EXR")));
+        }
+        if(!file.seek(file.pos()+length)) return {};
+    }
+    return {};
+}
 
 bool writeBytes(QString const& file, QByteArray const& bytes)
 {
@@ -216,6 +249,9 @@ QImage ImageFiles::load(QString const& path, QString* error, int frame)
     if (frame == 0 || reader.jumpToImage(frame)) {
         QImage image = reader.read();
         if (!image.isNull()) {
+            if(QFileInfo(path).suffix().compare(QLatin1String("exr"),Qt::CaseInsensitive)==0) {
+                QColorSpace const space=exrSpace(path); if(space.isValid()) image.setColorSpace(space);
+            }
             if(QFileInfo(path).suffix().compare(QLatin1String("bmp"),Qt::CaseInsensitive)==0) {
                 QFile file(path);
                 if(file.open(QIODevice::ReadOnly)) {
@@ -265,6 +301,7 @@ QImage ImageFiles::load(QString const& path, QString* error, int frame)
     }
     QString const suffix = QFileInfo(path).suffix().toLower();
     if(suffix==QLatin1String("exr")) {
+        QColorSpace const space=exrSpace(path); if(space.isValid()) image.setColorSpace(space);
         image.reinterpretAsFormat(QImage::Format_RGBA32FPx4_Premultiplied);
         image=image.convertToFormat(QImage::Format_RGBA32FPx4);
     }
