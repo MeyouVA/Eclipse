@@ -565,7 +565,9 @@ void MainWindow::createTimelineView()
     m_shuttle->setToolTip(tr("Shuttle: hold it to the right to run forwards through the frames, to the left to run backwards - the further, the faster. Let go and it springs back."));
     m_shuttleTimer.setInterval(40);
     connect(m_shuttle, &QSlider::sliderPressed, this, [this] {
+        if(m_playTimer.isActive()) stop();
         m_shuttleAt = frame();
+        m_shuttleClock.start();
         m_shuttleTimer.start();
     });
     connect(m_shuttle, &QSlider::sliderReleased, this, [this] {

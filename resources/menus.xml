@@ -202,6 +202,8 @@
 
   <menu id="Play" text="&amp;Play">
    <item id="PlayToggle" icon="play/play" text="&amp;Play" shortcut="shortcut.togglePlayback" checkable="true" responder="window" slot="onActionTogglePlayback()"/>
+   <item id="PlayForward" icon="play/play" text="Play Scene Forward" shortcut="shortcut.playForward" responder="window" slot="onActionPlayForward()"/>
+   <item id="PlayBackward" icon="play/play" text="Play Scene Backward" shortcut="shortcut.playBackward" responder="window" slot="onActionPlayBackward()"/>
    <item id="RenderAndPlay" icon="play/renderplay" text="&amp;Render and Play" shortcut="shortcut.renderAndPlay" responder="window" slot="onActionRenderAndPlay()"/>
    <item id="RecordAndPlay" icon="play/recordplay" text="Re&amp;cord and Play" responder="window" slot="onActionRecordAndPlay()"/>
    <item id="MiniPlayback" icon="play/miniplay" text="&amp;Mini Playback" shortcut="shortcut.miniPlayback" responder="window" slot="onActionMiniPlayback()"/>
@@ -223,6 +225,12 @@
    <item id="PlayNextFrame" icon="play/next" text="&amp;Next Frame" shortcut="shortcut.nextFrame" responder="window" slot="onActionNextFrame()"/>
    <item id="PlayLastFrame" icon="play/last" text="L&amp;ast Frame" shortcut="shortcut.lastFrame" responder="window" slot="onActionLastFrame()"/>
    <item id="PlayGotoFrame" icon="play/gotoframe" text="&amp;Go to Frame..." shortcut="shortcut.gotoFrame" responder="window" slot="onActionGotoFrame()"/>
+   <separator/>
+   <item id="JogForward" text="Jog Forward" shortcut="shortcut.jogForward" responder="window" slot="onActionJogForward()"/>
+   <item id="JogBackward" text="Jog Backward" shortcut="shortcut.jogBackward" responder="window" slot="onActionJogBackward()"/>
+   <item id="ShuttleForward" text="Shuttle Forward" shortcut="shortcut.shuttleForward" responder="window" slot="onActionShuttleForward()"/>
+   <item id="ShuttleBackward" text="Shuttle Backward" shortcut="shortcut.shuttleBackward" responder="window" slot="onActionShuttleBackward()"/>
+   <item id="ShuttleReset" text="Shuttle Reset" shortcut="shortcut.shuttleReset" responder="window" slot="onActionShuttleReset()"/>
   </menu>
 
   <menu id="Insert" text="&amp;Insert">

@@ -171,12 +171,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         QSignalBlocker const block(m_frameBox), jog(m_jog);
         m_frameBox->setValue(frame + 1);
         m_jog->setValue(frame);
+        if(m_playTimer.isActive() && !m_playAdvancing) {
+            if(frame<m_playStart || frame>playStop()) stop();
+            else { m_player.stop(); startPlayingFrom(frame); }
+        }
         updateStatus();
         // Sound scrubbing: the sound of the frame gone to, when it is not playing.
         if (m_scrub && !m_playTimer.isActive())
             playFrameSound(frame);
     });
-    connect(m_document, &Document::changed, this, [this] { m_scrubMix.clear(); m_scrubFrame=-1; m_scrubClock.invalidate(); });
+    connect(m_document, &Document::changed, this, [this] { stop(); m_scrubMix.clear(); m_scrubFrame=-1; m_scrubClock.invalidate(); });
     connect(m_document, &Document::changed, this, &MainWindow::syncReferences);
     connect(m_timeline, &Timeline::addLayerMenuRequested, this, [this](QPoint const& globalPos) {
         QMenu menu(this);

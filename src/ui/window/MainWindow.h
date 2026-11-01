@@ -272,6 +272,13 @@ public slots:
 
     // ---- Play ----
     void onActionTogglePlayback();
+    void onActionPlayForward();
+    void onActionPlayBackward();
+    void onActionJogForward();
+    void onActionJogBackward();
+    void onActionShuttleForward();
+    void onActionShuttleBackward();
+    void onActionShuttleReset();
     void onActionToggleLoop(bool on) { m_loop = on; }
     void onActionEnablePlayback(QString const& which);
     void onActionCreateStampFromDrawings();
@@ -969,9 +976,14 @@ private:
     QVector<qint16> m_scrubMix;     // the sound of the scene for that; emptied when the scene changes
     QElapsedTimer m_playClock;
     int m_playFrom = 0;
+    int m_playDirection = 1;
+    qint64 m_playCycle = 0;
+    bool m_playAdvancing = false, m_playHolding = false;
     QVector<qint16> m_playMix;
     SoundPlayer m_player;
     void startPlayingFrom(int frame);
+    void playDirection(int direction);
+    void changeShuttle(int direction);
     QSpinBox* m_frameBox = nullptr;
     QSpinBox* m_startBox = nullptr;
     QSpinBox* m_stopBox = nullptr;
@@ -980,6 +992,7 @@ private:
     // The shuttle: held to one side it runs through the frames, the faster the further; let go, it springs back.
     QSlider* m_shuttle = nullptr;
     QTimer m_shuttleTimer;
+    QElapsedTimer m_shuttleClock;
     double m_shuttleAt = 0.0;
     int m_playStart = 0;
     int m_autoSaveMinutes = 0;

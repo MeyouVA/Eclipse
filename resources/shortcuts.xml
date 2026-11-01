@@ -38,6 +38,13 @@
   <shortcut id="shortcut.shareFunctions" text="Share Functions" value=""/>
  </category>
  <category id="Playback" text="Playback">
+  <shortcut id="shortcut.playForward" text="Play Scene Forward" value=""/>
+  <shortcut id="shortcut.playBackward" text="Play Scene Backward" value=""/>
+  <shortcut id="shortcut.jogForward" text="Jog Forward" value=""/>
+  <shortcut id="shortcut.jogBackward" text="Jog Backward" value=""/>
+  <shortcut id="shortcut.shuttleForward" text="Shuttle Forward" value=""/>
+  <shortcut id="shortcut.shuttleBackward" text="Shuttle Backward" value=""/>
+  <shortcut id="shortcut.shuttleReset" text="Shuttle Reset" value=""/>
   <shortcut id="shortcut.togglePlayback" text="Toggle Playback" value="Return"/>
   <shortcut id="shortcut.prevFrame" text="Previous Frame" value=","/>
   <shortcut id="shortcut.nextFrame" text="Next Frame" value="."/>

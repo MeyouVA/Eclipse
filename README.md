@@ -54,6 +54,9 @@ anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed on
 - Sound Element Editor for clips, loops, gain envelopes and ordered audio effects, including filters, echo,
   reverb, pitch and tempo. Sound files are collected into the scene folder when saving. Preferences control
   sound-column visibility/colour and analog scrubbing; tempo markers have a starting frame.
+- Forward and backward scene playback with ranges, loop pauses, speed changes and assignable jog/shuttle
+  commands. Seeking while playing follows the chosen frame; editing the scene stops playback.
+  Sound plays during forward playback at 100% speed; reverse and other speeds are silent.
 
 **Effects and compositing**
 

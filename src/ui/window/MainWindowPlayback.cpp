@@ -37,6 +37,8 @@
 void MainWindow::startPlayingFrom(int from)
 {
     m_playFrom = from;
+    m_playCycle = 0;
+    m_playHolding = false;
     m_playClock.restart();
     if (m_soundOn && !m_playMix.isEmpty())
         m_player.play(m_playMix, qint64(from / m_document->scene().fps * SoundData::kRate));
@@ -58,20 +60,31 @@ void MainWindow::onActionTogglePlayback()
         stop();
         return;
     }
-    if (frame() >= playStop() || frame() < m_playStart)
-        m_timeline->setCurrentFrame(m_playStart);
+    playDirection(1);
+}
+
+void MainWindow::playDirection(int direction)
+{
+    if(m_playTimer.isActive()) stop();
+    onActionShuttleReset();
+    m_playDirection=direction<0?-1:1;
+    if (frame() < m_playStart || frame() > playStop() || (m_playDirection>0?frame()==playStop():frame()==m_playStart))
+        m_timeline->setCurrentFrame(m_playDirection>0?m_playStart:playStop());
     // Preroll: from so many frames before (not before where playing begins).
     if (m_preroll > 0)
-        m_timeline->setCurrentFrame(std::max(m_playStart, frame() - m_preroll));
+        m_timeline->setCurrentFrame(std::clamp(frame()-m_playDirection*m_preroll,m_playStart,playStop()));
     m_canvas->setPlaying(true);
     m_actions->setChecked(QStringLiteral("PlayToggle"), true);
     // Playing from the Preview Manager's frames: the sound kept with them; otherwise the scene's, mixed now.
     PreviewManagerView* const preview = m_canvas->previewFrames() > 0 ? findChild<PreviewManagerView*>() : nullptr;
-    m_playMix = !m_soundOn || m_playSpeed != 100 ? QVector<qint16>() : preview ? preview->sound() : Sound::mix(m_document->scene());
+    m_playMix = !m_soundOn || m_playSpeed != 100 || m_playDirection<0 ? QVector<qint16>() : preview ? preview->sound() : Sound::mix(m_document->scene());
     startPlayingFrom(frame());
     // Look at the clock a few times per frame.
-    m_playTimer.start(std::max(1, int(250.0 / m_document->scene().fps)));
+    m_playTimer.start(std::max(1, int(250.0 / (m_document->scene().fps*m_playSpeed/100.0))));
 }
+
+void MainWindow::onActionPlayForward() { playDirection(1); }
+void MainWindow::onActionPlayBackward() { playDirection(-1); }
 
 void MainWindow::onActionEnablePlayback(QString const& which)
 {
@@ -97,6 +110,7 @@ void MainWindow::showFrameInStillViews()
 void MainWindow::stop()
 {
     m_playTimer.stop();
+    onActionShuttleReset();
     m_player.stop();
     m_playMix.clear();
     m_canvas->setPlaying(false);
@@ -183,41 +197,20 @@ void MainWindow::onActionMiniPlaybackRange()
         settings().setValue(QStringLiteral("play/miniReach"), reach);
 }
 
-void MainWindow::advanceFrame()
-{
-    Scene const& scene = m_document->scene();
-    int const last = playStop();
-    int const due = m_playFrom + int(m_playClock.elapsed() * scene.fps * m_playSpeed / 100.0 / 1000.0);
-    if (due <= last) {
-        if (due != frame())
-            m_timeline->setCurrentFrame(due);
-    } else if (m_loop) {
-        // The last frame held a moment before it goes round again, when the preferences say so.
-        double const lastEnds = (last - m_playFrom + 1) * 1000.0 / std::max(scene.fps * m_playSpeed / 100.0, 1e-6);
-        if (m_loopPause > 0 && m_playClock.elapsed() < lastEnds + m_loopPause) {
-            if (frame() != last)
-                m_timeline->setCurrentFrame(last);
-            return;
-        }
-        m_timeline->setCurrentFrame(m_playStart);
-        startPlayingFrom(m_playStart);
-    } else {
-        m_timeline->setCurrentFrame(last);
-        stop();
-    }
-}
-
 void MainWindow::setPlaybackSpeed(int percent)
 {
     percent = std::clamp(percent, 5, 800);
     if (percent == m_playSpeed)
         return;
     bool const playing = m_playTimer.isActive();
-    if (playing)
-        stop();
     m_playSpeed = percent;
-    if (playing)
-        onActionTogglePlayback();
+    if (playing) {
+        m_player.stop();
+        PreviewManagerView* const preview=m_canvas->previewFrames()>0?findChild<PreviewManagerView*>():nullptr;
+        m_playMix=!m_soundOn || percent!=100 || m_playDirection<0?QVector<qint16>():preview?preview->sound():Sound::mix(m_document->scene());
+        startPlayingFrom(frame());
+        m_playTimer.start(std::max(1,int(250.0/(m_document->scene().fps*percent/100.0))));
+    }
 }
 
 void MainWindow::onActionPlaybackSpeed()
@@ -246,6 +239,10 @@ void MainWindow::setPlayRange(int start, int stop)
     m_startBox->setValue(m_playStart + 1);
     m_stopBox->setValue(playStop() + 1);
     m_timeline->setPlayRange(m_playStart, m_playStop);
+    if(m_playTimer.isActive()) {
+        m_timeline->setCurrentFrame(std::clamp(frame(),m_playStart,playStop()));
+        startPlayingFrom(frame());
+    }
 }
 
 void MainWindow::onActionPlaybackStartFrame()
@@ -306,7 +303,8 @@ void MainWindow::shuttleStep()
     // Up to four times the scene's speed at the end of its travel, gently near the middle.
     double const pull = m_shuttle->value() / 100.0;
     double const framesPerSecond = pull * std::abs(pull) * 4.0 * scene.fps;
-    m_shuttleAt = std::clamp(m_shuttleAt + framesPerSecond * 0.04, 0.0, double(scene.frameCount() - 1));
+    double const elapsed=m_shuttleClock.isValid()?m_shuttleClock.restart()/1000.0:0.0;
+    m_shuttleAt = std::clamp(m_shuttleAt + framesPerSecond * elapsed, 0.0, double(scene.frameCount() - 1));
     int const to = int(std::lround(m_shuttleAt));
     if (to != frame())
         m_timeline->setCurrentFrame(to);
