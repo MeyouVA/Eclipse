@@ -398,7 +398,7 @@ void MainWindow::onActionAutoRenderWrite(bool on)
 {
     m_autoRenderWrite = on;
     m_actions->setChecked(QStringLiteral("AutoRenderWrite"), on);
-    if (on && std::none_of(m_document->scene().writes.cbegin(), m_document->scene().writes.cend(), [](Scene::Write const& w) { return w.enabled && !w.movie; }))
+    if (on && std::none_of(m_document->scene().writes.cbegin(), m_document->scene().writes.cend(), [](Scene::Write const& w) { return w.enabled && !w.movie && !w.audio; }))
         statusBar()->showMessage(tr("Auto Render Write is on, but no write output of images is on: add one with Scene > Write Outputs."), 7000);
 }
 
@@ -409,7 +409,7 @@ void MainWindow::writeRenderedFrame(int at, QImage const& image)
     QStringList problems;
     int made = 0;
     for (Scene::Write const& w : m_document->scene().writes) {
-        if (!w.enabled || w.movie || w.path.trimmed().isEmpty())
+        if (!w.enabled || w.movie || w.audio || w.path.trimmed().isEmpty())
             continue;
         QString const folder = writeFolder(w.path);
         QDir().mkpath(folder);

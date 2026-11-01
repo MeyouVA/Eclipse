@@ -96,6 +96,9 @@ public:
         bool layers = false;        // a multi-layer write: in a layered format, each layer of drawings apart too
         QString colourSpace;        // what the files are written in (empty: the working space; for EXR, the scene's linear space)
         bool keepFrames = false;    // a movie: its frames kept as images too, in a folder beside it
+        bool audio = false;
+        int codec = -1;
+        QString framesFormat;
         bool operator==(Write const&) const = default;
     };
     QVector<Write> writes;

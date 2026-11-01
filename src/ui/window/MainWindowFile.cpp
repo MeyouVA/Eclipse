@@ -22,6 +22,7 @@
 #include "actions/manager/ActionManager.h"
 #include "actions/dialogs/ShortcutsDialog.h"
 #include "audio/sound/Sound.h"
+#include "model/media/MediaFormats.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
 #include "ui/panels/LayerPanel.h"
@@ -275,12 +276,15 @@ bool MainWindow::onActionSaveAs()
 void MainWindow::onActionExportMovie()
 {
     QString start = m_path.isEmpty() ? QStringLiteral("scene.mp4") : QFileInfo(m_path).path() + QStringLiteral("/frames/") + QFileInfo(m_path).completeBaseName() + QStringLiteral(".mp4");
-    QString path = QFileDialog::getSaveFileName(this, tr("Export Movie"), start,
-                                                tr("H.264 Movie (*.mp4);;QuickTime Movie (*.mov);;WebM Movie (*.webm);;Animated GIF (*.gif)"));
+    QString selected;
+    QString path = QFileDialog::getSaveFileName(this,tr("Export Movie"),start,MediaFormats::videoFilter(true),&selected);
     if (path.isEmpty())
         return;
-    if (QFileInfo(path).suffix().isEmpty())
-        path += QStringLiteral(".mp4");
+    if (QFileInfo(path).suffix().isEmpty()) {
+        QString suffix=QStringLiteral("mp4");
+        for(auto const& format : MediaFormats::videoFormats()) if(selected.startsWith(format.name+QLatin1Char(' '))) suffix=format.suffix;
+        path+=QLatin1Char('.')+suffix;
+    }
     // Which frames, how big, how fine.
     QDialog dialog(this);
     dialog.setWindowTitle(tr("Export Movie"));
@@ -318,21 +322,17 @@ void MainWindow::onActionExportMovie()
     // The codec (a .mp4 or a .mov), how long the encoder takes, and the sound's bit rate.
     QComboBox* const codec = new QComboBox(&dialog);
     codec->setObjectName(QStringLiteral("MovieCodec"));
-    codec->addItem(tr("H.264 (plays everywhere)"), 0);
-    codec->addItem(tr("H.265 / HEVC (smaller file)"), 1);
-    if (movieKind == QLatin1String("mov")) {
-        codec->addItem(tr("ProRes 422 HQ (for editing)"), 2);
-        codec->addItem(tr("ProRes 4444 (supports transparency)"), 3);
-        codec->setCurrentIndex(codec->findData(3));
+    if(auto const* format=MediaFormats::video(movieKind)) {
+        for(int id : format->codecs) if(auto const* entry=MediaFormats::videoCodec(id)) codec->addItem(entry->name,id);
+        codec->setCurrentIndex(codec->findData(format->defaultCodec));
     }
-    codec->setEnabled(movieKind == QLatin1String("mp4") || movieKind == QLatin1String("mov"));
+    codec->setEnabled(codec->count()>1);
     QCheckBox* const timecode = new QCheckBox(tr("Burn in Time Code"), &dialog);
     timecode->setObjectName(QStringLiteral("MovieTimecode"));
     timecode->setToolTip(tr("The time code (hours:minutes:seconds:frames) written on each frame, in the font of Preferences > General: Time Code Font."));
     QCheckBox* const transparent = new QCheckBox(tr("Transparent background"), &dialog);
     transparent->setObjectName(QStringLiteral("MovieTransparentBackground"));
     transparent->setChecked(movieKind == QLatin1String("mov"));
-    transparent->setVisible(movieKind == QLatin1String("mov"));
     transparent->setToolTip(tr("Keeps empty areas transparent and preserves layer translucency."));
     QComboBox* const speed = new QComboBox(&dialog);
     speed->setObjectName(QStringLiteral("MovieSpeed"));
@@ -348,11 +348,13 @@ void MainWindow::onActionExportMovie()
     audio->setCurrentIndex(1);
     audio->setEnabled(movieKind != QLatin1String("gif"));
     auto codecChanged = [codec, quality, speed, audio, transparent, movieKind] {
-        bool const prores = movieKind == QLatin1String("mov") && codec->currentData().toInt() >= 2;
+        int const id=codec->currentData().toInt();
+        bool const prores=id==MediaFormats::ProRes422 || id==MediaFormats::ProRes4444 || id==MediaFormats::DnxHD || id==MediaFormats::DnxHR || id==MediaFormats::Png || id==MediaFormats::Animation || id==MediaFormats::Uncompressed;
         quality->setEnabled(!prores && movieKind != QLatin1String("gif"));
-        speed->setEnabled(!prores && movieKind != QLatin1String("gif"));
-        audio->setEnabled(!prores && movieKind != QLatin1String("gif"));
-        transparent->setEnabled(movieKind == QLatin1String("mov") && codec->currentData().toInt() == 3);
+        speed->setEnabled(id==MediaFormats::H264 || id==MediaFormats::Hevc || id==MediaFormats::Vp8 || id==MediaFormats::Vp9 || id==MediaFormats::Av1);
+        auto const* container=MediaFormats::video(movieKind);
+        audio->setEnabled(container && !container->audioEncoder.isEmpty() && !container->audioEncoder.startsWith(QLatin1String("pcm_")) && container->audioEncoder!=QLatin1String("flac"));
+        transparent->setEnabled(container && container->alphaCodecs.contains(id));
     };
     connect(codec, &QComboBox::currentIndexChanged, &dialog, codecChanged);
     codecChanged();

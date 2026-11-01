@@ -85,8 +85,20 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
 - Exports movies, picture sequences, animated GIFs and Flash movies (SWF): each drawing written once and moved
   frame by frame, with gradients, pictures, lines, sound, opacity, tints, blurs, glows, shadows, blend modes and
   cutters (as masks); and a report of anything Flash has no like of.
-  Movies and some sound formats are read and written through [FFmpeg](https://ffmpeg.org/),
-  which has to be installed and on the `PATH` for those features.
+  Movies and sound formats use the bundled [FFmpeg](https://ffmpeg.org/) tools in `thirdparty/`,
+  installed with the script below; no FFmpeg entry on `PATH` is needed.
+- Image import and export share one format registry, including PNG, JPEG, TIFF, layered PSD, EXR,
+  GIF, WebP, APNG, HEIC/HEIF, AVIF, JPEG 2000, JPEG XL, QOI, DDS, icons and portable image formats.
+  Animated GIF, WebP and APNG import as drawings with exposure timing. Camera RAW is read-only.
+  Profiles, alpha and high-depth pixels are retained where their file format supports them.
+- Movie export offers MP4, MOV, AVI, MKV, WebM, M4V, MPEG, WMV, FLV, OGV and MXF, with codec choices
+  appropriate to each container. ProRes 4444, PNG, Animation, uncompressed and WebM exports can keep
+  transparency in compatible containers. DNxHD uses 1920 by 1080 frames; DNxHR accepts other sizes.
+  The scene's audible tracks are mixed into movies. Picture sequences can also be kept separately.
+- Audio export offers WAV, AIFF, MP3, AAC/M4A, Vorbis, Opus, FLAC, ALAC, WMA and AC-3, with sample
+  rate and mono/stereo choices. WAV and AIFF support 8/16/24/32-bit integer and 32-bit float files.
+  Export all frames or a selected range, mixed or as separate sound tracks. The mixing engine uses
+  16-bit stereo at 44100 Hz; a deeper output file does not restore precision absent from that mix.
 - Templates can be kept in a Library and dropped into other scenes.
 - Help pages are built in (Help > Eclipse Help, F1).
 
@@ -175,8 +187,7 @@ packages, independent of PATH. The Python console prefers the bundled interprete
 copies runtime executables, DLLs, configuration and original notices into `Release/thirdparty`;
 download archives, development headers and import libraries are left out.
 
-Expanded format support is being implemented; installation alone does not enable every
-requested format. The build checks `thirdparty/qt` before `QT_ROOT` or the usual `C:/Qt`
+The build checks `thirdparty/qt` before `QT_ROOT` or the usual `C:/Qt`
 installation, and CMake searches `thirdparty` first. Qt 6 for MSVC is currently installed
 separately. No Qt SDK download is included in this plan.
 

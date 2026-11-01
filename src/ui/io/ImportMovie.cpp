@@ -15,6 +15,7 @@
 #include <QTemporaryDir>
 
 #include "audio/sound/Sound.h"
+#include "model/media/MediaFormats.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
 #include "ui/panels/LibraryView.h"
@@ -51,8 +52,10 @@ int MainWindow::importMovie(QString const& path, QString* error)
         if (!process.waitForStarted(10000))
             return false;
         // A long movie takes a while; the window stays alive meanwhile.
-        while (!process.waitForFinished(100))
+        while (process.state()!=QProcess::NotRunning) {
+            process.waitForFinished(100);
             QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        }
         if (said)
             *said = QString::fromLocal8Bit(process.readAllStandardError()).trimmed();
         return process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0;
@@ -92,7 +95,7 @@ int MainWindow::importMovie(QString const& path, QString* error)
 void MainWindow::onActionImportMovie()
 {
     QString const path = QFileDialog::getOpenFileName(this, tr("Import Movie"), m_path.isEmpty() ? QString() : QFileInfo(m_path).path(),
-                                                      tr("Movies (*.mp4 *.mov *.m4v *.avi *.mkv *.webm *.wmv *.mpg *.mpeg *.gif);;All Files (*)"));
+                                                      MediaFormats::videoFilter());
     if (path.isEmpty())
         return;
     stop();

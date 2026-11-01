@@ -1,6 +1,7 @@
 // Eclipse - templates: a piece of the scene saved to the Library, and one brought in.
 #include "ui/window/MainWindow.h"
 #include "render/images/ImageFiles.h"
+#include "model/media/MediaFormats.h"
 
 #include <functional>
 
@@ -166,7 +167,11 @@ void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
             statusBar()->showMessage(error, 8000);
         return;
     }
-    if (kind == QLatin1String("wav")) {
+    if(MediaFormats::video(kind)) {
+        if(importMovie(path,&error)<0) statusBar()->showMessage(error,8000);
+        return;
+    }
+    if (MediaFormats::audio(kind)) {
         if (!Sound::load(path, &error)) {
             statusBar()->showMessage(tr("Could not read %1: %2").arg(QDir::toNativeSeparators(path), error), 8000);
             return;

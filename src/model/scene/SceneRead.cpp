@@ -87,6 +87,9 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         w.layers = wo["layers"].toBool(false);
         w.colourSpace = wo["colourSpace"].toString();
         w.keepFrames = wo["keepFrames"].toBool(false);
+        w.audio=wo["audio"].toBool(false);
+        w.codec=wo["codec"].toInt(-1);
+        w.framesFormat=wo["framesFormat"].toString();
         scene.writes.push_back(w);
     }
     for (QJsonValue const& cv : json["controllers"].toArray()) {

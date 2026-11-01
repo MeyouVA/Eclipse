@@ -24,6 +24,7 @@
 
 #include "actions/manager/ActionManager.h"
 #include "audio/sound/Sound.h"
+#include "model/media/MediaFormats.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
 #include "ui/panels/LayerPanel.h"
@@ -44,7 +45,7 @@
 void MainWindow::onActionImportSound()
 {
     QString const path = QFileDialog::getOpenFileName(this, tr("Import Sound"), QFileInfo(m_path).path(),
-                                                      tr("Sound Files (*.wav *.mp3 *.aif *.aiff *.ogg *.flac *.m4a *.aac *.mp4 *.mov);;All Files (*)"));
+                                                      MediaFormats::audioFilter());
     if (path.isEmpty())
         return;
     QApplication::setOverrideCursor(Qt::WaitCursor);

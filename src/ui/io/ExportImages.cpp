@@ -30,6 +30,8 @@
 #include <QVBoxLayout>
 
 #include "audio/sound/Sound.h"
+#include "audio/sound/AudioFiles.h"
+#include "model/media/MediaFormats.h"
 #include "model/document/Commands.h"
 #include "canvas/Canvas.h"
 #include "canvas/FrameRender.h"
@@ -254,35 +256,6 @@ void MainWindow::onActionExportGif()
     exportMovieTo(path);
 }
 
-bool MainWindow::exportAudio(QString const& path, QString* error)
-{
-    QVector<qint16> const sound = Sound::mix(m_document->scene());
-    if (sound.isEmpty()) {
-        if (error)
-            *error = tr("The scene has no sound to export: add a sound layer first (File > Import > Sound), and check that it is enabled.");
-        return false;
-    }
-    return Sound::writeWav(path, sound, error);
-}
-
-void MainWindow::onActionExportAudio()
-{
-    QString const start = m_path.isEmpty() ? QStringLiteral("scene.wav") : QFileInfo(m_path).path() + QLatin1Char('/') + QFileInfo(m_path).completeBaseName() + QStringLiteral(".wav");
-    QString path = QFileDialog::getSaveFileName(this, tr("Export Audio"), start, tr("WAV Sound (*.wav)"));
-    if (path.isEmpty())
-        return;
-    if (QFileInfo(path).suffix().isEmpty())
-        path += QStringLiteral(".wav");
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    QString error;
-    bool const ok = exportAudio(path, &error);
-    QApplication::restoreOverrideCursor();
-    if (ok)
-        statusBar()->showMessage(tr("Exported %1").arg(QDir::toNativeSeparators(path)), 6000);
-    else
-        QMessageBox::critical(this, tr("Eclipse"), tr("The sound could not be written.\n%1").arg(error));
-}
-
 QString MainWindow::writeFolder(QString const& path) const
 {
     QDir const home = m_path.isEmpty() ? QDir::current() : QFileInfo(m_path).absoluteDir();
@@ -297,11 +270,24 @@ int MainWindow::renderWrites(QString* error, QProgressDialog* progress)
     for (Scene::Write const& w : scene.writes) {
         if (!w.enabled || w.path.trimmed().isEmpty())
             continue;
-        QString const where = writeFolder(w.path);
+        QString where = writeFolder(w.path);
         QString why;
         bool ok = false;
-        if (w.movie) {
+        if(w.audio) {
+            AudioFiles::Options options;
+            options.format=MediaFormats::audio(w.format)?w.format:QFileInfo(where).suffix();
+            auto const* audio=MediaFormats::audio(options.format);
+            if(audio && QFileInfo(where).suffix().isEmpty()) where+=QLatin1Char('.')+audio->suffix;
+            if(options.format==QLatin1String("opus")) options.rate=48000;
+            QDir().mkpath(QFileInfo(where).absolutePath());
+            ok=AudioFiles::write(where,Sound::mix(scene),options,&why);
+        } else if (w.movie) {
             MovieExport::Options options;
+            options.codec=w.codec;
+            if(auto const* format=MediaFormats::video(w.format)) {
+                QFileInfo const current(where);
+                where=current.dir().filePath(current.completeBaseName()+QLatin1Char('.')+format->suffix);
+            }
             options.scale = std::clamp(w.percent, 1, 1000) / 100.0;
             options.colourSpace = scene.outputSpace(w.colourSpace, QString());
             QDir().mkpath(QFileInfo(where).absolutePath());
@@ -312,7 +298,7 @@ int MainWindow::renderWrites(QString* error, QProgressDialog* progress)
                 ImageExport images;
                 images.folder = movie.absolutePath() + QLatin1Char('/') + movie.completeBaseName() + QStringLiteral("_frames");
                 images.name = movie.completeBaseName();
-                images.format = w.format;
+                images.format = !w.framesFormat.isEmpty()?w.framesFormat:ImageFiles::find(w.format)?w.format:QStringLiteral("png");
                 images.percent = std::clamp(w.percent, 1, 1000);
                 images.colourSpace = w.colourSpace;
                 images.progress = progress;
@@ -358,7 +344,7 @@ void MainWindow::onActionRenderWrites()
     // Frames already there from an earlier render: made again only when asked.
     bool already = false;
     for (Scene::Write const& w : scene.writes)
-        if (w.enabled && !w.movie && !w.path.trimmed().isEmpty() && !QDir(writeFolder(w.path)).entryList({QStringLiteral("*.") + w.format}, QDir::Files).isEmpty())
+        if (w.enabled && !w.movie && !w.audio && !w.path.trimmed().isEmpty() && !QDir(writeFolder(w.path)).entryList({QStringLiteral("*.") + w.format}, QDir::Files).isEmpty())
             already = true;
     if (already && QMessageBox::question(this, tr("Render Write Nodes"), tr("Some frames have already been rendered. Do you want to render these frames again?"))
                        != QMessageBox::Yes)
@@ -384,9 +370,9 @@ void MainWindow::onActionWriteOutputs()
     QDialog dialog(this);
     dialog.setObjectName(QStringLiteral("WriteOutputsDialog"));
     dialog.setWindowTitle(tr("Write Outputs"));
-    QTableWidget* const table = new QTableWidget(0, 8, &dialog);
+    QTableWidget* const table = new QTableWidget(0, 10, &dialog);
     table->setObjectName(QStringLiteral("WriteOutputsTable"));
-    table->setHorizontalHeaderLabels({tr("On"), tr("Name"), tr("Kind"), tr("Folder or file"), tr("Images as"), tr("Size %"), tr("Layers"), tr("Colour Space")});
+    table->setHorizontalHeaderLabels({tr("On"), tr("Name"), tr("Kind"), tr("Folder or file"), tr("Format"), tr("Size %"), tr("Layers"), tr("Colour Space"),tr("Movie codec"),tr("Keep frames as")});
     table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
     table->verticalHeader()->setVisible(false);
     auto addRow = [table](Scene::Write const& w) {
@@ -397,15 +383,11 @@ void MainWindow::onActionWriteOutputs()
         table->setItem(row, 0, on);
         table->setItem(row, 1, new QTableWidgetItem(w.name));
         QComboBox* const kind = new QComboBox(table);
-        kind->addItems({QObject::tr("Images"), QObject::tr("Movie"), QObject::tr("Movie and Keep Frames")});
-        kind->setCurrentIndex(w.movie ? (w.keepFrames ? 2 : 1) : 0);
+        kind->addItems({QObject::tr("Images"), QObject::tr("Movie"), QObject::tr("Movie and Keep Frames"),QObject::tr("Audio")});
+        kind->setCurrentIndex(w.audio?3:w.movie ? (w.keepFrames ? 2 : 1) : 0);
         table->setCellWidget(row, 2, kind);
         table->setItem(row, 3, new QTableWidgetItem(w.path));
         QComboBox* const format = new QComboBox(table);
-        for (ImageFiles::Format const& f : ImageFiles::formats())
-            if (f.writable) format->addItem(f.suffix);
-        ImageFiles::Format const* const known = ImageFiles::find(w.format);
-        format->setCurrentText(known ? known->suffix : QStringLiteral("png"));
         table->setCellWidget(row, 4, format);
         QSpinBox* const size = new QSpinBox(table);
         size->setRange(1, 1000);
@@ -418,6 +400,31 @@ void MainWindow::onActionWriteOutputs()
         QComboBox* const space = ColourSpaceBox::make(table, QString(), w.colourSpace, QObject::tr("Scene Working Colour Space"));
         space->setToolTip(QObject::tr("The colour space the frames are written in, with colour space management on (Scene Settings: Colour)."));
         table->setCellWidget(row, 7, space);
+        QComboBox* const codec=new QComboBox(table); table->setCellWidget(row,8,codec);
+        QComboBox* const frames=new QComboBox(table); table->setCellWidget(row,9,frames);
+        for(auto const& f : ImageFiles::formats()) if(f.writable) frames->addItem(f.suffix);
+        frames->setCurrentText(!w.framesFormat.isEmpty()?w.framesFormat:ImageFiles::find(w.format)?w.format:QStringLiteral("png"));
+        auto codecsChanged=[format,codec,kind,initial=w.codec] {
+            int const wanted=codec->count()?codec->currentData().toInt():initial;
+            codec->clear(); codec->addItem(QObject::tr("Automatic"),-1);
+            if(kind->currentIndex()==1 || kind->currentIndex()==2) if(auto const* f=MediaFormats::video(format->currentText())) for(int id : f->codecs) codec->addItem(MediaFormats::videoCodec(id)->name,id);
+            codec->setCurrentIndex(std::max(0,codec->findData(wanted)));
+            codec->setEnabled(kind->currentIndex()==1 || kind->currentIndex()==2);
+        };
+        auto kindChanged=[kind,format,frames,size,space,codecsChanged,w] {
+            QString wanted=format->currentText(); if(wanted.isEmpty()) wanted=w.format;
+            format->clear();
+            if(kind->currentIndex()==0) for(auto const& f : ImageFiles::formats()) { if(f.writable) format->addItem(f.suffix); }
+            else if(kind->currentIndex()==3) for(auto const& f : MediaFormats::audioFormats()) format->addItem(f.id);
+            else for(auto const& f : MediaFormats::videoFormats()) format->addItem(f.suffix);
+            if(format->findText(wanted)<0 && (kind->currentIndex()==1 || kind->currentIndex()==2)) wanted=QFileInfo(w.path).suffix().toLower();
+            format->setCurrentIndex(std::max(0,format->findText(wanted)));
+            frames->setEnabled(kind->currentIndex()==2); size->setEnabled(kind->currentIndex()!=3); space->setEnabled(kind->currentIndex()!=3);
+            codecsChanged();
+        };
+        kindChanged();
+        QObject::connect(kind,&QComboBox::currentIndexChanged,table,kindChanged);
+        QObject::connect(format,&QComboBox::currentIndexChanged,table,codecsChanged);
     };
     for (Scene::Write const& w : std::as_const(writes))
         addRow(w);
@@ -457,13 +464,16 @@ void MainWindow::onActionWriteOutputs()
         w.enabled = table->item(r, 0)->checkState() == Qt::Checked;
         w.name = table->item(r, 1)->text().trimmed();
         int const kindIndex = static_cast<QComboBox*>(table->cellWidget(r, 2))->currentIndex();
-        w.movie = kindIndex >= 1;
+        w.movie = kindIndex==1 || kindIndex==2;
+        w.audio=kindIndex==3;
         w.keepFrames = kindIndex == 2;
         w.path = table->item(r, 3)->text().trimmed();
         w.format = static_cast<QComboBox*>(table->cellWidget(r, 4))->currentText();
         w.percent = static_cast<QSpinBox*>(table->cellWidget(r, 5))->value();
         w.layers = table->item(r, 6)->checkState() == Qt::Checked;
         w.colourSpace = ColourSpaceBox::chosen(static_cast<QComboBox*>(table->cellWidget(r, 7)));
+        w.codec=static_cast<QComboBox*>(table->cellWidget(r,8))->currentData().toInt();
+        if(w.keepFrames) w.framesFormat=static_cast<QComboBox*>(table->cellWidget(r,9))->currentText();
         made.push_back(w);
     }
     m_document->setWrites(made);

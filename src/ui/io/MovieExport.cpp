@@ -12,67 +12,13 @@
 #include <QTemporaryDir>
 
 #include "audio/sound/Sound.h"
+#include "model/media/MediaFormats.h"
 #include "model/scene/Scene.h"
 #include "model/scene/AtomicFile.h"
 #include "canvas/Canvas.h"
 #include "canvas/FrameRender.h"
 
 namespace MovieExport {
-
-QStringList encoderArguments(QString const& suffix, Options const& options, bool sound)
-{
-    QStringList args;
-    QString const kind = suffix.toLower();
-    int const quality = std::clamp(options.quality, 0, 51);
-    QString const audio = QString::number(std::clamp(options.audioKbps, 32, 512)) + QLatin1Char('k');
-    static char const* const kSpeeds[3] = {"veryfast", "medium", "slow"};
-    QString const speed = QLatin1String(kSpeeds[std::clamp(options.speed, 0, 2)]);
-    int const codec = options.codec < 0 ? (kind == QLatin1String("mov") ? 3 : 0) : options.codec;
-    bool const alpha = kind == QLatin1String("mov") && (codec == 3 || options.transparentBackground);
-    if (kind == QLatin1String("gif")) {
-        args << QStringLiteral("-vf") << QStringLiteral("split[a][b];[a]palettegen[p];[b][p]paletteuse");
-        return args;
-    }
-    if (kind == QLatin1String("webm")) {
-        // VP9's scale of quality runs higher than H.264's: about twelve steps on for the same look.
-        args << QStringLiteral("-c:v") << QStringLiteral("libvpx-vp9") << QStringLiteral("-crf") << QString::number(std::clamp(quality + 12, 0, 63))
-             << QStringLiteral("-b:v") << QStringLiteral("0") << QStringLiteral("-deadline") << (options.speed == 0 ? QStringLiteral("realtime") : QStringLiteral("good"))
-             << QStringLiteral("-cpu-used") << QString::number(options.speed == 2 ? 1 : options.speed == 0 ? 5 : 2);
-        if (sound)
-            args << QStringLiteral("-c:a") << QStringLiteral("libopus") << QStringLiteral("-b:a") << audio;
-        return args;
-    }
-    if (alpha) {
-        args << QStringLiteral("-c:v") << QStringLiteral("prores_ks") << QStringLiteral("-profile:v") << QStringLiteral("4")
-             << QStringLiteral("-pix_fmt") << QStringLiteral("yuva444p10le") << QStringLiteral("-alpha_bits") << QStringLiteral("16");
-        if (sound)
-            args << QStringLiteral("-c:a") << QStringLiteral("pcm_s16le");
-        return args;
-    }
-    // Subsampled video formats need even dimensions.
-    args << QStringLiteral("-vf") << QStringLiteral("pad=ceil(iw/2)*2:ceil(ih/2)*2");
-    if (codec == 2 && kind == QLatin1String("mov")) {
-        // ProRes 422 HQ: for editing further; it keeps everything, and has no quality to choose.
-        args << QStringLiteral("-c:v") << QStringLiteral("prores_ks") << QStringLiteral("-profile:v") << QStringLiteral("3")
-             << QStringLiteral("-pix_fmt") << QStringLiteral("yuv422p10le");
-        if (sound)
-            args << QStringLiteral("-c:a") << QStringLiteral("pcm_s16le");
-        return args;
-    }
-    if (codec == 1) {
-        // H.265: the same picture in about half the file; tagged so that players on every system take it.
-        args << QStringLiteral("-c:v") << QStringLiteral("libx265") << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
-             << QStringLiteral("-crf") << QString::number(std::clamp(quality + 4, 0, 51)) << QStringLiteral("-preset") << speed
-             << QStringLiteral("-tag:v") << QStringLiteral("hvc1");
-    } else {
-        // H.264 in this pixel layout plays everywhere.
-        args << QStringLiteral("-c:v") << QStringLiteral("libx264") << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
-             << QStringLiteral("-crf") << QString::number(quality) << QStringLiteral("-preset") << speed;
-    }
-    if (sound)
-        args << QStringLiteral("-c:a") << QStringLiteral("aac") << QStringLiteral("-b:a") << audio;
-    return args;
-}
 
 bool write(Scene const& scene, QString const& path, std::function<bool(int frame)> const& progress, QString* error, Options const& options)
 {
@@ -89,9 +35,12 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     // The sound goes to ffmpeg as a file beside the frames, which go down a pipe.
     QTemporaryDir scratch;
     QString const suffix = QFileInfo(path).suffix().toLower();
-    if (options.transparentBackground && suffix != QLatin1String("mov"))
-        return fail(QStringLiteral("A transparent movie background requires MOV export."));
-    bool const alpha = suffix == QLatin1String("mov") && (options.codec < 0 || options.codec == 3 || options.transparentBackground);
+    auto const* format=MediaFormats::video(suffix);
+    if(!format) return fail(QStringLiteral("Unsupported movie container: %1").arg(suffix));
+    int const codecId=MediaFormats::resolvedCodec(*format,options.codec,options.transparentBackground);
+    auto const* codec=MediaFormats::videoCodec(codecId);
+    if(!codec) return fail(QStringLiteral("The selected codec or transparency is not supported by this container."));
+    bool const alpha=format->alphaCodecs.contains(codecId);
     Scene rendered = scene;
     if (options.transparentBackground)
         rendered.background = Qt::transparent;
@@ -105,20 +54,25 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     int const last = options.last < 0 ? scene.frameCount() - 1 : std::clamp(options.last, first, scene.frameCount() - 1);
     double const scale = std::clamp(options.scale, 0.05, 8.0);
     int const wide = std::max(2, int(std::lround(scene.width * scale))), high = std::max(2, int(std::lround(scene.height * scale)));
+    if(codecId==MediaFormats::DnxHD && (wide!=1920 || high!=1080)) return fail(QStringLiteral("DNxHD requires 1920 by 1080 frames. Use DNxHR for other dimensions."));
     QVector<qint16> const sound = gif ? QVector<qint16>() : Sound::mix(scene);
     QString const wav = scratch.filePath(QStringLiteral("sound.wav"));
     if (!sound.isEmpty() && (!scratch.isValid() || !Sound::writeWav(wav, sound, error)))
         return false;
 
     QStringList args{QStringLiteral("-y"), QStringLiteral("-v"), QStringLiteral("error"),
-                     QStringLiteral("-f"), QStringLiteral("rawvideo"), QStringLiteral("-pix_fmt"), QStringLiteral("rgba"),
+                     QStringLiteral("-f"), QStringLiteral("rawvideo"), QStringLiteral("-pix_fmt"), codec->deep?QStringLiteral("rgba64le"):QStringLiteral("rgba"),
                      QStringLiteral("-s"), QStringLiteral("%1x%2").arg(wide).arg(high),
                      QStringLiteral("-r"), QString::number(scene.fps, 'f', 3), QStringLiteral("-i"), QStringLiteral("-")};
     // Of the sound, the part those frames last.
     if (!sound.isEmpty())
         args << QStringLiteral("-ss") << QString::number(first / scene.fps, 'f', 4) << QStringLiteral("-t")
              << QString::number((last - first + 1) / scene.fps, 'f', 4) << QStringLiteral("-i") << wav;
-    args << encoderArguments(suffix, options, !sound.isEmpty());
+    args << QStringLiteral("-map") << QStringLiteral("0:v:0");
+    if(!sound.isEmpty()) args << QStringLiteral("-map") << QStringLiteral("1:a:0");
+    MovieExport::Options encoding=options; encoding.frameRate=scene.fps;
+    args << encoderArguments(suffix, encoding, !sound.isEmpty());
+    args << QStringLiteral("-t") << QString::number((last-first+1)/scene.fps,'f',6);
     args << QDir::toNativeSeparators(generated);
 
     QProcess process;
@@ -141,8 +95,8 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
         QVector<QImage> batch(frames.size());
         QImage* const held = batch.data();
         QString const space = options.colourSpace;
-        FrameRender::render(rendered, frames, QSize(wide, high), false, [held, at, &rendered, space](int f, QImage const& picture) {
-            held[f - at] = FrameRender::inSpace(rendered, picture, space, false);
+        FrameRender::render(rendered, frames, QSize(wide, high), false, [held, at, &rendered, space, codec](int f, QImage const& picture) {
+            held[f - at] = FrameRender::inSpace(rendered, picture, space, codec->deep);
             return QString();
         }, nullptr);
         for (int i = 0; i < batch.size(); ++i) {
@@ -167,10 +121,10 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
                 p.setPen(options.timecodeColour);
                 p.drawText(band, Qt::AlignCenter, code);
             }
-            QImage const image = batch[i].convertToFormat(QImage::Format_RGBA8888);
+            QImage const image = batch[i].convertToFormat(codec->deep?QImage::Format_RGBA64:QImage::Format_RGBA8888);
             // The lines of an image may be padded: send them one by one.
             for (int y = 0; y < image.height(); ++y)
-                process.write(reinterpret_cast<char const*>(image.constScanLine(y)), qint64(image.width()) * 4);
+                if(process.write(reinterpret_cast<char const*>(image.constScanLine(y)),qint64(image.width())*(codec->deep?8:4))<0) return abandon(QStringLiteral("Cannot send a movie frame to the encoder."));
             while (process.bytesToWrite() > 0) {
                 if (process.state() != QProcess::Running || !process.waitForBytesWritten(30000))
                     return abandon(QStringLiteral("ffmpeg stopped: %1").arg(QString::fromLocal8Bit(process.readAllStandardError()).trimmed()));

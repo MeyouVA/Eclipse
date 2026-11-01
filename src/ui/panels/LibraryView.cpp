@@ -34,6 +34,7 @@
 
 #include "canvas/Canvas.h"
 #include "render/images/ImageFiles.h"
+#include "model/media/MediaFormats.h"
 
 QString const LibraryView::kSuffix = QStringLiteral("ecltpl");
 QString const LibraryView::kMimeType = QStringLiteral("application/x-eclipse-template");
@@ -434,6 +435,14 @@ void LibraryView::refresh()
             patterns << QStringLiteral("*.")+format.suffix;
             for(QString const& alias : format.aliases) patterns << QStringLiteral("*.")+alias;
         }
+        for(auto const& format : MediaFormats::audioFormats()) {
+            patterns << QStringLiteral("*.")+format.suffix;
+            for(QString const& alias : format.aliases) patterns << QStringLiteral("*.")+alias;
+        }
+        for(auto const& format : MediaFormats::videoFormats()) {
+            patterns << QStringLiteral("*.")+format.suffix;
+            for(QString const& alias : format.aliases) patterns << QStringLiteral("*.")+alias;
+        }
         for (QFileInfo const& file : dir.entryInfoList(patterns, QDir::Files,
                                                        QDir::Name | QDir::IgnoreCase)) {
             if (!wanted.isEmpty() && !file.completeBaseName().contains(wanted, Qt::CaseInsensitive))
@@ -531,6 +540,11 @@ void LibraryView::showTemplate()
         bool const palette = QFileInfo(path).suffix().compare(QLatin1String("eclpal"), Qt::CaseInsensitive) == 0;
         if(auto const* format=ImageFiles::find(QFileInfo(path).suffix());format && format->readable) {
             m_about->setText(tr("%1   -   an image: Insert adds it as a drawing layer").arg(QFileInfo(path).completeBaseName()));
+            m_scrub->setEnabled(false);
+            return;
+        }
+        if(MediaFormats::video(QFileInfo(path).suffix())) {
+            m_about->setText(tr("%1   -   a movie: Insert adds its pictures and sound").arg(QFileInfo(path).completeBaseName()));
             m_scrub->setEnabled(false);
             return;
         }
