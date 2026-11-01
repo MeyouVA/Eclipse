@@ -94,14 +94,18 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
   GIF, WebP, APNG, HEIC/HEIF, AVIF, JPEG 2000, JPEG XL, QOI, DDS, icons and portable image formats.
   Animated GIF, WebP and APNG import as drawings with exposure timing. Camera RAW is read-only.
   Profiles, alpha and high-depth pixels are retained where their file format supports them.
+  SVG import can keep the picture or convert its paths into editable strokes and fills, with native
+  curve handles and supported gradients. Raster effects and embedded bitmaps require picture import.
+  ICNS import also reads classic masked, indexed, planar RLE, ARGB and JPEG 2000 icon elements.
 - Movie export offers MP4, MOV, AVI, MKV, WebM, M4V, MPEG, WMV, FLV, OGV and MXF, with codec choices
   appropriate to each container. ProRes 4444, PNG, Animation, uncompressed and WebM exports can keep
   transparency in compatible containers. DNxHD uses 1920 by 1080 frames; DNxHR accepts other sizes.
   The scene's audible tracks are mixed into movies. Picture sequences can also be kept separately.
 - Audio export offers WAV, AIFF, MP3, AAC/M4A, Vorbis, Opus, FLAC, ALAC, WMA and AC-3, with sample
   rate and mono/stereo choices. WAV and AIFF support 8/16/24/32-bit integer and 32-bit float files.
-  Export all frames or a selected range, mixed or as separate sound tracks. The mixing engine uses
-  16-bit stereo at 44100 Hz; a deeper output file does not restore precision absent from that mix.
+  Export all frames or a selected range, mixed or as separate sound tracks. Audio decoding, effects
+  and mixing use 64-bit floating-point samples at the export rate, up to 192 kHz for lossless audio.
+  Playback previews use 16-bit stereo at 44100 Hz; movies receive a precise 48 kHz mix.
 - Templates can be kept in a Library and dropped into other scenes.
 - Help pages are built in (Help > Eclipse Help, F1).
 

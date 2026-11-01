@@ -3,6 +3,7 @@
 #include "render/images/ImageApng.h"
 #include "platform/ThirdParty.h"
 #include "model/scene/PsdRead.h"
+#include "model/media/IconRead.h"
 #include "colour/icc/Icc.h"
 
 #include <QColorSpace>
@@ -230,19 +231,7 @@ QImage ImageFiles::load(QString const& path, QString* error, int frame)
         }
     }
     if (QFileInfo(path).suffix().compare(QLatin1String("icns"),Qt::CaseInsensitive)==0) {
-        QFile file(path);
-        if (file.open(QIODevice::ReadOnly)) {
-            QByteArray const data=file.readAll(); QImage best;
-            if (data.startsWith("icns"))
-                for(qsizetype at=8;at+8<=data.size();) {
-                    quint32 const size=qFromBigEndian<quint32>(data.constData()+at+4);
-                    if(size<8 || size>quint64(data.size()-at)) break;
-                    QImage const decoded=QImage::fromData(data.mid(at+8,size-8),"PNG");
-                    if(decoded.width()>best.width()) best=decoded;
-                    at+=size;
-                }
-            if(!best.isNull()) return best;
-        }
+        return IconRead::read(path,error);
     }
     QImageReader reader(path);
     reader.setAutoTransform(true);

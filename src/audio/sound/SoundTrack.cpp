@@ -3,6 +3,7 @@
 
 #include <QHash>
 #include <QMutex>
+#include <QScopedValueRollback>
 
 #include <algorithm>
 #include <cmath>
@@ -14,10 +15,10 @@ namespace Sound {
 
 namespace {
 
-constexpr double kRate = SoundData::kRate;
+thread_local double kRate = SoundData::kRate;
 
 // RBJ biquad, low or high pass, run over each channel.
-void biquad(QVector<float>& s, double cutoff, bool high)
+void biquad(QVector<double>& s, double cutoff, bool high)
 {
     double const w = 2.0 * std::numbers::pi * std::clamp(cutoff, 10.0, kRate * 0.45) / kRate;
     double const alpha = std::sin(w) / (2.0 * 0.7071);
@@ -38,23 +39,23 @@ void biquad(QVector<float>& s, double cutoff, bool high)
             x1 = x;
             y2 = y1;
             y1 = y;
-            s[i] = float(y);
+            s[i] = double(y);
         }
     }
 }
 
-void echo(QVector<float>& s, double delayMs, double feedback, double mix)
+void echo(QVector<double>& s, double delayMs, double feedback, double mix)
 {
     qsizetype const d = std::max<qsizetype>(1, qsizetype(delayMs / 1000.0 * kRate)) * 2;
-    QVector<float> y = s;
+    QVector<double> y = s;
     for (qsizetype i = d; i < y.size(); ++i)
-        y[i] += float(feedback * y[i - d]);
+        y[i] += double(feedback * y[i - d]);
     for (qsizetype i = 0; i < s.size(); ++i)
-        s[i] = float(s[i] * (1.0 - mix) + y[i] * mix);
+        s[i] = double(s[i] * (1.0 - mix) + y[i] * mix);
 }
 
 // Schroeder: four damped combs in parallel, two all-passes after them, for each channel.
-void reverb(QVector<float>& s, double room, double damping, double mix)
+void reverb(QVector<double>& s, double room, double damping, double mix)
 {
     static int const combs[4] = {1116, 1188, 1277, 1356};
     static int const passes[2] = {556, 441};
@@ -63,7 +64,7 @@ void reverb(QVector<float>& s, double room, double damping, double mix)
     for (int c = 0; c < 2; ++c) {
         QVector<double> wet(frames, 0.0);
         for (int k = 0; k < 4; ++k) {
-            int const length = combs[k] + c * 23;
+            int const length = std::max(1, int((combs[k] + c * 23) * kRate / SoundData::kRate));
             QVector<double> line(length, 0.0);
             double filtered = 0.0;
             for (qsizetype i = 0, at = 0; i < frames; ++i, at = (at + 1) % length) {
@@ -74,7 +75,7 @@ void reverb(QVector<float>& s, double room, double damping, double mix)
             }
         }
         for (int k = 0; k < 2; ++k) {
-            int const length = passes[k] + c * 23;
+            int const length = std::max(1, int((passes[k] + c * 23) * kRate / SoundData::kRate));
             QVector<double> line(length, 0.0);
             for (qsizetype i = 0, at = 0; i < frames; ++i, at = (at + 1) % length) {
                 double const held = line[at];
@@ -84,31 +85,31 @@ void reverb(QVector<float>& s, double room, double damping, double mix)
             }
         }
         for (qsizetype i = 0; i < frames; ++i)
-            s[i * 2 + c] = float(s[i * 2 + c] * (1.0 - mix) + wet[i] * 3.0 * mix);
+            s[i * 2 + c] = double(s[i * 2 + c] * (1.0 - mix) + wet[i] * 3.0 * mix);
     }
 }
 
 // Faster or slower by `speed`, the pitch going with it.
-void resample(QVector<float>& s, double speed)
+void resample(QVector<double>& s, double speed)
 {
     qsizetype const frames = s.size() / 2;
     if (frames < 2 || std::abs(speed - 1.0) < 1e-6)
         return;
     qsizetype const out = std::max<qsizetype>(1, qsizetype(frames / speed));
-    QVector<float> r(out * 2);
+    QVector<double> r(out * 2);
     for (qsizetype i = 0; i < out; ++i) {
         double const at = i * speed;
         qsizetype const a = std::min<qsizetype>(frames - 1, qsizetype(at));
         qsizetype const b = std::min<qsizetype>(frames - 1, a + 1);
         double const t = at - double(a);
         for (int c = 0; c < 2; ++c)
-            r[i * 2 + c] = float(s[a * 2 + c] * (1.0 - t) + s[b * 2 + c] * t);
+            r[i * 2 + c] = double(s[a * 2 + c] * (1.0 - t) + s[b * 2 + c] * t);
     }
     s = r;
 }
 
 // Faster or slower by `speed`, the pitch kept: windows of the sound overlapped anew, each moved to where it fits best (WSOLA).
-void tempo(QVector<float>& s, double speed)
+void tempo(QVector<double>& s, double speed)
 {
     qsizetype const frames = s.size() / 2;
     if (frames < 2 || std::abs(speed - 1.0) < 1e-6)
@@ -118,8 +119,8 @@ void tempo(QVector<float>& s, double speed)
     while(window<2048 && window*2<=frames/2) window*=2;
     int const hop=window/2,search=std::min(384,hop/2);
     qsizetype const out = qsizetype(frames / speed);
-    QVector<float> r((out + window) * 2, 0.0f);
-    QVector<float> weight(out + window, 0.0f);
+    QVector<double> r((out + window) * 2, 0.0);
+    QVector<double> weight(out + window, 0.0);
     QVector<double> hann(window);
     for (int i = 0; i < window; ++i)
         hann[i] = 0.5 - 0.5 * std::cos(2.0 * std::numbers::pi * i / window);
@@ -147,9 +148,9 @@ void tempo(QVector<float>& s, double speed)
             qsizetype const src = from + i;
             if (src >= frames)
                 break;
-            r[(to + i) * 2] += float(s[src * 2] * hann[i]);
-            r[(to + i) * 2 + 1] += float(s[src * 2 + 1] * hann[i]);
-            weight[to + i] += float(hann[i]);
+            r[(to + i) * 2] += double(s[src * 2] * hann[i]);
+            r[(to + i) * 2 + 1] += double(s[src * 2 + 1] * hann[i]);
+            weight[to + i] += double(hann[i]);
         }
         previous = from;
     }
@@ -177,20 +178,21 @@ QString keyOf(Layer const& layer, double fps)
 
 }  // namespace
 
-void applyEffect(SoundEffect const& e, QVector<float>& s)
+void applyEffect(SoundEffect const& e, QVector<double>& s, int rate)
 {
+    QScopedValueRollback<double> sampling(kRate, rate);
     if (!e.enabled)
         return;
     switch (e.type) {
     case SoundEffect::Volume: {
-        float const g = float(std::pow(10.0, e.a / 20.0));
-        for (float& v : s)
+        double const g = double(std::pow(10.0, e.a / 20.0));
+        for (double& v : s)
             v *= g;
         break;
     }
     case SoundEffect::Balance: {
         double const p = std::clamp(e.a / 100.0, -1.0, 1.0);
-        float const left = float(std::min(1.0, 1.0 - p)), right = float(std::min(1.0, 1.0 + p));
+        double const left = double(std::min(1.0, 1.0 - p)), right = double(std::min(1.0, 1.0 + p));
         for (qsizetype i = 0; i + 1 < s.size(); i += 2) {
             s[i] *= left;
             s[i + 1] *= right;
@@ -229,8 +231,9 @@ void applyEffect(SoundEffect const& e, QVector<float>& s)
     }
 }
 
-std::shared_ptr<SoundData> track(Layer const& layer, double fps, QString* error)
+std::shared_ptr<SoundData> trackPrecise(Layer const& layer, double fps, int rate, QString* error)
 {
+    QScopedValueRollback<double> sampling(kRate, rate);
     QVector<SoundClip> const clips = layer.clipsOfSound();
     if (clips.isEmpty())
         return nullptr;
@@ -239,17 +242,17 @@ std::shared_ptr<SoundData> track(Layer const& layer, double fps, QString* error)
                        && clips[0].loops == 1 && clips[0].volume == 1.0 && clips[0].envelope.isEmpty() && layer.soundVolume == 1.0
                        && std::none_of(layer.soundEffects.cbegin(), layer.soundEffects.cend(), [](SoundEffect const& e) { return e.enabled; });
     if (plain)
-        return load(clips[0].file, error);
+        return loadPrecise(clips[0].file, rate, error);
 
     static QMutex lock;
     static QHash<QString, std::shared_ptr<SoundData>> made;
-    QString key = keyOf(layer, fps);
+    QString key = keyOf(layer, fps) + QStringLiteral("|rate%1").arg(rate);
     QVector<std::shared_ptr<SoundData>> sources;
     QHash<QString,std::shared_ptr<SoundData>> decoded;
     bool cacheable=true;
     for(SoundClip const& clip : clips) {
         QString why;
-        auto source=decoded.contains(clip.file)?decoded.value(clip.file):load(clip.file,&why);
+        auto source=decoded.contains(clip.file)?decoded.value(clip.file):loadPrecise(clip.file,rate,&why);
         decoded.insert(clip.file,source);
         if(!source && error && error->isEmpty()) *error=why;
         key+=QLatin1Char('|')+(source?QString::fromLatin1(source->contentHash.toHex()):QStringLiteral("missing"));
@@ -262,7 +265,7 @@ std::shared_ptr<SoundData> track(Layer const& layer, double fps, QString* error)
             return *found;
     }
     fps = fps > 0.0 ? fps : 24.0;
-    QVector<float> sum;
+    QVector<double> sum;
     QVector<QPair<qint64,qint64>> ranges;
     bool any = false;
     for (qsizetype index=0;index<clips.size();++index) {
@@ -279,34 +282,36 @@ std::shared_ptr<SoundData> track(Layer const& layer, double fps, QString* error)
         if (begin + span <= 0)
             continue;
         if (sum.size() < (begin + span) * 2)
-            sum.resize((begin + span) * 2, 0.0f);
+            sum.resize((begin + span) * 2, 0.0);
         any = true;
         ranges.push_back({std::max<qint64>(0,begin),begin+std::min(span,played)});
         for (qint64 i = std::max<qint64>(0, -begin); i < span; ++i) {
             if (i >= played)
                 break;      // a stop after the loops end: silence
             qint64 const src = from + i % part;
-            float const gain = float(clip.volume * clip.envelopeAt(double(i) / kRate * fps));
-            sum[(begin + i) * 2] += data->samples[src * 2] / 32768.0f * gain;
-            sum[(begin + i) * 2 + 1] += data->samples[src * 2 + 1] / 32768.0f * gain;
+            double const gain = double(clip.volume * clip.envelopeAt(double(i) / kRate * fps));
+            sum[(begin + i) * 2] += data->precise[src * 2] * gain;
+            sum[(begin + i) * 2 + 1] += data->precise[src * 2 + 1] * gain;
         }
     }
     if (!any)
         return nullptr;
     if (layer.soundVolume != 1.0)
-        for (float& v : sum)
-            v *= float(layer.soundVolume);
+        for (double& v : sum)
+            v *= double(layer.soundVolume);
     for (SoundEffect const& effect : layer.soundEffects) {
         qsizetype const before=sum.size();
-        applyEffect(effect, sum);
+        applyEffect(effect, sum, rate);
         if(before>0 && before!=sum.size()) for(auto& span : ranges) { span.first=qint64(std::floor(double(span.first)*sum.size()/before)); span.second=qint64(std::ceil(double(span.second)*sum.size()/before)); }
         if(effect.enabled && (effect.type==SoundEffect::Echo || effect.type==SoundEffect::Reverb) && effect.c>0) ranges={{0,sum.size()/2}};
     }
     auto data = std::make_shared<SoundData>();
     data->ranges=ranges;
+    data->rate=rate;
+    data->precise=sum;
     data->samples.resize(sum.size());
     for (qsizetype i = 0; i < sum.size(); ++i)
-        data->samples[i] = qint16(std::clamp(sum[i], -1.0f, 1.0f) * 32767.0f);
+        data->samples[i] = qint16(std::clamp(sum[i], -1.0, 32767.0 / 32768.0) * 32768.0);
     QMutexLocker locked(&lock);
     if (made.size() > 32)
         made.clear();
@@ -315,3 +320,16 @@ std::shared_ptr<SoundData> track(Layer const& layer, double fps, QString* error)
 }
 
 }  // namespace Sound
+
+namespace Sound {
+std::shared_ptr<SoundData> track(Layer const& layer, double fps, QString* error)
+{
+    return trackPrecise(layer, fps, SoundData::kRate, error);
+}
+void applyEffect(SoundEffect const& effect, QVector<float>& samples)
+{
+    QVector<double> precise(samples.cbegin(), samples.cend());
+    applyEffect(effect, precise, SoundData::kRate);
+    samples = QVector<float>(precise.cbegin(), precise.cend());
+}
+}

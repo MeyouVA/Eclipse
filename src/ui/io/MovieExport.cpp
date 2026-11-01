@@ -55,9 +55,9 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     double const scale = std::clamp(options.scale, 0.05, 8.0);
     int const wide = std::max(2, int(std::lround(scene.width * scale))), high = std::max(2, int(std::lround(scene.height * scale)));
     if(codecId==MediaFormats::DnxHD && (wide!=1920 || high!=1080)) return fail(QStringLiteral("DNxHD requires 1920 by 1080 frames. Use DNxHR for other dimensions."));
-    QVector<qint16> const sound = gif ? QVector<qint16>() : Sound::mix(scene);
+    QVector<double> const sound = gif ? QVector<double>() : Sound::mixPrecise(scene,0,-1,48000);
     QString const wav = scratch.filePath(QStringLiteral("sound.wav"));
-    if (!sound.isEmpty() && (!scratch.isValid() || !Sound::writeWav(wav, sound, error)))
+    if (!sound.isEmpty() && (!scratch.isValid() || !Sound::writePreciseWav(wav, sound, 48000, error)))
         return false;
 
     QStringList args{QStringLiteral("-y"), QStringLiteral("-v"), QStringLiteral("error"),

@@ -8,15 +8,16 @@
 <li><b>Movie</b>: its frames on a new layer and its sound on a sound layer (needs ffmpeg).</li>
 <li><b>To Reference View</b>: pictures to look at while drawing.</li>
 <li><b>From Scanner</b>: the system's own scanning dialog (it drives TWAIN scanners too); the pages scanned are kept in Pictures\Eclipse Scans and open in Import Images, ready to bring in.</li>
+<li><b>SVG artwork</b>: in Import Images, choose <b>SVG: Convert to Editable Strokes and Fills</b> to keep vector curves as editable drawing objects. Solid lines retain their control handles; fills and supported gradients remain editable. Text becomes outlines. Dashed or unevenly scaled lines become filled outlines to preserve their appearance. Keep the picture for SVGs with raster images, effects or unsupported gradients.</li>
 <li><b>SWF</b>: a Flash movie's main timeline, a drawing for each frame - shapes, movie clips playing inside it, morph shapes, masks, colour effects, bitmaps, text, video (needs ffmpeg) and sound.</li>
 <li><b>FLA (Flash Document)</b>: a Flash document of the XFL kind (CS5 and after), a layer for each of its layers - symbols, motion and shape tweens with their eases, masks, text, gradients, ragged, dashed and dotted lines, lines of varying width, blend modes and filters, bitmaps, video and sound. Its colours become a palette, its frame labels scene markers. Scripts are not run: they are kept as notes on markers.</li>
 <li><b>3D Models</b>: Wavefront OBJ files (with their MTL colours and textures) on a layer of their own. Turn the layer in space - the X and Y angles of the Transform tool, Layer Properties or the Timeline - and the model turns, drawn with depth and light. Several files make a 3D animation, one a frame.</li>
 </ul>
 <h2>Export</h2>
 <ul>
-<li><b>Images</b>: a numbered picture for each frame, in PNG, TGA, TIFF, PSD (its layers apart too, if you like), EXR, SGI, DPX, JPEG or BMP - see <a href="render.html">Rendering and preview</a>, and <a href="colourmanagement.html">Colour management</a> for their colour spaces.</li>
+<li><b>Images</b>: a numbered picture for each frame, in the format chosen in the dialog, including PNG, TIFF, layered PSD, EXR, WebP, HEIC, AVIF, JPEG 2000 and JPEG XL - see <a href="render.html">Rendering and preview</a>, and <a href="colourmanagement.html">Colour management</a> for their colour spaces.</li>
 <li><b>Movie</b> and <b>Animated GIF</b> (need ffmpeg), at the scene's size, a part of it, or a width of your own.</li>
-<li><b>Audio</b>: the sound layers mixed, as a WAV file.</li>
+<li><b>Audio</b>: all frames or a frame range, mixed or as separate sound tracks. Choose WAV, AIFF, MP3, AAC/M4A, Vorbis, Opus, FLAC, ALAC, WMA or AC-3, with the rate, bit depth and channel choices available for that format. WAV, AIFF, FLAC and ALAC offer rates up to 192 kHz. Mixing keeps floating-point precision until encoding; movie sound is mixed at 48 kHz. Playback previews use 16-bit stereo at 44100 Hz.</li>
 <li><b>SWF</b>: the scene as a Flash movie of vector shapes, with its sound.</li>
 </ul>
 <h2>Keeping work safe</h2>

@@ -94,6 +94,10 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
 
     QGroupBox* const asBox = new QGroupBox(tr("Import As"), &dialog);
     QRadioButton* const bitmap = new QRadioButton(tr("Keep As Original Bitmap"), asBox);
+    QRadioButton* const svg = new QRadioButton(tr("SVG: Convert to Editable Strokes and Fills"), asBox);
+    svg->setObjectName(QStringLiteral("ImportSvgStrokes"));
+    svg->setEnabled(!linked);
+    svg->setToolTip(tr("Keep SVG curves as editable vector artwork. Other image types remain pictures."));
     QRadioButton* const vector = new QRadioButton(tr("Vector Drawing (Black and White)"), asBox);
     QRadioButton* const centre = new QRadioButton(tr("Vector Drawing (Centre Lines)"), asBox);
     centre->setObjectName(QStringLiteral("ImportCentreLines"));
@@ -133,6 +137,7 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     connect(centre, &QRadioButton::toggled, threshold, thresholdUsed);
     QFormLayout* const asLayout = new QFormLayout(asBox);
     asLayout->addRow(bitmap);
+    asLayout->addRow(svg);
     // Photoshop files: each of their layers a layer of its own (onto new layers, kept as bitmaps).
     QCheckBox* const psdLayers = new QCheckBox(tr("Photoshop Files: Import Each Layer as a Layer"), asBox);
     psdLayers->setObjectName(QStringLiteral("ImportPsdLayers"));
@@ -228,6 +233,7 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     options.pan = alignment->currentIndex() == 1;
     options.paper = leavePaper->isChecked() ? paper->property("colour").value<QColor>() : QColor();
     options.vectorize = vector->isChecked() || colourVector->isChecked() || centre->isChecked();
+    options.svgStrokes = svg->isChecked();
     options.centreLines = centre->isChecked();
     options.colours = colourVector->isChecked() ? colourCount->value() : 0;
     options.threshold = threshold->value();

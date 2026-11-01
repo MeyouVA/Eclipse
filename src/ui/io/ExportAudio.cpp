@@ -20,10 +20,10 @@
 
 bool MainWindow::exportAudio(QString const& path,QString* error)
 {
-    QVector<qint16> const sound=Sound::mix(m_document->scene());
-    if(sound.isEmpty()) { if(error) *error=tr("The scene has no sound to export: add a sound layer first and check that it is enabled."); return false; }
     AudioFiles::Options options;
     if(QFileInfo(path).suffix().compare(QLatin1String("opus"),Qt::CaseInsensitive)==0) options.rate=48000;
+    QVector<double> const sound=Sound::mixPrecise(m_document->scene(),0,-1,options.rate);
+    if(sound.isEmpty()) { if(error) *error=tr("The scene has no sound to export: add a sound layer first and check that it is enabled."); return false; }
     return AudioFiles::write(path,sound,options,error);
 }
 
@@ -51,7 +51,8 @@ void MainWindow::onActionExportAudio()
         if(!entry) return;
         int previous=rate->currentData().toInt(); if(!previous) previous=44100;
         rate->clear();
-        for(int hz : {8000,11025,12000,16000,22050,24000,32000,44100,48000}) {
+        for(int hz : {8000,11025,12000,16000,22050,24000,32000,44100,48000,88200,96000,176400,192000}) {
+            if(hz>48000 && entry->id!=QLatin1String("wav") && entry->id!=QLatin1String("aiff") && entry->id!=QLatin1String("flac") && entry->id!=QLatin1String("alac")) continue;
             if(entry->id==QLatin1String("opus") && hz!=8000 && hz!=12000 && hz!=16000 && hz!=24000 && hz!=48000) continue;
             if(entry->id==QLatin1String("ac3") && hz!=32000 && hz!=44100 && hz!=48000) continue;
             rate->addItem(tr("%1 Hz").arg(hz),hz);
@@ -79,7 +80,7 @@ void MainWindow::onActionExportAudio()
     int const from=range->currentIndex()==0?0:first->value()-1,through=range->currentIndex()==0?scene.frameCount()-1:last->value()-1;
     QString error; int written=0;
     auto keep=[&](Scene const& source,QString const& target) {
-        QVector<qint16> const samples=Sound::mix(source,from,through);
+        QVector<double> const samples=Sound::mixPrecise(source,from,through,options.rate);
         if(samples.isEmpty()) return true;
         if(!AudioFiles::write(target,samples,options,&error)) return false;
         ++written; return true;

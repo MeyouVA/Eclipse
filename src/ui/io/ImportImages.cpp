@@ -49,6 +49,7 @@
 #include "ui/panels/PalettePanel.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/io/ImportExportPrivate.h"
+#include "ui/io/SvgStrokes.h"
 #include "formats/flash/SwfImport.h"
 #include "formats/flash/FlaImport.h"
 #include "actions/theme/AppSettings.h"
@@ -693,6 +694,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
 
     QVector<Drawing> drawings;
     QVector<int> holds;
+    QVector<Swatch> svgGradients;
     // Convert Image Colour Space on Import: the space the pictures are read in (the file's own profile is taken to sRGB first).
     QString const fromSpace = options.convertColour ? (options.sourceSpace.isEmpty() ? QStringLiteral("sRGB") : options.sourceSpace) : QString();
     QString const layerSpace = target >= 0 ? (scene.layers[target].colourSpace.isEmpty() ? scene.workingSpace : scene.layers[target].colourSpace) : QString();
@@ -701,6 +703,26 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         unconverted = true;
     for (QString const& file : options.files) {
         QString why;
+        if (options.svgStrokes && !options.linked && QFileInfo(file).suffix().compare(QLatin1String("svg"), Qt::CaseInsensitive) == 0) {
+            SvgStrokes::Result svg;
+            if (!SvgStrokes::read(file, svg, &why)) return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), why));
+            double const across = double(scene.width) / svg.size.width(), down = double(scene.height) / svg.size.height();
+            double const scale = !options.fit ? 1.0 : options.pan ? std::max(across, down) : std::min(across, down);
+            QTransform const placement = QTransform::fromScale(scale, scale) * QTransform::fromTranslate((scene.width - svg.size.width() * scale) / 2.0, (scene.height - svg.size.height() * scale) / 2.0);
+            for (Fill& fill : svg.drawing.fills) { fill.transform(placement); if (fill.swatch >= 0) fill.swatch += int(svgGradients.size()); }
+            for (Stroke& stroke : svg.drawing.strokes) stroke.transform(placement);
+            if (!unconverted) {
+                QString const source = fromSpace.isEmpty() ? QStringLiteral("sRGB") : fromSpace;
+                QString const palette = scene.colourManaged && !scene.palettesInSrgb ? scene.workingSpace : QStringLiteral("sRGB");
+                Cms::Transform const convert = Cms::between(source, palette);
+                for (Fill& fill : svg.drawing.fills) fill.color = convert.apply(fill.color);
+                for (Stroke& stroke : svg.drawing.strokes) stroke.color = convert.apply(stroke.color);
+                for (Swatch& gradient : svg.gradients) for (GradientStop& stop : gradient.stops) stop.color = convert.apply(stop.color);
+            }
+            svgGradients += svg.gradients;
+            drawings.push_back(svg.drawing); holds.push_back(std::max(1, options.hold));
+            continue;
+        }
         QVector<ImageFiles::Frame> const frames=ImageFiles::readSequence(file,&why);
         if (frames.isEmpty())
             return fail(tr("Could not read %1:\n%2").arg(QDir::toNativeSeparators(file), why));
@@ -794,6 +816,15 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
     }
     QString const name = options.layerName.trimmed().isEmpty() ? QFileInfo(options.files.first()).completeBaseName() : options.layerName.trimmed();
     m_document->beginMacro(tr("Import Images"));
+    QVector<int> svgSwatches;
+    for (Swatch const& gradient : std::as_const(svgGradients)) {
+        int const id = m_document->addSwatch(gradient.name, gradient.color);
+        m_document->setSwatchGradient(id, gradient.kind, gradient.stops);
+        svgSwatches.push_back(id);
+    }
+    for (Drawing& drawing : drawings)
+        for (Fill& fill : drawing.fills)
+            if (fill.swatch >= 0 && fill.swatch < svgSwatches.size()) fill.swatch = svgSwatches[fill.swatch];
     int const at = m_document->importDrawingSequence(target, name, options.newLayer ? 0 : frame(), drawings, holds);
     // A new layer reads its pictures in their source colour space from now on (Layer Properties: Colour Space).
     if (at >= 0 && target < 0 && !fromSpace.isEmpty() && !unconverted && !options.vectorize)

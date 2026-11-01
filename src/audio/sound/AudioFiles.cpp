@@ -7,7 +7,7 @@
 #include <QTemporaryDir>
 #include <algorithm>
 
-bool AudioFiles::write(QString const& path,QVector<qint16> const& stereo,Options const& options,QString* error)
+static bool writeAudio(QString const& path,QVector<double> const& stereo,AudioFiles::Options const& options,int sourceRate,QString* error)
 {
     auto fail=[&](QString const& message) { if(error) *error=message; return false; };
     auto const* format=MediaFormats::audio(options.format.isEmpty()?QFileInfo(path).suffix():options.format);
@@ -21,7 +21,7 @@ bool AudioFiles::write(QString const& path,QVector<qint16> const& stereo,Options
     QTemporaryDir folder;
     if(!folder.isValid()) return fail(QStringLiteral("Cannot create an audio export folder."));
     QString const input=folder.filePath(QStringLiteral("source.wav")),output=folder.filePath(QStringLiteral("output.")+format->suffix);
-    if(!Sound::writeWav(input,stereo,error)) return false;
+    if(!Sound::writePreciseWav(input,stereo,sourceRate,error)) return false;
     QString encoder=format->encoder;
     if(format->pcm) {
         QString const endian=format->id==QLatin1String("wav")?QStringLiteral("le"):QStringLiteral("be");
@@ -42,4 +42,16 @@ bool AudioFiles::write(QString const& path,QVector<qint16> const& stereo,Options
         return fail(message.isEmpty()?process.errorString():message);
     }
     return AtomicFile::replaceFrom(output,path,error);
+}
+
+bool AudioFiles::write(QString const& path,QVector<double> const& stereo,Options const& options,QString* error)
+{
+    return writeAudio(path,stereo,options,options.rate,error);
+}
+
+bool AudioFiles::write(QString const& path,QVector<qint16> const& stereo,Options const& options,QString* error)
+{
+    QVector<double> precise(stereo.size());
+    for(qsizetype i=0;i<stereo.size();++i) precise[i]=stereo[i]/32768.0;
+    return writeAudio(path,precise,options,SoundData::kRate,error);
 }

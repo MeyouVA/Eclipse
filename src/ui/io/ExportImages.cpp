@@ -280,7 +280,7 @@ int MainWindow::renderWrites(QString* error, QProgressDialog* progress)
             if(audio && QFileInfo(where).suffix().isEmpty()) where+=QLatin1Char('.')+audio->suffix;
             if(options.format==QLatin1String("opus")) options.rate=48000;
             QDir().mkpath(QFileInfo(where).absolutePath());
-            ok=AudioFiles::write(where,Sound::mix(scene),options,&why);
+            ok=AudioFiles::write(where,Sound::mixPrecise(scene,0,-1,options.rate),options,&why);
         } else if (w.movie) {
             MovieExport::Options options;
             options.codec=w.codec;

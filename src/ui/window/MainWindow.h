@@ -125,6 +125,7 @@ public:
 
     // ---- bringing things in and writing things out (the dialogs call these) ----------------
     struct ImageImport {
+        bool svgStrokes = false;
         QStringList files;
         bool newLayer = true;       // else onto the current layer, from the current frame
         QString layerName;          // of the new layer; empty: the name of the first file

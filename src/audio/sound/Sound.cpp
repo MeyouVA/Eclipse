@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QMutex>
 #include <QProcess>
 #include <QStandardPaths>
 
@@ -41,12 +42,12 @@ QString findFfmpeg()
 
 // ---- reading ------------------------------------------------------------------------------
 
-static bool decodeWithFfmpeg(QString const& ffmpeg, QString const& path, QVector<qint16>& out, QString* error)
+static bool decodeWithFfmpeg(QString const& ffmpeg, QString const& path, QVector<double>& out, int rate, QString* error)
 {
     QProcess process;
     process.start(ffmpeg, {QStringLiteral("-v"), QStringLiteral("error"), QStringLiteral("-i"), path, QStringLiteral("-vn"),
-                           QStringLiteral("-f"), QStringLiteral("s16le"), QStringLiteral("-acodec"), QStringLiteral("pcm_s16le"),
-                           QStringLiteral("-ac"), QStringLiteral("2"), QStringLiteral("-ar"), QString::number(SoundData::kRate),
+                           QStringLiteral("-f"), QStringLiteral("f64le"), QStringLiteral("-acodec"), QStringLiteral("pcm_f64le"),
+                           QStringLiteral("-ac"), QStringLiteral("2"), QStringLiteral("-ar"), QString::number(rate),
                            QStringLiteral("-")});
     if (!process.waitForStarted(10000) || !process.waitForFinished(300000) || process.exitCode() != 0) {
         if (error)
@@ -57,13 +58,13 @@ static bool decodeWithFfmpeg(QString const& ffmpeg, QString const& path, QVector
         return false;
     }
     QByteArray const bytes = process.readAllStandardOutput();
-    out.resize(bytes.size() / 2 / 2 * 2);  // whole stereo frames only
-    memcpy(out.data(), bytes.constData(), size_t(out.size()) * 2);
+    out.resize(bytes.size() / 8 / 2 * 2);  // whole stereo frames only
+    memcpy(out.data(), bytes.constData(), size_t(out.size()) * sizeof(double));
     return true;
 }
 
 // Plain PCM WAV (8, 16, 24 or 32 bit integers), any rate, any number of channels.
-static bool readWav(QString const& path, QVector<qint16>& out, QString* error)
+static bool readWav(QString const& path, QVector<double>& out, int outputRate, QString* error)
 {
     auto fail = [&](char const* why) {
         if (error)
@@ -84,24 +85,32 @@ static bool readWav(QString const& path, QVector<qint16>& out, QString* error)
     for (qsizetype at = 12; at + 8 <= data.size();) {
         QByteArray const id = data.mid(at, 4);
         qsizetype const size = qsizetype(u32(at + 4));
-        if (id == "fmt " && at + 8 + 16 <= data.size()) {
+        if (size > data.size()-at-8) return fail("Truncated WAV data.");
+        if (id == "fmt " && size >= 16) {
             format = int(u16(at + 8));
             channels = int(u16(at + 10));
             rate = int(u32(at + 12));
             bits = int(u16(at + 22));
+            if(format==0xFFFE && size>=40) format=int(u16(at+32));
         } else if (id == "data") {
             pcm = data.mid(at + 8, size);
         }
         at += 8 + size + (size & 1);
     }
-    // 0xFFFE is the "extensible" header, which for our purposes holds the same integers.
-    if ((format != 1 && format != 0xFFFE) || channels < 1 || rate < 1000 || (bits != 8 && bits != 16 && bits != 24 && bits != 32) || pcm.isEmpty())
+    if ((format != 1 && format != 3) || channels < 1 || rate < 1000 || (format==3 ? bits!=32 && bits!=64 : bits!=8 && bits!=16 && bits!=24 && bits!=32) || pcm.isEmpty())
         return fail("This kind of WAV file needs the bundled media tools. Run scripts/install_thirdparty.bat.");
 
     int const bytesPer = bits / 8;
     qint64 const frames = pcm.size() / (bytesPer * channels);
+    if(!frames) return fail("The WAV contains no complete audio frames.");
     auto sample = [&](qint64 frame, int channel) -> double {
         char const* const p = pcm.constData() + (frame * channels + std::min(channel, channels - 1)) * bytesPer;
+        if(format==3) {
+            double value=0;
+            if(bits==32) { float sample; memcpy(&sample,p,4); value=sample; }
+            else memcpy(&value,p,8);
+            return std::isfinite(value)?value:0.0;
+        }
         switch (bytesPer) {
         case 1:
             return (int(quint8(p[0])) - 128) / 128.0;
@@ -114,34 +123,38 @@ static bool readWav(QString const& path, QVector<qint16>& out, QString* error)
         }
     };
     // To our rate, taking each new sample between the two old ones around it.
-    qint64 const outFrames = frames * SoundData::kRate / rate;
+    qint64 const outFrames = frames * outputRate / rate;
     out.resize(outFrames * 2);
     for (qint64 i = 0; i < outFrames; ++i) {
-        double const at = double(i) * rate / SoundData::kRate;
+        double const at = double(i) * rate / outputRate;
         qint64 const a = std::min<qint64>(frames - 1, qint64(at));
         qint64 const b = std::min<qint64>(frames - 1, a + 1);
         double const mixAmount = at - double(a);
         for (int c = 0; c < 2; ++c) {
             double const v = sample(a, c) * (1.0 - mixAmount) + sample(b, c) * mixAmount;
-            out[i * 2 + c] = qint16(std::clamp(v, -1.0, 1.0) * 32767.0);
+            out[i * 2 + c] = v;
         }
     }
     return true;
 }
 
-std::shared_ptr<SoundData> load(QString const& path, QString* error)
+std::shared_ptr<SoundData> loadPrecise(QString const& path, int rate, QString* error)
 {
+    if(rate<8000 || rate>192000) { if(error) *error=QStringLiteral("Invalid audio sample rate."); return nullptr; }
     struct Cached { QByteArray hash; std::shared_ptr<SoundData> data; };
     static QHash<QString, Cached> cache;
-    QString const key = QFileInfo(path).absoluteFilePath();
-    QFile source(key);
+    static QMutex mutex;
+    QMutexLocker locked(&mutex);
+    QString const filePath = QFileInfo(path).absoluteFilePath();
+    QString const key = filePath + QLatin1Char('|') + QString::number(rate);
+    QFile source(filePath);
     QCryptographicHash content(QCryptographicHash::Sha256);
     bool const readable = source.open(QIODevice::ReadOnly) && content.addData(&source);
     QByteArray const hash = readable ? content.result() : QByteArray();
     source.close();
     if (auto const found = cache.constFind(key); readable && found != cache.constEnd() && found->hash == hash)
         return found->data;
-    if (!QFileInfo::exists(key)) {
+    if (!QFileInfo::exists(filePath)) {
         if (error)
             *error = QStringLiteral("The sound file is missing: %1").arg(path);
         return nullptr;
@@ -150,32 +163,43 @@ std::shared_ptr<SoundData> load(QString const& path, QString* error)
     data->contentHash=hash;
     QString const ffmpeg = findFfmpeg();
     QString why;
-    bool ok = !ffmpeg.isEmpty() && decodeWithFfmpeg(ffmpeg, key, data->samples, &why);
+    bool ok = !ffmpeg.isEmpty() && decodeWithFfmpeg(ffmpeg, filePath, data->precise, rate, &why);
     if (!ok)
-        ok = readWav(key, data->samples, ffmpeg.isEmpty() ? &why : nullptr);
-    if (!ok || data->samples.isEmpty()) {
+        ok = readWav(filePath, data->precise, rate, ffmpeg.isEmpty() ? &why : nullptr);
+    if (!ok || data->precise.isEmpty()) {
         if (error)
             *error = why.isEmpty() ? QStringLiteral("The file holds no sound.") : why;
         return nullptr;
     }
+    data->rate = rate;
+    data->samples.resize(data->precise.size());
+    for (qsizetype i = 0; i < data->precise.size(); ++i)
+        data->samples[i] = qint16(std::clamp(data->precise[i], -1.0, 32767.0 / 32768.0) * 32768.0);
+    if (cache.size() > 32) cache.clear();
     cache.insert(key, Cached{hash, data});
     return data;
 }
 
+std::shared_ptr<SoundData> load(QString const& path, QString* error)
+{
+    return loadPrecise(path, SoundData::kRate, error);
+}
+
 // ---- mixing and writing -------------------------------------------------------------------
 
-QVector<qint16> mix(Scene const& scene,int firstFrame,int lastFrame)
+QVector<double> mixPrecise(Scene const& scene,int firstFrame,int lastFrame,int rate)
 {
-    qint64 const total = qint64(std::ceil(scene.frameCount() / scene.fps * SoundData::kRate));
-    QVector<qint32> sum(total * 2, 0);
+    if(rate<8000 || rate>192000 || !std::isfinite(scene.fps) || scene.fps<=0) return {};
+    qint64 const total = qint64(std::ceil(scene.frameCount() / scene.fps * rate));
+    QVector<double> sum(total * 2, 0);
     bool any = false;
     // Where in the sound a frame of the scene starts.
-    auto at = [&scene](double frame) { return qint64(std::llround(frame / scene.fps * SoundData::kRate)); };
+    auto at = [&scene,rate](double frame) { return qint64(std::llround(frame / scene.fps * rate)); };
     for (int l = 0; l < scene.layers.size(); ++l) {
         Layer const& layer = scene.layers[l];
         if (layer.kind != Layer::Sound || !scene.enabled(l))
             continue;
-        std::shared_ptr<SoundData> const data = track(layer, scene.fps);
+        std::shared_ptr<SoundData> const data = trackPrecise(layer, scene.fps, rate);
         if (!data)
             continue;
         if (!layer.soundFrames.isEmpty()) {
@@ -186,8 +210,8 @@ QVector<qint16> mix(Scene const& scene,int firstFrame,int lastFrame)
                 qint64 const to = at(f), length = at(f + 1) - to, from = at(frame);
                 if(f>=firstFrame && (lastFrame<0 || f<=lastFrame) && data->hasSamples(from,from+length)) any=true;
                 for (qint64 i = 0; i < length && to + i < total && from + i < data->frames(); ++i) {
-                    sum[(to + i) * 2] += data->samples[(from + i) * 2];
-                    sum[(to + i) * 2 + 1] += data->samples[(from + i) * 2 + 1];
+                    sum[(to + i) * 2] += data->precise[(from + i) * 2];
+                    sum[(to + i) * 2 + 1] += data->precise[(from + i) * 2 + 1];
                 }
             }
             continue;
@@ -198,8 +222,8 @@ QVector<qint16> mix(Scene const& scene,int firstFrame,int lastFrame)
         qint64 const rangeFirst=at(std::max(0,firstFrame)),rangeEnd=at(lastFrame<0?scene.frameCount():std::min(scene.frameCount(),lastFrame+1));
         if(data->hasSamples(std::max(first,rangeFirst-offset),std::min(count,rangeEnd-offset))) any=true;
         for (qint64 i = first; i < count; ++i) {
-            sum[(offset + i) * 2] += data->samples[i * 2];
-            sum[(offset + i) * 2 + 1] += data->samples[i * 2 + 1];
+            sum[(offset + i) * 2] += data->precise[i * 2];
+            sum[(offset + i) * 2 + 1] += data->precise[i * 2 + 1];
         }
     }
     std::function<void(QVector<Layer> const&, QVector<int> const&, int)> inside = [&](QVector<Layer> const& layers, QVector<int> const& shown, int depth) {
@@ -212,7 +236,7 @@ QVector<qint16> mix(Scene const& scene,int firstFrame,int lastFrame)
             if (!nestedScene.enabled(l))
                 continue;
             if (layer.kind == Layer::Sound && depth > 0) {
-                std::shared_ptr<SoundData> const data = track(layer, scene.fps);
+                std::shared_ptr<SoundData> const data = trackPrecise(layer, scene.fps, rate);
                 if (!data)
                     continue;
                 for (int f = 0; f < shown.size(); ++f) {
@@ -228,8 +252,8 @@ QVector<qint16> mix(Scene const& scene,int firstFrame,int lastFrame)
                         qint64 const s = from + i;
                         if (s < 0 || s >= data->frames())
                             continue;
-                        sum[(to + i) * 2] += data->samples[s * 2];
-                        sum[(to + i) * 2 + 1] += data->samples[s * 2 + 1];
+                        sum[(to + i) * 2] += data->precise[s * 2];
+                        sum[(to + i) * 2 + 1] += data->precise[s * 2 + 1];
                     }
                 }
             } else if (layer.showsSymbol()) {
@@ -252,15 +276,24 @@ QVector<qint16> mix(Scene const& scene,int firstFrame,int lastFrame)
             every[f] = f;
         inside(scene.layers, every, 0);
     }
-    QVector<qint16> out;
+    QVector<double> out;
     if (!any)
         return out;
     out.resize(sum.size());
     for (qsizetype i = 0; i < sum.size(); ++i)
-        out[i] = qint16(std::clamp(sum[i], -32768, 32767));
+        out[i] = sum[i];
     qint64 const begin=std::clamp<qint64>(at(std::max(0,firstFrame))*2,0,out.size());
     qint64 const end=lastFrame<0?out.size():std::clamp<qint64>(at(std::min(scene.frameCount(),lastFrame+1))*2,begin,out.size());
     return out.mid(begin,end-begin);
+}
+
+QVector<qint16> mix(Scene const& scene,int first,int last)
+{
+    QVector<double> const source = mixPrecise(scene, first, last, SoundData::kRate);
+    QVector<qint16> result(source.size());
+    for (qsizetype i = 0; i < source.size(); ++i)
+        result[i] = qint16(std::clamp(source[i], -1.0, 32767.0 / 32768.0) * 32768.0);
+    return result;
 }
 
 bool writeWav(QString const& path, QVector<qint16> const& stereo, QString* error)

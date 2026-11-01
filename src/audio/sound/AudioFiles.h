@@ -12,4 +12,5 @@ struct Options {
     int kbps=192;
 };
 bool write(QString const& path,QVector<qint16> const& stereo,Options const& options,QString* error=nullptr);
+bool write(QString const& path,QVector<double> const& stereo,Options const& options,QString* error=nullptr);
 }
