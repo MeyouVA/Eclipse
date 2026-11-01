@@ -36,7 +36,7 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     QTemporaryDir scratch;
     QString const suffix = QFileInfo(path).suffix().toLower();
     auto const* format=MediaFormats::video(suffix);
-    if(!format) return fail(QStringLiteral("Unsupported movie container: %1").arg(suffix));
+    if(!format || !format->writable) return fail(QStringLiteral("Unsupported movie export container: %1").arg(suffix));
     int const codecId=MediaFormats::resolvedCodec(*format,options.codec,options.transparentBackground);
     auto const* codec=MediaFormats::videoCodec(codecId);
     if(!codec) return fail(QStringLiteral("The selected codec or transparency is not supported by this container."));
@@ -49,13 +49,12 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     QString const generated = scratch.filePath(QStringLiteral("output.") + suffix);
     if (!scratch.isValid())
         return fail(QStringLiteral("No temporary folder for the export."));
-    bool const gif = suffix == QLatin1String("gif");
     int const first = std::clamp(options.first, 0, scene.frameCount() - 1);
     int const last = options.last < 0 ? scene.frameCount() - 1 : std::clamp(options.last, first, scene.frameCount() - 1);
     double const scale = std::clamp(options.scale, 0.05, 8.0);
     int const wide = std::max(2, int(std::lround(scene.width * scale))), high = std::max(2, int(std::lround(scene.height * scale)));
     if(codecId==MediaFormats::DnxHD && (wide!=1920 || high!=1080)) return fail(QStringLiteral("DNxHD requires 1920 by 1080 frames. Use DNxHR for other dimensions."));
-    QVector<double> const sound = gif ? QVector<double>() : Sound::mixPrecise(scene,0,-1,48000);
+    QVector<double> const sound = format->audioEncoder.isEmpty() ? QVector<double>() : Sound::mixPrecise(scene,0,-1,48000);
     QString const wav = scratch.filePath(QStringLiteral("sound.wav"));
     if (!sound.isEmpty() && (!scratch.isValid() || !Sound::writePreciseWav(wav, sound, 48000, error)))
         return false;

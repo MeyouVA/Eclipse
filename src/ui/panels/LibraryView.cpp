@@ -436,11 +436,11 @@ void LibraryView::refresh()
             for(QString const& alias : format.aliases) patterns << QStringLiteral("*.")+alias;
         }
         for(auto const& format : MediaFormats::audioFormats()) {
-            patterns << QStringLiteral("*.")+format.suffix;
+            if(!format.suffix.isEmpty()) patterns << QStringLiteral("*.")+format.suffix;
             for(QString const& alias : format.aliases) patterns << QStringLiteral("*.")+alias;
         }
         for(auto const& format : MediaFormats::videoFormats()) {
-            patterns << QStringLiteral("*.")+format.suffix;
+            if(format.writable) patterns << QStringLiteral("*.")+format.suffix;
             for(QString const& alias : format.aliases) patterns << QStringLiteral("*.")+alias;
         }
         for (QFileInfo const& file : dir.entryInfoList(patterns, QDir::Files,

@@ -35,7 +35,7 @@ void MainWindow::onActionExportAudio()
     dialog.setWindowTitle(tr("Export Audio"));
     QFormLayout* form=new QFormLayout(&dialog);
     QComboBox* format=new QComboBox(&dialog); format->setObjectName(QStringLiteral("AudioFormat"));
-    for(auto const& entry : MediaFormats::audioFormats()) format->addItem(entry.name,entry.id);
+    for(auto const& entry : MediaFormats::audioFormats()) if(entry.writable) format->addItem(entry.name,entry.id);
     QComboBox* range=new QComboBox(&dialog); range->setObjectName(QStringLiteral("AudioRange")); range->addItems({tr("All"),tr("Frames")});
     QSpinBox* first=new QSpinBox(&dialog); first->setObjectName(QStringLiteral("AudioFirst")); first->setRange(1,scene.frameCount());
     QSpinBox* last=new QSpinBox(&dialog); last->setObjectName(QStringLiteral("AudioLast")); last->setRange(1,scene.frameCount()); last->setValue(scene.frameCount());
@@ -52,16 +52,16 @@ void MainWindow::onActionExportAudio()
         int previous=rate->currentData().toInt(); if(!previous) previous=44100;
         rate->clear();
         for(int hz : {8000,11025,12000,16000,22050,24000,32000,44100,48000,88200,96000,176400,192000}) {
-            if(hz>48000 && entry->id!=QLatin1String("wav") && entry->id!=QLatin1String("aiff") && entry->id!=QLatin1String("flac") && entry->id!=QLatin1String("alac")) continue;
+            if(hz>48000 && !entry->lossless) continue;
             if(entry->id==QLatin1String("opus") && hz!=8000 && hz!=12000 && hz!=16000 && hz!=24000 && hz!=48000) continue;
-            if(entry->id==QLatin1String("ac3") && hz!=32000 && hz!=44100 && hz!=48000) continue;
+            if((entry->id==QLatin1String("ac3") || entry->id==QLatin1String("eac3") || entry->id==QLatin1String("mp2")) && hz!=32000 && hz!=44100 && hz!=48000) continue;
             rate->addItem(tr("%1 Hz").arg(hz),hz);
         }
         int const chosen=rate->findData(previous); rate->setCurrentIndex(chosen<0?rate->findData(48000):chosen);
         bits->clear();
-        for(int depth : {8,16,24,32}) if((entry->pcm || depth>=16) && depth<=entry->maxBits) bits->addItem(tr("%1-bit integer").arg(depth),depth);
+        for(int depth : {8,16,24,32}) if((entry->pcm || depth>=16) && depth<=entry->maxBits && (entry->id!=QLatin1String("sox") || depth==32)) bits->addItem(tr("%1-bit integer").arg(depth),depth);
         if(entry->floating) { bits->addItem(tr("32-bit float"),32); bits->setItemData(bits->count()-1,true,Qt::UserRole+1); }
-        bits->setCurrentIndex(bits->findData(16)); bits->setEnabled(entry->lossless);
+        bits->setCurrentIndex(std::max(0,bits->findData(16))); bits->setEnabled(entry->lossless);
     };
     connect(format,&QComboBox::currentIndexChanged,&dialog,formatChanged); formatChanged();
     form->addRow(tr("Format"),format); form->addRow(tr("Export Range"),range); form->addRow(tr("From frame"),first); form->addRow(tr("To frame"),last);

@@ -1,6 +1,9 @@
 #include "render/images/ImageFiles.h"
 #include "render/images/ImageCodecProcess.h"
 #include "render/images/ImageApng.h"
+#include "render/images/ImageFfmpeg.h"
+#include "render/images/ImageJng.h"
+#include "render/images/ImageSixel.h"
 #include "platform/ThirdParty.h"
 #include "model/scene/PsdRead.h"
 #include "model/media/IconRead.h"
@@ -19,6 +22,7 @@
 #include <QtEndian>
 #include <cstring>
 #include <cmath>
+#include <limits>
 
 namespace {
 
@@ -152,10 +156,10 @@ QVector<Format> const& formats()
         {QStringLiteral("tif"), QStringLiteral("TIFF"), true, false, true, true, false, {QStringLiteral("tiff")},8,32,true},
         {QStringLiteral("psd"), QStringLiteral("Photoshop (PSD)"), true, true,true,true,false,{QStringLiteral("psdt")},8,32,true},
         {QStringLiteral("exr"), QStringLiteral("OpenEXR (linear, half/float)"), true, false,true,true,false,{},8,32,true},
-        {QStringLiteral("sgi"), QStringLiteral("Silicon Graphics (SGI)"), true, false,true,true,false,{},8,16},
+        {QStringLiteral("sgi"), QStringLiteral("Silicon Graphics (SGI)"), true, false,true,true,false,{QStringLiteral("rgb"),QStringLiteral("rgba"),QStringLiteral("bw")},8,16},
         {QStringLiteral("dpx"), QStringLiteral("DPX (10-bit)"), false, false,true,true,false,{},0,10},
-        {QStringLiteral("jpg"), QStringLiteral("JPEG"), false, false,true,true,false,{QStringLiteral("jpeg")}},
-        {QStringLiteral("bmp"), QStringLiteral("BMP"), true, false},
+        {QStringLiteral("jpg"), QStringLiteral("JPEG"), false, false,true,true,false,{QStringLiteral("jpeg"),QStringLiteral("jpe"),QStringLiteral("pjpeg"),QStringLiteral("jps")}},
+        {QStringLiteral("bmp"), QStringLiteral("BMP"), true, false,true,true,false,{QStringLiteral("bmp2"),QStringLiteral("bmp3"),QStringLiteral("dib")}},
         {QStringLiteral("gif"), QStringLiteral("GIF"), true, false, true, true, true, {}, 1},
         {QStringLiteral("webp"), QStringLiteral("WebP"), true, false, true, true, true},
         {QStringLiteral("apng"), QStringLiteral("Animated PNG"), true, false, true, true, true,{},8,16},
@@ -163,7 +167,7 @@ QVector<Format> const& formats()
         {QStringLiteral("avif"), QStringLiteral("AVIF"), true, false, true, true, true,{},8,12},
         {QStringLiteral("jp2"), QStringLiteral("JPEG 2000"), true, false, true, true, false, {QStringLiteral("j2k"), QStringLiteral("j2c"), QStringLiteral("jpc")},8,16},
         {QStringLiteral("jxl"), QStringLiteral("JPEG XL"), true, false, true, true, true,{},8,32,true},
-        {QStringLiteral("ico"), QStringLiteral("Windows Icon"), true, false},
+        {QStringLiteral("ico"), QStringLiteral("Windows Icon"), true, false,true,true,false,{QStringLiteral("icon"),QStringLiteral("cur")}},
         {QStringLiteral("icns"), QStringLiteral("Apple Icon"), true, false},
         {QStringLiteral("qoi"), QStringLiteral("QOI"), true, false},
         {QStringLiteral("dds"), QStringLiteral("DDS"), true, false},
@@ -177,9 +181,38 @@ QVector<Format> const& formats()
         {QStringLiteral("xbm"), QStringLiteral("XBM"), false, false},
         {QStringLiteral("wbmp"), QStringLiteral("Wireless Bitmap"), false, false},
         {QStringLiteral("svg"), QStringLiteral("SVG"), true, false},
+        {QStringLiteral("pam"), QStringLiteral("Portable Arbitrary Map"), true,false,true,true,false,{},8,16},
+        {QStringLiteral("pnm"), QStringLiteral("Portable Anymap"), false,false,true,true,false,{},0,16},
+        {QStringLiteral("farbfeld"), QStringLiteral("Farbfeld"), true,false,true,true,false,{QStringLiteral("ff")},16,16},
+        {QStringLiteral("miff"), QStringLiteral("Magick Image File"), true,false,true,true,false,{},16,32,true},
+        {QStringLiteral("mng"), QStringLiteral("Multiple-image Network Graphics"), true,false,true,true,true,{},8,16},
+        {QStringLiteral("jng"), QStringLiteral("JPEG Network Graphics"), true,false},
+        {QStringLiteral("jls"), QStringLiteral("JPEG-LS"), false,false,true,true,false,{},0,16},
+        {QStringLiteral("vbn"), QStringLiteral("VBN texture"), true,false},
+        {QStringLiteral("xwd"), QStringLiteral("X Window Dump"), false,false},
+        {QStringLiteral("xface"), QStringLiteral("X-Face (48 by 48)"), false,false},
+        {QStringLiteral("ras"), QStringLiteral("Sun Raster"), false,false,true,true,false,{QStringLiteral("sun")}},
+        {QStringLiteral("viff"), QStringLiteral("Khoros VIFF"), true,false,true,true,false,{QStringLiteral("xv")}},
+        {QStringLiteral("pict"), QStringLiteral("PICT"), false,false,true,true,false,{QStringLiteral("pct")}},
+        {QStringLiteral("dcx"), QStringLiteral("Multi-page PCX"), false,false},
+        {QStringLiteral("fits"), QStringLiteral("Flexible Image Transport"), false,false,true,true,false,{QStringLiteral("fit"),QStringLiteral("fts")},0,32,true},
+        {QStringLiteral("vicar"), QStringLiteral("VICAR"), false,false},
+        {QStringLiteral("cin"), QStringLiteral("Cineon"), false,false,true,true,false,{},0,10},
+        {QStringLiteral("mat"), QStringLiteral("MATLAB image"), false,false,true,true,false,{},0,16},
+        {QStringLiteral("palm"), QStringLiteral("Palm Pixmap"), false,false},
+        {QStringLiteral("otb"), QStringLiteral("On-the-air Bitmap"), false,false},
+        {QStringLiteral("hrz"), QStringLiteral("HRZ (256 by 240)"), false,false},
+        {QStringLiteral("mtv"), QStringLiteral("MTV Raytracer"), false,false},
+        {QStringLiteral("ipl"), QStringLiteral("IPL image"), false,false},
+        {QStringLiteral("cals"), QStringLiteral("CALS monochrome"), false,false,true,true,false,{QStringLiteral("cal")}},
+        {QStringLiteral("sixel"), QStringLiteral("SIXEL"), false,false,true,true,false,{QStringLiteral("six")}},
+        {QStringLiteral("pcd"), QStringLiteral("Photo CD"), false,false,true,false,false,{QStringLiteral("pcds")}},
+        {QStringLiteral("wpg"), QStringLiteral("WordPerfect Graphics"), false,false,true,false},
+        {QStringLiteral("dcm"), QStringLiteral("DICOM image"), false,false,true,false},
+        {QStringLiteral("svgz"), QStringLiteral("Compressed SVG"), true,false,true,false},
         {QStringLiteral("psb"), QStringLiteral("Photoshop Large Document"), true, true, true, false},
         {QStringLiteral("raw"), QStringLiteral("Camera RAW"), false, false, true, false, false,
-         {QStringLiteral("cr2"), QStringLiteral("cr3"), QStringLiteral("nef"), QStringLiteral("nrw"), QStringLiteral("arw"), QStringLiteral("dng"), QStringLiteral("raf"), QStringLiteral("orf"), QStringLiteral("rw2"), QStringLiteral("pef"), QStringLiteral("srw")}},
+         {QStringLiteral("cr2"), QStringLiteral("cr3"), QStringLiteral("nef"), QStringLiteral("nrw"), QStringLiteral("arw"), QStringLiteral("dng"), QStringLiteral("raf"), QStringLiteral("orf"), QStringLiteral("rw2"), QStringLiteral("pef"), QStringLiteral("srw"),QStringLiteral("3fr"),QStringLiteral("crw"),QStringLiteral("dcr"),QStringLiteral("erf"),QStringLiteral("fff"),QStringLiteral("iiq"),QStringLiteral("kdc"),QStringLiteral("mdc"),QStringLiteral("mos"),QStringLiteral("mrw"),QStringLiteral("rwl"),QStringLiteral("sr2"),QStringLiteral("srf"),QStringLiteral("sti")}},
     };
     return list;
 }
@@ -210,6 +243,7 @@ QString ImageFiles::fileFilter(bool writing)
 QImage ImageFiles::load(QString const& path, QString* error, int frame)
 {
     if (frame < 0) { if (error) *error = QStringLiteral("Invalid image frame."); return {}; }
+    if(QFileInfo(path).suffix().compare(QLatin1String("jng"),Qt::CaseInsensitive)==0 && frame==0) return ImageCodec::readJng(path,error);
     if(frame>0)
         if(Format const* known=find(QFileInfo(path).suffix());(known && known->animated) || ImageCodec::isApng(path)) {
             QVector<Frame> const frames=readSequence(path,error);
@@ -257,24 +291,40 @@ QImage ImageFiles::load(QString const& path, QString* error, int frame)
     }
     QTemporaryDir temp;
     if (!temp.isValid()) { if (error) *error = QStringLiteral("Cannot create an image conversion folder."); return {}; }
-    QString const source = QFileInfo(path).absoluteFilePath() + QStringLiteral("[%1]").arg(frame);
+    if(!ImageCodec::imageEncoder(QFileInfo(path).suffix().toLower()).isEmpty()) return ImageCodec::readFfmpeg(path,frame,error);
+    QString inputPath=QFileInfo(path).absoluteFilePath();
+    QString const inputSuffix=QFileInfo(path).suffix().toLower();
+    if(inputSuffix==QLatin1String("sixel") || inputSuffix==QLatin1String("six")) {
+        QFile input(inputPath);
+        if(input.open(QIODevice::ReadOnly) && input.size()>0 && input.size()<2048) {
+            QByteArray bytes=input.readAll(); bytes.append(QByteArray(2048-bytes.size(),'\n'));
+            inputPath=temp.filePath(QStringLiteral("padded.sixel"));
+            if(!writeBytes(inputPath,bytes)) { if(error) *error=QStringLiteral("Cannot prepare the SIXEL decoder input."); return {}; }
+        }
+    }
+    QString const source = inputPath + QStringLiteral("[%1]").arg(frame);
     QString const metadata = temp.filePath(QStringLiteral("metadata.txt"));
     QString const pixels = temp.filePath(QStringLiteral("pixels.raw"));
-    if (!run({source, QStringLiteral("-auto-orient"), QStringLiteral("-alpha"), QStringLiteral("on"), QStringLiteral("-format"),
-              QStringLiteral("%w\n%h\n%z\n%[colorspace]\n%[profiles]\n"), QStringLiteral("-write"), QStringLiteral("info:") + metadata,
-              QStringLiteral("-define"), QStringLiteral("quantum:format=floating-point"), QStringLiteral("-depth"), QStringLiteral("32"),
-              QStringLiteral("-endian"), QStringLiteral("LSB"), QStringLiteral("rgba:") + pixels}, error)) return {};
+    if (!run({source, QStringLiteral("-auto-orient"), QStringLiteral("-format"),
+              QStringLiteral("%w\n%h\n%z\n%[colorspace]\n%[profiles]\n"), QStringLiteral("info:") + metadata}, error)) return {};
     QFile info(metadata);
     if (!info.open(QIODevice::ReadOnly)) { if (error) *error = info.errorString(); return {}; }
     QList<QByteArray> const fields = info.readAll().split('\n');
     int const width = fields.value(0).toInt(), height = fields.value(1).toInt(), depth = fields.value(2).toInt();
-    qint64 const bytes = qint64(width) * height * 16;
+    QString const suffix = QFileInfo(path).suffix().toLower();
+    bool const floating = suffix == QLatin1String("exr") || suffix == QLatin1String("pfm") || suffix == QLatin1String("hdr") || suffix == QLatin1String("rgbe") || depth > 16;
+    int const bits=floating?32:depth>8?16:8;
     qint64 const limit = qint64(QImageReader::allocationLimit()) * 1024 * 1024;
-    if (width <= 0 || height <= 0 || bytes <= 0 || (limit > 0 && bytes > limit)) {
+    qint64 const maximum=limit>0?limit:std::numeric_limits<qint64>::max();
+    if (width <= 0 || height <= 0 || qint64(width)>maximum/(bits/2)/height) {
         if (error) *error = QStringLiteral("Image dimensions exceed the image allocation limit.");
         return {};
     }
-    QImage image(width, height, QImage::Format_RGBA32FPx4);
+    qint64 const bytes = qint64(width) * height * (bits/2);
+    if (!run({source, QStringLiteral("-auto-orient"),QStringLiteral("-alpha"),QStringLiteral("on"),
+              QStringLiteral("-define"),floating?QStringLiteral("quantum:format=floating-point"):QStringLiteral("quantum:format=unsigned"),
+              QStringLiteral("-depth"),QString::number(bits),QStringLiteral("-endian"),QStringLiteral("LSB"),QStringLiteral("rgba:")+pixels},error)) return {};
+    QImage image(width, height, floating?QImage::Format_RGBA32FPx4:bits==16?QImage::Format_RGBA64:QImage::Format_RGBA8888);
     QFile raw(pixels);
     if (image.isNull() || !raw.open(QIODevice::ReadOnly) || raw.size() != bytes || raw.read(reinterpret_cast<char*>(image.bits()), bytes) != bytes) {
         if (error) *error = QStringLiteral("The image decoder returned incomplete pixels.");
@@ -288,14 +338,12 @@ QImage ImageFiles::load(QString const& path, QString* error, int frame)
     } else {
         image.setColorSpace(fields.value(3).trimmed() == "RGB" ? QColorSpace(QColorSpace::SRgbLinear) : QColorSpace(QColorSpace::SRgb));
     }
-    QString const suffix = QFileInfo(path).suffix().toLower();
     if(suffix==QLatin1String("exr")) {
         QColorSpace const space=exrSpace(path); if(space.isValid()) image.setColorSpace(space);
         image.reinterpretAsFormat(QImage::Format_RGBA32FPx4_Premultiplied);
         image=image.convertToFormat(QImage::Format_RGBA32FPx4);
     }
-    bool const floating = suffix == QLatin1String("exr") || suffix == QLatin1String("pfm") || suffix == QLatin1String("hdr") || suffix == QLatin1String("rgbe") || depth > 16;
-    return floating ? image : image.convertToFormat(depth > 8 ? QImage::Format_RGBA64 : QImage::Format_RGBA8888);
+    return image;
 }
 
 bool ImageFiles::canRead(QString const& path)
@@ -305,6 +353,8 @@ bool ImageFiles::canRead(QString const& path)
 
 bool ImageFiles::saveWithCodec(QImage const& image, QString const& path, QString const& format, QString* error, int quality)
 {
+    if(format==QLatin1String("sixel")) return ImageCodec::writeSixel(image,path,error);
+    if(!ImageCodec::imageEncoder(format).isEmpty()) return ImageCodec::writeFfmpeg(image,path,format,error);
     if(format==QLatin1String("apng")) return ImageCodec::writeApng({{image,100}},path,error,0);
     if (format == QLatin1String("icns") || format == QLatin1String("svg")) {
         QByteArray bytes;
@@ -359,8 +409,10 @@ bool ImageFiles::saveWithCodec(QImage const& image, QString const& path, QString
     QFile result(output);
     QSaveFile destination(path);
     if (!result.open(QIODevice::ReadOnly) || !destination.open(QIODevice::WriteOnly)) { if (error) *error = QStringLiteral("Cannot open the converted image output."); return false; }
-    if (format == QLatin1String("jp2") && !icc.isEmpty()) {
-        QByteArray const profiled = profileJp2(result.readAll(),icc);
+    if ((format == QLatin1String("jp2") || format==QLatin1String("jng")) && !icc.isEmpty()) {
+        QByteArray const bytes=result.readAll();
+        QByteArray const profiled = format==QLatin1String("jng")?ImageCodec::profileJng(bytes,icc):profileJp2(bytes,icc);
+        if(profiled.isEmpty()) { if(error) *error=QStringLiteral("Cannot tag the converted image with its colour profile."); return false; }
         bool const ok = destination.write(profiled)==profiled.size() && destination.commit();
         if(!ok && error) *error=destination.errorString();
         return ok;

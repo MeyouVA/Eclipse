@@ -11,11 +11,11 @@ static bool writeAudio(QString const& path,QVector<double> const& stereo,AudioFi
 {
     auto fail=[&](QString const& message) { if(error) *error=message; return false; };
     auto const* format=MediaFormats::audio(options.format.isEmpty()?QFileInfo(path).suffix():options.format);
-    if(!format) return fail(QStringLiteral("Unsupported audio format."));
+    if(!format || !format->writable) return fail(QStringLiteral("Unsupported audio export format."));
     if(stereo.isEmpty() || stereo.size()%2) return fail(QStringLiteral("There are no complete stereo samples to export."));
     if(options.rate<8000 || options.rate>192000 || (options.channels!=1 && options.channels!=2)) return fail(QStringLiteral("Invalid audio sample rate or channel count."));
     if(format->pcm && (options.bits!=8 && options.bits!=16 && options.bits!=24 && options.bits!=32)) return fail(QStringLiteral("PCM audio requires 8, 16, 24 or 32 bits."));
-    if(options.floating && (!format->floating || options.bits!=32)) return fail(QStringLiteral("Floating-point output requires 32-bit WAV or AIFF."));
+    if(options.floating && (!format->floating || options.bits!=32)) return fail(QStringLiteral("This format does not support the selected floating-point depth."));
     QString const ffmpeg=Sound::findFfmpeg();
     if(ffmpeg.isEmpty()) return fail(QStringLiteral("The bundled media tools are missing. Run scripts/install_thirdparty.bat."));
     QTemporaryDir folder;
@@ -24,8 +24,10 @@ static bool writeAudio(QString const& path,QVector<double> const& stereo,AudioFi
     if(!Sound::writePreciseWav(input,stereo,sourceRate,error)) return false;
     QString encoder=format->encoder;
     if(format->pcm) {
-        QString const endian=format->id==QLatin1String("wav")?QStringLiteral("le"):QStringLiteral("be");
-        encoder=options.floating?QStringLiteral("pcm_f32")+endian:options.bits==8?(format->id==QLatin1String("wav")?QStringLiteral("pcm_u8"):QStringLiteral("pcm_s8")):QStringLiteral("pcm_s%1").arg(options.bits)+endian;
+        bool const big=format->id==QLatin1String("aiff") || format->id==QLatin1String("au");
+        QString const endian=big?QStringLiteral("be"):QStringLiteral("le");
+        bool const signedByte=big || format->id==QLatin1String("caf");
+        encoder=options.floating?QStringLiteral("pcm_f32")+endian:options.bits==8?(signedByte?QStringLiteral("pcm_s8"):QStringLiteral("pcm_u8")):QStringLiteral("pcm_s%1").arg(options.bits)+endian;
     }
     QStringList args{QStringLiteral("-y"),QStringLiteral("-v"),QStringLiteral("error"),QStringLiteral("-i"),input,QStringLiteral("-map"),QStringLiteral("0:a:0"),QStringLiteral("-vn"),QStringLiteral("-c:a"),encoder,
         QStringLiteral("-ar"),QString::number(options.rate),QStringLiteral("-ac"),QString::number(options.channels)};
@@ -34,6 +36,10 @@ static bool writeAudio(QString const& path,QVector<double> const& stereo,AudioFi
     if(format->id==QLatin1String("alac")) args << QStringLiteral("-sample_fmt") << (options.bits>16?QStringLiteral("s32p"):QStringLiteral("s16p"));
     if(format->id==QLatin1String("flac")) args << QStringLiteral("-sample_fmt") << (options.bits>16?QStringLiteral("s32"):QStringLiteral("s16"));
     if(format->id==QLatin1String("flac") && options.bits>16) args << QStringLiteral("-bits_per_raw_sample") << QStringLiteral("24");
+    if(format->id==QLatin1String("tta")) args << QStringLiteral("-sample_fmt") << (options.bits>16?QStringLiteral("s32"):QStringLiteral("s16"));
+    if(format->id==QLatin1String("tta") && options.bits>16) args << QStringLiteral("-bits_per_raw_sample") << QStringLiteral("24");
+    if(format->id==QLatin1String("wv")) args << QStringLiteral("-sample_fmt") << (options.floating?QStringLiteral("fltp"):options.bits>16?QStringLiteral("s32p"):QStringLiteral("s16p"));
+    if(format->id==QLatin1String("wv") && !options.floating && options.bits==24) args << QStringLiteral("-bits_per_raw_sample") << QStringLiteral("24");
     args << QStringLiteral("-f") << format->muxer << output;
     QProcess process; process.start(ffmpeg,args);
     if(!process.waitForStarted(10000) || !process.waitForFinished(300000) || process.exitStatus()!=QProcess::NormalExit || process.exitCode()!=0) {

@@ -97,15 +97,26 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
   SVG import can keep the picture or convert its paths into editable strokes and fills, with native
   curve handles and supported gradients. Raster effects and embedded bitmaps require picture import.
   ICNS import also reads classic masked, indexed, planar RLE, ARGB and JPEG 2000 icon elements.
+  Additional picture formats include PAM/PNM, Farbfeld, MIFF, MNG, JNG, JPEG-LS, VBN, XWD,
+  X-Face, Sun Raster, VIFF, PICT, DCX, FITS, VICAR, Cineon, MATLAB images, Palm, OTB, HRZ,
+  MTV, IPL, CALS and SIXEL. Photo CD, WPG, DICOM and compressed SVG are import-only.
+  X-Face requires 48 by 48 pixels and HRZ requires 256 by 240. Headerless pixel/audio/video
+  streams need their encoding parameters and are not covered by automatic format detection.
 - Movie export offers MP4, MOV, AVI, MKV, WebM, M4V, MPEG, WMV, FLV, OGV and MXF, with codec choices
   appropriate to each container. ProRes 4444, PNG, Animation, uncompressed and WebM exports can keep
   transparency in compatible containers. DNxHD uses 1920 by 1080 frames; DNxHR accepts other sizes.
   The scene's audible tracks are mixed into movies. Picture sequences can also be kept separately.
+  Additional movie exports include NUT, MPEG transport streams, 3GP/3G2, ASF and silent YUV4MPEG.
+  AVI and NUT offer lossless FFV1 and HuffYUV with alpha. Import also lists additional legacy
+  and elementary movie streams handled by the bundled decoder; available subtypes vary by codec.
 - Audio export offers WAV, AIFF, MP3, AAC/M4A, Vorbis, Opus, FLAC, ALAC, WMA and AC-3, with sample
   rate and mono/stereo choices. WAV and AIFF support 8/16/24/32-bit integer and 32-bit float files.
   Export all frames or a selected range, mixed or as separate sound tracks. Audio decoding, effects
   and mixing use 64-bit floating-point samples at the export rate, up to 192 kHz for lossless audio.
   Playback previews use 16-bit stereo at 44100 Hz; movies receive a precise 48 kHz mix.
+  Additional audio exports include AU, CAF, Wave64, SoX native, True Audio, WavPack, MP2 and
+  Enhanced AC-3. Import lists additional compressed, tracker and legacy sound families; this
+  does not guarantee every historical encoding within a container can be decoded.
 - Templates can be kept in a Library and dropped into other scenes.
 - Help pages are built in (Help > Eclipse Help, F1).
 

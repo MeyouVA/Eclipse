@@ -47,7 +47,12 @@ QStringList MovieExport::encoderArguments(QString const& suffix,Options const& o
     case Mjpeg: pixels=QStringLiteral("yuvj444p"); args << QStringLiteral("-q:v") << QString::number(std::clamp(quality/5+1,1,31)); break;
     case Png: pixels=QStringLiteral("rgba"); filter.clear(); break;
     case Animation: pixels=QStringLiteral("argb"); filter.clear(); break;
-    case Uncompressed: pixels=format->suffix==QLatin1String("mov")?QStringLiteral("argb"):QStringLiteral("bgra"); filter.clear(); break;
+    case Uncompressed:
+        pixels=format->suffix==QLatin1String("y4m")?QStringLiteral("yuv420p"):format->suffix==QLatin1String("mov")?QStringLiteral("argb"):QStringLiteral("bgra");
+        if(format->suffix==QLatin1String("y4m")) args[1]=QStringLiteral("wrapped_avframe"); else filter.clear();
+        break;
+    case Ffv1: pixels=QStringLiteral("gbrap16le"); filter.clear(); args << QStringLiteral("-level") << QStringLiteral("3"); break;
+    case HuffYuv: pixels=QStringLiteral("bgra"); filter.clear(); break;
     case Mpeg2: pixels=QStringLiteral("yuv422p"); args << QStringLiteral("-q:v") << QString::number(std::clamp(quality/5-1,1,31)); break;
     case Wmv:
     case Flv: args << QStringLiteral("-q:v") << QString::number(std::clamp(quality/5,1,31)); break;

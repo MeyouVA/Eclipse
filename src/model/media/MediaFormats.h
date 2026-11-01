@@ -4,7 +4,7 @@
 #include <QVector>
 
 namespace MediaFormats {
-enum VideoCodec { H264=0, Hevc, ProRes422, ProRes4444, DnxHR, DnxHD, Vp8, Vp9, Av1, Mjpeg, Png, Animation, Uncompressed, Mpeg2, Wmv, Flv, Theora, Gif };
+enum VideoCodec { H264=0, Hevc, ProRes422, ProRes4444, DnxHR, DnxHD, Vp8, Vp9, Av1, Mjpeg, Png, Animation, Uncompressed, Mpeg2, Wmv, Flv, Theora, Gif, Ffv1, HuffYuv };
 struct Codec {
     int id;
     QString name,encoder;
@@ -18,6 +18,7 @@ struct Video {
     QString audioEncoder;
     QStringList aliases;
     QVector<int> alphaCodecs;
+    bool writable=true;
 };
 struct Audio {
     QString id,name,suffix,encoder,muxer;
@@ -26,6 +27,7 @@ struct Audio {
     int maxBits=16;
     bool floating=false;
     bool lossless=false;
+    bool writable=true;
 };
 QVector<Codec> const& videoCodecs();
 QVector<Video> const& videoFormats();

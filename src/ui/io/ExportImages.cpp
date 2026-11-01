@@ -415,8 +415,8 @@ void MainWindow::onActionWriteOutputs()
             QString wanted=format->currentText(); if(wanted.isEmpty()) wanted=w.format;
             format->clear();
             if(kind->currentIndex()==0) for(auto const& f : ImageFiles::formats()) { if(f.writable) format->addItem(f.suffix); }
-            else if(kind->currentIndex()==3) for(auto const& f : MediaFormats::audioFormats()) format->addItem(f.id);
-            else for(auto const& f : MediaFormats::videoFormats()) format->addItem(f.suffix);
+            else if(kind->currentIndex()==3) { for(auto const& f : MediaFormats::audioFormats()) if(f.writable) format->addItem(f.id); }
+            else { for(auto const& f : MediaFormats::videoFormats()) if(f.writable) format->addItem(f.suffix); }
             if(format->findText(wanted)<0 && (kind->currentIndex()==1 || kind->currentIndex()==2)) wanted=QFileInfo(w.path).suffix().toLower();
             format->setCurrentIndex(std::max(0,format->findText(wanted)));
             frames->setEnabled(kind->currentIndex()==2); size->setEnabled(kind->currentIndex()!=3); space->setEnabled(kind->currentIndex()!=3);
