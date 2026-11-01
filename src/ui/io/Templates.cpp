@@ -3,6 +3,7 @@
 #include "render/images/ImageFiles.h"
 #include "model/media/MediaFormats.h"
 #include "ui/io/RawSoundImport.h"
+#include "ui/io/RawMediaImport.h"
 
 #include <functional>
 
@@ -154,18 +155,31 @@ void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
     QString error;
     // The library holds sounds and palettes too.
     QString const kind = QFileInfo(path).suffix().toLower();
-    bool rawSound=false;
+    bool rawSound=false,rawImage=false,rawMovie=false;
     if(kind==QLatin1String("raw")) {
-        QStringList const choices{tr("Camera image"),tr("Raw audio")};
+        QStringList const choices{tr("Camera image"),tr("Raw image"),tr("Raw video"),tr("Raw audio")};
         bool accepted=false;
         QString const choice=QInputDialog::getItem(this,tr("Import RAW File"),tr("Import this file as:"),choices,0,false,&accepted);
         if(!accepted) return;
         rawSound=choice==choices.last();
+        rawImage=choice==choices[1]; rawMovie=choice==choices[2];
     }
+    else if(RawPixels::needsSettings(path) && RawVideo::needsSettings(path)) {
+        bool accepted=false; QStringList const choices{tr("Single raw image"),tr("Raw video")};
+        QString const choice=QInputDialog::getItem(this,tr("Import Raw Media"),tr("Import this data as:"),choices,0,false,&accepted);
+        if(!accepted) return;
+        rawMovie=choice==choices.last();
+    }
+    if(rawMovie) { if(importMovie(path,&error)<0 && !error.isEmpty()) statusBar()->showMessage(error,8000); return; }
     if(auto const* format=ImageFiles::find(kind);format && format->readable && !rawSound) {
+        RawMediaImport::Images prepared;
+        if(kind==QLatin1String("raw") && !rawImage) prepared.files={path};
+        else prepared=RawMediaImport::images(this,{path},m_path,false,&error,rawImage);
+        if(!prepared.ready) { if(!error.isEmpty()) statusBar()->showMessage(error,8000); return; }
         ImageImport options;
-        options.files={path};
+        options.files=prepared.files;
         int const at=importImages(options,&error);
+        if(at>=0) prepared.keep();
         if(at<0) statusBar()->showMessage(error,8000);
         return;
     }
@@ -176,7 +190,7 @@ void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
             statusBar()->showMessage(error, 8000);
         return;
     }
-    if(MediaFormats::video(kind)) {
+    if(!rawSound && MediaFormats::video(kind)) {
         if(importMovie(path,&error)<0) statusBar()->showMessage(error,8000);
         return;
     }

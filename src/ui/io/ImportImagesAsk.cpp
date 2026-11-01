@@ -8,6 +8,7 @@
 #include <cmath>
 
 #include <QApplication>
+#include "ui/io/RawMediaImport.h"
 #include <QCheckBox>
 #include "ui/panels/ColourEditor.h"
 #include <QComboBox>
@@ -244,10 +245,14 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     options.hold = hold->value();
     options.convertColour = convert->isChecked();
     options.sourceSpace = ColourSpaceBox::chosen(source);
-    QApplication::setOverrideCursor(Qt::WaitCursor);
     QString error;
+    auto prepared=RawMediaImport::images(this,options.files,m_path,linked,&error);
+    if(!prepared.ready) { if(!error.isEmpty()) QMessageBox::critical(this,tr("Import Images"),error); return; }
+    options.files=prepared.files;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     int const at = importImages(options, &error);
     QApplication::restoreOverrideCursor();
+    if(at>=0) prepared.keep();
     if (at < 0)
         QMessageBox::critical(this, tr("Eclipse"), error);
     else

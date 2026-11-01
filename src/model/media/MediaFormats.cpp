@@ -1,5 +1,6 @@
 #include "model/media/MediaFormats.h"
 #include "model/media/RawAudioFormat.h"
+#include "model/media/RawVideo.h"
 
 namespace MediaFormats {
 QVector<Codec> const& videoCodecs()
@@ -50,6 +51,7 @@ QVector<Video> const& videoFormats()
         {QStringLiteral("3g2"),QStringLiteral("3GPP2"),QStringLiteral("3g2"),{H264},H264,QStringLiteral("aac")},
         {QStringLiteral("asf"),QStringLiteral("ASF"),QStringLiteral("asf"),{Wmv},Wmv,QStringLiteral("wmav2")},
         {QStringLiteral("y4m"),QStringLiteral("YUV4MPEG"),QStringLiteral("yuv4mpegpipe"),{Uncompressed},Uncompressed,{}},
+        {QStringLiteral("raw-video"),QStringLiteral("Raw video (settings required)"),{}, {},H264,{},RawVideo::suffixes(),{},false},
         {QStringLiteral("legacy-video"),QStringLiteral("Additional movie imports"),{}, {},H264,QStringLiteral("decode"),
          {QStringLiteral("rm"),QStringLiteral("rmvb"),QStringLiteral("dv"),QStringLiteral("dif"),QStringLiteral("vob"),QStringLiteral("dvd"),QStringLiteral("f4v"),QStringLiteral("ismv"),QStringLiteral("gxf"),QStringLiteral("wtv"),QStringLiteral("roq"),QStringLiteral("cpk"),QStringLiteral("flm"),QStringLiteral("drc"),QStringLiteral("ivf"),QStringLiteral("mjpg"),QStringLiteral("mjpeg"),QStringLiteral("m2v"),QStringLiteral("h261"),QStringLiteral("h263"),QStringLiteral("h264"),QStringLiteral("264"),QStringLiteral("hevc"),QStringLiteral("h265"),QStringLiteral("265"),QStringLiteral("vvc"),QStringLiteral("obu"),QStringLiteral("dnxhd"),QStringLiteral("dnxhr"),QStringLiteral("swf"),QStringLiteral("ogg")},{},false}
     };

@@ -7,6 +7,7 @@
 #include "platform/ThirdParty.h"
 #include "model/scene/PsdRead.h"
 #include "model/media/IconRead.h"
+#include "model/media/RawPixels.h"
 #include "colour/icc/Icc.h"
 
 #include <QColorSpace>
@@ -210,6 +211,7 @@ QVector<Format> const& formats()
         {QStringLiteral("wpg"), QStringLiteral("WordPerfect Graphics"), false,false,true,false},
         {QStringLiteral("dcm"), QStringLiteral("DICOM image"), false,false,true,false},
         {QStringLiteral("svgz"), QStringLiteral("Compressed SVG"), true,false,true,false},
+        {QStringLiteral("raw-pixels"),QStringLiteral("Raw pixels (settings required)"),true,false,true,false,false,RawPixels::suffixes()},
         {QStringLiteral("psb"), QStringLiteral("Photoshop Large Document"), true, true, true, false},
         {QStringLiteral("raw"), QStringLiteral("Camera RAW"), false, false, true, false, false,
          {QStringLiteral("cr2"), QStringLiteral("cr3"), QStringLiteral("nef"), QStringLiteral("nrw"), QStringLiteral("arw"), QStringLiteral("dng"), QStringLiteral("raf"), QStringLiteral("orf"), QStringLiteral("rw2"), QStringLiteral("pef"), QStringLiteral("srw"),QStringLiteral("3fr"),QStringLiteral("crw"),QStringLiteral("dcr"),QStringLiteral("erf"),QStringLiteral("fff"),QStringLiteral("iiq"),QStringLiteral("kdc"),QStringLiteral("mdc"),QStringLiteral("mos"),QStringLiteral("mrw"),QStringLiteral("rwl"),QStringLiteral("sr2"),QStringLiteral("srf"),QStringLiteral("sti")}},

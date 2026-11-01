@@ -1,5 +1,6 @@
 // Eclipse - the Reference view: pictures to look at while drawing.
 #include "ui/window/MainWindow.h"
+#include "ui/io/RawMediaImport.h"
 
 #include <functional>
 
@@ -280,7 +281,10 @@ void MainWindow::onActionImportReference()
     QStringList const files = QFileDialog::getOpenFileNames(this, tr("Import to Reference View"), m_path.isEmpty() ? QString() : QFileInfo(m_path).path(), kImageFilter, nullptr, QFileDialog::HideNameFilterDetails);
     if (files.isEmpty())
         return;
-    int const read = addReferences(files);
+    QString error; auto prepared=RawMediaImport::images(this,files,m_path,true,&error);
+    if(!prepared.ready) { if(!error.isEmpty()) QMessageBox::warning(this,tr("Import Reference"),error); return; }
+    int const read = addReferences(prepared.files);
+    if(read>0) prepared.keep();
     if (read < files.size())
         QMessageBox::warning(this, tr("Eclipse"), tr("%1 of the %2 files could not be read as pictures.").arg(files.size() - read).arg(files.size()));
 }

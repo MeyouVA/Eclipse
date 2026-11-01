@@ -102,6 +102,10 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
   MTV, IPL, CALS and SIXEL. Photo CD, WPG, DICOM and compressed SVG are import-only.
   X-Face requires 48 by 48 pixels and HRZ requires 256 by 240. Headerless pixel/audio/video
   streams need their encoding parameters and are not covered by automatic format detection.
+  Import Images, Link Images, Reference and Library ask for raw-image dimensions, channel layout,
+  sample depth, byte order and header offset, with optional channel planes and an ICC profile.
+  Save the scene first: decoded copies stay with it; links track those copies. Raw images read
+  the first picture, using tightly packed samples or the selected planar layout.
 - Movie export offers MP4, MOV, AVI, MKV, WebM, M4V, MPEG, WMV, FLV, OGV and MXF, with codec choices
   appropriate to each container. ProRes 4444, PNG, Animation, uncompressed and WebM exports can keep
   transparency in compatible containers. DNxHD uses 1920 by 1080 frames; DNxHR accepts other sizes.
@@ -109,6 +113,11 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
   Additional movie exports include NUT, MPEG transport streams, 3GP/3G2, ASF and silent YUV4MPEG.
   AVI and NUT offer lossless FFV1 and HuffYUV with alpha. Import also lists additional legacy
   and elementary movie streams handled by the bundled decoder; available subtypes vary by codec.
+  Headerless movies have explicit pixel-layout, dimensions, recording-rate and header-offset
+  settings, plus YUV matrix/range choices. Rational rates such as 30000/1001 are accepted.
+  Supported layouts include 8/16-bit RGB and alpha, subsampled YUV and float32 RGB/alpha;
+  float imports retain HDR values. Rows must be tightly packed. Movie import can be cancelled,
+  and extracted sound keeps its source rate and channel count in a floating-point WAV copy.
 - Audio export offers WAV, AIFF, MP3, AAC/M4A, Vorbis, Opus, FLAC, ALAC, WMA and AC-3, with sample
   rate and mono/stereo choices. WAV and AIFF support 8/16/24/32-bit integer and 32-bit float files.
   Export all frames or a selected range, mixed or as separate sound tracks. Audio decoding, effects
