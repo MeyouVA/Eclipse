@@ -56,7 +56,7 @@ void LipSyncStrip::paintEvent(QPaintEvent*)
     // The frame the scene is on.
     p.fillRect(frameRect(m_frame), QColor(224, 36, 36, 70));
     // The waveform, over the frames the sound lasts.
-    if (std::shared_ptr<SoundData> const sound = Sound::load(layer.soundFile)) {
+    if (std::shared_ptr<SoundData> const sound = Sound::track(layer, scene.fps)) {
         double const perPixel = double(SoundData::kRate) / scene.fps / each;
         int const mid = lettersTop / 2;
         p.setPen(QColor(120, 200, 150));

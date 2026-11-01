@@ -87,8 +87,8 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
                 p.drawLine(x + cw - 1, y, x + cw - 1, y + rh - 1);
             }
             // The scene's tempo: a line at each beat, a stronger one at each bar.
-            if (scene.framesPerBeat > 0 && (f + 1) % scene.framesPerBeat == 0) {
-                bool const bar = scene.beatsPerBar > 0 && (f + 1) % (scene.framesPerBeat * scene.beatsPerBar) == 0;
+            if (scene.framesPerBeat > 0 && f>=scene.tempoStart && (f + 1-scene.tempoStart) % scene.framesPerBeat == 0) {
+                bool const bar = scene.beatsPerBar > 0 && (f + 1-scene.tempoStart) % (scene.framesPerBeat * scene.beatsPerBar) == 0;
                 p.setPen(InterfaceColours::get(bar ? "timelineTempoBar" : "timelineTempoBeat"));
                 p.drawLine(x + cw - 1, y, x + cw - 1, y + rh - 1);
             }
@@ -97,7 +97,7 @@ void Timeline::paintCells(QPainter& p, TimelinePaintSpace const& space)
             paintThumbnails(p, space, layerIndex, y, rh);
         // A sound layer shows its waveform: how loud the sound is, a bar every two pixels.
         if (layer.kind == Layer::Sound && m_waveforms) {
-            if (std::shared_ptr<SoundData> const sound = Sound::load(layer.soundFile)) {
+            if (std::shared_ptr<SoundData> const sound = Sound::track(layer, scene.fps)) {
                 double const perPixel = double(SoundData::kRate) / scene.fps / cw;  // sample frames
                 int const left = std::max(kHeaderWidth, kHeaderWidth + layer.soundStart * cw - sx);
                 int const right = std::min(w, kHeaderWidth + scene.frameCount() * cw - sx);

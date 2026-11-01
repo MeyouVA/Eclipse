@@ -176,7 +176,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         if (m_scrub && !m_playTimer.isActive())
             playFrameSound(frame);
     });
-    connect(m_document, &Document::changed, this, [this] { m_scrubMix.clear(); });
+    connect(m_document, &Document::changed, this, [this] { m_scrubMix.clear(); m_scrubFrame=-1; m_scrubClock.invalidate(); });
     connect(m_document, &Document::changed, this, &MainWindow::syncReferences);
     connect(m_timeline, &Timeline::addLayerMenuRequested, this, [this](QPoint const& globalPos) {
         QMenu menu(this);

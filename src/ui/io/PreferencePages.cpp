@@ -893,6 +893,13 @@ void MainWindow::preferencesSound(PreferenceWidgets& w, QSettings& s, QDialog& d
     w.soundLayout = new QFormLayout(w.soundPage);
     w.soundLayout->addRow(w.soundOn);
     w.soundLayout->addRow(w.scrub);
+    w.analogScrub=new QCheckBox(tr("Analog Sound Scrubbing"),w.soundPage);
+    w.analogScrub->setObjectName(QStringLiteral("PrefAnalogScrub")); w.analogScrub->setChecked(s.value(QStringLiteral("prefs/analogScrub"),false).toBool());
+    w.analogScrub->setToolTip(tr("Follow the speed and direction of frame dragging when scrubbing sound."));
+    w.soundLayout->addRow(w.analogScrub);
+    w.scrubResponse=new QSpinBox(w.soundPage); w.scrubResponse->setObjectName(QStringLiteral("PrefScrubResponse")); w.scrubResponse->setRange(1,20); w.scrubResponse->setValue(s.value(QStringLiteral("prefs/scrubResponse"),5).toInt());
+    w.scrubDamping=new QSpinBox(w.soundPage); w.scrubDamping->setObjectName(QStringLiteral("PrefScrubDamping")); w.scrubDamping->setRange(0,50); w.scrubDamping->setValue(s.value(QStringLiteral("prefs/scrubDamping"),10).toInt());
+    w.soundLayout->addRow(tr("Analog Jog Speed"),w.scrubResponse); w.soundLayout->addRow(tr("Analog Jog Dampening"),w.scrubDamping);
     w.lipLead = new QSpinBox(w.soundPage);
     w.lipLead->setObjectName(QStringLiteral("PrefLipSyncLead"));
     w.lipLead->setRange(0, 4);

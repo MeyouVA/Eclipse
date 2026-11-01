@@ -99,7 +99,7 @@ struct PreferenceWidgets {
     QCheckBox* xsheetSelection = nullptr;
     QCheckBox* xsheetMinimal = nullptr;
     QCheckBox* xsheetGrid = nullptr;
-    QCheckBox* xsheetShow[5] = {};
+    QCheckBox* xsheetShow[6] = {};
     QRadioButton* xsheetLeftToRight = nullptr;
     QRadioButton* xsheetRightToLeft = nullptr;
     QComboBox* xsheetAddColumns = nullptr;
@@ -212,6 +212,9 @@ struct PreferenceWidgets {
     QGroupBox* soundPage = nullptr;
     QCheckBox* soundOn = nullptr;
     QCheckBox* scrub = nullptr;
+    QCheckBox* analogScrub = nullptr;
+    QSpinBox* scrubResponse = nullptr;
+    QSpinBox* scrubDamping = nullptr;
     QFormLayout* soundLayout = nullptr;
     QSpinBox* lipLead = nullptr;
     QGroupBox* drawing = nullptr;

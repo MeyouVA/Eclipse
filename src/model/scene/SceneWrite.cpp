@@ -189,6 +189,7 @@ QJsonObject Scene::toJson(QString const& folder) const
                        {"soloMode", soloMode},
                        {"framesPerBeat", framesPerBeat},
                        {"beatsPerBar", beatsPerBar},
+                       {"tempoStart", tempoStart},
                        {"orthographic", orthographic},
                        {"fovAcross", fovAcross},
                        {"fov", fov},
@@ -300,6 +301,8 @@ bool Scene::saveProject(QString const& path, QString* error) const
     // Another scene file beside the folder's own (a version of it): its files carry its name after theirs.
     QString const owner = folder.dirName().compare(name, Qt::CaseInsensitive) == 0 ? QString() : QStringLiteral("@") + name;
     QJsonObject whole = toJson(folder.absolutePath());
+    if (!SceneProject::collectAudio(whole, folder.absolutePath(), error))
+        return false;
     SceneProject::Split const split = SceneProject::split(whole, name, owner, compressFiles());
     for (auto it = split.files.constBegin(); it != split.files.constEnd(); ++it)
         if (!writeIfChanged(folder.filePath(it.key()), it.value(), error))

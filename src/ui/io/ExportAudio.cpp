@@ -77,13 +77,9 @@ void MainWindow::onActionExportAudio()
     if(QFileInfo(path).suffix().compare(chosen->suffix,Qt::CaseInsensitive)!=0) path+=QLatin1Char('.')+chosen->suffix;
     AudioFiles::Options options; options.format=chosen->id; options.rate=rate->currentData().toInt(); options.bits=bits->currentData().toInt(); options.floating=bits->currentData(Qt::UserRole+1).toBool(); options.channels=channels->currentData().toInt();
     int const from=range->currentIndex()==0?0:first->value()-1,through=range->currentIndex()==0?scene.frameCount()-1:last->value()-1;
-    qint64 const begin=qint64(std::llround(from*double(SoundData::kRate)/scene.fps))*2;
-    qint64 const end=qint64(std::llround((through+1)*double(SoundData::kRate)/scene.fps))*2;
     QString error; int written=0;
     auto keep=[&](Scene const& source,QString const& target) {
-        QVector<qint16> const all=Sound::mix(source);
-        if(begin>=all.size()) return true;
-        QVector<qint16> const samples=all.mid(begin,std::min<qint64>(end,all.size())-begin);
+        QVector<qint16> const samples=Sound::mix(source,from,through);
         if(samples.isEmpty()) return true;
         if(!AudioFiles::write(target,samples,options,&error)) return false;
         ++written; return true;

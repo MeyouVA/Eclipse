@@ -13,6 +13,7 @@ namespace SceneProject {
 inline constexpr char kElements[] = "elements";
 inline constexpr char kPalettes[] = "palette-library";
 inline constexpr char kFrames[] = "frames";
+inline constexpr char kAudio[] = "audio";
 // A drawing's file, a scene palette's file, and the table of what a scene file keeps in its folder.
 inline constexpr char kDrawingSuffix[] = "ecd";
 inline constexpr char kPaletteSuffix[] = "ecp";
@@ -30,6 +31,9 @@ Split split(QJsonObject& scene, QString const& sceneName, QString const& owner, 
 void join(QJsonObject& scene, QString const& folder, QStringList* missing);
 // Whether a scene's JSON names files of its folder (it was saved as a folder).
 bool usesFolder(QJsonObject const& scene);
+// The sound files a scene's JSON plays copied into the audio folder of its folder (once; a copy of the same size is kept),
+// the JSON then naming the copies. False, with a message, when the folder or a copy cannot be made.
+bool collectAudio(QJsonObject& scene, QString const& folder, QString* error);
 // A name that can be a file's: the characters a file name cannot have taken out.
 QString fileName(QString const& name, QString const& fallback);
 

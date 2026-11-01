@@ -2,13 +2,18 @@
 #include "model/scene/SceneProject.h"
 #include "render/images/ImageFiles.h"
 
+#include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QSet>
 #include <algorithm>
+#include <functional>
 
 namespace SceneProject {
 
@@ -339,6 +344,88 @@ void join(QJsonObject& scene, QString const& folder, QStringList* missing)
     if (!bank.isEmpty())
         scene[QStringLiteral("textures")] = bank;
     scene.remove(QStringLiteral("folderLayout"));
+}
+
+}
+
+namespace SceneProject {
+
+bool collectAudio(QJsonObject& scene, QString const& folder, QString* error)
+{
+    QDir const dir(folder);
+    QString const audio = dir.filePath(QLatin1String(kAudio));
+    QHash<QString, QString> copied;     // a source file: its copy's path in the folder
+    bool ok = true;
+    // A sound file outside the folder copied in; the path the JSON is to name (the copy, or the file as it was).
+    auto store = [&](QString const& file) -> QString {
+        if (file.isEmpty() || !ok)
+            return file;
+        QString const source = QFileInfo(file).absoluteFilePath();
+        if (source.startsWith(QDir(audio).absolutePath() + QLatin1Char('/'), Qt::CaseInsensitive) || !QFileInfo::exists(source))
+            return file;
+        if (auto const found = copied.constFind(source); found != copied.constEnd())
+            return *found;
+        if (!QDir().mkpath(audio)) {
+            ok = false;
+            if (error)
+                *error = QCoreApplication::translate("SceneProject", "Unable to create audio directory %1").arg(QDir::toNativeSeparators(audio));
+            return file;
+        }
+        // The same name taken by another sound: a number added.
+        QFileInfo const info(source);
+        QString target = QDir(audio).filePath(info.fileName());
+        auto identical=[&](QString const& candidate) {
+            if(QFileInfo(candidate).size()!=info.size()) return false;
+            auto digest=[](QString const& name) { QFile input(name); QCryptographicHash hash(QCryptographicHash::Sha256); return input.open(QIODevice::ReadOnly) && hash.addData(&input)?hash.result():QByteArray(); };
+            QByteArray const sourceHash=digest(source);
+            return !sourceHash.isEmpty() && sourceHash==digest(candidate);
+        };
+        for (int n = 2; QFileInfo::exists(target) && !identical(target); ++n)
+            target = QDir(audio).filePath(QStringLiteral("%1-%2.%3").arg(info.completeBaseName()).arg(n).arg(info.suffix()));
+        if (!QFileInfo::exists(target) && !QFile::copy(source, target)) {
+            ok = false;
+            if (error)
+                *error = QCoreApplication::translate("SceneProject", "Failed to store sound file %1").arg(QDir::toNativeSeparators(source));
+            return file;
+        }
+        copied.insert(source, target);
+        return target;
+    };
+    std::function<void(QJsonObject&)> visit = [&](QJsonObject& inner) {
+        QJsonArray layers = inner[QStringLiteral("layers")].toArray();
+        for (qsizetype l = 0; l < layers.size(); ++l) {
+            QJsonObject layer = layers[l].toObject();
+            if (QString const file = layer[QStringLiteral("soundFile")].toString(); !file.isEmpty()) {
+                QString const kept = store(file);
+                layer[QStringLiteral("soundFile")] = kept;
+                layer[QStringLiteral("soundRelative")] = dir.relativeFilePath(kept);
+            }
+            QJsonArray clips = layer[QStringLiteral("soundClips")].toArray();
+            for (qsizetype c = 0; c < clips.size(); ++c) {
+                QJsonObject clip = clips[c].toObject();
+                QString const kept = store(clip[QStringLiteral("file")].toString());
+                clip[QStringLiteral("file")] = kept;
+                clip[QStringLiteral("relative")] = kept.isEmpty() ? QString() : dir.relativeFilePath(kept);
+                clips[c] = clip;
+            }
+            if (!clips.isEmpty())
+                layer[QStringLiteral("soundClips")] = clips;
+            layers[l] = layer;
+        }
+        inner[QStringLiteral("layers")] = layers;
+        QJsonArray symbols = inner[QStringLiteral("symbols")].toArray();
+        for (qsizetype i = 0; i < symbols.size(); ++i) {
+            QJsonObject symbol = symbols[i].toObject();
+            QJsonObject nested = symbol[QStringLiteral("scene")].toObject();
+            visit(nested);
+            symbol[QStringLiteral("scene")] = nested;
+            symbols[i] = symbol;
+        }
+        if (!symbols.isEmpty())
+            inner[QStringLiteral("symbols")] = symbols;
+    };
+    visit(scene);
+    return ok;
 }
 
 }

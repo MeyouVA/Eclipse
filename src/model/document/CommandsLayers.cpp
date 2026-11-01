@@ -2,10 +2,12 @@
 #include "model/document/Commands.h"
 
 #include "model/document/CommandsPrivate.h"
+#include "model/media/AudioDuration.h"
 
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <limits>
 
 int Document::addCamera()
 {
@@ -34,6 +36,139 @@ void Document::setSoundStart(int layer, int frame)
     if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound || m_scene.layers[layer].soundStart == frame)
         return;
     apply(tr("Move Sound"), [&](Scene& s) { s.layers[layer].soundStart = frame; });
+}
+
+void Document::setSoundClips(int layer, QVector<SoundClip> const& clips, QString const& text)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound || m_scene.layers[layer].clipsOfSound() == clips)
+        return;
+    apply(text, [&](Scene& s) {
+        s.layers[layer].soundClips = clips;
+        s.layers[layer].soundFile=clips.isEmpty()?QString():clips.first().file;
+    });
+}
+
+void Document::setSoundVolume(int layer, double volume)
+{
+    volume = std::clamp(volume, 0.0, 16.0);
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound || m_scene.layers[layer].soundVolume == volume)
+        return;
+    apply(tr("Change Sound Sequence Volume"), [&](Scene& s) { s.layers[layer].soundVolume = volume; });
+}
+
+void Document::setSoundEffects(int layer, QVector<SoundEffect> const& effects, QString const& text)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound || m_scene.layers[layer].soundEffects == effects)
+        return;
+    apply(text, [&](Scene& s) { s.layers[layer].soundEffects = effects; });
+}
+
+int Document::addSoundClip(int layer, QString const& file, int frame)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound || file.isEmpty())
+        return -1;
+    QVector<SoundClip> clips = m_scene.layers[layer].clipsOfSound();
+    SoundClip clip;
+    clip.file = file;
+    clip.start = frame - m_scene.layers[layer].soundStart;
+    clips.push_back(clip);
+    std::stable_sort(clips.begin(), clips.end(), [](SoundClip const& a, SoundClip const& b) { return a.start < b.start; });
+    int const at = int(std::find(clips.begin(), clips.end(), clip) - clips.begin());
+    setSoundClips(layer, clips, tr("Import Sound Clip"));
+    return at;
+}
+
+// The clip `clip` cut at `at` frames from its start: the part before, and the part after (Split Sound Clip).
+static QPair<SoundClip, SoundClip> cutClip(SoundClip const& clip, int at, double fps)
+{
+    SoundClip before = clip, after = clip;
+    before.stop = clip.start + at;
+    before.length = clip.length < 0.0 ? at / fps : std::min(clip.length, at / fps);
+    after.start = clip.start + at;
+    after.offset = clip.offset + at / fps;
+    if (clip.length >= 0.0)
+        after.length = std::max(0.0, clip.length - at / fps);
+    // The envelope: each part keeps its own points, with the gain at the cut at their ends.
+    before.envelope.clear();
+    after.envelope.clear();
+    if (!clip.envelope.isEmpty()) {
+        double const there = clip.envelopeAt(at);
+        for (QPointF const& p : clip.envelope) {
+            if (p.x() < at)
+                before.envelope.push_back(p);
+            else if (p.x() > at)
+                after.envelope.push_back(QPointF(p.x() - at, p.y()));
+        }
+        before.envelope.push_back(QPointF(at, there));
+        after.envelope.push_front(QPointF(0.0, there));
+    }
+    return {before, after};
+}
+
+bool Document::splitSoundClip(int layer, int frame, QString* why,int selected)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound)
+        return false;
+    Layer const& sound = m_scene.layers[layer];
+    int const at = frame - sound.soundStart;
+    QVector<SoundClip> clips = sound.clipsOfSound();
+    for (int c = 0; c < clips.size(); ++c) {
+        if(selected>=0 && c!=selected) continue;
+        SoundClip const& clip = clips[c];
+        if(at<=clip.start || (clip.stop>=0 && at>=clip.stop)) continue;
+        double const source=MediaFormats::audioDuration(clip.file);
+        double const available=source>=0?std::max(0.0,source-clip.offset):-1;
+        double const length=available<0?clip.length:clip.length<0?available:std::min(available,clip.length);
+        if(length<0) { if(why) *why=tr("Cannot determine this sound clip's length."); return false; }
+        bool const ended = clip.stop >= 0 && at >= clip.stop;
+        if (at <= clip.start || ended || at >= clip.start+length*clip.loops*m_scene.fps)
+            continue;
+        if (clip.loops > 1) {
+            if (why)
+                *why = tr("Looped sound clips cannot be dragged or copied");
+            return false;
+        }
+        auto const [before, after] = cutClip(clip, at - clip.start, m_scene.fps);
+        clips[c] = before;
+        clips.insert(c + 1, after);
+        setSoundClips(layer, clips, tr("Split Sound Clip"));
+        return true;
+    }
+    if (why)
+        *why = tr("No Sound Available");
+    return false;
+}
+
+bool Document::insertSilentCells(int layer, int frame, int count, QString* why)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].kind != Layer::Sound || count < 1) {
+        if (why)
+            *why = tr("Please select inside a sound column.");
+        return false;
+    }
+    int const at = frame - m_scene.layers[layer].soundStart;
+    QVector<SoundClip> clips;
+    for(SoundClip clip : m_scene.layers[layer].clipsOfSound()) {
+        if(clip.start<at && (clip.stop<0 || at<clip.stop)) {
+            double const source=MediaFormats::audioDuration(clip.file);
+            double const available=source>=0?std::max(0.0,source-clip.offset):-1;
+            double const length=available<0?clip.length:clip.length<0?available:std::min(available,clip.length);
+            if(length<0) { if(why) *why=tr("Cannot determine this sound clip's length."); return false; }
+            if(at<clip.start+length*clip.loops*m_scene.fps) {
+                if(clip.loops>1) { if(why) *why=tr("Looped sound clips cannot be split to insert silence."); return false; }
+                auto parts=cutClip(clip,at-clip.start,m_scene.fps);
+                clips.push_back(parts.first); clip=parts.second;
+            }
+        }
+        if(clip.start>=at) {
+            if(clip.start>std::numeric_limits<int>::max()-count || clip.stop>std::numeric_limits<int>::max()-count) { if(why) *why=tr("The inserted silence exceeds the sound sequence limit."); return false; }
+            clip.start+=count;
+            if(clip.stop>=0) clip.stop+=count;
+        }
+        clips.push_back(clip);
+    }
+    setSoundClips(layer, clips, tr("Insert Silent Cells in Sound"));
+    return true;
 }
 
 void Document::setEffects(int layer, QVector<Effect> const& effects, QString const& text)

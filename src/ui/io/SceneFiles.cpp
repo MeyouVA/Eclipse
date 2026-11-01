@@ -68,7 +68,8 @@ QStringList MainWindow::sceneFiles(bool missingOnly) const
     auto collect = [&](QVector<Layer> const& layers) {
         for (Layer const& layer : layers) {
             if (layer.kind == Layer::Sound)
-                add(layer.soundFile);
+                for (SoundClip const& clip : layer.clipsOfSound())
+                    add(clip.file);
             for (Drawing const& drawing : layer.drawings) {
                 for (Picture const& picture : drawing.pictures)
                     if (picture.linked)

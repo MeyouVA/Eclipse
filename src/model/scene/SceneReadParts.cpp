@@ -615,6 +615,31 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.soundStart = lo["soundStart"].toInt(0);
     for (QJsonValue const& frame : lo["soundFrames"].toArray())
         layer.soundFrames << std::max(-1, frame.toInt(-1));
+    for (QJsonValue const& cv : lo["soundClips"].toArray()) {
+        QJsonObject const co = cv.toObject();
+        SoundClip clip;
+        clip.file = found(folder, co["file"].toString(), co["relative"].toString());
+        clip.start = co["start"].toInt(0);
+        clip.stop = co["stop"].toInt(-1);
+        clip.offset = std::max(0.0, co["offset"].toDouble(0.0));
+        clip.length = co["length"].toDouble(-1.0);
+        clip.loops = std::max(1, co["loops"].toInt(1));
+        clip.volume = std::clamp(co["volume"].toDouble(1.0), 0.0, 16.0);
+        QJsonArray const envelope = co["envelope"].toArray();
+        for (int i = 0; i + 1 < envelope.size(); i += 2)
+            clip.envelope.push_back(QPointF(envelope[i].toDouble(), std::clamp(envelope[i + 1].toDouble(), 0.0, 16.0)));
+        layer.soundClips.push_back(clip);
+    }
+    layer.soundVolume = std::clamp(lo["soundVolume"].toDouble(1.0), 0.0, 16.0);
+    for (QJsonValue const& ev : lo["soundEffects"].toArray()) {
+        QJsonObject const eo = ev.toObject();
+        SoundEffect effect = SoundEffect::make(std::clamp(eo["type"].toInt(0), 0, SoundEffect::TypeCount - 1));
+        effect.enabled = eo["enabled"].toBool(true);
+        effect.a = eo["a"].toDouble(effect.a);
+        effect.b = eo["b"].toDouble(effect.b);
+        effect.c = eo["c"].toDouble(effect.c);
+        layer.soundEffects.push_back(effect);
+    }
     for (QChar const shape : lo["lipsync"].toString())
         layer.lipsync += QStringLiteral("ABCDEFGX").contains(shape) ? shape : QLatin1Char('X');
     layer.parent = lo["parent"].toInt(0);

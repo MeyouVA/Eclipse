@@ -13,6 +13,7 @@
 
 #include "audio/sound/SoundPlayer.h"
 
+class SoundEditor;
 class ActionManager;
 class Canvas;
 class Document;
@@ -227,6 +228,14 @@ public slots:
     void onActionExportMovie();
     void onActionImportSound();
     void onActionMoveSoundHere();
+    // Sound: the Sound Editor of the sound layer, Split Sound Clip and Insert Silent Cells on the current frame.
+    void onActionSoundEditor();
+    SoundEditor* openSoundEditor(int layer);
+    void onActionSplitSoundClip();
+    void onActionInsertSilentCells();
+    // Import Sound Clip: a file added to a sound layer at the current frame; the clip's place, or -1 with a message.
+    int importSoundClip(int layer, QString const& path, QString* error);
+    void playSoundLayer(int layer, int frame);
     void onShowRecent(QMenu* menu);
 
     // ---- Edit ----
@@ -872,6 +881,7 @@ private:
     QPointF m_easeLeave{0.5, 0.0}, m_easeArrive{0.5, 1.0};
     QStringList m_easeKinds;
     QPointer<QWidget> m_velocityEditor;
+    QPointer<SoundEditor> m_soundEditor;
     // Preferences: the Function Editors stay in front of the window.
     bool m_editorsOnTop = true;
     int m_appliedOutlinePreference = -1;
@@ -950,6 +960,10 @@ private:
     bool m_miniLoop = true;
     bool m_soundOn = true;
     bool m_scrub = false;           // a frame of sound is heard when the frame is changed by hand
+    bool m_analogScrub=false;
+    int m_scrubResponse=5,m_scrubDamping=10,m_scrubFrame=-1;
+    double m_scrubVelocity=0;
+    QElapsedTimer m_scrubClock;
     bool m_autoRenderWrite = false; // Scene > Render > Auto Render Write
     QVector<qint16> m_scrubMix;     // the sound of the scene for that; emptied when the scene changes
     QElapsedTimer m_playClock;

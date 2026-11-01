@@ -48,6 +48,7 @@ public:
     // Tempo lines across the Xsheet: one every so many frames (a beat), a stronger one every so many beats (a bar); 0: none.
     int framesPerBeat = 0;
     int beatsPerBar = 0;
+    int tempoStart = 0;
     // Toggle Solo Mode: off, the solo layers are not singled out (their switches are kept).
     bool soloMode = true;
     // Scene Settings > Colour: off, colours are taken as they are; on, as colours of `workingSpace`, where layers are put together.

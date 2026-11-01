@@ -212,6 +212,10 @@ void MainWindow::applyPreferences()
     m_soundOn = s.value(QStringLiteral("prefs/soundOn"), true).toBool();
     m_actions->setChecked(QStringLiteral("PlaySound"), m_soundOn);
     m_scrub = s.value(QStringLiteral("prefs/scrub"), false).toBool();
+    m_analogScrub=s.value(QStringLiteral("prefs/analogScrub"),false).toBool();
+    m_scrubResponse=std::clamp(s.value(QStringLiteral("prefs/scrubResponse"),5).toInt(),1,20);
+    m_scrubDamping=std::clamp(s.value(QStringLiteral("prefs/scrubDamping"),10).toInt(),0,50);
+    m_scrubFrame=-1; m_scrubClock.invalidate();
     m_actions->setChecked(QStringLiteral("PlayScrub"), m_scrub);
     m_autoSave.stop();
     if (m_autoSaveMinutes > 0)
@@ -475,6 +479,9 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionNext"), w.onionCountAfter->value());
     s.setValue(QStringLiteral("prefs/onionOpacity"), w.onionStrength->value());
     s.setValue(QStringLiteral("prefs/scrub"), w.scrub->isChecked());
+    s.setValue(QStringLiteral("prefs/analogScrub"),w.analogScrub->isChecked());
+    s.setValue(QStringLiteral("prefs/scrubResponse"),w.scrubResponse->value());
+    s.setValue(QStringLiteral("prefs/scrubDamping"),w.scrubDamping->value());
     s.setValue(QStringLiteral("prefs/backdrop"), w.backdrop->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(w.onionBefore->property("colour").value<QColor>(), w.onionAfter->property("colour").value<QColor>());
     s.setValue(QStringLiteral("welcome/hide"), !w.welcome->isChecked());

@@ -212,6 +212,8 @@ bool Document::relinkFile(QString const& from, QString const& to)
     bool used = false;
     for (Layer const& layer : m_scene.layers) {
         used = used || (layer.kind == Layer::Sound && layer.soundFile == from);
+        for (SoundClip const& clip : layer.soundClips)
+            used = used || clip.file == from;
         for (Drawing const& drawing : layer.drawings)
             for (Picture const& picture : drawing.pictures)
                 used = used || (picture.linked && picture.file == from);
@@ -233,6 +235,9 @@ bool Document::relinkFile(QString const& from, QString const& to)
         for (Layer& layer : s.layers) {
             if (layer.kind == Layer::Sound && layer.soundFile == from)
                 layer.soundFile = to;
+            for (SoundClip& clip : layer.soundClips)
+                if (clip.file == from)
+                    clip.file = to;
             for (Drawing& drawing : layer.drawings) {
                 for (Picture& picture : drawing.pictures) {
                     if (!picture.linked || picture.file != from)

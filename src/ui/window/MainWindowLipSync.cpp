@@ -12,6 +12,7 @@
 #include <QPlainTextEdit>
 #include <QSettings>
 #include <QVBoxLayout>
+#include <cmath>
 
 #include "actions/manager/ActionManager.h"
 #include "actions/dialogs/ShortcutsDialog.h"
@@ -42,7 +43,7 @@ int MainWindow::detectLipSync(int soundLayer)
     Scene const& scene = m_document->scene();
     if (soundLayer < 0 || soundLayer >= scene.layers.size() || scene.layers[soundLayer].kind != Layer::Sound)
         return -1;
-    std::shared_ptr<SoundData> const sound = Sound::load(scene.layers[soundLayer].soundFile);
+    std::shared_ptr<SoundData> const sound = Sound::track(scene.layers[soundLayer], scene.fps);
     if (!sound)
         return -1;
     QString shapes = LipSync::lead(LipSync::detect(sound->samples, SoundData::kRate, scene.fps), lipSyncLead());
@@ -57,7 +58,7 @@ int MainWindow::lipSyncFromWords(int soundLayer, QString const& words)
     Scene const& scene = m_document->scene();
     if (soundLayer < 0 || soundLayer >= scene.layers.size() || scene.layers[soundLayer].kind != Layer::Sound)
         return -1;
-    std::shared_ptr<SoundData> const sound = Sound::load(scene.layers[soundLayer].soundFile);
+    std::shared_ptr<SoundData> const sound = Sound::track(scene.layers[soundLayer], scene.fps);
     if (!sound)
         return -1;
     // Where the speech is, from the sound; what is said there, from the words.
@@ -277,6 +278,20 @@ void MainWindow::playFrameSound(int frame)
     if (m_scrubMix.isEmpty())
         m_scrubMix = Sound::mix(m_document->scene());
     double const fps = std::max(m_document->scene().fps, 1.0);
+    qint64 const elapsed=m_scrubClock.isValid()?m_scrubClock.elapsed():1000;
+    if(m_scrub && m_analogScrub && m_scrubFrame>=0 && m_scrubFrame!=frame && elapsed>0 && elapsed<250 && !m_scrubMix.isEmpty()) {
+        double const velocity=std::clamp((frame-m_scrubFrame)*1000.0/(fps*elapsed)*m_scrubResponse/5.0,-8.0,8.0);
+        double const blend=1-std::exp(-double(elapsed)/(m_scrubDamping*5+1));
+        if(m_scrubVelocity*velocity<0) m_scrubVelocity=0;
+        m_scrubVelocity+=(velocity-m_scrubVelocity)*blend;
+        int const count=int(std::clamp<qint64>(elapsed,10,100)*SoundData::kRate/1000);
+        double const first=m_scrubFrame/fps*SoundData::kRate;
+        auto const audio=Sound::scrub(m_scrubMix,first,first+m_scrubVelocity*count,count);
+        m_player.play(audio,0);
+    } else {
+        m_scrubVelocity=0;
     if (!m_scrubMix.isEmpty())
         m_player.play(m_scrubMix, qint64(frame / fps * SoundData::kRate), qint64(SoundData::kRate / fps));
+    }
+    m_scrubFrame=frame; m_scrubClock.restart();
 }

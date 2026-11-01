@@ -983,6 +983,9 @@
   <item id="UngroupLayers"/>
   <item id="MoveToParentGroup"/>
   <item id="MoveSoundHere" icon="timeline/movesound" text="Start Sound on This Frame" responder="window" slot="onActionMoveSoundHere()"/>
+  <item id="SoundEditor" icon="timeline/addsound" text="Sound Editor..." responder="window" slot="onActionSoundEditor()" tooltip="The Sound Element Editor: the sound layer's clips, their times, loops, volume and envelope, its effects and lip-sync."/>
+  <item id="SplitSoundClip" icon="timeline/movesound" text="Split Sound Clip" responder="window" slot="onActionSplitSoundClip()" tooltip="The sound clip playing on the current frame made two there."/>
+  <item id="InsertSilentCells" icon="timeline/movesound" text="Insert Silent Cells in Sound..." responder="window" slot="onActionInsertSilentCells()" tooltip="Frames of silence put in at the current frame; what plays after them moved later."/>
   <item id="DeleteLayers" icon="timeline/deletelayer" text="Delete Layers" shortcut="shortcut.deleteLayer" responder="window" slot="onActionDeleteLayer()"/>
   <item id="DuplicateLayer" icon="timeline/duplicatelayer" text="Duplicate Selected Layers" responder="window" slot="onActionDuplicateLayer()"/>
   <item id="MergeLayers" icon="timeline/mergelayers" text="Merge Selected Layers" shortcut="shortcut.mergeLayers" responder="window" slot="onActionMergeLayers()"/>
@@ -1386,6 +1389,7 @@
    <item id="XsheetShowDrawingColumns" icon="xsheet/drawingcolumns" text="Toggle Show &amp;Drawing Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="drawingColumns"/>
    <item id="XsheetShowFunctionColumns" icon="function/curved" text="Toggle Show &amp;Function Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="functionColumns"/>
    <item id="XsheetShowPathColumns" icon="function/motion" text="Toggle Show 3D&amp;Path Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="pathColumns"/>
+   <item id="XsheetShowSoundColumns" text="Toggle Show Sound Columns" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="soundColumns"/>
    <item id="XsheetShowGrouping" text="Show &amp;Grouping" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="grouping"/>
    <item id="XsheetMinimalHeaders" text="&amp;Minimal Headers" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="minimal"/>
    <item id="TempoMarks" icon="xsheet/tempo" text="&amp;Tempo Marks..." responder="window" slot="onActionTempoMarks()"/>

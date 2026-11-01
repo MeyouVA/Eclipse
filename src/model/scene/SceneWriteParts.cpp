@@ -713,6 +713,25 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
     }
     if (layer.showsSymbol())
         layerObject["symbol"] = layer.symbolId;
+    if (!layer.soundClips.isEmpty()) {
+        QJsonArray clips;
+        for (SoundClip const& clip : layer.soundClips) {
+            QJsonArray envelope;
+            for (QPointF const& point : clip.envelope)
+                envelope << point.x() << point.y();
+            clips.append(QJsonObject{{"file", clip.file}, {"relative", pathFrom(folder, clip.file)}, {"start", clip.start}, {"stop", clip.stop},
+                                     {"offset", clip.offset}, {"length", clip.length}, {"loops", clip.loops}, {"volume", clip.volume}, {"envelope", envelope}});
+        }
+        layerObject["soundClips"] = clips;
+    }
+    if (layer.soundVolume != 1.0)
+        layerObject["soundVolume"] = layer.soundVolume;
+    if (!layer.soundEffects.isEmpty()) {
+        QJsonArray effects;
+        for (SoundEffect const& effect : layer.soundEffects)
+            effects.append(QJsonObject{{"type", effect.type}, {"enabled", effect.enabled}, {"a", effect.a}, {"b", effect.b}, {"c", effect.c}});
+        layerObject["soundEffects"] = effects;
+    }
     if (!layer.soundFrames.isEmpty()) {
         QJsonArray frames;
         for (int frame : layer.soundFrames)

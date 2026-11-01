@@ -3,7 +3,39 @@
 
 #include "model/scene/Effect.h"
 
+#include <QPointF>
+#include <QString>
+#include <QVector>
+
 #include <algorithm>
+
+// A sound clip on a sound layer: part of a file, placed on the layer's frames, looped, its loudness shaped.
+struct SoundClip {
+    QString file;
+    int start = 0;              // the layer's frame it starts on
+    int stop = -1;              // the frame after its last (-1: as long as the part of the file played, times the loops)
+    double offset = 0.0;        // seconds into the file it starts from (Start Time)
+    double length = -1.0;       // seconds of the file played (-1: to its end)
+    int loops = 1;              // times the part is played, one after another
+    double volume = 1.0;        // its gain (1: as recorded)
+    QVector<QPointF> envelope;  // (frame from the clip's start, gain) points; between them the gain goes straight; none: flat
+    double envelopeAt(double frame) const;
+    bool operator==(SoundClip const&) const = default;
+};
+
+// A sound effect on a sound layer's track, in order (Volume, Balance, Echo, Reverb, Low Pass, High Pass, Pitch Shift, Resample, Tempo).
+struct SoundEffect {
+    enum Type { Volume, Balance, Echo, Reverb, LowPass, HighPass, PitchShift, Resample, Tempo, TypeCount };
+    int type = Volume;
+    bool enabled = true;
+    double a = 0.0, b = 0.0, c = 0.0;   // its settings (SoundEffect::settings says what each is)
+    static QString name(int type);
+    // The settings of a kind: their names, ranges and defaults.
+    struct Setting { QString name; double low, high, initial; };
+    static QVector<Setting> settings(int type);
+    static SoundEffect make(int type);
+    bool operator==(SoundEffect const&) const = default;
+};
 
 struct Morph {
     int from = 0;
@@ -155,6 +187,18 @@ struct Layer {
     int soundStart = 0;       // and the frame it starts on
     QVector<int> soundFrames; // source frames after retiming; -1 is silent, empty plays continuously
     int soundFrameAt(int frame) const { int const at = frame - soundStart; return soundFrames.isEmpty() ? at : soundFrames.value(at, -1); }
+    // The clips of the track (none: the whole of soundFile from the layer's first frame), the track's own gain and effects.
+    QVector<SoundClip> soundClips;
+    double soundVolume = 1.0;
+    QVector<SoundEffect> soundEffects;
+    QVector<SoundClip> clipsOfSound() const
+    {
+        if (!soundClips.isEmpty())
+            return soundClips;
+        SoundClip whole;
+        whole.file = soundFile;
+        return soundFile.isEmpty() ? QVector<SoundClip>() : QVector<SoundClip>{whole};
+    }
     QString lipsync;
     // The shape on a frame of the scene; null where the sound layer has none.
     QChar mouthAt(int frame) const

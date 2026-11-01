@@ -51,6 +51,9 @@ anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed on
   Perspective views.
 - Sound layers, sound scrubbing, and lip-sync detection - from the sound, or from the words typed - that can be mapped
   onto mouth drawings.
+- Sound Element Editor for clips, loops, gain envelopes and ordered audio effects, including filters, echo,
+  reverb, pitch and tempo. Sound files are collected into the scene folder when saving. Preferences control
+  sound-column visibility/colour and analog scrubbing; tempo markers have a starting frame.
 
 **Effects and compositing**
 

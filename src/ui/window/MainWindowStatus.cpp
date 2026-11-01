@@ -134,6 +134,8 @@ void MainWindow::updateActionStates()
     set("UnlockLayer", canUnlock);
     set("DefaultTrackColour", coloured);
     set("MoveSoundHere", current.kind == Layer::Sound);
+    set("SplitSoundClip", current.kind == Layer::Sound);
+    set("InsertSilentCells", current.kind == Layer::Sound);
     // What is selected in the drawing.
     bool const picked = m_canvas->selecting() && m_canvas->hasSelection();
     for (char const* id : {"FlipHorizontal", "FlipVertical", "Rotate90CW", "Rotate90CCW", "Rotate180", "BringToFront", "SendToBack",

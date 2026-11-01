@@ -63,9 +63,9 @@ void MainWindow::preferencesSheetMore(PreferenceWidgets& w, QSettings& s, QDialo
     QGroupBox* const filtering = new QGroupBox(tr("Filtering"), w.sheet);
     QVBoxLayout* const shown = new QVBoxLayout(filtering);
     static char const* const kShow[] = {QT_TR_NOOP("Show Drawing Columns"), QT_TR_NOOP("Show Function Columns"), QT_TR_NOOP("Show 3D Path Columns"),
-                                        QT_TR_NOOP("Show 3D Rotation Columns"), QT_TR_NOOP("Show Annotation Columns")};
-    static char const* const kKeys[] = {"Drawing", "Function", "Path", "Rotation", "Annotation"};
-    for (int i = 0; i < 5; ++i) {
+                                        QT_TR_NOOP("Show 3D Rotation Columns"), QT_TR_NOOP("Show Annotation Columns"),QT_TR_NOOP("Show Sound Columns")};
+    static char const* const kKeys[] = {"Drawing", "Function", "Path", "Rotation", "Annotation","Sound"};
+    for (int i = 0; i < 6; ++i) {
         w.xsheetShow[i] = new QCheckBox(tr(kShow[i]), filtering);
         w.xsheetShow[i]->setObjectName(QStringLiteral("PrefXsheetShow") + QLatin1String(kKeys[i]));
         w.xsheetShow[i]->setChecked(s.value(QStringLiteral("prefs/xsheetShow") + QLatin1String(kKeys[i]), true).toBool());
@@ -117,8 +117,8 @@ void MainWindow::saveSheetPreferences(PreferenceWidgets& w, QSettings& s)
     s.setValue(QStringLiteral("prefs/xsheetSelection"), w.xsheetSelection->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetMinimal"), w.xsheetMinimal->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetGrid"), w.xsheetGrid->isChecked());
-    static char const* const kKeys[] = {"Drawing", "Function", "Path", "Rotation", "Annotation"};
-    for (int i = 0; i < 5; ++i)
+    static char const* const kKeys[] = {"Drawing", "Function", "Path", "Rotation", "Annotation","Sound"};
+    for (int i = 0; i < 6; ++i)
         s.setValue(QStringLiteral("prefs/xsheetShow") + QLatin1String(kKeys[i]), w.xsheetShow[i]->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetApplyNextLeftToRight"), w.xsheetLeftToRight->isChecked());
     s.setValue(QStringLiteral("prefs/xsheetAddColumns"), w.xsheetAddColumns->currentIndex());
@@ -145,7 +145,7 @@ void MainWindow::applySheetPreferences(QSettings const& s, bool starting)
         m_xsheet->setSelectionOnly(true, m_timeline->selectedLayers());
     int shown = Xsheet::ShowEverything;
     static std::pair<char const*, int> const kKeys[] = {{"Drawing", Xsheet::ShowDrawings}, {"Function", Xsheet::ShowFunctions}, {"Path", Xsheet::ShowPaths},
-                                                       {"Rotation", Xsheet::ShowRotations}, {"Annotation", Xsheet::ShowAnnotations}};
+                                                       {"Rotation", Xsheet::ShowRotations}, {"Annotation", Xsheet::ShowAnnotations},{"Sound",Xsheet::ShowSounds}};
     for (auto const& [key, flag] : kKeys)
         if (!s.value(QStringLiteral("prefs/xsheetShow") + QLatin1String(key), true).toBool())
             shown &= ~flag;

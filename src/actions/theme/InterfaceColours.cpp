@@ -62,6 +62,7 @@ QList<Entry> const& entries()
         {"xsheetExpressionColumn", "Exposure Sheet", "Expression Columns", QColor(150, 84, 130)},
         {"xsheetFunctionColumn", "Exposure Sheet", "Function Columns", QColor(170, 124, 44)},
         {"xsheetAnnotationColumn", "Exposure Sheet", "Annotation Columns", QColor(226, 222, 204)},
+        {"xsheetSoundColumn", "Exposure Sheet", "Sound Column Colour", QColor(52,120,84)},
         {"nodeBackground", "Node View", "Background", QColor(69, 69, 69)},
         {"nodeLight", "Node View", "Node Light Colour", QColor(96, 98, 104)},
         {"nodeDark", "Node View", "Node Dark Colour", QColor(20, 21, 23)},

@@ -145,6 +145,7 @@ void MainWindow::syncXsheetChecks()
     m_actions->setChecked(QStringLiteral("XsheetShowDrawingColumns"), shown & Xsheet::ShowDrawings);
     m_actions->setChecked(QStringLiteral("XsheetShowFunctionColumns"), shown & Xsheet::ShowFunctions);
     m_actions->setChecked(QStringLiteral("XsheetShowPathColumns"), shown & Xsheet::ShowPaths);
+    m_actions->setChecked(QStringLiteral("XsheetShowSoundColumns"),shown & Xsheet::ShowSounds);
     m_actions->setChecked(QStringLiteral("XsheetShowSelection"), m_xsheet->selectionOnly());
     m_actions->setChecked(QStringLiteral("XsheetShowGrouping"), m_xsheet->grouping());
     m_actions->setChecked(QStringLiteral("XsheetMinimalHeaders"), m_xsheet->minimalHeaders());
@@ -220,6 +221,8 @@ void MainWindow::onActionXsheetView(QString const& what)
         m_xsheet->setShown(m_xsheet->shown() ^ (Xsheet::ShowFunctions | Xsheet::ShowRotations));
     else if (what == QLatin1String("pathColumns"))
         m_xsheet->setShown(m_xsheet->shown() ^ Xsheet::ShowPaths);
+    else if(what==QLatin1String("soundColumns"))
+        m_xsheet->setShown(m_xsheet->shown() ^ Xsheet::ShowSounds);
     else if (what == QLatin1String("columnList")) {
         m_xsheetList->setVisible(m_xsheetList->isHidden());
         refreshXsheetList();
@@ -507,19 +510,24 @@ void MainWindow::onActionTempoMarks()
     bar->setRange(0, 1000);
     bar->setSpecialValueText(tr("None"));
     bar->setValue(scene.beatsPerBar);
+    QSpinBox* const start=new QSpinBox(&dialog);
+    start->setObjectName(QStringLiteral("TempoStartingFrame")); start->setRange(1,scene.frameCount()); start->setValue(scene.tempoStart+1);
+    start->setToolTip(tr("First frame counted toward the tempo beats."));
     QFormLayout* const form = new QFormLayout(&dialog);
     form->addRow(tr("Frames per beat:"), beat);
     form->addRow(tr("Beats per bar:"), bar);
+    form->addRow(tr("Starting frame:"),start);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
-    if (dialog.exec() != QDialog::Accepted || (beat->value() == scene.framesPerBeat && bar->value() == scene.beatsPerBar))
+    if (dialog.exec() != QDialog::Accepted || (beat->value() == scene.framesPerBeat && bar->value() == scene.beatsPerBar && start->value()-1==scene.tempoStart))
         return;
-    int const fpb = beat->value(), bpb = bar->value();
-    m_document->editScene(tr("Tempo Marks"), [fpb, bpb](Scene& s) {
+    int const fpb = beat->value(), bpb = bar->value(),first=start->value()-1;
+    m_document->editScene(tr("Tempo Marks"), [fpb, bpb,first](Scene& s) {
         s.framesPerBeat = fpb;
         s.beatsPerBar = bpb;
+        s.tempoStart=first;
     });
 }
 

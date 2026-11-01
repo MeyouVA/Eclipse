@@ -48,6 +48,11 @@ void MainWindow::onActionImportSound()
                                                       MediaFormats::audioFilter());
     if (path.isEmpty())
         return;
+    for(Layer const& existing : m_document->scene().layers) if(existing.kind==Layer::Sound)
+        for(SoundClip const& clip : existing.clipsOfSound()) if(QFileInfo(clip.file)==QFileInfo(path)) {
+            QMessageBox::information(this,tr("Import Sound"),tr("Sound %1 already exists in the project").arg(QFileInfo(path).fileName()));
+            return;
+        }
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QString error;
     std::shared_ptr<SoundData> const sound = Sound::load(path, &error);

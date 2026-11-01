@@ -47,6 +47,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
     scene.bitmapResolution = std::clamp(json["bitmapResolution"].toInt(100), 25, 400);
     scene.framesPerBeat = std::clamp(json["framesPerBeat"].toInt(0), 0, 1000);
     scene.beatsPerBar = std::clamp(json["beatsPerBar"].toInt(0), 0, 1000);
+    scene.tempoStart=std::max(0,json["tempoStart"].toInt(0));
     for (QJsonValue const& mv : json["sheetMarkers"].toArray()) {
         QJsonObject const mo = mv.toObject();
         SheetMarker m;

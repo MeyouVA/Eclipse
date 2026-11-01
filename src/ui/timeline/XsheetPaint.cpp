@@ -40,7 +40,7 @@ QColor Xsheet::columnColour(Layer const& layer, int function) const
     case Layer::DrawingLayer:
         return layer.cloneGroup != 0 && !layer.cloneTiming ? InterfaceColours::get("xsheetTimingColumn") : InterfaceColours::get("xsheetDrawingColumn");
     case Layer::Annotation: return InterfaceColours::get("xsheetAnnotationColumn");
-    case Layer::Sound: return InterfaceColours::get("nodeSound");
+    case Layer::Sound: return InterfaceColours::get("xsheetSoundColumn");
     case Layer::Peg: return InterfaceColours::get("nodePeg");
     case Layer::Camera: return InterfaceColours::get("nodeCamera");
     case Layer::Group: return InterfaceColours::get("nodeGroup");
@@ -396,9 +396,9 @@ void Xsheet::paintTempo(QPainter& p, int firstRow, int lastRow)
     int const right = kRowHeaderWidth + m_contentWidth - horizontalScrollBar()->value();
     QColor const beat = InterfaceColours::get("xsheetFrameBeat"), bar = InterfaceColours::get("xsheetBeatBar");
     for (int f = firstRow; f <= lastRow; ++f) {
-        if ((f + 1) % scene.framesPerBeat != 0)
+        if (f<scene.tempoStart || (f + 1-scene.tempoStart) % scene.framesPerBeat != 0)
             continue;
-        bool const onBar = scene.beatsPerBar > 0 && (f + 1) % (scene.framesPerBeat * scene.beatsPerBar) == 0;
+        bool const onBar = scene.beatsPerBar > 0 && (f + 1-scene.tempoStart) % (scene.framesPerBeat * scene.beatsPerBar) == 0;
         int const y = hh + (f + 1) * rh - sy - 1;
         p.setPen(QPen(onBar ? bar : beat, onBar ? 2 : 1));
         p.drawLine(kRowHeaderWidth, y, right, y);

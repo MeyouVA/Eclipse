@@ -24,6 +24,14 @@ float SoundData::peak(qint64 first, qint64 count) const
     return float(loudest) / 32768.0f;
 }
 
+bool SoundData::hasSamples(qint64 first,qint64 end) const
+{
+    first=std::max<qint64>(0,first); end=std::min(end,frames());
+    if(first>=end) return false;
+    if(ranges.isEmpty()) return true;
+    return std::any_of(ranges.cbegin(),ranges.cend(),[&](auto const& span) { return first<span.second && end>span.first; });
+}
+
 namespace Sound {
 
 QString findFfmpeg()
@@ -139,6 +147,7 @@ std::shared_ptr<SoundData> load(QString const& path, QString* error)
         return nullptr;
     }
     auto data = std::make_shared<SoundData>();
+    data->contentHash=hash;
     QString const ffmpeg = findFfmpeg();
     QString why;
     bool ok = !ffmpeg.isEmpty() && decodeWithFfmpeg(ffmpeg, key, data->samples, &why);
@@ -155,7 +164,7 @@ std::shared_ptr<SoundData> load(QString const& path, QString* error)
 
 // ---- mixing and writing -------------------------------------------------------------------
 
-QVector<qint16> mix(Scene const& scene)
+QVector<qint16> mix(Scene const& scene,int firstFrame,int lastFrame)
 {
     qint64 const total = qint64(std::ceil(scene.frameCount() / scene.fps * SoundData::kRate));
     QVector<qint32> sum(total * 2, 0);
@@ -166,7 +175,7 @@ QVector<qint16> mix(Scene const& scene)
         Layer const& layer = scene.layers[l];
         if (layer.kind != Layer::Sound || !scene.enabled(l))
             continue;
-        std::shared_ptr<SoundData> const data = load(layer.soundFile);
+        std::shared_ptr<SoundData> const data = track(layer, scene.fps);
         if (!data)
             continue;
         if (!layer.soundFrames.isEmpty()) {
@@ -175,18 +184,19 @@ QVector<qint16> mix(Scene const& scene)
                 if (frame < 0)
                     continue;
                 qint64 const to = at(f), length = at(f + 1) - to, from = at(frame);
+                if(f>=firstFrame && (lastFrame<0 || f<=lastFrame) && data->hasSamples(from,from+length)) any=true;
                 for (qint64 i = 0; i < length && to + i < total && from + i < data->frames(); ++i) {
-                    any = true;
                     sum[(to + i) * 2] += data->samples[(from + i) * 2];
                     sum[(to + i) * 2 + 1] += data->samples[(from + i) * 2 + 1];
                 }
             }
             continue;
         }
-        any = true;
         qint64 const offset = at(layer.soundStart);
         qint64 const first = std::max<qint64>(0, -offset);
         qint64 const count = std::min<qint64>(data->frames(), total - offset);
+        qint64 const rangeFirst=at(std::max(0,firstFrame)),rangeEnd=at(lastFrame<0?scene.frameCount():std::min(scene.frameCount(),lastFrame+1));
+        if(data->hasSamples(std::max(first,rangeFirst-offset),std::min(count,rangeEnd-offset))) any=true;
         for (qint64 i = first; i < count; ++i) {
             sum[(offset + i) * 2] += data->samples[i * 2];
             sum[(offset + i) * 2 + 1] += data->samples[i * 2 + 1];
@@ -202,7 +212,7 @@ QVector<qint16> mix(Scene const& scene)
             if (!nestedScene.enabled(l))
                 continue;
             if (layer.kind == Layer::Sound && depth > 0) {
-                std::shared_ptr<SoundData> const data = load(layer.soundFile);
+                std::shared_ptr<SoundData> const data = track(layer, scene.fps);
                 if (!data)
                     continue;
                 for (int f = 0; f < shown.size(); ++f) {
@@ -213,11 +223,11 @@ QVector<qint16> mix(Scene const& scene)
                     if (soundFrame < 0)
                         continue;
                     qint64 const from = at(soundFrame);
+                    if(f>=firstFrame && (lastFrame<0 || f<=lastFrame) && data->hasSamples(from,from+length)) any=true;
                     for (qint64 i = 0; i < length && to + i < total; ++i) {
                         qint64 const s = from + i;
                         if (s < 0 || s >= data->frames())
                             continue;
-                        any = true;
                         sum[(to + i) * 2] += data->samples[s * 2];
                         sum[(to + i) * 2 + 1] += data->samples[s * 2 + 1];
                     }
@@ -248,7 +258,9 @@ QVector<qint16> mix(Scene const& scene)
     out.resize(sum.size());
     for (qsizetype i = 0; i < sum.size(); ++i)
         out[i] = qint16(std::clamp(sum[i], -32768, 32767));
-    return out;
+    qint64 const begin=std::clamp<qint64>(at(std::max(0,firstFrame))*2,0,out.size());
+    qint64 const end=lastFrame<0?out.size():std::clamp<qint64>(at(std::min(scene.frameCount(),lastFrame+1))*2,begin,out.size());
+    return out.mid(begin,end-begin);
 }
 
 bool writeWav(QString const& path, QVector<qint16> const& stereo, QString* error)

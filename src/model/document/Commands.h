@@ -381,6 +381,16 @@ public:
     // A sound layer in front, named after the file, starting on `startFrame`.
     int addSound(QString const& file, int startFrame);
     void setSoundStart(int layer, int frame);
+    // A sound layer's clips (the first one's file becomes the layer's file), its gain and its effects.
+    void setSoundClips(int layer, QVector<SoundClip> const& clips, QString const& text);
+    void setSoundVolume(int layer, double volume);
+    void setSoundEffects(int layer, QVector<SoundEffect> const& effects, QString const& text);
+    // Import Sound Clip: a file added to a sound layer, starting on a frame of the scene; the clip's place, or -1.
+    int addSoundClip(int layer, QString const& file, int frame);
+    // Split Sound Clip: the clip playing on that frame of the scene made two there. False when none is, or it loops.
+    bool splitSoundClip(int layer, int frame, QString* why = nullptr,int selected=-1);
+    // Insert Silent Cells in Sound: `count` frames of silence put in at that frame, what plays after it moved later.
+    bool insertSilentCells(int layer, int frame, int count, QString* why = nullptr);
     void setLipSync(int layer, QString const& shapes, QString const& text);
     void setMouth(int layer, int frame, QChar shape);
     bool mapLipSync(int soundLayer, int target, QVector<int> const& drawingFor);
