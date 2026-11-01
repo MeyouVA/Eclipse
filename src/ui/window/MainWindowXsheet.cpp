@@ -569,7 +569,7 @@ void MainWindow::onActionAnnotation(QString const& what)
         m_xsheet->beginNote();
     else if (what == QLatin1String("picture")) {
         QString const file = QFileDialog::getOpenFileName(this, tr("Select Annotation Bitmap File"), QString(),
-                                                          ImageFiles::fileFilter());
+                                                          ImageFiles::fileFilter(), nullptr, QFileDialog::HideNameFilterDetails);
         if (file.isEmpty())
             return;
         QImage const image = ImageFiles::load(file);

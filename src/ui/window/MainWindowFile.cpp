@@ -277,7 +277,7 @@ void MainWindow::onActionExportMovie()
 {
     QString start = m_path.isEmpty() ? QStringLiteral("scene.mp4") : QFileInfo(m_path).path() + QStringLiteral("/frames/") + QFileInfo(m_path).completeBaseName() + QStringLiteral(".mp4");
     QString selected;
-    QString path = QFileDialog::getSaveFileName(this,tr("Export Movie"),start,MediaFormats::videoFilter(true),&selected);
+    QString path = QFileDialog::getSaveFileName(this,tr("Export Movie"),start,MediaFormats::videoFilter(true),&selected,QFileDialog::HideNameFilterDetails);
     if (path.isEmpty())
         return;
     if (QFileInfo(path).suffix().isEmpty()) {

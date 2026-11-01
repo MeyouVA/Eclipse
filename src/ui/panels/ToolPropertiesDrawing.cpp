@@ -251,7 +251,7 @@ void ToolProperties::addBitmapBrushRows()
         QMenu* const menu = new QMenu(more);
         connect(menu->addAction(tr("Edit Tip...")), &QAction::triggered, this, [this] { editTipShape(); });
         connect(menu->addAction(tr("Import Tip from Picture...")), &QAction::triggered, this, [this, tip] {
-            QString const path = QFileDialog::getOpenFileName(this, tr("Import Tip from Picture"), QString(), ImageFiles::fileFilter());
+            QString const path = QFileDialog::getOpenFileName(this, tr("Import Tip from Picture"), QString(), ImageFiles::fileFilter(), nullptr, QFileDialog::HideNameFilterDetails);
             if (!path.isEmpty())
                 importBitmapTips(path, tip);
         });

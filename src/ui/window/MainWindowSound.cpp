@@ -27,7 +27,7 @@ SoundEditor* MainWindow::openSoundEditor(int layer)
         connect(m_soundEditor, &SoundEditor::playLayer, this, &MainWindow::playSoundLayer);
         connect(m_soundEditor, &SoundEditor::importClip, this, [this](int l) {
             QString const path = QFileDialog::getOpenFileName(this, tr("Select Sound File"), QFileInfo(m_path).path(),
-                                                              MediaFormats::audioFilter());
+                                                              MediaFormats::audioFilter(), nullptr, QFileDialog::HideNameFilterDetails);
             QString error;
             if (!path.isEmpty() && importSoundClip(l, path, &error) < 0)
                 QMessageBox::critical(this, tr("Import Sound Clip"), error);

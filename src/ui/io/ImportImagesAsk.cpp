@@ -197,7 +197,7 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     QString const startFolder = m_path.isEmpty() ? QString() : QFileInfo(m_path).path();
     auto choose = [&] {
-        QStringList chosen = QFileDialog::getOpenFileNames(&dialog, dialog.windowTitle(), startFolder, kImageFilter);
+        QStringList chosen = QFileDialog::getOpenFileNames(&dialog, dialog.windowTitle(), startFolder, kImageFilter, nullptr, QFileDialog::HideNameFilterDetails);
         if (chosen.isEmpty())
             return;
         chosen.sort(Qt::CaseInsensitive);   // a numbered run of files in its order

@@ -45,7 +45,7 @@
 void MainWindow::onActionImportSound()
 {
     QString const path = QFileDialog::getOpenFileName(this, tr("Import Sound"), QFileInfo(m_path).path(),
-                                                      MediaFormats::audioFilter());
+                                                      MediaFormats::audioFilter(), nullptr, QFileDialog::HideNameFilterDetails);
     if (path.isEmpty())
         return;
     for(Layer const& existing : m_document->scene().layers) if(existing.kind==Layer::Sound)

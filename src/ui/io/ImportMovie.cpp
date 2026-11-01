@@ -95,7 +95,7 @@ int MainWindow::importMovie(QString const& path, QString* error)
 void MainWindow::onActionImportMovie()
 {
     QString const path = QFileDialog::getOpenFileName(this, tr("Import Movie"), m_path.isEmpty() ? QString() : QFileInfo(m_path).path(),
-                                                      MediaFormats::videoFilter());
+                                                      MediaFormats::videoFilter(), nullptr, QFileDialog::HideNameFilterDetails);
     if (path.isEmpty())
         return;
     stop();

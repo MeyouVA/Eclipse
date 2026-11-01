@@ -110,7 +110,7 @@ void MainWindow::onActionPresetDetails(QString const& kind, QString const& name)
     auto showIcon = [icon, &iconFile] { icon->setIcon(iconFile.isEmpty() ? QIcon() : QIcon(QPixmap::fromImage(ImageFiles::load(iconFile)))); };
     showIcon();
     connect(icon, &QPushButton::clicked, &dialog, [&dialog, &iconFile, showIcon] {
-        QString const chosen = QFileDialog::getOpenFileName(&dialog, tr("Select Custom Icon"), iconFile, ImageFiles::fileFilter());
+        QString const chosen = QFileDialog::getOpenFileName(&dialog, tr("Select Custom Icon"), iconFile, ImageFiles::fileFilter(), nullptr, QFileDialog::HideNameFilterDetails);
         if (!chosen.isEmpty()) {
             iconFile = chosen;
             showIcon();

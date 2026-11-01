@@ -277,7 +277,7 @@ void MainWindow::syncReferences()
 
 void MainWindow::onActionImportReference()
 {
-    QStringList const files = QFileDialog::getOpenFileNames(this, tr("Import to Reference View"), m_path.isEmpty() ? QString() : QFileInfo(m_path).path(), kImageFilter);
+    QStringList const files = QFileDialog::getOpenFileNames(this, tr("Import to Reference View"), m_path.isEmpty() ? QString() : QFileInfo(m_path).path(), kImageFilter, nullptr, QFileDialog::HideNameFilterDetails);
     if (files.isEmpty())
         return;
     int const read = addReferences(files);

@@ -70,7 +70,7 @@ int ask(QWidget* parent, QString const& title, QString const& name, std::functio
 int TextureDialogs::importTexture(QWidget* parent)
 {
     QString const file = QFileDialog::getOpenFileName(parent, QObject::tr("Import Texture from Picture"), settings().value(QStringLiteral("paths/texture")).toString(),
-                                                      ImageFiles::fileFilter());
+                                                      ImageFiles::fileFilter(), nullptr, QFileDialog::HideNameFilterDetails);
     if (file.isEmpty())
         return 0;
     settings().setValue(QStringLiteral("paths/texture"), QFileInfo(file).absolutePath());

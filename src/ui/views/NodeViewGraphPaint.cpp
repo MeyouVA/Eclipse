@@ -338,7 +338,7 @@ void NodeView::editGraphNode(int id)
             QTableWidgetItem* const images = overrides->item(row, 2);
             QString const was = images->data(Qt::UserRole).toString();
             QString const chosen = QFileDialog::getOpenFileName(&dialog, tr("Picture Sequence (its first picture)"), was,
-                                                                ImageFiles::fileFilter());
+                                                                ImageFiles::fileFilter(), nullptr, QFileDialog::HideNameFilterDetails);
             if (chosen.isEmpty() && !was.isEmpty()
                 && QMessageBox::question(&dialog, tr("Picture Sequence"), tr("Show this colour without its picture sequence?")) != QMessageBox::Yes)
                 return;

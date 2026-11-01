@@ -152,7 +152,7 @@ void PalettePanel::onActionEditColour()
 
 void PalettePanel::onActionNewTexture()
 {
-    QString const file = QFileDialog::getOpenFileName(this, tr("New Texture"), QString(), picturesFilter());
+    QString const file = QFileDialog::getOpenFileName(this, tr("New Texture"), QString(), picturesFilter(), nullptr, QFileDialog::HideNameFilterDetails);
     if (file.isEmpty())
         return;
     QImage const picture = ImageFiles::load(file);
@@ -169,7 +169,7 @@ void PalettePanel::onActionEditTexture()
     if (!swatch || !swatch->isTexture())
         return;
     int const id = m_current;
-    QString const file = QFileDialog::getOpenFileName(this, tr("Edit Texture"), QString(), picturesFilter());
+    QString const file = QFileDialog::getOpenFileName(this, tr("Edit Texture"), QString(), picturesFilter(), nullptr, QFileDialog::HideNameFilterDetails);
     QImage const picture = file.isEmpty() ? QImage() : ImageFiles::load(file);
     if (!picture.isNull())
         m_document->setSwatchTexture(id, picture);

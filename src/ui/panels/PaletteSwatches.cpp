@@ -42,7 +42,7 @@ void PalettePanel::editColor(QListWidgetItem* item)
     }
     // A texture: another picture for it.
     if (swatch->isTexture()) {
-        QString const file = QFileDialog::getOpenFileName(this, tr("Texture"), QString(), ImageFiles::fileFilter());
+        QString const file = QFileDialog::getOpenFileName(this, tr("Texture"), QString(), ImageFiles::fileFilter(), nullptr, QFileDialog::HideNameFilterDetails);
         QImage const picture = file.isEmpty() ? QImage() : ImageFiles::load(file);
         if (!picture.isNull())
             m_document->setSwatchTexture(id, picture);
