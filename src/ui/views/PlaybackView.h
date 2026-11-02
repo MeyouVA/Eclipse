@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QElapsedTimer>
 #include <QImage>
+#include <QSet>
 #include <QStringList>
 #include <QTimer>
 #include "audio/sound/SoundPlayer.h"
@@ -27,6 +28,10 @@ public:
     bool previewLoaded() const { return !m_preview.isEmpty(); }
     void applyPreferences();
     bool reload(QString* error=nullptr);
+    bool reloadFrames(int first,int last,QString* error=nullptr);
+    bool unloadFrames(int first,int last);
+    bool frameLoaded(int frame) const { return frame>=0 && frame<frameCount() && !m_unloaded.contains(frame); }
+    QString fileProperties(int frame) const;
     void unload();
     int frameCount() const { return int(m_files.size()); }
     int currentFrame() const { return m_frame; }
@@ -57,6 +62,8 @@ protected:
 private:
     void chooseFolder();
     void chooseMovie();
+    void chooseFrameOperation(bool reload);
+    void showFileProperties();
     void startSound();
     void restartAtCurrent();
     void tick();
@@ -64,6 +71,7 @@ private:
     void report(QString const& error);
     QImage read(int frame,QString* error);
     QStringList m_files;
+    QSet<int> m_unloaded;
     QString m_folder;
     QCache<int,QImage> m_cache;
     PlaybackSurface* m_surface=nullptr;

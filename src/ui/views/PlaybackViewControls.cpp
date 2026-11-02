@@ -41,9 +41,11 @@ PlaybackView::PlaybackView(double fps,QWidget* parent):QDialog(parent)
     };
     auto* load=add(file,tr("Load From Folder..."),QStringLiteral("PlaybackLoad"),[this] { chooseFolder(); });
     auto* movie=add(file,tr("Open Movie..."),QStringLiteral("PlaybackMovie"),[this] { chooseMovie(); });
-    auto* refresh=add(file,tr("Reload Frames"),QStringLiteral("PlaybackReload"),[this] { QString error; if(!reload(&error)) report(error); });
-    auto* clear=add(file,tr("Unload Frames"),QStringLiteral("PlaybackUnload"),[this] { unload(); });
-    auto* propertiesAction=add(file,tr("Loaded Files Properties..."),QStringLiteral("PlaybackProperties"),[this] { QMessageBox::information(this,tr("Loaded Files Properties"),properties()); });
+    auto* refresh=add(file,tr("Reload Frames..."),QStringLiteral("PlaybackReload"),[this] { chooseFrameOperation(true); });
+    auto* clear=add(file,tr("Unload Frames..."),QStringLiteral("PlaybackUnload"),[this] { chooseFrameOperation(false); });
+    add(file,tr("Reload Entire Source"),QStringLiteral("PlaybackReloadAll"),[this] { QString error; if(!reload(&error)) report(error); });
+    add(file,tr("Unload Entire Clip"),QStringLiteral("PlaybackUnloadAll"),[this] { unload(); });
+    auto* propertiesAction=add(file,tr("Loaded Files Properties..."),QStringLiteral("PlaybackProperties"),[this] { showFileProperties(); });
     toolbar->addAction(movie); toolbar->addAction(load); toolbar->addAction(refresh); toolbar->addAction(clear); toolbar->addSeparator();
     toolbar->addAction(add(playMenu,tr("Play Forward"),QStringLiteral("PlaybackForward"),[this] { play(1); }));
     toolbar->addAction(add(playMenu,tr("Play Backward"),QStringLiteral("PlaybackBackward"),[this] { play(-1); }));

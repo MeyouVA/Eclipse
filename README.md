@@ -72,6 +72,11 @@ anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed on
   changing source pixels. First/Last visit the loaded sequence endpoints. Play/Stop keyboard
   shortcuts act on key release. Top, Side and Perspective each have an independent playback switch,
   including their context menus and an assignable command for the focused planning view.
+  Reload/Unload Frames offers a selected range and shows which frames are loaded. Unloading pictures
+  keeps their sequence positions and sound timing; unloaded slots display blank. Snapshot originals
+  remain available for reload until the entire clip is unloaded. Movie range reload restores prepared
+  pictures; Reload Entire Source refreshes the movie and sound. A per-file properties browser shows
+  original dimensions, format, path, depth, alpha and colour profile, independently of review resolution.
 
 **Effects and compositing**
 

@@ -13,7 +13,7 @@ bool PlaybackView::loadPreview(QVector<QImage> const& frames,QVector<qint16> con
     if(m_loading || frames.isEmpty() || frames.size()>100000 || !std::isfinite(fps) || fps<.001 || fps>1000 || audio.size()%2 || std::any_of(frames.cbegin(),frames.cend(),[](QImage const& image) { return image.isNull(); })) {
         if(error) *error=tr("Playback requires a complete preview, a valid rate and stereo sound."); return false;
     }
-    stop(); m_cache.clear(); m_movie.reset(); m_folder.clear(); m_preview=frames; m_previewSound=audio; m_previewRate=fps;
+    stop(); m_cache.clear(); m_unloaded.clear(); m_movie.reset(); m_folder.clear(); m_preview=frames; m_previewSound=audio; m_previewRate=fps;
     m_files.clear(); for(qsizetype i=0;i<frames.size();++i) m_files<<tr("Preview %1").arg(i+1);
     m_frame=0;
     QSignalBlocker a(m_frameBox),b(m_first),c(m_last),d(m_slider);

@@ -57,5 +57,5 @@ void PlaybackView::startSound()
 }
 void PlaybackView::restartAtCurrent()
 {
-    m_from=m_frame; m_clock.restart(); m_audioCycle=0; m_audioHolding=false; m_initialPreroll=0; m_padding=false; m_surface->setBlank(false); startSound();
+    m_from=m_frame; m_clock.restart(); m_audioCycle=0; m_audioHolding=false; m_initialPreroll=0; m_padding=false; m_surface->setBlank(m_unloaded.contains(m_frame)); startSound();
 }
