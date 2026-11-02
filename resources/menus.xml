@@ -204,6 +204,7 @@
    <item id="PlayToggle" icon="play/play" text="&amp;Play" shortcut="shortcut.togglePlayback" checkable="true" responder="window" slot="onActionTogglePlayback()"/>
    <item id="PlayForward" icon="play/play" text="Play Scene Forward" shortcut="shortcut.playForward" responder="window" slot="onActionPlayForward()"/>
    <item id="PlayBackward" icon="play/play" text="Play Scene Backward" shortcut="shortcut.playBackward" responder="window" slot="onActionPlayBackward()"/>
+   <item id="OpenPlayback" text="Playback Viewer..." responder="window" slot="onActionOpenPlayback()"/>
    <item id="RenderAndPlay" icon="play/renderplay" text="&amp;Render and Play" shortcut="shortcut.renderAndPlay" responder="window" slot="onActionRenderAndPlay()"/>
    <item id="RecordAndPlay" icon="play/recordplay" text="Re&amp;cord and Play" responder="window" slot="onActionRecordAndPlay()"/>
    <item id="MiniPlayback" icon="play/miniplay" text="&amp;Mini Playback" shortcut="shortcut.miniPlayback" responder="window" slot="onActionMiniPlayback()"/>
@@ -636,6 +637,7 @@
   <menu id="Scripts" text="Scri&amp;pts" responder="window" aboutToShowSlot="onShowScripts(QMenu*)"/>
 
   <menu id="Windows" text="&amp;Windows">
+   <item id="OpenPlayback"/>
    <item id="RestoreDefaultWorkspace" icon="view/workspace" text="&amp;Restore Default Workspace" responder="window" slot="onActionRestoreDefaultWorkspace()"/>
    <separator/>
    <menu id="WindowsWorkspace" text="&amp;Workspace" responder="window" aboutToShowSlot="onShowWorkspaces(QMenu*)"/>

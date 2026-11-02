@@ -57,6 +57,10 @@ anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed on
 - Forward and backward scene playback with ranges, loop pauses, speed changes and assignable jog/shuttle
   commands. Seeking while playing follows the chosen frame; editing the scene stops playback.
   Sound plays during forward playback at 100% speed; reverse and other speeds are silent.
+- Playback Viewer, under Play or Windows, reads a folder of picture frames in natural filename order.
+  It offers independent frame/range/rate/speed controls, reverse play, zoom/pan, reload/unload,
+  frame/time and file-property displays, and a bounded image cache. Each file supplies its first
+  picture; this viewer does not import the frames into the scene or play sound.
 
 **Effects and compositing**
 
