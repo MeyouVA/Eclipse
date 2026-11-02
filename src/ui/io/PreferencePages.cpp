@@ -573,6 +573,10 @@ void MainWindow::preferencesTimeline(PreferenceWidgets& w, QSettings& s, QDialog
     for(int percent : {100,50,25}) w.playbackResolution->addItem(tr("%1%").arg(percent),percent);
     w.playbackResolution->setCurrentIndex(std::max(0,w.playbackResolution->findData(s.value(QStringLiteral("prefs/playbackResolution"),100).toInt())));
     w.timelineLayout->addRow(tr("Playback Viewer resolution"),w.playbackResolution);
+    w.viewerPreroll=new QSpinBox(w.timelinePage); w.viewerPreroll->setObjectName(QStringLiteral("PrefViewerPreroll")); w.viewerPreroll->setRange(0,1000); w.viewerPreroll->setSpecialValueText(tr("Off"));
+    w.viewerPreroll->setValue(s.value(QStringLiteral("prefs/viewerPreroll"),0).toInt()); w.viewerPreroll->setSuffix(tr(" frames")); w.timelineLayout->addRow(tr("Playback Viewer preroll"),w.viewerPreroll);
+    w.viewerLoop=new QCheckBox(tr("Loop in Playback Viewers"),w.timelinePage); w.viewerLoop->setObjectName(QStringLiteral("PrefViewerLoop"));
+    w.viewerLoop->setChecked(s.value(QStringLiteral("prefs/viewerLoop"),true).toBool()); w.timelineLayout->addRow(w.viewerLoop);
     w.xsheetPlayback=new QCheckBox(tr("Highlight the current Xsheet frame during playback"),w.timelinePage); w.xsheetPlayback->setObjectName(QStringLiteral("PrefXsheetPlayback"));
     w.xsheetPlayback->setChecked(s.value(QStringLiteral("prefs/xsheetPlayback"),true).toBool()); w.timelineLayout->addRow(w.xsheetPlayback);
     w.showSound = new QCheckBox(tr("Show sound layers"), w.timelinePage);

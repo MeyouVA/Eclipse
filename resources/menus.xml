@@ -201,7 +201,7 @@
   </menu>
 
   <menu id="Play" text="&amp;Play">
-   <item id="PlayToggle" icon="play/play" text="&amp;Play" shortcut="shortcut.togglePlayback" checkable="true" responder="window" slot="onActionTogglePlayback()"/>
+   <item id="PlayToggle" icon="play/play" text="&amp;Play" shortcut="shortcut.togglePlayback" triggerOnRelease="true" checkable="true" responder="window" slot="onActionTogglePlayback()"/>
    <item id="PlayForward" icon="play/play" text="Play Scene Forward" shortcut="shortcut.playForward" responder="window" slot="onActionPlayForward()"/>
    <item id="PlayBackward" icon="play/play" text="Play Scene Backward" shortcut="shortcut.playBackward" responder="window" slot="onActionPlayBackward()"/>
    <item id="OpenPlayback" text="Playback Viewer..." responder="window" slot="onActionOpenPlayback()"/>
@@ -217,6 +217,8 @@
    <item id="PlayScrub" icon="play/scrub" text="Enable Sound Scru&amp;bbing" checkable="true" responder="window" slot="onActionToggleSoundScrubbing(bool)"/>
    <item id="PlayLoop" icon="play/loop" text="&amp;Loop" checkable="true" checked="true" responder="window" slot="onActionToggleLoop(bool)"/>
    <menu id="EnablePlayback" text="Enable Play&amp;back">
+    <item id="TogglePlanningPlayback" text="Toggle Playback in Focused Planning View" shortcut="shortcut.planningPlayback" responder="window" slot="onActionTogglePlanningPlayback()"/>
+    <separator/>
     <item id="PlayInTop" icon="play/views" text="&amp;Top View" checkable="true" responder="window" slot="onActionEnablePlayback(QString)" itemParameter="top"/>
     <item id="PlayInSide" icon="play/views" text="&amp;Side View" checkable="true" responder="window" slot="onActionEnablePlayback(QString)" itemParameter="side"/>
     <item id="PlayInPerspective" icon="play/views" text="&amp;Perspective View" checkable="true" responder="window" slot="onActionEnablePlayback(QString)" itemParameter="perspective"/>
@@ -1888,6 +1890,11 @@
  </menu>
 
  <menu id="menu.scenePlanning" text="Scene Planning">
+  <menu id="PlanningPlayback" text="Enable Playback">
+   <item id="PlayInTop"/>
+   <item id="PlayInSide"/>
+   <item id="PlayInPerspective"/>
+  </menu>
   <item id="SelectParentSkippingEffects"/>
   <item id="SelectChildSkippingEffects"/>
   <separator/>

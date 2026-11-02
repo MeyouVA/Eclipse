@@ -46,6 +46,7 @@ public:
 
     void registerResponder(QString const& name, QObject* responder);
     void setActiveView(QWidget* view) { m_activeView = view; }
+    QWidget* activeView() const { return m_activeView; }
 
     // ---- building ------------------------------------------------------------------------
     void populateMenuBar(QString const& menuId, QMenuBar* bar);

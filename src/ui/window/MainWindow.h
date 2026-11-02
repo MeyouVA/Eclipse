@@ -281,6 +281,7 @@ public slots:
     void onActionShuttleReset();
     void onActionToggleLoop(bool on) { m_loop = on; }
     void onActionEnablePlayback(QString const& which);
+    void onActionTogglePlanningPlayback();
     void onActionCreateStampFromDrawings();
     // Edit > Symbol.
     void onActionCreateSymbol();

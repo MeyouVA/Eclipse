@@ -67,6 +67,11 @@ anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed on
   Preview Manager can send its current rendered frames and sound directly to the viewer, retaining
   an independent snapshot without movie encoding. Preferences > Timeline sets viewer cache and
   resolution defaults, and Xsheet playback highlighting can be paused while the scene plays.
+  Viewer preroll adds silent blank frames before playback and around loops, with loop and preroll
+  defaults in Preferences. Colour, individual RGB channels and alpha can be inspected without
+  changing source pixels. First/Last visit the loaded sequence endpoints. Play/Stop keyboard
+  shortcuts act on key release. Top, Side and Perspective each have an independent playback switch,
+  including their context menus and an assignable command for the focused planning view.
 
 **Effects and compositing**
 

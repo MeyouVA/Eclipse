@@ -28,4 +28,12 @@ void PlaybackView::applyPreferences()
     setCacheEnabled(prefs.value(QStringLiteral("prefs/playbackCacheEnabled"),true).toBool());
     int const resolution=prefs.value(QStringLiteral("prefs/playbackResolution"),100).toInt();
     setResolution(resolution==25 || resolution==50?resolution:100);
+    setPreroll(prefs.value(QStringLiteral("prefs/viewerPreroll"),0).toInt());
+    setLoop(prefs.value(QStringLiteral("prefs/viewerLoop"),true).toBool());
+    m_loopPause=std::clamp(prefs.value(QStringLiteral("prefs/loopPause"),0).toInt(),0,5000);
+}
+void PlaybackView::setPreroll(int frames)
+{
+    frames=std::clamp(frames,0,1000); if(frames!=m_preroll) stop(); m_preroll=frames;
+    if(auto* control=findChild<QSpinBox*>(QStringLiteral("PlaybackPreroll"))) { QSignalBlocker blocker(control); control->setValue(frames); }
 }

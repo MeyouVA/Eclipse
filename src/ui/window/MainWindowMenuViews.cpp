@@ -87,9 +87,11 @@ void MainWindow::createWindowsMenuViews()
     auto planningMenu = [this](QWidget* view, QString const& responder) {
         m_actions->registerResponder(responder, view);
         view->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(view, &QWidget::customContextMenuRequested, this, [this, view](QPoint const& point) {
+        connect(view, &QWidget::customContextMenuRequested, this, [this, view, responder](QPoint const& point) {
             view->setFocus();
             if (QMenu* const menu = m_actions->createMenu(QStringLiteral("menu.scenePlanning"), this)) {
+                QString const playback=responder==QLatin1String("topView")?QStringLiteral("PlayInTop"):responder==QLatin1String("sideView")?QStringLiteral("PlayInSide"):QStringLiteral("PlayInPerspective");
+                for(auto* sub : menu->findChildren<QMenu*>()) for(char const* id : {"PlayInTop","PlayInSide","PlayInPerspective"}) if(playback!=QLatin1String(id)) sub->removeAction(m_actions->action(QLatin1String(id)));
                 if (!qobject_cast<PerspectiveView*>(view))
                     for (char const* id : {"LookAtSelected", "FaceSelectedToDraw", "MoveViewForward", "MoveViewBackward", "PerspectiveClippingPlanes"})
                         menu->removeAction(m_actions->action(QLatin1String(id)));

@@ -100,7 +100,7 @@ void PlaybackView::setFrame(int frame)
     m_frame=frame; m_surface->setImage(image);
     if(playing() && !m_advancing) {
         if(frame<m_first->value()-1 || frame>m_last->value()-1) stop();
-        else { m_from=frame; m_clock.restart(); m_audioCycle=0; startSound(); }
+        else restartAtCurrent();
     }
     updateInfo();
 }
@@ -145,15 +145,22 @@ void PlaybackView::play(int direction)
         int const target=m_direction<0?last:first;
         setFrame(target); if(m_frame!=target) return;
     }
-    m_from=m_frame; m_clock.restart(); m_audioCycle=0; m_timer.start(); startSound(); updateInfo();
+    m_initialPreroll=m_preroll; m_padding=m_initialPreroll>0; m_surface->setBlank(m_padding);
+    m_from=m_frame; m_clock.restart(); m_audioCycle=0; m_audioHolding=false; m_timer.start(); startSound(); updateInfo();
 }
-void PlaybackView::stop() { m_timer.stop(); m_player.stop(); if(m_info) updateInfo(); }
+void PlaybackView::stop() { m_timer.stop(); m_player.stop(); m_padding=false; if(m_surface) m_surface->setBlank(false); if(m_info) updateInfo(); }
 void PlaybackView::tick()
 {
-    auto const at=PlaybackTime::at(m_first->value()-1,m_last->value()-1,m_from,m_direction,m_rate->value()*m_speed->value()/100.0,m_clock.elapsed()/1000.0,0,m_loop);
+    auto const timed=PlaybackTime::preview(m_first->value()-1,m_last->value()-1,m_from,m_direction,m_rate->value()*m_speed->value()/100.0,m_clock.elapsed()/1000.0,m_loopPause,m_loop,m_preroll,m_initialPreroll);
+    auto const& at=timed.position; bool const wasSilent=m_padding || m_audioHolding;
+    m_padding=timed.blank; m_surface->setBlank(m_padding);
     QScopedValueRollback<bool> advancing(m_advancing,true);
     if(at.frame!=m_frame) setFrame(at.frame);
-    if(playing() && at.cycle!=m_audioCycle) { m_audioCycle=at.cycle; startSound(); }
+    if((at.holding || m_padding) && !wasSilent) m_player.stop();
+    bool const resume=playing() && !at.ended && !at.holding && !m_padding && (at.cycle!=m_audioCycle || wasSilent);
+    m_audioHolding=at.holding; m_audioCycle=at.cycle;
+    if(resume) startSound();
+    if(timed.blank || wasSilent) updateInfo();
     if(at.ended) stop();
 }
 void PlaybackView::hideEvent(QHideEvent* event) { stop(); QDialog::hideEvent(event); }
@@ -163,7 +170,7 @@ void PlaybackView::updateInfo()
     if(m_files.isEmpty()) { m_info->setText(tr("No frames loaded. Each picture file supplies one frame.")); return; }
     m_info->setText(tr("%1 / %2  |  %3 s / %4 s  |  %5  |  Cache %6 MB / %7 MB%8")
         .arg(m_frame+1).arg(frameCount()).arg(m_frame/m_rate->value(),0,'f',3).arg(frameCount()/m_rate->value(),0,'f',3)
-        .arg(QFileInfo(m_files[m_frame]).fileName()).arg(m_cache.totalCost()/1024.0,0,'f',1).arg(m_cache.maxCost()/1024).arg(playing()?tr("  |  Playing"):QString()));
+        .arg(QFileInfo(m_files[m_frame]).fileName()).arg(m_cache.totalCost()/1024.0,0,'f',1).arg(m_cache.maxCost()/1024).arg(playing()?(m_padding?tr("  |  Blank preroll"):tr("  |  Playing")):QString()));
 }
 void PlaybackView::report(QString const& error) { m_info->setText(error); m_info->setToolTip(error); }
 QString PlaybackView::properties() const

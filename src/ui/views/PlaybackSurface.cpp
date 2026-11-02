@@ -15,9 +15,24 @@ PlaybackSurface::PlaybackSurface(QWidget* parent):QWidget(parent)
 void PlaybackSurface::setImage(QImage const& image)
 {
     m_image=image;
-    m_display=image.colorSpace().isValid()?image.convertedToColorSpace(QColorSpace::SRgb):image;
-    if(m_display.isNull()) m_display=image;
+    buildDisplay();
     update();
+}
+void PlaybackSurface::setChannel(int channel) { m_channel=std::clamp(channel,0,4); buildDisplay(); update(); }
+void PlaybackSurface::buildDisplay()
+{
+    m_display=m_image.colorSpace().isValid()?m_image.convertedToColorSpace(QColorSpace::SRgb):m_image;
+    if(m_display.isNull()) m_display=m_image;
+    if(m_channel==0 || m_display.isNull()) return;
+    m_display=m_display.convertToFormat(QImage::Format_RGBA8888);
+    for(int y=0;y<m_display.height();++y) {
+        auto* row=m_display.scanLine(y);
+        for(int x=0;x<m_display.width();++x) {
+            uchar const value=row[x*4+m_channel-1];
+            row[x*4]=row[x*4+1]=row[x*4+2]=value; row[x*4+3]=255;
+        }
+    }
+    m_display.setColorSpace(QColorSpace::SRgb);
 }
 double PlaybackSurface::scale() const
 {
@@ -28,6 +43,7 @@ void PlaybackSurface::fit() { m_fit=true; m_pan={}; update(); }
 void PlaybackSurface::actualSize() { m_fit=false; m_scale=1; m_pan={}; update(); }
 void PlaybackSurface::paintEvent(QPaintEvent*)
 {
+    if(m_blank) { QPainter painter(this); painter.fillRect(rect(),Qt::black); return; }
     QPainter painter(this); painter.fillRect(rect(),QColor(42,42,42));
     if(m_image.isNull()) { painter.setPen(Qt::lightGray); painter.drawText(rect(),Qt::AlignCenter,tr("Load a folder of picture frames to begin.")); return; }
     double const s=scale(); QPointF const origin=QPointF(width()/2.0,height()/2.0)+m_pan-QPointF(m_image.width()*s/2,m_image.height()*s/2);

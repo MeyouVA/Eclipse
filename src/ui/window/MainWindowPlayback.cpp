@@ -89,6 +89,7 @@ void MainWindow::onActionPlayBackward() { playDirection(-1); }
 
 void MainWindow::onActionEnablePlayback(QString const& which)
 {
+    if(which!=QLatin1String("top") && which!=QLatin1String("side") && which!=QLatin1String("perspective")) return;
     char const* const action = which == QLatin1String("top") ? "PlayInTop" : which == QLatin1String("side") ? "PlayInSide" : "PlayInPerspective";
     if (m_playViews.contains(which))
         m_playViews.removeAll(which);
@@ -96,7 +97,26 @@ void MainWindow::onActionEnablePlayback(QString const& which)
         m_playViews.push_back(which);
     m_actions->setChecked(QLatin1String(action), m_playViews.contains(which));
     settings().setValue(QStringLiteral("play/views"), m_playViews);
-    showFrameInStillViews();
+    if(m_playViews.contains(which) || !m_playTimer.isActive()) {
+        if(which==QLatin1String("perspective")) { for(auto* view : findChildren<PerspectiveView*>()) view->setCurrentCell(layer(),frame()); }
+        else for(auto* view : findChildren<DepthView*>()) if((view->mode()==DepthView::Top)==(which==QLatin1String("top"))) view->setCurrentCell(layer(),frame());
+    }
+}
+
+void MainWindow::onActionTogglePlanningPlayback()
+{
+    auto find=[this](QWidget* widget) {
+        for(auto* current=widget;current;current=current->parentWidget()) {
+            if(auto* depth=qobject_cast<DepthView*>(current)) { onActionEnablePlayback(depth->mode()==DepthView::Top?QStringLiteral("top"):QStringLiteral("side")); return true; }
+            if(qobject_cast<PerspectiveView*>(current)) { onActionEnablePlayback(QStringLiteral("perspective")); return true; }
+        }
+        if(widget && widget->objectName()==QLatin1String("ViewFrame")) {
+            if(auto* depth=widget->findChild<DepthView*>()) { onActionEnablePlayback(depth->mode()==DepthView::Top?QStringLiteral("top"):QStringLiteral("side")); return true; }
+            if(widget->findChild<PerspectiveView*>()) { onActionEnablePlayback(QStringLiteral("perspective")); return true; }
+        }
+        return false;
+    };
+    if(!find(QApplication::focusWidget()) && !find(m_actions->activeView())) statusBar()->showMessage(tr("Focus a Top, Side or Perspective view first."),4000);
 }
 
 // The views that stood still while playing show the frame the scene is on.

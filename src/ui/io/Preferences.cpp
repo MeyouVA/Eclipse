@@ -517,6 +517,8 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/playbackCacheMb"),w.playbackCacheMb->value());
     s.setValue(QStringLiteral("prefs/playbackResolution"),w.playbackResolution->currentData().toInt());
     s.setValue(QStringLiteral("prefs/xsheetPlayback"),w.xsheetPlayback->isChecked());
+    s.setValue(QStringLiteral("prefs/viewerPreroll"),w.viewerPreroll->value());
+    s.setValue(QStringLiteral("prefs/viewerLoop"),w.viewerLoop->isChecked());
     s.setValue(QStringLiteral("prefs/zoomOnMouse"), w.zoomOnMouse->isChecked());
     s.setValue(QStringLiteral("prefs/defaultZoom"), w.defaultZoom->value());
     s.setValue(QStringLiteral("prefs/planningDefaultZoom"), w.planningDefaultZoom->value());

@@ -20,6 +20,7 @@ class ECLIPSE_UI_API DepthView : public QWidget {
 public:
     enum Mode { Top, Side };
     DepthView(Document* document, Mode mode, QWidget* parent = nullptr);
+    Mode mode() const { return m_mode; }
 
     // Where the mark of a layer is in the view (its middle), and what depth a place stands for.
     QPointF layerPoint(int layer) const;

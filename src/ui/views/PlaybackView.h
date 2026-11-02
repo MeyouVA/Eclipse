@@ -42,6 +42,10 @@ public:
     void setCacheEnabled(bool enabled);
     void setResolution(int percent);
     void setVolume(int percent);
+    void setPreroll(int frames);
+    bool prerollActive() const { return m_padding; }
+    void setImageChannel(int channel);
+    QImage displayImage() const;
     bool hasAudio() const;
     QString movieSource() const;
     QVector<qint16> playbackSound() const;
@@ -54,6 +58,7 @@ private:
     void chooseFolder();
     void chooseMovie();
     void startSound();
+    void restartAtCurrent();
     void tick();
     void updateInfo();
     void report(QString const& error);
@@ -83,4 +88,8 @@ private:
     double m_previewRate=24;
     SoundPlayer m_player;
     qint64 m_audioCycle=0;
+    int m_preroll=0,m_loopPause=0;
+    bool m_audioHolding=false;
+    int m_initialPreroll=0;
+    bool m_padding=false;
 };

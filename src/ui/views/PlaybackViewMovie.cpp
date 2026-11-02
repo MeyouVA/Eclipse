@@ -1,5 +1,6 @@
 #include "ui/views/PlaybackView.h"
 #include "ui/views/PlaybackMovie.h"
+#include "ui/views/PlaybackSurface.h"
 #include "model/media/MediaFormats.h"
 #include <QApplication>
 #include <QDoubleSpinBox>
@@ -41,7 +42,7 @@ void PlaybackView::setVolume(int percent)
 QVector<qint16> PlaybackView::playbackSound() const
 {
     double const rate=m_movie?m_movie->rate:m_previewRate;
-    if(!hasAudio() || m_volume->value()==0 || m_direction<0 || m_speed->value()!=100 || std::abs(m_rate->value()-rate)>.000001) return {};
+    if(!hasAudio() || m_padding || m_volume->value()==0 || m_direction<0 || m_speed->value()!=100 || std::abs(m_rate->value()-rate)>.000001) return {};
     auto const& source=m_movie?m_movie->audio:m_previewSound;
     qint64 const first=qint64(m_frame/rate*44100),end=std::min<qint64>(qint64((m_last->value())/rate*44100),source.size()/2);
     if(first>=end) return {};
@@ -51,6 +52,10 @@ QVector<qint16> PlaybackView::playbackSound() const
 }
 void PlaybackView::startSound()
 {
-    m_player.stop(); auto const samples=playbackSound();
+    m_player.stop(); if(m_audioHolding || m_padding) return; auto const samples=playbackSound();
     if(!samples.isEmpty() && !m_player.play(samples,0)) report(tr("The default sound output could not be opened."));
+}
+void PlaybackView::restartAtCurrent()
+{
+    m_from=m_frame; m_clock.restart(); m_audioCycle=0; m_audioHolding=false; m_initialPreroll=0; m_padding=false; m_surface->setBlank(false); startSound();
 }

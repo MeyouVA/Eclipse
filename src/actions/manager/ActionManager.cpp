@@ -1,4 +1,5 @@
 #include "actions/manager/ActionManager.h"
+#include "actions/manager/ReleaseShortcut.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -196,6 +197,7 @@ QAction* ActionManager::actionFor(Node const& reference)
     if (!shortcut.isEmpty())
         m_actionShortcut.insert(id, shortcut);
     applyShortcut(action, shortcut);
+    if(item.value("triggerOnRelease")==QLatin1String("true")) new ReleaseShortcut(action);
     if (item.attr.contains(QStringLiteral("tooltip")))
         action->setToolTip(item.value("tooltip"));
     connect(action, &QAction::triggered, this, [this, item, id](bool checked) {
