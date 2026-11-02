@@ -59,8 +59,11 @@ anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed on
   Sound plays during forward playback at 100% speed; reverse and other speeds are silent.
 - Playback Viewer, under Play or Windows, reads a folder of picture frames in natural filename order.
   It offers independent frame/range/rate/speed controls, reverse play, zoom/pan, reload/unload,
-  frame/time and file-property displays, and a bounded image cache. Each file supplies its first
-  picture; this viewer does not import the frames into the scene or play sound.
+  frame/time and file-property displays, and a bounded image cache. Each picture file supplies
+  its first image. It also opens movies through the bundled decoder, with temporary frames,
+  stereo sound and volume. Movie sound plays forward at native FPS and 100% speed.
+  Cache can be disabled, and review resolution can be full, half or quarter size. Record and Play
+  opens recorded previews in this viewer. Viewer loads do not edit the scene.
 
 **Effects and compositing**
 

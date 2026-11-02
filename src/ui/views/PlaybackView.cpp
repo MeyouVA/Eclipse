@@ -1,9 +1,11 @@
 #include "ui/views/PlaybackView.h"
 #include "ui/views/PlaybackSurface.h"
+#include "ui/views/PlaybackMovie.h"
 #include "model/scene/PlaybackTime.h"
 #include "model/media/RawPixels.h"
 #include "render/images/ImageFiles.h"
 #include <QAction>
+#include <QActionGroup>
 #include <QCollator>
 #include <QColorSpace>
 #include <QDir>
@@ -26,69 +28,12 @@
 #include <algorithm>
 #include <cmath>
 
-PlaybackView::PlaybackView(double fps,QWidget* parent):QDialog(parent)
-{
-    setObjectName(QStringLiteral("PlaybackView")); setWindowTitle(tr("Playback")); resize(1000,700);
-    auto* layout=new QVBoxLayout(this); layout->setContentsMargins(0,0,0,0);
-    auto* bar=new QMenuBar(this); layout->setMenuBar(bar);
-    auto* file=bar->addMenu(tr("File")); auto* playMenu=bar->addMenu(tr("Play")); auto* view=bar->addMenu(tr("View"));
-    auto* toolbar=new QToolBar(this); toolbar->setObjectName(QStringLiteral("PlaybackControls"));
-    auto add=[this](QMenu* menu,QString const& text,QString const& name,auto callback) {
-        auto* action=menu->addAction(text); action->setObjectName(name); connect(action,&QAction::triggered,this,callback); return action;
-    };
-    auto* load=add(file,tr("Load From Folder..."),QStringLiteral("PlaybackLoad"),[this] { chooseFolder(); });
-    auto* refresh=add(file,tr("Reload Frames"),QStringLiteral("PlaybackReload"),[this] { QString error; if(!reload(&error)) report(error); });
-    auto* clear=add(file,tr("Unload Frames"),QStringLiteral("PlaybackUnload"),[this] { unload(); });
-    auto* propertiesAction=add(file,tr("Loaded Files Properties..."),QStringLiteral("PlaybackProperties"),[this] { QMessageBox::information(this,tr("Loaded Files Properties"),properties()); });
-    toolbar->addAction(load); toolbar->addAction(refresh); toolbar->addAction(clear); toolbar->addSeparator();
-    toolbar->addAction(add(playMenu,tr("Play Forward"),QStringLiteral("PlaybackForward"),[this] { play(1); }));
-    toolbar->addAction(add(playMenu,tr("Play Backward"),QStringLiteral("PlaybackBackward"),[this] { play(-1); }));
-    toolbar->addAction(add(playMenu,tr("Stop"),QStringLiteral("PlaybackStop"),[this] { stop(); }));
-    auto* loop=add(playMenu,tr("Loop"),QStringLiteral("PlaybackLoop"),[this](bool on) { setLoop(on); }); loop->setCheckable(true); loop->setChecked(true);
-    add(playMenu,tr("First Frame"),QStringLiteral("PlaybackFirst"),[this] { setFrame(m_first->value()-1); });
-    add(playMenu,tr("Previous Frame"),QStringLiteral("PlaybackPrevious"),[this] { setFrame(m_frame-1); });
-    add(playMenu,tr("Next Frame"),QStringLiteral("PlaybackNext"),[this] { setFrame(m_frame+1); });
-    add(playMenu,tr("Last Frame"),QStringLiteral("PlaybackLast"),[this] { setFrame(m_last->value()-1); });
-    add(view,tr("Zoom In"),QStringLiteral("PlaybackZoomIn"),[this] { m_surface->zoom(1.25); });
-    add(view,tr("Zoom Out"),QStringLiteral("PlaybackZoomOut"),[this] { m_surface->zoom(.8); });
-    add(view,tr("Reset Zoom / Fit Image"),QStringLiteral("PlaybackFit"),[this] { m_surface->fit(); });
-    add(view,tr("Actual Size"),QStringLiteral("PlaybackActualSize"),[this] { m_surface->actualSize(); });
-    auto* single=add(view,tr("Single Image"),QStringLiteral("PlaybackSingleImage"),[this](bool on) { m_single=on; if(on) stop(); }); single->setCheckable(true);
-    view->addAction(propertiesAction);
-    layout->addWidget(toolbar);
-    m_surface=new PlaybackSurface(this); layout->addWidget(m_surface,1);
-    m_surface->setFocusPolicy(Qt::StrongFocus);
-    add(playMenu,tr("Play / Stop"),QStringLiteral("PlaybackToggle"),[this] { if(playing()) stop(); else play(); });
-    auto bind=[this](char const* name,Qt::Key key) { auto* action=findChild<QAction*>(QLatin1String(name)); action->setShortcut(QKeySequence(key)); action->setShortcutContext(Qt::WidgetShortcut); m_surface->addAction(action); };
-    bind("PlaybackToggle",Qt::Key_Space); bind("PlaybackPrevious",Qt::Key_Left); bind("PlaybackNext",Qt::Key_Right); bind("PlaybackFirst",Qt::Key_Home); bind("PlaybackLast",Qt::Key_End);
-    m_surface->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(m_surface,&QWidget::customContextMenuRequested,this,[this,file,playMenu,view](QPoint const& point) {
-        QMenu menu(this); menu.addActions(file->actions()); menu.addSeparator(); menu.addActions(playMenu->actions()); menu.addSeparator(); menu.addActions(view->actions()); menu.exec(m_surface->mapToGlobal(point));
-    });
-    m_slider=new QSlider(Qt::Horizontal,this); m_slider->setObjectName(QStringLiteral("PlaybackFrameSlider")); m_slider->setRange(0,0); layout->addWidget(m_slider);
-    auto* fields=new QWidget(this); auto* grid=new QGridLayout(fields); int field=0;
-    auto addField=[grid,&field,fields](QString const& title,QWidget* widget) { int const row=field/3,column=(field%3)*2; grid->addWidget(new QLabel(title,fields),row,column); grid->addWidget(widget,row,column+1); ++field; };
-    auto spin=[this,&addField](char const* name,QString const& title,int maximum) { auto* box=new QSpinBox(this); box->setObjectName(QLatin1String(name)); box->setRange(1,maximum); addField(title,box); return box; };
-    m_frameBox=spin("PlaybackFrame",tr("Frame "),1); m_first=spin("PlaybackStart",tr("Start "),1); m_last=spin("PlaybackEnd",tr("Stop "),1);
-    m_rate=new QDoubleSpinBox(this); m_rate->setObjectName(QStringLiteral("PlaybackRate")); m_rate->setRange(.001,1000); m_rate->setDecimals(6); m_rate->setValue(std::clamp(fps,.001,1000.0)); addField(tr("FPS "),m_rate);
-    m_speed=spin("PlaybackPercent",tr("Speed "),800); m_speed->setMinimum(5); m_speed->setValue(100); m_speed->setSuffix(QStringLiteral("%"));
-    auto* cache=spin("PlaybackCacheMB",tr("Cache "),2048); cache->setMinimum(1); cache->setValue(256); cache->setSuffix(tr(" MB"));
-    layout->addWidget(fields);
-    m_info=new QLabel(this); m_info->setObjectName(QStringLiteral("PlaybackInfo")); m_info->setWordWrap(true); m_info->setTextInteractionFlags(Qt::TextSelectableByMouse); layout->addWidget(m_info);
-    connect(m_frameBox,&QSpinBox::valueChanged,this,[this](int value) { setFrame(value-1); });
-    connect(m_slider,&QSlider::valueChanged,this,&PlaybackView::setFrame);
-    connect(m_first,&QSpinBox::valueChanged,this,[this](int value) { setRange(value-1,std::max(value,m_last->value())-1); });
-    connect(m_last,&QSpinBox::valueChanged,this,[this](int value) { setRange(std::min(value,m_first->value())-1,value-1); });
-    auto reanchor=[this] { if(playing()) { m_from=m_frame; m_clock.restart(); } updateInfo(); };
-    connect(m_rate,&QDoubleSpinBox::valueChanged,this,reanchor); connect(m_speed,&QSpinBox::valueChanged,this,reanchor);
-    connect(cache,&QSpinBox::valueChanged,this,&PlaybackView::setCacheMegabytes);
-    connect(&m_timer,&QTimer::timeout,this,&PlaybackView::tick); m_timer.setTimerType(Qt::PreciseTimer); m_timer.setInterval(5);
-    setCacheMegabytes(256); updateInfo();
-}
+PlaybackView::~PlaybackView() { stop(); }
 
 bool PlaybackView::loadFolder(QString const& folder,QString* error)
 {
     auto fail=[&](QString const& why) { if(error) *error=why; return false; };
+    if(m_loading) return fail(tr("Another movie is being prepared."));
     QDir dir(folder); if(!dir.exists()) return fail(tr("The frame folder does not exist."));
     QStringList files;
     for(auto const& entry : dir.entryInfoList(QDir::Files|QDir::Readable,QDir::NoSort)) {
@@ -99,9 +44,10 @@ bool PlaybackView::loadFolder(QString const& folder,QString* error)
     if(files.size()>100000) return fail(tr("Load at most 100000 picture frames at once."));
     QCollator order(QLocale(QLocale::English,QLocale::UnitedStates)); order.setNumericMode(true); order.setCaseSensitivity(Qt::CaseInsensitive);
     std::sort(files.begin(),files.end(),[&](QString const& a,QString const& b) { int const compared=order.compare(QFileInfo(a).fileName(),QFileInfo(b).fileName()); return compared==0?a<b:compared<0; });
-    QString why; QImage const first=ImageFiles::load(files.first(),&why);
+    QString why; QImage first=ImageFiles::load(files.first(),&why);
     if(first.isNull()) return fail(tr("Cannot read %1: %2").arg(QFileInfo(files.first()).fileName(),why));
-    stop(); m_cache.clear(); m_files=files; m_folder=dir.absolutePath(); m_frame=0;
+    if(m_resolution!=100) first=first.scaled(std::max(1,first.width()*m_resolution/100),std::max(1,first.height()*m_resolution/100),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+    stop(); m_cache.clear(); m_files=files; m_folder=dir.absolutePath(); m_frame=0; m_movie.reset();
     m_cache.insert(0,new QImage(first),std::max(1,int((first.sizeInBytes()+1023)/1024)));
     QSignalBlocker a(m_frameBox),b(m_first),c(m_last),d(m_slider);
     for(auto* box : {m_frameBox,m_first,m_last}) box->setRange(1,int(files.size()));
@@ -111,10 +57,13 @@ bool PlaybackView::loadFolder(QString const& folder,QString* error)
 
 bool PlaybackView::reload(QString* error)
 {
-    if(m_folder.isEmpty()) { if(error) *error=tr("Load a frame folder first."); return false; }
+    if(m_loading) { if(error) *error=tr("Another movie is being prepared."); return false; }
+    if(m_folder.isEmpty()) { if(error) *error=tr("Load a frame folder or movie first."); return false; }
     int const frame=m_frame,first=m_first->value()-1,last=m_last->value()-1;
     bool const toEnd=last==frameCount()-1; QString const current=m_files.value(frame);
-    if(!loadFolder(m_folder,error)) return false;
+    QString const movie=m_movie?m_movie->source:QString(); double const oldRate=m_rate->value();
+    if(movie.isEmpty()?!loadFolder(m_folder,error):!loadMovie(movie,error)) return false;
+    setRate(oldRate);
     setRange(first,toEnd?frameCount()-1:std::min(last,frameCount()-1));
     int const found=m_files.indexOf(current); setFrame(found>=0?found:std::min(frame,frameCount()-1)); return true;
 }
@@ -126,7 +75,8 @@ void PlaybackView::chooseFolder()
 }
 void PlaybackView::unload()
 {
-    stop(); m_files.clear(); m_folder.clear(); m_cache.clear(); m_frame=0; m_surface->setImage({});
+    if(m_loading) return;
+    stop(); m_files.clear(); m_folder.clear(); m_cache.clear(); m_frame=0; m_surface->setImage({}); m_movie.reset();
     QSignalBlocker a(m_frameBox),b(m_first),c(m_last),d(m_slider);
     for(auto* box : {m_frameBox,m_first,m_last}) { box->setRange(1,1); box->setValue(1); }
     m_slider->setRange(0,0); updateInfo();
@@ -134,27 +84,28 @@ void PlaybackView::unload()
 QImage PlaybackView::read(int frame,QString* error)
 {
     if(auto* image=m_cache.object(frame)) return *image;
-    QImage const image=ImageFiles::load(m_files[frame],error);
+    QImage image=ImageFiles::load(m_files[frame],error);
+    if(!image.isNull() && m_resolution!=100) image=image.scaled(std::max(1,image.width()*m_resolution/100),std::max(1,image.height()*m_resolution/100),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
     if(!image.isNull()) m_cache.insert(frame,new QImage(image),std::max(1,int((image.sizeInBytes()+1023)/1024)));
     return image;
 }
 QImage PlaybackView::currentImage() const { return m_surface->image(); }
 void PlaybackView::setFrame(int frame)
 {
-    if(m_files.isEmpty()) return;
+    if(m_files.isEmpty() || m_loading) return;
     frame=std::clamp(frame,0,frameCount()-1);
     QString error; QImage const image=read(frame,&error);
     if(image.isNull()) { stop(); updateInfo(); report(tr("Cannot read %1: %2").arg(QFileInfo(m_files[frame]).fileName(),error)); return; }
     m_frame=frame; m_surface->setImage(image);
     if(playing() && !m_advancing) {
         if(frame<m_first->value()-1 || frame>m_last->value()-1) stop();
-        else { m_from=frame; m_clock.restart(); }
+        else { m_from=frame; m_clock.restart(); m_audioCycle=0; startSound(); }
     }
     updateInfo();
 }
 void PlaybackView::setRange(int first,int last)
 {
-    if(m_files.isEmpty()) return;
+    if(m_files.isEmpty() || m_loading) return;
     first=std::clamp(first,0,frameCount()-1); last=std::clamp(last,first,frameCount()-1);
     QSignalBlocker a(m_first),b(m_last); m_first->setValue(first+1); m_last->setValue(last+1);
     setFrame(std::clamp(m_frame,first,last));
@@ -166,27 +117,42 @@ void PlaybackView::setLoop(bool on)
 }
 void PlaybackView::setCacheMegabytes(int megabytes)
 {
-    megabytes=std::clamp(megabytes,1,2048); m_cache.setMaxCost(megabytes*1024);
+    megabytes=std::clamp(megabytes,1,2048); m_cacheMegabytes=megabytes; m_cache.setMaxCost(m_cacheEnabled?megabytes*1024:0);
     if(auto* box=findChild<QSpinBox*>(QStringLiteral("PlaybackCacheMB"))) { QSignalBlocker block(box); box->setValue(megabytes); }
     if(m_info) updateInfo();
 }
+void PlaybackView::setCacheEnabled(bool enabled)
+{
+    m_cacheEnabled=enabled; m_cache.setMaxCost(enabled?m_cacheMegabytes*1024:0);
+    if(auto* action=findChild<QAction*>(QStringLiteral("PlaybackCacheEnabled"))) action->setChecked(enabled);
+    updateInfo();
+}
+void PlaybackView::setResolution(int percent)
+{
+    if(m_loading || (percent!=100 && percent!=50 && percent!=25) || percent==m_resolution) return;
+    stop(); m_resolution=percent; m_cache.clear();
+    if(auto* action=findChild<QAction*>(QStringLiteral("PlaybackResolution%1").arg(percent))) action->setChecked(true);
+    if(!m_files.isEmpty()) setFrame(m_frame);
+    updateInfo();
+}
 void PlaybackView::play(int direction)
 {
-    if(m_files.isEmpty() || m_single) return;
+    if(m_files.isEmpty() || m_single || m_loading) return;
     stop(); m_direction=direction<0?-1:1;
     int const first=m_first->value()-1,last=m_last->value()-1;
     if(m_frame<first || m_frame>last || (m_direction<0?m_frame==first:m_frame==last)) {
         int const target=m_direction<0?last:first;
         setFrame(target); if(m_frame!=target) return;
     }
-    m_from=m_frame; m_clock.restart(); m_timer.start(); updateInfo();
+    m_from=m_frame; m_clock.restart(); m_audioCycle=0; m_timer.start(); startSound(); updateInfo();
 }
-void PlaybackView::stop() { m_timer.stop(); if(m_info) updateInfo(); }
+void PlaybackView::stop() { m_timer.stop(); m_player.stop(); if(m_info) updateInfo(); }
 void PlaybackView::tick()
 {
     auto const at=PlaybackTime::at(m_first->value()-1,m_last->value()-1,m_from,m_direction,m_rate->value()*m_speed->value()/100.0,m_clock.elapsed()/1000.0,0,m_loop);
     QScopedValueRollback<bool> advancing(m_advancing,true);
     if(at.frame!=m_frame) setFrame(at.frame);
+    if(playing() && at.cycle!=m_audioCycle) { m_audioCycle=at.cycle; startSound(); }
     if(at.ended) stop();
 }
 void PlaybackView::hideEvent(QHideEvent* event) { stop(); QDialog::hideEvent(event); }
@@ -203,7 +169,8 @@ QString PlaybackView::properties() const
 {
     if(m_files.isEmpty()) return tr("No frames loaded.");
     QImage const image=currentImage(); qint64 bytes=0; for(auto const& file : m_files) bytes+=QFileInfo(file).size();
-    return tr("Folder: %1\nFrames: %2\nCurrent file: %3\nCurrent dimensions: %4 x %5\nCurrent pixel depth: %6 bits\nAlpha channel: %7\nColour profile: %8\nFrame rate: %9 fps\nSource files: %10 bytes\nCached pixels: %11 bytes\nCache budget: %12 bytes\nEach file supplies its first picture; dimensions may vary between files.")
+    QString const origin=m_movie?tr("Movie: %1\nNative frame rate: %2 fps\nPlayback audio: %3\nVolume: %4%\n").arg(m_movie->source).arg(m_movie->rate,0,'g',12).arg(hasAudio()?tr("Stereo, 44100 Hz"):tr("None")).arg(m_volume->value()):QString();
+    return origin+tr("Folder: %1\nFrames: %2\nCurrent file: %3\nCurrent dimensions: %4 x %5\nCurrent pixel depth: %6 bits\nAlpha channel: %7\nColour profile: %8\nFrame rate: %9 fps\nSource files: %10 bytes\nCached pixels: %11 bytes\nCache budget: %12 bytes\nEach file supplies its first picture; dimensions may vary between files.")
         .arg(QDir::toNativeSeparators(m_folder)).arg(frameCount()).arg(QFileInfo(m_files[m_frame]).fileName()).arg(image.width()).arg(image.height()).arg(image.depth())
         .arg(image.hasAlphaChannel()?tr("Yes"):tr("No")).arg(image.colorSpace().isValid()?image.colorSpace().description():tr("Unspecified")).arg(m_rate->value(),0,'g',9).arg(bytes).arg(cacheBytes()).arg(qint64(m_cache.maxCost())*1024);
 }

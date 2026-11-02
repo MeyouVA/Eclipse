@@ -6,18 +6,23 @@
 #include <QImage>
 #include <QStringList>
 #include <QTimer>
+#include "audio/sound/SoundPlayer.h"
+#include <memory>
 
 class QDoubleSpinBox;
 class QLabel;
 class QSlider;
 class QSpinBox;
 class PlaybackSurface;
+struct PlaybackMovie;
 
 class ECLIPSE_UI_API PlaybackView : public QDialog {
     Q_OBJECT
 public:
     explicit PlaybackView(double fps,QWidget* parent=nullptr);
+    ~PlaybackView() override;
     bool loadFolder(QString const& folder,QString* error=nullptr);
+    bool loadMovie(QString const& path,QString* error=nullptr);
     bool reload(QString* error=nullptr);
     void unload();
     int frameCount() const { return int(m_files.size()); }
@@ -31,6 +36,12 @@ public:
     void setRate(double fps);
     void setLoop(bool on);
     void setCacheMegabytes(int megabytes);
+    void setCacheEnabled(bool enabled);
+    void setResolution(int percent);
+    void setVolume(int percent);
+    bool hasAudio() const;
+    QString movieSource() const;
+    QVector<qint16> playbackSound() const;
     void play(int direction=1);
     void stop();
     QString properties() const;
@@ -38,6 +49,8 @@ protected:
     void hideEvent(QHideEvent* event) override;
 private:
     void chooseFolder();
+    void chooseMovie();
+    void startSound();
     void tick();
     void updateInfo();
     void report(QString const& error);
@@ -50,6 +63,7 @@ private:
     QSpinBox* m_first=nullptr;
     QSpinBox* m_last=nullptr;
     QSpinBox* m_speed=nullptr;
+    QSpinBox* m_volume=nullptr;
     QDoubleSpinBox* m_rate=nullptr;
     QSlider* m_slider=nullptr;
     QLabel* m_info=nullptr;
@@ -57,4 +71,10 @@ private:
     QElapsedTimer m_clock;
     int m_frame=0,m_from=0,m_direction=1;
     bool m_loop=true,m_advancing=false,m_single=false;
+    bool m_loading=false;
+    bool m_cacheEnabled=true;
+    int m_cacheMegabytes=256,m_resolution=100;
+    std::unique_ptr<PlaybackMovie> m_movie;
+    SoundPlayer m_player;
+    qint64 m_audioCycle=0;
 };

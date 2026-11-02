@@ -1,13 +1,13 @@
 // Eclipse - the main window: playback and going from frame to frame.
 #include "ui/window/MainWindow.h"
 #include "ui/views/PreviewManagerView.h"
+#include "ui/views/PlaybackView.h"
 
 #include <algorithm>
 #include <cmath>
 
 #include <QApplication>
 #include <QComboBox>
-#include <QDesktopServices>
 #include <QDir>
 #include <QDockWidget>
 #include <QFile>
@@ -15,8 +15,8 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QStatusBar>
-#include <QUrl>
 #include <QSlider>
 
 #include "actions/manager/ActionManager.h"
@@ -131,8 +131,9 @@ QString MainWindow::recordForPlay(QString* error)
     Scene const scene = m_document->scene();
     QString const folder = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QStringLiteral("Eclipse"));
     QDir().mkpath(folder);
-    QString const path = QDir(folder).filePath(QStringLiteral("record_and_play.mp4"));
-    QFile::remove(path);
+    QTemporaryDir recording(QDir(folder).filePath(QStringLiteral("record_XXXXXX")));
+    if(!recording.isValid()) { if(error) *error=tr("Cannot create a temporary recording folder."); return {}; }
+    QString const path=recording.filePath(QStringLiteral("preview.mp4"));
     MovieExport::Options options;
     options.first = m_playStart;
     options.last = playStop();
@@ -151,6 +152,7 @@ QString MainWindow::recordForPlay(QString* error)
     progress.setValue(scene.frameCount());
     if (!ok && error && !progress.wasCanceled())
         *error = why;
+    if(ok) recording.setAutoRemove(false);
     return ok ? path : QString();
 }
 
@@ -163,10 +165,11 @@ void MainWindow::onActionRecordAndPlay()
             QMessageBox::critical(this, tr("Eclipse"), tr("The scene could not be recorded.\n%1").arg(error));
         return;
     }
-    if (QDesktopServices::openUrl(QUrl::fromLocalFile(movie)))
-        statusBar()->showMessage(tr("Recorded %1").arg(QDir::toNativeSeparators(movie)), 6000);
-    else
-        QMessageBox::information(this, tr("Eclipse"), tr("The recording is in\n%1\nbut no program could be found to play it.").arg(QDir::toNativeSeparators(movie)));
+    onActionOpenPlayback();
+    if(auto* viewer=findChild<PlaybackView*>()) {
+        if(viewer->loadMovie(movie,&error)) viewer->play();
+        else if(!error.isEmpty()) QMessageBox::warning(viewer,tr("Playback"),error);
+    }
 }
 
 void MainWindow::onActionMiniPlayback()
