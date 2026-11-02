@@ -141,6 +141,7 @@ void MainWindow::syncXsheetChecks()
 {
     int const shown = m_xsheet->shown();
     m_actions->setChecked(QStringLiteral("XsheetThumbnails"), m_xsheet->thumbnails());
+    m_actions->setChecked(QStringLiteral("XsheetPlayback"),m_xsheet->property("playbackEnabled").toBool());
     m_actions->setChecked(QStringLiteral("XsheetColumnList"), m_xsheetList && !m_xsheetList->isHidden());
     m_actions->setChecked(QStringLiteral("XsheetShowDrawingColumns"), shown & Xsheet::ShowDrawings);
     m_actions->setChecked(QStringLiteral("XsheetShowFunctionColumns"), shown & Xsheet::ShowFunctions);
@@ -209,6 +210,13 @@ void MainWindow::onActionXsheetView(QString const& what)
         m_xsheet->setFeetAndFrames(false);
     else if (what == QLatin1String("feet"))
         m_xsheet->setFeetAndFrames(true);
+    else if(what==QLatin1String("playback")) {
+        bool const enabled=!m_xsheet->property("playbackEnabled").toBool();
+        m_xsheet->setProperty("playbackEnabled",enabled);
+        settings().setValue(QStringLiteral("prefs/xsheetPlayback"),enabled);
+        m_actions->setChecked(QStringLiteral("XsheetPlayback"),enabled);
+        if(enabled || !m_playTimer.isActive()) m_xsheet->setCurrentCell(layer(),frame());
+    }
     else if (what == QLatin1String("thumbnails"))
         m_xsheet->setThumbnails(!m_xsheet->thumbnails());
     else if (what == QLatin1String("grouping"))

@@ -1,6 +1,8 @@
 #include "ui/window/MainWindow.h"
 #include "ui/views/PlaybackView.h"
+#include "ui/views/PreviewManagerView.h"
 #include "model/document/Commands.h"
+#include <QStatusBar>
 
 void MainWindow::onActionOpenPlayback()
 {
@@ -11,4 +13,17 @@ void MainWindow::onActionOpenPlayback()
         view->setAttribute(Qt::WA_DeleteOnClose);
     }
     view->show(); view->raise();
+}
+
+void MainWindow::onActionPreviewToPlayback()
+{
+    auto* preview=findChild<PreviewManagerView*>();
+    auto const frames=preview?preview->framesForPlayback():QVector<QImage>();
+    if(frames.isEmpty()) { statusBar()->showMessage(tr("Render a current preview before opening it in Playback."),5000); return; }
+    onActionOpenPlayback();
+    if(auto* viewer=findChild<PlaybackView*>()) {
+        QString error;
+        if(viewer->loadPreview(frames,preview->sound(),preview->playbackRate(),&error)) viewer->play();
+        else statusBar()->showMessage(error,5000);
+    }
 }

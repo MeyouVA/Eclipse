@@ -108,7 +108,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     connect(m_timeline, &Timeline::pasteArtwork, m_canvas, &Canvas::paste);
     connect(m_xsheet, &Xsheet::pasteArtwork, m_canvas, &Canvas::paste);
     // The timeline holds the current cell; the other views follow it and ask it to change.
-    connect(m_timeline, &Timeline::currentCellChanged, m_xsheet, &Xsheet::setCurrentCell);
+    connect(m_timeline,&Timeline::currentCellChanged,m_xsheet,[this](int layer,int frame) {
+        if(!m_playTimer.isActive() || !m_playAdvancing || m_xsheet->property("playbackEnabled").toBool()) m_xsheet->setCurrentCell(layer,frame);
+    });
     connect(m_timeline, &Timeline::currentCellChanged, m_layerPanel, &LayerPanel::setCurrentCell);
     // The Colour view: the layer worked on (for its element palettes and overrides), and its menus.
     connect(m_timeline, &Timeline::currentCellChanged, m_palette, [this](int layer, int) { m_palette->setCurrentLayer(layer); });

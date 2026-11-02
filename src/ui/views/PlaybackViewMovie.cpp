@@ -32,7 +32,7 @@ void PlaybackView::chooseMovie()
     if(path.isEmpty()) return;
     QString error; if(!loadMovie(path,&error) && !error.isEmpty()) report(error);
 }
-bool PlaybackView::hasAudio() const { return m_movie && !m_movie->audio.isEmpty(); }
+bool PlaybackView::hasAudio() const { return m_movie?!m_movie->audio.isEmpty():previewLoaded() && !m_previewSound.isEmpty(); }
 QString PlaybackView::movieSource() const { return m_movie?m_movie->source:QString(); }
 void PlaybackView::setVolume(int percent)
 {
@@ -40,10 +40,12 @@ void PlaybackView::setVolume(int percent)
 }
 QVector<qint16> PlaybackView::playbackSound() const
 {
-    if(!hasAudio() || m_volume->value()==0 || m_direction<0 || m_speed->value()!=100 || std::abs(m_rate->value()-m_movie->rate)>.000001) return {};
-    qint64 const first=qint64(m_frame/m_movie->rate*44100),end=std::min<qint64>(qint64((m_last->value())/m_movie->rate*44100),m_movie->audio.size()/2);
+    double const rate=m_movie?m_movie->rate:m_previewRate;
+    if(!hasAudio() || m_volume->value()==0 || m_direction<0 || m_speed->value()!=100 || std::abs(m_rate->value()-rate)>.000001) return {};
+    auto const& source=m_movie?m_movie->audio:m_previewSound;
+    qint64 const first=qint64(m_frame/rate*44100),end=std::min<qint64>(qint64((m_last->value())/rate*44100),source.size()/2);
     if(first>=end) return {};
-    auto samples=m_movie->audio.mid(first*2,(end-first)*2);
+    auto samples=source.mid(first*2,(end-first)*2);
     if(m_volume->value()!=100) for(auto& sample : samples) sample=qint16(std::lround(sample*m_volume->value()/100.0));
     return samples;
 }

@@ -38,6 +38,8 @@
   <shortcut id="shortcut.shareFunctions" text="Share Functions" value=""/>
  </category>
  <category id="Playback" text="Playback">
+  <shortcut id="shortcut.xsheetPlayback" text="Enable Xsheet Playback Highlight" value=""/>
+  <shortcut id="shortcut.recordAndPlay" text="Record and Play" value=""/>
   <shortcut id="shortcut.playForward" text="Play Scene Forward" value=""/>
   <shortcut id="shortcut.playBackward" text="Play Scene Backward" value=""/>
   <shortcut id="shortcut.jogForward" text="Jog Forward" value=""/>

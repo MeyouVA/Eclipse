@@ -95,5 +95,5 @@ PlaybackView::PlaybackView(double fps,QWidget* parent):QDialog(parent)
     connect(m_rate,&QDoubleSpinBox::valueChanged,this,reanchor); connect(m_speed,&QSpinBox::valueChanged,this,reanchor);
     connect(cache,&QSpinBox::valueChanged,this,&PlaybackView::setCacheMegabytes);
     connect(&m_timer,&QTimer::timeout,this,&PlaybackView::tick); m_timer.setTimerType(Qt::PreciseTimer); m_timer.setInterval(5);
-    setCacheMegabytes(256); updateInfo();
+    applyPreferences(); updateInfo();
 }

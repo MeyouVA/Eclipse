@@ -23,6 +23,9 @@ public:
     ~PlaybackView() override;
     bool loadFolder(QString const& folder,QString* error=nullptr);
     bool loadMovie(QString const& path,QString* error=nullptr);
+    bool loadPreview(QVector<QImage> const& frames,QVector<qint16> const& audio,double fps,QString* error=nullptr);
+    bool previewLoaded() const { return !m_preview.isEmpty(); }
+    void applyPreferences();
     bool reload(QString* error=nullptr);
     void unload();
     int frameCount() const { return int(m_files.size()); }
@@ -75,6 +78,9 @@ private:
     bool m_cacheEnabled=true;
     int m_cacheMegabytes=256,m_resolution=100;
     std::unique_ptr<PlaybackMovie> m_movie;
+    QVector<QImage> m_preview;
+    QVector<qint16> m_previewSound;
+    double m_previewRate=24;
     SoundPlayer m_player;
     qint64 m_audioCycle=0;
 };

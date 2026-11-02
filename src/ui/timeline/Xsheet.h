@@ -56,6 +56,7 @@ public:
     enum Show { ShowDrawings = 1, ShowFunctions = 2, ShowPaths = 4, ShowRotations = 8, ShowAnnotations = 16, ShowSounds = 32, ShowOthers = 64,
                 ShowEverything = 127 };
     int shown() const { return m_show; }
+    int currentFrame() const { return m_frame; }
     void setShown(int what);
     enum HeldLook { HeldLine, HeldValue };
     int heldLook() const { return m_heldLook; }

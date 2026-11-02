@@ -4,6 +4,7 @@
 #include "EclipseExport.h"
 
 #include <QWidget>
+#include <QImage>
 
 class Canvas;
 class Scene;
@@ -33,6 +34,10 @@ public:
     int sizePercent() const;
     // The sound of the scene, mixed when the frames were rendered and kept with them: what plays with the preview.
     QVector<qint16> const& sound() const { return m_sound; }
+    QVector<QImage> framesForPlayback() const { return m_ready?m_frames:QVector<QImage>(); }
+    double playbackRate() const { return m_rate; }
+signals:
+    void playbackRequested();
 
 private:
     void showStatus(bool stale = false);
@@ -44,6 +49,8 @@ private:
     bool m_rendering = false;
     bool m_cancel = false;
     bool m_auto = false;
+    bool m_ready=false;
+    double m_rate=24;
     quint64 m_revision = 0;
     QTimer* m_autoTimer = nullptr;
     QVector<QImage> m_frames;          // what was rendered last, frame by frame (kept when the preview goes stale)

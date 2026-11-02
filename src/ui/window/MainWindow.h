@@ -333,6 +333,7 @@ public slots:
     void refreshScriptCommands();
     void onActionOpenPreviewManager();
     void onActionOpenPlayback();
+    void onActionPreviewToPlayback();
     // Camera and scene planning views: hide the selected layers from them, or show again all that were hidden.
     void onActionHideSelectedInViews();
     void onActionShowHiddenInViews();

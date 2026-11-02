@@ -64,6 +64,9 @@ anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed on
   stereo sound and volume. Movie sound plays forward at native FPS and 100% speed.
   Cache can be disabled, and review resolution can be full, half or quarter size. Record and Play
   opens recorded previews in this viewer. Viewer loads do not edit the scene.
+  Preview Manager can send its current rendered frames and sound directly to the viewer, retaining
+  an independent snapshot without movie encoding. Preferences > Timeline sets viewer cache and
+  resolution defaults, and Xsheet playback highlighting can be paused while the scene plays.
 
 **Effects and compositing**
 

@@ -45,6 +45,7 @@
 #include "ui/timeline/Xsheet.h"
 #include "ui/timeline/FunctionView.h"
 #include "ui/views/PreviewManagerView.h"
+#include "ui/views/PlaybackView.h"
 #include "ui/views/CoordView.h"
 #include "actions/manager/ActionManager.h"
 #include <QAction>
@@ -159,6 +160,10 @@ void MainWindow::applyPreferences()
     m_timeline->setCellWidth(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
     m_timeline->setRulerLocked(s.value(QStringLiteral("prefs/lockTimelineRuler"), false).toBool());
     m_loopPause = std::clamp(s.value(QStringLiteral("prefs/loopPause"), 0).toInt(), 0, 5000);
+    for(auto* view : findChildren<PlaybackView*>()) view->applyPreferences();
+    bool const sheetPlayback=s.value(QStringLiteral("prefs/xsheetPlayback"),true).toBool();
+    m_xsheet->setProperty("playbackEnabled",sheetPlayback); m_actions->setChecked(QStringLiteral("XsheetPlayback"),sheetPlayback);
+    if(sheetPlayback || !m_playTimer.isActive()) m_xsheet->setCurrentCell(layer(),frame());
     for (Canvas* const view : findChildren<Canvas*>()) {
         view->setBackgroundWash(s.value(QStringLiteral("prefs/washCamera"), false).toBool(), s.value(QStringLiteral("prefs/washDrawing"), false).toBool(),
                                 s.value(QStringLiteral("prefs/washPercent"), 50).toInt(), s.value(QStringLiteral("prefs/washColour"), QColor(Qt::white)).value<QColor>());
@@ -508,6 +513,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/extendExposure"), w.extend->isChecked());
     s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
     s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());
+    s.setValue(QStringLiteral("prefs/playbackCacheEnabled"),w.playbackCacheEnabled->isChecked());
+    s.setValue(QStringLiteral("prefs/playbackCacheMb"),w.playbackCacheMb->value());
+    s.setValue(QStringLiteral("prefs/playbackResolution"),w.playbackResolution->currentData().toInt());
+    s.setValue(QStringLiteral("prefs/xsheetPlayback"),w.xsheetPlayback->isChecked());
     s.setValue(QStringLiteral("prefs/zoomOnMouse"), w.zoomOnMouse->isChecked());
     s.setValue(QStringLiteral("prefs/defaultZoom"), w.defaultZoom->value());
     s.setValue(QStringLiteral("prefs/planningDefaultZoom"), w.planningDefaultZoom->value());

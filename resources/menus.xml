@@ -205,8 +205,9 @@
    <item id="PlayForward" icon="play/play" text="Play Scene Forward" shortcut="shortcut.playForward" responder="window" slot="onActionPlayForward()"/>
    <item id="PlayBackward" icon="play/play" text="Play Scene Backward" shortcut="shortcut.playBackward" responder="window" slot="onActionPlayBackward()"/>
    <item id="OpenPlayback" text="Playback Viewer..." responder="window" slot="onActionOpenPlayback()"/>
+   <item id="PreviewToPlayback" text="Play Rendered Preview in Viewer" responder="window" slot="onActionPreviewToPlayback()"/>
    <item id="RenderAndPlay" icon="play/renderplay" text="&amp;Render and Play" shortcut="shortcut.renderAndPlay" responder="window" slot="onActionRenderAndPlay()"/>
-   <item id="RecordAndPlay" icon="play/recordplay" text="Re&amp;cord and Play" responder="window" slot="onActionRecordAndPlay()"/>
+   <item id="RecordAndPlay" icon="play/recordplay" text="Re&amp;cord and Play" shortcut="shortcut.recordAndPlay" responder="window" slot="onActionRecordAndPlay()"/>
    <item id="MiniPlayback" icon="play/miniplay" text="&amp;Mini Playback" shortcut="shortcut.miniPlayback" responder="window" slot="onActionMiniPlayback()"/>
    <item id="MiniPlaybackRange" icon="play/minirange" text="Mini Playback Ran&amp;ge..." responder="window" slot="onActionMiniPlaybackRange()"/>
    <item id="PlayStop" icon="play/stop" text="S&amp;top" responder="window" slot="onActionStopPlayback()"/>
@@ -1384,6 +1385,7 @@
    <separator/>
    <item id="XsheetShowSelection" text="Show &amp;Selection" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="selection"/>
    <item id="XsheetPreviewSelected" icon="play/play" text="Preview Selected &amp;Drawings" responder="window" slot="onActionXsheetPreview()"/>
+   <item id="XsheetPlayback" text="Enable Playback Highlight" shortcut="shortcut.xsheetPlayback" checkable="true" checked="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="playback"/>
    <separator/>
    <menu id="XsheetHeld" text="Held E&amp;xposures">
     <item id="XsheetHeldLine" text="&amp;Line" checkable="true" responder="window" slot="onActionXsheetView(QString)" itemParameter="heldLine"/>
@@ -1506,6 +1508,7 @@
   </menu>
   <separator/>
   <item id="XsheetPreview" icon="play/play" text="&amp;Preview" shortcut="shortcut.xsheetPreview" responder="window" slot="onActionXsheetPreview()"/>
+  <item id="XsheetPlayback"/>
   <menu id="XsheetMotion" text="&amp;Motion">
    <item id="InsertKeyframe"/>
    <item id="DeleteKeyframe"/>

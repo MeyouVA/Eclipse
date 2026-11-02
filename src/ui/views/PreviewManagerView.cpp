@@ -44,6 +44,9 @@ PreviewManagerView::PreviewManagerView(Document* document, Canvas* canvas, QWidg
     QHBoxLayout* const buttons = new QHBoxLayout;
     buttons->addWidget(renderButton);
     buttons->addWidget(clearButton);
+    auto* playbackButton=new QPushButton(tr("Open in Playback"),this);
+    playbackButton->setObjectName(QStringLiteral("PreviewOpenPlayback")); buttons->addWidget(playbackButton);
+    connect(playbackButton,&QPushButton::clicked,this,&PreviewManagerView::playbackRequested);
     buttons->addStretch(1);
     QVBoxLayout* const layout = new QVBoxLayout(this);
     layout->setContentsMargins(4, 4, 4, 4);
@@ -64,6 +67,7 @@ PreviewManagerView::PreviewManagerView(Document* document, Canvas* canvas, QWidg
             render();
     });
     connect(m_document, &Document::changed, this, [this] {
+        m_ready=false;
         ++m_revision;
         if (m_canvas->previewFrames() > 0 && m_canvas->washesStalePreview()) {
             m_canvas->setPreviewStale(true);
@@ -211,6 +215,7 @@ int PreviewManagerView::render(bool everything)
 {
     if (m_rendering)
         return 0;
+    m_ready=false;
     Scene const scene = m_document->scene();
     quint64 const revision = m_revision;
     double const scale = m_size->currentData().toInt() / 100.0;
@@ -268,6 +273,7 @@ int PreviewManagerView::render(bool everything)
     m_frames = frames;
     m_prints = prints;
     m_sound = Sound::mix(scene);
+    m_rate=scene.fps; m_ready=true;
     m_canvas->setPreview(frames);
     showStatus();
     return made.load();
@@ -275,6 +281,7 @@ int PreviewManagerView::render(bool everything)
 
 void PreviewManagerView::clear()
 {
+    m_ready=false;
     m_frames.clear();
     m_prints.clear();
     m_sound.clear();

@@ -29,6 +29,7 @@
 #include "ui/views/PerspectiveView.h"
 #include "ui/io/MovieExport.h"
 #include "ui/timeline/Timeline.h"
+#include "ui/timeline/Xsheet.h"
 #include "ui/views/LipSyncView.h"
 
 #include "ui/window/MainWindowPrivate.h"
@@ -101,6 +102,7 @@ void MainWindow::onActionEnablePlayback(QString const& which)
 // The views that stood still while playing show the frame the scene is on.
 void MainWindow::showFrameInStillViews()
 {
+    m_xsheet->setCurrentCell(layer(),frame());
     for (DepthView* const view : findChildren<DepthView*>())
         view->setCurrentCell(layer(), frame());
     for (PerspectiveView* const view : findChildren<PerspectiveView*>())

@@ -180,6 +180,7 @@ void MainWindow::createWindowsMenuViews()
     {
         PreviewManagerView* const view = new PreviewManagerView(m_document, m_canvas, this);
         view->setObjectName(QStringLiteral("PreviewManagerView"));
+        connect(view,&PreviewManagerView::playbackRequested,this,&MainWindow::onActionPreviewToPlayback);
         addView(tr("Preview Manager"), QStringLiteral("PreviewManagerDock"), scrollingView(view), Qt::RightDockWidgetArea)->hide();
     }
     // Lip-Sync: the sound frame by frame with the shape of the mouth on each, and the chart of shapes.

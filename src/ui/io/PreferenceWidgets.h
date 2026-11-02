@@ -114,6 +114,10 @@ struct PreferenceWidgets {
     QFormLayout* timelineLayout = nullptr;
     QCheckBox* stopMotion = nullptr;
     QSpinBox* loopPause = nullptr;
+    QCheckBox* playbackCacheEnabled = nullptr;
+    QSpinBox* playbackCacheMb = nullptr;
+    QComboBox* playbackResolution = nullptr;
+    QCheckBox* xsheetPlayback = nullptr;
     QCheckBox* showSound = nullptr;
     QCheckBox* waveforms = nullptr;
     QCheckBox* showGroups = nullptr;

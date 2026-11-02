@@ -47,7 +47,7 @@ bool PlaybackView::loadFolder(QString const& folder,QString* error)
     QString why; QImage first=ImageFiles::load(files.first(),&why);
     if(first.isNull()) return fail(tr("Cannot read %1: %2").arg(QFileInfo(files.first()).fileName(),why));
     if(m_resolution!=100) first=first.scaled(std::max(1,first.width()*m_resolution/100),std::max(1,first.height()*m_resolution/100),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
-    stop(); m_cache.clear(); m_files=files; m_folder=dir.absolutePath(); m_frame=0; m_movie.reset();
+    stop(); m_cache.clear(); m_files=files; m_folder=dir.absolutePath(); m_frame=0; m_movie.reset(); m_preview.clear(); m_previewSound.clear();
     m_cache.insert(0,new QImage(first),std::max(1,int((first.sizeInBytes()+1023)/1024)));
     QSignalBlocker a(m_frameBox),b(m_first),c(m_last),d(m_slider);
     for(auto* box : {m_frameBox,m_first,m_last}) box->setRange(1,int(files.size()));
@@ -58,6 +58,7 @@ bool PlaybackView::loadFolder(QString const& folder,QString* error)
 bool PlaybackView::reload(QString* error)
 {
     if(m_loading) { if(error) *error=tr("Another movie is being prepared."); return false; }
+    if(previewLoaded()) { stop(); m_cache.clear(); setFrame(m_frame); return true; }
     if(m_folder.isEmpty()) { if(error) *error=tr("Load a frame folder or movie first."); return false; }
     int const frame=m_frame,first=m_first->value()-1,last=m_last->value()-1;
     bool const toEnd=last==frameCount()-1; QString const current=m_files.value(frame);
@@ -76,7 +77,7 @@ void PlaybackView::chooseFolder()
 void PlaybackView::unload()
 {
     if(m_loading) return;
-    stop(); m_files.clear(); m_folder.clear(); m_cache.clear(); m_frame=0; m_surface->setImage({}); m_movie.reset();
+    stop(); m_files.clear(); m_folder.clear(); m_cache.clear(); m_frame=0; m_surface->setImage({}); m_movie.reset(); m_preview.clear(); m_previewSound.clear();
     QSignalBlocker a(m_frameBox),b(m_first),c(m_last),d(m_slider);
     for(auto* box : {m_frameBox,m_first,m_last}) { box->setRange(1,1); box->setValue(1); }
     m_slider->setRange(0,0); updateInfo();
@@ -84,7 +85,7 @@ void PlaybackView::unload()
 QImage PlaybackView::read(int frame,QString* error)
 {
     if(auto* image=m_cache.object(frame)) return *image;
-    QImage image=ImageFiles::load(m_files[frame],error);
+    QImage image=previewLoaded()?m_preview[frame]:ImageFiles::load(m_files[frame],error);
     if(!image.isNull() && m_resolution!=100) image=image.scaled(std::max(1,image.width()*m_resolution/100),std::max(1,image.height()*m_resolution/100),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
     if(!image.isNull()) m_cache.insert(frame,new QImage(image),std::max(1,int((image.sizeInBytes()+1023)/1024)));
     return image;
@@ -168,8 +169,10 @@ void PlaybackView::report(QString const& error) { m_info->setText(error); m_info
 QString PlaybackView::properties() const
 {
     if(m_files.isEmpty()) return tr("No frames loaded.");
-    QImage const image=currentImage(); qint64 bytes=0; for(auto const& file : m_files) bytes+=QFileInfo(file).size();
-    QString const origin=m_movie?tr("Movie: %1\nNative frame rate: %2 fps\nPlayback audio: %3\nVolume: %4%\n").arg(m_movie->source).arg(m_movie->rate,0,'g',12).arg(hasAudio()?tr("Stereo, 44100 Hz"):tr("None")).arg(m_volume->value()):QString();
+    QImage const image=currentImage(); qint64 bytes=0;
+    if(previewLoaded()) for(auto const& frame : m_preview) bytes+=frame.sizeInBytes();
+    else for(auto const& file : m_files) bytes+=QFileInfo(file).size();
+    QString const origin=m_movie?tr("Movie: %1\nNative frame rate: %2 fps\nPlayback audio: %3\nVolume: %4%\n").arg(m_movie->source).arg(m_movie->rate,0,'g',12).arg(hasAudio()?tr("Stereo, 44100 Hz"):tr("None")).arg(m_volume->value()):previewLoaded()?tr("Rendered preview snapshot\nSnapshot pixels: %1 bytes\nNative frame rate: %2 fps\n").arg(bytes).arg(m_previewRate,0,'g',12):QString();
     return origin+tr("Folder: %1\nFrames: %2\nCurrent file: %3\nCurrent dimensions: %4 x %5\nCurrent pixel depth: %6 bits\nAlpha channel: %7\nColour profile: %8\nFrame rate: %9 fps\nSource files: %10 bytes\nCached pixels: %11 bytes\nCache budget: %12 bytes\nEach file supplies its first picture; dimensions may vary between files.")
         .arg(QDir::toNativeSeparators(m_folder)).arg(frameCount()).arg(QFileInfo(m_files[m_frame]).fileName()).arg(image.width()).arg(image.height()).arg(image.depth())
         .arg(image.hasAlphaChannel()?tr("Yes"):tr("No")).arg(image.colorSpace().isValid()?image.colorSpace().description():tr("Unspecified")).arg(m_rate->value(),0,'g',9).arg(bytes).arg(cacheBytes()).arg(qint64(m_cache.maxCost())*1024);
