@@ -57,8 +57,8 @@ bool LibraryView::pasteHere(QString* error, std::function<QString(QString const&
         bool const same = QFileInfo(target).absoluteFilePath().compare(source.absoluteFilePath(), Qt::CaseInsensitive) == 0;
         if (same && s_cut)
             continue;       // moved onto itself: nothing to do
-        // A name taken: another one, asked for or made.
-        while (QFileInfo::exists(target)) {
+        // A name taken: another one, asked for or made.  (The name of a folder of packed files counts as taken too.)
+        while (QFileInfo::exists(target) || (QFileInfo(Scene::templateFilesFolder(source.absoluteFilePath())).isDir() && QFileInfo::exists(Scene::templateFilesFolder(target)))) {
             QString const wanted = rename ? rename(QFileInfo(target).completeBaseName()) : QString();
             QString name = wanted.trimmed();
             if (rename && name.isEmpty())
@@ -80,8 +80,14 @@ bool LibraryView::pasteHere(QString* error, std::function<QString(QString const&
             QFile::remove(target);
             return fail(tr("Cannot create template in (%1)").arg(QDir::toNativeSeparators(into.absolutePath())));
         }
+        if (!carryPackFolder(source.absoluteFilePath(), target, false)) {
+            QFile::remove(target);
+            return fail(tr("Cannot create template in (%1)").arg(QDir::toNativeSeparators(into.absolutePath())));
+        }
         if (s_cut && !QFile::remove(source.absoluteFilePath()))
             return fail(tr("The template was copied, but the original could not be removed (Move Template)."));
+        if (s_cut && QFileInfo(Scene::templateFilesFolder(source.absoluteFilePath())).isDir())
+            QDir(Scene::templateFilesFolder(source.absoluteFilePath())).removeRecursively();
         last = target;
     }
     if (s_cut)

@@ -41,7 +41,7 @@ bool MainWindow::saveTemplate(QString const& path, QString* error)
     bool const range = m_timeline->selectionLastFrame() > m_timeline->selectionFirstFrame();
     int const first = range ? m_timeline->selectionFirstFrame() : 0;
     int const last = range ? m_timeline->selectionLastFrame() : scene.frameCount() - 1;
-    Scene const piece = scene.extract(m_timeline->selectedLayers(), first, last);
+    Scene piece = scene.extract(m_timeline->selectedLayers(), first, last);
     if (piece.layers.isEmpty()) {
         if (error)
             *error = tr("Select the layers to keep as a template in the Timeline first.");
@@ -52,6 +52,10 @@ bool MainWindow::saveTemplate(QString const& path, QString* error)
             *error = tr("Could not make the folder %1.").arg(QDir::toNativeSeparators(QFileInfo(path).absolutePath()));
         return false;
     }
+    // Pack Files on New Templates: what it uses from outside copied beside it, and the template pointed at the copies.
+    if (QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/packNewTemplates"), false).toBool()
+        && piece.packFiles(Scene::templateFilesFolder(path), error) < 0)
+        return false;
     return piece.save(path, error);
 }
 
@@ -213,6 +217,24 @@ void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
         m_timeline->setCurrentCell(at, start);
         return;
     }
+    // Preferences > Templates: what a template pasted or dropped from the Library does (0: as where it is dropped says).
+    switch (QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/templateDrop"), 0).toInt()) {
+    case 1:
+        onto = false;
+        break;
+    case 2:
+        onto = true;
+        break;
+    case 3:
+        onTemplatePasteSpecial(path);
+        return;
+    case 4:
+        if (insertTemplateAsSymbol(path, frame, &error) < 0)
+            QMessageBox::critical(this, tr("Eclipse"), tr("Could not use %1:\n%2").arg(QDir::toNativeSeparators(path), error));
+        return;
+    default:
+        break;
+    }
     if (onto) {
         // Onto the layers it was made from, or others of the same names, when they are all here.
         Scene piece;
@@ -242,10 +264,18 @@ void MainWindow::onActionCreateTemplate()
         return;
     // A name is a file name: what a file name cannot hold is left out.
     name.remove(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")));
-    QString const path = QDir(m_library->currentFolder()).filePath(name + QLatin1Char('.') + LibraryView::kSuffix);
-    if (QFileInfo::exists(path)
-        && QMessageBox::question(this, tr("Eclipse"), tr("The library already has a template called \"%1\". Replace it?").arg(name)) != QMessageBox::Yes)
-        return;
+    QString path = QDir(m_library->currentFolder()).filePath(name + QLatin1Char('.') + LibraryView::kSuffix);
+    if (QFileInfo::exists(path)) {
+        // Preferences > Templates: ask, replace it, or keep both (the new one under another name).
+        int const action = QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/copyToLibrary"), 0).toInt();
+        if (action == 2) {
+            for (int n = 2; QFileInfo::exists(path); ++n)
+                path = QDir(m_library->currentFolder()).filePath(QStringLiteral("%1 %2.%3").arg(name).arg(n).arg(LibraryView::kSuffix));
+        } else if (action != 1
+                   && QMessageBox::question(this, tr("Eclipse"), tr("The library already has a template called \"%1\". Replace it?").arg(name)) != QMessageBox::Yes) {
+            return;
+        }
+    }
     QString error;
     if (!saveTemplate(path, &error)) {
         QMessageBox::critical(this, tr("Eclipse"), tr("The template could not be saved.\n%1").arg(error));

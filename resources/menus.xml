@@ -17,6 +17,8 @@
    <item id="Open" icon="file/open" text="&amp;Open..." shortcut="shortcut.open" responder="window" slot="onActionOpenScene()"/>
    <menu id="FileOpenRecent" text="Open &amp;Recent" responder="window" aboutToShowSlot="onShowRecent(QMenu*)"/>
    <item id="CloseScene" icon="file/close" text="&amp;Close" shortcut="shortcut.closeScene" responder="window" slot="onActionCloseScene()"/>
+   <item id="EditTemplate" text="Edit &amp;Template" responder="window" slot="onActionEditTemplate()"/>
+   <item id="LeaveTemplateEdit" text="Close Template Editio&amp;n" responder="window" slot="onActionLeaveTemplateEdit()"/>
    <separator/>
    <item id="Save" icon="file/save" text="&amp;Save" shortcut="shortcut.save" responder="window" slot="onActionSave()"/>
    <item id="SaveAs" icon="file/saveas" text="Save &amp;As..." shortcut="shortcut.saveAs" responder="window" slot="onActionSaveAs()"/>

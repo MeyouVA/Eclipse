@@ -176,6 +176,20 @@ public:
     // Optimize Template: drawings no frame shows taken out of every layer (and those inside symbols), and palettes nothing
     // uses or refers to; what is shown is not changed.  How many drawings and palettes went.
     QPair<int, int> optimizeForTemplate();
+    // The files outside the scene file it uses: linked pictures, 3D models, sounds and reference files.
+    QStringList externalFiles() const;
+    // Each use of a file named in `moved` (old path -> new) made a use of the new one; how many were changed.
+    int repointFiles(QHash<QString, QString> const& moved);
+    // Each use of a file inside the folder `from` made a use of the same file inside `to`.
+    int repointFolder(QString const& from, QString const& to);
+    // Pack Files: the files it uses copied into `folder` (a model with its materials and their pictures) and the scene
+    // pointed at the copies.  How many files were copied; -1 when one could not be (`error` says which).
+    int packFiles(QString const& folder, QString* error = nullptr);
+    // The folder a template's packed files go in: beside it, named after it ("Walk.files" for Walk.ecltpl).
+    static QString templateFilesFolder(QString const& templatePath);
+    // Set Scale Factor: every 3D model drawing made `factor` times as big; how many.  And whether it has any.
+    int scaleModels(double factor);
+    bool hasModels() const;
     // Every line and area of the given layers (all of them when empty) in colour `from` given colour `to`.  How many.
     int recolour(int from, int to, QVector<int> const& layers = {});
     // The colours a layer is drawn with in place of others, by its palette overrides: original id -> clone id.
@@ -191,6 +205,10 @@ public:
     enum PasteColours { ReuseColours, CopyPalettes, UpdateColours, NewColours };
     static void setPasteColours(int mode);
     static int pasteColours();
+    // Always Create New Drawings (Preferences > Templates): a template pasted onto layers brings its drawings as new ones.
+    // Off: a drawing of the same name the layer has already is replaced by the template's.
+    static void setPasteNewDrawings(bool on);
+    static bool pasteNewDrawings();
     // A colour of `piece` (by id) as a colour of this scene, made or found as setPasteColours says; `map` remembers it.
     int takeColour(Scene const& piece, int swatch, QColor const& colour, QHash<int, int>& map);
     QJsonObject paletteJson(int which) const;

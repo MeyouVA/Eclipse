@@ -57,6 +57,8 @@ void MainWindow::onActionNewScene()
 {
     // The form of the welcome window, without the scenes to open.
     WelcomeDialog form(ActionManager::defaultDirectory(), this, true);
+    if (editingTemplate() && !onActionLeaveTemplateEdit())
+        return;
     if (form.exec() != QDialog::Accepted || form.choice() != WelcomeDialog::CreateScene || !confirmDiscard())
         return;
     Resolution const size = form.resolution();
@@ -65,7 +67,11 @@ void MainWindow::onActionNewScene()
 
 void MainWindow::onActionCloseScene()
 {
-    // The scene goes and the welcome window comes back, as when the program starts.
+    // The scene goes and the welcome window comes back, as when the program starts.  (Not while a template is edited.)
+    if (editingTemplate()) {
+        statusBar()->showMessage(tr("A template is being edited: use File > Close Template Edition."), 5000);
+        return;
+    }
     if (!confirmDiscard())
         return;
     stop();
@@ -117,6 +123,9 @@ void MainWindow::onActionShowWelcome()
 
 bool MainWindow::openFile(QString const& path)
 {
+    // (A template being edited is closed first; then the scene put aside is the one asked about.)
+    if (editingTemplate() && (!onActionLeaveTemplateEdit() || !confirmDiscard()))
+        return false;
     Scene scene;
     QString error;
     if (!Scene::load(path, scene, &error)) {
@@ -258,11 +267,20 @@ bool MainWindow::saveTo(QString const& path)
 
 bool MainWindow::onActionSave()
 {
+    if (editingTemplate()) {
+        QString error;
+        bool const saved = saveEditedTemplate(&error);
+        if (!saved && !error.isEmpty())
+            QMessageBox::critical(this, tr("Eclipse"), tr("The template could not be saved.\n%1").arg(error));
+        return saved;
+    }
     return m_path.isEmpty() ? onActionSaveAs() : saveTo(m_path);
 }
 
 bool MainWindow::onActionSaveAs()
 {
+    if (editingTemplate())
+        return false;   // (a template is saved into its own file)
     QString path = QFileDialog::getSaveFileName(this, tr("Save Scene"), m_path.isEmpty() ? QStringLiteral("scene.ecl") : m_path, kFilter);
     if (path.isEmpty())
         return false;
@@ -438,7 +456,7 @@ void MainWindow::exportMovieTo(QString const& path, MovieChoices const* choices)
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-    if (!confirmDiscard()) {
+    if (!onActionLeaveTemplateEdit() || !confirmDiscard()) {
         event->ignore();
         return;
     }

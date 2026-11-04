@@ -34,7 +34,8 @@
 
 void MainWindow::updateTitle()
 {
-    QString const name = m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).fileName();
+    QString const name = editingTemplate() ? tr("Template Edition: %1").arg(QFileInfo(editedTemplate()).completeBaseName())
+                         : m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).fileName();
     Effects::setSceneName(m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).completeBaseName());
     // (Inside a symbol: which, after the name of the scene.)
     QStringList const trail = m_document->symbolTrail();
@@ -60,6 +61,11 @@ void MainWindow::updateActionStates()
     set("DuplicateSymbol", current.showsSymbol());
     set("LeaveSymbol", m_document->insideSymbol());
     set("ExpandSymbolInGroups", current.showsSymbol());
+    // While a template is edited, the scene's own file commands wait (it is put aside); Close Template Edition brings it back.
+    bool const editing = editingTemplate();
+    for (char const* id : {"New", "Open", "CloseScene", "SaveAs", "SaveNewVersion", "ManageVersions", "BackupScene"})
+        set(id, !editing);
+    set("LeaveTemplateEdit", editing);
     set("CopyPivotToParentSymbol", m_document->insideSymbol());
     set("CloneLayer", current.holdsDrawings());
     set("AddSyncedLayer", current.holdsDrawings() && !current.showsSymbol());

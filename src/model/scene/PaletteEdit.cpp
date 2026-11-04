@@ -203,6 +203,20 @@ int Scene::pasteColours()
     return s_pasteColours;
 }
 
+namespace {
+bool s_pasteNewDrawings = true;
+}
+
+void Scene::setPasteNewDrawings(bool on)
+{
+    s_pasteNewDrawings = on;
+}
+
+bool Scene::pasteNewDrawings()
+{
+    return s_pasteNewDrawings;
+}
+
 int Scene::takeColour(Scene const& piece, int swatch, QColor const& colour, QHash<int, int>& map)
 {
     Q_UNUSED(colour);

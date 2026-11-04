@@ -251,6 +251,12 @@ struct PreferenceWidgets {
     QCheckBox* scalePencil = nullptr;
     QGroupBox* colours = nullptr;
     QGroupBox* palettes = nullptr;
+    QGroupBox* templatesPage = nullptr;
+    QCheckBox* packNewTemplates = nullptr;
+    QComboBox* copyToLibrary = nullptr;
+    QComboBox* templateDrop = nullptr;
+    QCheckBox* pasteNewDrawings = nullptr;
+    QPushButton* templateBorder = nullptr;
     QCheckBox* advancedPalettes = nullptr;
     QCheckBox* elementPalettesDefault = nullptr;
     QCheckBox* swatchMode = nullptr;

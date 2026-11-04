@@ -94,6 +94,15 @@ public:
     bool optimizeCurrent(bool ask, QString* report);
     // Preview Template: the template chosen played in a window of its own.
     void previewCurrent();
+    // The folder of files packed with a template (Walk.files beside Walk.ecltpl) taken along when it is renamed, moved,
+    // copied or deleted, and the template pointed at its new place.  Such folders are not listed as library folders.
+    static bool isPackFolder(QString const& folder);
+    static bool carryPackFolder(QString const& from, QString const& to, bool move);
+    // Version Swapper Mode: while on, a template clicked goes onto the scene's layers of the same names (versionSwapRequested).
+    void setVersionSwapper(bool on);
+    bool versionSwapper() const { return m_versionSwapper; }
+    // The Library's own keys (Preferences > Keyboard Shortcuts, Library): looked up in `actions`.
+    void setActions(class ActionManager* actions) { m_actions = actions; }
 
 protected:
     bool eventFilter(QObject* watched,QEvent* event) override;
@@ -113,6 +122,10 @@ signals:
     void renameSymbolRequested(int id, QString const& name);
     void copySymbolRequested(int id);
     void deleteSymbolRequested(int id);
+    // Edit Template, Set Scale Factor..., and a template clicked in Version Swapper Mode.
+    void editTemplateRequested(QString const& path);
+    void scaleFactorRequested(QString const& path);
+    void versionSwapRequested(QString const& path);
 
 private:
     void showFolders();
@@ -143,5 +156,7 @@ private:
     bool m_forceThumbnails=false,m_suppressThumbnails=false;
     Document* m_document = nullptr;
     QString m_lastFileFolder;       // the folder on disk chosen last (what new templates go into while symbols are shown)
-    QString m_symbolSignature;      // what the symbols listed were, to list them again only when they change
+    QString m_symbolSignature;
+    bool m_versionSwapper = false;
+    class ActionManager* m_actions = nullptr;      // what the symbols listed were, to list them again only when they change
 };

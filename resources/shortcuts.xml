@@ -485,6 +485,13 @@
   <shortcut id="shortcut.groupSelection" text="Group Selection" value="Ctrl+G"/>
   <shortcut id="shortcut.toolHand" text="Hand Tool" value="H"/>
  </category>
+ <category id="Library" text="Library">
+  <shortcut id="shortcut.libraryRefresh" text="Refresh" value="F5"/>
+  <shortcut id="shortcut.libraryRename" text="Rename" value="F2"/>
+  <shortcut id="shortcut.libraryThumbnails" text="Thumbnails" value=""/>
+  <shortcut id="shortcut.libraryList" text="List" value=""/>
+  <shortcut id="shortcut.libraryDetails" text="Details" value=""/>
+ </category>
  <category id="Node View" text="Node View">
   <shortcut id="shortcut.nodeEnable" text="Enable Node" value="A"/>
   <shortcut id="shortcut.nodeDisable" text="Disable Node" value="D"/>

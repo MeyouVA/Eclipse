@@ -121,6 +121,7 @@ void MainWindow::applyPreferences()
     Canvas::s_interactiveRecovery = s.value(QStringLiteral("prefs/interactiveRecovery"), false).toBool();
     Scene::setReplacementColour(recovery ? QColor() : s.value(QStringLiteral("prefs/replacementColour"), QColor(255, 0, 0)).value<QColor>());
     Scene::setPasteColours(s.value(QStringLiteral("prefs/pasteColours"), 0).toInt());
+    Scene::setPasteNewDrawings(s.value(QStringLiteral("prefs/pasteNewDrawings"), true).toBool());
     m_palette->setElementPalettesShown(s.value(QStringLiteral("prefs/advancedPalettes"), true).toBool());
     m_palette->setListBackground(s.value(QStringLiteral("prefs/paletteBackground"), QColor()).value<QColor>());
     m_palette->setSwatchGrid(s.value(QStringLiteral("colour/grid"), false).toBool());
@@ -352,6 +353,7 @@ void MainWindow::onActionPreferences()
     preferencesDrawing(w, s, dialog);
     preferencesColours(w, s, dialog);
     preferencesPalettes(w, s, dialog);
+    preferencesTemplates(w, s, dialog);
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -441,7 +443,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.colourPage, w.soundPage, w.advanced}) {
+    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.colourPage, w.soundPage, w.advanced, w.templatesPage}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -647,6 +649,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/onionNearest"), w.onionNearest->value());
     s.setValue(QStringLiteral("prefs/onionFurthest"), w.onionFurthest->value());
     savePalettePreferences(w, s);
+    saveTemplatePreferences(w, s);
     saveSheetPreferences(w, s);
     saveAnimationPreferences(w, s);
     s.sync();

@@ -54,6 +54,8 @@ namespace {
 // Preferences: the view in use has a red border round it (on), or looks as the others do.
 bool gViewBorder = true;
 QColor gViewBorderColour(0xc8, 0x28, 0x1e);
+// While a template is edited: the Camera view's border in its own colour (Preferences > Templates), whether in use or not.
+QColor gTemplateEditBorder;
 
 class ViewFrame : public QFrame {
 public:
@@ -63,6 +65,11 @@ protected:
     void paintEvent(QPaintEvent*) override
     {
         QPainter painter(this);
+        if (gTemplateEditBorder.isValid() && property("cameraFrame").toBool()) {
+            painter.setPen(QPen(gTemplateEditBorder, 2));
+            painter.drawRect(rect().adjusted(1, 1, -1, -1));
+            return;
+        }
         painter.setPen(property("active").toBool() && gViewBorder ? gViewBorderColour : QColor(0x2a, 0x2a, 0x2a));
         painter.drawRect(rect().adjusted(0, 0, -1, -1));
     }
@@ -91,6 +98,18 @@ void MainWindow::setCurrentViewBorderColour(QColor const& colour)
 QColor MainWindow::currentViewBorderColour() const
 {
     return gViewBorderColour;
+}
+
+void MainWindow::setTemplateEditBorder(QColor const& colour)
+{
+    gTemplateEditBorder = colour;
+    for (QFrame* const frame : findChildren<QFrame*>(QStringLiteral("ViewFrame")))
+        frame->update();
+}
+
+QColor MainWindow::templateEditBorderShown() const
+{
+    return gTemplateEditBorder;
 }
 
 static QFrame* viewFrame(QWidget* content, QWidget* parent)
@@ -184,6 +203,14 @@ void MainWindow::createViews()
     connect(m_library, &LibraryView::insertRequested, this, [this](QString const& path) { dropTemplate(path, frame()); });
     connect(m_library, &LibraryView::createRequested, this, &MainWindow::onActionCreateTemplate);
     m_library->setDocument(m_document);
+    m_library->setActions(m_actions);
+    connect(m_library, &LibraryView::editTemplateRequested, this, [this](QString const& path) {
+        QString error;
+        if (!editTemplate(path, &error) && !error.isEmpty())
+            QMessageBox::warning(this, tr("Edit Template"), error);
+    });
+    connect(m_library, &LibraryView::scaleFactorRequested, this, [this] { onActionTemplateScaleFactor(); });
+    connect(m_library, &LibraryView::versionSwapRequested, this, &MainWindow::swapTemplateVersion);
     connect(m_library, &LibraryView::insertSymbolRequested, this, &MainWindow::insertLibrarySymbol);
     connect(m_library, &LibraryView::newSymbolRequested, this, &MainWindow::onActionCreateEmptySymbolInLibrary);
     connect(m_library, &LibraryView::copySymbolRequested, this, &MainWindow::copyLibrarySymbol);
@@ -556,7 +583,9 @@ void MainWindow::createCameraView()
     connect(m_document, &Document::changed, this, &MainWindow::updateSymbolTrail);
     connect(m_canvas, &Canvas::viewHiddenChanged, this, &MainWindow::refreshViewHidden);
     connect(m_canvas, &Canvas::zoomChanged, this, [this] { m_zoomLabel->setText(QStringLiteral("%1%").arg(qRound(m_canvas->zoomPercent()))); });
-    layout->addWidget(viewFrame(panel, camera), 1);
+    QFrame* const cameraFrame = viewFrame(panel, camera);
+    cameraFrame->setProperty("cameraFrame", true);
+    layout->addWidget(cameraFrame, 1);
     // The middle of the window holds it; it can be taken out into a window of its own, or closed.
     QWidget* const holder = new QWidget(this);
     holder->setObjectName(QStringLiteral("MiddleHolder"));

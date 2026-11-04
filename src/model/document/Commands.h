@@ -318,6 +318,8 @@ public:
     Scene wholeScene() const;
     bool unsaved() const;
     void setSaved();
+    // The scene counted as changed since it was saved (a scene put back that had unsaved changes).
+    void markUnsaved() { m_unsavedInside = true; }
     int addPeg(int above);
     // The camera of the scene, in front of everything; made if there is none yet.
     int addCamera();

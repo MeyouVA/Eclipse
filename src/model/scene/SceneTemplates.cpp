@@ -139,9 +139,22 @@ int Scene::pasteOnto(Scene const& piece, int frame, bool drawings, bool keys)
                         for (Fill& fill : d.fillsOf(sheet))
                             relink(fill.swatch, fill.color);
                     }
-                    d.name.clear();     // (a name belongs to one drawing of a layer)
-                    mine.drawings.push_back(d);
-                    have = brought.insert(index, int(mine.drawings.size()) - 1);
+                    // Not always new: the layer's drawing of the same name becomes the template's.
+                    int same = -1;
+                    if (!pasteNewDrawings() && !d.name.isEmpty())
+                        for (int m = 0; m < mine.drawings.size() && same < 0; ++m)
+                            if (mine.drawings[m].name == d.name)
+                                same = m;
+                    if (same >= 0) {
+                        d.editIdentity = mine.drawings[same].editIdentity;
+                        d.pinned = mine.drawings[same].pinned;
+                        mine.drawings[same] = d;
+                        have = brought.insert(index, same);
+                    } else {
+                        d.name.clear();     // (a name belongs to one drawing of a layer)
+                        mine.drawings.push_back(d);
+                        have = brought.insert(index, int(mine.drawings.size()) - 1);
+                    }
                 }
                 mine.cells[frame + f] = have.value();
             }

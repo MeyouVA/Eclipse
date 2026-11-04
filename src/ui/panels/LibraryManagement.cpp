@@ -1,5 +1,6 @@
 #include "ui/panels/LibraryView.h"
 #include "actions/theme/AppSettings.h"
+#include "actions/manager/ActionManager.h"
 #include <QAction>
 #include <QDesktopServices>
 #include <QDir>
@@ -46,10 +47,16 @@ void LibraryView::setupManagement()
     auto* pasteItem=add(items,tr("Paste"),"LibraryPaste",paste); folders->addAction(pasteItem);
     auto* optimize=add(items,tr("Optimize Template"),"LibraryOptimize",[this] { QString report; if(optimizeCurrent(true,&report)) QMessageBox::information(this,tr("Optimize Template"),report); else if(!report.isEmpty()) QMessageBox::warning(this,tr("Optimize Template"),report); });
     auto* preview=add(items,tr("Preview Template"),"LibraryPreviewTemplate",[this] { previewCurrent(); });
-    connect(items,&QMenu::aboutToShow,this,[this,cut,copy,pasteItem,optimize,preview] {
+    auto* edit=add(items,tr("Edit Template"),"LibraryEditTemplate",[this] { if(isTemplate(currentTemplate())) emit editTemplateRequested(currentTemplate()); });
+    auto* scale=add(items,tr("Set Scale Factor..."),"LibrarySetScaleFactor",[this] { if(isTemplate(currentTemplate())) emit scaleFactorRequested(currentTemplate()); });
+    auto* swapper=add(folders,tr("Version Swapper Mode"),"LibraryVersionSwapper",[this](bool checked) { setVersionSwapper(checked); }); swapper->setCheckable(true); items->addAction(swapper);
+    connect(items,&QMenu::aboutToShow,this,[this,cut,copy,pasteItem,optimize,preview,edit,scale] {
         bool const file=!currentTemplate().isEmpty() && !symbolIdOf(currentTemplate());
         cut->setEnabled(file); copy->setEnabled(file); pasteItem->setEnabled(hasClipboard() && !showingSymbols());
         optimize->setEnabled(isTemplate(currentTemplate())); preview->setEnabled(isTemplate(currentTemplate()) || symbolIdOf(currentTemplate()));
+        edit->setEnabled(isTemplate(currentTemplate()));
+        // (Only a template with a 3D model in it has a scale factor to set.)
+        scale->setVisible(isTemplate(currentTemplate()) && m_shownPath==currentTemplate() && m_shown.hasModels());
     });
     connect(folders,&QMenu::aboutToShow,this,[this,pasteItem] { pasteItem->setEnabled(hasClipboard() && !showingSymbols()); });
     add(items,tr("Rename..."),"LibraryRenameItem",[this] { findChild<QPushButton*>(QStringLiteral("LibraryRename"))->click(); });
@@ -73,10 +80,25 @@ bool LibraryView::eventFilter(QObject* watched,QEvent* event)
 {
     if((watched==m_items || watched==m_folderList) && (event->type()==QEvent::ShortcutOverride || event->type()==QEvent::KeyPress)) {
         auto* key=static_cast<QKeyEvent*>(event);
-        if(key->key()==Qt::Key_F5 && key->modifiers()==Qt::NoModifier) { event->accept(); if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) refreshFolders(); return true; }
+        // The Library's keys as Preferences > Keyboard Shortcuts set them (Refresh F5 and Rename F2 unless changed there).
+        if(m_actions) {
+            static struct { char const* shortcut; char const* item; char const* folder; } const keys[]={
+                {"shortcut.libraryRefresh","LibraryRefresh","LibraryRefresh"},{"shortcut.libraryRename","LibraryRenameItem","LibraryRenameFolder"},
+                {"shortcut.libraryThumbnails","LibraryThumbnails","LibraryThumbnails"},{"shortcut.libraryList","LibraryList","LibraryList"},
+                {"shortcut.libraryDetails","LibraryDetails","LibraryDetails"}};
+            QKeySequence const pressed(key->keyCombination());
+            for(auto const& one : keys)
+                for(ActionManager::Shortcut const& s : m_actions->shortcuts())
+                    if(s.id==QLatin1String(one.shortcut) && !s.key.isEmpty() && s.key.matches(pressed)==QKeySequence::ExactMatch) {
+                        event->accept();
+                        if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) if(auto* action=findChild<QAction*>(QLatin1String(watched==m_items?one.item:one.folder))) action->trigger();
+                        return true;
+                    }
+        }
+        if(key->key()==Qt::Key_F5 && key->modifiers()==Qt::NoModifier && !m_actions) { event->accept(); if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) refreshFolders(); return true; }
         // Inside the lists, the clipboard keys and F2 work on the Library's items, not on the scene.
         char const* const command=key->modifiers()==Qt::ControlModifier ? (key->key()==Qt::Key_X ? "LibraryCut" : key->key()==Qt::Key_C ? "LibraryCopy" : key->key()==Qt::Key_V ? "LibraryPaste" : nullptr)
-                                 : key->modifiers()==Qt::NoModifier && key->key()==Qt::Key_F2 ? (watched==m_items ? "LibraryRenameItem" : "LibraryRenameFolder") : nullptr;
+                                 : key->modifiers()==Qt::NoModifier && key->key()==Qt::Key_F2 && !m_actions ? (watched==m_items ? "LibraryRenameItem" : "LibraryRenameFolder") : nullptr;
         if(command) { event->accept(); if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) if(auto* action=findChild<QAction*>(QLatin1String(command))) action->trigger(); return true; }
     }
     return QWidget::eventFilter(watched,event);

@@ -252,6 +252,11 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
         refresh();
     });
     connect(m_items, &QListWidget::currentItemChanged, this, [this] { showTemplate(); });
+    // Version Swapper Mode: a template clicked is swapped onto the scene.
+    connect(m_items, &QListWidget::itemClicked, this, [this](QListWidgetItem*) {
+        if (m_versionSwapper && isTemplate(currentTemplate()))
+            emit versionSwapRequested(currentTemplate());
+    });
     connect(m_items, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
         QString const path = item->data(Qt::UserRole).toString();
         if (int const symbol = symbolIdOf(path))
@@ -355,7 +360,7 @@ void LibraryView::showFolders()
             if (depth >= 6)
                 return;     // deep enough for a library
             for (auto const& inner : QDir(folder).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDir::Name | QDir::IgnoreCase))
-                if(!inner.isJunction()) list(inner.absoluteFilePath(), root, depth + 1);
+                if(!inner.isJunction() && !isPackFolder(inner.absoluteFilePath())) list(inner.absoluteFilePath(), root, depth + 1);
         };
         if (m_document) {
             QListWidgetItem* const symbols = new QListWidgetItem(tr("Scene Symbols"), m_folderList);
@@ -643,8 +648,9 @@ bool LibraryView::renameCurrent(QString const& name)
         return false;
     QFileInfo const info(path);
     QString const to = info.absolutePath() + QLatin1Char('/') + clean + QLatin1Char('.') + info.suffix();
-    if (QFileInfo::exists(to) || !QFile::rename(path, to))
+    if (QFileInfo::exists(to) || QFileInfo::exists(Scene::templateFilesFolder(to)) || !QFile::rename(path, to))
         return false;
+    carryPackFolder(path, to, true);
     refresh();
     setCurrentTemplate(to);
     return true;
@@ -659,6 +665,9 @@ bool LibraryView::deleteCurrent(bool ask)
                    != QMessageBox::Yes)
         return false;
     bool const gone = QFile::remove(path);
+    // (The files packed with it go to the Recycle Bin.)
+    if (gone && QFileInfo(Scene::templateFilesFolder(path)).isDir())
+        QFile::moveToTrash(Scene::templateFilesFolder(path));
     refresh();
     return gone;
 }

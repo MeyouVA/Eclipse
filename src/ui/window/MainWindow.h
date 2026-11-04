@@ -8,6 +8,7 @@
 #include <QPointer>
 #include <QElapsedTimer>
 #include <functional>
+#include <memory>
 #include <QMainWindow>
 #include <QTimer>
 
@@ -225,6 +226,19 @@ public slots:
     void onActionOpenScene();
     bool onActionSave();
     bool onActionSaveAs();
+    // Edit Template: the Library's template chosen opened in the window to be changed (the scene put aside till it is closed);
+    // Save writes it back into its file; Close Template Edition brings the scene back.
+    void onActionEditTemplate();
+    bool editTemplate(QString const& path, QString* error = nullptr);
+    bool editingTemplate() const;
+    QString editedTemplate() const;
+    bool saveEditedTemplate(QString* error = nullptr, bool ask = true);
+    bool onActionLeaveTemplateEdit();
+    // Set Scale Factor (Library): every 3D model of the template chosen made bigger or smaller.
+    void onActionTemplateScaleFactor();
+    bool scaleTemplateModels(QString const& path, double factor, QString* error = nullptr);
+    // Version Swapper Mode (Library): a template chosen there goes straight onto the layers of the same names.
+    void swapTemplateVersion(QString const& path);
     void onActionExportFrames();
     void onActionExportMovie();
     void onActionImportSound();
@@ -770,6 +784,10 @@ private:
     void preferencesColours(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesPalettes(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void savePalettePreferences(struct PreferenceWidgets& w, class QSettings& s);
+    void preferencesTemplates(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
+    void saveTemplatePreferences(struct PreferenceWidgets& w, class QSettings& s);
+    // Preferences > Templates: the colour round the Camera view while a template is edited.
+    static QColor templateEditBorder();
     void createViews();
     // The parts of that: a view put in a panel of its own, and the views that take some making.
     QDockWidget* addView(QString const& title, QString const& name, QWidget* content, Qt::DockWidgetArea area);
@@ -911,6 +929,12 @@ private:
     QPointer<QWidget> m_velocityEditor;
     QPointer<SoundEditor> m_soundEditor;
     QWidget* m_symbolTrail = nullptr;
+    std::shared_ptr<struct TemplateEditing> m_templateEdit;
+    void setTemplateEditBorder(QColor const& colour);
+public:
+    // The border round the Camera view while a template is edited (invalid: none).
+    QColor templateEditBorderShown() const;
+private:     // while a template is being edited: the scene put aside
     QStringList m_symbolTrailShown;
     // Preferences: the Function Editors stay in front of the window.
     bool m_editorsOnTop = true;
