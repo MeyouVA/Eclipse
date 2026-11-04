@@ -17,6 +17,7 @@
 #include "ui/panels/ColourEditor.h"
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QSet>
 
 #include "actions/dialogs/ShortcutsDialog.h"
 #include "audio/sound/Sound.h"
@@ -40,15 +41,30 @@
 #include <QSettings>
 #include <QStatusBar>
 
+// Whether Create Symbol may ask questions (not while tests run with message boxes answered for them).
+static bool symbolAsks()
+{
+    return qEnvironmentVariableIsEmpty("ECLIPSE_NO_SYMBOL_QUESTIONS");
+}
+
 void MainWindow::onActionCreateSymbol()
 {
     // The layers selected - and what is attached to them - become a symbol, named after the first of them.
     QVector<int> const picked = m_timeline->selectedLayers();
     Scene const& scene = m_document->scene();
     QString const name = !picked.isEmpty() && picked.first() >= 0 && picked.first() < scene.layers.size() ? scene.layers[picked.first()].name : QString();
+    // Hidden drawing layers go in too, but show nothing in the symbol's pictures: asked first.
+    bool hidden = false;
+    for (int l : picked)
+        hidden = hidden || (l >= 0 && l < scene.layers.size() && scene.layers[l].holdsDrawings() && !scene.enabled(l));
+    if (hidden && symbolAsks()
+        && QMessageBox::question(this, tr("Create Symbol"),
+                                 tr("Selection contains disabled drawing layers.\nDrawings within these layers will not preview.\nProceed with the symbol creation?"))
+               != QMessageBox::Yes)
+        return;
     int const at = m_document->createSymbol(picked, name);
     if (at < 0) {
-        statusBar()->showMessage(tr("Select the layers to make a symbol of. (A camera and a sound stay in the scene.)"), 6000);
+        statusBar()->showMessage(tr("Unable to create symbol from selection: select the layers to make a symbol of. (A camera and a sound stay in the scene.)"), 6000);
         return;
     }
     m_timeline->clearRange();
@@ -96,6 +112,14 @@ void MainWindow::onActionEditSymbol()
     Scene const& scene = m_document->scene();
     if (layer() < 0 || layer() >= scene.layers.size() || !scene.layers[layer()].showsSymbol()) {
         statusBar()->showMessage(tr("Select a layer that shows a symbol."), 5000);
+        return;
+    }
+    QSet<int> picked;
+    for (int l : m_timeline->selectedLayers())
+        if (l >= 0 && l < scene.layers.size() && scene.layers[l].showsSymbol())
+            picked.insert(scene.layers[l].symbolId);
+    if (picked.size() > 1) {
+        statusBar()->showMessage(tr("Your selection contains more than one symbol. Please make a selection containing only one symbol."), 6000);
         return;
     }
     // The frame of the symbol the layer shows here is the frame to begin on inside it.

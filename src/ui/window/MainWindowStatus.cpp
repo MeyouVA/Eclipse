@@ -40,6 +40,7 @@ void MainWindow::updateTitle()
     QStringList const trail = m_document->symbolTrail();
     QString const inside = trail.isEmpty() ? QString() : QStringLiteral(" [%1]").arg(trail.join(QStringLiteral(" > ")));
     setWindowTitle(QStringLiteral("%1%2%3 - Eclipse").arg(name, m_document->unsaved() ? QStringLiteral("*") : QString(), inside));
+    updateSymbolTrail();
 }
 
 void MainWindow::updateActionStates()
@@ -58,6 +59,8 @@ void MainWindow::updateActionStates()
     set("EditSymbol", current.showsSymbol());
     set("DuplicateSymbol", current.showsSymbol());
     set("LeaveSymbol", m_document->insideSymbol());
+    set("ExpandSymbolInGroups", current.showsSymbol());
+    set("CopyPivotToParentSymbol", m_document->insideSymbol());
     set("CloneLayer", current.holdsDrawings());
     set("AddSyncedLayer", current.holdsDrawings() && !current.showsSymbol());
     set("CloneLayerTiming", current.holdsDrawings() && !current.showsSymbol());

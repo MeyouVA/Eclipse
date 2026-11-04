@@ -38,6 +38,8 @@
 
 QString const LibraryView::kSuffix = QStringLiteral("ecltpl");
 QString const LibraryView::kMimeType = QStringLiteral("application/x-eclipse-template");
+QString const LibraryView::kSymbolMimeType = QStringLiteral("application/x-eclipse-symbol");
+QString const LibraryView::kSymbolsFolder = QStringLiteral("eclipse:symbols");
 
 namespace {
 // The list of templates: one dragged out of it carries the path of its file.
@@ -52,7 +54,11 @@ protected:
         if (!item)
             return;
         QMimeData* const mime = new QMimeData;
-        mime->setData(LibraryView::kMimeType, item->data(Qt::UserRole).toString().toUtf8());
+        QString const path = item->data(Qt::UserRole).toString();
+        if (int const symbol = LibraryView::symbolIdOf(path))
+            mime->setData(LibraryView::kSymbolMimeType, QByteArray::number(symbol));
+        else
+            mime->setData(LibraryView::kMimeType, path.toUtf8());
         QDrag* const drag = new QDrag(this);
         drag->setMimeData(mime);
         drag->setPixmap(item->icon().pixmap(iconSize()));
@@ -240,29 +246,56 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     layout->addWidget(lists, 1);
     layout->addLayout(buttons);
 
-    connect(m_folderList, &QListWidget::currentRowChanged, this, [this] { refresh(); });
+    connect(m_folderList, &QListWidget::currentRowChanged, this, [this] {
+        if (!showingSymbols() && m_folderList->currentItem())
+            m_lastFileFolder = m_folderList->currentItem()->data(Qt::UserRole).toString();
+        refresh();
+    });
     connect(m_items, &QListWidget::currentItemChanged, this, [this] { showTemplate(); });
-    connect(m_items, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) { emit insertRequested(item->data(Qt::UserRole).toString()); });
+    connect(m_items, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
+        QString const path = item->data(Qt::UserRole).toString();
+        if (int const symbol = symbolIdOf(path))
+            emit insertSymbolRequested(symbol);
+        else
+            emit insertRequested(path);
+    });
     connect(m_search, &QLineEdit::textChanged, this, [this] { refresh(); });
     connect(m_scrub, &QSlider::valueChanged, this, &LibraryView::showFrame);
     connect(create, &QPushButton::clicked, this, &LibraryView::createRequested);
     connect(insert, &QPushButton::clicked, this, [this] {
-        if (!currentTemplate().isEmpty())
+        if (int const symbol = symbolIdOf(currentTemplate()))
+            emit insertSymbolRequested(symbol);
+        else if (!currentTemplate().isEmpty())
             emit insertRequested(currentTemplate());
     });
     connect(asSymbol, &QPushButton::clicked, this, [this] {
-        if (currentTemplate().endsWith(QLatin1Char('.') + kSuffix))
+        if (int const symbol = symbolIdOf(currentTemplate()))
+            emit insertSymbolRequested(symbol);
+        else if (currentTemplate().endsWith(QLatin1Char('.') + kSuffix))
             emit insertAsSymbolRequested(currentTemplate());
     });
     connect(special, &QPushButton::clicked, this, [this] {
         if (currentTemplate().endsWith(QLatin1Char('.') + kSuffix))
             emit pasteSpecialRequested(currentTemplate());
     });
-    connect(remove, &QPushButton::clicked, this, [this] { deleteCurrent(true); });
+    connect(remove, &QPushButton::clicked, this, [this] {
+        if (int const symbol = symbolIdOf(currentTemplate()))
+            emit deleteSymbolRequested(symbol);
+        else
+            deleteCurrent(true);
+    });
     connect(rename, &QPushButton::clicked, this, [this] {
         QString const path = currentTemplate();
         if (path.isEmpty())
             return;
+        if (int const symbol = symbolIdOf(path)) {
+            bool ok = false;
+            QString const name = QInputDialog::getText(this, tr("Rename Symbol"), tr("Enter Symbol's Name"), QLineEdit::Normal,
+                                                       m_items->currentItem()->data(Qt::UserRole + 9).toString(), &ok);
+            if (ok && !name.trimmed().isEmpty())
+                emit renameSymbolRequested(symbol, name.trimmed());
+            return;
+        }
         bool ok = false;
         QString const name = QInputDialog::getText(this, tr("Rename Template"), tr("Name of the template:"), QLineEdit::Normal,
                                                    QFileInfo(path).completeBaseName(), &ok);
@@ -324,9 +357,15 @@ void LibraryView::showFolders()
             for (auto const& inner : QDir(folder).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDir::Name | QDir::IgnoreCase))
                 if(!inner.isJunction()) list(inner.absoluteFilePath(), root, depth + 1);
         };
+        if (m_document) {
+            QListWidgetItem* const symbols = new QListWidgetItem(tr("Scene Symbols"), m_folderList);
+            symbols->setToolTip(tr("The symbols of the scene: drag one into the Timeline, or Insert it, to show it on a layer."));
+            symbols->setData(Qt::UserRole, kSymbolsFolder);
+            symbols->setData(Qt::UserRole + 1, -2);
+        }
         for (int i = 0; i < m_folders.size(); ++i)
             list(m_folders[i], i, 0);
-        int row = 0;
+        int row = m_document ? 1 : 0;
         for (int i = 0; i < m_folderList->count(); ++i)
             if (m_folderList->item(i)->data(Qt::UserRole).toString() == was)
                 row = i;
@@ -376,7 +415,10 @@ void LibraryView::removeFolder(int index)
 
 QString LibraryView::currentFolder() const
 {
-    return m_folderList->currentItem() ? m_folderList->currentItem()->data(Qt::UserRole).toString() : m_folders.value(0);
+    QString const shown = m_folderList->currentItem() ? m_folderList->currentItem()->data(Qt::UserRole).toString() : QString();
+    if (shown.isEmpty() || shown == kSymbolsFolder)
+        return m_lastFileFolder.isEmpty() || rootFor(m_lastFileFolder).isEmpty() ? m_folders.value(0) : m_lastFileFolder;
+    return shown;
 }
 
 void LibraryView::setCurrentFolder(int index)
@@ -401,7 +443,8 @@ QStringList LibraryView::shownFolders() const
 {
     QStringList shown;
     for (int row = 0; row < m_folderList->count(); ++row)
-        shown << m_folderList->item(row)->data(Qt::UserRole).toString();
+        if (m_folderList->item(row)->data(Qt::UserRole).toString() != kSymbolsFolder)
+            shown << m_folderList->item(row)->data(Qt::UserRole).toString();
     return shown;
 }
 
@@ -409,7 +452,7 @@ bool LibraryView::addSubFolder(QString const& name)
 {
     QString const clean = name.trimmed();
     QDir const here(currentFolder());
-    if (!validEntryName(clean) || !canModifyPath(here.filePath(clean)) || here.exists(clean) || !here.mkdir(clean))
+    if (showingSymbols() || !validEntryName(clean) || !canModifyPath(here.filePath(clean)) || here.exists(clean) || !here.mkdir(clean))
         return false;
     showFolders();
     setCurrentPath(here.filePath(clean));
@@ -423,6 +466,10 @@ void LibraryView::setSearch(QString const& text)
 
 void LibraryView::refresh()
 {
+    if (showingSymbols()) {
+        fillSymbols();
+        return;
+    }
     QString const chosen = currentTemplate();
     QString const wanted = m_search->text().trimmed();
     QSet<QString> activeThumbnails;
@@ -538,6 +585,8 @@ void LibraryView::showTemplate()
     QString const path = currentTemplate();
     QString error;
     m_shownPath.clear();
+    if (showSymbol(path))
+        return;
     if (!path.isEmpty() && !isTemplate(path)) {
         // A sound or a palette: its picture, and what it is.
         m_shown = Scene();

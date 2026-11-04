@@ -11,7 +11,9 @@
 
 int Document::addCamera()
 {
-    // The first camera is the one the scene is seen through; a further one waits to be chosen.
+    // The first camera is the one the scene is seen through; a further one waits to be chosen.  A symbol has none.
+    if (insideSymbol())
+        return -1;
     int at = -1;
     apply(tr("Add Camera"), [&](Scene& s) { at = s.addLayer(s.uniqueLayerName(QStringLiteral("Camera")), -1, Layer::Camera); });
     return at;
@@ -620,6 +622,50 @@ bool Document::duplicateSymbol(int layer)
         return false;
     apply(tr("Duplicate Symbol"), [&](Scene& s) { s.duplicateSymbol(layer); });
     return true;
+}
+
+int Document::addLibrarySymbol(QString const& name)
+{
+    int id = 0;
+    apply(tr("Create Empty Symbol in Library"), [&](Scene& s) { id = s.addEmptySymbol(name); });
+    return id;
+}
+
+int Document::copySymbol(int id)
+{
+    if (!m_scene.findSymbol(id))
+        return 0;
+    int made = 0;
+    apply(tr("Duplicate symbols"), [&](Scene& s) { made = s.copySymbol(id); });
+    return made;
+}
+
+bool Document::renameSymbol(int id, QString const& name)
+{
+    Scene trial = m_scene;
+    Scene::Symbol const* const symbol = m_scene.findSymbol(id);
+    if (!symbol || symbol->name == name.trimmed() || !trial.renameSymbol(id, name))
+        return false;
+    apply(tr("Rename Symbol"), [&](Scene& s) { s.renameSymbol(id, name); });
+    return true;
+}
+
+int Document::deleteSymbol(int id)
+{
+    if (insideSymbol() || !m_scene.findSymbol(id))
+        return -1;
+    int removed = -1;
+    apply(tr("Symbol Deletion"), [&](Scene& s) { removed = s.removeSymbol(id); });
+    return removed;
+}
+
+int Document::createSymbolFromArt(int layer, int drawing, Drawing const& piece, QString const& name)
+{
+    if (piece.strokes.isEmpty() && piece.fills.isEmpty() && piece.pictures.isEmpty())
+        return -1;
+    int at = -1;
+    apply(tr("Create Symbol from Drawing Selection"), [&](Scene& s) { at = s.makeSymbolFromArt(layer, drawing, piece, name); });
+    return at;
 }
 
 int Document::addCloneLayer(int layer, bool timing)

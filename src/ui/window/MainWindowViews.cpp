@@ -1,6 +1,7 @@
 // Eclipse - the main window: its views put in their panels; the Camera view and the Timeline with their toolbars.
 #include "ui/window/MainWindow.h"
 #include "colour/spaces/ColourConfig.h"
+#include <QMessageBox>
 #include <QScrollArea>
 #include "model/geometry/Deform.h"
 
@@ -182,6 +183,15 @@ void MainWindow::createViews()
     m_library = new LibraryView(this);
     connect(m_library, &LibraryView::insertRequested, this, [this](QString const& path) { dropTemplate(path, frame()); });
     connect(m_library, &LibraryView::createRequested, this, &MainWindow::onActionCreateTemplate);
+    m_library->setDocument(m_document);
+    connect(m_library, &LibraryView::insertSymbolRequested, this, &MainWindow::insertLibrarySymbol);
+    connect(m_library, &LibraryView::newSymbolRequested, this, &MainWindow::onActionCreateEmptySymbolInLibrary);
+    connect(m_library, &LibraryView::copySymbolRequested, this, &MainWindow::copyLibrarySymbol);
+    connect(m_library, &LibraryView::deleteSymbolRequested, this, [this](int id) { deleteLibrarySymbol(id, true); });
+    connect(m_library, &LibraryView::renameSymbolRequested, this, [this](int id, QString const& name) {
+        if (!renameLibrarySymbol(id, name))
+            QMessageBox::warning(this, tr("Rename Symbol"), tr("Another symbol already has the name \"%1\".").arg(name));
+    });
     connect(m_library, &LibraryView::pasteSpecialRequested, this, &MainWindow::onTemplatePasteSpecial);
     connect(m_library, &LibraryView::insertAsSymbolRequested, this, [this](QString const& path) {
         QString error;
@@ -533,6 +543,17 @@ void MainWindow::createCameraView()
         updateStatus();
     });
     panel->layout()->addWidget(status);
+    // The symbol editing stack, over the Camera view while inside a symbol.
+    m_symbolTrail = new QWidget(panel);
+    m_symbolTrail->setObjectName(QStringLiteral("SymbolTrail"));
+    m_symbolTrail->setToolTip(tr("Click on any symbol to go back in the editing stack."));
+    QHBoxLayout* const trailRow = new QHBoxLayout(m_symbolTrail);
+    trailRow->setContentsMargins(6, 1, 6, 1);
+    trailRow->setSpacing(2);
+    m_symbolTrail->hide();
+    if (QBoxLayout* const column = qobject_cast<QBoxLayout*>(panel->layout()))
+        column->insertWidget(0, m_symbolTrail);
+    connect(m_document, &Document::changed, this, &MainWindow::updateSymbolTrail);
     connect(m_canvas, &Canvas::viewHiddenChanged, this, &MainWindow::refreshViewHidden);
     connect(m_canvas, &Canvas::zoomChanged, this, [this] { m_zoomLabel->setText(QStringLiteral("%1%").arg(qRound(m_canvas->zoomPercent()))); });
     layout->addWidget(viewFrame(panel, camera), 1);

@@ -254,6 +254,8 @@ public:
     void rotateSelection(double degrees);
     void copySelection();
     void cutSelection();
+    // The art selected, taken out of the drawing (one step of undo named `text`) and handed back; empty when none can be.
+    Drawing takeSelection(QString const& text);
     // Zooms about the middle of the view.
     void zoomBy(double factor);
     // Zoom In and Zoom Out: about the pointer when it is over the view and the preferences say so; otherwise about the middle.

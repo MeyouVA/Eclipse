@@ -33,6 +33,7 @@ bool LibraryView::canModifyPath(QString const& path,QString* error)
 {
     auto fail=[&](QString const& why) { if(error) *error=why; return false; };
     if(path.trimmed().isEmpty()) return fail(tr("Select a library path first."));
+    if(path.startsWith(kSymbolsFolder) || symbolIdOf(path)) return fail(tr("The scene's symbols are kept in the scene, not in library files."));
     QString const root=rootFor(path);
     if(root.isEmpty()) return true;
     for(QString at=QFileInfo(path).absoluteFilePath();within(at,root);at=QFileInfo(at).absolutePath()) {
@@ -61,6 +62,7 @@ void LibraryView::refreshFolders() { showFolders(); }
 
 bool LibraryView::renameFolder(QString const& name)
 {
+    if(showingSymbols()) return false;
     QString const from=QDir(currentFolder()).absolutePath(),clean=name.trimmed(),root=rootFor(from);
     if(root.isEmpty() || from.compare(root,Qt::CaseInsensitive)==0 || !validEntryName(clean) || !canModifyPath(from)) return false;
     for(auto const& folder : m_folders) if(within(folder,from)) return false;
@@ -71,6 +73,7 @@ bool LibraryView::renameFolder(QString const& name)
 
 bool LibraryView::deleteFolder(bool ask)
 {
+    if(showingSymbols()) return false;
     QString const path=QDir(currentFolder()).absolutePath(),root=rootFor(path);
     if(root.isEmpty() || path.compare(root,Qt::CaseInsensitive)==0 || !canModifyPath(path)) return false;
     for(auto const& folder : m_folders) if(within(folder,path)) return false;

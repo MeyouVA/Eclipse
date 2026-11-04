@@ -142,7 +142,7 @@ QStringList Canvas::pictureFiles(QList<QUrl> const& urls)
 
 void Canvas::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-template"))
+    if ((event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-template")) || event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-symbol")))
         || (!m_drawingView && event->mimeData()->hasUrls() && !pictureFiles(event->mimeData()->urls()).isEmpty()))
         event->acceptProposedAction();
 }
@@ -157,7 +157,12 @@ void Canvas::dropEvent(QDropEvent* event)
             return;
         }
     }
-    if (!event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-template")))
+    if (event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-symbol"))) {
+        event->acceptProposedAction();
+        emit templateDropped(QStringLiteral("symbol:") + QString::fromUtf8(event->mimeData()->data(QStringLiteral("application/x-eclipse-symbol"))));
+        return;
+    }
+    if (!(event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-template")) || event->mimeData()->hasFormat(QStringLiteral("application/x-eclipse-symbol"))))
         return;
     event->acceptProposedAction();
     emit templateDropped(QString::fromUtf8(event->mimeData()->data(QStringLiteral("application/x-eclipse-template"))));

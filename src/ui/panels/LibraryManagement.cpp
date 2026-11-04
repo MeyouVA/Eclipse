@@ -33,6 +33,25 @@ void LibraryView::setupManagement()
     add(folders,tr("Delete Folder..."),"LibraryDeleteFolder",[this] { deleteFolder(true); });
     auto* refresh=add(folders,tr("Refresh"),"LibraryRefresh",[this] { refreshFolders(); }); items->addAction(refresh);
     auto* open=add(folders,tr("Open As Folder"),"LibraryOpenFolder",[this] { QDesktopServices::openUrl(QUrl::fromLocalFile(currentFolder())); }); items->addAction(open);
+    auto* newSymbol=add(items,tr("New Symbol"),"LibraryNewSymbol",[this] { emit newSymbolRequested(); });
+    auto* copySymbol=add(items,tr("Duplicate Symbol"),"LibraryDuplicateSymbol",[this] { if(int const id=symbolIdOf(currentTemplate())) emit copySymbolRequested(id); });
+    connect(items,&QMenu::aboutToShow,this,[this,newSymbol,copySymbol] { newSymbol->setVisible(m_document!=nullptr); copySymbol->setVisible(symbolIdOf(currentTemplate())!=0); });
+    auto* cut=add(items,tr("Cut"),"LibraryCut",[this] { copyCurrent(true); });
+    auto* copy=add(items,tr("Copy"),"LibraryCopy",[this] { copyCurrent(false); });
+    auto paste=[this] {
+        QString error;
+        auto ask=[this](QString const& taken) { bool ok=false; QString const name=QInputDialog::getText(this,tr("Paste"),tr("\"%1\" is taken here. Enter a new file name for the template.").arg(taken),QLineEdit::Normal,taken+tr(" copy"),&ok); return ok?name:QString(); };
+        if(!pasteHere(&error,ask) && !error.isEmpty()) QMessageBox::warning(this,tr("Library"),error);
+    };
+    auto* pasteItem=add(items,tr("Paste"),"LibraryPaste",paste); folders->addAction(pasteItem);
+    auto* optimize=add(items,tr("Optimize Template"),"LibraryOptimize",[this] { QString report; if(optimizeCurrent(true,&report)) QMessageBox::information(this,tr("Optimize Template"),report); else if(!report.isEmpty()) QMessageBox::warning(this,tr("Optimize Template"),report); });
+    auto* preview=add(items,tr("Preview Template"),"LibraryPreviewTemplate",[this] { previewCurrent(); });
+    connect(items,&QMenu::aboutToShow,this,[this,cut,copy,pasteItem,optimize,preview] {
+        bool const file=!currentTemplate().isEmpty() && !symbolIdOf(currentTemplate());
+        cut->setEnabled(file); copy->setEnabled(file); pasteItem->setEnabled(hasClipboard() && !showingSymbols());
+        optimize->setEnabled(isTemplate(currentTemplate())); preview->setEnabled(isTemplate(currentTemplate()) || symbolIdOf(currentTemplate()));
+    });
+    connect(folders,&QMenu::aboutToShow,this,[this,pasteItem] { pasteItem->setEnabled(hasClipboard() && !showingSymbols()); });
     add(items,tr("Rename..."),"LibraryRenameItem",[this] { findChild<QPushButton*>(QStringLiteral("LibraryRename"))->click(); });
     add(items,tr("Delete..."),"LibraryDeleteItem",[this] { findChild<QPushButton*>(QStringLiteral("LibraryDelete"))->click(); });
     auto* generate=add(view,tr("Generate Thumbnails"),"LibraryGenerateThumbnails",[this] { generateThumbnails(); }); folders->addAction(generate); items->addAction(generate);
@@ -55,6 +74,10 @@ bool LibraryView::eventFilter(QObject* watched,QEvent* event)
     if((watched==m_items || watched==m_folderList) && (event->type()==QEvent::ShortcutOverride || event->type()==QEvent::KeyPress)) {
         auto* key=static_cast<QKeyEvent*>(event);
         if(key->key()==Qt::Key_F5 && key->modifiers()==Qt::NoModifier) { event->accept(); if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) refreshFolders(); return true; }
+        // Inside the lists, the clipboard keys and F2 work on the Library's items, not on the scene.
+        char const* const command=key->modifiers()==Qt::ControlModifier ? (key->key()==Qt::Key_X ? "LibraryCut" : key->key()==Qt::Key_C ? "LibraryCopy" : key->key()==Qt::Key_V ? "LibraryPaste" : nullptr)
+                                 : key->modifiers()==Qt::NoModifier && key->key()==Qt::Key_F2 ? (watched==m_items ? "LibraryRenameItem" : "LibraryRenameFolder") : nullptr;
+        if(command) { event->accept(); if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) if(auto* action=findChild<QAction*>(QLatin1String(command))) action->trigger(); return true; }
     }
     return QWidget::eventFilter(watched,event);
 }

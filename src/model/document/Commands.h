@@ -293,16 +293,25 @@ public:
     void setGraph(NodeGraph const& graph, QString const& text);
     int createSymbol(QVector<int> const& layers, QString const& name);
     int insertSymbol(int symbolId, int above);
-    int expandSymbol(int layer);
+    int expandSymbol(int layer, bool inGroup = false);
     // A new symbol with one empty drawing layer, and a layer above `above` that shows it.  Returns that layer.
     int insertEmptySymbol(QString const& name, int above);
     // The layer gets a symbol of its own: a copy of the one it shows.
     bool duplicateSymbol(int layer);
+    // The Library's symbols: a new empty one (no layer shows it yet), a copy, another name, and taking one away with every
+    // layer that shows it (only outside symbols; -1 otherwise).  Ids, or 0 / false / -1.
+    int addLibrarySymbol(QString const& name);
+    int copySymbol(int id);
+    bool renameSymbol(int id, QString const& name);
+    int deleteSymbol(int id);
+    int createSymbolFromArt(int layer, int drawing, Drawing const& piece, QString const& name);
     // Clone: a second layer that shows the same drawings (see Scene::cloneLayer).  Returns it, or -1.
     int cloneLayer(int layer);
     bool enterSymbol(int symbolId);
     bool leaveSymbol();
     bool insideSymbol() const { return !m_around.isEmpty(); }
+    // The symbol being worked on (0 outside symbols).
+    int currentSymbolId() const { return m_around.isEmpty() ? 0 : m_around.last().symbolId; }
     // The symbols gone into, the outermost first, by name.
     QStringList symbolTrail() const;
     // The scene as it is to be saved: the outermost one, with what is being worked on inside symbols put back.

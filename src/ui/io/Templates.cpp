@@ -154,6 +154,11 @@ void MainWindow::onTemplatePasteSpecial(QString const& path)
 void MainWindow::dropTemplate(QString const& path, int frame, bool onto)
 {
     QString error;
+    if (int const symbol = LibraryView::symbolIdOf(path)) {
+        if (insertLibrarySymbol(symbol) < 0)
+            statusBar()->showMessage(tr("Template not found."), 5000);
+        return;
+    }
     // The library holds sounds and palettes too.
     QString const kind = QFileInfo(path).suffix().toLower();
     bool rawSound=false,rawImage=false,rawMovie=false;

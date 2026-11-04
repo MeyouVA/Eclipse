@@ -238,6 +238,26 @@ void Canvas::cutSelection()
     setSelection({}, {});
 }
 
+Drawing Canvas::takeSelection(QString const& text)
+{
+    if (!canEditDrawing() || !hasSelection())
+        return Drawing();
+    Drawing const* const d = currentDrawing();
+    Drawing kept, taken;
+    for (int i = 0; i < d->strokes.size(); ++i)
+        (m_selStrokes.contains(i) ? taken : kept).strokes.push_back(d->strokes[i]);
+    for (int i = 0; i < d->fills.size(); ++i)
+        (m_selFills.contains(i) ? taken : kept).fills.push_back(d->fills[i]);
+    bool const picturesGo = picturesHere() && !m_selPictures.isEmpty();
+    for (int i = 0; picturesGo && i < d->pictures.size(); ++i)
+        (m_selPictures.contains(i) ? taken : kept).pictures.push_back(d->pictures[i]);
+    m_keepNoPictures = picturesGo;
+    commitDrawing(kept, text);
+    m_keepNoPictures = false;
+    setSelection({}, {});
+    return taken;
+}
+
 bool Canvas::canPaste()
 {
     return !s_clipboard.isEmpty();

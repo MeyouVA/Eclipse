@@ -12,10 +12,12 @@
 #include <QImage>
 #include <QSet>
 #include <QWidget>
+#include <functional>
 #include <memory>
 
 #include "model/scene/Scene.h"
 
+class Document;
 class QLabel;
 class QLineEdit;
 class QListWidget;
@@ -31,6 +33,8 @@ public:
 
     static QString const kSuffix;       // "ecltpl"
     static QString const kMimeType;     // what a template dragged out of the view is carried as (its path)
+    static QString const kSymbolMimeType;   // what a scene symbol dragged out of the view is carried as (its id)
+    static QString const kSymbolsFolder;    // the folder row that lists the scene's symbols
     // Where templates go unless another folder is added: "Eclipse Library" in Documents.
     static QString defaultFolder();
     static int firstDrawnFrame(Scene const& scene);
@@ -75,6 +79,21 @@ public:
     void generateThumbnails();
     void deleteThumbnails();
     void setAutoThumbnails(bool enabled);
+    // The scene's symbols, as a folder of the Library (shown above the folders on disk).
+    void setDocument(Document* document);
+    bool showingSymbols() const;
+    void showSceneSymbols(int pick = 0);
+    // A symbol's id from the path an item carries ("symbol:<id>"), or 0.
+    static int symbolIdOf(QString const& path);
+    // Library Cut / Copy / Paste: the item chosen kept to be pasted into another folder (a cut takes it away once pasted).
+    // A name taken there is asked for again through `rename` (none: " copy" added).
+    bool copyCurrent(bool cut);
+    static bool hasClipboard();
+    bool pasteHere(QString* error, std::function<QString(QString const&)> const& rename = {});
+    // Optimize Template: the template chosen without the drawings and palettes it does not use; `report` says what went.
+    bool optimizeCurrent(bool ask, QString* report);
+    // Preview Template: the template chosen played in a window of its own.
+    void previewCurrent();
 
 protected:
     bool eventFilter(QObject* watched,QEvent* event) override;
@@ -88,6 +107,12 @@ signals:
     void pasteSpecialRequested(QString const& path);
     // "New Template from Selection" pressed.
     void createRequested();
+    // The scene's symbols: put one in, a new one, another name, a copy, delete one.
+    void insertSymbolRequested(int id);
+    void newSymbolRequested();
+    void renameSymbolRequested(int id, QString const& name);
+    void copySymbolRequested(int id);
+    void deleteSymbolRequested(int id);
 
 private:
     void showFolders();
@@ -98,6 +123,9 @@ private:
     void showManagementMenu(bool folder,QPoint const& point);
     QString rootFor(QString const& path) const;
     static bool validEntryName(QString const& name);
+    void fillSymbols();
+    bool showSymbol(QString const& path);
+    QString symbolSignature() const;
 
     QStringList m_folders;
     QListWidget* m_folderList;
@@ -113,4 +141,7 @@ private:
     QHash<QString,std::shared_ptr<QLockFile>> m_locks;
     QSet<QString> m_readOnly;
     bool m_forceThumbnails=false,m_suppressThumbnails=false;
+    Document* m_document = nullptr;
+    QString m_lastFileFolder;       // the folder on disk chosen last (what new templates go into while symbols are shown)
+    QString m_symbolSignature;      // what the symbols listed were, to list them again only when they change
 };

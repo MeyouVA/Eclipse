@@ -315,29 +315,33 @@ void Timeline::mousePressEvent(QMouseEvent* event)
 
 // What a template dragged out of the Library is carried as (see LibraryView::kMimeType).
 static char const kTemplateMime[] = "application/x-eclipse-template";
+static char const kSymbolMime[] = "application/x-eclipse-symbol";
 
 void Timeline::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->mimeData()->hasFormat(QLatin1String(kTemplateMime)))
+    if (event->mimeData()->hasFormat(QLatin1String(kTemplateMime)) || event->mimeData()->hasFormat(QLatin1String(kSymbolMime)))
         event->acceptProposedAction();
 }
 
 void Timeline::dragMoveEvent(QDragMoveEvent* event)
 {
-    if (event->mimeData()->hasFormat(QLatin1String(kTemplateMime)))
+    if (event->mimeData()->hasFormat(QLatin1String(kTemplateMime)) || event->mimeData()->hasFormat(QLatin1String(kSymbolMime)))
         event->acceptProposedAction();
 }
 
 void Timeline::dropEvent(QDropEvent* event)
 {
-    if (!event->mimeData()->hasFormat(QLatin1String(kTemplateMime)))
+    bool const symbol = event->mimeData()->hasFormat(QLatin1String(kSymbolMime));
+    if (!symbol && !event->mimeData()->hasFormat(QLatin1String(kTemplateMime)))
         return;
     // Over the cells: from the frame under the pointer.  Over the names: from the current frame.
     QPoint const pos = event->position().toPoint();
     int const frame = pos.x() >= kHeaderWidth ? std::clamp(frameAt(pos.x()), 0, m_document->scene().frameCount() - 1) : m_frame;
     event->acceptProposedAction();
     // (Over the cells it goes onto the layers of the same names, when the scene has them; over the names it comes as new layers.)
-    emit templateDropped(QString::fromUtf8(event->mimeData()->data(QLatin1String(kTemplateMime))), frame, pos.x() >= kHeaderWidth);
+    QString const what = symbol ? QStringLiteral("symbol:") + QString::fromUtf8(event->mimeData()->data(QLatin1String(kSymbolMime)))
+                                : QString::fromUtf8(event->mimeData()->data(QLatin1String(kTemplateMime)));
+    emit templateDropped(what, frame, pos.x() >= kHeaderWidth);
 }
 
 void Timeline::contextMenuEvent(QContextMenuEvent* event)

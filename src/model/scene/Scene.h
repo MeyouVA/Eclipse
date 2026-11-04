@@ -173,6 +173,9 @@ public:
     void dropPalette(int which);
     // The ids of the colours that something is drawn or painted with.
     QSet<int> usedSwatches() const;
+    // Optimize Template: drawings no frame shows taken out of every layer (and those inside symbols), and palettes nothing
+    // uses or refers to; what is shown is not changed.  How many drawings and palettes went.
+    QPair<int, int> optimizeForTemplate();
     // Every line and area of the given layers (all of them when empty) in colour `from` given colour `to`.  How many.
     int recolour(int from, int to, QVector<int> const& layers = {});
     // The colours a layer is drawn with in place of others, by its palette overrides: original id -> clone id.
@@ -337,12 +340,22 @@ public:
     int makeSymbol(QVector<int> const& layers, QString const& name);
     // Another layer that shows a symbol.  Returns where it is, or -1.
     int addSymbolInstance(int symbolId, int at = -1);
-    int expandSymbol(int layer);
+    // The layer showing a symbol becomes a peg (or, `inGroup`, a group) with copies of the symbol's layers under it.  Returns it, or -1.
+    int expandSymbol(int layer, bool inGroup = false);
     void takeSymbol(int symbolId, Scene const& worked);
     // A symbol with one empty drawing layer in it.  Its id.
     int addEmptySymbol(QString const& name);
     // A symbol of its own for a layer that shows one: a copy, to change without changing the other.  Its id, or 0.
     int duplicateSymbol(int layer);
+    // The Library's symbols: a copy of one (its id, or 0), another name for one, how many layers show one, and taking one away.
+    int copySymbol(int id);
+    bool renameSymbol(int id, QString const& name);
+    int symbolReferences(int id) const;
+    // The symbol and every layer that shows it (here and inside other symbols) taken away; how many such layers there were, or -1.
+    int removeSymbol(int id);
+    // Create Symbol from Drawing Selection: `piece` (art taken from drawing `drawing` of `layer`) made a symbol, shown by a new
+    // layer above that one wherever it shows that drawing, moving as it moves.  The new layer, or -1.
+    int makeSymbolFromArt(int layer, int drawing, Drawing const& piece, QString const& name);
     int cloneLayer(int layer);
     // The symbols these layers show - and those shown inside them, and so on.
     QVector<Symbol> symbolsUsed(QVector<Layer> const& by) const;

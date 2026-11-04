@@ -357,6 +357,22 @@ public slots:
     void onActionAddSyncedLayer();
     void onActionSyncLayerWith();
     void onActionExpandSymbol();
+    // Expand Selected Symbols in Groups: each selected symbol layer a group holding copies of its layers.
+    void onActionExpandSymbolInGroups();
+    int expandSelectedSymbols(bool inGroups);
+    // Insert > Create Empty Symbol in Library: a new symbol no layer shows yet, picked in the Library.
+    void onActionCreateEmptySymbolInLibrary();
+    // Create Symbol from Drawing Selection: the art selected in the Camera view made a symbol, on a layer above.
+    void onActionCreateSymbolFromSelection();
+    // Copy Pivot to Parent Symbol: inside a symbol, the current layer's pivot given to the layers outside that show the symbol.
+    void onActionCopyPivotToParentSymbol();
+    // The Library's symbols: put in on a new layer, renamed, copied, deleted (with every layer that shows them).
+    int insertLibrarySymbol(int id);
+    bool renameLibrarySymbol(int id, QString const& name);
+    int copyLibrarySymbol(int id);
+    int deleteLibrarySymbol(int id, bool ask);
+    // The editing stack: leave symbols until `depth` symbols are gone into (0: the top scene).
+    void leaveSymbolsTo(int depth);
     bool playsIn(QString const& which) const { return m_playViews.contains(which); }
     void onActionToggleSound(bool on) { m_soundOn = on; }
     void onActionFirstFrame();
@@ -824,6 +840,7 @@ private:
     // Marks the view that was clicked in last: it is outlined.
     void setActiveView(QWidget* frame);
     void updateTitle();
+    void updateSymbolTrail();
     void updateStatus();
     // Greys out the commands that have nothing to act on just now.
     void updateActionStates();
@@ -893,6 +910,8 @@ private:
     QStringList m_easeKinds;
     QPointer<QWidget> m_velocityEditor;
     QPointer<SoundEditor> m_soundEditor;
+    QWidget* m_symbolTrail = nullptr;
+    QStringList m_symbolTrailShown;
     // Preferences: the Function Editors stay in front of the window.
     bool m_editorsOnTop = true;
     int m_appliedOutlinePreference = -1;

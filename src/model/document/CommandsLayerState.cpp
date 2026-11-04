@@ -34,15 +34,15 @@ int Document::cloneLayer(int layer)
     return at;
 }
 
-int Document::expandSymbol(int layer)
+int Document::expandSymbol(int layer, bool inGroup)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].showsSymbol() || !m_scene.findSymbol(m_scene.layers[layer].symbolId))
         return -1;
     Scene expanded = m_scene;
-    int const at = expanded.expandSymbol(layer);
+    int const at = expanded.expandSymbol(layer, inGroup);
     if (at < 0)
         return -1;
-    apply(tr("Expand Symbol"), [&](Scene& s) { s = expanded; });
+    apply(inGroup ? tr("Expand Selected Symbols in Groups") : tr("Expand Symbol"), [&](Scene& s) { s = expanded; });
     return at;
 }
 

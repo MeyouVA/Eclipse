@@ -249,7 +249,7 @@ int Scene::addSymbolInstance(int symbolId, int at)
     return made;
 }
 
-int Scene::expandSymbol(int layer)
+int Scene::expandSymbol(int layer, bool inGroup)
 {
     if (layer < 0 || layer >= layers.size() || !layers[layer].showsSymbol())
         return -1;
@@ -272,7 +272,7 @@ int Scene::expandSymbol(int layer)
     }
     // A peg in its place carries what the layer had: where it is among the layers, what it is attached to, how it moves.
     Layer peg = layers[layer];
-    peg.kind = Layer::Peg;
+    peg.kind = inGroup ? Layer::Group : Layer::Peg;
     peg.symbolId = 0;
     peg.drawings.clear();
     peg.cells.fill(Layer::kNoDrawing, m_frameCount);
@@ -286,7 +286,7 @@ int Scene::expandSymbol(int layer)
         renumbered.insert(inner.id, m_nextLayerId++);
     int at = layer + 1;
     for (Layer inner : symbol.layers) {
-        inner.visible = inner.visible && instance.visible;
+        inner.visible = inner.visible && (inGroup || instance.visible);
         if (!sameTiming || inner.kind == Layer::Sound)
             inner = SymbolTiming::expanded(source, inner, instance, m_frameCount);
         inner.id = renumbered.value(inner.id);

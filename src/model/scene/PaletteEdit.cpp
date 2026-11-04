@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+#include <QSet>
+
 namespace {
 
 QColor s_replacement;
@@ -247,4 +249,69 @@ int Scene::takeColour(Scene const& piece, int swatch, QColor const& colour, QHas
             }
     map.insert(swatch, mine);
     return mine;
+}
+
+QPair<int, int> Scene::optimizeForTemplate()
+{
+    int drawingsGone = 0, palettesGone = 0;
+    // Drawings: each drawing layer keeps those its frames show (the ones kept in its bank stay kept).
+    auto trim = [&](QVector<Layer>& all) {
+        for (Layer& layer : all) {
+            if (!layer.holdsDrawings() || layer.showsSymbol())
+                continue;
+            QSet<quint64> pinned;
+            for (Drawing& d : layer.drawings) {
+                if (d.pinned)
+                    pinned.insert(d.editIdentity);
+                d.pinned = false;
+            }
+            int const before = int(layer.drawings.size());
+            layer.compact();
+            drawingsGone += before - int(layer.drawings.size());
+            for (Drawing& d : layer.drawings)
+                d.pinned = pinned.contains(d.editIdentity);
+        }
+    };
+    trim(layers);
+    for (Symbol& symbol : symbols)
+        trim(symbol.layers);
+    refreshSymbolInstances();
+    // Palettes: one goes only when nothing draws with its colours, no colour clones one of them, no layer overrides
+    // with it, and no Colour-Override effect could name its colours.
+    QSet<int> used;
+    bool overrideEffects = false, nestedOverrides = false;
+    auto look = [&](QVector<Layer>& all, bool nested) {
+        for (Layer& layer : all) {
+            for (Drawing& d : layer.drawings)
+                eachArt(d, [&](int& swatch, QColor&) {
+                    if (swatch != kNoSwatch)
+                        used.insert(swatch);
+                });
+            for (Effect const& e : layer.effects)
+                overrideEffects = overrideEffects || e.type == Effect::ColourOverride;
+            nestedOverrides = nestedOverrides || (nested && !layer.paletteOverrides.isEmpty());
+        }
+    };
+    look(layers, false);
+    for (Symbol& symbol : symbols)
+        look(symbol.layers, true);
+    for (GraphNode const& node : graph.nodes)
+        overrideEffects = overrideEffects || node.effect.type == Effect::ColourOverride;
+    if (overrideEffects || nestedOverrides)
+        return {drawingsGone, palettesGone};
+    for (Swatch const& s : palette)
+        if (s.cloneOf)
+            used.insert(s.cloneOf);
+    for (int p = int(paletteNames.size()) - 1; p >= 0 && paletteNames.size() > 1; --p) {
+        bool needed = false;
+        for (int id : paletteSwatches(p))
+            needed = needed || used.contains(id);
+        for (Layer const& layer : layers)
+            needed = needed || layer.paletteOverrides.contains(p);
+        if (needed)
+            continue;
+        dropPalette(p);
+        ++palettesGone;
+    }
+    return {drawingsGone, palettesGone};
 }

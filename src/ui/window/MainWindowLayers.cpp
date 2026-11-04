@@ -184,6 +184,10 @@ void MainWindow::onActionGroupSelection()
 void MainWindow::onActionAddCamera()
 {
     int const at = m_document->addCamera();
+    if (at < 0) {
+        QMessageBox::information(this, tr("Eclipse"), tr("The current scene is a symbol: a symbol cannot have a camera of its own. Leave the symbol to add one."));
+        return;
+    }
     m_timeline->setCurrentCell(at, frame());
     statusBar()->showMessage(m_document->scene().cameraIndex() == at ? tr("The scene is now seen through the camera. Move it with the Transform tool.")
                                                                      : tr("Another camera. The scene is still seen through %1: choose this one in Scene > Camera.")

@@ -109,6 +109,9 @@
     <item id="MakeCloneIndependent" icon="edit/cloneindependent" text="Make Clone &amp;Independent" responder="window" slot="onActionMakeCloneIndependent()"/>
     <item id="DuplicateSymbol" icon="edit/symbolduplicate" text="&amp;Duplicate Symbol" responder="window" slot="onActionDuplicateSymbol()"/>
     <item id="ExpandSymbol" icon="edit/symbolexpand" text="E&amp;xpand Symbol" responder="window" slot="onActionExpandSymbol()"/>
+    <item id="ExpandSymbolInGroups" icon="edit/symbolexpand" text="Expand Selected Symbol in &amp;Groups" responder="window" slot="onActionExpandSymbolInGroups()" tooltip="Each selected symbol layer becomes a group holding copies of the symbol's layers."/>
+    <item id="CreateSymbolFromSelection" icon="edit/symbolcreate" text="Create Symbol from Drawing &amp;Selection" responder="window" slot="onActionCreateSymbolFromSelection()" tooltip="The art selected in the Camera view made a symbol, on a layer above, where it was."/>
+    <item id="CopyPivotToParentSymbol" icon="edit/symboledit" text="Copy Pivot to &amp;Parent Symbol" responder="window" slot="onActionCopyPivotToParentSymbol()" tooltip="Inside a symbol: the layers that show it outside turn and scale about the current layer's pivot."/>
    </menu>
    <menu id="EditGroup" text="&amp;Group">
     <item id="GroupSelection"/>
@@ -247,6 +250,7 @@
    <item id="InsertBone" icon="timeline/addbone" text="Game &amp;Bone" responder="window" slot="onActionAddBone()"/>
    <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" shortcut="shortcut.insertQuadmap" responder="window" slot="onActionAddQuadmap()"/>
    <item id="InsertAnnotation" icon="xsheet/annotation" text="&amp;Annotation Column" responder="window" slot="onActionAddAnnotationColumn()"/>
+   <item id="CreateEmptySymbolInLibrary" icon="edit/symbolinsert" text="Create Empty S&amp;ymbol in Library" responder="window" slot="onActionCreateEmptySymbolInLibrary()" tooltip="A new symbol no layer shows yet, in the Library's Scene Symbols."/>
    <submenu id="menu.insertEffects" text="&amp;Effects"/>
    <separator/>
    <item id="InsertKeyframe" icon="timeline/addkey" text="&amp;Keyframe" shortcut="shortcut.insertKeyframe" responder="window" slot="onActionInsertKeyframe()"/>
@@ -919,6 +923,14 @@
   <menu id="CameraAnimation" text="Animation">
    <item id="SetEaseMultiple"/>
   </menu>
+  <menu id="CameraSymbols" text="Symbols">
+   <item id="CreateSymbol"/>
+   <item id="CreateSymbolFromSelection"/>
+   <item id="EditSymbol"/>
+   <item id="LeaveSymbol"/>
+   <item id="DuplicateSymbol"/>
+   <item id="ExpandSymbol"/>
+  </menu>
   <item id="ElementMode"/>
   <separator/>
   <item id="TagLayers"/>
@@ -1136,6 +1148,14 @@
    <separator/>
    <item id="ShowFunctions" icon="timeline/viewall" text="Show/Hide &amp;Functions" shortcut="shortcut.showFunctions" responder="window" slot="onActionShowFunctions()"/>
    <item id="ShowManager" icon="timeline/viewall" text="Show &amp;Manager..." shortcut="shortcut.showManager" responder="window" slot="onActionShowManager()"/>
+  </menu>
+  <menu id="TimelineSymbols" text="Symbols">
+   <item id="CreateSymbol"/>
+   <item id="DuplicateSymbol"/>
+   <item id="EditSymbol"/>
+   <item id="LeaveSymbol"/>
+   <item id="ExpandSymbol"/>
+   <item id="ExpandSymbolInGroups"/>
   </menu>
   <menu id="TimelineLock" text="Lock">
    <item id="LockLayer" icon="timeline/lock" text="Lock" responder="window" slot="onActionLockLayer()"/>
@@ -1533,6 +1553,9 @@
   <item id="ClearExposure"/>
   <separator/>
   <item id="XsheetGesturalDrag"/>
+  <separator/>
+  <item id="EditSymbol"/>
+  <item id="LeaveSymbol"/>
   <separator/>
   <item id="SetSelectionAsKeyframes" icon="timeline/addkey" text="Set Selection as &amp;Keyframes" responder="window" slot="onActionSelectionKeyframes(QString)" itemParameter="set"/>
   <item id="ClearKeyframesInSelection" icon="timeline/deletekey" text="C&amp;lear Keyframes in Selection" responder="window" slot="onActionSelectionKeyframes(QString)" itemParameter="clear"/>
