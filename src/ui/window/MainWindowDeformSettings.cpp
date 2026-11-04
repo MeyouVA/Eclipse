@@ -2,6 +2,8 @@
 // lines follow, and whether the deformation is on at the current frame.
 #include "ui/window/MainWindow.h"
 
+#include <cmath>
+
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -11,6 +13,8 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QListWidget>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QSpinBox>
 #include <QStatusBar>
@@ -63,6 +67,15 @@ void MainWindow::editDeformationSettings(int l, int bone)
     QDoubleSpinBox* const exponent = number("DeformExponent", 1, 0.05, 20, 2);
     QCheckBox* const fadeInside = new QCheckBox(tr("Fade Inside Zones"), &dialog);
     fadeInside->setObjectName(QStringLiteral("DeformFadeInside"));
+    QDoubleSpinBox* const stiffness = number("DeformStiffness", 0, 0, 1, 2);
+    stiffness->setToolTip(tr("Stiffness of Bone: how little the IK tool turns this bone (0: freely, 1: not at all)."));
+    QLabel* const direction = new QLabel(&dialog);
+    direction->setObjectName(QStringLiteral("DeformDirection"));
+    QListWidget* const points = new QListWidget(&dialog);
+    points->setObjectName(QStringLiteral("DeformZonePoints"));
+    points->setMaximumHeight(90);
+    QPushButton* const dropPoint = new QPushButton(tr("Delete Point on Zone of Influence"), &dialog);
+    dropPoint->setObjectName(QStringLiteral("DeformDeleteZonePoint"));
     zoneForm->addRow(tr("Bone"), which);
     zoneForm->addRow(tr("Influence Type"), type);
     zoneForm->addRow(tr("Transversal Influence Radius Left"), left);
@@ -73,6 +86,10 @@ void MainWindow::editDeformationSettings(int l, int bone)
     zoneForm->addRow(tr("Influence Fade Radius"), fade);
     zoneForm->addRow(tr("Influence Fade Exponent"), exponent);
     zoneForm->addRow(fadeInside);
+    zoneForm->addRow(tr("Stiffness of Bone"), stiffness);
+    zoneForm->addRow(tr("Direction of Bone"), direction);
+    zoneForm->addRow(tr("Shape points"), points);
+    zoneForm->addRow(dropPoint);
     zoneBox->setEnabled(boneCount > 0);
     int shown = -1;
     auto keep = [&] {
@@ -88,6 +105,14 @@ void MainWindow::editDeformationSettings(int l, int bone)
         z.fade = fade->value();
         z.exponent = exponent->value();
         z.fadeInside = fadeInside->isChecked();
+        z.stiffness = stiffness->value();
+    };
+    auto listPoints = [&] {
+        points->clear();
+        if (shown >= 0 && shown < zones.size())
+            for (QPointF const& at : zones[shown].shape)
+                points->addItem(QStringLiteral("%1, %2").arg(at.x(), 0, 'f', 1).arg(at.y(), 0, 'f', 1));
+        dropPoint->setEnabled(points->count() > 3);
     };
     auto showBone = [&](int b) {
         keep();
@@ -102,6 +127,15 @@ void MainWindow::editDeformationSettings(int l, int bone)
         fade->setValue(z.fade);
         exponent->setValue(z.exponent);
         fadeInside->setChecked(z.fadeInside);
+        stiffness->setValue(z.stiffness);
+        // Its direction (X and Y, along it from its first joint) as it lies at rest.
+        if (b >= 0 && b + 1 < layer.bones.size()) {
+            QPointF const way = layer.bones[b + 1] - layer.bones[b];
+            double const length = std::hypot(way.x(), way.y());
+            direction->setText(length > 0.0 ? tr("X Direction of Bone %1, Y Direction of Bone %2").arg(way.x() / length, 0, 'f', 3).arg(way.y() / length, 0, 'f', 3)
+                                            : QString());
+        }
+        listPoints();
     };
     auto enableZone = [&] {
         bool const sized = type->currentIndex() == BoneInfluence::Elliptic;
@@ -118,6 +152,14 @@ void MainWindow::editDeformationSettings(int l, int bone)
         enableZone();
     });
     connect(type, &QComboBox::currentIndexChanged, &dialog, [&] { enableZone(); });
+    // Delete Influence Zone Point: the point chosen taken out of a Shaped zone (three stay at least).
+    connect(dropPoint, &QPushButton::clicked, &dialog, [&] {
+        int const row = points->currentRow();
+        if (shown < 0 || shown >= zones.size() || row < 0 || zones[shown].shape.size() <= 3)
+            return;
+        zones[shown].shape.removeAt(row);
+        listPoints();
+    });
     connect(symmetric, &QCheckBox::toggled, &dialog, [&] { enableZone(); });
 
     // ---- Deformation Scale and Wave ----

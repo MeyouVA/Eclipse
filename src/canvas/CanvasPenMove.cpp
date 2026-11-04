@@ -247,21 +247,26 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         break;
     case DragIK:
         // From the angles it has now, so that the arm keeps bending the way it bends.
-        m_dragPose.bend = Deform::solveIK(m_document->scene().layers[m_layer].bones, m_dragPose.bend, m_bone,
-                                          m_world0.inverted().map(toScene(widgetPos)));
+    {
+        Layer const& chain = m_document->scene().layers[m_layer];
+        QVector<double> stiffness;
+        for (BoneInfluence const& z : chain.influences)
+            stiffness.push_back(z.stiffness);
+        m_dragPose.bend = Deform::solveIK(chain.bonesAt(m_frame), m_dragPose.bend, m_bone, m_world0.inverted().map(toScene(widgetPos)), stiffness);
+    }
         update();
         break;
     case DragBone: {
         // Turn the bone so that it points at the pointer.
         Layer const& layer = m_document->scene().layers[m_layer];
-        if (m_bone < 0 || m_bone + 1 >= layer.bones.size())
+        if (m_bone < 0 || m_bone + 1 >= layer.bonesAt(m_frame).size())
             break;
         QPointF const target = m_world0.inverted().map(toScene(widgetPos));
         if (m_dragPose.bend.size() <= m_bone)
             m_dragPose.bend.resize(m_bone + 1);
-        QVector<QPointF> const posed = Deform::posedJoints(layer.bones, m_dragPose.bend);
+        QVector<QPointF> const posed = Deform::posedJoints(layer.bonesAt(m_frame), m_dragPose.bend);
         QPointF const from = posed[m_bone];
-        QPointF const rest = layer.bones[m_bone + 1] - layer.bones[m_bone];
+        QPointF const rest = layer.bonesAt(m_frame)[m_bone + 1] - layer.bonesAt(m_frame)[m_bone];
         double const degrees = 180.0 / 3.14159265358979323846;
         double parents = 0.0;  // how far the bones before it have turned it already
         for (int i = 0; i < m_bone; ++i)

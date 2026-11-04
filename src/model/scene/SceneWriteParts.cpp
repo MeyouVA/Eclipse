@@ -434,6 +434,14 @@ if (d.pinned)
     drawing["pinned"] = true;
 if (!d.name.isEmpty())
     drawing["name"] = d.name;
+if (!d.rig.isEmpty()) {
+    QJsonArray rig;
+    for (QPointF const& at : d.rig) {
+        rig.append(at.x());
+        rig.append(at.y());
+    }
+    drawing["rig"] = rig;
+}
 if (!d.model.isEmpty()) {
     drawing["model"] = d.model;
     drawing["modelCentre"] = QJsonArray{d.modelCentre.x(), d.modelCentre.y()};
@@ -804,7 +812,7 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         QJsonArray zones;
         for (BoneInfluence const& z : layer.influences) {
             QJsonObject o{{"type", z.type}, {"left", z.left}, {"right", z.right}, {"begin", z.begin}, {"end", z.end},
-                          {"symmetric", z.symmetric}, {"fade", z.fade}, {"exponent", z.exponent}, {"fadeInside", z.fadeInside}};
+                          {"symmetric", z.symmetric}, {"fade", z.fade}, {"exponent", z.exponent}, {"fadeInside", z.fadeInside}, {"stiffness", z.stiffness}};
             if (!z.shape.isEmpty()) {
                 QJsonArray points;
                 for (QPointF const& at : z.shape) {

@@ -44,7 +44,7 @@ QRectF Canvas::layerBounds(int layerIndex) const
         QTransform const toSubject = scene.worldTransform(l, m_frame) * inv;
         // (As a deformer shows it: bent along its bones, pulled by its curve or envelope.)
         Layer const& sub = scene.layers[l];
-        QRectF const own = sub.bones.size() >= 2 || sub.hasWarp() ? Deform::shown(sub.drawings[index], sub, sub.poseAt(m_frame)).bounds() : sub.drawings[index].bounds();
+        QRectF const own = sub.bonesAt(m_frame).size() >= 2 || sub.hasWarp() ? Deform::shown(sub.drawings[index], sub, sub.poseAt(m_frame)).bounds() : sub.drawings[index].bounds();
         QRectF const b = toSubject.map(QPolygonF(own)).boundingRect();
         r = r.isNull() ? b : r.united(b);
     }
@@ -195,8 +195,8 @@ void Canvas::transformDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers)
         return false;
     };
 
-    if (!o.hideControls && current.bones.size() >= 2) {
-        QVector<QPointF> const posed = Deform::posedJoints(current.bones, m_dragPose.bend);
+    if (!o.hideControls && current.bonesAt(m_frame).size() >= 2) {
+        QVector<QPointF> const posed = Deform::posedJoints(current.bonesAt(m_frame), m_dragPose.bend);
         for (int j = int(posed.size()) - 1; j >= 1; --j) {
             if (isAt(posed[j])) {
                 m_bone = j - 1;
@@ -461,8 +461,8 @@ void Canvas::paintTransformAids(QPainter& painter)
         }
     }
 
-    if (scene.layers[m_layer].bones.size() >= 2)
-        paintBones(painter, Deform::posedJoints(scene.layers[m_layer].bones, poseOf(m_layer, m_frame).bend), m_drag == DragBone ? m_bone + 1 : -1);
+    if (scene.layers[m_layer].bonesAt(m_frame).size() >= 2)
+        paintBones(painter, Deform::posedJoints(scene.layers[m_layer].bonesAt(m_frame), poseOf(m_layer, m_frame).bend), m_drag == DragBone ? m_bone + 1 : -1);
     if (scene.layers[m_layer].hasWarp())
         paintWarp(painter, Deform::posedWarp(scene.layers[m_layer].warp, poseOf(m_layer, m_frame).warp), scene.layers[m_layer].warpClosed,
                   m_drag == DragWarp ? m_warpIndex : -1);

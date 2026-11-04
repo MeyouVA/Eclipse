@@ -462,6 +462,11 @@
     <item id="DeformationSettings" text="Deformation &amp;Settings..." responder="window" slot="onActionDeformationSettings()"/>
     <item id="ConvertZoneToShape" text="Convert Elliptic ROI to S&amp;hape" responder="window" slot="onActionConvertZoneToShape()"/>
     <separator/>
+    <item id="SetTransformation" text="Set &amp;Transformation (This Drawing)" responder="window" slot="onActionSetTransformation()"/>
+    <item id="DefaultTransformation" text="De&amp;fault Transformation" responder="window" slot="onActionDefaultTransformation()"/>
+    <item id="ConvertAddChain" text="Convert to New Drawing and Add Deformation &amp;Chain" responder="window" slot="onActionConvertAddChain()"/>
+    <item id="TransformationNames" text="Transformation &amp;Names..." responder="window" slot="onActionTransformationNames()"/>
+    <separator/>
     <item id="ShowAllDeformers" text="Show All &amp;Deformers" checkable="true" responder="camera" slot="onActionShowAllDeformers(bool)"/>
     <item id="ShowCurrentDeformers" text="Show Current Deformers and Hide All &amp;Others" responder="camera" slot="onActionShowCurrentDeformers()"/>
     <separator/>

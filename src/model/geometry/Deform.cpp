@@ -54,7 +54,7 @@ int nearestBone(QVector<QPointF> const& joints, QPointF p)
     return best;
 }
 
-QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, int endJoint, QPointF target)
+QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, int endJoint, QPointF target, QVector<double> const& stiffness)
 {
     if (endJoint < 1 || endJoint >= joints.size())
         return bend;
@@ -69,7 +69,7 @@ QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, in
             if (std::hypot(toEnd.x(), toEnd.y()) < 1e-9 || std::hypot(toTarget.x(), toTarget.y()) < 1e-9)
                 continue;
             double const turn = (std::atan2(toTarget.y(), toTarget.x()) - std::atan2(toEnd.y(), toEnd.x())) * degrees;
-            bend[i] += std::remainder(turn, 360.0);
+            bend[i] += std::remainder(turn, 360.0) * (1.0 - std::clamp(stiffness.value(i, 0.0), 0.0, 1.0));
         }
         QPointF const end = posedJoints(joints, bend)[endJoint];
         if (std::hypot(end.x() - target.x(), end.y() - target.y()) < 0.01)

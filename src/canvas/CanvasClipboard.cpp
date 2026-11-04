@@ -40,10 +40,10 @@ void Canvas::deleteSelection()
     }
     if (m_tool == Rigging) {
         Scene const& scene = m_document->scene();
-        if (m_layer >= 0 && m_layer < scene.layers.size() && !scene.layers[m_layer].bones.isEmpty()) {
-            QVector<QPointF> joints = scene.layers[m_layer].bones;
+        if (m_layer >= 0 && m_layer < scene.layers.size() && !scene.layers[m_layer].bonesAt(m_frame).isEmpty()) {
+            QVector<QPointF> joints = scene.layers[m_layer].bonesAt(m_frame);
             joints.removeLast();
-            m_document->setBones(m_layer, joints, tr("Delete Bone"));
+            m_document->setBones(m_layer, joints, tr("Delete Bone"), m_frame);
         }
         return;
     }

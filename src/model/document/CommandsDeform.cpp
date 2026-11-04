@@ -109,3 +109,76 @@ void Document::setTrackers(int layer, QVector<QPointF> const& trackers, int samp
         s.layers[layer].trackerSampling = std::clamp(sampling, 0, 3);
     });
 }
+
+int Document::setDrawingTransformation(int layer, int frame, bool own, QString* error)
+{
+    auto fail = [&](QString const& why) {
+        if (error)
+            *error = why;
+        return -1;
+    };
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return fail(tr("No element node."));
+    Layer const& l = m_scene.layers[layer];
+    if (!l.holdsDrawings() || l.showsSymbol())
+        return fail(tr("The selected element node is not a drawing layer."));
+    int const index = l.drawingAt(frame);
+    if (index < 0 || index >= l.drawings.size())
+        return fail(l.bones.size() >= 2 ? tr("The selected element node has a deformation attached to it but there is no exposure at the current frame.")
+                                         : tr("The selected element node has no exposure at the current frame."));
+    bool const has = l.drawings[index].rig.size() >= 2;
+    if (own && has)
+        return fail(tr("The selected element node has already a deformation for that pose."));
+    if (!own && !has)
+        return fail(tr("This drawing uses the layer's deformation already (Default Transformation)."));
+    if (own && l.bones.size() < 2)
+        return fail(tr("The selected element node has no deformation to copy: draw bones with the Rigging tool first."));
+    apply(own ? tr("Set Transformation") : tr("Default Transformation"), [&](Scene& s) {
+        s.layers[layer].drawings[index].rig = own ? s.layers[layer].bones : QVector<QPointF>();
+    });
+    return index;
+}
+
+int Document::convertToNewDrawingWithChain(int layer, int frame, QString* error)
+{
+    auto fail = [&](QString const& why) {
+        if (error)
+            *error = why;
+        return -1;
+    };
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return fail(tr("No element node."));
+    Layer const& l = m_scene.layers[layer];
+    if (!l.holdsDrawings() || l.showsSymbol())
+        return fail(tr("The selected element node is not a drawing layer."));
+    int const index = l.drawingAt(frame);
+    if (index < 0 || index >= l.drawings.size())
+        return fail(tr("The selected element node has no exposure at the current frame."));
+    QVector<QPointF> const& chain = l.bonesAt(frame);
+    if (chain.size() < 2)
+        return fail(tr("The deformation structure for this drawing has not been created: draw bones with the Rigging tool first."));
+    Pose const pose = l.poseAt(frame);
+    // The drawing as it is bent here, kept as a new drawing with the chain as posed here for its own rest: it shows the same,
+    // and it can be bent on from there.
+    Drawing made = Deform::shown(l.drawings[index], l, pose, index);
+    if (made.strokes.isEmpty() && made.fills.isEmpty() && made.pictures.isEmpty() && !l.drawings[index].isEmpty())
+        return fail(tr("The conversion failed to create a new drawing."));
+    made.rig = Deform::posedJoints(chain, pose.bend);
+    made.name.clear();
+    int at = -1;
+    apply(tr("Convert to New Drawing and Add Deformation Chain"), [&](Scene& s) {
+        Layer& edited = s.layers[layer];
+        edited.drawings.push_back(made);
+        at = int(edited.drawings.size()) - 1;
+        // Exposed where the old one was, from this frame to the end of that exposure.
+        for (int f = frame; f < edited.cells.size() && edited.cells[f] == index; ++f)
+            edited.cells[f] = at;
+        // Its pose there: the chain at rest (the bend is in the new drawing's rest).
+        Pose rest = edited.poseAt(frame);
+        rest.bend.fill(0.0);
+        edited.setKey(frame, rest);
+    });
+    if (at < 0)
+        return fail(tr("The conversion failed to create the new pose."));
+    return at;
+}

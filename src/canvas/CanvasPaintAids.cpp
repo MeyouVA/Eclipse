@@ -146,15 +146,15 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
             painter.setOpacity(0.45);
             for (int other = 0; other < scene.layers.size(); ++other) {
                 Layer const& them = scene.layers[other];
-                if (other == m_layer || !scene.shows(other) || (them.bones.size() < 2 && !them.hasWarp()))
+                if (other == m_layer || !scene.shows(other) || (them.bonesAt(m_frame).size() < 2 && !them.hasWarp()))
                     continue;
                 // (Drawn as if in the current layer: their places brought into its coordinates.)
                 QTransform const mine = layerViewTransform();
                 if (!mine.isInvertible())
                     break;
                 QTransform const into = worldOf(other, m_frame) * viewTransform() * mine.inverted();
-                if (them.bones.size() >= 2) {
-                    QVector<QPointF> joints = Deform::posedJoints(them.bones, poseOf(other, m_frame).bend);
+                if (them.bonesAt(m_frame).size() >= 2) {
+                    QVector<QPointF> joints = Deform::posedJoints(them.bonesAt(m_frame), poseOf(other, m_frame).bend);
                     for (QPointF& at : joints)
                         at = into.map(at);
                     paintBones(painter, joints, -1);
@@ -173,8 +173,8 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
             }
             painter.restore();
         }
-        if (layer.bones.size() >= 2 && m_tool != Rigging && m_tool != IK)
-            paintBones(painter, Deform::posedJoints(layer.bones, poseOf(m_layer, m_frame).bend), -1);
+        if (layer.bonesAt(m_frame).size() >= 2 && m_tool != Rigging && m_tool != IK)
+            paintBones(painter, Deform::posedJoints(layer.bonesAt(m_frame), poseOf(m_layer, m_frame).bend), -1);
         if (layer.hasWarp() && m_tool != Rigging && m_tool != Transform)
             paintWarp(painter, showsRest(m_layer) ? layer.warp : Deform::posedWarp(layer.warp, poseOf(m_layer, m_frame).warp), layer.warpClosed, -1);
     }
@@ -189,8 +189,8 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
     }
     if (m_tool == IK && !m_playing && m_layer >= 0 && m_layer < scene.layers.size()) {
         Layer const& layer = scene.layers[m_layer];
-        if (layer.bones.size() >= 2)
-            paintBones(painter, Deform::posedJoints(layer.bones, poseOf(m_layer, m_frame).bend), m_drag == DragIK ? m_bone : -1);
+        if (layer.bonesAt(m_frame).size() >= 2)
+            paintBones(painter, Deform::posedJoints(layer.bonesAt(m_frame), poseOf(m_layer, m_frame).bend), m_drag == DragIK ? m_bone : -1);
         return true;
     }
     if (m_tool == Rigging && !m_playing && m_layer >= 0 && m_layer < scene.layers.size()) {
@@ -236,9 +236,9 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
             painter.resetTransform();
             painter.setRenderHint(QPainter::Antialiasing, true);
             painter.setBrush(Qt::NoBrush);
-            for (int b = 0; b + 1 < layer.bones.size(); ++b) {
+            for (int b = 0; b + 1 < layer.bonesAt(m_frame).size(); ++b) {
                 BoneInfluence const zone = layer.influenceOf(b);
-                QPolygonF shape = zone.type == BoneInfluence::Elliptic ? Deform::zoneShape(layer.bones, b, zone)
+                QPolygonF shape = zone.type == BoneInfluence::Elliptic ? Deform::zoneShape(layer.bonesAt(m_frame), b, zone)
                                   : zone.type == BoneInfluence::Shaped ? zone.shape : QPolygonF();
                 if (shape.size() < 3)
                     continue;
@@ -249,7 +249,7 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
             painter.restore();
         }
         // The chain at rest, with the joint being dragged where the pointer has it.
-        QVector<QPointF> joints = scene.layers[m_layer].bones;
+        QVector<QPointF> joints = scene.layers[m_layer].bonesAt(m_frame);
         if (m_drag == DragJoint && m_bone >= 0 && m_bone < joints.size())
             joints[m_bone] = m_dragNow;
         paintBones(painter, joints, m_drag == DragJoint ? m_bone : -1);

@@ -16,9 +16,21 @@ void Document::setParentBone(int layer, int bone)
         apply(tr("Attach to Bone"), [&](Scene& s) { s.layers[layer].parentBone = bone; });
 }
 
-void Document::setBones(int layer, QVector<QPointF> const& joints, QString const& text)
+void Document::setBones(int layer, QVector<QPointF> const& joints, QString const& text, int frame)
 {
-    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings() || m_scene.layers[layer].bones == joints)
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].holdsDrawings())
+        return;
+    if (frame >= 0) {
+        int const index = m_scene.layers[layer].drawingAt(frame);
+        if (index >= 0 && index < m_scene.layers[layer].drawings.size() && m_scene.layers[layer].drawings[index].rig.size() >= 2) {
+            if (m_scene.layers[layer].drawings[index].rig == joints)
+                return;
+            // A drawing's own chain stays a chain (two joints at least); fewer, and it goes back to the layer's.
+            apply(text, [&](Scene& s) { s.layers[layer].drawings[index].rig = joints.size() >= 2 ? joints : QVector<QPointF>(); });
+            return;
+        }
+    }
+    if (m_scene.layers[layer].bones == joints)
         return;
     apply(text, [&](Scene& s) {
         Layer& l = s.layers[layer];

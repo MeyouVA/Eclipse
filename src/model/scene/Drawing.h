@@ -105,6 +105,9 @@ struct Drawing {
     QString name;
     QString set;
     QString model;
+    // A deformation of its own (Set Transformation): the chain at rest this drawing bends on, in place of the layer's.
+    // Empty: the layer's chain.  The bones' turns are the layer's pose, bone for bone.
+    QVector<QPointF> rig;
     QPointF modelCentre;    // where the middle of the model is, in the drawing
     double modelScale = 1.0;    // how big, as a share of Model3D::kSize at its biggest
     enum Mark { NoMark, KeyMark, BreakdownMark, InBetweenMark };

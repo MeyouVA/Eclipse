@@ -4,6 +4,9 @@
 
 #include <QDialog>
 #include <QInputDialog>
+#include <QListWidget>
+#include <QSignalBlocker>
+#include <QVBoxLayout>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QLabel>
@@ -265,4 +268,84 @@ void MainWindow::onActionMorphingEase()
     m_document->setMorphVelocity(layer(), frame(), graph->points());
     if (eased && curved)
         m_document->endMacro();
+}
+
+void MainWindow::onActionSetTransformation()
+{
+    QString error;
+    if (m_document->setDrawingTransformation(layer(), frame(), true, &error) < 0)
+        statusBar()->showMessage(error, 7000);
+    else
+        statusBar()->showMessage(tr("This drawing has a deformation of its own now: change its bones with the Rigging tool."), 6000);
+}
+
+void MainWindow::onActionDefaultTransformation()
+{
+    QString error;
+    if (m_document->setDrawingTransformation(layer(), frame(), false, &error) < 0)
+        statusBar()->showMessage(error, 7000);
+}
+
+void MainWindow::onActionConvertAddChain()
+{
+    QString error;
+    if (m_document->convertToNewDrawingWithChain(layer(), frame(), &error) < 0)
+        statusBar()->showMessage(error, 7000);
+}
+
+void MainWindow::onActionTransformationNames()
+{
+    // Transformation Names: the drawings of the layer with a deformation of their own (named as the drawings); renamed, or
+    // given back the layer's.
+    Layer const& now = m_document->scene().layers[layer()];
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("TransformationNamesDialog"));
+    dialog.setWindowTitle(tr("Transformation Names: %1").arg(now.name));
+    QListWidget* const list = new QListWidget(&dialog);
+    list->setObjectName(QStringLiteral("TransformationList"));
+    auto fill = [&] {
+        list->clear();
+        Layer const& l = m_document->scene().layers[layer()];
+        for (int d = 0; d < l.drawings.size(); ++d)
+            if (l.drawings[d].rig.size() >= 2) {
+                QListWidgetItem* const item = new QListWidgetItem(l.drawings[d].name.isEmpty() ? QString::number(d + 1) : l.drawings[d].name, list);
+                item->setData(Qt::UserRole, d);
+                item->setFlags(item->flags() | Qt::ItemIsEditable);
+            }
+    };
+    fill();
+    connect(list, &QListWidget::itemChanged, &dialog, [&](QListWidgetItem* item) {
+        int const d = item->data(Qt::UserRole).toInt();
+        QString const name = item->text().trimmed();
+        Layer const& l = m_document->scene().layers[layer()];
+        bool taken = false;
+        for (int other = 0; other < l.drawings.size(); ++other)
+            taken = taken || (other != d && l.drawings[other].name == name);
+        if (!name.isEmpty() && !taken)
+            m_document->editLayers({layer()}, tr("Rename Transformations"), [d, name](Layer& edited) {
+                if (d < edited.drawings.size())
+                    edited.drawings[d].name = name;
+            });
+    });
+    QPushButton* const defaults = new QPushButton(tr("Default Transformation"), &dialog);
+    defaults->setObjectName(QStringLiteral("TransformationDefault"));
+    connect(defaults, &QPushButton::clicked, &dialog, [&] {
+        if (QListWidgetItem* const item = list->currentItem()) {
+            int const d = item->data(Qt::UserRole).toInt();
+            m_document->editLayers({layer()}, tr("Default Transformation"), [d](Layer& l) {
+                if (d < l.drawings.size())
+                    l.drawings[d].rig.clear();
+            });
+            QSignalBlocker const quiet(list);
+            fill();
+        }
+    });
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("Drawings with a deformation of their own (double-click to rename):"), &dialog));
+    layout->addWidget(list, 1);
+    layout->addWidget(defaults);
+    layout->addWidget(buttons);
+    dialog.exec();
 }

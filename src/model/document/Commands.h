@@ -285,6 +285,12 @@ public:
     int addKinematicOutput(int layer, int bone);
     // Point Kinematic Output: a peg that follows points (trackers) of the layer's deformed drawing; and its trackers changed.
     int addPointKinematicOutput(int layer, QVector<QPointF> const& trackers, int sampling);
+    // Set Transformation: the drawing exposed on `frame` gets a deformation of its own (a copy of the layer's chain at rest,
+    // to be changed with the Rigging tool); off (Default Transformation): it goes back to the layer's.  Its index, or -1 (`error`).
+    int setDrawingTransformation(int layer, int frame, bool own, QString* error = nullptr);
+    // Convert to New Drawing and Add Deformation Chain: the drawing as bent on `frame` made a new drawing, exposed from there,
+    // whose own chain at rest is the chain as posed there.  Its index, or -1 (`error`).
+    int convertToNewDrawingWithChain(int layer, int frame, QString* error = nullptr);
     void setTrackers(int layer, QVector<QPointF> const& trackers, int sampling);
     void setActiveCamera(int layer);
     // The Camera view shows that layer and what hangs under it (-1: the whole scene).
@@ -292,7 +298,8 @@ public:
     // The scene's write outputs, all at once.
     void setWrites(QVector<Scene::Write> const& writes);
     void setFov(int layer, double degrees, int frame = 0);
-    void setBones(int layer, QVector<QPointF> const& joints, QString const& text);
+    // The chain at rest changed; with `frame`, that of the drawing exposed there when it has one of its own.
+    void setBones(int layer, QVector<QPointF> const& joints, QString const& text, int frame = -1);
     // The curve or envelope deformer of a drawing layer (see Layer::warp); no points takes it away.
     void setWarp(int layer, QVector<QPointF> const& points, bool closed, QString const& text);
     // Moves the pivot without moving the artwork at any keyframe.

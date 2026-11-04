@@ -19,8 +19,8 @@ QVector<QPointF> Canvas::weightJoints() const
     if (m_layer < 0 || m_layer >= scene.layers.size())
         return {};
     Layer const& layer = scene.layers[m_layer];
-    if (layer.bones.size() >= 2)
-        return layer.bones;
+    if (layer.bonesAt(m_frame).size() >= 2)
+        return layer.bonesAt(m_frame);
     return layer.bendOnBones ? Deform::gameBoneJoints(scene, m_layer, m_frame) : QVector<QPointF>();
 }
 
@@ -78,7 +78,7 @@ void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers mod
                                 : tr("Click along the artwork: each click adds a point of the curve it will bend along. Then pull the points about with the Transform tool."));
         return;
     }
-    QVector<QPointF> joints = scene.layers[m_layer].bones;
+    QVector<QPointF> joints = scene.layers[m_layer].bonesAt(m_frame);
     QTransform const toWidget = layerViewTransform();
     for (int i = int(joints.size()) - 1; i >= 0; --i) {
         QPointF const w = toWidget.map(joints[i]);
@@ -90,7 +90,7 @@ void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers mod
         }
     }
     joints.push_back(p);
-    m_document->setBones(m_layer, joints, joints.size() == 1 ? tr("Start Bone Chain") : tr("Add Bone"));
+    m_document->setBones(m_layer, joints, joints.size() == 1 ? tr("Start Bone Chain") : tr("Add Bone"), m_frame);
     if (joints.size() == 1)
         emit message(tr("Click where the first bone should end. Each further click adds a bone; Delete removes the last."));
 }

@@ -603,6 +603,12 @@ public slots:
     void onActionRemoveDeformer();
     // Rigging > Deformation: rest position, Enable Deformation, Kinematic Output, Deformation Settings (influence, scale, lines).
     void onActionCopyPoseToRest();
+    // A deformation for each drawing: Set Transformation (its own chain), Default Transformation (the layer's), Convert to New
+    // Drawing and Add Deformation Chain, and Transformation Names (the drawings that have one).
+    void onActionSetTransformation();
+    void onActionDefaultTransformation();
+    void onActionConvertAddChain();
+    void onActionTransformationNames();
     void onActionCopyRestToPose();
     void onActionToggleDeformation();
     void onActionAddKinematicOutput();

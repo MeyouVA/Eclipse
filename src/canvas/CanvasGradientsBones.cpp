@@ -338,9 +338,9 @@ void Canvas::ikDown(QPointF widgetPos)
         return;
     }
     int grabbed = -1;
-    if (scene.layers[m_layer].bones.size() < 2) {
+    if (scene.layers[m_layer].bonesAt(m_frame).size() < 2) {
         int const parent = scene.parentIndex(m_layer);
-        if (parent < 0 || scene.layers[parent].bones.size() < 2 || scene.layers[m_layer].parentBone < 0) {
+        if (parent < 0 || scene.layers[parent].bonesAt(m_frame).size() < 2 || scene.layers[m_layer].parentBone < 0) {
             emit message(tr("This layer has no bones. Lay a chain on it with the Rigging tool first."));
             return;
         }
@@ -355,7 +355,7 @@ void Canvas::ikDown(QPointF widgetPos)
     m_dragStartScene = toScene(widgetPos);
     if (grabbed < 0) {
         QTransform const toWidget = m_world0 * viewTransform();
-        QVector<QPointF> const posed = Deform::posedJoints(layer.bones, m_dragPose.bend);
+        QVector<QPointF> const posed = Deform::posedJoints(layer.bonesAt(m_frame), m_dragPose.bend);
         for (int j = int(posed.size()) - 1; j >= 1; --j) {
             QPointF const w = toWidget.map(posed[j]);
             if (std::abs(w.x() - widgetPos.x()) <= 8 && std::abs(w.y() - widgetPos.y()) <= 8) {

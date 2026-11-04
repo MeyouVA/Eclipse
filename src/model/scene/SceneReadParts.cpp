@@ -405,6 +405,9 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
         d.modelCentre = QPointF(centre[0].toDouble(), centre[1].toDouble());
     d.modelScale = std::clamp(dv.toObject()["modelScale"].toDouble(1.0), 0.01, 100.0);
     d.set = dv.toObject()["set"].toString();
+    if (QJsonArray const rig = dv.toObject()["rig"].toArray(); rig.size() >= 4)
+        for (int i = 0; i + 1 < rig.size(); i += 2)
+            d.rig.push_back(QPointF(rig[i].toDouble(), rig[i + 1].toDouble()));
     d.mark = std::clamp(dv.toObject()["mark"].toInt(0), 0, int(Drawing::InBetweenMark));
     if (QJsonArray const t = dv.toObject()["trace"].toArray(); t.size() == 6)
         d.trace = QTransform(t[0].toDouble(), t[1].toDouble(), t[2].toDouble(), t[3].toDouble(), t[4].toDouble(), t[5].toDouble());
@@ -538,6 +541,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         z.fade = std::max(0.0, o["fade"].toDouble(z.fade));
         z.exponent = std::clamp(o["exponent"].toDouble(1.0), 0.05, 20.0);
         z.fadeInside = o["fadeInside"].toBool(false);
+        z.stiffness = std::clamp(o["stiffness"].toDouble(0.0), 0.0, 1.0);
         QJsonArray const points = o["shape"].toArray();
         for (int i = 0; i + 1 < points.size(); i += 2)
             z.shape.push_back(QPointF(points[i].toDouble(), points[i + 1].toDouble()));

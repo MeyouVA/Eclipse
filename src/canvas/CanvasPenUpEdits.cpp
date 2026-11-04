@@ -267,10 +267,10 @@ bool Canvas::penUpJoint(Drag drag)
 {
     Q_UNUSED(drag);
     m_drag = DragNone;
-    QVector<QPointF> joints = m_document->scene().layers[m_layer].bones;
+    QVector<QPointF> joints = m_document->scene().layers[m_layer].bonesAt(m_frame);
     if (m_bone >= 0 && m_bone < joints.size()) {
         joints[m_bone] = m_dragNow;
-        m_document->setBones(m_layer, joints, tr("Move Joint"));
+        m_document->setBones(m_layer, joints, tr("Move Joint"), m_frame);
     }
     return false;
 }

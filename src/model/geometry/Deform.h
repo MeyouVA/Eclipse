@@ -49,7 +49,8 @@ QTransform boneTransform(QVector<QPointF> const& joints, QVector<double> const& 
 // The index of the bone a point at rest lies nearest to, or -1 when there are no bones.
 int nearestBone(QVector<QPointF> const& joints, QPointF p);
 
-QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, int endJoint, QPointF target);
+// `stiffness` (one a bone, 0..1): how little each bone turns as the chain reaches for the target.
+QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, int endJoint, QPointF target, QVector<double> const& stiffness = {});
 
 // One point, the same way.
 QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth = 0.0, QVector<SkinDab> const& skin = {},

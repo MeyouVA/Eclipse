@@ -75,6 +75,7 @@ struct BoneInfluence {
     double fade = 20.0;                    // the fade radius past the zone's edge
     double exponent = 1.0;                 // how the fade falls off (1: straight)
     bool fadeInside = false;               // Fade Inside Zones: the pull fading from the bone out to the zone's edge too
+    double stiffness = 0.0;                // Stiffness of Bone: how little the IK tool turns it (0 freely .. 1 not at all)
     QPolygonF shape;                       // a Shaped zone, in the layer's coordinates at rest
     bool operator==(BoneInfluence const&) const = default;
     double rightRadius() const { return symmetric ? left : right; }
@@ -402,6 +403,12 @@ struct Layer {
     QVector<int> cells;  // one per frame: index into drawings, or kNoDrawing
 
     int drawingAt(int frame) const { return frame >= 0 && frame < cells.size() ? cells[frame] : kNoDrawing; }
+    // The chain at rest on `frame`: the drawing exposed there's own (Set Transformation), or the layer's.
+    QVector<QPointF> const& bonesAt(int frame) const
+    {
+        int const index = drawingAt(frame);
+        return index >= 0 && index < drawings.size() && drawings[index].rig.size() >= 2 ? drawings[index].rig : bones;
+    }
     // Whether what the layer shows on a frame is a 3D model (which turns in space itself, rather than as a flat sheet).
     bool modelAt(int frame) const
     {
