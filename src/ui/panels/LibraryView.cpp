@@ -1,4 +1,5 @@
 #include "ui/panels/LibraryView.h"
+#include <QApplication>
 #include "actions/theme/AppSettings.h"
 #include "actions/theme/InterfaceColours.h"
 #include <algorithm>
@@ -309,8 +310,13 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     });
     connect(addFolderButton, &QToolButton::clicked, this, [this] {
         QString const folder = QFileDialog::getExistingDirectory(this, tr("Add a Folder to the Library"), currentFolder());
-        if (!folder.isEmpty() && addFolder(folder))
+        QString why;
+        if (folder.isEmpty())
+            return;
+        if (addFolder(folder, &why))
             setCurrentFolder(int(m_folders.size()) - 1);
+        else
+            QMessageBox::information(this, tr("Open Library"), why);
     });
     connect(removeFolderButton, &QToolButton::clicked, this, [this] {
         // Only a folder of the library itself is taken out of it; one inside it is part of that folder.
@@ -396,16 +402,31 @@ void LibraryView::setFolders(QStringList const& folders)
     showFolders();
 }
 
-bool LibraryView::addFolder(QString const& folder)
+bool LibraryView::addFolder(QString const& folder, QString* why)
 {
     QString const clean = QDir(folder).absolutePath();
     QFileInfo const info(clean);
-    if (folder.trimmed().isEmpty() || !info.isDir() || info.isRoot() || info.isSymLink() || info.isJunction() || m_folders.contains(clean,Qt::CaseInsensitive))
+    auto refuse = [&](QString const& reason) {
+        if (why)
+            *why = reason;
         return false;
-    for(auto const& existing : m_folders) if(clean.startsWith(existing+QLatin1Char('/'),Qt::CaseInsensitive) || existing.startsWith(clean+QLatin1Char('/'),Qt::CaseInsensitive)) return false;
+    };
+    if (folder.trimmed().isEmpty() || !info.isDir() || info.isRoot() || info.isSymLink() || info.isJunction())
+        return refuse(tr("That folder cannot be a library."));
+    if (m_folders.contains(clean, Qt::CaseInsensitive))
+        return refuse(tr("This folder is already open as %1.").arg(QDir::toNativeSeparators(clean)));
+    for (auto const& existing : m_folders)
+        if (clean.startsWith(existing + QLatin1Char('/'), Qt::CaseInsensitive) || existing.startsWith(clean + QLatin1Char('/'), Qt::CaseInsensitive))
+            return refuse(tr("This folder is already open as part of %1.").arg(QDir::toNativeSeparators(existing)));
+    // Opening Library: its folders read (a large one takes a moment).
+    QString const before = m_about->text();
+    m_about->setText(tr("Opening Library..."));
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     m_folders << clean;
     remember();
     showFolders();
+    QApplication::restoreOverrideCursor();
+    m_about->setText(before);
     return true;
 }
 

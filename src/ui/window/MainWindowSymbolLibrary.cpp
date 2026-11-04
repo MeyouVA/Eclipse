@@ -179,8 +179,10 @@ void MainWindow::updateSymbolTrail()
     if (!m_symbolTrail)
         return;
     QStringList const trail = m_document->symbolTrail();
-    if (trail == m_symbolTrailShown && m_symbolTrail->layout()->count() > 0)
+    if (trail == m_symbolTrailShown && m_symbolTrail->layout()->count() > 0) {
+        updateSymbolFrameLabel();
         return;
+    }
     m_symbolTrailShown = trail;
     QLayout* const row = m_symbolTrail->layout();
     while (QLayoutItem* const item = row->takeAt(0)) {
@@ -206,4 +208,19 @@ void MainWindow::updateSymbolTrail()
         row->addWidget(step);
     }
     static_cast<QHBoxLayout*>(row)->addStretch(1);
+    // Where in the symbol the frame worked on is, beside the scene's frame it was gone into from.
+    QLabel* const frames = new QLabel(m_symbolTrail);
+    frames->setObjectName(QStringLiteral("SymbolFrameLabel"));
+    row->addWidget(frames);
+    updateSymbolFrameLabel();
+}
+
+void MainWindow::updateSymbolFrameLabel()
+{
+    QLabel* const frames = m_symbolTrail ? m_symbolTrail->findChild<QLabel*>(QStringLiteral("SymbolFrameLabel")) : nullptr;
+    if (!frames || !m_document->insideSymbol())
+        return;
+    QString const scene = m_globalFrames.isEmpty() ? QString() : tr("Current Frame: %1").arg(m_globalFrames.first().frame + 1);
+    QString const inside = tr("Current Symbol Frame: %1").arg(frame() + 1);
+    frames->setText(scene.isEmpty() ? inside : scene + QStringLiteral("   ") + inside);
 }

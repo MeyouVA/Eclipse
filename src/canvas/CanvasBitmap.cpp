@@ -477,6 +477,13 @@ void Canvas::onActionMatchArtLayerType()
 
 void Canvas::onActionBitmapResolution()
 {
+    {
+        Scene const& scene = m_document->scene();
+        if (m_layer >= 0 && m_layer < scene.layers.size() && scene.layers[m_layer].showsSymbol()) {
+            emit message(tr("The selection is a symbol. Enter in the symbol and select a bitmap."));
+            return;
+        }
+    }
     if (!canEditDrawing())
         return;
     Drawing const* const real = realDrawing();

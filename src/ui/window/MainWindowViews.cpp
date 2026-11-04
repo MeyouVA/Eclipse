@@ -211,6 +211,16 @@ void MainWindow::createViews()
     });
     connect(m_library, &LibraryView::scaleFactorRequested, this, [this] { onActionTemplateScaleFactor(); });
     connect(m_library, &LibraryView::versionSwapRequested, this, &MainWindow::swapTemplateVersion);
+    connect(m_library, &LibraryView::replaceDrawingRequested, this, [this](QString const& path) {
+        QString error;
+        if (!replaceDrawingFromLibrary(path, -1, &error) && !error.isEmpty())
+            QMessageBox::warning(this, tr("Replace Drawing"), error);
+    });
+    // Node Templates (Preferences > Templates): the Library's templates in the Node Library too.
+    if (NodeLibraryView* const nodes = findChild<NodeLibraryView*>(QStringLiteral("NodeLibraryView"))) {
+        nodes->setTemplateSource([this] { return nodeLibraryTemplates(); });
+        connect(nodes, &NodeLibraryView::templateRequested, this, [this](QString const& path) { dropTemplate(path, frame()); });
+    }
     connect(m_library, &LibraryView::insertSymbolRequested, this, &MainWindow::insertLibrarySymbol);
     connect(m_library, &LibraryView::newSymbolRequested, this, &MainWindow::onActionCreateEmptySymbolInLibrary);
     connect(m_library, &LibraryView::copySymbolRequested, this, &MainWindow::copyLibrarySymbol);
@@ -602,6 +612,12 @@ void MainWindow::createCameraView()
 void MainWindow::createTimelineView()
 {
     m_timeline = new Timeline(m_document, this);
+    // The symbol frame shown over the Camera view follows the current frame.  (Guarded: the Timeline can still say so while
+    // the window is being taken apart.)
+    connect(m_timeline, &Timeline::currentCellChanged, m_symbolTrail, [this, trail = QPointer<QWidget>(m_symbolTrail), doc = QPointer<Document>(m_document)] {
+        if (trail && doc)
+            updateSymbolFrameLabel();
+    });
     QToolBar* const playback = m_actions->createToolbar(QStringLiteral("PlaybackToolbar"), this);
     m_jog = new QSlider(Qt::Horizontal, this);
     m_jog->setObjectName(QStringLiteral("Jog"));

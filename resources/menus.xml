@@ -388,6 +388,8 @@
     <separator/>
     <item id="SetPencilTexture" text="Set &amp;Pencil Texture" responder="camera" slot="onActionSetPencilTexture()"/>
     <item id="SetPencilTextureAll" text="Set Pencil Texture On &amp;All Drawings" responder="camera" slot="onActionSetPencilTextureAll()"/>
+    <item id="SetPencilTemplate" text="Set Pencil Te&amp;mplate" responder="camera" slot="onActionSetPencilTemplate()"/>
+    <item id="SetPencilTemplateAll" text="Set Pencil Template On All &amp;Drawings" responder="camera" slot="onActionSetPencilTemplateAll()"/>
     <item id="PencilTextureNone" text="Set Current Pencil Texture to &amp;None" responder="camera" slot="onActionPencilTextureNone()"/>
     <item id="PencilTextureEyedropper" text="Pencil Texture &amp;Eyedropper" shortcut="shortcut.textureEyedropper" responder="camera" slot="onActionPencilTextureEyedropper()"/>
    </menu>

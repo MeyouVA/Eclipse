@@ -1,6 +1,7 @@
 // Eclipse - the main window: a Library template edited in place of the scene, its 3D models scaled, and versions swapped.
 #include "ui/window/MainWindow.h"
 
+#include <QDirIterator>
 #include <QFileInfo>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -8,6 +9,7 @@
 #include <QStatusBar>
 
 #include "canvas/Canvas.h"
+#include "render/images/ImageFiles.h"
 #include "model/document/Commands.h"
 #include "ui/panels/LibraryView.h"
 #include "ui/timeline/Timeline.h"
@@ -221,6 +223,74 @@ void MainWindow::onActionTemplateScaleFactor()
     QString error;
     if (!scaleTemplateModels(path, factor, &error))
         QMessageBox::warning(this, tr("Set Scale Factor"), error);
+}
+
+QStringList MainWindow::nodeLibraryTemplates() const
+{
+    QSettings const s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    if (!m_library || !s.value(QStringLiteral("prefs/nodeTemplates"), true).toBool())
+        return {};
+    QStringList found;
+    for (QString const& root : m_library->folders()) {
+        QDirIterator it(root, {QStringLiteral("*.") + LibraryView::kSuffix}, QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext() && found.size() < 500) {
+            QString const path = it.next();
+            if (!LibraryView::isPackFolder(it.fileInfo().absolutePath()))
+                found << path;
+        }
+    }
+    std::sort(found.begin(), found.end(), [](QString const& a, QString const& b) {
+        return QFileInfo(a).completeBaseName().compare(QFileInfo(b).completeBaseName(), Qt::CaseInsensitive) < 0;
+    });
+    return found;
+}
+
+bool MainWindow::replaceDrawingFromLibrary(QString const& path, int rename, QString* error)
+{
+    auto fail = [&](QString const& why) {
+        if (error)
+            *error = why;
+        return false;
+    };
+    Scene const& scene = m_document->scene();
+    int const l = layer(), f = frame();
+    if (l < 0 || l >= scene.layers.size() || !scene.layers[l].holdsDrawings() || scene.layers[l].showsSymbol())
+        return fail(tr("Select a cell of a drawing layer to replace its drawing."));
+    QString why;
+    QImage const image = ImageFiles::load(path, &why);
+    if (image.isNull())
+        return fail(tr("Could not read %1: %2").arg(QDir::toNativeSeparators(path), why));
+    // The picture, linked to its file, fitted to the frame in the middle; the drawing keeps its name.
+    Layer const& on = scene.layers[l];
+    Drawing drawing = on.drawingAt(f) == Layer::kNoDrawing ? Drawing() : on.drawings[on.drawingAt(f)];
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        drawing.strokesOf(sheet).clear();
+        drawing.fillsOf(sheet).clear();
+    }
+    double const scale = std::min(double(scene.width) / image.width(), double(scene.height) / image.height());
+    Picture picture;
+    picture.image = image;
+    picture.file = QFileInfo(path).absoluteFilePath();
+    picture.linked = true;
+    picture.size = image.size();
+    picture.placement = QTransform::fromScale(scale, scale)
+                        * QTransform::fromTranslate((scene.width - image.width() * scale) / 2.0, (scene.height - image.height() * scale) / 2.0);
+    drawing.pictures = {picture};
+    m_document->beginMacro(tr("Replace Drawing"));
+    m_document->setDrawing(l, f, drawing, tr("Replace Drawing"));
+    // The layer named after the file, when that is wanted (asked: "Rename node in Library View ?").
+    QString const name = QFileInfo(path).completeBaseName();
+    if (m_document->scene().layers[l].name != name) {
+        bool yes = rename == 1;
+        if (rename < 0)
+            yes = QMessageBox::question(this, tr("Rename Node"), tr("Rename node in Library View ?\nThe layer \"%1\" would be called \"%2\", as the file.")
+                                                                     .arg(m_document->scene().layers[l].name, name))
+                  == QMessageBox::Yes;
+        if (yes)
+            m_document->renameLayer(l, name);
+    }
+    m_document->endMacro();
+    return true;
 }
 
 void MainWindow::swapTemplateVersion(QString const& path)

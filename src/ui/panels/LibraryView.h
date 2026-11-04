@@ -44,7 +44,8 @@ public:
     // The folders looked in.  The first is the default one and stays.
     QStringList folders() const { return m_folders; }
     void setFolders(QStringList const& folders);
-    bool addFolder(QString const& folder);
+    // Open Library: a folder added (false, with `why`, when it is one already open or a part of one).
+    bool addFolder(QString const& folder, QString* why = nullptr);
     void removeFolder(int index);
     QString currentFolder() const;
     void setCurrentFolder(int index);
@@ -64,6 +65,8 @@ public:
     void setCurrentTemplate(QString const& path);
     QStringList otherItems() const;
     static bool isTemplate(QString const& path);
+    // A picture file the Library lists (an image it can read).
+    static bool isPictureFile(QString const& path);
     // Reads the folder again (a template was saved or deleted).
     void refresh();
     // How the templates are shown: 0 icons with their names, 1 icons alone, 2 a list.
@@ -126,6 +129,8 @@ signals:
     void editTemplateRequested(QString const& path);
     void scaleFactorRequested(QString const& path);
     void versionSwapRequested(QString const& path);
+    // Replace Drawing: a picture file of the Library put in place of the current drawing.
+    void replaceDrawingRequested(QString const& path);
 
 private:
     void showFolders();

@@ -124,6 +124,8 @@ void MainWindow::onActionEditSymbol()
     }
     // The frame of the symbol the layer shows here is the frame to begin on inside it.
     int const inside = scene.layers[layer()].drawingAt(frame());
+    if (inside == Layer::kNoDrawing)
+        statusBar()->showMessage(tr("No symbol at this frame: the symbol is gone into at its first frame."), 5000);
     if (m_playTimer.isActive())
         stop();
     m_canvas->clearSelection();
@@ -135,7 +137,8 @@ void MainWindow::onActionEditSymbol()
     m_timeline->setCurrentCell(int(m_document->scene().layers.size()) - 1, std::clamp(inside, 0, m_document->scene().frameCount() - 1));
     updateTitle();
     updateActionStates();
-    statusBar()->showMessage(tr("Inside the symbol %1. Edit > Symbol > Leave Symbol goes back to the scene.").arg(m_document->symbolTrail().last()), 7000);
+    if (inside != Layer::kNoDrawing)
+        statusBar()->showMessage(tr("Inside the symbol %1. Edit > Symbol > Leave Symbol goes back to the scene.").arg(m_document->symbolTrail().last()), 7000);
 }
 
 void MainWindow::onActionLeaveSymbol()

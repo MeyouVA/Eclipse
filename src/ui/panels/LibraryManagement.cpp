@@ -49,6 +49,8 @@ void LibraryView::setupManagement()
     auto* preview=add(items,tr("Preview Template"),"LibraryPreviewTemplate",[this] { previewCurrent(); });
     auto* edit=add(items,tr("Edit Template"),"LibraryEditTemplate",[this] { if(isTemplate(currentTemplate())) emit editTemplateRequested(currentTemplate()); });
     auto* scale=add(items,tr("Set Scale Factor..."),"LibrarySetScaleFactor",[this] { if(isTemplate(currentTemplate())) emit scaleFactorRequested(currentTemplate()); });
+    auto* replace=add(items,tr("Replace Drawing"),"LibraryReplaceDrawing",[this] { if(isPictureFile(currentTemplate())) emit replaceDrawingRequested(currentTemplate()); });
+    connect(items,&QMenu::aboutToShow,this,[this,replace] { replace->setVisible(isPictureFile(currentTemplate())); });
     auto* swapper=add(folders,tr("Version Swapper Mode"),"LibraryVersionSwapper",[this](bool checked) { setVersionSwapper(checked); }); swapper->setCheckable(true); items->addAction(swapper);
     connect(items,&QMenu::aboutToShow,this,[this,cut,copy,pasteItem,optimize,preview,edit,scale] {
         bool const file=!currentTemplate().isEmpty() && !symbolIdOf(currentTemplate());

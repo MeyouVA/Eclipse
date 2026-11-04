@@ -54,6 +54,10 @@ void MainWindow::preferencesTemplates(PreferenceWidgets& w, QSettings& s, QDialo
                                tr("On: a template pasted onto layers brings all its drawings as new ones. "
                                   "Off: where the layer has a drawing of the same name, the template's drawing replaces it."));
 
+    form->addRow(new QLabel(QStringLiteral("<b>%1</b>").arg(tr("Node Templates")), w.templatesPage));
+    w.nodeTemplates = check("PrefNodeTemplates", tr("List the Library's templates in the Node Library"), QStringLiteral("prefs/nodeTemplates"), true,
+                            tr("The Node Library gets a Templates category with the templates of the Library's folders; added, one is put in the scene."));
+
     form->addRow(new QLabel(QStringLiteral("<b>%1</b>").arg(tr("Editing Template")), w.templatesPage));
     w.templateBorder = new QPushButton(w.templatesPage);
     w.templateBorder->setObjectName(QStringLiteral("PrefTemplateBorder"));
@@ -79,5 +83,6 @@ void MainWindow::saveTemplatePreferences(PreferenceWidgets& w, QSettings& s)
     s.setValue(QStringLiteral("prefs/templateDrop"), w.templateDrop->currentData().toInt());
     s.setValue(QStringLiteral("prefs/pasteNewDrawings"), w.pasteNewDrawings->isChecked());
     s.setValue(QStringLiteral("prefs/pasteSymbolsIfMissing"), w.pasteSymbolsIfMissing->isChecked());
+    s.setValue(QStringLiteral("prefs/nodeTemplates"), w.nodeTemplates->isChecked());
     s.setValue(QStringLiteral("prefs/templateEditBorder"), w.templateBorder->property("colour").value<QColor>());
 }

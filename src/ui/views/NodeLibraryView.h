@@ -44,6 +44,10 @@ public:
     void showCategory(QString const& name);
     // The commands of its own menu (Node Library Menu), added to the menu a right-click shows.
     void setSharedMenu(std::function<QMenu*(QWidget*)> make) { m_sharedMenu = std::move(make); }
+    // Node Templates: the Library's templates listed too (category Templates), from where `source` says; asked again on Refresh
+    // and when the view is shown.  Added, a template is put in the scene (templateRequested).
+    void setTemplateSource(std::function<QStringList()> source);
+    void refreshTemplates();
 
 public slots:
     void onActionNewCategory();
@@ -57,9 +61,12 @@ signals:
     void actionRequested(QString const& actionId);
     // An effect (Effect::Type) is to be added to the current layer.
     void effectRequested(int type);
+    // A template of the Library (its file) is to be put in the scene.
+    void templateRequested(QString const& path);
 
 protected:
     void contextMenuEvent(class QContextMenuEvent* event) override;
+    void showEvent(class QShowEvent* event) override;
 
 private:
     void filter(QString const& text);
@@ -68,6 +75,7 @@ private:
     void fillCategories(QString const& current);
     QMap<QString, QStringList> m_user;
     std::function<QMenu*(QWidget*)> m_sharedMenu;
+    std::function<QStringList()> m_templateSource;
     QLineEdit* m_search;
     QListWidget* m_list;
     QListWidget* m_categories = nullptr;

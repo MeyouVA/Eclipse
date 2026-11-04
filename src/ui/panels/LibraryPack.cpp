@@ -7,6 +7,8 @@
 #include <QFile>
 #include <QFileInfo>
 
+#include "render/images/ImageFiles.h"
+
 namespace {
 
 bool copyTree(QString const& from, QString const& to)
@@ -61,6 +63,14 @@ bool LibraryView::carryPackFolder(QString const& from, QString const& to, bool m
     if (piece.repointFolder(source, target) > 0)
         return piece.save(to, nullptr);
     return true;
+}
+
+bool LibraryView::isPictureFile(QString const& path)
+{
+    if (path.isEmpty() || symbolIdOf(path) || !QFileInfo(path).isFile())
+        return false;
+    auto const* format = ImageFiles::find(QFileInfo(path).suffix());
+    return format && format->readable;
 }
 
 void LibraryView::setVersionSwapper(bool on)

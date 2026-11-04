@@ -1,5 +1,6 @@
 // Eclipse - the main window: preferences - applied, the dialog, preference sets, languages, the style editor.
 #include "ui/window/MainWindow.h"
+#include "ui/views/NodeLibraryView.h"
 #include <QInputDialog>
 #include <QStandardPaths>
 #include "model/scene/SceneProject.h"
@@ -123,6 +124,8 @@ void MainWindow::applyPreferences()
     Scene::setPasteColours(s.value(QStringLiteral("prefs/pasteColours"), 0).toInt());
     Scene::setPasteNewDrawings(s.value(QStringLiteral("prefs/pasteNewDrawings"), true).toBool());
     Scene::setPasteSymbolsIfMissing(s.value(QStringLiteral("prefs/pasteSymbolsIfMissing"), false).toBool());
+    if (NodeLibraryView* const nodes = findChild<NodeLibraryView*>(QStringLiteral("NodeLibraryView")))
+        nodes->refreshTemplates();
     m_palette->setElementPalettesShown(s.value(QStringLiteral("prefs/advancedPalettes"), true).toBool());
     m_palette->setListBackground(s.value(QStringLiteral("prefs/paletteBackground"), QColor()).value<QColor>());
     m_palette->setSwatchGrid(s.value(QStringLiteral("colour/grid"), false).toBool());

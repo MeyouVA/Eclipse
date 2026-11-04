@@ -257,6 +257,7 @@ struct PreferenceWidgets {
     QComboBox* templateDrop = nullptr;
     QCheckBox* pasteNewDrawings = nullptr;
     QCheckBox* pasteSymbolsIfMissing = nullptr;
+    QCheckBox* nodeTemplates = nullptr;
     QPushButton* templateBorder = nullptr;
     QCheckBox* advancedPalettes = nullptr;
     QCheckBox* elementPalettesDefault = nullptr;

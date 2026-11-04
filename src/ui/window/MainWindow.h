@@ -239,6 +239,11 @@ public slots:
     bool scaleTemplateModels(QString const& path, double factor, QString* error = nullptr);
     // Version Swapper Mode (Library): a template chosen there goes straight onto the layers of the same names.
     void swapTemplateVersion(QString const& path);
+    // The templates of the Library's folders (and the folders in them) listed in the Node Library; none when the preference is off.
+    QStringList nodeLibraryTemplates() const;
+    // Library > Replace Drawing: the picture file in place of the current drawing (fitted to the frame); then the layer can be
+    // renamed after the file - `rename` -1 asks, 0 no, 1 yes.
+    bool replaceDrawingFromLibrary(QString const& path, int rename = -1, QString* error = nullptr);
     void onActionExportFrames();
     void onActionExportMovie();
     void onActionImportSound();
@@ -859,6 +864,7 @@ private:
     void setActiveView(QWidget* frame);
     void updateTitle();
     void updateSymbolTrail();
+    void updateSymbolFrameLabel();
     void updateStatus();
     // Greys out the commands that have nothing to act on just now.
     void updateActionStates();

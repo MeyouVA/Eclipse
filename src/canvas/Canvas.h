@@ -66,6 +66,9 @@ public:
     int thicknessStencil() const { return thicknessStencilOf(m_tool); }
     // A stencil's thickness at `along` (0: the start of the line, 1: its end), as a share of the full thickness.
     static float stencilThickness(int stencil, double along);
+    // The Pencil's thickness stencil as a profile (32 places); and a line given that thickness along its length.
+    QVector<float> pencilTemplateProfile() const;
+    static void givePencilTemplate(Stroke& line, QVector<float> const& profile);
     // The stencil laid on a line: each point as thick as the stencil says at its place along it.
     static void applyStencil(Stroke& stroke, int stencil);
     static int addCrossingPoints(QVector<Stroke>& strokes, QVector<int> const& which);
@@ -782,6 +785,10 @@ public slots:
     void onActionPaintOverTexture(bool on);
     void onActionSetPencilTexture();
     void onActionSetPencilTextureAll();
+    // Set Pencil Template: the Pencil's thickness stencil (Tool Properties) given to the selected lines; On All Drawings: to
+    // every pencil line of every drawing of the layer.
+    void onActionSetPencilTemplate();
+    void onActionSetPencilTemplateAll();
     void onActionPencilTextureNone();
     void onActionPencilTextureEyedropper();
     void onActionCloseGaps();

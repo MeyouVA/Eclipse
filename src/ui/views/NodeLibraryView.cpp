@@ -1,6 +1,10 @@
 // Eclipse - the Node Library view: the kinds of layer and effect there are, to add from.
 #include "ui/views/NodeLibraryView.h"
 
+#include <QDir>
+#include <QFileInfo>
+#include <QShowEvent>
+
 #include <QContextMenuEvent>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -262,7 +266,7 @@ void NodeLibraryView::fillCategories(QString const& current)
     // The kinds there are, then the user's own (in italics).
     QSignalBlocker const quiet(m_categories);
     m_categories->clear();
-    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator"), tr("Combine"), tr("Misc"), tr("Blur"), tr("Colour-Correct"), tr("Light"), tr("Timing")});
+    m_categories->addItems({tr("All"), tr("Deformation"), tr("Filter"), tr("Group"), tr("Image"), tr("Move"), tr("Sound"), tr("Output"), tr("Particle"), tr("Generator"), tr("Combine"), tr("Misc"), tr("Blur"), tr("Colour-Correct"), tr("Light"), tr("Timing"), tr("Templates")});
     for (auto it = m_user.cbegin(); it != m_user.cend(); ++it) {
         QListWidgetItem* const item = new QListWidgetItem(it.key(), m_categories);
         QFont italic = item->font();
@@ -377,6 +381,45 @@ void NodeLibraryView::onActionRefresh()
 {
     loadCategories();
     fillCategories(currentCategory());
+    refreshTemplates();
+}
+
+void NodeLibraryView::setTemplateSource(std::function<QStringList()> source)
+{
+    m_templateSource = std::move(source);
+    refreshTemplates();
+}
+
+void NodeLibraryView::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    refreshTemplates();
+}
+
+void NodeLibraryView::refreshTemplates()
+{
+    // The templates listed before go; those of the Library now come, under a heading of their own, at the end.
+    for (int i = m_list->count() - 1; i >= 0; --i)
+        if (m_list->item(i)->data(Qt::UserRole + 2).toBool())
+            delete m_list->takeItem(i);
+    QStringList const paths = m_templateSource ? m_templateSource() : QStringList();
+    if (paths.isEmpty())
+        return;
+    QListWidgetItem* const heading = new QListWidgetItem(tr("Templates (from the Library)"), m_list);
+    heading->setFlags(Qt::NoItemFlags);
+    QFont bold = heading->font();
+    bold.setBold(true);
+    heading->setFont(bold);
+    heading->setForeground(QColor(170, 170, 170));
+    heading->setData(Qt::UserRole + 2, true);
+    for (QString const& path : paths) {
+        QListWidgetItem* const item = new QListWidgetItem(QStringLiteral("    ") + QFileInfo(path).completeBaseName(), m_list);
+        item->setData(Qt::UserRole, QStringLiteral("template:") + path);
+        item->setData(Qt::UserRole + 1, tr("Templates"));
+        item->setData(Qt::UserRole + 2, true);
+        item->setToolTip(tr("Template %1: added, it is put in the scene from the current frame.").arg(QDir::toNativeSeparators(path)));
+    }
+    filter(m_search->text());
 }
 
 void NodeLibraryView::onActionRemoveNode()
@@ -415,6 +458,8 @@ void NodeLibraryView::add(QString const& what)
         return;
     if (what.startsWith(QLatin1String("effect:")))
         emit effectRequested(what.mid(7).toInt());
+    else if (what.startsWith(QLatin1String("template:")))
+        emit templateRequested(what.mid(9));
     else
         emit actionRequested(what);
 }
