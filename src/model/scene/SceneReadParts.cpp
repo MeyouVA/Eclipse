@@ -613,6 +613,19 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         if ((d.kind == PointDeformer::Lattice || d.kind == PointDeformer::Mesh) && d.points.size() != (d.cols + 1) * (d.rows + 1))
             d = PointDeformer();    // (a grid that does not add up is not kept)
     }
+    layer.shapeAware = lo["shapeAware"].toBool(false);
+    layer.overlayRigidity = lo["overlayRigidity"].toBool(false);
+    layer.warpCurve = std::clamp(lo["warpCurve"].toInt(0), 0, 2);
+    layer.warpIntervals = std::clamp(lo["warpIntervals"].toInt(12), 1, 200);
+    if (QJsonArray const m = lo["muscle"].toArray(); m.size() == 3) {
+        layer.muscleLeft = m[0].toDouble();
+        layer.muscleRight = m[1].toDouble();
+        layer.muscleSpan = std::max(1.0, m[2].toDouble(40.0));
+    }
+    if (QJsonArray const f = lo["fold"].toArray(); f.size() == 2) {
+        layer.fold = std::clamp(f[0].toInt(0), 0, 2);
+        layer.foldAngle = std::clamp(f[1].toDouble(45.0), 0.0, 180.0);
+    }
     layer.lineDeformQuality = std::clamp(lo["lineDeformQuality"].toInt(1), 0, 3);
     layer.linePreserveThickness = lo["linePreserveThickness"].toBool(true);
     layer.lineDeformSmooth = std::clamp(lo["lineDeformSmooth"].toInt(0), 0, 10);

@@ -22,10 +22,11 @@ struct Chain {
     double smooth = 0.0;    // how far round a joint the bend is shared out (scene units); 0: as good as a fold
     QVector<SkinDab> skin;  // weights painted for the bones
     ChainOptions const* options = nullptr;
+    QVector<double> turns;  // each bone's turn (degrees), for the muscles and folds
 
     Chain(QVector<QPointF> const& rest, QVector<double> const& bend, double smoothness = 0.0, QVector<SkinDab> const& painted = {},
           ChainOptions const* opts = nullptr)
-        : joints(rest), smooth(smoothness), skin(painted), options(opts)
+        : joints(rest), smooth(smoothness), skin(painted), options(opts), turns(bend)
     {
         QPointF origin = rest.isEmpty() ? QPointF() : rest[0];  // where the bone starts, posed
         double angle = 0.0;                                      // how far it is turned in all
@@ -52,7 +53,8 @@ struct Chain {
     // Deformation Scale and Wave: the point moved across the skeleton (at rest) by the chain's scaling where it lies along it.
     QPointF scaled(QPointF p) const
     {
-        if (!options || options->scale.plain() || joints.size() < 2)
+        bool const muscles = options && (options->muscleLeft != 0.0 || options->muscleRight != 0.0);
+        if (!options || (options->scale.plain() && !muscles) || joints.size() < 2)
             return p;
         ChainScale const& k = options->scale;
         double total = 0.0;
@@ -119,6 +121,24 @@ struct Chain {
                 strength = std::min(strength, (length - into) / fadeOut);
             factor *= 1.0 + amp * std::clamp(strength, 0.0, 1.0) * std::sin(2.0 * 3.14159265358979323846 * into / period);
         }
+        // Auto Muscle: near each joint that turns, the inner side of the bend swells, more the more it turns.
+        if (muscles) {
+            double jointAlong = 0.0;
+            for (int j = 1; j + 1 < joints.size(); ++j) {
+                jointAlong += std::hypot(joints[j].x() - joints[j - 1].x(), joints[j].y() - joints[j - 1].y());
+                double const turn = j < turns.size() ? turns[j] : 0.0;
+                if (turn == 0.0)
+                    continue;
+                bool const innerRight = turn > 0.0;      // (a turn clockwise on the screen bends towards the right side)
+                if (innerRight == left)
+                    continue;
+                double const away = std::abs(along - jointAlong) / std::max(1.0, options->muscleSpan);
+                if (away >= 1.0)
+                    continue;
+                double const amount = left ? options->muscleLeft : options->muscleRight;
+                factor *= 1.0 + amount * std::min(1.0, std::abs(turn) / 90.0) * (1.0 - away * away);
+            }
+        }
         // Scaled from a line so far out on that side (Offset Deformer), with so much added (Offset Scaling).
         double const from = left ? -(leftSide ? k.offsetDeformerLeft : k.offsetDeformerRight) : (k.uniform ? k.offsetDeformerLeft : k.offsetDeformerRight);
         double const added = left || k.uniform ? k.offsetScalingLeft : k.offsetScalingRight;
@@ -131,6 +151,28 @@ struct Chain {
     {
         QVarLengthArray<double, 16> pull(bones.size());
         nearness(p, pull);
+        // Fold: each point goes with the bone on its side of the line half way between two bones (no overlapping at the
+        // joint); Auto Fold only once some joint turns far enough.
+        if (options && options->fold != 0 && joints.size() >= 3) {
+            bool doFold = options->fold == 1;
+            for (int k = 1; k < turns.size() && !doFold; ++k)
+                doFold = std::abs(turns[k]) >= options->foldAngle;
+            if (doFold) {
+                int bone = 0;
+                for (int k = 1; k + 1 < joints.size(); ++k) {
+                    QPointF const a = joints[k] - joints[k - 1], b = joints[k + 1] - joints[k];
+                    double const la = std::hypot(a.x(), a.y()), lb = std::hypot(b.x(), b.y());
+                    if (la < 1e-9 || lb < 1e-9)
+                        break;
+                    QPointF const n = a / la + b / lb;
+                    if ((p - joints[k]).x() * n.x() + (p - joints[k]).y() * n.y() < 0.0)
+                        break;
+                    bone = k;
+                }
+                for (int i = 0; i < bones.size(); ++i)
+                    pull[i] = i == bone ? 1.0 : 0.0;
+            }
+        }
         if (options && !options->influences.isEmpty())
             for (int i = 0; i < bones.size(); ++i)
                 if (i < options->influences.size())

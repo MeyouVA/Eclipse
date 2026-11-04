@@ -870,6 +870,18 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
                                                    {"pre", d.preBlend}, {"post", d.postBlend}, {"consider", d.pointsToConsider},
                                                    {"individual", d.individual}};
     }
+    if (layer.warpCurve != Layer::WarpBezier)
+        layerObject["warpCurve"] = layer.warpCurve;
+    if (layer.warpIntervals != 12)
+        layerObject["warpIntervals"] = layer.warpIntervals;
+    if (layer.muscleLeft != 0.0 || layer.muscleRight != 0.0)
+        layerObject["muscle"] = QJsonArray{layer.muscleLeft, layer.muscleRight, layer.muscleSpan};
+    if (layer.shapeAware)
+        layerObject["shapeAware"] = true;
+    if (layer.overlayRigidity)
+        layerObject["overlayRigidity"] = true;
+    if (layer.fold != Layer::FoldOff)
+        layerObject["fold"] = QJsonArray{layer.fold, layer.foldAngle};
     if (layer.lineDeformQuality != 1)
         layerObject["lineDeformQuality"] = layer.lineDeformQuality;
     if (!layer.linePreserveThickness)

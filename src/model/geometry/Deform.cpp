@@ -113,7 +113,78 @@ Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<d
         follow.smooth = options->lineSmooth;
         follow.fitError = options->fitError;
     }
-    return mapped(drawing, [&chain](QPointF p) { return chain.map(p); }, follow);
+    Drawing out = mapped(drawing, [&chain](QPointF p) { return chain.map(p); }, follow);
+    if (!options || (!options->shapeAware && !options->overlayRigidity))
+        return out;
+    // Shape Aware / the rigidity map: a line or area that is to keep its shape goes where its points went, as a whole - the
+    // similarity (moved, turned, scaled) that best fits where its points were taken.
+    QVector<QPolygonF> rigid;
+    if (options->overlayRigidity)
+        for (Fill const& f : drawing.fillsOf(Drawing::OverlaySheet))
+            for (QPolygonF const& ring : f.outlines)
+                rigid.push_back(ring);
+    auto keepsShape = [&](QRectF const& box) {
+        if (options->shapeAware && !options->overlayRigidity)
+            return true;
+        for (QPolygonF const& ring : rigid)
+            if (ring.containsPoint(box.center(), Qt::OddEvenFill))
+                return true;
+        return false;
+    };
+    auto fit = [&](QVector<QPointF> const& from) {
+        QVector<QPointF> to;
+        for (QPointF const& p : from)
+            to.push_back(chain.map(p));
+        QPointF a, b;
+        for (int i = 0; i < from.size(); ++i) {
+            a += from[i];
+            b += to[i];
+        }
+        a /= std::max<qsizetype>(1, from.size());
+        b /= std::max<qsizetype>(1, from.size());
+        double dot = 0.0, cross = 0.0, norm = 0.0;
+        for (int i = 0; i < from.size(); ++i) {
+            QPointF const p = from[i] - a, q = to[i] - b;
+            dot += p.x() * q.x() + p.y() * q.y();
+            cross += p.x() * q.y() - p.y() * q.x();
+            norm += p.x() * p.x() + p.y() * p.y();
+        }
+        QTransform t;
+        if (norm < 1e-12)
+            return QTransform::fromTranslate(b.x() - a.x(), b.y() - a.y());
+        double const sc = dot / norm, sn = cross / norm;
+        // x' = sc x - sn y, y' = sn x + sc y about the middles.
+        return QTransform::fromTranslate(-a.x(), -a.y()) * QTransform(sc, sn, -sn, sc, 0, 0) * QTransform::fromTranslate(b.x(), b.y());
+    };
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        QVector<Stroke> const& was = drawing.strokesOf(sheet);
+        QVector<Stroke>& now = out.strokesOf(sheet);
+        for (int i = 0; i < was.size() && i < now.size(); ++i) {
+            if (!keepsShape(was[i].bounds()) || was[i].points.isEmpty())
+                continue;
+            QVector<QPointF> places;
+            for (StrokePoint const& sp : was[i].path())
+                places.push_back(sp.pos);
+            Stroke kept = was[i];
+            kept.transform(fit(places));
+            now[i] = kept;
+        }
+        QVector<Fill> const& wasFills = drawing.fillsOf(sheet);
+        QVector<Fill>& nowFills = out.fillsOf(sheet);
+        for (int i = 0; i < wasFills.size() && i < nowFills.size(); ++i) {
+            if (!keepsShape(wasFills[i].bounds()) || wasFills[i].outlines.isEmpty())
+                continue;
+            QVector<QPointF> places;
+            for (QPolygonF const& ring : wasFills[i].outlines)
+                for (QPointF const& p : ring)
+                    places.push_back(p);
+            QTransform const t = fit(places);
+            Fill kept = wasFills[i];
+            kept.transform(t);
+            nowFills[i] = kept;
+        }
+    }
+    return out;
 }
 
 QPointF shownPoint(Layer const& layer, Pose const& pose, QPointF p)
@@ -131,7 +202,7 @@ QPointF shownPoint(Layer const& layer, Pose const& pose, QPointF p)
         QVector<QPointF> moved = pose.warp;
         for (QPointF& m : moved)
             m *= std::min(1.0, pose.deform);
-        at = warpPoint(at, layer.warp, layer.warpClosed, moved);
+        at = warpPoint(at, layer.warp, layer.warpClosed, moved, layer.warpCurve, layer.warpIntervals);
     }
     if (layer.bones.size() >= 2) {
         ChainOptions const options = optionsOf(layer, pose);
@@ -187,6 +258,13 @@ ChainOptions optionsOf(Layer const& layer, Pose const& pose)
     o.influences = layer.influences;
     o.scale = layer.chainScale;
     o.amount = pose.deform;
+    o.muscleLeft = layer.muscleLeft;
+    o.muscleRight = layer.muscleRight;
+    o.muscleSpan = layer.muscleSpan;
+    o.fold = layer.fold;
+    o.shapeAware = layer.shapeAware;
+    o.overlayRigidity = layer.overlayRigidity;
+    o.foldAngle = layer.foldAngle;
     o.lineQuality = layer.lineDeformQuality;
     o.preserveThickness = layer.linePreserveThickness;
     o.lineSmooth = layer.lineDeformSmooth;

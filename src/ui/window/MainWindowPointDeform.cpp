@@ -172,3 +172,109 @@ void MainWindow::onActionPointDeformerSettings()
     d.individual = individual->isChecked();
     m_document->setPointDeformer(layer(), d, tr("Point Deformer Settings"));
 }
+
+void MainWindow::onActionApplyDeformation()
+{
+    if (!m_document->applyDeformation(layer(), frame()))
+        statusBar()->showMessage(tr("Nothing is deformed on this frame: pose the bones, curve or points first."), 6000);
+}
+
+void MainWindow::onActionCopyDeformation()
+{
+    // Copy Curve Position: the deformers as posed on this frame.
+    Pose const pose = m_document->scene().layers[layer()].poseAt(frame());
+    Pose kept;
+    kept.bend = pose.bend;
+    kept.warp = pose.warp;
+    kept.handles = pose.handles;
+    m_copiedDeformation = std::make_shared<Pose>(kept);
+    statusBar()->showMessage(tr("Deformation copied: Paste Deformation keys it on another frame; Paste on Next Drawings puts it into the drawings that follow."), 6000);
+}
+
+void MainWindow::onActionPasteDeformation()
+{
+    if (!m_copiedDeformation) {
+        statusBar()->showMessage(tr("Copy a deformation first (Rigging > Deformation > Copy Deformation)."), 5000);
+        return;
+    }
+    Pose pose = m_document->scene().layers[layer()].poseAt(frame());
+    pose.bend = m_copiedDeformation->bend;
+    pose.warp = m_copiedDeformation->warp;
+    pose.handles = m_copiedDeformation->handles;
+    m_document->setKeyframe(layer(), frame(), pose, tr("Paste Deformation"));
+}
+
+bool MainWindow::pasteDeformationNext(int count, double easeInPercent, double easeOutPercent)
+{
+    if (!m_copiedDeformation)
+        return false;
+    int const done = m_document->pasteDeformationOnNext(layer(), frame(), *m_copiedDeformation, count, easeInPercent / 100.0, easeOutPercent / 100.0);
+    statusBar()->showMessage(done > 0 ? tr("The deformation put into %n drawing(s) after this frame.", nullptr, done)
+                                      : tr("There are no other drawings after this frame to paste on."), 6000);
+    return done > 0;
+}
+
+void MainWindow::onActionPasteDeformationNext()
+{
+    if (!m_copiedDeformation) {
+        statusBar()->showMessage(tr("Copy a deformation first (Rigging > Deformation > Copy Deformation)."), 5000);
+        return;
+    }
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("PasteNextDialog"));
+    dialog.setWindowTitle(tr("Paste on Next Drawings"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QSpinBox* const count = new QSpinBox(&dialog);
+    count->setObjectName(QStringLiteral("PasteNextCount"));
+    count->setRange(1, 999);
+    count->setValue(5);
+    QSpinBox* const easeIn = new QSpinBox(&dialog);
+    easeIn->setObjectName(QStringLiteral("PasteNextEaseIn"));
+    easeIn->setRange(0, 100);
+    easeIn->setSuffix(QStringLiteral(" %"));
+    QSpinBox* const easeOut = new QSpinBox(&dialog);
+    easeOut->setObjectName(QStringLiteral("PasteNextEaseOut"));
+    easeOut->setRange(0, 100);
+    easeOut->setSuffix(QStringLiteral(" %"));
+    form->addRow(tr("Drawings"), count);
+    form->addRow(tr("Ease In %"), easeIn);
+    form->addRow(tr("Ease Out %"), easeOut);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() == QDialog::Accepted)
+        pasteDeformationNext(count->value(), easeIn->value(), easeOut->value());
+}
+
+void MainWindow::onActionEditDeformPath()
+{
+    // Edit Deform Path: the curve deformer turned and moved as a whole on this frame.
+    if (!m_document->scene().layers[layer()].hasWarp()) {
+        statusBar()->showMessage(tr("This layer has no curve or envelope deformer."), 5000);
+        return;
+    }
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("EditDeformPathDialog"));
+    dialog.setWindowTitle(tr("Edit Deform Path"));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QDoubleSpinBox* const angle = new QDoubleSpinBox(&dialog);
+    angle->setObjectName(QStringLiteral("DeformPathAngle"));
+    angle->setRange(-360, 360);
+    angle->setSuffix(QStringLiteral(" deg"));
+    QDoubleSpinBox* const dx = new QDoubleSpinBox(&dialog);
+    dx->setObjectName(QStringLiteral("DeformPathX"));
+    QDoubleSpinBox* const dy = new QDoubleSpinBox(&dialog);
+    dy->setObjectName(QStringLiteral("DeformPathY"));
+    for (QDoubleSpinBox* box : {dx, dy})
+        box->setRange(-100000, 100000);
+    form->addRow(tr("Rotation"), angle);
+    form->addRow(tr("Move across"), dx);
+    form->addRow(tr("Move down"), dy);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() == QDialog::Accepted)
+        m_document->transformWarpPose(layer(), frame(), angle->value(), QPointF(dx->value(), dy->value()));
+}

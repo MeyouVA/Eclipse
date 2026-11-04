@@ -380,6 +380,22 @@ struct Layer {
     BoneInfluence influenceOf(int bone) const { return bone >= 0 && bone < influences.size() ? influences[bone] : BoneInfluence(); }
     ChainScale chainScale;
     PointDeformer pointDeformer;
+    // The curve deformer's manipulator: Bezier (its handles), Catmull (smooth through its points), Rounded Polyline (straight,
+    // its corners rounded); and how many intervals each piece is followed in.
+    enum WarpCurve { WarpBezier, WarpCatmull, WarpPolyline };
+    int warpCurve = WarpBezier;
+    int warpIntervals = 12;
+    // Auto Muscle: the inner side of a joint swells as the joint bends (left / right, so much at a right angle), over `muscleSpan`
+    // along the chain.  Fold: the drawing folds along the line half way between two bones instead of overlapping itself;
+    // Auto Fold only where a joint turns `foldAngle` degrees or more.
+    double muscleLeft = 0.0, muscleRight = 0.0, muscleSpan = 40.0;
+    enum FoldMode { FoldOff, FoldOn, FoldAuto };
+    int fold = FoldOff;
+    double foldAngle = 45.0;
+    // Shape Aware: each line and area of the drawing keeps its shape under the bones (moved, turned and scaled as a whole).
+    // Use Overlay Transparency as Rigidity Map: only the art lying inside what is painted on the Overlay art does so.
+    bool shapeAware = false;
+    bool overlayRigidity = false;
     // Pencil lines deformed: Quality (0 Low .. 3 Very High: how finely they are followed), their thickness kept as drawn
     // or stretched with the drawing, smoothed (passes), and how far a point may stray when the line is simplified again.
     // Point Kinematic Output: a peg that follows points of its parent's deformed drawing (trackers, in the parent's coordinates

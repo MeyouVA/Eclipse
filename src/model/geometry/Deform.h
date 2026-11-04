@@ -20,6 +20,11 @@ struct ChainOptions {
     QVector<BoneInfluence> influences;
     ChainScale scale;
     double amount = 1.0;
+    double muscleLeft = 0.0, muscleRight = 0.0, muscleSpan = 40.0;
+    int fold = 0;
+    double foldAngle = 45.0;
+    bool shapeAware = false;
+    bool overlayRigidity = false;
     int lineQuality = 1;
     bool preserveThickness = true;
     int lineSmooth = 0;
@@ -86,8 +91,10 @@ int insertWarpPoint(QVector<QPointF>& points, bool closed, QPointF near, double 
 QVector<QPointF> envelopeAround(Drawing const& drawing, int points = 8, double margin = 12.0, bool followOutline = false);
 QVector<QPolygonF> outerEdges(Drawing const& drawing, int sheet = -1, double grow = 0.0);
 // The drawing reshaped by the deformer.
-Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);
-QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved);
+// `curve`: Layer::WarpCurve (the manipulator's kind); `intervals`: how finely each piece is followed.
+Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved, int curve = 0, int intervals = 12);
+QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved, int curve = 0, int intervals = 12);
+QVector<QPointF> shapedWarp(QVector<QPointF> points, bool closed, int curve);
 
 // `index`: which of the layer's drawings it is, for its moved points (-1: found from where `drawing` lies, if it is one of them).
 Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose, int index = -1);

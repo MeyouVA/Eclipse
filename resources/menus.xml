@@ -472,6 +472,12 @@
     <item id="PointDeformerSettings" text="Point Deformer Se&amp;ttings..." responder="window" slot="onActionPointDeformerSettings()"/>
     <item id="RemovePointDeformer" text="Remove Point Deformer" responder="window" slot="onActionRemovePointDeformer()"/>
     <separator/>
+    <item id="ApplyDeformation" text="&amp;Apply Deformation to Drawing" responder="window" slot="onActionApplyDeformation()"/>
+    <item id="EditDeformPath" text="&amp;Edit Deform Path..." responder="window" slot="onActionEditDeformPath()"/>
+    <item id="CopyDeformation" text="Cop&amp;y Deformation" responder="window" slot="onActionCopyDeformation()"/>
+    <item id="PasteDeformation" text="Paste Defor&amp;mation" responder="window" slot="onActionPasteDeformation()"/>
+    <item id="PasteDeformationNext" text="Paste on &amp;Next Drawings..." responder="window" slot="onActionPasteDeformationNext()"/>
+    <separator/>
     <item id="ShowAllDeformers" text="Show All &amp;Deformers" checkable="true" responder="camera" slot="onActionShowAllDeformers(bool)"/>
     <item id="ShowCurrentDeformers" text="Show Current Deformers and Hide All &amp;Others" responder="camera" slot="onActionShowCurrentDeformers()"/>
     <separator/>

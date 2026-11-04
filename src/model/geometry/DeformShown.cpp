@@ -174,10 +174,10 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose, int 
     if (!warped && !bent)
         return first;
     if (!bent)
-        return warp(first, layer.warp, layer.warpClosed, moved);
+        return warp(first, layer.warp, layer.warpClosed, moved, layer.warpCurve, layer.warpIntervals);
     if (!warped)
         return deform(first, chain, pose.bend, layer.jointSmoothness, layer.skin, &options);
-    return deform(warp(first, layer.warp, layer.warpClosed, moved), chain, pose.bend, layer.jointSmoothness, layer.skin, &options);
+    return deform(warp(first, layer.warp, layer.warpClosed, moved, layer.warpCurve, layer.warpIntervals), chain, pose.bend, layer.jointSmoothness, layer.skin, &options);
 }
 
 }  // namespace Deform

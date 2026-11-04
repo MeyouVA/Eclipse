@@ -202,3 +202,99 @@ void Document::setPointDeformer(int layer, PointDeformer const& deformer, QStrin
         }
     });
 }
+
+bool Document::applyDeformation(int layer, int frame)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    int const index = l.drawingAt(frame);
+    if (!l.holdsDrawings() || index < 0 || index >= l.drawings.size())
+        return false;
+    Pose const pose = l.poseAt(frame);
+    bool const bent = pose.deform > 0.0
+                      && (Deform::isBent(l.bonesAt(frame), pose.bend) || Deform::isWarped(l.warp, l.warpClosed, pose.warp)
+                          || Deform::isHandled(l.pointDeformer, pose.handles) || (!l.chainScale.plain() && l.bonesAt(frame).size() >= 2));
+    if (!bent)
+        return false;
+    Drawing made = Deform::shown(l.drawings[index], l, pose, index);
+    // (What made it a drawing of its own: its name, its pin, its chain.)
+    made.name = l.drawings[index].name;
+    made.pinned = l.drawings[index].pinned;
+    made.rig = l.drawings[index].rig;
+    made.editIdentity = l.drawings[index].editIdentity;
+    apply(tr("Apply Deformation"), [&](Scene& s) {
+        Layer& edited = s.layers[layer];
+        edited.drawings[index] = made;
+        Pose rest = edited.poseAt(frame);
+        rest.bend.fill(0.0);
+        rest.warp.clear();
+        rest.handles.clear();
+        edited.setKey(frame, rest);
+    });
+    return true;
+}
+
+int Document::pasteDeformationOnNext(int layer, int frame, Pose const& pose, int count, double easeIn, double easeOut)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || count < 1)
+        return 0;
+    Layer const& l = m_scene.layers[layer];
+    // The next drawings: each change of drawing after this frame, once each.
+    QVector<int> drawings;
+    int shown = l.drawingAt(frame);
+    for (int f = frame + 1; f < l.cells.size() && drawings.size() < count; ++f) {
+        int const index = l.cells[f];
+        if (index == shown || index == Layer::kNoDrawing || index >= l.drawings.size())
+            continue;
+        shown = index;
+        if (!drawings.contains(index))
+            drawings.push_back(index);
+    }
+    if (drawings.isEmpty())
+        return 0;
+    QVector<Drawing> made;
+    for (int k = 0; k < drawings.size(); ++k) {
+        Pose part = pose;
+        part.points.clear();
+        part.deform = easedProgress(double(k + 1) / drawings.size(), std::clamp(easeOut, 0.0, 1.0), std::clamp(easeIn, 0.0, 1.0));
+        Drawing d = Deform::shown(l.drawings[drawings[k]], l, part, drawings[k]);
+        d.name = l.drawings[drawings[k]].name;
+        d.pinned = l.drawings[drawings[k]].pinned;
+        d.rig = l.drawings[drawings[k]].rig;
+        d.editIdentity = l.drawings[drawings[k]].editIdentity;
+        made.push_back(d);
+    }
+    apply(tr("Paste on Next Drawings"), [&](Scene& s) {
+        for (int k = 0; k < drawings.size(); ++k)
+            s.layers[layer].drawings[drawings[k]] = made[k];
+    });
+    return int(drawings.size());
+}
+
+bool Document::transformWarpPose(int layer, int frame, double degrees, QPointF by)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || !m_scene.layers[layer].hasWarp())
+        return false;
+    Layer const& l = m_scene.layers[layer];
+    Pose pose = l.poseAt(frame);
+    QVector<QPointF> const posed = Deform::posedWarp(l.warp, pose.warp);
+    // About the middle of its points as posed: each point turned and moved, its handles turned with it.
+    QPointF centre;
+    int const n = int(posed.size()) / 3;
+    for (int i = 0; i < n; ++i)
+        centre += posed[i * 3];
+    centre /= std::max(1, n);
+    QTransform turn;
+    turn.rotate(degrees);
+    QVector<QPointF> moved(l.warp.size());
+    for (int i = 0; i < n; ++i) {
+        QPointF const at = turn.map(posed[i * 3] - centre) + centre + by;
+        moved[i * 3] = at - l.warp[i * 3];
+        for (int h : {1, 2})
+            moved[i * 3 + h] = turn.map(posed[i * 3 + h]) - l.warp[i * 3 + h];
+    }
+    pose.warp = moved;
+    setKeyframe(layer, frame, pose, degrees != 0.0 ? tr("Changed Deformation Path Rotation") : tr("Changed Deformation Path Translation"));
+    return true;
+}

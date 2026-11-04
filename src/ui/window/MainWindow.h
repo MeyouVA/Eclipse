@@ -611,6 +611,14 @@ public slots:
     bool createGridDeformer(int layer, int kind, int cols, int rows);
     void onActionPointDeformerSettings();
     void onActionRemovePointDeformer();
+    // The Deform tool's commands: Apply (bake into this drawing), Copy the deformation on this frame, Paste it here (keyed),
+    // Paste on Next Drawings (eased in over them).
+    void onActionApplyDeformation();
+    void onActionEditDeformPath();
+    void onActionCopyDeformation();
+    void onActionPasteDeformation();
+    void onActionPasteDeformationNext();
+    bool pasteDeformationNext(int count, double easeInPercent, double easeOutPercent);
     void onActionDefaultTransformation();
     void onActionConvertAddChain();
     void onActionTransformationNames();
@@ -959,6 +967,7 @@ private:
     QPointer<SoundEditor> m_soundEditor;
     QWidget* m_symbolTrail = nullptr;
     std::shared_ptr<struct TemplateEditing> m_templateEdit;
+    std::shared_ptr<Pose> m_copiedDeformation;     // Copy (the Deform tool): the deformers' pose kept to paste
     void setTemplateEditBorder(QColor const& colour);
 public:
     // The border round the Camera view while a template is edited (invalid: none).

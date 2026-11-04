@@ -272,6 +272,44 @@ void MainWindow::editDeformationSettings(int l, int bone)
     lineForm->addRow(tr("Smooth"), smooth);
     lineForm->addRow(tr("Fit Error"), fit);
 
+    // ---- The curve deformer's manipulator; muscles and folds ----
+    QGroupBox* const curveBox = new QGroupBox(tr("Manipulator"), &dialog);
+    QFormLayout* const curveForm = new QFormLayout(curveBox);
+    QComboBox* const curveType = new QComboBox(&dialog);
+    curveType->setObjectName(QStringLiteral("DeformCurveType"));
+    curveType->addItems({tr("Bezier"), tr("Catmull"), tr("Rounded Polyline")});
+    curveType->setCurrentIndex(layer.warpCurve);
+    QSpinBox* const intervals = new QSpinBox(&dialog);
+    intervals->setObjectName(QStringLiteral("DeformIntervals"));
+    intervals->setRange(1, 200);
+    intervals->setValue(layer.warpIntervals);
+    curveForm->addRow(tr("Curve"), curveType);
+    curveForm->addRow(tr("Number of Intervals"), intervals);
+    QGroupBox* const muscleBox = new QGroupBox(tr("Auto Muscle and Fold"), &dialog);
+    QFormLayout* const muscleForm = new QFormLayout(muscleBox);
+    QDoubleSpinBox* const muscleLeft = number("DeformMuscleLeft", layer.muscleLeft, -5, 5, 2);
+    QDoubleSpinBox* const muscleRight = number("DeformMuscleRight", layer.muscleRight, -5, 5, 2);
+    QDoubleSpinBox* const muscleSpan = number("DeformMuscleSpan", layer.muscleSpan, 1, 100000, 1);
+    QComboBox* const fold = new QComboBox(&dialog);
+    fold->setObjectName(QStringLiteral("DeformFold"));
+    fold->addItems({tr("No Fold"), tr("Enable Fold"), tr("Auto Fold")});
+    fold->setCurrentIndex(layer.fold);
+    QDoubleSpinBox* const foldAngle = number("DeformFoldAngle", layer.foldAngle, 0, 180, 1);
+    muscleForm->addRow(tr("Muscle Left"), muscleLeft);
+    muscleForm->addRow(tr("Muscle Right"), muscleRight);
+    muscleForm->addRow(tr("Muscle span along the chain"), muscleSpan);
+    muscleForm->addRow(tr("Fold"), fold);
+    muscleForm->addRow(tr("Auto Fold from (degrees)"), foldAngle);
+    QCheckBox* const shapeAware = new QCheckBox(tr("Shape Aware (lines keep their shape)"), &dialog);
+    shapeAware->setObjectName(QStringLiteral("DeformShapeAware"));
+    shapeAware->setChecked(layer.shapeAware);
+    QCheckBox* const rigidity = new QCheckBox(tr("Use Overlay Transparency as Rigidity Map"), &dialog);
+    rigidity->setObjectName(QStringLiteral("DeformOverlayRigidity"));
+    rigidity->setChecked(layer.overlayRigidity);
+    rigidity->setToolTip(tr("What lies inside the areas painted on the Overlay art keeps its shape; the rest bends."));
+    muscleForm->addRow(shapeAware);
+    muscleForm->addRow(rigidity);
+
     // ---- On or off here ----
     QCheckBox* const enabled = new QCheckBox(tr("Enable Deformation (from this frame)"), &dialog);
     enabled->setObjectName(QStringLiteral("DeformEnabled"));
@@ -285,6 +323,8 @@ void MainWindow::editDeformationSettings(int l, int bone)
     QVBoxLayout* const first = new QVBoxLayout;
     first->addWidget(zoneBox);
     first->addWidget(lineBox);
+    first->addWidget(curveBox);
+    first->addWidget(muscleBox);
     first->addStretch(1);
     QVBoxLayout* const second = new QVBoxLayout;
     second->addWidget(scaleBox);
@@ -346,7 +386,19 @@ void MainWindow::editDeformationSettings(int l, int bone)
     int const passes = smooth->value();
     double const fitError = fit->value();
     m_document->beginMacro(tr("Deformation Settings"));
+    int const curveChosen = curveType->currentIndex(), intervalsChosen = intervals->value(), foldChosen = fold->currentIndex();
+    double const ml = muscleLeft->value(), mr = muscleRight->value(), ms = muscleSpan->value(), fa = foldAngle->value();
+    bool const aware = shapeAware->isChecked(), rigidMap = rigidity->isChecked();
     m_document->editLayers({l}, tr("Deformation Settings"), [&](Layer& edited) {
+        edited.warpCurve = curveChosen;
+        edited.warpIntervals = intervalsChosen;
+        edited.muscleLeft = ml;
+        edited.muscleRight = mr;
+        edited.muscleSpan = ms;
+        edited.fold = foldChosen;
+        edited.foldAngle = fa;
+        edited.shapeAware = aware;
+        edited.overlayRigidity = rigidMap;
         edited.influences = zones;
         edited.chainScale = scale;
         edited.lineDeformQuality = q;

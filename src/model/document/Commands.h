@@ -293,6 +293,14 @@ public:
     int convertToNewDrawingWithChain(int layer, int frame, QString* error = nullptr);
     // The layer's point deformer replaced (`removed`: the point taken out, whose moves the keyframes lose too).
     void setPointDeformer(int layer, PointDeformer const& deformer, QString const& text, int removed = -1);
+    // The Deform tool's Apply: the drawing exposed on `frame` made as the layer's deformers bend it there (its deformers then at
+    // rest on that frame).  False when nothing is bent there.
+    bool applyDeformation(int layer, int frame);
+    // The curve deformer as a whole on `frame` (Edit Deform Path): turned about the middle of its points, and moved (keyed).
+    bool transformWarpPose(int layer, int frame, double degrees, QPointF by);
+    // Paste on Next Drawings: the deformation in `pose` (its bones' turns, curve and point moves) made part of each of the next
+    // `count` drawings exposed after `frame`, growing in from the first to the last as the eases say (0..1 each).  How many.
+    int pasteDeformationOnNext(int layer, int frame, Pose const& pose, int count, double easeIn, double easeOut);
     void setTrackers(int layer, QVector<QPointF> const& trackers, int sampling);
     void setActiveCamera(int layer);
     // The Camera view shows that layer and what hangs under it (-1: the whole scene).

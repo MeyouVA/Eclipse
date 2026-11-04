@@ -14,6 +14,25 @@
 
 namespace Deform {
 
+// The points of a curve deformer with handles as its manipulator's kind gives them: its own (Bezier), smooth through every
+// point (Catmull), or short ones that only round its corners (Rounded Polyline).
+QVector<QPointF> shapedWarp(QVector<QPointF> points, bool closed, int curve)
+{
+    int const n = int(points.size()) / 3;
+    if (curve == 1) {
+        for (int i = 0; i < n; ++i)
+            smoothWarpHandles(points, closed, i);
+    } else if (curve == 2) {
+        for (int i = 0; i < n; ++i) {
+            int const before = closed ? (i + n - 1) % n : i - 1, after = closed ? (i + 1) % n : i + 1;
+            QPointF const at = points[i * 3];
+            points[i * 3 + 1] = before >= 0 && before < n ? (points[before * 3] - at) / 6.0 : QPointF();
+            points[i * 3 + 2] = after >= 0 && after < n ? (points[after * 3] - at) / 6.0 : QPointF();
+        }
+    }
+    return points;
+}
+
 namespace {
 
 double cross(QPointF a, QPointF b) { return a.x() * b.y() - a.y() * b.x(); }
@@ -26,10 +45,10 @@ struct Warper {
     QPolygonF rest, posed;          // the curve at rest and under the pose, piece for piece
     QVector<QTransform> pieces;     // an open curve: what each piece does to what lies beside it
 
-    Warper(QVector<QPointF> const& restPoints, bool isClosed, QVector<QPointF> const& moved) : closed(isClosed)
+    Warper(QVector<QPointF> const& restPoints, bool isClosed, QVector<QPointF> const& moved, int curve = 0, int intervals = 12) : closed(isClosed)
     {
-        rest = warpLine(restPoints, closed);
-        posed = warpLine(posedWarp(restPoints, moved), closed);
+        rest = warpLine(shapedWarp(restPoints, closed, curve), closed, intervals);
+        posed = warpLine(shapedWarp(posedWarp(restPoints, moved), closed, curve), closed, intervals);
         if (closed)
             return;
         for (int i = 0; i + 1 < rest.size(); ++i) {
@@ -375,18 +394,18 @@ QVector<QPointF> envelopeAround(Drawing const& drawing, int count, double margin
     return points;
 }
 
-QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved)
+QPointF warpPoint(QPointF p, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved, int curve, int intervals)
 {
     if (!isWarped(rest, closed, moved))
         return p;
-    return Warper(rest, closed, moved).map(p);
+    return Warper(rest, closed, moved, curve, intervals).map(p);
 }
 
-Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved)
+Drawing warp(Drawing const& drawing, QVector<QPointF> const& rest, bool closed, QVector<QPointF> const& moved, int curve, int intervals)
 {
     if (!isWarped(rest, closed, moved))
         return drawing;
-    Warper const warper(rest, closed, moved);
+    Warper const warper(rest, closed, moved, curve, intervals);
     return mapped(drawing, [&warper](QPointF p) { return warper.map(p); });
 }
 
