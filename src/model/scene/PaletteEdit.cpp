@@ -217,6 +217,20 @@ bool Scene::pasteNewDrawings()
     return s_pasteNewDrawings;
 }
 
+namespace {
+bool s_pasteSymbolsIfMissing = false;
+}
+
+void Scene::setPasteSymbolsIfMissing(bool on)
+{
+    s_pasteSymbolsIfMissing = on;
+}
+
+bool Scene::pasteSymbolsIfMissing()
+{
+    return s_pasteSymbolsIfMissing;
+}
+
 int Scene::takeColour(Scene const& piece, int swatch, QColor const& colour, QHash<int, int>& map)
 {
     Q_UNUSED(colour);

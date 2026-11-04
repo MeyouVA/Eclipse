@@ -145,7 +145,9 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
     int drawn = 0;
     for (int l : order) {
         Layer const& layer = scene.layers[l];
-        if (!scene.enabled(l) || (layer.kind != Layer::ColourCard && layer.drawingAt(frame) == Layer::kNoDrawing))
+        if (scene.compositeGroupOf(l, frame) >= 0)
+            continue;
+        if (!scene.enabled(l) || (layer.kind != Layer::ColourCard && layer.drawingAt(frame) == Layer::kNoDrawing && !scene.compositesGroup(l, frame)))
             continue;
         ++drawn;
         turnedAny = turnedAny || (layer.kind != Layer::ColourCard && scene.turned(l, frame));
@@ -169,7 +171,8 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
             Layer const& layer = scene.layers[l];
             int const index = layer.drawingAt(frame);
             bool const card = layer.kind == Layer::ColourCard;
-            if (!scene.enabled(l) || (!card && index == Layer::kNoDrawing))
+            bool const together = scene.compositesGroup(l, frame);
+            if (scene.compositeGroupOf(l, frame) >= 0 || !scene.enabled(l) || (!card && !together && index == Layer::kNoDrawing))
                 continue;
             QImage alone(wide, high, Deep::formatFor(device));
             alone.setDevicePixelRatio(dpr);
@@ -185,6 +188,8 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
                     colour.setAlphaF(colour.alphaF() * float(layer.opacity));
                     one.setTransform(base);
                     one.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
+                } else if (together) {
+                    paintPlainLayer(one, scene, l, frame, camera * base, base);
                 } else {
                     one.setTransform(onto);
                     Pose const pose = scene.poseOf(l, movedAt);
@@ -246,6 +251,12 @@ void Canvas::paintFrame(QPainter& painter, Scene const& scene, int frame)
     // The furthest first, so that what is nearer the camera covers it.
     for (int l : order) {
         Layer const& layer = scene.layers[l];
+        if (scene.compositeGroupOf(l, frame) >= 0)
+            continue;   // (painted with the group that puts it together)
+        if (scene.compositesGroup(l, frame)) {
+            paintPlainLayer(painter, scene, l, frame, camera * base, base);
+            continue;
+        }
         int drawnAt = frame, movedAt = frame;
         scene.timedFrames(l, frame, &drawnAt, &movedAt);
         int const index = layer.drawingAt(drawnAt);

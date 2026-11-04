@@ -209,6 +209,10 @@ public:
     // Off: a drawing of the same name the layer has already is replaced by the template's.
     static void setPasteNewDrawings(bool on);
     static bool pasteNewDrawings();
+    // Copy symbols if they do not exist (Preferences > Templates): a template's symbol the scene has one of the same name of
+    // already uses the scene's; off, it always comes as a symbol of its own (renamed when the name is taken).
+    static void setPasteSymbolsIfMissing(bool on);
+    static bool pasteSymbolsIfMissing();
     // A colour of `piece` (by id) as a colour of this scene, made or found as setPasteColours says; `map` remembers it.
     int takeColour(Scene const& piece, int swatch, QColor const& colour, QHash<int, int>& map);
     QJsonObject paletteJson(int which) const;
@@ -279,6 +283,10 @@ public:
     bool isAncestor(int ancestor, int layer) const;
     // Whether the layer is rendered: it is enabled, and so is every group it is in.
     bool enabled(int layer) const;
+    // A group layer that puts the layers it holds together into one picture first, for its opacity, blend mode or effects
+    // to work on the whole (as a layer that shows a symbol does); and the nearest such group a layer is inside (-1: none).
+    bool compositesGroup(int layer, int frame) const;
+    int compositeGroupOf(int layer, int frame) const;
     // Whether the Camera view shows the layer: it is enabled, and solo if any layer is.
     bool shows(int layer) const;
     // Whether a layer it hangs under is collapsed (the Timeline then leaves it out).

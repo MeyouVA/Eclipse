@@ -277,6 +277,13 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
     for (int l : inner.drawOrder(f)) {
         Layer const& layer = inner.layers[l];
         int const index = layer.drawingAt(f);
+        if (inner.compositeGroupOf(l, f) >= 0)
+            continue;   // (painted with the group that puts it together)
+        if (inner.compositesGroup(l, f) && inner.enabled(l)) {
+            painter.setTransform(inner.worldTransform(l, f) * base);
+            paintLayerDrawing(painter, inner, l, f, Drawing(), layer.opacity * inner.poseOf(l, f).opacity, base);
+            continue;
+        }
         if (!inner.enabled(l) || index == Layer::kNoDrawing || !layer.holdsDrawings())
             continue;
         painter.setTransform(inner.worldTransform(l, f) * base);
@@ -286,6 +293,58 @@ void Canvas::paintSymbol(QPainter& painter, Scene const& scene, int symbolId, in
     }
     painter.setTransform(base);
     --depth;
+}
+
+void Canvas::paintGroup(QPainter& painter, Scene const& scene, int group, int frame)
+{
+    static thread_local int depth = 0;
+    if (depth >= 32)
+        return;
+    // Where the group is painted (the painter is set for it; particles and the like may have moved it) is where its layers go.
+    int drawnAt = frame, movedAt = frame;
+    scene.timedFrames(group, frame, &drawnAt, &movedAt);
+    QTransform const groupWorld = scene.worldTransform(group, movedAt);
+    if (!groupWorld.isInvertible())
+        return;
+    ++depth;
+    QTransform const base = painter.transform();
+    QTransform const sceneToDevice = groupWorld.inverted() * base;
+    QTransform const camera = scene.cameraTransform(frame);
+    // (Colour cards fill the frame whatever the camera does: under the camera's transform taken back off.)
+    QTransform const frameToDevice = camera.isInvertible() ? camera.inverted() * sceneToDevice : sceneToDevice;
+    for (int l : scene.drawOrder(frame))
+        if (l != group && scene.compositeGroupOf(l, frame) == group)
+            paintPlainLayer(painter, scene, l, frame, sceneToDevice, frameToDevice);
+    painter.setTransform(base);
+    --depth;
+}
+
+void Canvas::paintPlainLayer(QPainter& painter, Scene const& scene, int l, int frame, QTransform const& sceneToDevice, QTransform const& frameToDevice)
+{
+    Layer const& layer = scene.layers[l];
+    if (!scene.enabled(l))
+        return;
+    if (layer.kind == Layer::ColourCard) {
+        QColor colour = scene.managedColour(layer.cardColor);
+        colour.setAlphaF(colour.alphaF() * float(layer.opacity));
+        painter.setTransform(frameToDevice);
+        painter.fillRect(QRectF(0, 0, scene.width, scene.height), colour);
+        return;
+    }
+    int drawnAt = frame, movedAt = frame;
+    scene.timedFrames(l, frame, &drawnAt, &movedAt);
+    painter.setTransform(scene.worldTransform(l, movedAt) * sceneToDevice);
+    Pose const pose = scene.poseOf(l, movedAt);
+    if (scene.compositesGroup(l, frame)) {
+        paintLayerDrawing(painter, scene, l, frame, Drawing(), layer.opacity * pose.opacity, sceneToDevice);
+        return;
+    }
+    int const index = layer.drawingAt(drawnAt);
+    if (index == Layer::kNoDrawing || !layer.holdsDrawings())
+        return;
+    paintLayerDrawing(painter, scene, l, frame,
+                      Deform::ridden(scene, l, movedAt, Deform::shown(layer.morphing(drawnAt) ? layer.shownAt(drawnAt) : layer.drawings[index], layer, pose, index)),
+                      layer.opacity * pose.opacity, sceneToDevice);
 }
 
 // While a layer with a blend mode is painted alone, to be mixed with what is under it as a whole.
@@ -442,14 +501,22 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
     bool effects = false;
     for (Effect const& e : layer.effects)
         effects = effects || e.enabled;
-    // A layer that shows a symbol: the symbol is painted, on the frame of it the cell says.
-    bool const symbol = layer.showsSymbol();
-    int const symbolFrame = symbol ? layer.drawingAt(frame) : Layer::kNoDrawing;
+    // A layer that shows a symbol: the symbol is painted, on the frame of it the cell says.  A group that puts what it holds
+    // together first (Scene::compositesGroup) is painted the same way: its layers, then its opacity and effects on them as one.
+    bool const group = layer.kind == Layer::Group && scene.compositesGroup(l, frame);
+    bool const symbol = layer.showsSymbol() || group;
+    int const symbolFrame = group ? frame : symbol ? layer.drawingAt(frame) : Layer::kNoDrawing;
+    auto contents = [&](QPainter& onto) {
+        if (group)
+            paintGroup(onto, scene, l, frame);
+        else
+            paintSymbol(onto, scene, layer.symbolId, symbolFrame);
+    };
     if (symbol && (symbolFrame == Layer::kNoDrawing || opacity <= 0.0))
         return;
     if (symbol && !effects) {
         if (opacity >= 1.0) {
-            paintSymbol(painter, scene, layer.symbolId, symbolFrame);
+            contents(painter);
             return;
         }
         // Faint: painted whole in a picture of its own and blended once, as a drawing is.
@@ -462,7 +529,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             QPainter off(&image);
             off.setRenderHints(painter.renderHints());
             off.setTransform(painter.transform());
-            paintSymbol(off, scene, layer.symbolId, symbolFrame);
+            contents(off);
         }
         painter.save();
         painter.resetTransform();
@@ -495,7 +562,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                 thrown = i;
         auto picture = [&] {
             if (symbol)
-                paintSymbol(off, scene, layer.symbolId, symbolFrame);
+                contents(off);
             else
                 paintDrawingOpaque(off, scene, drawing, nullptr);
         };
@@ -520,7 +587,7 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                     once.setRenderHints(painter.renderHints());
                     once.setTransform(base * QTransform::fromTranslate(-area.left(), -area.top()));
                     if (symbol)
-                        paintSymbol(once, scene, layer.symbolId, symbolFrame);
+                        contents(once);
                     else
                         paintDrawingOpaque(once, scene, drawing, nullptr);
                     mixed.resize(9);

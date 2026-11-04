@@ -47,6 +47,9 @@ void MainWindow::preferencesTemplates(PreferenceWidgets& w, QSettings& s, QDialo
     w.templateDrop->setCurrentIndex(std::max(0, w.templateDrop->findData(s.value(QStringLiteral("prefs/templateDrop"), 0).toInt())));
     w.templateDrop->setToolTip(tr("What a template does when it is inserted, or dragged from the Library onto the Timeline or the Camera view."));
     form->addRow(tr("Pasting or dropping from the Library"), w.templateDrop);
+    w.pasteSymbolsIfMissing = check("PrefPasteSymbolsIfMissing", tr("Copy symbols if they do not exist"), QStringLiteral("prefs/pasteSymbolsIfMissing"), false,
+                                    tr("On: a symbol of a template that the scene has one of the same name of uses the scene's. "
+                                       "Off: the template's symbols always come as symbols of their own."));
     w.pasteNewDrawings = check("PrefPasteNewDrawings", tr("Always Create New Drawings"), QStringLiteral("prefs/pasteNewDrawings"), true,
                                tr("On: a template pasted onto layers brings all its drawings as new ones. "
                                   "Off: where the layer has a drawing of the same name, the template's drawing replaces it."));
@@ -75,5 +78,6 @@ void MainWindow::saveTemplatePreferences(PreferenceWidgets& w, QSettings& s)
     s.setValue(QStringLiteral("prefs/copyToLibrary"), w.copyToLibrary->currentData().toInt());
     s.setValue(QStringLiteral("prefs/templateDrop"), w.templateDrop->currentData().toInt());
     s.setValue(QStringLiteral("prefs/pasteNewDrawings"), w.pasteNewDrawings->isChecked());
+    s.setValue(QStringLiteral("prefs/pasteSymbolsIfMissing"), w.pasteSymbolsIfMissing->isChecked());
     s.setValue(QStringLiteral("prefs/templateEditBorder"), w.templateBorder->property("colour").value<QColor>());
 }

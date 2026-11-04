@@ -214,6 +214,16 @@ int Scene::insert(Scene const& piece, int frame)
             next = std::max(next, have.id + 1);
         QVector<Symbol> brought;
         for (Symbol theirs : piece.symbols) {
+            if (pasteSymbolsIfMissing()) {
+                Symbol const* had = nullptr;
+                for (Symbol const& have : std::as_const(symbols))
+                    if (!had && have.name == theirs.name)
+                        had = &have;
+                if (had) {
+                    symbolOf.insert(theirs.id, had->id);   // the scene's own of that name is used
+                    continue;
+                }
+            }
             symbolOf.insert(theirs.id, next);
             theirs.id = next++;
             QString const base = theirs.name;

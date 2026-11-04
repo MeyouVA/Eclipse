@@ -928,6 +928,10 @@ private:
     void paintMarquee(QPainter& painter);
     void paintView();
     // Its parts: the frame's edge, grids, guides and each tool's aids (true when nothing more is to be painted), then the selection's.
+    // In the Camera view a compositing group is put together as one picture - unless what is worked on is inside it, so that
+    // drawing and moving there are seen as they happen.  And the outermost such group a layer is painted with (-1: none).
+    bool compositedLive(int group) const;
+    int liveGroupOf(int layer) const;
     void paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, QTransform const& view, bool transforming, bool erasing,
                         std::function<void(int)> const& onionsOf);
     void paintLockedOutline(QPainter& painter, int layer, Drawing const& drawing) const;
@@ -1059,6 +1063,10 @@ private:
     void paintOnion(QPainter& painter, Scene const& scene, Drawing const& drawing, double opacity, QColor const& tint, double wash = 1.0) const;
     // What a symbol shows on one of its frames, painted where the painter stands (the sheet of the layer that shows it).
     static void paintSymbol(QPainter& painter, Scene const& scene, int symbolId, int frame);
+    // A group that puts what it holds together (Scene::compositesGroup): its layers painted, the painter set as for the group.
+    static void paintGroup(QPainter& painter, Scene const& scene, int group, int frame);
+    // One layer of a frame painted as paintFrame paints it (a compositing group as one picture).
+    static void paintPlainLayer(QPainter& painter, Scene const& scene, int layer, int frame, QTransform const& sceneToDevice, QTransform const& frameToDevice);
     void alsoInOtherDrawings(QRectF const& region, QTransform const* transform, QString const& text, QSet<int> const* only = nullptr);
     void paintBoneLayers(QPainter& painter);
     void paintQuadAids(QPainter& painter);

@@ -262,12 +262,14 @@ int Scene::expandSymbol(int layer, bool inGroup)
     bool sameTiming = true;
     for (int frame = 0; frame < m_frameCount; ++frame)
         sameTiming = sameTiming && instance.drawingAt(frame) == frame;
-    if (instance.opacity != 1.0 || !instance.effects.isEmpty() || instance.blend != Layer::BlendNormal || instance.hiddenSheets
-        || instance.bones.size() > 1 || instance.hasWarp())
+    // (Opacity, a blend mode and effects work on the symbol's picture as a whole: a group that puts its layers together keeps
+    // them so; a peg cannot.  What bends or warps the picture itself has no layer to go on.)
+    bool const whole = instance.opacity != 1.0 || !instance.effects.isEmpty() || instance.blend != Layer::BlendNormal;
+    if ((whole && !inGroup) || instance.hiddenSheets || instance.bones.size() > 1 || instance.hasWarp())
         return -1;
     for (int frame = 0; frame < m_frameCount; ++frame) {
         Pose const pose = poseOf(layer, frame);
-        if (pose.opacity != 1.0 || !pose.points.isEmpty() || !pose.quad.isEmpty() || !pose.bend.isEmpty() || !pose.warp.isEmpty())
+        if ((pose.opacity != 1.0 && !inGroup) || !pose.points.isEmpty() || !pose.quad.isEmpty() || !pose.bend.isEmpty() || !pose.warp.isEmpty())
             return -1;
     }
     // A peg in its place carries what the layer had: where it is among the layers, what it is attached to, how it moves.
@@ -277,7 +279,8 @@ int Scene::expandSymbol(int layer, bool inGroup)
     peg.drawings.clear();
     peg.cells.fill(Layer::kNoDrawing, m_frameCount);
     peg.keyExposures.clear();
-    peg.effects.clear();
+    if (!inGroup)
+        peg.effects.clear();
     peg.morphs.clear();
     layers[layer] = peg;
     // Copies of the symbol's layers, under numbers of their own, attached as they were - the topmost to the peg.

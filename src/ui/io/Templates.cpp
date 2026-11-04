@@ -276,6 +276,22 @@ void MainWindow::onActionCreateTemplate()
             return;
         }
     }
+    // Layers from different groups: brought back as layers of their own, the groups they were in are not.
+    {
+        Scene const& scene = m_document->scene();
+        QSet<int> groups;
+        for (int l : m_timeline->selectedLayers()) {
+            int group = 0;
+            for (int guard = 0, up = scene.parentIndex(l); up >= 0 && guard < 256 && group == 0; ++guard, up = scene.parentIndex(up))
+                if (scene.layers[up].kind == Layer::Group)
+                    group = scene.layers[up].id;
+            groups.insert(group);
+        }
+        if (groups.size() > 1
+            && QMessageBox::question(this, tr("Create Template"), tr("Template contains nodes/layers from incompatible groups.\nTemplate may be difficult to restore or edit.\n\nCreate it anyway?"))
+                   != QMessageBox::Yes)
+            return;
+    }
     QString error;
     if (!saveTemplate(path, &error)) {
         QMessageBox::critical(this, tr("Eclipse"), tr("The template could not be saved.\n%1").arg(error));

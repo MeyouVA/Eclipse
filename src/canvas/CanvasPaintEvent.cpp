@@ -325,6 +325,8 @@ void Canvas::paintView()
     for (int l : m_drawingView ? stacked : scene.drawOrder(m_frame)) {
         if (!scene.inDisplay(l) || (!m_drawingView && hiddenInView(l)))
             continue;      // (not in what the display shows, or hidden from the view)
+        if (liveGroupOf(l) >= 0)
+            continue;      // (painted with the group that puts it together)
         if (m_currentOnTop && !m_playing && l == m_layer)
             heldBack = true;
         else
@@ -411,12 +413,45 @@ void Canvas::paintView()
     paintSelectionAids(painter);
 }
 
+bool Canvas::compositedLive(int group) const
+{
+    Scene const& scene = m_document->scene();
+    if (m_drawingView || !scene.compositesGroup(group, m_frame))
+        return false;
+    // (The group itself chosen still shows put together; moving it, or working on a layer inside it, does not.)
+    auto inside = [&](int l) { return l >= 0 && l < scene.layers.size() && l != group && scene.isAncestor(group, l); };
+    if (inside(m_layer))
+        return false;
+    if (m_drag != DragNone)
+        for (int l : m_transformLayers)
+            if (l == group || inside(l))
+                return false;
+    return true;
+}
+
+int Canvas::liveGroupOf(int layer) const
+{
+    Scene const& scene = m_document->scene();
+    int outermost = -1;
+    for (int guard = 0, l = scene.parentIndex(layer); l >= 0 && guard < 256; ++guard, l = scene.parentIndex(l))
+        if (compositedLive(l))
+            outermost = l;
+    return outermost;
+}
+
 // A layer of the frame painted in the view (as paintView goes through them, back to front).
 void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, QTransform const& view, bool transforming, bool erasing,
                             std::function<void(int)> const& onionsOf)
 {
     Scene const& scene = m_document->scene();
     Layer const& layer = scene.layers[l];
+    if (compositedLive(l)) {
+        if (scene.shows(l)) {
+            painter.setTransform(worldOf(l, m_frame) * view);
+            paintLayerDrawing(painter, scene, l, m_frame, Drawing(), layer.opacity * scene.poseOf(l, m_frame).opacity, view, true, true);
+        }
+        return;
+    }
     // In the Drawing view: the current layer; and the others only on the light table.
     if (m_drawingView && l != m_layer && (!m_lightTable || !layer.holdsDrawings()))
         return;
@@ -439,7 +474,13 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
     for (int other : m_transformLayers)
         selected = selected || l == other || (other >= 0 && other < scene.layers.size() && scene.isAncestor(other, l));
     bool const highlight = selected && m_tool == Transform && !m_bboxSelection && !m_playing && !m_drawingView && !m_backlight && !outlined;
+    // Inside a group that would put its layers together but is being worked in: its fade, at least, on each of them.
+    double groupFade = 1.0;
+    for (int guard = 0, up = scene.parentIndex(l); up >= 0 && guard < 256; ++guard, up = scene.parentIndex(up))
+        if (scene.compositesGroup(up, m_frame))
+            groupFade *= std::clamp(scene.layers[up].opacity * scene.poseOf(up, m_frame).opacity, 0.0, 1.0);
     auto paintArtwork = [&](Drawing const& art, double opacity, bool everySheet) {
+        opacity *= groupFade;
         if (m_strokesWash && l == m_layer && !m_playing)
             opacity *= 0.3;
         if (!highlight) {

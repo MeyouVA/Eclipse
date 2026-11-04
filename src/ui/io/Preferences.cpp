@@ -122,6 +122,7 @@ void MainWindow::applyPreferences()
     Scene::setReplacementColour(recovery ? QColor() : s.value(QStringLiteral("prefs/replacementColour"), QColor(255, 0, 0)).value<QColor>());
     Scene::setPasteColours(s.value(QStringLiteral("prefs/pasteColours"), 0).toInt());
     Scene::setPasteNewDrawings(s.value(QStringLiteral("prefs/pasteNewDrawings"), true).toBool());
+    Scene::setPasteSymbolsIfMissing(s.value(QStringLiteral("prefs/pasteSymbolsIfMissing"), false).toBool());
     m_palette->setElementPalettesShown(s.value(QStringLiteral("prefs/advancedPalettes"), true).toBool());
     m_palette->setListBackground(s.value(QStringLiteral("prefs/paletteBackground"), QColor()).value<QColor>());
     m_palette->setSwatchGrid(s.value(QStringLiteral("colour/grid"), false).toBool());

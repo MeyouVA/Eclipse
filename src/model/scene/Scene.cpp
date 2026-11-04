@@ -106,6 +106,27 @@ bool Scene::enabled(int layer) const
     return true;
 }
 
+bool Scene::compositesGroup(int layer, int frame) const
+{
+    if (layer < 0 || layer >= layers.size() || layers[layer].kind != Layer::Group)
+        return false;
+    Layer const& group = layers[layer];
+    if (group.blend != Layer::BlendNormal || group.opacity * poseOf(layer, frame).opacity < 1.0 - 1e-9)
+        return true;
+    for (Effect const& e : group.effects)
+        if (e.enabled)
+            return true;
+    return false;
+}
+
+int Scene::compositeGroupOf(int layer, int frame) const
+{
+    for (int guard = 0, l = parentIndex(layer); l >= 0 && guard < 256; ++guard, l = parentIndex(l))
+        if (compositesGroup(l, frame))
+            return l;
+    return -1;
+}
+
 bool Scene::shows(int layer) const
 {
     if (!enabled(layer))
