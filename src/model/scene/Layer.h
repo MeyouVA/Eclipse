@@ -5,6 +5,7 @@
 
 #include <QPointF>
 #include <QPolygonF>
+#include <QRectF>
 #include <QString>
 #include <QVector>
 
@@ -105,6 +106,31 @@ struct ChainScale {
         return leftStart == 1.0 && leftEnd == 1.0 && (uniform || (rightStart == 1.0 && rightEnd == 1.0)) && waveLeft == 0.0
                && (waveSameAsLeft || waveRight == 0.0) && !curved && offsetScalingLeft == 0.0 && (uniform || offsetScalingRight == 0.0);
     }
+};
+
+// Point deformers: control points at rest that the drawing follows as they are moved (Pose::handles: how far each has moved).
+// Lattice (Free Form Deformer): a grid over `area`, the drawing inside moved straight between its points.  Mesh: the same grid,
+// smoothly (Mesh Warp).  Weighted: points - and lines and curves of points (one `group` a line or curve) - each pulling the
+// drawing by how near it is (Weighted Deform).  Rigid: points that move the drawing as rigidly as they can (Rigid Point Deform).
+struct PointDeformer {
+    enum Kind { None, Lattice, Mesh, Weighted, Rigid };
+    enum CurveType { Straight, CatmullRom, CubicBezier };
+    int kind = None;
+    int cols = 2, rows = 2;              // a lattice's or mesh's cells across and down
+    QRectF area;                         // the region of interest a lattice or mesh covers
+    QVector<QPointF> points;             // at rest (a grid: (cols + 1) * (rows + 1), row by row)
+    QVector<int> groups;                 // weighted: the line or curve each point is part of (points alone: groups of one)
+    int curveType = CatmullRom;
+    double minDistance = 0.0;            // nearer than this a handle pulls fully
+    double maxDistance = 0.0;            // farther than this it does not pull (0: no limit)
+    double blendDistance = 50.0;         // how far its pull takes to halve past the minimum distance
+    double preBlend = 2.0;               // weights raised to this before they are shared out (higher: each nearer one wins more)
+    double postBlend = 1.0;              // 1: the drawing moves fully with the handles; 0: only as near to them as it is
+    int pointsToConsider = 0;            // only the nearest so many handles (0: all)
+    bool individual = true;              // Allow Individual Transformation (off: the handles move together, by their mean)
+    bool operator==(PointDeformer const&) const = default;
+    bool any() const { return kind != None && !points.isEmpty(); }
+    int groupOf(int i) const { return i < groups.size() ? groups[i] : i; }
 };
 
 // A value of a layer's pose (Driver::Value) that takes a function column's value instead of its keyframes'.
@@ -353,6 +379,7 @@ struct Layer {
     QVector<BoneInfluence> influences;
     BoneInfluence influenceOf(int bone) const { return bone >= 0 && bone < influences.size() ? influences[bone] : BoneInfluence(); }
     ChainScale chainScale;
+    PointDeformer pointDeformer;
     // Pencil lines deformed: Quality (0 Low .. 3 Very High: how finely they are followed), their thickness kept as drawn
     // or stretched with the drawing, smoothed (passes), and how far a point may stray when the line is simplified again.
     // Point Kinematic Output: a peg that follows points of its parent's deformed drawing (trackers, in the parent's coordinates

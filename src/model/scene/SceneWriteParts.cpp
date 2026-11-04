@@ -513,6 +513,14 @@ if (!k.pose.fx.isEmpty()) {
 }
 if (k.pose.deform != 1.0)
     key["deform"] = k.pose.deform;
+if (!k.pose.handles.isEmpty()) {
+    QJsonArray handles;
+    for (QPointF const& h : k.pose.handles) {
+        handles.append(h.x());
+        handles.append(h.y());
+    }
+    key["handles"] = handles;
+}
 if (!k.pose.bend.isEmpty()) {
     QJsonArray bend;
     for (double b : k.pose.bend)
@@ -845,6 +853,22 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         }
         layerObject["trackers"] = points;
         layerObject["trackerSampling"] = layer.trackerSampling;
+    }
+    if (layer.pointDeformer.any()) {
+        PointDeformer const& d = layer.pointDeformer;
+        QJsonArray points, groups;
+        for (QPointF const& at : d.points) {
+            points.append(at.x());
+            points.append(at.y());
+        }
+        for (int g : d.groups)
+            groups.append(g);
+        layerObject["pointDeformer"] = QJsonObject{{"kind", d.kind}, {"cols", d.cols}, {"rows", d.rows},
+                                                   {"area", QJsonArray{d.area.x(), d.area.y(), d.area.width(), d.area.height()}},
+                                                   {"points", points}, {"groups", groups}, {"curveType", d.curveType},
+                                                   {"min", d.minDistance}, {"max", d.maxDistance}, {"blend", d.blendDistance},
+                                                   {"pre", d.preBlend}, {"post", d.postBlend}, {"consider", d.pointsToConsider},
+                                                   {"individual", d.individual}};
     }
     if (layer.lineDeformQuality != 1)
         layerObject["lineDeformQuality"] = layer.lineDeformQuality;

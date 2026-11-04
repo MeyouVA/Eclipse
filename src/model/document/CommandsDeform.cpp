@@ -182,3 +182,23 @@ int Document::convertToNewDrawingWithChain(int layer, int frame, QString* error)
         return fail(tr("The conversion failed to create the new pose."));
     return at;
 }
+
+void Document::setPointDeformer(int layer, PointDeformer const& deformer, QString const& text, int removed)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].pointDeformer == deformer)
+        return;
+    apply(text, [&](Scene& s) {
+        Layer& l = s.layers[layer];
+        bool const reshaped = l.pointDeformer.kind != deformer.kind || l.pointDeformer.cols != deformer.cols || l.pointDeformer.rows != deformer.rows
+                              || l.pointDeformer.area != deformer.area;
+        l.pointDeformer = deformer;
+        for (Keyframe& k : l.keys) {
+            if (reshaped || !deformer.any())
+                k.pose.handles.clear();      // (another grid: the moves of the old one mean nothing to it)
+            else if (removed >= 0 && removed < k.pose.handles.size())
+                k.pose.handles.removeAt(removed);
+            if (k.pose.handles.size() > deformer.points.size())
+                k.pose.handles.resize(deformer.points.size());
+        }
+    });
+}

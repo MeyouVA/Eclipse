@@ -44,6 +44,56 @@ void Canvas::riggingDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers mod
         update();
         return;
     }
+    if (m_rigMode == RigPoints) {
+        // Point deformer: a click adds a weighted point (Shift: on to the last one's line or curve); a point is dragged where
+        // it rests; Alt-click takes one away.  A lattice or mesh is made from the menu, and its grid stays a grid here.
+        Layer const& layer = scene.layers[m_layer];
+        PointDeformer d = layer.pointDeformer;
+        int const at = handleAt(d.points, widgetPos);
+        bool const grid = d.kind == PointDeformer::Lattice || d.kind == PointDeformer::Mesh;
+        if (at >= 0 && (modifiers & Qt::AltModifier)) {
+            if (grid) {
+                emit message(tr("A lattice or mesh keeps all its points: change its size in Point Deformer Settings, or remove it."));
+                return;
+            }
+            d.points.removeAt(at);
+            if (at < d.groups.size())
+                d.groups.removeAt(at);
+            if (d.points.isEmpty())
+                d = PointDeformer();
+            m_document->setPointDeformer(m_layer, d, tr("Delete Cage and Bones for Selected Vertex"), at);
+            return;
+        }
+        if (at >= 0) {
+            if (grid) {
+                emit message(tr("Pull the points of a lattice or mesh with the Transform tool; its region of interest is set in Point Deformer Settings."));
+                return;
+            }
+            m_handleIndex = at;
+            m_dragNow = d.points[at];
+            m_drag = DragHandleRest;
+            return;
+        }
+        if (grid) {
+            emit message(tr("This layer has a lattice or mesh: remove it (Rigging > Deformation) to place weighted points."));
+            return;
+        }
+        if (d.kind == PointDeformer::None)
+            d.kind = PointDeformer::Weighted;
+        while (d.groups.size() < d.points.size())
+            d.groups.push_back(int(d.groups.size()));
+        int group = 0;
+        for (int g : std::as_const(d.groups))
+            group = std::max(group, g + 1);
+        if ((modifiers & Qt::ShiftModifier) && !d.groups.isEmpty())
+            group = d.groups.last();
+        d.points.push_back(p);
+        d.groups.push_back(group);
+        m_document->setPointDeformer(m_layer, d, d.points.size() == 1 ? tr("Weighted Point") : (modifiers & Qt::ShiftModifier) ? tr("Weighted Line") : tr("Weighted Point"));
+        if (d.points.size() == 1)
+            emit message(tr("Click to place more points (Shift: a line or curve on from the last); pull them with the Transform tool to bend the drawing."));
+        return;
+    }
     if (m_rigMode != RigBones) {
         Layer const& layer = scene.layers[m_layer];
         int const at = warpAt(layer.warp, widgetPos);
@@ -538,4 +588,71 @@ void Canvas::alsoInOtherLayers(QRectF const& region, QTransform const* transform
             m_document->setDrawing(l, m_frame, whole, text);
     }
     m_committing = false;
+}
+
+int Canvas::handleAt(QVector<QPointF> const& points, QPointF widgetPos) const
+{
+    QTransform const toWidget = layerViewTransform();
+    for (int i = int(points.size()) - 1; i >= 0; --i) {
+        QPointF const w = toWidget.map(points[i]);
+        if (std::abs(w.x() - widgetPos.x()) <= 7 && std::abs(w.y() - widgetPos.y()) <= 7)
+            return i;
+    }
+    return -1;
+}
+
+void Canvas::paintHandles(QPainter& painter, PointDeformer const& d, QVector<QPointF> const& points, int picked)
+{
+    if (points.isEmpty())
+        return;
+    QTransform const toWidget = layerViewTransform();
+    painter.save();
+    painter.resetTransform();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setBrush(Qt::NoBrush);
+    QColor const line(220, 120, 255), dark(30, 20, 40);
+    auto stroke = [&](QPolygonF const& run) {
+        QPolygonF const shown = toWidget.map(run);
+        painter.setPen(QPen(dark, 3.0));
+        painter.drawPolyline(shown);
+        painter.setPen(QPen(line, 1.4));
+        painter.drawPolyline(shown);
+    };
+    if (d.kind == PointDeformer::Lattice || d.kind == PointDeformer::Mesh) {
+        // The grid's rows and columns, straight (lattice) or as the mesh bends them.
+        auto at = [&](int x, int y) { return points.value(y * (d.cols + 1) + x); };
+        for (int y = 0; y <= d.rows; ++y) {
+            QPolygonF row;
+            for (int x = 0; x <= d.cols; ++x)
+                row << at(x, y);
+            stroke(row);
+        }
+        for (int x = 0; x <= d.cols; ++x) {
+            QPolygonF column;
+            for (int y = 0; y <= d.rows; ++y)
+                column << at(x, y);
+            stroke(column);
+        }
+    } else if (d.kind == PointDeformer::Weighted) {
+        QVector<int> seen;
+        for (int i = 0; i < points.size(); ++i) {
+            int const g = d.groupOf(i);
+            if (seen.contains(g))
+                continue;
+            seen.push_back(g);
+            QPolygonF const run = Deform::handleLine(d, points, g);
+            if (run.size() >= 2)
+                stroke(run);
+        }
+    }
+    for (int i = 0; i < points.size(); ++i) {
+        painter.setPen(QPen(dark, 1));
+        painter.setBrush(i == picked ? QColor(Qt::white) : line);
+        QPointF const c = toWidget.map(points[i]);
+        if (d.kind == PointDeformer::Rigid)
+            painter.drawRect(QRectF(c - QPointF(5, 5), QSizeF(10, 10)));
+        else
+            painter.drawEllipse(c, 5.0, 5.0);
+    }
+    painter.restore();
 }

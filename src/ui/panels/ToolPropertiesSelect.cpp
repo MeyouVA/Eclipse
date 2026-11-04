@@ -37,7 +37,7 @@ void ToolProperties::addRiggingRows()
 {
     m_rigMode = new QComboBox(this);
     m_rigMode->setObjectName(QStringLiteral("RigMode"));
-    m_rigMode->addItems({tr("Bone"), tr("Curve"), tr("Envelope"), tr("Weights")});
+    m_rigMode->addItems({tr("Bone"), tr("Curve"), tr("Envelope"), tr("Weights"), tr("Points")});
     m_rigMode->setToolTip(tr("Bone: a chain of bones the drawing bends at.\n"
                              "Curve: a curve the drawing bends along.\n"
                              "Envelope: an outline round the drawing that pulls it about.\n"

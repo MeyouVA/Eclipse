@@ -121,6 +121,12 @@ QPointF shownPoint(Layer const& layer, Pose const& pose, QPointF p)
     if (pose.deform <= 0.0)
         return p;
     QPointF at = p;
+    if (isHandled(layer.pointDeformer, pose.handles)) {
+        QVector<QPointF> handles = pose.handles;
+        for (QPointF& h : handles)
+            h *= std::min(1.0, pose.deform);
+        at = handlePoint(layer.pointDeformer, handles, at);
+    }
     if (isWarped(layer.warp, layer.warpClosed, pose.warp)) {
         QVector<QPointF> moved = pose.warp;
         for (QPointF& m : moved)

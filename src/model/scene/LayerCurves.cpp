@@ -19,7 +19,7 @@ void takeValues(Pose& into, Pose const& from, int bits)
 // Nothing of the rest of the pose (the drawing's points, deformers, effects) that matters is set by this keyframe.
 bool restIsPlain(Pose const& pose)
 {
-    return pose.quad.isEmpty() && pose.bend.isEmpty() && pose.warp.isEmpty() && pose.fx.isEmpty() && pose.points.isEmpty() && pose.deform == 1.0 && pose.rotX == 0.0
+    return pose.quad.isEmpty() && pose.bend.isEmpty() && pose.warp.isEmpty() && pose.fx.isEmpty() && pose.points.isEmpty() && pose.deform == 1.0 && pose.handles.isEmpty() && pose.rotX == 0.0
            && pose.rotY == 0.0;
 }
 

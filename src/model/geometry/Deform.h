@@ -26,6 +26,17 @@ struct ChainOptions {
     double fitError = 0.0;
 };
 ChainOptions optionsOf(Layer const& layer, Pose const& pose);
+// ---- point deformers (lattice, mesh warp, weighted, rigid) -----------------------------------------------------------
+// A regular grid of control points over `area` (Create Free Form Deformer / Create Mesh Warp).
+PointDeformer gridDeformer(int kind, QRectF area, int cols, int rows);
+// Whether `moved` moves any point; the points where `moved` puts them; one point of the drawing; the drawing.
+bool isHandled(PointDeformer const& d, QVector<QPointF> const& moved);
+QVector<QPointF> posedHandles(PointDeformer const& d, QVector<QPointF> const& moved);
+QPointF handlePoint(PointDeformer const& d, QVector<QPointF> const& moved, QPointF p);
+Drawing handled(Drawing const& drawing, PointDeformer const& d, QVector<QPointF> const& moved);
+// The places along a weighted line or curve (its points in order, as the curve type joins them), for drawing and nearness.
+QPolygonF handleLine(PointDeformer const& d, QVector<QPointF> const& points, int group, int perSegment = 12);
+
 // A point of the layer's drawing (its coordinates at rest) where its curve deformer and bones put it under `pose`.
 QPointF shownPoint(Layer const& layer, Pose const& pose, QPointF p);
 // Point Kinematic Output: what moves the trackers from where they are at rest on `parent` to where its deformers put them.

@@ -66,7 +66,7 @@ struct CanvasTypes {
     };
     // The Brush on a bitmap layer: the shape of its tip, pressed down again and again along the stroke.
     enum BitmapTip { BitmapRound, BitmapSquare, BitmapChisel, BitmapSpray, BitmapImage };
-    enum RigMode { RigBones, RigCurve, RigEnvelope, RigWeights };
+    enum RigMode { RigBones, RigCurve, RigEnvelope, RigWeights, RigPoints };
     enum ViewMode { ViewNormal, ViewRender, ViewMatte, ViewDepth };
     // The Transform tool: its options and the preferences that say how it looks and works.
     struct TransformOptions {
@@ -131,6 +131,6 @@ struct CanvasTypes {
     // interaction
     enum Drag {
         DragNone, DragDraw, DragErase, DragPan, DragMarquee, DragMove, DragScale, DragRotate,
-        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragStaticCamera, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom, DragTrace, DragLayerPick, DragControlBox
+        DragPoseMove, DragPoseScale, DragPoseRotate, DragPivot, DragShape, DragPoint, DragBone, DragJoint, DragIK, DragQuad, DragRotateView, DragHandle, DragPaint, DragPointMarquee, DragPolyHandle, DragWarpRest, DragWarp, DragGradient, DragGuide, DragThickness, DragInk, DragSmooth, DragPoseSkew, DragEnvelope, DragBoneIK, DragHint, DragControlPoint, DragRepaint, DragSplineOffset, DragStaticCamera, DragPoseTurn, DragWeights, DragRetouch, DragCeBox, DragSegment, DragZoom, DragTrace, DragLayerPick, DragControlBox, DragHandleRest, DragHandlePose
     };
 };

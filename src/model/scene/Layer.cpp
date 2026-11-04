@@ -158,6 +158,11 @@ Pose Pose::lerp(Pose const& a, Pose const& b, double t)
     p.fov = a.fov > 0.0 && b.fov > 0.0 ? a.fov + (b.fov - a.fov) * t : std::max(a.fov, b.fov);
     p.opacity = a.opacity + (b.opacity - a.opacity) * t;
     p.deform = a.deform + (b.deform - a.deform) * t;
+    for (int i = 0; i < std::max(a.handles.size(), b.handles.size()); ++i) {
+        QPointF const from = i < a.handles.size() ? a.handles[i] : QPointF();
+        QPointF const to = i < b.handles.size() ? b.handles[i] : QPointF();
+        p.handles.push_back(from + (to - from) * t);
+    }
     // An amount only one of the two keyframes has is held, not faded from nothing.
     for (int i = 0; i < std::max(a.fx.size(), b.fx.size()); ++i) {
         double const from = i < a.fx.size() ? a.fx[i] : b.fx[i];

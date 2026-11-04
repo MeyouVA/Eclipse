@@ -606,6 +606,11 @@ public slots:
     // A deformation for each drawing: Set Transformation (its own chain), Default Transformation (the layer's), Convert to New
     // Drawing and Add Deformation Chain, and Transformation Names (the drawings that have one).
     void onActionSetTransformation();
+    // Point deformers: Create Free Form Deformer ("lattice") / Create Mesh Warp ("mesh"), their settings, and removing them.
+    void onActionCreateLattice(QString const& which);
+    bool createGridDeformer(int layer, int kind, int cols, int rows);
+    void onActionPointDeformerSettings();
+    void onActionRemovePointDeformer();
     void onActionDefaultTransformation();
     void onActionConvertAddChain();
     void onActionTransformationNames();

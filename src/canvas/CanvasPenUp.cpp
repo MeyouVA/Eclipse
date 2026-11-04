@@ -393,7 +393,14 @@ void Canvas::penUp()
     } else if (drag == DragWarpRest) {
         if (penUpWarpRest(drag))
             return;
-    } else if (drag == DragPoseSkew || drag == DragPoseMove || drag == DragPoseScale || drag == DragPoseRotate || drag == DragBone || drag == DragIK || drag == DragWarp || drag == DragPoseTurn) {
+    } else if (drag == DragHandleRest) {
+        m_drag = DragNone;
+        PointDeformer d = m_document->scene().layers[m_layer].pointDeformer;
+        if (m_handleIndex >= 0 && m_handleIndex < d.points.size()) {
+            d.points[m_handleIndex] = m_dragNow;
+            m_document->setPointDeformer(m_layer, d, tr("Move Deformation Point"));
+        }
+    } else if (drag == DragPoseSkew || drag == DragPoseMove || drag == DragPoseScale || drag == DragPoseRotate || drag == DragBone || drag == DragIK || drag == DragWarp || drag == DragPoseTurn || drag == DragHandlePose) {
         if (penUpPose(drag))
             return;
     } else if (drag == DragPivot) {

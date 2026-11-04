@@ -224,6 +224,14 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
             paintBones(painter, joints, m_weightBone + 1 < joints.size() ? m_weightBone + 1 : -1);
             return true;
         }
+        if (m_rigMode == RigPoints) {
+            PointDeformer const& d = scene.layers[m_layer].pointDeformer;
+            QVector<QPointF> points = d.points;
+            if (m_drag == DragHandleRest && m_handleIndex >= 0 && m_handleIndex < points.size())
+                points[m_handleIndex] = m_dragNow;
+            paintHandles(painter, d, points, m_drag == DragHandleRest ? m_handleIndex : -1);
+            return true;
+        }
         if (m_rigMode != RigBones) {
             paintWarp(painter, warpRestDragged(), scene.layers[m_layer].warpClosed, m_drag == DragWarpRest ? m_warpIndex : -1);
             return true;

@@ -359,6 +359,7 @@ protected:
     int m_bone = -1;
     // deformers: the point or handle being dragged (its place in Layer::warp)
     int m_warpIndex = -1;
+    int m_handleIndex = -1;     // the point deformer's point in hand
     RigMode m_rigMode = RigBones;
     int m_weightBone = 0;
     double m_weightRadius = 30.0;

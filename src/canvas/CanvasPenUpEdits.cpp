@@ -320,7 +320,10 @@ bool Canvas::penUpPose(Drag drag)
         emit message(tr("Edit the linked column's expression or path in the Function Editor to change this value."));
         return false;
     }
-    QString const text = drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
+    PointDeformer const& handles = m_document->scene().layers[m_layer].pointDeformer;
+    QString const text = drag == DragHandlePose ? (handles.kind == PointDeformer::Mesh ? tr("Bezier Mesh move control point")
+                                                   : handles.kind == PointDeformer::Lattice ? tr("Move Lattice Point") : tr("Move Deformation Point"))
+                         : drag == DragWarp ? tr("Reshape Deformer") : drag == DragIK ? tr("Inverse Kinematics") : drag == DragBone ? tr("Turn Bone")
                          : drag == DragPoseSkew ? tr("Skew Layer") : drag == DragPoseMove ? tr("Move Layer") : drag == DragPoseScale ? tr("Scale Layer")
                          : drag == DragPoseTurn ? tr("Turn Layer in Space") : tr("Rotate Layer");
     m_document->beginMacro(text);

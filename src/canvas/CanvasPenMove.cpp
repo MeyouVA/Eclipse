@@ -57,7 +57,7 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
         widgetPos = guided(widgetPos);
     else if (m_drag == DragShape && m_tool == Line)
         widgetPos = guidedFrom(layerViewTransform().map(m_dragStart), widgetPos);
-    QPointF const p = posing() || m_drag == DragPivot || m_drag == DragPan || m_drag == DragJoint || m_drag == DragWeights || m_drag == DragWarpRest || m_drag == DragQuad || m_drag == DragRotateView ? QPointF() : toLayer(widgetPos);
+    QPointF const p = posing() || m_drag == DragPivot || m_drag == DragPan || m_drag == DragJoint || m_drag == DragWeights || m_drag == DragWarpRest || m_drag == DragHandleRest || m_drag == DragQuad || m_drag == DragRotateView ? QPointF() : toLayer(widgetPos);
     switch (m_drag) {
     case DragPoseMove: {
         // The offset is in the coordinates of the parent.
@@ -213,9 +213,20 @@ void Canvas::penMove(QPointF widgetPos, float pressure, Qt::KeyboardModifiers mo
     }
     case DragJoint:
     case DragWarpRest:
+    case DragHandleRest:
         m_dragNow = toLayer(widgetPos);
         update();
         break;
+    case DragHandlePose: {
+        Layer const& layer = m_document->scene().layers[m_layer];
+        if (m_handleIndex < 0 || m_handleIndex >= layer.pointDeformer.points.size())
+            break;
+        if (m_dragPose.handles.size() < layer.pointDeformer.points.size())
+            m_dragPose.handles.resize(layer.pointDeformer.points.size());
+        m_dragPose.handles[m_handleIndex] = m_world0.inverted().map(toScene(widgetPos)) - layer.pointDeformer.points[m_handleIndex];
+        update();
+        break;
+    }
     case DragWarp: {
         // The point goes where the pointer is; a handle too, measured from its point as the pose has it.
         Layer const& layer = m_document->scene().layers[m_layer];

@@ -291,6 +291,8 @@ public:
     // Convert to New Drawing and Add Deformation Chain: the drawing as bent on `frame` made a new drawing, exposed from there,
     // whose own chain at rest is the chain as posed there.  Its index, or -1 (`error`).
     int convertToNewDrawingWithChain(int layer, int frame, QString* error = nullptr);
+    // The layer's point deformer replaced (`removed`: the point taken out, whose moves the keyframes lose too).
+    void setPointDeformer(int layer, PointDeformer const& deformer, QString const& text, int removed = -1);
     void setTrackers(int layer, QVector<QPointF> const& trackers, int sampling);
     void setActiveCamera(int layer);
     // The Camera view shows that layer and what hangs under it (-1: the whole scene).

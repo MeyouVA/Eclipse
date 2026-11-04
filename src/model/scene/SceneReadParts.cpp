@@ -588,6 +588,31 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
             layer.trackers.push_back(QPointF(points[i].toDouble(), points[i + 1].toDouble()));
         layer.trackerSampling = std::clamp(lo["trackerSampling"].toInt(0), 0, 3);
     }
+    if (lo.contains("pointDeformer")) {
+        QJsonObject const o = lo["pointDeformer"].toObject();
+        PointDeformer& d = layer.pointDeformer;
+        d.kind = std::clamp(o["kind"].toInt(0), 0, 4);
+        d.cols = std::clamp(o["cols"].toInt(2), 1, 64);
+        d.rows = std::clamp(o["rows"].toInt(2), 1, 64);
+        QJsonArray const area = o["area"].toArray();
+        if (area.size() == 4)
+            d.area = QRectF(area[0].toDouble(), area[1].toDouble(), area[2].toDouble(), area[3].toDouble());
+        QJsonArray const points = o["points"].toArray();
+        for (int i = 0; i + 1 < points.size(); i += 2)
+            d.points.push_back(QPointF(points[i].toDouble(), points[i + 1].toDouble()));
+        for (QJsonValue const& g : o["groups"].toArray())
+            d.groups.push_back(g.toInt());
+        d.curveType = std::clamp(o["curveType"].toInt(1), 0, 2);
+        d.minDistance = std::max(0.0, o["min"].toDouble(0.0));
+        d.maxDistance = std::max(0.0, o["max"].toDouble(0.0));
+        d.blendDistance = std::max(0.01, o["blend"].toDouble(50.0));
+        d.preBlend = std::clamp(o["pre"].toDouble(2.0), 0.1, 20.0);
+        d.postBlend = std::clamp(o["post"].toDouble(1.0), 0.0, 1.0);
+        d.pointsToConsider = std::max(0, o["consider"].toInt(0));
+        d.individual = o["individual"].toBool(true);
+        if ((d.kind == PointDeformer::Lattice || d.kind == PointDeformer::Mesh) && d.points.size() != (d.cols + 1) * (d.rows + 1))
+            d = PointDeformer();    // (a grid that does not add up is not kept)
+    }
     layer.lineDeformQuality = std::clamp(lo["lineDeformQuality"].toInt(1), 0, 3);
     layer.linePreserveThickness = lo["linePreserveThickness"].toBool(true);
     layer.lineDeformSmooth = std::clamp(lo["lineDeformSmooth"].toInt(0), 0, 10);
@@ -819,6 +844,11 @@ void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool ex
         for (QJsonValue const& b : ko["bend"].toArray())
             pose.bend.push_back(b.toDouble());
         pose.deform = std::clamp(ko["deform"].toDouble(1.0), 0.0, 1.0);
+        {
+            QJsonArray const handles = ko["handles"].toArray();
+            for (int i = 0; i + 1 < handles.size(); i += 2)
+                pose.handles.push_back(QPointF(handles[i].toDouble(), handles[i + 1].toDouble()));
+        }
         {
             QJsonArray const pulled = ko["quad"].toArray();
             for (int i = 0; i + 1 < pulled.size() && i < 8; i += 2)

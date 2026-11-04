@@ -205,6 +205,15 @@ void Canvas::transformDown(QPointF widgetPos, Qt::KeyboardModifiers modifiers)
             }
         }
     }
+    // A point of the point deformer: pull it, and the artwork follows.
+    if (!o.hideControls && current.pointDeformer.any()) {
+        int const at = handleAt(Deform::posedHandles(current.pointDeformer, m_dragPose.handles), widgetPos);
+        if (at >= 0) {
+            m_handleIndex = at;
+            m_drag = DragHandlePose;
+            return;
+        }
+    }
     // A point or a handle of the deformer: pull it, and the artwork is reshaped.
     if (!o.hideControls && current.hasWarp()) {
         int const at = warpAt(Deform::posedWarp(current.warp, m_dragPose.warp), widgetPos);
@@ -463,6 +472,9 @@ void Canvas::paintTransformAids(QPainter& painter)
 
     if (scene.layers[m_layer].bonesAt(m_frame).size() >= 2)
         paintBones(painter, Deform::posedJoints(scene.layers[m_layer].bonesAt(m_frame), poseOf(m_layer, m_frame).bend), m_drag == DragBone ? m_bone + 1 : -1);
+    if (scene.layers[m_layer].pointDeformer.any())
+        paintHandles(painter, scene.layers[m_layer].pointDeformer, Deform::posedHandles(scene.layers[m_layer].pointDeformer, poseOf(m_layer, m_frame).handles),
+                     m_drag == DragHandlePose ? m_handleIndex : -1);
     if (scene.layers[m_layer].hasWarp())
         paintWarp(painter, Deform::posedWarp(scene.layers[m_layer].warp, poseOf(m_layer, m_frame).warp), scene.layers[m_layer].warpClosed,
                   m_drag == DragWarp ? m_warpIndex : -1);

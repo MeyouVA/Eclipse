@@ -904,7 +904,10 @@ private:
     QTransform layerViewTransform() const;
     // Where the pointer is in the coordinates of the current layer: what the drawing tools use.
     QPointF toLayer(QPointF widgetPos) const;
-    bool posing() const { return m_drag == DragPoseSkew || m_drag == DragPoseMove || m_drag == DragPoseScale || m_drag == DragPoseRotate || m_drag == DragBone || m_drag == DragIK || m_drag == DragWarp || m_drag == DragPoseTurn; }
+    bool posing() const { return m_drag == DragPoseSkew || m_drag == DragPoseMove || m_drag == DragPoseScale || m_drag == DragPoseRotate || m_drag == DragBone || m_drag == DragIK || m_drag == DragWarp || m_drag == DragPoseTurn || m_drag == DragHandlePose; }
+    // The point deformer's points (the place in widget pixels of each, as given), and the one at `widgetPos` (-1: none).
+    int handleAt(QVector<QPointF> const& points, QPointF widgetPos) const;
+    void paintHandles(QPainter& painter, PointDeformer const& d, QVector<QPointF> const& points, int picked);
     // The pose of a layer on a frame, with the one being dragged in place of the stored one.
     Pose poseOf(int layer, int frame) const;
     Drawing shown(int layer, int frame, Drawing const& drawing) const;

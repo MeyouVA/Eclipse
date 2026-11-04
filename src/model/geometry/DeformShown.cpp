@@ -158,18 +158,26 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose, int 
     QVector<QPointF> const& chain = drawing.rig.size() >= 2 ? drawing.rig : layer.bones;
     bool const warped = isWarped(layer.warp, layer.warpClosed, pose.warp) && pose.deform > 0.0;
     bool const bent = (isBent(chain, pose.bend) || (!layer.chainScale.plain() && chain.size() >= 2)) && pose.deform > 0.0;
-    if (!warped && !bent)
+    bool const pointed = isHandled(layer.pointDeformer, pose.handles) && pose.deform > 0.0;
+    if (!warped && !bent && !pointed)
         return drawing;
-    // (Enable Deformation part way: the curve deformer's points moved part of the way too.)
-    QVector<QPointF> moved = pose.warp;
-    if (pose.deform < 1.0)
+    // (Enable Deformation part way: the deformers' points moved part of the way too.)
+    QVector<QPointF> moved = pose.warp, handles = pose.handles;
+    if (pose.deform < 1.0) {
         for (QPointF& m : moved)
             m *= pose.deform;
+        for (QPointF& h : handles)
+            h *= pose.deform;
+    }
+    // First the point deformer, then the curve deformer, then the bones.
+    Drawing const first = pointed ? handled(drawing, layer.pointDeformer, handles) : drawing;
+    if (!warped && !bent)
+        return first;
     if (!bent)
-        return warp(drawing, layer.warp, layer.warpClosed, moved);
+        return warp(first, layer.warp, layer.warpClosed, moved);
     if (!warped)
-        return deform(drawing, chain, pose.bend, layer.jointSmoothness, layer.skin, &options);
-    return deform(warp(drawing, layer.warp, layer.warpClosed, moved), chain, pose.bend, layer.jointSmoothness, layer.skin, &options);
+        return deform(first, chain, pose.bend, layer.jointSmoothness, layer.skin, &options);
+    return deform(warp(first, layer.warp, layer.warpClosed, moved), chain, pose.bend, layer.jointSmoothness, layer.skin, &options);
 }
 
 }  // namespace Deform
