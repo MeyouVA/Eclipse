@@ -10,7 +10,9 @@
 
 #include <QHash>
 #include <QImage>
+#include <QSet>
 #include <QWidget>
+#include <memory>
 
 #include "model/scene/Scene.h"
 
@@ -19,6 +21,7 @@ class QLineEdit;
 class QListWidget;
 class QListWidgetItem;
 class QSlider;
+class QLockFile;
 
 class ECLIPSE_UI_API LibraryView : public QWidget {
     Q_OBJECT
@@ -43,6 +46,12 @@ public:
     void setCurrentFolder(int index);
     bool setCurrentPath(QString const& folder);
     bool addSubFolder(QString const& name);
+    bool renameFolder(QString const& name);
+    bool deleteFolder(bool ask);
+    void refreshFolders();
+    bool setRightToModify(bool enabled,QString* error=nullptr);
+    bool rightToModify() const;
+    bool canModifyPath(QString const& path,QString* error=nullptr);
     QStringList shownFolders() const;
 
     // The templates of the current folder, as shown (after the search), and the one chosen.
@@ -63,6 +72,12 @@ public:
     // The template chosen gets another name (its file is renamed); false when the name will not do or is taken.
     bool renameCurrent(QString const& name);
     void setSearch(QString const& text);
+    void generateThumbnails();
+    void deleteThumbnails();
+    void setAutoThumbnails(bool enabled);
+
+protected:
+    bool eventFilter(QObject* watched,QEvent* event) override;
 
 signals:
     // Insert pressed, or a template double-clicked.
@@ -79,6 +94,10 @@ private:
     void showTemplate();
     void showFrame(int frame);
     void remember();
+    void setupManagement();
+    void showManagementMenu(bool folder,QPoint const& point);
+    QString rootFor(QString const& path) const;
+    static bool validEntryName(QString const& name);
 
     QStringList m_folders;
     QListWidget* m_folderList;
@@ -91,4 +110,7 @@ private:
     QString m_shownPath;
     QHash<QString, QImage> m_thumbnails;    // by path and time of the file
     int m_thumbnailPercent = 100;           // Preferences: how big the thumbnails are
+    QHash<QString,std::shared_ptr<QLockFile>> m_locks;
+    QSet<QString> m_readOnly;
+    bool m_forceThumbnails=false,m_suppressThumbnails=false;
 };

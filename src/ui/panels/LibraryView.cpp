@@ -281,19 +281,10 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     });
     // The right button on a folder: the same, and Refresh for what was changed outside the program.
     m_folderList->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(m_folderList, &QListWidget::customContextMenuRequested, this, [this, newFolderButton, removeFolderButton](QPoint const& pos) {
+    connect(m_folderList, &QListWidget::customContextMenuRequested, this, [this](QPoint const& pos) {
         if (QListWidgetItem* const item = m_folderList->itemAt(pos))
             m_folderList->setCurrentItem(item);
-        QMenu menu(this);
-        connect(menu.addAction(tr("New Folder...")), &QAction::triggered, newFolderButton, &QToolButton::click);
-        QAction* const refreshAll = menu.addAction(tr("Refresh"));
-        refreshAll->setShortcut(QKeySequence(Qt::Key_F5));
-        connect(refreshAll, &QAction::triggered, this, [this] { showFolders(); });
-        menu.addSeparator();
-        QAction* const take = menu.addAction(tr("Remove from the Library"));
-        take->setEnabled(m_folderList->currentItem() && m_folderList->currentItem()->data(Qt::UserRole + 1).toInt() >= 1);
-        connect(take, &QAction::triggered, removeFolderButton, &QToolButton::click);
-        menu.exec(m_folderList->viewport()->mapToGlobal(pos));
+        showManagementMenu(true,pos);
     });
     connect(newFolderButton, &QToolButton::clicked, this, [this] {
         bool ok = false;
@@ -307,8 +298,8 @@ LibraryView::LibraryView(QWidget* parent) : QWidget(parent)
     QStringList kept = QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("library/folders")).toStringList();
     kept.removeAll(defaultFolder());
     kept.prepend(defaultFolder());
-    m_folders = kept;
-    showFolders();
+    setupManagement();
+    setFolders(kept);
 }
 
 void LibraryView::remember()
@@ -330,8 +321,8 @@ void LibraryView::showFolders()
             item->setData(Qt::UserRole + 1, depth == 0 ? root : -1);
             if (depth >= 6)
                 return;     // deep enough for a library
-            for (QString const& inner : QDir(folder).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase))
-                list(QDir(folder).filePath(inner), root, depth + 1);
+            for (auto const& inner : QDir(folder).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDir::Name | QDir::IgnoreCase))
+                if(!inner.isJunction()) list(inner.absoluteFilePath(), root, depth + 1);
         };
         for (int i = 0; i < m_folders.size(); ++i)
             list(m_folders[i], i, 0);
@@ -346,7 +337,16 @@ void LibraryView::showFolders()
 
 void LibraryView::setFolders(QStringList const& folders)
 {
-    m_folders = folders;
+    m_locks.clear(); m_readOnly.clear();
+    m_folders.clear();
+    for(auto const& folder : folders) {
+        if(folder.trimmed().isEmpty()) continue;
+        QFileInfo const info(QDir(folder).absolutePath());
+        if(info.isRoot() || info.isSymLink() || info.isJunction() || (info.exists() && !info.isDir())) continue;
+        QString const absolute=info.absoluteFilePath(); bool overlap=false;
+        for(auto const& existing : m_folders) overlap=overlap || absolute.compare(existing,Qt::CaseInsensitive)==0 || absolute.startsWith(existing+QLatin1Char('/'),Qt::CaseInsensitive) || existing.startsWith(absolute+QLatin1Char('/'),Qt::CaseInsensitive);
+        if(!overlap) m_folders<<absolute;
+    }
     if (m_folders.isEmpty())
         m_folders << defaultFolder();
     showFolders();
@@ -354,9 +354,11 @@ void LibraryView::setFolders(QStringList const& folders)
 
 bool LibraryView::addFolder(QString const& folder)
 {
-    QString const clean = QDir::cleanPath(folder);
-    if (clean.isEmpty() || m_folders.contains(clean))
+    QString const clean = QDir(folder).absolutePath();
+    QFileInfo const info(clean);
+    if (folder.trimmed().isEmpty() || !info.isDir() || info.isRoot() || info.isSymLink() || info.isJunction() || m_folders.contains(clean,Qt::CaseInsensitive))
         return false;
+    for(auto const& existing : m_folders) if(clean.startsWith(existing+QLatin1Char('/'),Qt::CaseInsensitive) || existing.startsWith(clean+QLatin1Char('/'),Qt::CaseInsensitive)) return false;
     m_folders << clean;
     remember();
     showFolders();
@@ -367,7 +369,7 @@ void LibraryView::removeFolder(int index)
 {
     if (index < 1 || index >= m_folders.size())
         return;     // the first folder is the library itself
-    m_folders.removeAt(index);
+    m_locks.remove(m_folders[index]); m_readOnly.remove(m_folders[index]); m_folders.removeAt(index);
     remember();
     showFolders();
 }
@@ -406,11 +408,8 @@ QStringList LibraryView::shownFolders() const
 bool LibraryView::addSubFolder(QString const& name)
 {
     QString const clean = name.trimmed();
-    bool sound = !clean.isEmpty() && !clean.endsWith(QChar(0x2e));
-    for (QChar const c : clean)
-        sound = sound && !QStringLiteral("\\/:*?\"<>|").contains(c);
     QDir const here(currentFolder());
-    if (!sound || here.exists(clean) || !here.mkdir(clean))
+    if (!validEntryName(clean) || !canModifyPath(here.filePath(clean)) || here.exists(clean) || !here.mkdir(clean))
         return false;
     showFolders();
     setCurrentPath(here.filePath(clean));
@@ -426,6 +425,7 @@ void LibraryView::refresh()
 {
     QString const chosen = currentTemplate();
     QString const wanted = m_search->text().trimmed();
+    QSet<QString> activeThumbnails;
     {
         QSignalBlocker const block(m_items);
         m_items->clear();
@@ -458,42 +458,47 @@ void LibraryView::refresh()
                 continue;
             }
             // Its picture is made once for each version of the file.
-            QString const key = file.absoluteFilePath() + QLatin1Char('|') + QString::number(file.lastModified().toMSecsSinceEpoch());
+            QString const key = file.absoluteFilePath() + QLatin1Char('|') + QString::number(file.lastModified().toMSecsSinceEpoch()) + QLatin1Char('|') + QString::number(file.size()) + QLatin1Char('|') + QString::number(InterfaceColours::get("libraryThumbnailBackground").rgba());
+            activeThumbnails.insert(key);
             auto thumbnail = m_thumbnails.find(key);
-            if (thumbnail == m_thumbnails.end()) {
+            bool const generate=!m_suppressThumbnails && (m_forceThumbnails || settings().value(QStringLiteral("prefs/libraryAutoThumbnails"),true).toBool());
+            if (thumbnail == m_thumbnails.end() && generate) {
                 Scene scene;
                 QString error;
-                QImage image(m_items->iconSize(), QImage::Format_ARGB32_Premultiplied);
+                QSize const size(96*m_thumbnailPercent/100,54*m_thumbnailPercent/100);
+                QImage image(size, QImage::Format_ARGB32_Premultiplied);
                 image.fill(QColor(70, 40, 40));     // a file that cannot be read
                 if (Scene::load(file.absoluteFilePath(), scene, &error))
-                    image = picture(scene, firstDrawnFrame(scene), m_items->iconSize());
+                    image = picture(scene, firstDrawnFrame(scene), size);
                 thumbnail = m_thumbnails.insert(key, image);
             }
-            QListWidgetItem* const item = new QListWidgetItem(QIcon(QPixmap::fromImage(thumbnail.value())), file.completeBaseName(), m_items);
+            QListWidgetItem* const item = new QListWidgetItem(thumbnail==m_thumbnails.end()?QIcon():QIcon(QPixmap::fromImage(thumbnail.value())), file.completeBaseName(), m_items);
             item->setData(Qt::UserRole, file.absoluteFilePath());
             item->setToolTip(QDir::toNativeSeparators(file.absoluteFilePath()));
             if (file.absoluteFilePath() == chosen)
                 m_items->setCurrentItem(item);
         }
     }
+    for(auto it=m_thumbnails.begin();it!=m_thumbnails.end();) { if(!activeThumbnails.contains(it.key())) it=m_thumbnails.erase(it); else ++it; }
     setItemsView(settings().value(QStringLiteral("library/itemsView"), 0).toInt());
     showTemplate();
 }
 
 void LibraryView::setItemsView(int mode)
 {
-    mode = std::clamp(mode, 0, 2);
+    mode = std::clamp(mode, 0, 3);
     settings().setValue(QStringLiteral("library/itemsView"), mode);
     // (As big as Preferences say thumbnails are; half that in a list.)
     QSize const full(96 * m_thumbnailPercent / 100, 54 * m_thumbnailPercent / 100);
-    m_items->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
-    m_items->setIconSize(mode == 2 ? full / 2 : full);
-    m_items->setGridSize(mode == 2 ? QSize() : mode == 1 ? full + QSize(8, 8) : full + QSize(16, 28));
+    m_items->setViewMode(mode >= 2 ? QListView::ListMode : QListView::IconMode);
+    m_items->setIconSize(mode >= 2 ? full / 2 : full);
+    m_items->setGridSize(mode >= 2 ? QSize() : mode == 1 ? full + QSize(8, 8) : full + QSize(16, 28));
     for (int i = 0; i < m_items->count(); ++i) {
         QListWidgetItem* const item = m_items->item(i);
         if (!item->data(Qt::UserRole + 9).isValid())
             item->setData(Qt::UserRole + 9, item->text());
         item->setText(mode == 1 ? QString() : item->data(Qt::UserRole + 9).toString());
+        if(mode==3) { QFileInfo const info(item->data(Qt::UserRole).toString()); item->setText(item->text()+tr("\n%1 bytes — %2 — %3").arg(info.size()).arg(info.suffix().toUpper(),info.lastModified().toString(Qt::ISODate))); }
     }
 }
 
@@ -585,10 +590,7 @@ bool LibraryView::renameCurrent(QString const& name)
 {
     QString const path = currentTemplate();
     QString const clean = name.trimmed();
-    bool sound = !path.isEmpty() && !clean.isEmpty() && !clean.endsWith(QLatin1Char('.'));
-    for (QChar const c : clean)
-        sound = sound && !QStringLiteral("\\/:*?\"<>|").contains(c);
-    if (!sound)
+    if (path.isEmpty() || !validEntryName(clean) || !canModifyPath(path))
         return false;
     QFileInfo const info(path);
     QString const to = info.absolutePath() + QLatin1Char('/') + clean + QLatin1Char('.') + info.suffix();
@@ -602,7 +604,7 @@ bool LibraryView::renameCurrent(QString const& name)
 bool LibraryView::deleteCurrent(bool ask)
 {
     QString const path = currentTemplate();
-    if (path.isEmpty())
+    if (path.isEmpty() || !canModifyPath(path))
         return false;
     if (ask && QMessageBox::question(this, tr("Eclipse"), tr("Delete the template \"%1\"?\nIts file is removed from the library folder.").arg(QFileInfo(path).completeBaseName()))
                    != QMessageBox::Yes)

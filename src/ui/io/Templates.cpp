@@ -35,6 +35,7 @@
 
 bool MainWindow::saveTemplate(QString const& path, QString* error)
 {
+    if(m_library && !m_library->canModifyPath(path,error)) return false;
     Scene const& scene = m_document->scene();
     // The frames selected; with none selected, the whole length of the scene.
     bool const range = m_timeline->selectionLastFrame() > m_timeline->selectionFirstFrame();

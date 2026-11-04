@@ -153,6 +153,9 @@ Views can be dragged, tabbed together, floated, and saved as workspaces.
   channels and bytes to skip. Save the scene first: the decoded sound is kept as a precise
   WAV in its audio folder. Sound clips and Library imports use the same settings.
 - Templates can be kept in a Library and dropped into other scenes.
+  The Library menu manages folders, write access, thumbnail generation and item details.
+  Eclipse acquires a library write lock on the first edit. Use Right To Modify to release or request it.
+  Delete Folder sends a child folder and its contents to the Recycle Bin. F5 refreshes the focused library list.
 - Help pages are built in (Help > Eclipse Help, F1).
 
 ## Building
