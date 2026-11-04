@@ -537,6 +537,7 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         z.symmetric = o["symmetric"].toBool(true);
         z.fade = std::max(0.0, o["fade"].toDouble(z.fade));
         z.exponent = std::clamp(o["exponent"].toDouble(1.0), 0.05, 20.0);
+        z.fadeInside = o["fadeInside"].toBool(false);
         QJsonArray const points = o["shape"].toArray();
         for (int i = 0; i + 1 < points.size(); i += 2)
             z.shape.push_back(QPointF(points[i].toDouble(), points[i + 1].toDouble()));
@@ -557,6 +558,31 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         s.offsetLeft = c["ol"].toDouble(0.0);
         s.offsetRight = c["or"].toDouble(0.0);
         s.waveSameAsLeft = c["same"].toBool(true);
+        s.spanLeft = std::max(0.0, c["spl"].toDouble(0.0));
+        s.spanRight = std::max(0.0, c["spr"].toDouble(0.0));
+        s.fadeInLeft = std::max(0.0, c["fil"].toDouble(0.0));
+        s.fadeOutLeft = std::max(0.0, c["fol"].toDouble(0.0));
+        s.fadeInRight = std::max(0.0, c["fir"].toDouble(0.0));
+        s.fadeOutRight = std::max(0.0, c["for"].toDouble(0.0));
+        s.curved = c["curved"].toBool(false);
+        s.leftStartHandlePos = std::clamp(c["lshp"].toDouble(1.0 / 3.0), 0.0, 1.0);
+        s.leftStartHandleScale = c["lshs"].toDouble(1.0);
+        s.leftEndHandlePos = std::clamp(c["lehp"].toDouble(2.0 / 3.0), 0.0, 1.0);
+        s.leftEndHandleScale = c["lehs"].toDouble(1.0);
+        s.rightStartHandlePos = std::clamp(c["rshp"].toDouble(1.0 / 3.0), 0.0, 1.0);
+        s.rightStartHandleScale = c["rshs"].toDouble(1.0);
+        s.rightEndHandlePos = std::clamp(c["rehp"].toDouble(2.0 / 3.0), 0.0, 1.0);
+        s.rightEndHandleScale = c["rehs"].toDouble(1.0);
+        s.offsetDeformerLeft = c["odl"].toDouble(0.0);
+        s.offsetDeformerRight = c["odr"].toDouble(0.0);
+        s.offsetScalingLeft = c["osl"].toDouble(0.0);
+        s.offsetScalingRight = c["osr"].toDouble(0.0);
+    }
+    {
+        QJsonArray const points = lo["trackers"].toArray();
+        for (int i = 0; i + 1 < points.size() && layer.trackers.size() < 3; i += 2)
+            layer.trackers.push_back(QPointF(points[i].toDouble(), points[i + 1].toDouble()));
+        layer.trackerSampling = std::clamp(lo["trackerSampling"].toInt(0), 0, 3);
     }
     layer.lineDeformQuality = std::clamp(lo["lineDeformQuality"].toInt(1), 0, 3);
     layer.linePreserveThickness = lo["linePreserveThickness"].toBool(true);

@@ -26,6 +26,10 @@ struct ChainOptions {
     double fitError = 0.0;
 };
 ChainOptions optionsOf(Layer const& layer, Pose const& pose);
+// A point of the layer's drawing (its coordinates at rest) where its curve deformer and bones put it under `pose`.
+QPointF shownPoint(Layer const& layer, Pose const& pose, QPointF p);
+// Point Kinematic Output: what moves the trackers from where they are at rest on `parent` to where its deformers put them.
+QTransform trackerTransform(Layer const& parent, Pose const& parentPose, QVector<QPointF> const& trackers, int sampling);
 // How much bone `bone`'s zone lets it pull at `p` (0..1), the chain at rest.
 double zoneWeight(QVector<QPointF> const& joints, int bone, BoneInfluence const& zone, QPointF p);
 // An elliptic zone as a shape of points (Convert Elliptic ROI to Shape).

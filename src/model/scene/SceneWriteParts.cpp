@@ -804,7 +804,7 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         QJsonArray zones;
         for (BoneInfluence const& z : layer.influences) {
             QJsonObject o{{"type", z.type}, {"left", z.left}, {"right", z.right}, {"begin", z.begin}, {"end", z.end},
-                          {"symmetric", z.symmetric}, {"fade", z.fade}, {"exponent", z.exponent}};
+                          {"symmetric", z.symmetric}, {"fade", z.fade}, {"exponent", z.exponent}, {"fadeInside", z.fadeInside}};
             if (!z.shape.isEmpty()) {
                 QJsonArray points;
                 for (QPointF const& at : z.shape) {
@@ -821,7 +821,22 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         ChainScale const& c = layer.chainScale;
         layerObject["chainScale"] = QJsonObject{{"ls", c.leftStart}, {"le", c.leftEnd}, {"rs", c.rightStart}, {"re", c.rightEnd}, {"uniform", c.uniform},
                                                  {"wl", c.waveLeft}, {"wr", c.waveRight}, {"pl", c.periodLeft}, {"pr", c.periodRight},
-                                                 {"ol", c.offsetLeft}, {"or", c.offsetRight}, {"same", c.waveSameAsLeft}};
+                                                 {"ol", c.offsetLeft}, {"or", c.offsetRight}, {"same", c.waveSameAsLeft},
+                                                 {"spl", c.spanLeft}, {"spr", c.spanRight}, {"fil", c.fadeInLeft}, {"fol", c.fadeOutLeft},
+                                                 {"fir", c.fadeInRight}, {"for", c.fadeOutRight}, {"curved", c.curved},
+                                                 {"lshp", c.leftStartHandlePos}, {"lshs", c.leftStartHandleScale}, {"lehp", c.leftEndHandlePos},
+                                                 {"lehs", c.leftEndHandleScale}, {"rshp", c.rightStartHandlePos}, {"rshs", c.rightStartHandleScale},
+                                                 {"rehp", c.rightEndHandlePos}, {"rehs", c.rightEndHandleScale}, {"odl", c.offsetDeformerLeft},
+                                                 {"odr", c.offsetDeformerRight}, {"osl", c.offsetScalingLeft}, {"osr", c.offsetScalingRight}};
+    }
+    if (!layer.trackers.isEmpty()) {
+        QJsonArray points;
+        for (QPointF const& at : layer.trackers) {
+            points.append(at.x());
+            points.append(at.y());
+        }
+        layerObject["trackers"] = points;
+        layerObject["trackerSampling"] = layer.trackerSampling;
     }
     if (layer.lineDeformQuality != 1)
         layerObject["lineDeformQuality"] = layer.lineDeformQuality;

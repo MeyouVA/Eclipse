@@ -85,14 +85,46 @@ struct Chain {
         double const across = (p - c).x() * normal.x() + (p - c).y() * normal.y();
         bool const left = across < 0.0;
         double const along = bestBefore + bestT * len, s = along / total;
-        double factor = left || k.uniform ? k.leftStart + (k.leftEnd - k.leftStart) * s : k.rightStart + (k.rightEnd - k.rightStart) * s;
+        bool const leftSide = left || k.uniform;
+        double const start = leftSide ? k.leftStart : k.rightStart, end = leftSide ? k.leftEnd : k.rightEnd;
+        double factor = start + (end - start) * s;
+        if (k.curved) {
+            // Along a Bezier from (0, start) to (1, end) through the two handles: the place s found on it, then its scale.
+            double const p1 = leftSide ? k.leftStartHandlePos : k.rightStartHandlePos, v1 = leftSide ? k.leftStartHandleScale : k.rightStartHandleScale;
+            double const p2 = leftSide ? k.leftEndHandlePos : k.rightEndHandlePos, v2 = leftSide ? k.leftEndHandleScale : k.rightEndHandleScale;
+            auto bez = [](double a, double b, double c, double d, double t) {
+                double const u = 1.0 - t;
+                return u * u * u * a + 3.0 * u * u * t * b + 3.0 * u * t * t * c + t * t * t * d;
+            };
+            double lo = 0.0, hi = 1.0;
+            for (int i = 0; i < 40; ++i) {
+                double const mid = (lo + hi) / 2.0;
+                (bez(0.0, p1, p2, 1.0, mid) < s ? lo : hi) = mid;
+            }
+            factor = bez(start, v1, v2, end, (lo + hi) / 2.0);
+        }
         bool const leftWave = left || k.waveSameAsLeft;
         double const amp = leftWave ? k.waveLeft : k.waveRight;
         double const period = std::max(1.0, leftWave ? k.periodLeft : k.periodRight);
         double const offset = leftWave ? k.offsetLeft : k.offsetRight;
-        if (amp != 0.0)
-            factor *= 1.0 + amp * std::sin(2.0 * 3.14159265358979323846 * (along - offset) / period);
-        return p + normal * (across * (factor - 1.0));
+        if (amp != 0.0) {
+            // Over its span only, growing in at its start and dying out at its end.
+            double const span = leftWave ? k.spanLeft : k.spanRight;
+            double const into = along - offset, length = span > 0.0 ? span : total - offset;
+            double strength = into < 0.0 || into > length ? 0.0 : 1.0;
+            double const fadeIn = leftWave ? k.fadeInLeft : k.fadeInRight, fadeOut = leftWave ? k.fadeOutLeft : k.fadeOutRight;
+            if (strength > 0.0 && fadeIn > 0.0)
+                strength = std::min(strength, into / fadeIn);
+            if (strength > 0.0 && fadeOut > 0.0)
+                strength = std::min(strength, (length - into) / fadeOut);
+            factor *= 1.0 + amp * std::clamp(strength, 0.0, 1.0) * std::sin(2.0 * 3.14159265358979323846 * into / period);
+        }
+        // Scaled from a line so far out on that side (Offset Deformer), with so much added (Offset Scaling).
+        double const from = left ? -(leftSide ? k.offsetDeformerLeft : k.offsetDeformerRight) : (k.uniform ? k.offsetDeformerLeft : k.offsetDeformerRight);
+        double const added = left || k.uniform ? k.offsetScalingLeft : k.offsetScalingRight;
+        double const distance = across - from;
+        double const moved = from + distance * factor + (distance < 0.0 ? -added : added);
+        return p + normal * (moved - across);
     }
 
     QPointF bend(QPointF p) const

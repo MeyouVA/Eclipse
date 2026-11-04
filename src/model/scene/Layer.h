@@ -74,6 +74,7 @@ struct BoneInfluence {
     bool symmetric = true;                 // the right radius is the left one
     double fade = 20.0;                    // the fade radius past the zone's edge
     double exponent = 1.0;                 // how the fade falls off (1: straight)
+    bool fadeInside = false;               // Fade Inside Zones: the pull fading from the bone out to the zone's edge too
     QPolygonF shape;                       // a Shaped zone, in the layer's coordinates at rest
     bool operator==(BoneInfluence const&) const = default;
     double rightRadius() const { return symmetric ? left : right; }
@@ -88,11 +89,20 @@ struct ChainScale {
     double periodLeft = 100.0, periodRight = 100.0;  // length of one wave along the chain
     double offsetLeft = 0.0, offsetRight = 0.0;      // where the wave starts (along the chain)
     bool waveSameAsLeft = true;
+    // The wave over part of the chain only (span 0: to its end), growing in and dying out over so much of it.
+    double spanLeft = 0.0, spanRight = 0.0;
+    double fadeInLeft = 0.0, fadeOutLeft = 0.0, fadeInRight = 0.0, fadeOutRight = 0.0;
+    // The scale from start to end along a curve: its handles' places (0..1 along) and scales.  Off: straight.
+    bool curved = false;
+    double leftStartHandlePos = 1.0 / 3.0, leftStartHandleScale = 1.0, leftEndHandlePos = 2.0 / 3.0, leftEndHandleScale = 1.0;
+    double rightStartHandlePos = 1.0 / 3.0, rightStartHandleScale = 1.0, rightEndHandlePos = 2.0 / 3.0, rightEndHandleScale = 1.0;
+    // Offset Deformer: the line the side is scaled from, so far out from the skeleton; Offset Scaling: so much added out there.
+    double offsetDeformerLeft = 0.0, offsetDeformerRight = 0.0, offsetScalingLeft = 0.0, offsetScalingRight = 0.0;
     bool operator==(ChainScale const&) const = default;
     bool plain() const
     {
         return leftStart == 1.0 && leftEnd == 1.0 && (uniform || (rightStart == 1.0 && rightEnd == 1.0)) && waveLeft == 0.0
-               && (waveSameAsLeft || waveRight == 0.0);
+               && (waveSameAsLeft || waveRight == 0.0) && !curved && offsetScalingLeft == 0.0 && (uniform || offsetScalingRight == 0.0);
     }
 };
 
@@ -344,6 +354,11 @@ struct Layer {
     ChainScale chainScale;
     // Pencil lines deformed: Quality (0 Low .. 3 Very High: how finely they are followed), their thickness kept as drawn
     // or stretched with the drawing, smoothed (passes), and how far a point may stray when the line is simplified again.
+    // Point Kinematic Output: a peg that follows points of its parent's deformed drawing (trackers, in the parent's coordinates
+    // at rest) - by the first alone (moved), the first two (moved and turned; scaled too), or three (any skew).
+    enum Sampling { OnePoint, TwoPoint, TwoPointScale, ThreePoint };
+    QVector<QPointF> trackers;
+    int trackerSampling = OnePoint;
     int lineDeformQuality = 1;
     bool linePreserveThickness = true;
     int lineDeformSmooth = 0;

@@ -81,3 +81,31 @@ int Document::addKinematicOutput(int layer, int bone)
     });
     return made;
 }
+
+int Document::addPointKinematicOutput(int layer, QVector<QPointF> const& trackers, int sampling)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || trackers.isEmpty())
+        return -1;
+    int made = -1;
+    QString const name = m_scene.layers[layer].name + tr("-Point Output");
+    apply(tr("Create Kinematic Output"), [&](Scene& s) {
+        made = s.addLayer(name, layer + 1, Layer::Peg);
+        Layer& out = s.layers[made];
+        out.parent = s.layers[layer].id;
+        out.parentBone = -1;
+        out.trackers = trackers.mid(0, 3);
+        out.trackerSampling = std::clamp(sampling, 0, 3);
+        out.pivot = trackers.first();
+    });
+    return made;
+}
+
+void Document::setTrackers(int layer, QVector<QPointF> const& trackers, int sampling)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return;
+    apply(tr("Change Point Kinematic Output Handle"), [&](Scene& s) {
+        s.layers[layer].trackers = trackers.mid(0, 3);
+        s.layers[layer].trackerSampling = std::clamp(sampling, 0, 3);
+    });
+}

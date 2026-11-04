@@ -283,6 +283,9 @@ public:
     bool setDeformEnabled(int layer, int frame, double amount);
     // Kinematic Output: a peg that follows bone `bone` of the layer's chain (what is put under it goes where the bone goes).
     int addKinematicOutput(int layer, int bone);
+    // Point Kinematic Output: a peg that follows points (trackers) of the layer's deformed drawing; and its trackers changed.
+    int addPointKinematicOutput(int layer, QVector<QPointF> const& trackers, int sampling);
+    void setTrackers(int layer, QVector<QPointF> const& trackers, int sampling);
     void setActiveCamera(int layer);
     // The Camera view shows that layer and what hangs under it (-1: the whole scene).
     void setDisplay(int layer);

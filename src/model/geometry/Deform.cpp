@@ -116,6 +116,65 @@ Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<d
     return mapped(drawing, [&chain](QPointF p) { return chain.map(p); }, follow);
 }
 
+QPointF shownPoint(Layer const& layer, Pose const& pose, QPointF p)
+{
+    if (pose.deform <= 0.0)
+        return p;
+    QPointF at = p;
+    if (isWarped(layer.warp, layer.warpClosed, pose.warp)) {
+        QVector<QPointF> moved = pose.warp;
+        for (QPointF& m : moved)
+            m *= std::min(1.0, pose.deform);
+        at = warpPoint(at, layer.warp, layer.warpClosed, moved);
+    }
+    if (layer.bones.size() >= 2) {
+        ChainOptions const options = optionsOf(layer, pose);
+        at = deformPoint(at, layer.bones, pose.bend, layer.jointSmoothness, layer.skin, &options);
+    }
+    return at;
+}
+
+QTransform trackerTransform(Layer const& parent, Pose const& parentPose, QVector<QPointF> const& trackers, int sampling)
+{
+    if (trackers.isEmpty())
+        return QTransform();
+    QVector<QPointF> now;
+    for (QPointF const& t : trackers)
+        now.push_back(shownPoint(parent, parentPose, t));
+    QPointF const a = trackers[0], a2 = now[0];
+    if (sampling == Layer::OnePoint || trackers.size() < 2)
+        return QTransform::fromTranslate(a2.x() - a.x(), a2.y() - a.y());
+    QPointF const b = trackers[1], b2 = now[1];
+    if (sampling == Layer::ThreePoint && trackers.size() >= 3) {
+        // The affine map that takes the three trackers where they have gone.
+        QPointF const c = trackers[2], c2 = now[2];
+        double const det = (b.x() - a.x()) * (c.y() - a.y()) - (c.x() - a.x()) * (b.y() - a.y());
+        if (std::abs(det) > 1e-9) {
+            // Solve for m11 m21 dx, and m12 m22 dy, from x' = m11 x + m21 y + dx and y' = m12 x + m22 y + dy.
+            auto solve = [&](double pa, double pb, double pc, double& u, double& v, double& w) {
+                u = ((pb - pa) * (c.y() - a.y()) - (pc - pa) * (b.y() - a.y())) / det;
+                v = ((b.x() - a.x()) * (pc - pa) - (c.x() - a.x()) * (pb - pa)) / det;
+                w = pa - u * a.x() - v * a.y();
+            };
+            double m11, m21, dx, m12, m22, dy;
+            solve(a2.x(), b2.x(), c2.x(), m11, m21, dx);
+            solve(a2.y(), b2.y(), c2.y(), m12, m22, dy);
+            return QTransform(m11, m12, m21, m22, dx, dy);
+        }
+    }
+    // Two points: turned as the line between them turns (and scaled as it grows, with scaling), about the first.
+    QPointF const was = b - a, is = b2 - a2;
+    double const turn = std::atan2(is.y(), is.x()) - std::atan2(was.y(), was.x());
+    double const lengthWas = std::hypot(was.x(), was.y()), lengthIs = std::hypot(is.x(), is.y());
+    double const grow = sampling == Layer::TwoPointScale && lengthWas > 1e-9 ? lengthIs / lengthWas : 1.0;
+    QTransform t;
+    t.translate(a2.x(), a2.y());
+    t.rotateRadians(turn);
+    t.scale(grow, grow);
+    t.translate(-a.x(), -a.y());
+    return t;
+}
+
 ChainOptions optionsOf(Layer const& layer, Pose const& pose)
 {
     ChainOptions o;
@@ -179,7 +238,7 @@ double zoneWeight(QVector<QPointF> const& joints, int bone, BoneInfluence const&
         double const dv = across > 0.0 ? std::abs(v) / across : (v == 0.0 ? 0.0 : 1e9);
         double const e = std::hypot(du, dv);
         if (e <= 1.0)
-            return 1.0;
+            return zone.fadeInside ? std::pow(std::max(0.0, 1.0 - e), std::max(0.05, zone.exponent)) : 1.0;
         // How far past the edge, in scene units (along the ray from the bone).
         double const reach = std::hypot(beyond, v);
         return faded(zone, reach - reach / e);

@@ -610,6 +610,9 @@ public slots:
     void onActionConvertZoneToShape();
     // The settings of the deformer of `layer` shown in a dialog (bone `bone` chosen in it).
     void editDeformationSettings(int layer, int bone);
+    // Insert > Point Kinematic Output: a peg following points of the deformed drawing (or, one chosen, its trackers changed).
+    void onActionAddPointKinematicOutput();
+    bool editPointKinematicOutput(int layer, bool make);
     void onActionCreateEnvelope();
     void onActionConvertDeformed();
     void onActionExportPresets();

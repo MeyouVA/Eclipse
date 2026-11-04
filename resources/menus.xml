@@ -252,6 +252,7 @@
    <item id="InsertBone" icon="timeline/addbone" text="Game &amp;Bone" responder="window" slot="onActionAddBone()"/>
    <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" shortcut="shortcut.insertQuadmap" responder="window" slot="onActionAddQuadmap()"/>
    <item id="InsertKinematicOutput" text="&amp;Kinematic Output" responder="window" slot="onActionAddKinematicOutput()"/>
+   <item id="InsertPointKinematicOutput" text="&amp;Point Kinematic Output..." responder="window" slot="onActionAddPointKinematicOutput()"/>
    <item id="InsertAnnotation" icon="xsheet/annotation" text="&amp;Annotation Column" responder="window" slot="onActionAddAnnotationColumn()"/>
    <item id="CreateEmptySymbolInLibrary" icon="edit/symbolinsert" text="Create Empty S&amp;ymbol in Library" responder="window" slot="onActionCreateEmptySymbolInLibrary()" tooltip="A new symbol no layer shows yet, in the Library's Scene Symbols."/>
    <submenu id="menu.insertEffects" text="&amp;Effects"/>

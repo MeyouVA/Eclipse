@@ -147,6 +147,8 @@ QTransform flatChain(Scene const& scene, int layer, int frame, PoseOverride cons
         int const parent = scene.parentIndex(layer);
         if (parent >= 0 && scene.layers[layer].parentBone >= 0)
             t = t * Deform::boneTransform(scene.layers[parent].bones, poseFor(scene, parent, frame, over).bend, scene.layers[layer].parentBone);
+        else if (parent >= 0 && !scene.layers[layer].trackers.isEmpty())
+            t = t * Deform::trackerTransform(scene.layers[parent], poseFor(scene, parent, frame, over), scene.layers[layer].trackers, scene.layers[layer].trackerSampling);
         if (parent >= 0 && scene.layers[layer].ignoreParentScale)
             return t * withoutScale(flatChain(scene, parent, frame, over));
     }
@@ -213,6 +215,8 @@ Mat4 spaceChain(Scene const& scene, int layer, int frame, PoseOverride const* ov
         int const parent = scene.parentIndex(layer);
         if (parent >= 0 && l.parentBone >= 0)
             t = t * Mat4::flat(Deform::boneTransform(scene.layers[parent].bones, poseFor(scene, parent, frame, over).bend, l.parentBone));
+        else if (parent >= 0 && !l.trackers.isEmpty())
+            t = t * Mat4::flat(Deform::trackerTransform(scene.layers[parent], poseFor(scene, parent, frame, over), l.trackers, l.trackerSampling));
     }
     return t;
 }
