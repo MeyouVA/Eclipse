@@ -14,6 +14,23 @@
 
 namespace Deform {
 
+// What else shapes a bone chain's bending: each bone's zone of influence, the chain's scaling and wave across the skeleton,
+// how much of it all is applied (the pose's Enable Deformation), and how pencil lines are followed.
+struct ChainOptions {
+    QVector<BoneInfluence> influences;
+    ChainScale scale;
+    double amount = 1.0;
+    int lineQuality = 1;
+    bool preserveThickness = true;
+    int lineSmooth = 0;
+    double fitError = 0.0;
+};
+ChainOptions optionsOf(Layer const& layer, Pose const& pose);
+// How much bone `bone`'s zone lets it pull at `p` (0..1), the chain at rest.
+double zoneWeight(QVector<QPointF> const& joints, int bone, BoneInfluence const& zone, QPointF p);
+// An elliptic zone as a shape of points (Convert Elliptic ROI to Shape).
+QPolygonF zoneShape(QVector<QPointF> const& joints, int bone, BoneInfluence const& zone, int points = 32);
+
 // True when the chain has at least one bone and some bone is turned.
 bool isBent(QVector<QPointF> const& joints, QVector<double> const& bend);
 
@@ -21,7 +38,7 @@ bool isBent(QVector<QPointF> const& joints, QVector<double> const& bend);
 QVector<QPointF> posedJoints(QVector<QPointF> const& joints, QVector<double> const& bend);
 
 Drawing deform(Drawing const& drawing, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth = 0.0,
-               QVector<SkinDab> const& skin = {});
+               QVector<SkinDab> const& skin = {}, ChainOptions const* options = nullptr);
 
 QTransform boneTransform(QVector<QPointF> const& joints, QVector<double> const& bend, int bone);
 
@@ -31,7 +48,8 @@ int nearestBone(QVector<QPointF> const& joints, QPointF p);
 QVector<double> solveIK(QVector<QPointF> const& joints, QVector<double> bend, int endJoint, QPointF target);
 
 // One point, the same way.
-QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth = 0.0, QVector<SkinDab> const& skin = {});
+QPointF deformPoint(QPointF p, QVector<QPointF> const& joints, QVector<double> const& bend, double smooth = 0.0, QVector<SkinDab> const& skin = {},
+                    ChainOptions const* options = nullptr);
 // How much the painted weights add to the pull of bone `bone` at `p` (0 where none is painted; below 0 where it is taken away).
 double paintedWeight(QVector<SkinDab> const& skin, int bone, QPointF p);
 

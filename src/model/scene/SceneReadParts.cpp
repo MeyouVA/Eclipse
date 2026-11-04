@@ -526,6 +526,42 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.bitmapArt = lo["bitmapArt"].toInt(0) & 11;
     layer.bendOnBones = lo["bendOnBones"].toBool(false);
     layer.jointSmoothness = std::clamp(lo["jointSmooth"].toDouble(0.0), 0.0, 1000.0);
+    for (QJsonValue const& v : lo["influences"].toArray()) {
+        QJsonObject const o = v.toObject();
+        BoneInfluence z;
+        z.type = std::clamp(o["type"].toInt(0), 0, 3);
+        z.left = std::max(0.0, o["left"].toDouble(z.left));
+        z.right = std::max(0.0, o["right"].toDouble(z.right));
+        z.begin = std::max(0.0, o["begin"].toDouble(z.begin));
+        z.end = std::max(0.0, o["end"].toDouble(z.end));
+        z.symmetric = o["symmetric"].toBool(true);
+        z.fade = std::max(0.0, o["fade"].toDouble(z.fade));
+        z.exponent = std::clamp(o["exponent"].toDouble(1.0), 0.05, 20.0);
+        QJsonArray const points = o["shape"].toArray();
+        for (int i = 0; i + 1 < points.size(); i += 2)
+            z.shape.push_back(QPointF(points[i].toDouble(), points[i + 1].toDouble()));
+        layer.influences.push_back(z);
+    }
+    if (lo.contains("chainScale")) {
+        QJsonObject const c = lo["chainScale"].toObject();
+        ChainScale& s = layer.chainScale;
+        s.leftStart = c["ls"].toDouble(1.0);
+        s.leftEnd = c["le"].toDouble(1.0);
+        s.rightStart = c["rs"].toDouble(1.0);
+        s.rightEnd = c["re"].toDouble(1.0);
+        s.uniform = c["uniform"].toBool(false);
+        s.waveLeft = c["wl"].toDouble(0.0);
+        s.waveRight = c["wr"].toDouble(0.0);
+        s.periodLeft = std::max(1.0, c["pl"].toDouble(100.0));
+        s.periodRight = std::max(1.0, c["pr"].toDouble(100.0));
+        s.offsetLeft = c["ol"].toDouble(0.0);
+        s.offsetRight = c["or"].toDouble(0.0);
+        s.waveSameAsLeft = c["same"].toBool(true);
+    }
+    layer.lineDeformQuality = std::clamp(lo["lineDeformQuality"].toInt(1), 0, 3);
+    layer.linePreserveThickness = lo["linePreserveThickness"].toBool(true);
+    layer.lineDeformSmooth = std::clamp(lo["lineDeformSmooth"].toInt(0), 0, 10);
+    layer.lineDeformFitError = std::clamp(lo["lineDeformFitError"].toDouble(0.0), 0.0, 50.0);
     layer.hiddenFunctions = lo["hiddenFunctions"].toInt(0) & 511;
     for (QJsonValue const& lv : lo["links"].toArray()) {
         QJsonArray const link = lv.toArray();
@@ -752,6 +788,7 @@ void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool ex
             pose.fx.push_back(std::max(0.0, v.toDouble()));
         for (QJsonValue const& b : ko["bend"].toArray())
             pose.bend.push_back(b.toDouble());
+        pose.deform = std::clamp(ko["deform"].toDouble(1.0), 0.0, 1.0);
         {
             QJsonArray const pulled = ko["quad"].toArray();
             for (int i = 0; i + 1 < pulled.size() && i < 8; i += 2)

@@ -21,9 +21,11 @@ struct Chain {
     QVector<QTransform> bones;
     double smooth = 0.0;    // how far round a joint the bend is shared out (scene units); 0: as good as a fold
     QVector<SkinDab> skin;  // weights painted for the bones
+    ChainOptions const* options = nullptr;
 
-    Chain(QVector<QPointF> const& rest, QVector<double> const& bend, double smoothness = 0.0, QVector<SkinDab> const& painted = {})
-        : joints(rest), smooth(smoothness), skin(painted)
+    Chain(QVector<QPointF> const& rest, QVector<double> const& bend, double smoothness = 0.0, QVector<SkinDab> const& painted = {},
+          ChainOptions const* opts = nullptr)
+        : joints(rest), smooth(smoothness), skin(painted), options(opts)
     {
         QPointF origin = rest.isEmpty() ? QPointF() : rest[0];  // where the bone starts, posed
         double angle = 0.0;                                      // how far it is turned in all
@@ -42,8 +44,65 @@ struct Chain {
     {
         if (bones.isEmpty())
             return p;
+        QPointF const bent = bend(scaled(p));
+        double const amount = options ? std::clamp(options->amount, 0.0, 1.0) : 1.0;
+        return amount >= 1.0 ? bent : p + (bent - p) * amount;
+    }
+
+    // Deformation Scale and Wave: the point moved across the skeleton (at rest) by the chain's scaling where it lies along it.
+    QPointF scaled(QPointF p) const
+    {
+        if (!options || options->scale.plain() || joints.size() < 2)
+            return p;
+        ChainScale const& k = options->scale;
+        double total = 0.0;
+        for (int i = 0; i + 1 < joints.size(); ++i)
+            total += std::hypot(joints[i + 1].x() - joints[i].x(), joints[i + 1].y() - joints[i].y());
+        if (total <= 1e-9)
+            return p;
+        int best = 0;
+        double nearest = 1e300, bestT = 0.0, before = 0.0, bestBefore = 0.0;
+        for (int i = 0; i + 1 < joints.size(); ++i) {
+            QPointF const a = joints[i], d = joints[i + 1] - joints[i];
+            double const len2 = d.x() * d.x() + d.y() * d.y();
+            double const t = len2 > 0.0 ? std::clamp(((p - a).x() * d.x() + (p - a).y() * d.y()) / len2, 0.0, 1.0) : 0.0;
+            QPointF const c = a + d * t;
+            double const dist = std::hypot(p.x() - c.x(), p.y() - c.y());
+            if (dist < nearest) {
+                nearest = dist;
+                best = i;
+                bestT = t;
+                bestBefore = before;
+            }
+            before += std::sqrt(len2);
+        }
+        QPointF const a = joints[best], d = joints[best + 1] - joints[best];
+        double const len = std::hypot(d.x(), d.y());
+        if (len <= 1e-9)
+            return p;
+        QPointF const dir = d / len, normal(-dir.y(), dir.x());
+        QPointF const c = a + d * bestT;
+        double const across = (p - c).x() * normal.x() + (p - c).y() * normal.y();
+        bool const left = across < 0.0;
+        double const along = bestBefore + bestT * len, s = along / total;
+        double factor = left || k.uniform ? k.leftStart + (k.leftEnd - k.leftStart) * s : k.rightStart + (k.rightEnd - k.rightStart) * s;
+        bool const leftWave = left || k.waveSameAsLeft;
+        double const amp = leftWave ? k.waveLeft : k.waveRight;
+        double const period = std::max(1.0, leftWave ? k.periodLeft : k.periodRight);
+        double const offset = leftWave ? k.offsetLeft : k.offsetRight;
+        if (amp != 0.0)
+            factor *= 1.0 + amp * std::sin(2.0 * 3.14159265358979323846 * (along - offset) / period);
+        return p + normal * (across * (factor - 1.0));
+    }
+
+    QPointF bend(QPointF p) const
+    {
         QVarLengthArray<double, 16> pull(bones.size());
         nearness(p, pull);
+        if (options && !options->influences.isEmpty())
+            for (int i = 0; i < bones.size(); ++i)
+                if (i < options->influences.size())
+                    pull[i] *= zoneWeight(joints, i, options->influences[i], p);
         if (!skin.isEmpty()) {
             QVarLengthArray<double, 16> painted(bones.size());
             double total = 0.0;
@@ -87,16 +146,24 @@ struct Chain {
     }
 };
 
-template <class Add> void pieces(QPointF a, QPointF b, Add add)
+template <class Add> void pieces(QPointF a, QPointF b, Add add, double piece = 6.0)
 {
-    int const steps = std::clamp(int(std::ceil(std::hypot(b.x() - a.x(), b.y() - a.y()) / 6.0)), 1, 400);
+    int const steps = std::clamp(int(std::ceil(std::hypot(b.x() - a.x(), b.y() - a.y()) / std::max(0.5, piece))), 1, 2000);
     for (int k = 0; k < steps; ++k)
         add(double(k) / steps);
 }
 
 
 
-template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
+// How pencil lines are followed when they are bent (see ChainOptions): the length of the pieces, thickness, smoothing, fit.
+struct LineFollow {
+    double piece = 6.0;
+    bool preserveThickness = true;
+    int smooth = 0;
+    double fitError = 0.0;
+};
+
+template <class Map> Drawing mapped(Drawing const& drawing, Map const& map, LineFollow const& follow = {})
 {
     Drawing out;
     out.pinned = drawing.pinned;
@@ -109,7 +176,7 @@ template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
                 QPolygonF polygon;
                 for (int i = 0; i < outline.size(); ++i) {
                     QPointF const a = outline[i], b = outline[(i + 1) % outline.size()];
-                    pieces(a, b, [&](double u) { polygon.push_back(map(a + (b - a) * u)); });
+                    pieces(a, b, [&](double u) { polygon.push_back(map(a + (b - a) * u)); }, follow.piece);
                 }
                 bent.outlines.push_back(polygon);
             }
@@ -131,15 +198,36 @@ template <class Map> Drawing mapped(Drawing const& drawing, Map const& map)
                 StrokePoint const& a = line[i];
                 StrokePoint const& b = line[i + 1];
                 pieces(a.pos, b.pos, [&](double u) {
-                    bent.points.push_back({map(a.pos + (b.pos - a.pos) * u), float(a.pressure + (b.pressure - a.pressure) * u)});
-                });
+                    QPointF const at = a.pos + (b.pos - a.pos) * u;
+                    float pressure = float(a.pressure + (b.pressure - a.pressure) * u);
+                    QPointF const there = map(at);
+                    if (!follow.preserveThickness) {
+                        // The line as thick as the drawing is stretched across it there.
+                        QPointF const way = b.pos - a.pos;
+                        double const length = std::hypot(way.x(), way.y());
+                        if (length > 1e-9) {
+                            QPointF const across(-way.y() / length, way.x() / length);
+                            QPointF const side = map(at + across) - there;
+                            pressure *= float(std::clamp(std::hypot(side.x(), side.y()), 0.05, 20.0));
+                        }
+                    }
+                    bent.points.push_back({there, pressure});
+                }, follow.piece);
             }
             if (!line.isEmpty())
                 bent.points.push_back({map(line.last().pos), line.last().pressure});
+            // Smoothed (its ends kept), then simplified as far as the fit allows.
+            for (int pass = 0; pass < follow.smooth && bent.points.size() > 2; ++pass) {
+                QVector<StrokePoint> const was = bent.points;
+                for (int i = 1; i + 1 < was.size(); ++i)
+                    bent.points[i].pos = (was[i - 1].pos + was[i].pos * 2.0 + was[i + 1].pos) / 4.0;
+            }
+            double const tolerance = std::max(1e-6, follow.fitError);
             QVector<StrokePoint> kept;
             for (StrokePoint const& q : bent.points) {
-                while (kept.size() >= 2 && kept.last().pressure == q.pressure && kept[kept.size() - 2].pressure == q.pressure
-                       && distanceToSegment(kept.last().pos, kept[kept.size() - 2].pos, q.pos) < 1e-6)
+                while (kept.size() >= 2 && std::abs(kept.last().pressure - q.pressure) <= (follow.fitError > 0.0 ? 0.02f : 0.0f)
+                       && std::abs(kept[kept.size() - 2].pressure - q.pressure) <= (follow.fitError > 0.0 ? 0.02f : 0.0f)
+                       && distanceToSegment(kept.last().pos, kept[kept.size() - 2].pos, q.pos) < tolerance)
                     kept.removeLast();
                 kept.push_back(q);
             }

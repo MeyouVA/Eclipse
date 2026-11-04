@@ -157,6 +157,7 @@ Pose Pose::lerp(Pose const& a, Pose const& b, double t)
     // An angle only one of the two keyframes gives is held.
     p.fov = a.fov > 0.0 && b.fov > 0.0 ? a.fov + (b.fov - a.fov) * t : std::max(a.fov, b.fov);
     p.opacity = a.opacity + (b.opacity - a.opacity) * t;
+    p.deform = a.deform + (b.deform - a.deform) * t;
     // An amount only one of the two keyframes has is held, not faded from nothing.
     for (int i = 0; i < std::max(a.fx.size(), b.fx.size()); ++i) {
         double const from = i < a.fx.size() ? a.fx[i] : b.fx[i];

@@ -35,6 +35,8 @@ struct Pose {
     // How opaque the layer is (0..1): keyframed like the rest, so that it can fade.
     double opacity = 1.0;
     QVector<double> fx;
+    // How much of the deformation is applied (0: the drawing as at rest, 1: fully bent) - Enable Deformation, switched over time.
+    double deform = 1.0;
     // Point animation: the points of the drawings moved (in their order; see PointMove::comesBefore).
     QVector<PointMove> points;
 

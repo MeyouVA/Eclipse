@@ -3,6 +3,7 @@
 #include "model/geometry/Deform.h"
 
 #include <QDialog>
+#include <QInputDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QLabel>
@@ -31,6 +32,76 @@ void MainWindow::onActionCreateMorphing()
     }
     if (!m_document->createMorph(layer(), frame()))
         statusBar()->showMessage(tr("Morphing needs a drawing here, another drawing later on the layer, and at least one frame between the two."), 8000);
+}
+
+void MainWindow::onActionCopyPoseToRest()
+{
+    if (!m_document->copyPoseToRest(layer(), frame()))
+        statusBar()->showMessage(tr("The deformer is at rest on this frame: there is no other position to make its rest."), 6000);
+}
+
+void MainWindow::onActionCopyRestToPose()
+{
+    if (!m_document->copyRestToPose(layer(), frame()))
+        statusBar()->showMessage(tr("This layer has no bones or curve deformer."), 5000);
+}
+
+void MainWindow::onActionToggleDeformation()
+{
+    // Deformation Switch: on and off from this frame (keyed), as the layer's Enable Deformation.
+    Layer const& now = m_document->scene().layers[layer()];
+    if (now.bones.size() < 2 && !now.hasWarp()) {
+        statusBar()->showMessage(tr("This layer has no bones or curve deformer."), 5000);
+        return;
+    }
+    bool const on = now.poseAt(frame()).deform > 0.0;
+    m_document->setDeformEnabled(layer(), frame(), on ? 0.0 : 1.0);
+    statusBar()->showMessage(on ? tr("Deformation off from frame %1.").arg(frame() + 1) : tr("Deformation on from frame %1.").arg(frame() + 1), 4000);
+}
+
+void MainWindow::onActionAddKinematicOutput()
+{
+    Layer const& now = m_document->scene().layers[layer()];
+    if (now.bones.size() < 2) {
+        statusBar()->showMessage(tr("A Kinematic Output follows a bone: select a layer with bones (Rigging tool)."), 6000);
+        return;
+    }
+    int bone = int(now.bones.size()) - 2;
+    if (now.bones.size() > 2 && qEnvironmentVariableIsEmpty("ECLIPSE_NO_SYMBOL_QUESTIONS")) {
+        bool ok = false;
+        bone = QInputDialog::getInt(this, tr("Kinematic Output"), tr("Output Kinematic Chain: the bone to follow (1 is the first):"), bone + 1, 1,
+                                    int(now.bones.size()) - 1, 1, &ok) - 1;
+        if (!ok)
+            return;
+    }
+    int const made = m_document->addKinematicOutput(layer(), bone);
+    if (made >= 0) {
+        m_timeline->setCurrentCell(made, frame());
+        statusBar()->showMessage(tr("Kinematic Output: what is put under %1 follows bone %2.").arg(m_document->scene().layers[made].name).arg(bone + 1), 6000);
+    }
+}
+
+void MainWindow::onActionDeformationSettings()
+{
+    editDeformationSettings(layer(), std::max(0, m_canvas->currentBone()));
+}
+
+void MainWindow::onActionConvertZoneToShape()
+{
+    // Convert Elliptic ROI to Shape: the chosen bone's ellipse of influence made a shape that can then be changed.
+    Layer const& now = m_document->scene().layers[layer()];
+    int const bone = std::max(0, m_canvas->currentBone());
+    if (bone + 1 >= now.bones.size() || now.influenceOf(bone).type != BoneInfluence::Elliptic) {
+        statusBar()->showMessage(tr("Choose a bone whose zone of influence is Elliptic (Deformation Settings)."), 6000);
+        return;
+    }
+    QPolygonF const shape = Deform::zoneShape(now.bones, bone, now.influenceOf(bone));
+    m_document->editLayers({layer()}, tr("Convert Elliptic ROI to Shape"), [bone, shape](Layer& l) {
+        if (l.influences.size() <= bone)
+            l.influences.resize(bone + 1);
+        l.influences[bone].type = BoneInfluence::Shaped;
+        l.influences[bone].shape = shape;
+    });
 }
 
 void MainWindow::onActionRemoveDeformer()
@@ -113,11 +184,13 @@ void MainWindow::onActionResetDeformer()
     // Back to the shape it was laid down in, on this frame.
     Layer const& now = m_document->scene().layers[layer()];
     Pose pose = now.poseAt(frame());
-    if (!Deform::isWarped(now.warp, now.warpClosed, pose.warp)) {
-        statusBar()->showMessage(now.hasWarp() ? tr("The deformer is at rest on this frame already.") : tr("This layer has no curve or envelope deformer."), 5000);
+    bool const bent = Deform::isBent(now.bones, pose.bend);
+    if (!Deform::isWarped(now.warp, now.warpClosed, pose.warp) && !bent) {
+        statusBar()->showMessage(now.hasWarp() || now.bones.size() >= 2 ? tr("The deformer is at rest on this frame already.") : tr("This layer has no curve or envelope deformer."), 5000);
         return;
     }
     pose.warp.clear();
+    pose.bend.fill(0.0);
     m_document->setKeyframe(layer(), frame(), pose, tr("Reset Deformer"));
 }
 

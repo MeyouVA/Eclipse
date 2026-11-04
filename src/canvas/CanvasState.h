@@ -315,6 +315,7 @@ protected:
     QPointF m_splineFrom, m_splineNow;
     bool m_staticCameraDepth = false;   // the Static Camera Transform drag goes in depth (Alt)
     bool m_deformationMesh = false;
+    bool m_allDeformers = false;
     bool m_pencilTipToCamera = false, m_brushTipToCamera = false;
     bool m_washStalePreview = false, m_previewStale = false;
     QVector<QPointF> m_envRest, m_envNow;

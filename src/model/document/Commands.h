@@ -275,6 +275,14 @@ public:
     void setNodePos(int layer, QPointF pos);
     // Which bone of its parent the layer rides on (-1: none).
     void setParentBone(int layer, int bone);
+    // Copy Current Position to Resting Position: the bones and curve deformer as posed on `frame` made their rest (every
+    // keyframe keeping its pose); and back: the rest keyed on `frame`.  False when there is nothing posed / no deformer.
+    bool copyPoseToRest(int layer, int frame);
+    bool copyRestToPose(int layer, int frame);
+    // Enable Deformation (Deformation Switch): how much of the layer's deformation shows from `frame` (0 none, 1 all), keyed.
+    bool setDeformEnabled(int layer, int frame, double amount);
+    // Kinematic Output: a peg that follows bone `bone` of the layer's chain (what is put under it goes where the bone goes).
+    int addKinematicOutput(int layer, int bone);
     void setActiveCamera(int layer);
     // The Camera view shows that layer and what hangs under it (-1: the whole scene).
     void setDisplay(int layer);

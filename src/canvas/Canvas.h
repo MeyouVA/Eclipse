@@ -205,6 +205,13 @@ public:
     Q_INVOKABLE void onActionElementMode(bool on);
     // View > Show > Deformation Mesh: the current layer's drawing with a lattice over it, bent as its deformers bend it.
     Q_INVOKABLE void onActionShowDeformationMesh(bool on) { m_deformationMesh = on; update(); }
+    // Show All Deformers: the bones and curve deformers of every layer shown, not those of the current layer alone;
+    // Show Current Deformers and Hide All Others turns that off.
+    Q_INVOKABLE void onActionShowAllDeformers(bool on) { m_allDeformers = on; update(); }
+    Q_INVOKABLE void onActionShowCurrentDeformers();
+    bool showsAllDeformers() const { return m_allDeformers; }
+    // The bone chosen with the Rigging or IK tool (-1: none).
+    int currentBone() const { return m_bone; }
     bool deformationMeshShown() const { return m_deformationMesh; }
     // The lattice the deformation mesh shows (in the layer's coordinates, bent), empty when the layer is not deformed.
     QVector<QPolygonF> deformationMesh(int layer, int frame) const;

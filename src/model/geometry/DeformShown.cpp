@@ -154,14 +154,21 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose, int 
         }
         return shown(out, layer, pose);
     }
-    bool const warped = isWarped(layer.warp, layer.warpClosed, pose.warp), bent = isBent(layer.bones, pose.bend);
+    ChainOptions const options = optionsOf(layer, pose);
+    bool const warped = isWarped(layer.warp, layer.warpClosed, pose.warp) && pose.deform > 0.0;
+    bool const bent = (isBent(layer.bones, pose.bend) || (!layer.chainScale.plain() && layer.bones.size() >= 2)) && pose.deform > 0.0;
     if (!warped && !bent)
         return drawing;
+    // (Enable Deformation part way: the curve deformer's points moved part of the way too.)
+    QVector<QPointF> moved = pose.warp;
+    if (pose.deform < 1.0)
+        for (QPointF& m : moved)
+            m *= pose.deform;
     if (!bent)
-        return warp(drawing, layer.warp, layer.warpClosed, pose.warp);
+        return warp(drawing, layer.warp, layer.warpClosed, moved);
     if (!warped)
-        return deform(drawing, layer.bones, pose.bend, layer.jointSmoothness, layer.skin);
-    return deform(warp(drawing, layer.warp, layer.warpClosed, pose.warp), layer.bones, pose.bend, layer.jointSmoothness, layer.skin);
+        return deform(drawing, layer.bones, pose.bend, layer.jointSmoothness, layer.skin, &options);
+    return deform(warp(drawing, layer.warp, layer.warpClosed, moved), layer.bones, pose.bend, layer.jointSmoothness, layer.skin, &options);
 }
 
 }  // namespace Deform

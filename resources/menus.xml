@@ -251,6 +251,7 @@
    <item id="InsertGroup" icon="timeline/addgroup" text="&amp;Group" responder="window" slot="onActionAddGroup()"/>
    <item id="InsertBone" icon="timeline/addbone" text="Game &amp;Bone" responder="window" slot="onActionAddBone()"/>
    <item id="InsertQuadmap" icon="timeline/addquadmap" text="&amp;Quadmap" shortcut="shortcut.insertQuadmap" responder="window" slot="onActionAddQuadmap()"/>
+   <item id="InsertKinematicOutput" text="&amp;Kinematic Output" responder="window" slot="onActionAddKinematicOutput()"/>
    <item id="InsertAnnotation" icon="xsheet/annotation" text="&amp;Annotation Column" responder="window" slot="onActionAddAnnotationColumn()"/>
    <item id="CreateEmptySymbolInLibrary" icon="edit/symbolinsert" text="Create Empty S&amp;ymbol in Library" responder="window" slot="onActionCreateEmptySymbolInLibrary()" tooltip="A new symbol no layer shows yet, in the Library's Scene Symbols."/>
    <submenu id="menu.insertEffects" text="&amp;Effects"/>
@@ -454,6 +455,14 @@
    <menu id="AnimationDeformation" text="&amp;Deformation">
     <item id="ResetDeformer" icon="anim/deformreset" text="&amp;Reset Deformer" responder="window" slot="onActionResetDeformer()"/>
     <item id="RemoveDeformer" icon="anim/deformremove" text="Re&amp;move Deformer" responder="window" slot="onActionRemoveDeformer()"/>
+    <item id="CopyPoseToRest" text="Copy Current Position to Resting &amp;Position" responder="window" slot="onActionCopyPoseToRest()"/>
+    <item id="CopyRestToPose" text="Copy Resting Position to Current Pos&amp;ition" responder="window" slot="onActionCopyRestToPose()"/>
+    <item id="ToggleDeformation" text="Enable/Disable De&amp;formation Here" responder="window" slot="onActionToggleDeformation()"/>
+    <item id="DeformationSettings" text="Deformation &amp;Settings..." responder="window" slot="onActionDeformationSettings()"/>
+    <item id="ConvertZoneToShape" text="Convert Elliptic ROI to S&amp;hape" responder="window" slot="onActionConvertZoneToShape()"/>
+    <separator/>
+    <item id="ShowAllDeformers" text="Show All &amp;Deformers" checkable="true" responder="camera" slot="onActionShowAllDeformers(bool)"/>
+    <item id="ShowCurrentDeformers" text="Show Current Deformers and Hide All &amp;Others" responder="camera" slot="onActionShowCurrentDeformers()"/>
     <separator/>
     <item id="AnimatePoints" text="&amp;Animate Points" shortcut="shortcut.animatePoints" checkable="true" responder="camera" slot="onActionAnimatePoints(bool)"/>
     <item id="ResetPoints" text="Reset Animated &amp;Points" shortcut="shortcut.resetPoints" responder="camera" slot="onActionResetPoints()"/>
@@ -1000,6 +1009,7 @@
    <item id="InsertGroup"/>
    <item id="InsertBone"/>
    <item id="InsertQuadmap"/>
+   <item id="InsertKinematicOutput"/>
    <item id="InsertAnnotation"/>
    <item id="ImportSound"/>
    <submenu id="menu.insertEffects" text="Effects"/>

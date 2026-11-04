@@ -140,6 +140,39 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
         painter.drawLine(pivot - QPointF(9, 0), pivot + QPointF(9, 0));
         painter.drawLine(pivot - QPointF(0, 9), pivot + QPointF(0, 9));
         paintMotionPath(painter);
+        if (m_allDeformers) {
+            // Show All Deformers: those of the other layers shown too, fainter.
+            painter.save();
+            painter.setOpacity(0.45);
+            for (int other = 0; other < scene.layers.size(); ++other) {
+                Layer const& them = scene.layers[other];
+                if (other == m_layer || !scene.shows(other) || (them.bones.size() < 2 && !them.hasWarp()))
+                    continue;
+                // (Drawn as if in the current layer: their places brought into its coordinates.)
+                QTransform const mine = layerViewTransform();
+                if (!mine.isInvertible())
+                    break;
+                QTransform const into = worldOf(other, m_frame) * viewTransform() * mine.inverted();
+                if (them.bones.size() >= 2) {
+                    QVector<QPointF> joints = Deform::posedJoints(them.bones, poseOf(other, m_frame).bend);
+                    for (QPointF& at : joints)
+                        at = into.map(at);
+                    paintBones(painter, joints, -1);
+                }
+                if (them.hasWarp()) {
+                    QVector<QPointF> warped = Deform::posedWarp(them.warp, poseOf(other, m_frame).warp);
+                    for (int i = 0; i + 2 < warped.size(); i += 3) {
+                        QPointF const at = warped[i];
+                        warped[i] = into.map(at);
+                        for (int h : {1, 2})
+                            if (!warped[i + h].isNull())
+                                warped[i + h] = into.map(at + warped[i + h]) - warped[i];
+                    }
+                    paintWarp(painter, warped, them.warpClosed, -1);
+                }
+            }
+            painter.restore();
+        }
         if (layer.bones.size() >= 2 && m_tool != Rigging && m_tool != IK)
             paintBones(painter, Deform::posedJoints(layer.bones, poseOf(m_layer, m_frame).bend), -1);
         if (layer.hasWarp() && m_tool != Rigging && m_tool != Transform)
@@ -194,6 +227,26 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
         if (m_rigMode != RigBones) {
             paintWarp(painter, warpRestDragged(), scene.layers[m_layer].warpClosed, m_drag == DragWarpRest ? m_warpIndex : -1);
             return true;
+        }
+        // The bones' zones of influence that are not everywhere: outlined round them, dashed.
+        {
+            Layer const& layer = scene.layers[m_layer];
+            QTransform const toWidget = layerViewTransform();
+            painter.save();
+            painter.resetTransform();
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setBrush(Qt::NoBrush);
+            for (int b = 0; b + 1 < layer.bones.size(); ++b) {
+                BoneInfluence const zone = layer.influenceOf(b);
+                QPolygonF shape = zone.type == BoneInfluence::Elliptic ? Deform::zoneShape(layer.bones, b, zone)
+                                  : zone.type == BoneInfluence::Shaped ? zone.shape : QPolygonF();
+                if (shape.size() < 3)
+                    continue;
+                QPen pen(b == m_bone ? QColor(255, 200, 60) : QColor(120, 200, 255), 1.2, Qt::DashLine);
+                painter.setPen(pen);
+                painter.drawPolygon(toWidget.map(shape));
+            }
+            painter.restore();
         }
         // The chain at rest, with the joint being dragged where the pointer has it.
         QVector<QPointF> joints = scene.layers[m_layer].bones;
@@ -289,4 +342,12 @@ void Canvas::paintMarquee(QPainter& painter)
     else
         painter.drawRect(QRectF(m_dragStart, m_dragNow).normalized());
     painter.restore();
+}
+
+void Canvas::onActionShowCurrentDeformers()
+{
+    m_allDeformers = false;
+    if (QAction* const shown = window() ? window()->findChild<QAction*>(QStringLiteral("ShowAllDeformers")) : nullptr)
+        shown->setChecked(false);
+    update();
 }

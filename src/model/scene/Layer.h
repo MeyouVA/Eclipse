@@ -4,6 +4,7 @@
 #include "model/scene/Effect.h"
 
 #include <QPointF>
+#include <QPolygonF>
 #include <QString>
 #include <QVector>
 
@@ -60,6 +61,39 @@ struct SkinDab {
     double radius = 20.0;
     double strength = 0.5;
     bool operator==(SkinDab const&) const = default;
+};
+
+// Where a bone of a layer's chain bends the drawing (its zone of influence): everywhere, as near as it is (Infinite); inside
+// an ellipse round it - so far to its left and right, so far beyond its start and end - fading out over `fade` (Elliptic);
+// inside a shape drawn round it (Shaped); or nowhere (Zero).  Distances in the layer's units.
+struct BoneInfluence {
+    enum Type { Infinite, Elliptic, Zero, Shaped };
+    int type = Infinite;
+    double left = 60.0, right = 60.0;      // transversal radii
+    double begin = 40.0, end = 40.0;       // longitudinal radii, past the bone's start and end
+    bool symmetric = true;                 // the right radius is the left one
+    double fade = 20.0;                    // the fade radius past the zone's edge
+    double exponent = 1.0;                 // how the fade falls off (1: straight)
+    QPolygonF shape;                       // a Shaped zone, in the layer's coordinates at rest
+    bool operator==(BoneInfluence const&) const = default;
+    double rightRadius() const { return symmetric ? left : right; }
+};
+
+// How a chain's drawing is scaled across the skeleton, from the chain's start to its end, on each side (Deformation Scale);
+// both sides alike (Uniform); and a wave of scaling along it (Deformation Wave).  1: as drawn.
+struct ChainScale {
+    double leftStart = 1.0, leftEnd = 1.0, rightStart = 1.0, rightEnd = 1.0;
+    bool uniform = false;                  // the right side as the left
+    double waveLeft = 0.0, waveRight = 0.0;          // amplitude (a share of the width)
+    double periodLeft = 100.0, periodRight = 100.0;  // length of one wave along the chain
+    double offsetLeft = 0.0, offsetRight = 0.0;      // where the wave starts (along the chain)
+    bool waveSameAsLeft = true;
+    bool operator==(ChainScale const&) const = default;
+    bool plain() const
+    {
+        return leftStart == 1.0 && leftEnd == 1.0 && (uniform || (rightStart == 1.0 && rightEnd == 1.0)) && waveLeft == 0.0
+               && (waveSameAsLeft || waveRight == 0.0);
+    }
 };
 
 // A value of a layer's pose (Driver::Value) that takes a function column's value instead of its keyframes'.
@@ -304,6 +338,16 @@ struct Layer {
     int bitmapArt = 0;
     bool bendOnBones = false;
     double jointSmoothness = 0.0;
+    // The bones' zones of influence (one for each bone; those past the end are Infinite), the chain's scaling and wave.
+    QVector<BoneInfluence> influences;
+    BoneInfluence influenceOf(int bone) const { return bone >= 0 && bone < influences.size() ? influences[bone] : BoneInfluence(); }
+    ChainScale chainScale;
+    // Pencil lines deformed: Quality (0 Low .. 3 Very High: how finely they are followed), their thickness kept as drawn
+    // or stretched with the drawing, smoothed (passes), and how far a point may stray when the line is simplified again.
+    int lineDeformQuality = 1;
+    bool linePreserveThickness = true;
+    int lineDeformSmooth = 0;
+    double lineDeformFitError = 0.0;
     QVector<SkinDab> skin;
     // Values of its pose that follow other layers' (attribute controls): these take the place of its keyframes for them.
     QVector<Driver> drivers;

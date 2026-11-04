@@ -503,6 +503,8 @@ if (!k.pose.fx.isEmpty()) {
         fx.append(v);
     key["fx"] = fx;
 }
+if (k.pose.deform != 1.0)
+    key["deform"] = k.pose.deform;
 if (!k.pose.bend.isEmpty()) {
     QJsonArray bend;
     for (double b : k.pose.bend)
@@ -798,6 +800,37 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["bendOnBones"] = true;
     if (layer.jointSmoothness > 0.0)
         layerObject["jointSmooth"] = layer.jointSmoothness;
+    if (!layer.influences.isEmpty()) {
+        QJsonArray zones;
+        for (BoneInfluence const& z : layer.influences) {
+            QJsonObject o{{"type", z.type}, {"left", z.left}, {"right", z.right}, {"begin", z.begin}, {"end", z.end},
+                          {"symmetric", z.symmetric}, {"fade", z.fade}, {"exponent", z.exponent}};
+            if (!z.shape.isEmpty()) {
+                QJsonArray points;
+                for (QPointF const& at : z.shape) {
+                    points.append(at.x());
+                    points.append(at.y());
+                }
+                o["shape"] = points;
+            }
+            zones.append(o);
+        }
+        layerObject["influences"] = zones;
+    }
+    if (!(layer.chainScale == ChainScale())) {
+        ChainScale const& c = layer.chainScale;
+        layerObject["chainScale"] = QJsonObject{{"ls", c.leftStart}, {"le", c.leftEnd}, {"rs", c.rightStart}, {"re", c.rightEnd}, {"uniform", c.uniform},
+                                                 {"wl", c.waveLeft}, {"wr", c.waveRight}, {"pl", c.periodLeft}, {"pr", c.periodRight},
+                                                 {"ol", c.offsetLeft}, {"or", c.offsetRight}, {"same", c.waveSameAsLeft}};
+    }
+    if (layer.lineDeformQuality != 1)
+        layerObject["lineDeformQuality"] = layer.lineDeformQuality;
+    if (!layer.linePreserveThickness)
+        layerObject["linePreserveThickness"] = false;
+    if (layer.lineDeformSmooth != 0)
+        layerObject["lineDeformSmooth"] = layer.lineDeformSmooth;
+    if (layer.lineDeformFitError > 0.0)
+        layerObject["lineDeformFitError"] = layer.lineDeformFitError;
     if (layer.hiddenFunctions != 0)
         layerObject["hiddenFunctions"] = layer.hiddenFunctions;
     if (!layer.links.isEmpty()) {

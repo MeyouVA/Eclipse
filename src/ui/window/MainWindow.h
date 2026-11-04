@@ -601,6 +601,15 @@ public slots:
     void onActionClearLipSync();
     void onActionMouthShape(QString const& shape);
     void onActionRemoveDeformer();
+    // Rigging > Deformation: rest position, Enable Deformation, Kinematic Output, Deformation Settings (influence, scale, lines).
+    void onActionCopyPoseToRest();
+    void onActionCopyRestToPose();
+    void onActionToggleDeformation();
+    void onActionAddKinematicOutput();
+    void onActionDeformationSettings();
+    void onActionConvertZoneToShape();
+    // The settings of the deformer of `layer` shown in a dialog (bone `bone` chosen in it).
+    void editDeformationSettings(int layer, int bone);
     void onActionCreateEnvelope();
     void onActionConvertDeformed();
     void onActionExportPresets();
