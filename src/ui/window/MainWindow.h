@@ -605,6 +605,10 @@ public slots:
     void onActionCopyPoseToRest();
     // Rigging > IK Constraints (and the Camera View menu): on the selected layers; Apply IK Constraints from the IK Keyframe.
     void onActionIkConstraint(QString const& which);
+    // Rigging > Constraints: the layer's constraint (kind, anchors, settings, Active Value) and Transform Loop; baking.
+    void onActionConstraintSettings();
+    void onActionBakeConstraint(QString const& which);
+    void onActionRemoveConstraint();
     void onActionApplyIkConstraints();
     void onActionSetIkKeyframe();
     // A deformation for each drawing: Set Transformation (its own chain), Default Transformation (the layer's), Convert to New

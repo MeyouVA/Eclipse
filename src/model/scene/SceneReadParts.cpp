@@ -613,6 +613,57 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
         if ((d.kind == PointDeformer::Lattice || d.kind == PointDeformer::Mesh) && d.points.size() != (d.cols + 1) * (d.rows + 1))
             d = PointDeformer();    // (a grid that does not add up is not kept)
     }
+    if (lo.contains("constraint")) {
+        QJsonObject const o = lo["constraint"].toObject();
+        Constraint& c = layer.constraint;
+        c.kind = std::clamp(o["kind"].toInt(0), 0, 6);
+        for (QJsonValue const& v : o["anchors"].toArray())
+            c.anchors.push_back(v.toInt());
+        QJsonArray const rest = o["rest"].toArray();
+        for (int i = 0; i + 1 < rest.size(); i += 2)
+            c.rest.push_back(QPointF(rest[i].toDouble(), rest[i + 1].toDouble()));
+        c.volume = o["volume"].toDouble(0.0);
+        c.volumeMin = o["volumeMin"].toDouble(0.1);
+        c.volumeMax = o["volumeMax"].toDouble(10.0);
+        c.distanceMin = o["distanceMin"].toDouble(0.0);
+        c.distanceMax = o["distanceMax"].toDouble(0.0);
+        c.balance = std::clamp(o["balance"].toDouble(1.0), 0.0, 1.0);
+        c.allowFlip = o["allowFlip"].toBool(true);
+        c.flipX = o["flipX"].toBool(true);
+        c.flipY = o["flipY"].toBool(true);
+        c.skewType = std::clamp(o["skewType"].toInt(0), 0, 2);
+        c.inertiaX = o["ix"].toDouble(0.6);
+        c.inertiaY = o["iy"].toDouble(0.6);
+        c.inertiaRotate = o["ir"].toDouble(0.6);
+        c.inertiaScale = o["is"].toDouble(0.6);
+        c.tensionX = o["tx"].toDouble(0.3);
+        c.tensionY = o["ty"].toDouble(0.3);
+        c.tensionRotate = o["tr"].toDouble(0.3);
+        c.tensionScale = o["ts"].toDouble(0.3);
+        c.staticX = o["sx"].toDouble(0.0);
+        c.staticY = o["sy"].toDouble(0.0);
+        c.staticAngle = o["sa"].toDouble(0.0);
+        c.staticScaleX = o["ssx"].toDouble(1.0);
+        c.staticScaleY = o["ssy"].toDouble(1.0);
+        c.staticSkew = o["ssk"].toDouble(0.0);
+        c.fromGrandparent = o["grand"].toBool(false);
+        c.limitTranslate = o["lt"].toBool(true);
+        c.limitRotate = o["lr"].toBool(true);
+        c.limitScale = o["ls"].toBool(true);
+        c.limitSkew = o["lk"].toBool(true);
+        c.invert = o["invert"].toBool(false);
+        c.inertiaSkew = o["iskew"].toDouble(0.6);
+        c.tensionSkew = o["tskew"].toDouble(0.3);
+        c.skewModifier = o["skewMod"].toDouble(1.0);
+        c.matchSwitch = o["match"].toBool(false);
+        c.staticSkewY = o["sskY"].toDouble(0.0);
+        c.staticUniform = o["uniform"].toBool(false);
+    }
+    if (QJsonArray const loop = lo["loop"].toArray(); loop.size() == 3) {
+        layer.loopType = std::clamp(loop[0].toInt(0), 0, 2);
+        layer.loopStart = loop[1].toInt(-1);
+        layer.loopEnd = loop[2].toInt(-1);
+    }
     layer.shapeAware = lo["shapeAware"].toBool(false);
     layer.overlayRigidity = lo["overlayRigidity"].toBool(false);
     layer.warpCurve = std::clamp(lo["warpCurve"].toInt(0), 0, 2);
@@ -862,6 +913,7 @@ void keysFromJson(QJsonArray const& array, Layer& layer, int frameCount, bool ex
         for (QJsonValue const& b : ko["bend"].toArray())
             pose.bend.push_back(b.toDouble());
         pose.deform = std::clamp(ko["deform"].toDouble(1.0), 0.0, 1.0);
+        pose.constraint = ko["constraint"].toDouble(1.0);
         {
             QJsonArray const handles = ko["handles"].toArray();
             for (int i = 0; i + 1 < handles.size(); i += 2)

@@ -37,6 +37,8 @@ struct Pose {
     QVector<double> fx;
     // How much of the deformation is applied (0: the drawing as at rest, 1: fully bent) - Enable Deformation, switched over time.
     double deform = 1.0;
+    // A constraint's Active Value (Limit, Gate: 0..1 how much; Switch: which anchor, held from its keyframe on).
+    double constraint = 1.0;
     // The point deformer's points: how far each is moved from where it is at rest.
     QVector<QPointF> handles;
     // Point animation: the points of the drawings moved (in their order; see PointMove::comesBefore).

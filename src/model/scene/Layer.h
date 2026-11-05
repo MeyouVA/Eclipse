@@ -133,6 +133,42 @@ struct PointDeformer {
     int groupOf(int i) const { return i < groups.size() ? groups[i] : i; }
 };
 
+// A constraint: what a layer hangs from, worked out another way than by its parent alone.
+//  Points (Two / Three / Multi Points Constraint): stretched between the pivots of other layers (anchors) - as they were when it
+//   was set (`rest`), so as they are now; squash and stretch with a volume to keep, flips allowed or not, skew handled as chosen.
+//  Spring (Dynamic Spring): its parent's movement followed with inertia and tension (overlapping action).
+//  Static (Static Transformation): a transformation of its own in place of its parents' (baked from them, then changed at will).
+//  Limit (Transformation Limit): its parent's transformation applied only so much (the pose's Active Value).
+//  Gate (Transformation Gate): between two layers' transformations (anchors), as much of the second as the Active Value says.
+//  Switch (Constraint / Transformation Switch): the transformation of one of its anchors, which one keyed over time.
+struct Constraint {
+    enum Kind { None, Points, Spring, Static, Limit, Gate, Switch };
+    int kind = None;
+    QVector<int> anchors;                  // layer ids
+    QVector<QPointF> rest;                 // Points: where the anchors' pivots were when it was set
+    double volume = 0.0;                   // Volume Modifier: 0 none, 1 keeps the area as it stretches
+    double volumeMin = 0.1, volumeMax = 10.0;
+    double distanceMin = 0.0, distanceMax = 0.0;   // how short / long the stretch may become (0: no limit)
+    double balance = 1.0;                  // Point Balance (three points or more): 0 the first two points only, 1 all of them
+    bool allowFlip = true, flipX = true, flipY = true;
+    enum SkewType { SkewOptimized, SkewIgnored, SkewAsRotation };
+    int skewType = SkewOptimized;
+    // Spring: how much it keeps going (inertia) and how hard it is pulled back (tension) - across, down, turning, scaling.
+    double inertiaX = 0.6, inertiaY = 0.6, inertiaRotate = 0.6, inertiaScale = 0.6, inertiaSkew = 0.6;
+    double tensionX = 0.3, tensionY = 0.3, tensionRotate = 0.3, tensionScale = 0.3, tensionSkew = 0.3;
+    double skewModifier = 1.0;             // Points: how much of the skew is kept (Skew Modifier)
+    bool matchSwitch = false;              // Switch: Match Animation on Active Attribute (no jump where it switches)
+    // Static: its transformation (Translate X/Y, rotation, Scale X/Y, Skew); `fromGrandparent`: only the immediate parent's was
+    // baked, so the layers above that still count.
+    double staticX = 0.0, staticY = 0.0, staticAngle = 0.0, staticScaleX = 1.0, staticScaleY = 1.0, staticSkew = 0.0, staticSkewY = 0.0;
+    bool staticUniform = false;            // Uniform Scale: Scale Y as Scale X
+    bool fromGrandparent = false;
+    // Limit: which parts of the parent's transformation are limited; Invert Transformation: undone instead.
+    bool limitTranslate = true, limitRotate = true, limitScale = true, limitSkew = true;
+    bool invert = false;
+    bool operator==(Constraint const&) const = default;
+};
+
 // A value of a layer's pose (Driver::Value) that takes a function column's value instead of its keyframes'.
 struct ValueLink {
     int value = 0;
@@ -387,6 +423,14 @@ struct Layer {
     BoneInfluence influenceOf(int bone) const { return bone >= 0 && bone < influences.size() ? influences[bone] : BoneInfluence(); }
     ChainScale chainScale;
     PointDeformer pointDeformer;
+    Constraint constraint;
+    // Transform Loop: its animation played over and over (Repeat) or back and forth (Ping-Pong) between two frames; with
+    // Automatic Range Detection (-1, -1) between its first and last keyframes.
+    enum LoopType { LoopNone, LoopRepeat, LoopPingPong };
+    int loopType = LoopNone;
+    int loopStart = -1, loopEnd = -1;
+    // The frame whose pose is shown on `frame`, as the loop has it.
+    int loopedFrame(int frame) const;
     // The curve deformer's manipulator: Bezier (its handles), Catmull (smooth through its points), Rounded Polyline (straight,
     // its corners rounded); and how many intervals each piece is followed in.
     enum WarpCurve { WarpBezier, WarpCatmull, WarpPolyline };

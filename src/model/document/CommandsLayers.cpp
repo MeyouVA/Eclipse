@@ -750,3 +750,33 @@ int Document::applyIkConstraints(int from, int to)
     apply(tr("Apply Inverse Kinematics Constraints"), [&](Scene& s) { s.layers = trial.layers; });
     return fixed;
 }
+
+void Document::setConstraint(int layer, Constraint const& constraint, QString const& text)
+{
+    if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].constraint == constraint)
+        return;
+    apply(text, [&](Scene& s) { s.layers[layer].constraint = constraint; });
+}
+
+void Document::setLoop(int layer, int type, int start, int end)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return;
+    Layer const& l = m_scene.layers[layer];
+    if (l.loopType == type && l.loopStart == start && l.loopEnd == end)
+        return;
+    apply(tr("Loop Type"), [&](Scene& s) {
+        s.layers[layer].loopType = std::clamp(type, 0, 2);
+        s.layers[layer].loopStart = start;
+        s.layers[layer].loopEnd = end;
+    });
+}
+
+void Document::setConstraintValue(int layer, int frame, double value)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return;
+    Pose pose = m_scene.layers[layer].poseAt(frame);
+    pose.constraint = value;
+    setKeyframe(layer, frame, pose, tr("Active Value"));
+}

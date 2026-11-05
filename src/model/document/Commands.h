@@ -418,6 +418,10 @@ public:
     bool setIkConstraint(QVector<int> const& layers, QString const& which, int frame);
     // Apply IK Constraints: the held parts kept, from frame `from` to `to`, where they are on `from` (one step).
     int applyIkConstraints(int from, int to);
+    // A layer's constraint and Transform Loop set (one step); its Active Value keyed on `frame`.
+    void setConstraint(int layer, Constraint const& constraint, QString const& text);
+    void setLoop(int layer, int type, int start, int end);
+    void setConstraintValue(int layer, int frame, double value);
     void setQuad(int layer, QVector<QPointF> const& corners, int frame = 0);
     void insertWarpPoint(int layer, QVector<QPointF> const& points, int index, double along);
     bool convertDeformed(int layer);

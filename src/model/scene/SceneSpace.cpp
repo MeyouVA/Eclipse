@@ -90,7 +90,8 @@ struct Mat4 {
 Pose poseFor(Scene const& scene, int layer, int frame, PoseOverride const* over)
 {
     Pose const* const other = over ? over->otherPose(layer, frame) : nullptr;
-    Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : other ? *other : scene.layers[layer].poseAt(frame);
+    Pose pose = over && over->layer == layer && over->frame == frame && !over->hasMatrix ? over->pose : other ? *other
+                                                                                                          : scene.layers[layer].poseAt(scene.layers[layer].loopedFrame(frame));
     Layer const& l = scene.layers[layer];
     if (!l.enable3d) {
         pose.rotX = 0.0;
@@ -138,12 +139,290 @@ QTransform withoutScale(QTransform const& m)
     return QTransform(m.m11() / sx, m.m12() / sx, m.m21() / sy, m.m22() / sy, m.dx(), m.dy());
 }
 
+QTransform flatChain(Scene const& scene, int layer, int frame, PoseOverride const* over);
+
+// ---- constraints (Layer::constraint): what a layer hangs from, worked out another way ----
+
+// A transformation as its parts: moved, turned (degrees), scaled across and down, leaning (degrees); and back.
+struct Parts {
+    double x = 0.0, y = 0.0, angle = 0.0, sx = 1.0, sy = 1.0, skew = 0.0;
+};
+double const kPi = 3.14159265358979323846;
+
+Parts partsOf(QTransform const& m)
+{
+    Parts p;
+    p.x = m.dx();
+    p.y = m.dy();
+    double const a = std::atan2(m.m12(), m.m11());
+    p.angle = a * 180.0 / kPi;
+    p.sx = std::hypot(m.m11(), m.m12());
+    double const c = std::cos(a), s = std::sin(a);
+    p.sy = -m.m21() * s + m.m22() * c;
+    double const lean = m.m21() * c + m.m22() * s;
+    p.skew = std::abs(p.sy) > 1e-12 ? std::atan2(lean, p.sy) * 180.0 / kPi : 0.0;
+    if (p.sy < 0.0)
+        p.skew = std::atan(lean / p.sy) * 180.0 / kPi;
+    return p;
+}
+
+QTransform fromParts(Parts const& p)
+{
+    double const a = p.angle * kPi / 180.0, c = std::cos(a), s = std::sin(a);
+    double const k = std::tan(p.skew * kPi / 180.0) * p.sy;
+    return QTransform(p.sx * c, p.sx * s, k * c - p.sy * s, k * s + p.sy * c, p.x, p.y);
+}
+
+Parts mixed(Parts const& a, Parts const& b, double t)
+{
+    Parts m;
+    m.x = a.x + (b.x - a.x) * t;
+    m.y = a.y + (b.y - a.y) * t;
+    m.angle = a.angle + std::remainder(b.angle - a.angle, 360.0) * t;
+    m.sx = a.sx + (b.sx - a.sx) * t;
+    m.sy = a.sy + (b.sy - a.sy) * t;
+    m.skew = a.skew + (b.skew - a.skew) * t;
+    return m;
+}
+
+// Where a layer's pivot lies in the scene.
+QPointF anchorAt(Scene const& scene, int layer, int frame, PoseOverride const* over)
+{
+    return flatChain(scene, layer, frame, over).map(scene.pivotOf(layer, frame));
+}
+
+// The affine map that takes `from` (three or more points) as near `to` as it can (least squares).
+bool affineFit(QVector<QPointF> const& from, QVector<QPointF> const& to, QTransform& out)
+{
+    int const n = int(std::min(from.size(), to.size()));
+    if (n < 3)
+        return false;
+    // Normal equations for [x y 1] * [a c; b d; e f]: one 3x3 system for each column of the result.
+    double m[3][3] = {}, rx[3] = {}, ry[3] = {};
+    for (int i = 0; i < n; ++i) {
+        double const v[3] = {from[i].x(), from[i].y(), 1.0};
+        for (int r = 0; r < 3; ++r) {
+            for (int c = 0; c < 3; ++c)
+                m[r][c] += v[r] * v[c];
+            rx[r] += v[r] * to[i].x();
+            ry[r] += v[r] * to[i].y();
+        }
+    }
+    auto det3 = [](double const a[3][3]) {
+        return a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+    };
+    double const d = det3(m);
+    if (std::abs(d) < 1e-12)
+        return false;
+    auto solve = [&](double const r[3], double out3[3]) {
+        for (int k = 0; k < 3; ++k) {
+            double t[3][3];
+            for (int i = 0; i < 3; ++i)
+                for (int j = 0; j < 3; ++j)
+                    t[i][j] = j == k ? r[i] : m[i][j];
+            out3[k] = det3(t) / d;
+        }
+    };
+    double cx[3], cy[3];
+    solve(rx, cx);
+    solve(ry, cy);
+    out = QTransform(cx[0], cy[0], cx[1], cy[1], cx[2], cy[2]);
+    return true;
+}
+
+// The parent transformation a constrained layer has on `frame` (false: it has none, and hangs as usual).
+bool constrainedParent(Scene const& scene, int layer, int frame, PoseOverride const* over, QTransform& out)
+{
+    Layer const& l = scene.layers[layer];
+    Constraint const& c = l.constraint;
+    if (c.kind == Constraint::None)
+        return false;
+    static thread_local int depth = 0;
+    if (depth >= 8)
+        return false;       // (constraints that lean on one another round in a ring go no deeper)
+    struct Guard {
+        Guard() { ++depth; }
+        ~Guard() { --depth; }
+    } const guard;
+    int const parent = scene.parentIndex(layer);
+    auto chainOf = [&](int other, int f) { return other >= 0 ? flatChain(scene, other, f, over) : QTransform(); };
+    QVector<int> anchors;
+    for (int id : c.anchors)
+        if (int const at = scene.layerIndex(id); at >= 0 && at != layer)
+            anchors.push_back(at);
+    switch (c.kind) {
+    case Constraint::Points: {
+        if (anchors.size() < 2 || c.rest.size() < anchors.size())
+            return false;
+        QVector<QPointF> now;
+        for (int a : anchors)
+            now.push_back(anchorAt(scene, a, frame, over));
+        // The first two: turned and stretched between them, squashed across as the volume asks.
+        QPointF const r0 = c.rest[0], v0 = c.rest[1] - c.rest[0], p0 = now[0], v1 = now[1] - now[0];
+        double const len0 = std::hypot(v0.x(), v0.y());
+        double len1 = std::hypot(v1.x(), v1.y());
+        if (len0 < 1e-9)
+            return false;
+        if (c.distanceMin > 0.0)
+            len1 = std::max(len1, c.distanceMin);
+        if (c.distanceMax > 0.0)
+            len1 = std::min(len1, c.distanceMax);
+        double const ratio = len1 / len0;
+        double const across = std::clamp(std::pow(ratio, -c.volume), c.volumeMin, c.volumeMax);
+        QTransform two = QTransform::fromTranslate(-r0.x(), -r0.y());
+        two *= QTransform().rotateRadians(-std::atan2(v0.y(), v0.x()));
+        two *= QTransform::fromScale(ratio, across);
+        two *= QTransform().rotateRadians(std::atan2(v1.y(), v1.x()));
+        two *= QTransform::fromTranslate(p0.x(), p0.y());
+        if (anchors.size() == 2 || c.balance <= 0.0) {
+            out = two;
+            return true;
+        }
+        QTransform fit;
+        if (!affineFit(c.rest.mid(0, anchors.size()), now, fit)) {
+            out = two;
+            return true;
+        }
+        Parts parts = partsOf(fit);
+        parts.skew *= c.skewModifier;
+        if (c.skewType == Constraint::SkewIgnored)
+            parts.skew = 0.0;
+        else if (c.skewType == Constraint::SkewAsRotation) {
+            parts.angle += parts.skew / 2.0;
+            parts.skew = 0.0;
+        }
+        if (parts.sx * parts.sy < 0.0 && !c.allowFlip) {
+            // Not flipped: the axis whose flip is smaller (or the one allowed) put back.
+            bool const backX = !c.flipX || (c.flipY && std::abs(parts.sx) < std::abs(parts.sy));
+            if (backX)
+                parts.sx = -parts.sx;
+            else
+                parts.sy = -parts.sy;
+        }
+        out = fromParts(mixed(partsOf(two), parts, std::clamp(c.balance, 0.0, 1.0)));
+        return true;
+    }
+    case Constraint::Spring: {
+        if (parent < 0)
+            return false;
+        // Its parent's movement followed with inertia and tension, from the first frame on.
+        auto target = [&](int f) { return chainOf(parent, f).map(scene.pivotOf(layer, f)); };
+        QPointF spot = target(0), speed;
+        Parts const first = partsOf(chainOf(parent, 0));
+        double angle = first.angle, spin = 0.0, size = first.sx, grow = 0.0, lean = first.skew, tilt = 0.0;
+        double was = first.angle;
+        for (int f = 1; f <= frame; ++f) {
+            QPointF const aim = target(f);
+            Parts const now = partsOf(chainOf(parent, f));
+            double const unwrapped = was + std::remainder(now.angle - was, 360.0);
+            was = unwrapped;
+            speed = QPointF(speed.x() * c.inertiaX + (aim.x() - spot.x()) * c.tensionX, speed.y() * c.inertiaY + (aim.y() - spot.y()) * c.tensionY);
+            spot += speed;
+            spin = spin * c.inertiaRotate + (unwrapped - angle) * c.tensionRotate;
+            angle += spin;
+            grow = grow * c.inertiaScale + (now.sx - size) * c.tensionScale;
+            size += grow;
+            tilt = tilt * c.inertiaSkew + (now.skew - lean) * c.tensionSkew;
+            lean += tilt;
+        }
+        QTransform const here = chainOf(parent, frame);
+        Parts const now = partsOf(here);
+        QPointF const aim = target(frame);
+        double const behind = angle - was;
+        double const scaled = now.sx > 1e-9 ? size / now.sx : 1.0;
+        double const leaning = std::tan(lean * kPi / 180.0) - std::tan(now.skew * kPi / 180.0);
+        out = here * QTransform::fromTranslate(-aim.x(), -aim.y()) * QTransform().rotate(behind) * QTransform::fromScale(scaled, scaled)
+              * QTransform(1.0, 0.0, leaning, 1.0, 0.0, 0.0) * QTransform::fromTranslate(spot.x(), spot.y());
+        return true;
+    }
+    case Constraint::Static: {
+        Parts p;
+        p.x = c.staticX;
+        p.y = c.staticY;
+        p.angle = c.staticAngle;
+        p.sx = c.staticScaleX;
+        p.sy = c.staticUniform ? c.staticScaleX : c.staticScaleY;
+        p.skew = c.staticSkew;
+        // (Skew Y: the uprights stay, the level lines lean.)
+        out = QTransform(1.0, std::tan(c.staticSkewY * kPi / 180.0), 0.0, 1.0, 0.0, 0.0) * fromParts(p);
+        if (c.fromGrandparent && parent >= 0)
+            out = out * chainOf(scene.parentIndex(parent), frame);
+        return true;
+    }
+    case Constraint::Limit: {
+        double const amount = std::clamp(poseFor(scene, layer, frame, over).constraint, 0.0, 1.0);
+        Parts const full = partsOf(chainOf(parent, frame));
+        Parts limited = full;
+        Parts const none;
+        Parts const part = mixed(none, full, amount);
+        if (c.limitTranslate) {
+            limited.x = part.x;
+            limited.y = part.y;
+        }
+        if (c.limitRotate)
+            limited.angle = part.angle;
+        if (c.limitScale) {
+            limited.sx = part.sx;
+            limited.sy = part.sy;
+        }
+        if (c.limitSkew)
+            limited.skew = part.skew;
+        out = fromParts(limited);
+        if (c.invert && out.isInvertible())
+            out = out.inverted();
+        return true;
+    }
+    case Constraint::Gate: {
+        if (anchors.isEmpty())
+            return false;
+        int const a = anchors.size() >= 2 ? anchors[0] : parent, b = anchors.size() >= 2 ? anchors[1] : anchors[0];
+        double const amount = std::clamp(poseFor(scene, layer, frame, over).constraint, 0.0, 1.0);
+        out = fromParts(mixed(partsOf(chainOf(a, frame)), partsOf(chainOf(b, frame)), amount));
+        return true;
+    }
+    case Constraint::Switch: {
+        // Which, held from its keyframe on (Transformation 1, 2 ...; below 1: the parent).
+        double value = l.poseAt(frame).constraint;
+        for (Keyframe const& k : l.keys)
+            if (k.frame <= frame)
+                value = k.pose.constraint;
+        auto pick = [&](double v, int f) {
+            int const which = int(std::lround(v)) - 1;
+            return which >= 0 && which < anchors.size() ? chainOf(anchors[which], f) : chainOf(parent, f);
+        };
+        out = pick(value, frame);
+        if (c.matchSwitch) {
+            // Match Animation on Active Attribute: where it switched last, the new transformation put where the old one was, so
+            // that the layer does not jump.
+            int switchedAt = -1;
+            double before = value;
+            for (int k = 1; k < l.keys.size(); ++k)
+                if (l.keys[k].frame <= frame && std::lround(l.keys[k].pose.constraint) != std::lround(l.keys[k - 1].pose.constraint)) {
+                    switchedAt = l.keys[k].frame;
+                    before = l.keys[k - 1].pose.constraint;
+                }
+            if (switchedAt >= 0) {
+                QTransform const was = pick(before, switchedAt), then = pick(value, switchedAt);
+                if (then.isInvertible())
+                    out = was * then.inverted() * out;
+            }
+        }
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
 // From a layer to the scene on its own plane, before any camera alignment.
 QTransform flatChain(Scene const& scene, int layer, int frame, PoseOverride const* over)
 {
     QTransform t;
     for (int guard = 0; layer >= 0 && layer < scene.layers.size() && guard < 256; ++guard, layer = scene.parentIndex(layer)) {
         t = t * localFor(scene, layer, frame, over);
+        // A constraint says what it hangs from, in place of its parents.
+        if (QTransform held; constrainedParent(scene, layer, frame, over, held))
+            return t * held;
         int const parent = scene.parentIndex(layer);
         if (parent >= 0 && scene.layers[layer].parentBone >= 0)
             t = t * Deform::boneTransform(scene.layers[parent].bonesAt(frame), poseFor(scene, parent, frame, over).bend, scene.layers[layer].parentBone);
@@ -212,6 +491,9 @@ Mat4 spaceChain(Scene const& scene, int layer, int frame, PoseOverride const* ov
         }
         if (pose.z != 0.0)
             t = t * Mat4::move(0, 0, pose.z);
+        // (A constraint works on the flat plane: in space it holds as it does there.)
+        if (QTransform held; constrainedParent(scene, layer, frame, over, held))
+            return t * Mat4::flat(held);
         int const parent = scene.parentIndex(layer);
         if (parent >= 0 && l.parentBone >= 0)
             t = t * Mat4::flat(Deform::boneTransform(scene.layers[parent].bonesAt(frame), poseFor(scene, parent, frame, over).bend, l.parentBone));
@@ -578,4 +860,32 @@ Pose Scene::poseOf(int layer, int frame, PoseOverride const* over) const
     if (layer < 0 || layer >= layers.size())
         return Pose();
     return poseFor(*this, layer, frame, over);
+}
+
+Constraint Scene::bakedConstraint(int layer, int frame, bool immediateOnly) const
+{
+    Constraint c = layer >= 0 && layer < layers.size() ? layers[layer].constraint : Constraint();
+    int const parent = layer >= 0 && layer < layers.size() ? parentIndex(layer) : -1;
+    QTransform held;
+    if (parent >= 0)
+        held = immediateOnly ? localFor(*this, parent, frame, nullptr) : flatChain(*this, parent, frame, nullptr);
+    Parts const p = partsOf(held);
+    c.kind = Constraint::Static;
+    c.staticX = p.x;
+    c.staticY = p.y;
+    c.staticAngle = p.angle;
+    c.staticScaleX = p.sx;
+    c.staticScaleY = p.sy;
+    c.staticSkew = p.skew;
+    c.fromGrandparent = immediateOnly;
+    return c;
+}
+
+QVector<QPointF> Scene::anchorPlaces(QVector<int> const& anchorIds, int frame) const
+{
+    QVector<QPointF> places;
+    for (int id : anchorIds)
+        if (int const at = layerIndex(id); at >= 0)
+            places.push_back(anchorAt(*this, at, frame, nullptr));
+    return places;
 }

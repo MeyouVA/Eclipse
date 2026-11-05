@@ -513,6 +513,8 @@ if (!k.pose.fx.isEmpty()) {
 }
 if (k.pose.deform != 1.0)
     key["deform"] = k.pose.deform;
+if (k.pose.constraint != 1.0)
+    key["constraint"] = k.pose.constraint;
 if (!k.pose.handles.isEmpty()) {
     QJsonArray handles;
     for (QPointF const& h : k.pose.handles) {
@@ -870,6 +872,26 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
                                                    {"pre", d.preBlend}, {"post", d.postBlend}, {"consider", d.pointsToConsider},
                                                    {"individual", d.individual}};
     }
+    if (layer.constraint.kind != Constraint::None) {
+        Constraint const& c = layer.constraint;
+        QJsonArray anchors, rest;
+        for (int id : c.anchors)
+            anchors.append(id);
+        for (QPointF const& at : c.rest) {
+            rest.append(at.x());
+            rest.append(at.y());
+        }
+        layerObject["constraint"] = QJsonObject{
+            {"kind", c.kind}, {"anchors", anchors}, {"rest", rest}, {"volume", c.volume}, {"volumeMin", c.volumeMin}, {"volumeMax", c.volumeMax},
+            {"distanceMin", c.distanceMin}, {"distanceMax", c.distanceMax}, {"balance", c.balance}, {"allowFlip", c.allowFlip}, {"flipX", c.flipX},
+            {"flipY", c.flipY}, {"skewType", c.skewType}, {"ix", c.inertiaX}, {"iy", c.inertiaY}, {"ir", c.inertiaRotate}, {"is", c.inertiaScale},
+            {"tx", c.tensionX}, {"ty", c.tensionY}, {"tr", c.tensionRotate}, {"ts", c.tensionScale}, {"sx", c.staticX}, {"sy", c.staticY},
+            {"sa", c.staticAngle}, {"ssx", c.staticScaleX}, {"ssy", c.staticScaleY}, {"ssk", c.staticSkew}, {"grand", c.fromGrandparent},
+            {"iskew", c.inertiaSkew}, {"tskew", c.tensionSkew}, {"skewMod", c.skewModifier}, {"match", c.matchSwitch},
+            {"sskY", c.staticSkewY}, {"uniform", c.staticUniform}, {"lt", c.limitTranslate}, {"lr", c.limitRotate}, {"ls", c.limitScale}, {"lk", c.limitSkew}, {"invert", c.invert}};
+    }
+    if (layer.loopType != Layer::LoopNone)
+        layerObject["loop"] = QJsonArray{layer.loopType, layer.loopStart, layer.loopEnd};
     if (layer.warpCurve != Layer::WarpBezier)
         layerObject["warpCurve"] = layer.warpCurve;
     if (layer.warpIntervals != 12)

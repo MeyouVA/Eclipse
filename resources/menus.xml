@@ -466,6 +466,12 @@
     <item id="SetIkKeyframe" text="Set IK &amp;Keyframe" responder="window" slot="onActionSetIkKeyframe()"/>
     <item id="ApplyIkConstraints" text="A&amp;pply IK Constraints" responder="window" slot="onActionApplyIkConstraints()"/>
    </menu>
+   <menu id="RiggingConstraints" text="&amp;Constraints">
+    <item id="ConstraintSettings" text="Constraint and &amp;Loop Settings..." responder="window" slot="onActionConstraintSettings()"/>
+    <item id="BakeConstraintAll" text="Bake All Incoming Transformations" responder="window" slot="onActionBakeConstraint(QString)" itemParameter="all"/>
+    <item id="BakeConstraintParent" text="Bake Immediate Parent's Transformation" responder="window" slot="onActionBakeConstraint(QString)" itemParameter="parent"/>
+    <item id="RemoveConstraint" text="&amp;Remove Constraint" responder="window" slot="onActionRemoveConstraint()"/>
+   </menu>
    <menu id="AnimationDeformation" text="&amp;Deformation">
     <item id="ResetDeformer" icon="anim/deformreset" text="&amp;Reset Deformer" responder="window" slot="onActionResetDeformer()"/>
     <item id="RemoveDeformer" icon="anim/deformremove" text="Re&amp;move Deformer" responder="window" slot="onActionRemoveDeformer()"/>

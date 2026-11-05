@@ -307,6 +307,11 @@ public:
     bool solveIK(int grabbed, QPointF local, QPointF target, int frame, QVector<int>* touched = nullptr);
     // Apply IK Constraints: the parts that are nailed or hold X or Y kept, over frames `from`+1 .. `to`, where they are on `from`.
     int applyIkConstraints(int from, int to, QVector<int>* touched = nullptr);
+    // Bake Transformation onto Constraint: the layer's constraint made Static, holding the transformation of all that it hangs
+    // from on `frame` (Bake All Incoming Transformations), or of its immediate parent only.
+    Constraint bakedConstraint(int layer, int frame, bool immediateOnly) const;
+    // A Points constraint's rest: where its anchors' pivots are on `frame`.
+    QVector<QPointF> anchorPlaces(QVector<int> const& anchorIds, int frame) const;
     int compositeGroupOf(int layer, int frame) const;
     // Whether the Camera view shows the layer: it is enabled, and solo if any layer is.
     bool shows(int layer) const;

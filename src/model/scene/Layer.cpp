@@ -158,6 +158,7 @@ Pose Pose::lerp(Pose const& a, Pose const& b, double t)
     p.fov = a.fov > 0.0 && b.fov > 0.0 ? a.fov + (b.fov - a.fov) * t : std::max(a.fov, b.fov);
     p.opacity = a.opacity + (b.opacity - a.opacity) * t;
     p.deform = a.deform + (b.deform - a.deform) * t;
+    p.constraint = a.constraint + (b.constraint - a.constraint) * t;
     for (int i = 0; i < std::max(a.handles.size(), b.handles.size()); ++i) {
         QPointF const from = i < a.handles.size() ? a.handles[i] : QPointF();
         QPointF const to = i < b.handles.size() ? b.handles[i] : QPointF();
@@ -538,4 +539,27 @@ double easedProgress(double t, double easeOut, double easeIn, double liftOut, do
     double const s = (lo + hi) / 2.0;
     double const y1 = (easeOut > 0.0 || liftOut != 0.0 ? 0.0 : x1) + liftOut, y2 = (easeIn > 0.0 || liftIn != 0.0 ? 1.0 : x2) + liftIn;
     return bezier(s, y1, y2);
+}
+
+int Layer::loopedFrame(int frame) const
+{
+    if (loopType == LoopNone)
+        return frame;
+    int first = loopStart, last = loopEnd;
+    if (first < 0 || last < 0) {
+        // Automatic Range Detection: from its first keyframe to its last.
+        if (keys.size() < 2)
+            return frame;
+        first = keys.first().frame;
+        last = keys.last().frame;
+    }
+    if (last <= first || frame <= last)
+        return frame;
+    int const span = last - first;
+    int const past = frame - first;
+    if (loopType == LoopRepeat)
+        return first + past % span;
+    // Ping-Pong: there and back.
+    int const round = past % (2 * span);
+    return first + (round <= span ? round : 2 * span - round);
 }
