@@ -1,5 +1,7 @@
 // Eclipse - Tool Properties: the size rows of the drawing tools, pressure ramps, paper textures, brush rows.
 // options, the Rigging tool's mode, the ends and corners of lines, the thickness of a point.
+#include <QDir>
+#include <QRegularExpression>
 #include "ui/panels/ToolProperties.h"
 #include "render/images/ImageFiles.h"
 
@@ -259,6 +261,14 @@ void ToolProperties::addBitmapBrushRows()
             QString const path = QFileDialog::getOpenFileName(this, tr("Import Brushes"), QString(), tr("Photoshop brushes (*.abr)"));
             if (!path.isEmpty())
                 importBitmapTips(path, tip);
+        });
+        connect(menu->addAction(tr("Export Brushes...")), &QAction::triggered, this, [this] {
+            QString const folder = QFileDialog::getExistingDirectory(this, tr("Choose export folder"));
+            if (folder.isEmpty())
+                return;
+            int const made = exportBitmapTips(folder);
+            if (made == 0)
+                QMessageBox::information(this, tr("Export Brushes"), tr("There are no tips of your own to export."));
         });
         connect(menu->addAction(tr("Delete Tip")), &QAction::triggered, this, [this, tip] {
             QString const own = tip->currentData().toString();
@@ -614,4 +624,22 @@ void ToolProperties::addBrushRows()
     }
     m_paperRamp = rampRow(QStringLiteral("BrushTextureRamp"), true);
     m_form->addRow(m_paperRamp);
+}
+
+int ToolProperties::exportBitmapTips(QString const& folder)
+{
+    // Export Brushes: each tip of one's own (Import Tip from Picture, Import Brushes) as a picture file named after it.
+    QSettings s = settings();
+    s.beginGroup(QStringLiteral("tools/bitmapTips"));
+    QStringList const names = s.childKeys();
+    s.endGroup();
+    int made = 0;
+    for (QString const& name : names) {
+        QImage const tip = QImage::fromData(s.value(QStringLiteral("tools/bitmapTips/") + name).toByteArray());
+        QString safe = name;
+        safe.replace(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")), QStringLiteral("_"));
+        if (!tip.isNull() && tip.save(QDir(folder).filePath(safe + QStringLiteral(".png"))))
+            ++made;
+    }
+    return made;
 }

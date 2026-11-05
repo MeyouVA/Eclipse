@@ -55,6 +55,7 @@
     <item id="ExportLayoutImageSelection" icon="file/exportframes" text="Layout Image from &amp;Selection..." responder="window" slot="onActionExportLayoutImageFromSelection()" tooltip="The frame as it is, only the layers selected in the Timeline, written to a picture file."/>
     <item id="ExportSwf" icon="file/exportmovie" text="&amp;SWF..." responder="window" slot="onActionExportSwf()"/>
     <item id="ExportOpenGLFrames" icon="file/exportopengl" text="&amp;OpenGL Frames..." responder="window" slot="onActionExportOpenGLFrames()"/>
+    <item id="ExportCsv" text="Xsheet as &amp;CSV..." responder="window" slot="onActionExportCsv()" tooltip="Export CSV: the exposure sheet as a table, a row for each frame, a column for each drawing layer."/>
     <separator/>
     <item id="ExportAudio" icon="file/exportaudio" text="&amp;Audio..." responder="window" slot="onActionExportAudio()"/>
     <separator/>
@@ -247,6 +248,8 @@
    <item id="ShuttleForward" text="Shuttle Forward" shortcut="shortcut.shuttleForward" responder="window" slot="onActionShuttleForward()"/>
    <item id="ShuttleBackward" text="Shuttle Backward" shortcut="shortcut.shuttleBackward" responder="window" slot="onActionShuttleBackward()"/>
    <item id="ShuttleReset" text="Shuttle Reset" shortcut="shortcut.shuttleReset" responder="window" slot="onActionShuttleReset()"/>
+   <separator/>
+   <item id="PreviewSwf" text="Test S&amp;WF Movie" responder="window" slot="onActionPreviewSwf()" tooltip="The scene written as a Flash movie and opened in the program that plays it."/>
   </menu>
 
   <menu id="Insert" text="&amp;Insert">

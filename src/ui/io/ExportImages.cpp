@@ -8,6 +8,12 @@
 #include <cmath>
 
 #include <QApplication>
+#include <QRadioButton>
+#include <QGroupBox>
+#include <QUrl>
+#include <QDesktopServices>
+#include <QFile>
+#include <QMutex>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -47,7 +53,7 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
     Scene const scene = m_document->scene();
     int const first = std::clamp(options.first, 0, scene.frameCount() - 1);
     int const last = options.last < 0 ? scene.frameCount() - 1 : std::clamp(options.last, first, scene.frameCount() - 1);
-    QSize const size = FrameRender::sizeAt(scene, std::clamp(options.percent, 1, 1000) / 100.0);
+    QSize const size = options.size.isValid() ? options.size.expandedTo(QSize(1, 1)) : FrameRender::sizeAt(scene, std::clamp(options.percent, 1, 1000) / 100.0);
     ImageFiles::Format const* const format = ImageFiles::find(options.format);
     if (!format) {
         if (error)
@@ -75,7 +81,7 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
                     only.layers[other].visible = false;
         }
     auto fileOf = [&](int f) {
-        return QDir(options.folder).filePath(QStringLiteral("%1_%2.%3").arg(options.name).arg(f + 1, 4, 10, QLatin1Char('0')).arg(format->suffix));
+        return QDir(options.folder).filePath(QStringLiteral("%1_%2.%3").arg(options.name).arg(f + 1, std::clamp(options.digits, 1, 8), 10, QLatin1Char('0')).arg(format->suffix));
     };
     // Colour management: from the working space to the files' own (EXR keeps the light in floats).
     QString const space = scene.outputSpace(options.colourSpace, format->suffix);
@@ -92,7 +98,26 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
     for (int f = first; f <= last; ++f)
         frames.push_back(f);
     std::atomic<int> written{0};
-    auto keep = [&](int f, QImage const& image) -> QString {
+    QStringList made;
+    QMutex madeLock;
+    // Colours in greys (their transparency kept), and 16 bits a channel where asked.
+    auto finish = [&](QImage picture) {
+        if (options.grey) {
+            picture = picture.convertToFormat(QImage::Format_ARGB32);
+            for (int y = 0; y < picture.height(); ++y) {
+                QRgb* const row = reinterpret_cast<QRgb*>(picture.scanLine(y));
+                for (int x = 0; x < picture.width(); ++x) {
+                    int const g = qGray(row[x]);
+                    row[x] = qRgba(g, g, g, qAlpha(row[x]));
+                }
+            }
+        }
+        if (options.depth >= 16)
+            picture = picture.convertToFormat(QImage::Format_RGBA64);
+        return picture;
+    };
+    auto keep = [&](int f, QImage const& rendered) -> QString {
+        QImage const image = finish(rendered);
         QString why;
         bool ok = false;
         if (layered) {
@@ -102,11 +127,13 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
                     parts.push_back({scene.layers[l].name, FrameRender::inSpace(scene, FrameRender::frame(alone[l], f, size, options.preview), space, true)});
             ok = ImageFiles::saveLayered(parts, FrameRender::inSpace(scene, image, space, true), fileOf(f), &why, space);
         } else {
-            ok = ImageFiles::save(FrameRender::inSpace(scene, image, space, floats), fileOf(f), format->suffix, &why, 92, space);
+            ok = ImageFiles::save(FrameRender::inSpace(scene, image, space, floats || options.depth >= 16), fileOf(f), format->suffix, &why, std::clamp(options.quality, 1, 100), space);
         }
         if (!ok)
             return why.isEmpty() ? tr("Could not write %1.").arg(QDir::toNativeSeparators(fileOf(f))) : why;
         ++written;
+        QMutexLocker hold(&madeLock);
+        made << fileOf(f);
         return QString();
     };
     auto progress = [&](int done) {
@@ -122,8 +149,19 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
         return true;
     };
     QString why;
-    if (!FrameRender::render(scene, frames, size, options.preview, keep, progress, &why) && error)
+    bool const done = FrameRender::render(scene, frames, size, options.preview, keep, progress, &why);
+    if (!done && options.progress && options.progress->wasCanceled() && options.removeOnStop) {
+        // Stopped by the user: what was written goes again, so that no half of it is left behind.
+        for (QString const& file : std::as_const(made))
+            QFile::remove(file);
+        if (error)
+            *error = tr("Export interrupted by user. All export files were removed.");
+        return 0;
+    }
+    if (!done && error)
         *error = why.isEmpty() ? tr("Stopped.") : why;
+    if (options.written)
+        *options.written = made;
     return written;
 }
 
@@ -190,23 +228,108 @@ void MainWindow::askExportImages(bool preview)
     rangeRow->addWidget(allFrames);
     rangeRow->addWidget(thisFrame);
     rangeRow->addStretch(1);
+    // Selected Frames: those selected in the Timeline.
+    QPushButton* const selectedFrames = new QPushButton(tr("Selected Frames"), &dialog);
+    selectedFrames->setObjectName(QStringLiteral("ExportSelectedFrames"));
+    int const selFirst = m_timeline->selectionFirstFrame(), selLast = m_timeline->selectionLastFrame();
+    selectedFrames->setEnabled(selFirst >= 0 && selLast >= selFirst);
+    connect(selectedFrames, &QPushButton::clicked, &dialog, [from, to, selFirst, selLast] {
+        from->setValue(selFirst + 1);
+        to->setValue(selLast + 1);
+    });
+    rangeRow->insertWidget(2, selectedFrames);
     QComboBox* const resolution = new QComboBox(&dialog);
-    for (int percent : {100, 75, 50, 25, 200})
+    resolution->setObjectName(QStringLiteral("ExportResolution"));
+    resolution->addItem(tr("Scene Resolution  (%1 x %2)").arg(scene.width).arg(scene.height), 100);
+    resolution->addItem(tr("1/2 Resolution  (%1 x %2)").arg(qRound(scene.width / 2.0)).arg(qRound(scene.height / 2.0)), 50);
+    resolution->addItem(tr("1/4 Resolution  (%1 x %2)").arg(qRound(scene.width / 4.0)).arg(qRound(scene.height / 4.0)), 25);
+    for (int percent : {75, 200})
         resolution->addItem(tr("%1%  (%2 x %3)").arg(percent).arg(qRound(scene.width * percent / 100.0)).arg(qRound(scene.height * percent / 100.0)), percent);
-    resolution->setCurrentIndex(preview ? 2 : 0);
+    resolution->addItem(tr("Custom"), 0);
+    resolution->setCurrentIndex(preview ? 1 : 0);
+    QSpinBox* const customWidth = new QSpinBox(&dialog);
+    customWidth->setObjectName(QStringLiteral("ExportWidth"));
+    QSpinBox* const customHeight = new QSpinBox(&dialog);
+    customHeight->setObjectName(QStringLiteral("ExportHeight"));
+    for (QSpinBox* const box : {customWidth, customHeight}) {
+        box->setRange(1, 16384);
+        box->setEnabled(false);
+    }
+    customWidth->setValue(scene.width);
+    customHeight->setValue(scene.height);
+    connect(resolution, &QComboBox::currentIndexChanged, &dialog, [resolution, customWidth, customHeight] {
+        customWidth->setEnabled(resolution->currentData().toInt() == 0);
+        customHeight->setEnabled(resolution->currentData().toInt() == 0);
+    });
+    // Suffix: the frame number in so many digits.
+    QComboBox* const digits = new QComboBox(&dialog);
+    digits->setObjectName(QStringLiteral("ExportDigits"));
+    for (int n = 2; n <= 5; ++n)
+        digits->addItem(QStringLiteral("%1").arg(1, n, 10, QLatin1Char('0')), n);
+    digits->setCurrentIndex(2);
+    QComboBox* const depth = new QComboBox(&dialog);
+    depth->setObjectName(QStringLiteral("ExportDepth"));
+    depth->addItem(tr("8"), 8);
+    depth->addItem(tr("16"), 16);
+    depth->setToolTip(tr("Depth (bits/channel): 16 where the format can hold it (PNG, TIFF, EXR, PSD)."));
+    QComboBox* const colours = new QComboBox(&dialog);
+    colours->setObjectName(QStringLiteral("ExportColours"));
+    colours->addItem(tr("Colour"));
+    colours->addItem(tr("Grey"));
+    QSpinBox* const compression = new QSpinBox(&dialog);
+    compression->setObjectName(QStringLiteral("ExportCompression"));
+    compression->setRange(1, 100);
+    compression->setValue(92);
+    compression->setToolTip(tr("Compression: how fine a lossy format (JPEG, WebP) keeps the frames - 100 the finest, the largest files."));
+    // OpenGL frames: an image sequence, or a movie of them.
+    QComboBox* const kind = new QComboBox(&dialog);
+    kind->setObjectName(QStringLiteral("ExportKind"));
+    kind->addItem(tr("Image Sequence"));
+    kind->addItem(tr("Movie"));
+    QComboBox* const movieFormat = new QComboBox(&dialog);
+    movieFormat->setObjectName(QStringLiteral("ExportMovieFormat"));
+    for (auto const& f : MediaFormats::videoFormats())
+        if (f.writable)
+            movieFormat->addItem(f.name, f.suffix);
+    movieFormat->setCurrentIndex(std::max(0, movieFormat->findData(QStringLiteral("mp4"))));
+    movieFormat->setEnabled(false);
+    connect(kind, &QComboBox::currentIndexChanged, &dialog, [kind, movieFormat, format, digits, layers, showLayers] {
+        bool const movie = kind->currentIndex() == 1;
+        movieFormat->setEnabled(movie);
+        format->setEnabled(!movie);
+        digits->setEnabled(!movie);
+        if (movie)
+            layers->setEnabled(false);
+        else
+            showLayers();
+    });
+    QCheckBox* const openPlayer = new QCheckBox(tr("Open in Player"), &dialog);
+    openPlayer->setObjectName(QStringLiteral("ExportOpenInPlayer"));
+    openPlayer->setToolTip(tr("When it is written, the movie (or the first frame) is opened in the program the system plays it with."));
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     QFormLayout* const form = new QFormLayout(&dialog);
-    form->addRow(tr("Folder"), folderRow);
-    form->addRow(tr("File name"), name);
-    form->addRow(tr("Format"), format);
+    form->addRow(tr("Location"), folderRow);
+    form->addRow(tr("Filename"), name);
+    if (preview) {
+        form->addRow(tr("Output"), kind);
+        form->addRow(tr("Movie Format"), movieFormat);
+    }
+    form->addRow(tr("Image Format"), format);
+    form->addRow(tr("Suffix:"), digits);
+    form->addRow(tr("Depth (bits/channel)"), depth);
+    form->addRow(tr("Colours"), colours);
+    form->addRow(tr("Compression"), compression);
     form->addRow(QString(), layers);
     form->addRow(tr("Colour Space"), space);
     form->addRow(tr("From frame"), from);
     form->addRow(tr("To frame"), to);
     form->addRow(QString(), rangeRow);
     form->addRow(tr("Resolution"), resolution);
+    form->addRow(tr("Width:"), customWidth);
+    form->addRow(tr("Height:"), customHeight);
+    form->addRow(QString(), openPlayer);
     if (preview)
         form->addRow(new QLabel(tr("Quick frames for checking the animation: edges are not smoothed."), &dialog));
     form->addRow(buttons);
@@ -223,6 +346,32 @@ void MainWindow::askExportImages(bool preview)
     options.preview = preview;
     options.layers = layers->isEnabled() && layers->isChecked();
     options.colourSpace = ColourSpaceBox::chosen(space);
+    options.digits = digits->currentData().toInt();
+    options.depth = depth->currentData().toInt();
+    options.grey = colours->currentIndex() == 1;
+    options.quality = compression->value();
+    if (options.percent == 0)
+        options.size = QSize(customWidth->value(), customHeight->value());
+    if (preview && kind->currentIndex() == 1) {
+        // A movie of the frames, through the movie export.
+        QDir().mkpath(options.folder);
+        QString const movie = QDir(options.folder).filePath(options.name + QLatin1Char('.') + movieFormat->currentData().toString());
+        MovieChoices choices;
+        choices.first = options.first;
+        choices.last = options.last;
+        choices.percent = options.percent > 0 ? options.percent : 100;
+        if (options.size.isValid()) {
+            choices.width = options.size.width();
+            choices.height = options.size.height();
+        }
+        choices.colourSpace = options.colourSpace;
+        exportMovieTo(movie, &choices);
+        if (openPlayer->isChecked() && QFileInfo::exists(movie))
+            QDesktopServices::openUrl(QUrl::fromLocalFile(movie));
+        return;
+    }
+    QStringList writtenFiles;
+    options.written = &writtenFiles;
     stop();
     int const wanted = options.last - options.first + 1;
     QProgressDialog progress(tr("Rendering scene..."), tr("Cancel"), 0, wanted, this);
@@ -234,8 +383,11 @@ void MainWindow::askExportImages(bool preview)
     QString error;
     int const written = exportImages(options, &error);
     progress.reset();
-    if (written == wanted)
-        statusBar()->showMessage(tr("Exported %1 frames to %2").arg(written).arg(QDir::toNativeSeparators(options.folder)), 6000);
+    if (written == wanted) {
+        statusBar()->showMessage(tr("Number of frames exported: %1").arg(written) + QStringLiteral(" - ") + QDir::toNativeSeparators(options.folder), 6000);
+        if (openPlayer->isChecked() && !writtenFiles.isEmpty())
+            QDesktopServices::openUrl(QUrl::fromLocalFile(writtenFiles.first()));
+    }
     else
         QMessageBox::critical(this, tr("Eclipse"), tr("Export stopped after %1 of %2 frames.\n%3").arg(written).arg(wanted).arg(error));
 }

@@ -53,6 +53,9 @@ struct MovieChoices {
     int audioKbps = 192;
     bool transparentBackground = false;
     bool timecode = false;  // the time code written on each frame
+    bool frameNumber = false;   // the frame's number written on it
+    QColor background;      // the background colour (invalid: the scene's)
+    int width = 0, height = 0;  // a size of one's own (0: by `percent`)
     QString colourSpace;    // empty: the working space
 };
 
@@ -168,6 +171,10 @@ public:
     // A PDF or Illustrator file's artwork as vector drawings: a drawing for each page, or (`separateLayers`) a layer for
     // each of its layers; the first layer made, or -1.
     int importPdf(QString const& file, bool separateLayers, QString* error = nullptr);
+    // The Flash movie Test SWF Movie plays (its path; empty on failure, with `error`).
+    QString previewSwf(QString* error = nullptr);
+    // Export CSV: the exposure sheet as comma-separated values (a row a frame, a column a drawing layer).
+    static QByteArray xsheetCsv(Scene const& scene);
     // ---- the Library ------------------------------------------------------------------------
     // The layers selected in the Timeline (with everything attached to them), over the frames
     // selected - or the whole scene when no frames are - written as a template file.
@@ -213,6 +220,14 @@ public:
         bool preview = false;       // quick: no smoothing of edges
         bool layers = false;        // in a layered format, each layer of drawings apart too
         QString colourSpace;        // the files' colour space (empty: the working space; EXR: its linear form)
+        int digits = 4;             // Suffix: the frame number in so many digits (01, 001, 0001, 00001)
+        QSize size;                 // Width / Height of one's own (invalid: the scene's, by `percent`)
+        int depth = 8;              // Depth (bits/channel): 8, or 16 where the format can hold it
+        bool grey = false;          // Colours: in greys
+        int quality = 92;           // Compression: how fine a lossy format keeps it (100: finest)
+        // Stopped part of the way: the files it wrote taken away again ("All export files were removed").
+        bool removeOnStop = true;
+        QStringList* written = nullptr;     // told the files written
         QProgressDialog* progress = nullptr;    // told how many are done; its Cancel stops the render
     };
     // Returns how many were written; fewer than asked means it stopped, with a message.
@@ -334,7 +349,7 @@ public slots:
     void onActionExportLayoutImage();
     // File > Export > Publish for Game Engine: the frames packed in one picture (a sprite sheet) with a JSON file saying where each is.
     void onActionPublishGameEngine();
-    bool publishSpriteSheet(QString const& path, int percent, QString* error);
+    bool publishSpriteSheet(QString const& path, int percent, QString* error, bool xml = false, bool anchor = true);
     void onActionExportLayoutImageFromSelection();
     bool exportLayoutImage(QString const& path, bool selectedOnly, QString* error);
     // File > Export > Drawings: each drawing of the layers as a picture of its own (PNG) or as lines (SVG), named layer-drawing.
@@ -700,6 +715,9 @@ public slots:
     void onActionImportPdf();
     // File > Export > Transformations... and File > Import > Transformations...: the keyframes of the layers selected.
     void onActionExportTransformations();
+    // Play > Test SWF Movie: the scene written as a Flash movie to a file of its own and opened in the player.
+    void onActionPreviewSwf();
+    void onActionExportCsv();
     void onActionImportTransformations();
     void onActionPrint();
     void onActionFillSelection();

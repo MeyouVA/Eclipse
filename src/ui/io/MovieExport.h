@@ -3,6 +3,7 @@
 #pragma once
 
 #include <QColor>
+#include <QSize>
 #include <QString>
 #include <QStringList>
 
@@ -32,6 +33,9 @@ struct Options {
     QColor timecodeBackground = QColor(0, 0, 0, 170);
     int timecodeHeight = 4;         // the text's height, as a percentage of the frame's
     int timecodePosition = 4;       // 0 top left, 1 top centre, 2 top right, 3 bottom left, 4 bottom centre, 5 bottom right
+    bool frameNumber = false;       // Print Frame number: the frame's number written there (with the time code, after it)
+    QColor background;              // the movie's background colour (invalid: the scene's)
+    QSize size;                     // Width / Height of the movie's frames (invalid: the scene's, by `scale`)
 };
 
 // What ffmpeg is told about the encoding of a movie of that kind (by its extension), with sound or without.

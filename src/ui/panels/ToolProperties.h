@@ -30,6 +30,8 @@ class ECLIPSE_UI_API ToolProperties : public QWidget {
     Q_OBJECT
 
 public:
+    // Export Brushes: the tips of one's own written to a folder as pictures; how many.
+    int exportBitmapTips(QString const& folder);
     // `envelopePoints`: how many points Create Envelope puts round a drawing, to begin with.
     ToolProperties(Document* document, Canvas* canvas, ActionManager* actions, int envelopePoints, QWidget* parent = nullptr);
     // Shows the settings of a tool (Canvas::Tool), and its sizes to pick from.

@@ -234,7 +234,7 @@ void MainWindow::onActionExportTransformations()
     QVector<int> layers = m_timeline->selectedLayers();
     if (layers.isEmpty())
         layers = {layer()};
-    QString const path = QFileDialog::getSaveFileName(this, tr("Export Transformations"), QString(), tr("Eclipse transformations (*.ecltransform)"));
+    QString const path = QFileDialog::getSaveFileName(this, tr("Select Animation Export File"), QString(), tr("Eclipse transformations (*.ecltransform)"));
     if (path.isEmpty())
         return;
     QFile out(path);
@@ -264,4 +264,45 @@ void MainWindow::onActionImportTransformations()
         QMessageBox::warning(this, tr("Import Transformations"), error);
     else
         statusBar()->showMessage(tr("Transformations imported onto %n layer(s).", nullptr, done), 5000);
+}
+
+QByteArray MainWindow::xsheetCsv(Scene const& scene)
+{
+    // Export CSV: the exposure sheet as a table - a row for each frame, a column for each drawing layer, the drawing
+    // shown there (empty where none is).
+    auto quoted = [](QString text) {
+        if (text.contains(QLatin1Char(',')) || text.contains(QLatin1Char('"')) || text.contains(QLatin1Char('\n')))
+            text = QLatin1Char('"') + text.replace(QStringLiteral("\""), QStringLiteral("\"\"")) + QLatin1Char('"');
+        return text;
+    };
+    QVector<int> columns;
+    QStringList header{QStringLiteral("Frame")};
+    for (int l = 0; l < scene.layers.size(); ++l)
+        if (scene.layers[l].holdsDrawings()) {
+            columns.push_back(l);
+            header << quoted(scene.layers[l].name);
+        }
+    QStringList lines{header.join(QLatin1Char(','))};
+    for (int f = 0; f < scene.frameCount(); ++f) {
+        QStringList row{QString::number(f + 1)};
+        for (int l : columns) {
+            int const d = scene.layers[l].drawingAt(f);
+            row << (d == Layer::kNoDrawing ? QString() : quoted(scene.layers[l].drawingLabel(d)));
+        }
+        lines << row.join(QLatin1Char(','));
+    }
+    return (lines.join(QStringLiteral("\r\n")) + QStringLiteral("\r\n")).toUtf8();
+}
+
+void MainWindow::onActionExportCsv()
+{
+    QString const path = QFileDialog::getSaveFileName(this, tr("Export CSV"), QString(), tr("Comma-separated values (*.csv)"));
+    if (path.isEmpty())
+        return;
+    QFile out(path);
+    if (!out.open(QIODevice::WriteOnly) || out.write(xsheetCsv(m_document->scene())) < 0) {
+        QMessageBox::warning(this, tr("Export CSV"), tr("The export operation has failed because the file is not writable. Verify that the saving location is available and writable then try again."));
+        return;
+    }
+    statusBar()->showMessage(tr("Export completed: %1").arg(QDir::toNativeSeparators(path)), 5000);
 }

@@ -42,6 +42,8 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     if(!codec) return fail(QStringLiteral("The selected codec or transparency is not supported by this container."));
     bool const alpha=format->alphaCodecs.contains(codecId);
     Scene rendered = scene;
+    if (options.background.isValid())
+        rendered.background = options.background;
     if (options.transparentBackground)
         rendered.background = Qt::transparent;
     else if (!alpha && suffix != QLatin1String("gif"))
@@ -52,7 +54,8 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     int const first = std::clamp(options.first, 0, scene.frameCount() - 1);
     int const last = options.last < 0 ? scene.frameCount() - 1 : std::clamp(options.last, first, scene.frameCount() - 1);
     double const scale = std::clamp(options.scale, 0.05, 8.0);
-    int const wide = std::max(2, int(std::lround(scene.width * scale))), high = std::max(2, int(std::lround(scene.height * scale)));
+    int const wide = options.size.isValid() ? std::max(2, options.size.width()) : std::max(2, int(std::lround(scene.width * scale)));
+    int const high = options.size.isValid() ? std::max(2, options.size.height()) : std::max(2, int(std::lround(scene.height * scale)));
     if(codecId==MediaFormats::DnxHD && (wide!=1920 || high!=1080)) return fail(QStringLiteral("DNxHD requires 1920 by 1080 frames. Use DNxHR for other dimensions."));
     QVector<double> const sound = format->audioEncoder.isEmpty() ? QVector<double>() : Sound::mixPrecise(scene,0,-1,48000);
     QString const wav = scratch.filePath(QStringLiteral("sound.wav"));
@@ -102,11 +105,16 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
             // (Told of each frame as it goes down the pipe, in order.)
             if (progress && !progress(at + i))
                 return abandon(QStringLiteral("Stopped."));
-            if (options.timecode) {
-                // Hours, minutes, seconds and frames, on a dark band at the bottom left.
+            if (options.timecode || options.frameNumber) {
+                // Hours, minutes, seconds and frames (and, or, the frame's number), on a dark band.
                 int const frameNow = frames[i], perSecond = std::max(1, int(std::lround(scene.fps)));
-                QString const code = QStringLiteral("%1:%2:%3:%4").arg(frameNow / perSecond / 3600, 2, 10, QLatin1Char('0')).arg(frameNow / perSecond / 60 % 60, 2, 10, QLatin1Char('0'))
-                                         .arg(frameNow / perSecond % 60, 2, 10, QLatin1Char('0')).arg(frameNow % perSecond, 2, 10, QLatin1Char('0'));
+                QStringList parts;
+                if (options.timecode)
+                    parts << QStringLiteral("%1:%2:%3:%4").arg(frameNow / perSecond / 3600, 2, 10, QLatin1Char('0')).arg(frameNow / perSecond / 60 % 60, 2, 10, QLatin1Char('0'))
+                                 .arg(frameNow / perSecond % 60, 2, 10, QLatin1Char('0')).arg(frameNow % perSecond, 2, 10, QLatin1Char('0'));
+                if (options.frameNumber)
+                    parts << QString::number(frameNow + 1);
+                QString const code = parts.join(QStringLiteral("  "));
                 QPainter p(&batch[i]);
                 QFont font(options.timecodeFont.isEmpty() ? QStringLiteral("Arial") : options.timecodeFont);
                 font.setPixelSize(std::max(8, batch[i].height() * std::clamp(options.timecodeHeight, 1, 50) / 100));

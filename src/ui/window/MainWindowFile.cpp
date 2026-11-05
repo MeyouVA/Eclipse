@@ -1,4 +1,8 @@
 // Eclipse - the main window: files - new, open, recent, save, export a movie, closing.
+#include <QLabel>
+#include <QPushButton>
+#include <QSignalBlocker>
+#include <QColorDialog>
 #include "ui/window/MainWindow.h"
 
 #include <QApplication>
@@ -329,7 +333,38 @@ void MainWindow::onActionExportMovie()
     custom->setSuffix(tr(" pixels wide"));
     custom->setValue(m_document->scene().width);
     custom->setEnabled(false);
-    connect(size, &QComboBox::currentIndexChanged, custom, [size, custom] { custom->setEnabled(size->currentData().toInt() == 0); });
+    QSpinBox* const customHeight = new QSpinBox(&dialog);
+    customHeight->setObjectName(QStringLiteral("MovieCustomHeight"));
+    customHeight->setRange(16, 16384);
+    customHeight->setSuffix(tr(" pixels high"));
+    customHeight->setValue(m_document->scene().height);
+    customHeight->setEnabled(false);
+    connect(size, &QComboBox::currentIndexChanged, custom, [size, custom, customHeight] {
+        custom->setEnabled(size->currentData().toInt() == 0);
+        customHeight->setEnabled(size->currentData().toInt() == 0);
+    });
+    // (The height follows the width, keeping the shape of the scene, until it is changed itself.)
+    int const sceneWidth = m_document->scene().width, sceneHeight = m_document->scene().height;
+    connect(custom, &QSpinBox::valueChanged, customHeight, [customHeight, sceneWidth, sceneHeight](int w) {
+        QSignalBlocker hold(customHeight);
+        customHeight->setValue(std::max(16, int(std::lround(double(w) * sceneHeight / std::max(1, sceneWidth)))));
+    });
+    // Most codecs take only even sizes: an odd one is padded by a pixel, as the note says.
+    QLabel* const evenNote = new QLabel(&dialog);
+    evenNote->setObjectName(QStringLiteral("MovieEvenNote"));
+    evenNote->setWordWrap(true);
+    auto showEven = [evenNote, size, custom, customHeight, sceneWidth, sceneHeight] {
+        int const percent = size->currentData().toInt();
+        int const w = percent == 0 ? custom->value() : int(std::lround(sceneWidth * percent / 100.0));
+        int const h = percent == 0 ? customHeight->value() : int(std::lround(sceneHeight * percent / 100.0));
+        evenNote->setText(w % 2 || h % 2 ? tr("Note: export in most formats is only possible in even resolution width and height. "
+                                              "The exported video will be padded accordingly: selected resolution %1 x %2, exported %3 x %4.")
+                                               .arg(w).arg(h).arg(w + w % 2).arg(h + h % 2)
+                                         : QString());
+    };
+    connect(size, &QComboBox::currentIndexChanged, evenNote, showEven);
+    connect(custom, &QSpinBox::valueChanged, evenNote, showEven);
+    connect(customHeight, &QSpinBox::valueChanged, evenNote, showEven);
     QComboBox* const quality = new QComboBox(&dialog);
     quality->setObjectName(QStringLiteral("MovieQuality"));
     quality->addItem(tr("Fine (largest file)"), 18);
@@ -345,9 +380,24 @@ void MainWindow::onActionExportMovie()
         codec->setCurrentIndex(codec->findData(format->defaultCodec));
     }
     codec->setEnabled(codec->count()>1);
-    QCheckBox* const timecode = new QCheckBox(tr("Burn in Time Code"), &dialog);
+    QComboBox* const timecode = new QComboBox(&dialog);
     timecode->setObjectName(QStringLiteral("MovieTimecode"));
-    timecode->setToolTip(tr("The time code (hours:minutes:seconds:frames) written on each frame, in the font of Preferences > General: Time Code Font."));
+    timecode->addItems({tr("None"), tr("Print Timecode"), tr("Print Frame number"), tr("Print Timecode and Frame number")});
+    timecode->setToolTip(tr("The time code (hours:minutes:seconds:frames) or the frame's number written on each frame, in the font of Preferences > General: Time Code Font."));
+    // The background of the movie (Export Video Bg Colour), kept for the next export.
+    QPushButton* const background = new QPushButton(&dialog);
+    background->setObjectName(QStringLiteral("MovieBackground"));
+    QColor const keptBackground(settings().value(QStringLiteral("prefs/exportVideoBackground")).toString());
+    auto showBackground = [background](QColor const& c) {
+        background->setProperty("colour", c);
+        background->setText(c.isValid() ? c.name() : tr("The scene's"));
+    };
+    showBackground(keptBackground);
+    connect(background, &QPushButton::clicked, &dialog, [&dialog, background, showBackground] {
+        QColor const chosen = QColorDialog::getColor(background->property("colour").value<QColor>(), &dialog, tr("Export Video Bg Colour"));
+        if (chosen.isValid())
+            showBackground(chosen);
+    });
     QCheckBox* const transparent = new QCheckBox(tr("Transparent background"), &dialog);
     transparent->setObjectName(QStringLiteral("MovieTransparentBackground"));
     transparent->setChecked(movieKind == QLatin1String("mov"));
@@ -379,11 +429,14 @@ void MainWindow::onActionExportMovie()
     form->addRow(tr("From frame"), first);
     form->addRow(tr("To frame"), last);
     form->addRow(tr("Size"), size);
-    form->addRow(tr("Custom size"), custom);
+    form->addRow(tr("Width:"), custom);
+    form->addRow(tr("Height:"), customHeight);
+    form->addRow(evenNote);
     form->addRow(tr("Quality"), quality);
     form->addRow(tr("Codec"), codec);
     form->addRow(transparent);
-    form->addRow(timecode);
+    form->addRow(tr("Timecode"), timecode);
+    form->addRow(tr("Background"), background);
     form->addRow(tr("Encoding"), speed);
     form->addRow(tr("Sound"), audio);
     // Colour management on: the colour space the frames are put in for the movie.
@@ -411,7 +464,15 @@ void MainWindow::onActionExportMovie()
     choices.speed = speed->currentData().toInt();
     choices.audioKbps = audio->currentData().toInt();
     choices.transparentBackground = transparent->isEnabled() && transparent->isChecked();
-    choices.timecode = timecode->isChecked();
+    choices.timecode = timecode->currentIndex() == 1 || timecode->currentIndex() == 3;
+    choices.frameNumber = timecode->currentIndex() >= 2;
+    choices.background = background->property("colour").value<QColor>();
+    if (choices.background.isValid())
+        settings().setValue(QStringLiteral("prefs/exportVideoBackground"), choices.background.name());
+    if (size->currentData().toInt() == 0) {
+        choices.width = custom->value();
+        choices.height = customHeight->value();
+    }
     choices.colourSpace = ColourSpaceBox::chosen(space);
     exportMovieTo(path, &choices);
 }
@@ -431,6 +492,10 @@ void MainWindow::exportMovieTo(QString const& path, MovieChoices const* choices)
         options.audioKbps = choices->audioKbps;
         options.transparentBackground = choices->transparentBackground;
         options.timecode = choices->timecode;
+        options.frameNumber = choices->frameNumber;
+        options.background = choices->background;
+        if (choices->width > 0 && choices->height > 0)
+            options.size = QSize(choices->width, choices->height);
     }
     options.timecodeFont = settings().value(QStringLiteral("prefs/timecodeFont"), QStringLiteral("Arial")).toString();
     options.timecodeColour = settings().value(QStringLiteral("prefs/timecodeColour"), QColor(Qt::white)).value<QColor>();

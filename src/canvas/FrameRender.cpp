@@ -155,8 +155,9 @@ bool render(Scene const& scene, QVector<int> const& frames, QSize size, bool qui
             stopped = true;
             stop = true;
         }
-    if (progress && !stopped && !stop)
-        progress(done);
+    // (Told at the end too: a stop asked for while the last frames were made still counts.)
+    if (progress && !stopped && !stop && !progress(done))
+        stopped = true;
     if (!first.isEmpty() && error)
         *error = first;
     return first.isEmpty() && !stopped;

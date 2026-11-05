@@ -1,4 +1,8 @@
 // Eclipse - File > Export > SWF: where to, which frames, how, and what to leave out; then what was left out, told.
+#include <QSettings>
+#include <QUrl>
+#include <QDesktopServices>
+#include <QStandardPaths>
 #include "ui/window/MainWindow.h"
 
 #include <QApplication>
@@ -177,4 +181,36 @@ void MainWindow::onActionExportSwf()
     statusBar()->showMessage(summary, 10000);
     if (!report.leftOut.isEmpty())
         QMessageBox::information(this, tr("SWF Export Report"), summary + QStringLiteral("\n\n") + tr("Not exported:") + QStringLiteral("\n- ") + report.leftOut.join(QStringLiteral("\n- ")));
+}
+
+QString MainWindow::previewSwf(QString* error)
+{
+    // Test SWF Movie: the scene as a Flash movie in a file of its own, with the options last used for Export SWF.
+    QSettings kept = settings();
+    kept.beginGroup(QStringLiteral("swfExport"));
+    SwfExport::Options options;
+    options.protect = false;
+    options.compress = kept.value(QStringLiteral("compress"), true).toBool();
+    options.sound = kept.value(QStringLiteral("sound"), true).toBool();
+    options.linesAsAreas = kept.value(QStringLiteral("linesAsAreas"), true).toBool();
+    options.fixedLineWidth = kept.value(QStringLiteral("fixedLineWidth"), false).toBool();
+    options.jpegQuality = kept.value(QStringLiteral("jpegQuality"), options.jpegQuality).toInt();
+    QString const path = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QStringLiteral("Eclipse Preview.swf"));
+    if (!SwfExport::write(m_document->scene(), path, options, error, nullptr))
+        return QString();
+    return path;
+}
+
+void MainWindow::onActionPreviewSwf()
+{
+    QString error;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString const path = previewSwf(&error);
+    QApplication::restoreOverrideCursor();
+    if (path.isEmpty()) {
+        QMessageBox::warning(this, tr("Test SWF Movie"), tr("Could not export to Flash: %1").arg(error));
+        return;
+    }
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path)))
+        statusBar()->showMessage(tr("%1 written; no program here plays Flash movies.").arg(QDir::toNativeSeparators(path)), 8000);
 }
