@@ -47,6 +47,7 @@
 #include "ui/panels/LibraryView.h"
 #include "ui/io/MovieExport.h"
 #include "ui/panels/PalettePanel.h"
+#include "model/geometry/VectorizeOptions.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/io/ImportExportPrivate.h"
 #include "ui/io/SvgStrokes.h"
@@ -751,7 +752,26 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
         placement *= QTransform::fromTranslate((scene.width - image.width() * scale) / 2.0, (scene.height - image.height() * scale) / 2.0);
         Drawing drawing;
         double const kTraceTolerance = std::max(0.75, 1.25 * scale);
-        if (options.vectorize && options.colours > 0) {
+        if (options.vectorize && !options.vectorOptions.isEmpty()) {
+            // With the Vectorization Parameters: line art and colour art as they say, then placed as the picture would be
+            // (made so many fields wide when they give a field size).
+            Vectorize::Options settings;
+            Vectorize::parse(options.vectorOptions, settings);
+            if (settings.fieldSize > 0.0) {
+                double const fieldScale = settings.fieldSize / 12.0 * scene.width / std::max(1, image.width());
+                placement = QTransform::fromScale(fieldScale, fieldScale)
+                            * QTransform::fromTranslate((scene.width - image.width() * fieldScale) / 2.0, (scene.height - image.height() * fieldScale) / 2.0);
+            }
+            Picture picture;
+            picture.image = image;
+            picture.size = image.size();
+            picture.placement = placement;
+            drawing.pictures.push_back(picture);
+            int const swatch = m_palette->currentSwatch();
+            QStringList notes;
+            if (!vectorizeDrawing(drawing, options.vectorOptions, scene.resolve(swatch, QColor(Qt::black)), swatch, &notes))
+                return fail(tr("Could not vectorize scanned images while creating layer %1.").arg(options.layerName));
+        } else if (options.vectorize && options.colours > 0) {
             // In colour: a painted shape for the area of each colour, the largest underneath.
             for (Vectorize::ColourShape const& area : Vectorize::traceColours(image, options.colours, options.paper)) {
                 Fill shape;

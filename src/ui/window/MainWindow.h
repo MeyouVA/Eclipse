@@ -17,6 +17,8 @@
 class SoundEditor;
 class QDialog;
 class MorphInspector;
+struct Drawing;
+struct ScanSettings;
 class ActionManager;
 class Canvas;
 class Document;
@@ -147,9 +149,25 @@ public:
         QString sourceSpace;        // empty: the file's own profile (else sRGB)
         bool psdLayers = false;     // Photoshop files onto new layers: each of their layers a layer of its own, their groups groups
         bool byFilenames = false;   // Create Layer(s) Based on Filenames: files named alike (walk-1, walk-2) onto a layer of that name each
+        QString vectorOptions;      // when vectorising: a line of Vectorization Parameters to do it with (empty: the choices above)
     };
     // The files sorted into runs by name, the number at the end left out: walk-1.png, walk-2.png -> "walk".
     static QVector<QPair<QString, QStringList>> filesByName(QStringList const& files);
+    // Vectorising: the line of options kept (Vectorization Parameters, else the style chosen in the preferences); a
+    // drawing's pictures made vector art with a line of options (false: none was); the pictures of the drawings selected in
+    // the Timeline vectorised, as one step (how many drawings; -1 when the line cannot be read, with `error`).
+    static QString vectorizeOptionsLine();
+    static bool vectorizeDrawing(Drawing& drawing, QString const& line, QColor const& colour, int swatch, QStringList* notes = nullptr);
+    int vectorizeSelectedDrawings(QString const& line, QString* error = nullptr);
+    // Scanned pages put into the current layer from the current cell as the scan settings say (each processed, then kept
+    // as a bitmap or vectorised; a new drawing, or over the one on the cell); how many.  `error`: what went wrong.
+    int scanPages(QStringList const& pages, ScanSettings const& settings, QString const& name, QString* error = nullptr);
+    // A sprite sheet cut into drawings on a new layer: so many across and down (0: found from the transparent gaps
+    // between them), `count` of them (0: all); the layer, or -1.
+    int importSpriteSheet(QString const& file, int across, int down, int count, QString* error = nullptr);
+    // A PDF or Illustrator file's artwork as vector drawings: a drawing for each page, or (`separateLayers`) a layer for
+    // each of its layers; the first layer made, or -1.
+    int importPdf(QString const& file, bool separateLayers, QString* error = nullptr);
     // ---- the Library ------------------------------------------------------------------------
     // The layers selected in the Timeline (with everything attached to them), over the frames
     // selected - or the whole scene when no frames are - written as a template file.
@@ -667,6 +685,22 @@ public slots:
     void onActionInsertMorphKey();
     void onActionReplaceMorphLength();
     void onActionMorphInspector();
+    // Vectorize Line Art in Selected Drawings...; Vectorization Parameters... (the settings kept for vectorising).
+    void onActionVectorizeDrawings();
+    void onActionVectorizationParameters();
+    // Scanning: Scan New Drawing..., the options kept for it ("advance", "overwrite", "flip", "registration"), Scanning
+    // Parameters..., Show Scan Information, Acquire from TWAIN; Import > Sprite Sheets..., Import > PDF / Illustrator...
+    void onActionScanDrawing();
+    void onActionScanOption(QString const& which);
+    void onShowScanningMenu(QMenu* menu);
+    void onActionScanningParameters();
+    void onActionShowScanInfo(bool shown);
+    void onActionAcquireTwain();
+    void onActionImportSpriteSheet();
+    void onActionImportPdf();
+    // File > Export > Transformations... and File > Import > Transformations...: the keyframes of the layers selected.
+    void onActionExportTransformations();
+    void onActionImportTransformations();
     void onActionPrint();
     void onActionFillSelection();
     void onActionSequenceFill();

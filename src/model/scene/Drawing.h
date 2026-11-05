@@ -105,6 +105,8 @@ struct Drawing {
     QString name;
     QString set;
     QString model;
+    // What it was scanned from (Show Scan Information); empty for a drawing that was not scanned.
+    QString scanInfo;
     // A deformation of its own (Set Transformation): the chain at rest this drawing bends on, in place of the layer's.
     // Empty: the layer's chain.  The bones' turns are the layer's pose, bone for bone.
     QVector<QPointF> rig;

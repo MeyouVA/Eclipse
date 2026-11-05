@@ -93,6 +93,8 @@ public:
     bool copyCurrent(bool cut);
     static bool hasClipboard();
     bool pasteHere(QString* error, std::function<QString(QString const&)> const& rename = {});
+    // Import Files...: files (pictures, sounds, templates) copied into the folder chosen, each under a free name; how many.
+    int importFiles(QStringList const& files, QString* error = nullptr);
     // Optimize Template: the template chosen without the drawings and palettes it does not use; `report` says what went.
     bool optimizeCurrent(bool ask, QString* report);
     // Preview Template: the template chosen played in a window of its own.

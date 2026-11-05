@@ -1,3 +1,4 @@
+#include <QFileDialog>
 #include "ui/panels/LibraryView.h"
 #include "actions/theme/AppSettings.h"
 #include "actions/manager/ActionManager.h"
@@ -34,6 +35,14 @@ void LibraryView::setupManagement()
     add(folders,tr("Delete Folder..."),"LibraryDeleteFolder",[this] { deleteFolder(true); });
     auto* refresh=add(folders,tr("Refresh"),"LibraryRefresh",[this] { refreshFolders(); }); items->addAction(refresh);
     auto* open=add(folders,tr("Open As Folder"),"LibraryOpenFolder",[this] { QDesktopServices::openUrl(QUrl::fromLocalFile(currentFolder())); }); items->addAction(open);
+    auto* importItem=add(items,tr("Import Files..."),"LibraryImportFiles",[this] {
+        QStringList const files=QFileDialog::getOpenFileNames(this,tr("Import Files"),QString(),tr("All import files (*)"));
+        if(files.isEmpty()) return;
+        QString error;
+        importFiles(files,&error);
+        if(!error.isEmpty()) QMessageBox::warning(this,tr("Library"),error);
+    });
+    folders->addAction(importItem);
     auto* newSymbol=add(items,tr("New Symbol"),"LibraryNewSymbol",[this] { emit newSymbolRequested(); });
     auto* copySymbol=add(items,tr("Duplicate Symbol"),"LibraryDuplicateSymbol",[this] { if(int const id=symbolIdOf(currentTemplate())) emit copySymbolRequested(id); });
     connect(items,&QMenu::aboutToShow,this,[this,newSymbol,copySymbol] { newSymbol->setVisible(m_document!=nullptr); copySymbol->setVisible(symbolIdOf(currentTemplate())!=0); });

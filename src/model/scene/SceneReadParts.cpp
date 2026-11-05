@@ -409,6 +409,7 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
         for (int i = 0; i + 1 < rig.size(); i += 2)
             d.rig.push_back(QPointF(rig[i].toDouble(), rig[i + 1].toDouble()));
     d.mark = std::clamp(dv.toObject()["mark"].toInt(0), 0, int(Drawing::InBetweenMark));
+    d.scanInfo = dv.toObject()["scanInfo"].toString();
     if (QJsonArray const t = dv.toObject()["trace"].toArray(); t.size() == 6)
         d.trace = QTransform(t[0].toDouble(), t[1].toDouble(), t[2].toDouble(), t[3].toDouble(), t[4].toDouble(), t[5].toDouble());
     if (QJsonArray const p = dv.toObject()["pivot"].toArray(); p.size() == 2) {

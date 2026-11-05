@@ -372,3 +372,35 @@ void Canvas::paintMorphHints(QPainter& painter)
     }
     painter.restore();
 }
+
+void Canvas::setScanInfoShown(bool shown)
+{
+    m_scanInfoShown = shown;
+    update();
+}
+
+void Canvas::paintScanInfo(QPainter& painter)
+{
+    if (!m_scanInfoShown || m_playing)
+        return;
+    Scene const& scene = m_document->scene();
+    if (m_layer < 0 || m_layer >= scene.layers.size())
+        return;
+    Layer const& layer = scene.layers[m_layer];
+    int const index = layer.drawingAt(m_frame);
+    QString const text = index >= 0 && index < layer.drawings.size() && !layer.drawings[index].scanInfo.isEmpty()
+                             ? tr("Scan Info: %1").arg(layer.drawings[index].scanInfo)
+                             : tr("Scan Info: this drawing was not scanned.");
+    painter.save();
+    painter.resetTransform();
+    QFont small = painter.font();
+    small.setPixelSize(11);
+    painter.setFont(small);
+    QRectF const box(10.0, height() - 40.0, width() - 20.0, 28.0);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(255, 255, 255, 220));
+    painter.drawRect(box);
+    painter.setPen(QColor(30, 30, 30));
+    painter.drawText(box.adjusted(6, 0, -6, 0), Qt::AlignVCenter | Qt::AlignLeft | Qt::TextSingleLine, text);
+    painter.restore();
+}

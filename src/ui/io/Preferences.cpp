@@ -623,6 +623,12 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/ikRetry"), w.ikRetry->value());
     s.setValue(QStringLiteral("prefs/ikLimitWeight"), w.ikLimitWeight->value());
     s.setValue(QStringLiteral("prefs/morphQuality"), w.morphQuality->value());
+    s.setValue(QStringLiteral("prefs/pdfSeparateLayers"), w.pdfSeparateLayers->isChecked());
+    s.setValue(QStringLiteral("prefs/pdfCmyk"), w.pdfCmyk->isChecked());
+    if (w.vectorizeStyle->currentText() != s.value(QStringLiteral("prefs/vectorizeStyle"), QStringLiteral("Default Style")).toString()) {
+        s.setValue(QStringLiteral("prefs/vectorizeStyle"), w.vectorizeStyle->currentText());
+        s.remove(QStringLiteral("prefs/vectorizeOptions"));
+    }
     s.setValue(QStringLiteral("prefs/renderBlurs"), w.renderBlurs->isChecked());
     s.setValue(QStringLiteral("prefs/renderFocus"), w.renderFocus->isChecked());
     s.setValue(QStringLiteral("prefs/renderToneHighlight"), w.renderToneHighlight->isChecked());

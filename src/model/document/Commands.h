@@ -230,6 +230,10 @@ public:
     bool setMorphLength(int layer, int frame, int length);
     // The first (0), previous (1), next (2) or last (3) frame of the morphing `frame` is in, or -1.
     int morphFrame(int layer, int frame, int which) const;
+    // Export / Import Transformations: the keyframes of layers as a file of their own; read back onto layers (as many as
+    // the file has, in order, else by name) from `frame` on, as one step.  How many layers took them.
+    QByteArray exportTransformations(QVector<int> const& layers) const;
+    int importTransformations(QByteArray const& file, QVector<int> const& layers, int frame, QString* error = nullptr);
     void setKeyTween(int layer, int frame, bool tween);
     void clearKeyframes(int layer);
     void setKeyEase(int layer, int frame, double easeIn, double easeOut, double liftIn = 0.0, double liftOut = 0.0);

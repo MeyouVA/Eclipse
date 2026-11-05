@@ -455,6 +455,10 @@
   <shortcut id="shortcut.toolCutter" text="Cutter Tool" value="Alt+T"/>
   <shortcut id="shortcut.toolReposition" text="Reposition All Drawings Tool" value=""/>
   <shortcut id="shortcut.createMorphing" text="Create Morphing" value="Alt+M"/>
+  <shortcut id="shortcut.vectorizeDrawings" text="Convert to Vector Drawing..." value=""/>
+  <shortcut id="shortcut.acquireTwain" text="Acquire from TWAIN" value=""/>
+  <shortcut id="shortcut.scanNewDrawing" text="Scan New drawing" value=""/>
+  <shortcut id="shortcut.showScanInfo" text="Show Scan Info Panel" value=""/>
   <shortcut id="shortcut.insertMorphKey" text="Insert Morphing Keyframe" value=""/>
   <shortcut id="shortcut.switchMorphKey" text="Toggle Morphing Key Drawings" value="F4"/>
   <shortcut id="shortcut.showOtherMorphKey" text="Show Other Morphing Key Drawing" value=""/>

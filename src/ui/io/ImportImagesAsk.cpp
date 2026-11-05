@@ -3,12 +3,14 @@
 #include "ui/panels/ColourSpaceBox.h"
 
 #include <functional>
+#include <memory>
 
 #include <algorithm>
 #include <cmath>
 
 #include <QApplication>
 #include "ui/io/RawMediaImport.h"
+#include "ui/io/VectorizeDialog.h"
 #include <QCheckBox>
 #include "ui/panels/ColourEditor.h"
 #include <QComboBox>
@@ -158,6 +160,26 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     asLayout->addRow(tr("Smooth passes for line art"), smoothing);
     asLayout->addRow(colourVector);
     asLayout->addRow(tr("Colours at most"), colourCount);
+    // Vectorised with the Vectorization Parameters (a style, or a whole line of options), looked at on the first file.
+    QRadioButton* const withParameters = new QRadioButton(tr("Vector Drawing (Vectorization Parameters)"), asBox);
+    withParameters->setObjectName(QStringLiteral("ImportWithParameters"));
+    withParameters->setEnabled(!linked);
+    QPushButton* const parameters = new QPushButton(tr("Vectorization Parameters..."), asBox);
+    parameters->setObjectName(QStringLiteral("ImportVectorizationParameters"));
+    parameters->setEnabled(false);
+    connect(withParameters, &QRadioButton::toggled, parameters, &QPushButton::setEnabled);
+    auto parametersLine = std::make_shared<QString>(vectorizeOptionsLine());
+    parameters->setToolTip(*parametersLine);
+    connect(parameters, &QPushButton::clicked, &dialog, [this, &dialog, files, parameters, parametersLine] {
+        QImage const first = files->count() > 0 ? QImage(files->item(0)->text()) : QImage();
+        VectorizeDialog ask(m_document->scene(), *parametersLine, first, &dialog);
+        if (ask.exec() == QDialog::Accepted) {
+            *parametersLine = ask.line();
+            parameters->setToolTip(*parametersLine);
+            QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("prefs/vectorizeOptions"), *parametersLine);
+        }
+    });
+    asLayout->addRow(withParameters, parameters);
     // The colour of the paper: left out, so that what is traced is the drawing and not the sheet it is on.
     QCheckBox* const leavePaper = new QCheckBox(tr("Leave out the paper, of this colour:"), asBox);
     leavePaper->setObjectName(QStringLiteral("ImportLeavePaper"));
@@ -233,7 +255,9 @@ void MainWindow::askImportImages(bool linked, QStringList const& given)
     options.fit = alignment->currentIndex() != 2;
     options.pan = alignment->currentIndex() == 1;
     options.paper = leavePaper->isChecked() ? paper->property("colour").value<QColor>() : QColor();
-    options.vectorize = vector->isChecked() || colourVector->isChecked() || centre->isChecked();
+    options.vectorize = vector->isChecked() || colourVector->isChecked() || centre->isChecked() || withParameters->isChecked();
+    if (withParameters->isChecked())
+        options.vectorOptions = parametersLine->isEmpty() ? QStringLiteral("-thresh 0.5") : *parametersLine;
     options.svgStrokes = svg->isChecked();
     options.centreLines = centre->isChecked();
     options.colours = colourVector->isChecked() ? colourCount->value() : 0;

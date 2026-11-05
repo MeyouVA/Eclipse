@@ -169,3 +169,33 @@ void LibraryView::previewCurrent()
     dialog.resize(640, 420);
     dialog.exec();
 }
+
+int LibraryView::importFiles(QStringList const& files, QString* error)
+{
+    if (showingSymbols() || currentFolder().isEmpty()) {
+        if (error)
+            *error = tr("Choose a folder of the Library to import the files into.");
+        return 0;
+    }
+    QDir const into(currentFolder());
+    int copied = 0;
+    QStringList failed;
+    for (QString const& file : files) {
+        QFileInfo const source(file);
+        if (!source.isFile()) {
+            failed << source.fileName();
+            continue;
+        }
+        QString target = into.filePath(source.fileName());
+        for (int n = 2; QFileInfo::exists(target); ++n)
+            target = into.filePath(QStringLiteral("%1 %2.%3").arg(source.completeBaseName()).arg(n).arg(source.suffix()));
+        if (QFile::copy(source.absoluteFilePath(), target))
+            ++copied;
+        else
+            failed << source.fileName();
+    }
+    refresh();
+    if (error)
+        *error = failed.isEmpty() ? QString() : tr("Error in file import: %1").arg(failed.join(QStringLiteral(", ")));
+    return copied;
+}

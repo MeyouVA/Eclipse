@@ -1,4 +1,5 @@
 // Eclipse - the Preferences dialog: the Drawing and Colours pages.
+#include "model/geometry/VectorizeOptions.h"
 #include "ui/window/MainWindow.h"
 #include <functional>
 #include <algorithm>
@@ -238,6 +239,20 @@ void MainWindow::preferencesDrawing(PreferenceWidgets& w, QSettings& s, QDialog&
                                   "key drawings."));
     w.morphQuality->setValue(s.value(QStringLiteral("prefs/morphQuality"), 0.2).toDouble());
     w.drawingLayout->addRow(tr("Morphing Quality"), w.morphQuality);
+    w.vectorizeStyle = new QComboBox(w.drawing);
+    w.vectorizeStyle->setObjectName(QStringLiteral("PrefVectorizeStyle"));
+    w.vectorizeStyle->addItems(Vectorize::styleNames());
+    w.vectorizeStyle->setCurrentText(s.value(QStringLiteral("prefs/vectorizeStyle"), QStringLiteral("Default Style")).toString());
+    w.vectorizeStyle->setToolTip(tr("What imported and scanned pictures are vectorised with (choosing one sets aside the Vectorization Parameters kept)."));
+    w.drawingLayout->addRow(tr("Vectorization Style:"), w.vectorizeStyle);
+    w.pdfSeparateLayers = new QCheckBox(tr("PDF/Illustrator Import as Separate Layers"), w.drawing);
+    w.pdfSeparateLayers->setObjectName(QStringLiteral("PrefPdfSeparateLayers"));
+    w.pdfSeparateLayers->setChecked(s.value(QStringLiteral("prefs/pdfSeparateLayers"), true).toBool());
+    w.drawingLayout->addRow(QString(), w.pdfSeparateLayers);
+    w.pdfCmyk = new QCheckBox(tr("Support CMYK in PDF/Illustrator Import"), w.drawing);
+    w.pdfCmyk->setObjectName(QStringLiteral("PrefPdfCmyk"));
+    w.pdfCmyk->setChecked(s.value(QStringLiteral("prefs/pdfCmyk"), true).toBool());
+    w.drawingLayout->addRow(QString(), w.pdfCmyk);
     w.thumbnails = new QSpinBox(w.drawing);
     w.thumbnails->setObjectName(QStringLiteral("PrefThumbnailSize"));
     w.thumbnails->setRange(50, 200);

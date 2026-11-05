@@ -469,6 +469,9 @@ public slots:
     // Show Morphing Layer in Place: the morphing layer chosen not drawn again on top of the rest.
     bool morphLayerInPlace() const { return m_morphLayerInPlace; }
     void setMorphLayerInPlace(bool inPlace);
+    // Show Scan Information: what the drawing on the current cell was scanned from, in a corner of the view.
+    bool scanInfoShown() const { return m_scanInfoShown; }
+    void setScanInfoShown(bool shown);
     int morphShapeAt(QPointF drawingPos) const;
 
     // ---- what the menus call (this view is the "camera" responder) -------------------
@@ -1150,6 +1153,7 @@ private:
     void hintDown(QPointF widgetPos, QPointF p, Qt::KeyboardModifiers modifiers);
     void hintUp();
     void paintMorphHints(QPainter& painter);
+    void paintScanInfo(QPainter& painter);
 public:
     // Where a point of that outline is in the view (a null point when there is none): to take hold of it.
     QPointF envelopePointInView(int point) const;

@@ -430,4 +430,18 @@ QVector<CentreLine> centreLines(QImage const& source, int threshold, int minimum
     return lines;
 }
 
+QVector<QPolygonF> traceBits(QVector<uchar> const& bits, int w, int h, double minimumArea)
+{
+    QVector<uchar> padded((w + 2) * (h + 2), 0);
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x)
+            padded[(y + 1) * (w + 2) + (x + 1)] = bits[y * w + x] ? 1 : 0;
+    return traceMask(padded, w, h, minimumArea);
+}
+
+QPolygonF simplify(QPolygonF const& line, double tolerance)
+{
+    return fewerPoints(line, tolerance);
+}
+
 }

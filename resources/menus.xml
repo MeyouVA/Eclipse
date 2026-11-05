@@ -37,9 +37,16 @@
     <item id="ImportFla" icon="file/importmovie" text="&amp;FLA (Flash Document)..." responder="window" slot="onActionImportFla()"/>
     <item id="Import3DModel" icon="file/importimages" text="&amp;3D Models..." responder="window" slot="onActionImport3DModel()"/>
     <item id="ImportReference" icon="file/importreference" text="To &amp;Reference View..." responder="window" slot="onActionImportReference()"/>
+    <item id="ImportSpriteSheet" icon="file/importimages" text="Sprite Shee&amp;ts..." responder="window" slot="onActionImportSpriteSheet()" tooltip="A sprite sheet cut into a drawing for each sprite, on a new layer."/>
+    <item id="ImportTransformations" text="&amp;Transformations..." responder="window" slot="onActionImportTransformations()" tooltip="Keyframes written by Export Transformations, onto the layers selected from the current frame."/>
+    <item id="ImportPdf" icon="file/importimages" text="&amp;PDF / Illustrator..." responder="window" slot="onActionImportPdf()" tooltip="The vector artwork of a PDF or Illustrator file: a drawing for each page, a layer for each of its layers."/>
+    <separator/>
+    <item id="AcquireTwain" icon="file/importimages" text="&amp;Acquire from TWAIN..." shortcut="shortcut.acquireTwain" responder="window" slot="onActionAcquireTwain()" tooltip="Opens the TWAIN interface. Scanned images are sent to the preview area and are imported into the scene."/>
+    <item id="ScanNewDrawing" icon="file/importimages" text="Scan &amp;New Drawing..." shortcut="shortcut.scanNewDrawing" responder="window" slot="onActionScanDrawing()" tooltip="Scan a drawing into the current cell of the current layer."/>
    </menu>
    <menu id="Export" text="&amp;Export">
     <item id="ExportFrames" icon="file/exportframes" text="&amp;Images..." shortcut="shortcut.exportFrames" responder="window" slot="onActionExportFrames()"/>
+    <item id="ExportTransformations" text="&amp;Transformations..." responder="window" slot="onActionExportTransformations()" tooltip="The keyframes of the layers selected, in a file of their own."/>
     <item id="ExportMovie" icon="file/exportmovie" text="&amp;Movie..." shortcut="shortcut.exportMovie" responder="window" slot="onActionExportMovie()"/>
     <item id="ExportGif" icon="file/exportgif" text="Animated &amp;GIF..." shortcut="shortcut.exportGif" responder="window" slot="onActionExportGif()"/>
     <item id="PublishGameEngine" icon="file/exportframes" text="Publish for &amp;Game Engine..." responder="window" slot="onActionPublishGameEngine()" tooltip="Opens the Publish for Game Engine dialog box: the frames in one sprite sheet with a JSON file saying where each is."/>
@@ -409,6 +416,8 @@
    <item id="ConvertToBitmap" icon="anim/smooth" text="Convert to &amp;Bitmap Drawing" shortcut="shortcut.convertToBitmap" responder="camera" slot="onActionConvertToBitmap()"/>
    <item id="ConvertToVector" icon="anim/smooth" text="Convert to &amp;Vector Drawing" responder="camera" slot="onActionConvertToVector()"/>
    <item id="ConvertToVectorLayer" text="Convert to Vector &amp;Layer" responder="camera" slot="onActionConvertToVectorLayer()"/>
+   <item id="VectorizeDrawings" text="Vectori&amp;ze Line Art in Selected Drawings..." shortcut="shortcut.vectorizeDrawings" responder="window" slot="onActionVectorizeDrawings()" tooltip="Vectorize the selected bitmap drawing(s) to generate a corresponding vector drawing(s), with the Vectorization Parameters."/>
+   <item id="VectorizationParameters" text="Vectorization Para&amp;meters..." responder="window" slot="onActionVectorizationParameters()" tooltip="The settings kept for vectorising imported and scanned pictures."/>
    <item id="MatchArtLayerType" icon="anim/smooth" text="Convert Drawings to Match Art Layer Type" shortcut="shortcut.matchArtLayerType" responder="camera" slot="onActionMatchArtLayerType()"/>
    <item id="BitmapResolution" icon="anim/smooth" text="Change Bitmap Drawing Resol&amp;ution..." shortcut="shortcut.bitmapResolution" responder="camera" slot="onActionBitmapResolution()"/>
    <menu id="DrawingOptimize" text="&amp;Optimize">
@@ -1008,6 +1017,7 @@
    <item id="DuplicateSymbol"/>
    <item id="ExpandSymbol"/>
   </menu>
+  <item id="ShowScanInfo" text="Show Scan Information" shortcut="shortcut.showScanInfo" checkable="true" responder="window" slot="onActionShowScanInfo(bool)" tooltip="Show/hide what the drawing on the current cell was scanned from."/>
   <menu id="CameraMorphing" text="Morphing">
    <item id="ToolMorphing"/>
    <separator/>
@@ -1095,6 +1105,23 @@
  </menu>
 
  <menu id="menu.timeline" text="Timeline Menu">
+  <menu id="TimelineImport" text="Import">
+   <item id="ImportImages"/>
+   <item id="ImportScanner"/>
+   <item id="ImportMovie"/>
+   <item id="ImportSpriteSheet"/>
+   <item id="ImportPdf"/>
+  </menu>
+  <menu id="TimelineScanning" text="Scanning" responder="window" aboutToShowSlot="onShowScanningMenu(QMenu*)">
+   <item id="ScanNewDrawing"/>
+   <item id="ScanAndAdvance" text="Scan and Advance" checkable="true" responder="window" slot="onActionScanOption(QString)" itemParameter="advance"/>
+   <item id="ScanOverwrite" text="Overwrite Drawings" checkable="true" responder="window" slot="onActionScanOption(QString)" itemParameter="overwrite"/>
+   <item id="ScanFlip" text="Flip Drawings" checkable="true" responder="window" slot="onActionScanOption(QString)" itemParameter="flip"/>
+   <item id="ScanRegistration" text="Optical Registration" checkable="true" responder="window" slot="onActionScanOption(QString)" itemParameter="registration"/>
+   <separator/>
+   <item id="VectorizationParameters"/>
+   <item id="ScanningParameters" text="Scanning Parameters..." responder="window" slot="onActionScanningParameters()"/>
+  </menu>
   <menu id="TimelineInsert" text="Insert">
    <item id="InsertDrawing"/>
    <item id="InsertPeg"/>
@@ -1292,6 +1319,7 @@
    <item id="MergeSelectedDrawings" text="Merge Selected Drawings" responder="window" slot="onActionMergeSelectedDrawings()"/>
    <item id="MergeRangeStart" text="Set Merge Range Start Frame" responder="window" slot="onActionMergeRangeStart()"/>
    <item id="MergeRangeEnd" text="Set Merge Range End Frame" responder="window" slot="onActionMergeRangeEnd()"/>
+   <item id="VectorizeDrawings"/>
    <separator/>
    <item id="CreateEmptyDrawing"/>
    <item id="DuplicateDrawing"/>
@@ -1634,6 +1662,16 @@
   <item id="InsertKeyframe"/>
   <item id="DeleteKeyframe"/>
   <separator/>
+  <menu id="XsheetScanning" text="&amp;Scanning" responder="window" aboutToShowSlot="onShowScanningMenu(QMenu*)">
+   <item id="ScanNewDrawing"/>
+   <item id="ScanAndAdvance"/>
+   <item id="ScanOverwrite"/>
+   <item id="ScanFlip"/>
+   <item id="ScanRegistration"/>
+   <separator/>
+   <item id="VectorizationParameters"/>
+   <item id="ScanningParameters"/>
+  </menu>
   <menu id="XsheetInsert" text="&amp;Insert">
    <item id="InsertDrawing"/>
    <item id="InsertPeg"/>
