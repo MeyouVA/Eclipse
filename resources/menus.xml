@@ -1025,6 +1025,7 @@
    <item id="ExpandSymbol"/>
   </menu>
   <item id="ShowScanInfo" text="Show Scan Information" shortcut="shortcut.showScanInfo" checkable="true" responder="window" slot="onActionShowScanInfo(bool)" tooltip="Show/hide what the drawing on the current cell was scanned from."/>
+  <item id="ShowParticlesAsDots" text="Show Particles as Dots" checkable="true" responder="window" slot="onActionShowParticlesAsDots(bool)" tooltip="Particles drawn as dots in the Camera view, which is quicker; renders draw them as they are."/>
   <menu id="CameraMorphing" text="Morphing">
    <item id="ToolMorphing"/>
    <separator/>

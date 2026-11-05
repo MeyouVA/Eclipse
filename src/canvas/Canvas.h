@@ -472,6 +472,9 @@ public slots:
     // Show Scan Information: what the drawing on the current cell was scanned from, in a corner of the view.
     bool scanInfoShown() const { return m_scanInfoShown; }
     void setScanInfoShown(bool shown);
+    // Show Particles as Dots: the view draws each particle as a dot (quicker); renders are not changed.
+    bool particlesAsDots() const { return m_particleDots; }
+    void setParticlesAsDots(bool dots) { m_particleDots = dots; update(); }
     int morphShapeAt(QPointF drawingPos) const;
 
     // ---- what the menus call (this view is the "camera" responder) -------------------

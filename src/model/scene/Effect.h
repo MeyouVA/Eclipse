@@ -62,7 +62,7 @@ struct Effect {
     }
     // A setting of a kind of effect, by name: what it is called, its range and where it starts (a colour: its 0xAARRGGBB).
     struct Param {
-        enum Kind { Number, Whole, Toggle, Choice, Colour };
+        enum Kind { Number, Whole, Toggle, Choice, Colour, Heading };
         char const* key;
         char const* label;
         Kind kind;
@@ -118,10 +118,23 @@ struct Effect {
         double tint = 0.0;      // how far it has turned to endColor (0..1)
         double angle = 0.0;     // how far it has turned about its middle (degrees)
         int born = 0;           // the frame it was let go on
+        // The particle system (Simulate on):
+        int drawing = 0;        // which drawing of the cycle it shows (0: the one the layer shows, 1: the next in the layer...)
+        QColor colour;          // the colour it is turned to, `tint` of the way (none: endColor)
+        QRectF piece;           // Image Fracture: the part of the drawing it is (empty: all of it)
+        double stretch = 1.0;   // Directional Scale: drawn longer along the way it goes, so many times
+        double heading = 0.0;   // the way it goes (degrees, as the drawing's angles go)
+        bool dot = false;       // Render as Dot: a round dot this big (dotSize scene units) rather than the drawing
+        double dotSize = 0.0;
         bool operator==(Particle const&) const = default;
     };
+    // The particles on `frame`; `art` is the drawing's box (Image Fracture breaks it into pieces).
     QVector<Particle> particles(double rate, int frame, QVector<QPointF> const& places = {},
-                                std::function<QPainterPath(int born)> const& shapeFor = {}) const;
+                                std::function<QPainterPath(int born)> const& shapeFor = {}, QRectF const& art = {}) const;
+    // The particle system: simulated frame by frame, from the first frame (and the pre-roll before it), with its forces.
+    bool simulated() const { return type == Particles && flag("simulate"); }
+    QVector<Particle> simulate(double rate, int frame, QVector<QPointF> const& places, std::function<QPainterPath(int born)> const& shapeFor,
+                               QRectF const& art) const;
 
     bool operator==(Effect const&) const = default;
 };

@@ -734,6 +734,8 @@ public slots:
     void onShowScanningMenu(QMenu* menu);
     void onActionScanningParameters();
     void onActionShowScanInfo(bool shown);
+    // Show Particles as Dots: the particles drawn as dots in the Camera view (quicker); renders are not changed.
+    void onActionShowParticlesAsDots(bool dots);
     void onActionAcquireTwain();
     void onActionImportSpriteSheet();
     void onActionImportPdf();

@@ -36,6 +36,8 @@ inline thread_local double gTextureSpread = 0.0;
 inline thread_local quint32 gTextureSeed = 0;
 // How strongly lines are painted just now (Preferences: Pencil Lines Opacity, while the view is painted).
 inline thread_local double gLineOpacity = 1.0;
+// Show Particles as Dots: in the view only (renders draw the particles as they are).
+inline thread_local bool gParticleDots = false;
 // Paint drawn with its fine edge (off while something moves in the view).
 inline thread_local bool gFineFills = true;
 // Preferences > Render: what is left out (Canvas::RenderSwitch bits); the view-only ones only while the Camera view paints.

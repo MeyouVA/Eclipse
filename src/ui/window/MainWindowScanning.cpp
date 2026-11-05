@@ -1,4 +1,5 @@
 // Eclipse - the main window: scanning drawings into the cells of a layer, and the scan settings in the menus.
+#include "actions/theme/AppSettings.h"
 #include "ui/window/MainWindow.h"
 
 #include "actions/manager/ActionManager.h"
@@ -127,6 +128,12 @@ void MainWindow::onActionScanningParameters()
 void MainWindow::onActionShowScanInfo(bool shown)
 {
     m_canvas->setScanInfoShown(shown);
+}
+
+void MainWindow::onActionShowParticlesAsDots(bool dots)
+{
+    m_canvas->setParticlesAsDots(dots);
+    settings().setValue(QStringLiteral("prefs/particlesAsDots"), dots);
 }
 
 void MainWindow::onActionAcquireTwain()

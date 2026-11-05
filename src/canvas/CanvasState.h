@@ -326,6 +326,7 @@ protected:
     bool m_otherKeyShown = false;
     bool m_morphLayerInPlace = false;
     bool m_scanInfoShown = false;
+    bool m_particleDots = false;
     int m_pathIndex = -1;           // the deformation path whose point is being dragged, and which point
     int m_pathPoint = -1;
     int m_hintIndex = -1;

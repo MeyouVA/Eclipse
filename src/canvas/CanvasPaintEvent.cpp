@@ -156,6 +156,7 @@ void Canvas::paintEvent(QPaintEvent*)
     drawing.start();
     // Preferences: pencil lines shown fainter in the view (only here: what is exported keeps them as they are).
     gLineOpacity = m_pencilOpacity / 100.0;
+    gParticleDots = m_particleDots;
     canvas_paint::PictureWash& wash = canvas_paint::pictureWashState();
     canvas_paint::PictureWash const previousWash = wash;
     auto const restoreWash = qScopeGuard([&] { wash = previousWash; });
@@ -213,6 +214,7 @@ void Canvas::paintEvent(QPaintEvent*)
     }
     gFineFills = true;
     gLineOpacity = 1.0;
+    gParticleDots = false;
     m_lastDrawMs = drawing.nsecsElapsed() / 1.0e6;
     m_averageDrawMs = m_averageDrawMs <= 0.0 ? m_lastDrawMs : m_averageDrawMs * 0.9 + m_lastDrawMs * 0.1;
     if (m_performanceReport) {

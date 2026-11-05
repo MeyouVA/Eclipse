@@ -6,6 +6,7 @@
 #include <QCoreApplication>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QLabel>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -91,6 +92,13 @@ void EffectParamsEditor::setEffect(Effect const& e)
                 connect(box, &QComboBox::currentIndexChanged, this, [this, key](int index) { changed(key, index); });
                 field = box;
                 break;
+            }
+            case Effect::Param::Heading: {
+                // (A heading over the settings that follow.)
+                QLabel* const title = new QLabel(QStringLiteral("<b>%1</b>").arg(said(p.label).toHtmlEscaped()), this);
+                title->setObjectName(QStringLiteral("EffectHeading_%1").arg(key.mid(1)));
+                m_form->addRow(title);
+                continue;
             }
             case Effect::Param::Colour: {
                 QPushButton* const button = new QPushButton(this);

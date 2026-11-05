@@ -58,8 +58,11 @@ static QPointF throughShape(QPointF at, QPointF v, QPointF a, double age, double
     return at;
 }
 
-QVector<Effect::Particle> Effect::particles(double rate, int frame, QVector<QPointF> const& places, std::function<QPainterPath(int born)> const& shapeFor) const
+QVector<Effect::Particle> Effect::particles(double rate, int frame, QVector<QPointF> const& places, std::function<QPainterPath(int born)> const& shapeFor,
+                                            QRectF const& art) const
 {
+    if (simulated())
+        return simulate(rate, frame, places, shapeFor, art);
     QVector<Particle> out;
     int const lasts = std::max(1, life);
     rate = std::clamp(rate, 0.0, 50.0);

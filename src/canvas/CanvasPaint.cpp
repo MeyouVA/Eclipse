@@ -575,8 +575,8 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
             QTransform const base = off.transform();
             QImage plain;
             QRectF area;
-            QVector<QImage> mixed;
-            if (emitter.endColor.isValid()) {
+            bool const coloured = emitter.simulated() && emitter.value("colouring") >= 0.5;
+            if (emitter.endColor.isValid() || coloured) {
                 QRectF const whole(QPointF(0, 0), QSizeF(size) / dpr);
                 area = symbol ? whole : base.mapRect(drawing.bounds()).adjusted(-4, -4, 4, 4) & whole;
                 if (!area.isEmpty()) {
@@ -590,22 +590,24 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                         contents(once);
                     else
                         paintDrawingOpaque(once, scene, drawing, nullptr);
-                    mixed.resize(9);
                 }
             }
-            auto mixedImage = [&](int step) -> QImage const& {
-                if (mixed[step].isNull()) {
+            QHash<quint64, QImage> mixedBy;
+            auto mixedImage = [&](int step, QColor const& towards) -> QImage const& {
+                quint64 const key = (quint64(towards.rgba()) << 8) | quint64(step);
+                auto found = mixedBy.find(key);
+                if (found == mixedBy.end()) {
                     QImage made = plain.copy();
                     made.setDevicePixelRatio(dpr);
                     QPainter tint(&made);
                     tint.setCompositionMode(QPainter::CompositionMode_SourceAtop);
-                    QColor colour = emitter.endColor;
+                    QColor colour = towards;
                     colour.setAlphaF(float(step / 8.0));
                     tint.fillRect(QRectF(QPointF(0, 0), area.size()), colour);
                     tint.end();
-                    mixed[step] = made;
+                    found = mixedBy.insert(key, made);
                 }
-                return mixed[step];
+                return *found;
             };
             QTransform const backToScene = base.isInvertible() ? base.inverted() : QTransform();
             // Let go from the drawing's own shape: places on its artwork, found once (the same every time it is painted).
@@ -658,25 +660,68 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
                     return at.inverted().map(obstacle).translated(-middle);
                 };
             }
-            for (Effect::Particle const& particle : emitter.particles(rate, frame, places, shapeFor)) {
+            QPointF const artMiddle = drawing.bounds().center();
+            // The other drawings of a cycle (Number of Drawings in Cycle): the ones after the one shown, in the layer.
+            int const shownIndex = layer.drawingAt(frame);
+            QHash<int, Drawing> cycleDrawings;
+            auto cycleDrawing = [&](int k) -> Drawing const* {
+                if (k <= 0 || symbol || shownIndex < 0 || shownIndex >= layer.drawings.size())
+                    return nullptr;
+                auto found = cycleDrawings.find(k);
+                if (found == cycleDrawings.end())
+                    found = cycleDrawings.insert(k, Deform::shown(layer.drawings[(shownIndex + k) % layer.drawings.size()], layer, layer.poseAt(frame)));
+                return &*found;
+            };
+            QColor dotColour = Qt::black;
+            if (!drawing.fills.isEmpty())
+                dotColour = drawing.fills.first().color;
+            else if (!drawing.strokes.isEmpty())
+                dotColour = drawing.strokes.first().color;
+            for (Effect::Particle const& particle : emitter.particles(rate, frame, places, shapeFor, symbol ? QRectF() : drawing.bounds())) {
                 off.save();
                 // Each stays where the layer was when it was let go (unless it is to move with the layer).
                 if (!emitter.followLayer && particle.born != frame && now.isInvertible())
                     off.setTransform(scene.worldTransform(l, particle.born) * now.inverted() * base);
-                off.translate(particle.offset);
-                if (particle.scale != 1.0 || particle.angle != 0.0) {
-                    // Grown or shrunk, and turned, about the middle of the drawing.
-                    QPointF const middle = drawing.bounds().center();
-                    off.translate(middle);
+                // (A piece of the drawing: where it was in the drawing is where it starts from.)
+                QPointF const pivot = particle.piece.isEmpty() ? artMiddle : particle.piece.center();
+                off.translate(particle.offset + artMiddle - pivot);
+                if (particle.scale != 1.0 || particle.angle != 0.0 || particle.stretch != 1.0) {
+                    // Grown or shrunk, drawn out along its way, and turned, about the middle of the drawing (or the piece).
+                    off.translate(pivot);
+                    if (particle.stretch != 1.0) {
+                        off.rotate(particle.heading);
+                        off.scale(particle.stretch, 1.0);
+                        off.rotate(-particle.heading);
+                    }
                     off.rotate(particle.angle);
                     off.scale(particle.scale, particle.scale);
-                    off.translate(-middle);
+                    off.translate(-pivot);
                 }
+                if (!particle.piece.isEmpty())
+                    off.setClipRect(particle.piece, Qt::IntersectClip);
                 off.setOpacity(particle.opacity);
+                QColor const towards = particle.colour.isValid() ? particle.colour : emitter.endColor;
+                if (particle.dot || gParticleDots) {
+                    // Render as Dot: a round dot in the particle's colour (or the drawing's first).
+                    QColor colour = dotColour;
+                    if (towards.isValid() && particle.tint > 0.0) {
+                        double const t = std::clamp(particle.tint, 0.0, 1.0);
+                        colour = QColor::fromRgbF(float(colour.redF() + (towards.redF() - colour.redF()) * t), float(colour.greenF() + (towards.greenF() - colour.greenF()) * t),
+                                                  float(colour.blueF() + (towards.blueF() - colour.blueF()) * t), colour.alphaF());
+                    }
+                    off.setPen(Qt::NoPen);
+                    off.setBrush(colour);
+                    double const across = particle.dot ? particle.dotSize : 6.0;
+                    off.drawEllipse(pivot, across / 2.0, across / 2.0);
+                    off.restore();
+                    continue;
+                }
                 int const step = int(std::lround(std::clamp(particle.tint, 0.0, 1.0) * 8.0));
-                if (step > 0 && !plain.isNull()) {
+                if (Drawing const* const other = cycleDrawing(particle.drawing)) {
+                    paintDrawingOpaque(off, scene, *other, nullptr);
+                } else if (step > 0 && !plain.isNull() && towards.isValid()) {
                     off.setTransform(QTransform::fromTranslate(area.left(), area.top()) * backToScene * off.transform());
-                    off.drawImage(QPointF(0, 0), mixedImage(step));
+                    off.drawImage(QPointF(0, 0), mixedImage(step, towards));
                 } else {
                     picture();
                 }
