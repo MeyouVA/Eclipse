@@ -384,6 +384,18 @@ public:
     void renameController(int controller, QString const& name);
     // The poses (and drawings) the controller's layers have on `frame`, kept as a state; or put in place of one.
     int addControllerState(int controller, int frame, QString const& name);
+    // Controller options (blend, interpolation, grid, timeline, default, how it shows in the Camera view) - its states, layers
+    // and keyframes kept; positions duplicated, renamed, trained; positions made from keyframes; baking; cleaning; reset.
+    void setControllerOptions(int controller, Scene::Controller const& options, QString const& text);
+    int duplicateControllerState(int controller, int state);
+    bool renameControllerState(int controller, int state, QString const& name);
+    int trainNearestState(int controller, int frame);
+    int autoCreatePositions(int controller);
+    int bakeController(int controller, int from, int to);
+    int bakeAllControllers();
+    int cleanControllers();
+    void resetController(int controller, int frame);
+    void applyTimelineController(int controller, int frame, double value);
     void replaceControllerState(int controller, int state, int frame);
     void removeControllerState(int controller, int state);
     void applyController(int controller, int frame, double value);

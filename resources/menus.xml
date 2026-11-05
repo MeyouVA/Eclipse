@@ -685,6 +685,13 @@
     <item id="RemoveAttributeBinding" text="Remove Attribute &amp;Binding..." responder="window" slot="onActionRemoveAttributeBinding()"/>
     <item id="RemoveAllAttributeBindings" text="Remove &amp;All Attribute Bindings" responder="window" slot="onActionRemoveAllAttributeBindings()"/>
     <item id="CleanAttributeBindings" text="&amp;Clean Attribute Bindings" responder="window" slot="onActionCleanAttributeBindings()"/>
+    <separator/>
+    <item id="ApplyToController" text="A&amp;pply to Controller" responder="window" slot="onActionControllerCommand(QString)" itemParameter="apply"/>
+    <item id="BakeControllerPositions" text="Bake Controller &amp;Positions" responder="window" slot="onActionControllerCommand(QString)" itemParameter="positions"/>
+    <item id="BakeFromController" text="Bake &amp;from Controller" responder="window" slot="onActionControllerCommand(QString)" itemParameter="bake"/>
+    <item id="BakeAllControllers" text="Bake A&amp;ll Controllers" responder="window" slot="onActionControllerCommand(QString)" itemParameter="all"/>
+    <item id="CleanControllers" text="Clea&amp;n Controllers" responder="window" slot="onActionControllerCommand(QString)" itemParameter="clean"/>
+    <item id="ShowControllerSetup" text="Show Controller &amp;Setup" responder="window" slot="onActionControllerCommand(QString)" itemParameter="setup"/>
    </menu>
    <item id="PublishAttributeMode" text="&amp;Publish Attribute Mode" checkable="true" responder="window" slot="onActionPublishAttributeMode(bool)"/>
    <item id="ClearPublishedAttributes" text="Clear Publis&amp;hed Attributes" responder="window" slot="onActionClearPublishedAttributes()"/>
@@ -1877,6 +1884,10 @@
   <item id="DetachLayer"/>
   <item id="LayerPrefixSuffix"/>
   <menu id="NodeControllers" text="Controllers">
+   <item id="ApplyToController"/>
+   <item id="BakeControllerPositions"/>
+   <item id="BakeFromController"/>
+   <item id="BakeAllControllers"/>
    <item id="ReassignTargetAttributes"/>
    <item id="RemoveAttributeBinding"/>
    <item id="RemoveAllAttributeBindings"/>

@@ -75,6 +75,35 @@ public:
         QVector<double> weightsAt(QPointF spot) const;
         QMap<int, double> keys;
         QMap<int, QPointF> pointKeys;
+        // Blend Type: the states' poses by their weights shared out (Normalize Weights), or the strongest alone (Highest Weight).
+        enum BlendType { NormalizeWeights, HighestWeight };
+        int blend = NormalizeWeights;
+        // Interpolation Type between two states of a slider: straight, or easing in and out of each.
+        enum Interpolation { Linear, Smooth };
+        int interpolation = Linear;
+        // Grid 2D: the pad's states on a grid (Grid Count X by Y), the point between four of them blending them straight.
+        bool grid = false;
+        int gridX = 3, gridY = 3;
+        // Slider Timeline: the slider takes the layers to a frame of their own animation, from `timelineStart` over
+        // `timelineLength` frames, instead of to states.
+        bool timeline = false;
+        int timelineStart = 0, timelineLength = 24;
+        // Default Value: where Reset puts the slider (or the point).
+        double defaultValue = 0.0;
+        QPointF defaultWhere{0.5, 0.5};
+        // In the Camera view: its name's colour, background, size and place (beside or above), a box behind it, and when it
+        // shows (always, or only when one of its layers - or the Selection Override layer - is the current one).
+        QColor textColour = QColor(230, 230, 230), textBackground = QColor(40, 40, 40, 180);
+        int textSize = 9;
+        bool textAbove = false;
+        bool backgroundBox = true;
+        bool constantSize = true;
+        int padSize = 130;
+        enum Visibility { Always, BasedOnSelection };
+        int visibility = Always;
+        int selectionOverride = 0;      // a layer id (0: its own layers)
+        // The weights of the states on a 2D point's pad, as the blend type and grid have them.
+        QVector<double> blendedWeights(QPointF spot) const;
         double valueAt(int frame) const;
         QPointF whereAt(int frame) const;
         bool operator==(Controller const&) const = default;

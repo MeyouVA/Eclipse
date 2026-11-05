@@ -157,6 +157,44 @@ QJsonObject Scene::toJson(QString const& folder) const
                 keys.append(QJsonArray{it.key(), it.value().x(), it.value().y()});
             controller["pointKeys"] = keys;
         }
+        // (Its options, kept when they are not as a new one has them.)
+        Controller const plain;
+        if (c.blend != plain.blend)
+            controller["blend"] = c.blend;
+        if (c.interpolation != plain.interpolation)
+            controller["interpolation"] = c.interpolation;
+        if (c.grid) {
+            controller["grid"] = true;
+            controller["gridX"] = c.gridX;
+            controller["gridY"] = c.gridY;
+        }
+        if (c.timeline) {
+            controller["timeline"] = true;
+            controller["timelineStart"] = c.timelineStart;
+            controller["timelineLength"] = c.timelineLength;
+        }
+        if (c.defaultValue != 0.0)
+            controller["defaultValue"] = c.defaultValue;
+        if (c.defaultWhere != plain.defaultWhere)
+            controller["defaultWhere"] = QJsonArray{c.defaultWhere.x(), c.defaultWhere.y()};
+        if (c.textColour != plain.textColour)
+            controller["textColour"] = c.textColour.name();
+        if (c.textBackground != plain.textBackground)
+            controller["textBackground"] = c.textBackground.name(QColor::HexArgb);
+        if (c.textSize != plain.textSize)
+            controller["textSize"] = c.textSize;
+        if (c.textAbove)
+            controller["textAbove"] = true;
+        if (!c.backgroundBox)
+            controller["backgroundBox"] = false;
+        if (!c.constantSize)
+            controller["constantSize"] = false;
+        if (c.padSize != plain.padSize)
+            controller["padSize"] = c.padSize;
+        if (c.visibility != plain.visibility)
+            controller["visibility"] = c.visibility;
+        if (c.selectionOverride != 0)
+            controller["selectionOverride"] = c.selectionOverride;
         controllerArray.append(controller);
     }
     QJsonArray writeArray;

@@ -100,6 +100,28 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         c.name = co["name"].toString();
         c.value = co["value"].toDouble(0.0);
         c.point = co["point"].toBool(false);
+        c.blend = std::clamp(co["blend"].toInt(0), 0, 1);
+        c.interpolation = std::clamp(co["interpolation"].toInt(0), 0, 1);
+        c.grid = co["grid"].toBool(false);
+        c.gridX = std::clamp(co["gridX"].toInt(3), 2, 20);
+        c.gridY = std::clamp(co["gridY"].toInt(3), 2, 20);
+        c.timeline = co["timeline"].toBool(false);
+        c.timelineStart = std::max(0, co["timelineStart"].toInt(0));
+        c.timelineLength = std::max(1, co["timelineLength"].toInt(24));
+        c.defaultValue = co["defaultValue"].toDouble(0.0);
+        if (QJsonArray const d = co["defaultWhere"].toArray(); d.size() == 2)
+            c.defaultWhere = QPointF(d[0].toDouble(), d[1].toDouble());
+        if (co.contains("textColour"))
+            c.textColour = QColor(co["textColour"].toString());
+        if (co.contains("textBackground"))
+            c.textBackground = QColor::fromString(co["textBackground"].toString());
+        c.textSize = std::clamp(co["textSize"].toInt(9), 5, 72);
+        c.textAbove = co["textAbove"].toBool(false);
+        c.backgroundBox = co["backgroundBox"].toBool(true);
+        c.constantSize = co["constantSize"].toBool(true);
+        c.padSize = std::clamp(co["padSize"].toInt(130), 40, 600);
+        c.visibility = std::clamp(co["visibility"].toInt(0), 0, 1);
+        c.selectionOverride = co["selectionOverride"].toInt(0);
         for (QJsonValue const& kv : co["keys"].toArray())
             if (QJsonArray const k = kv.toArray(); k.size() == 2)
                 c.keys.insert(k[0].toInt(), k[1].toDouble());

@@ -1,5 +1,13 @@
 // Eclipse - Pose Controllers.
 #include "ui/views/ControllerView.h"
+#include <QColorDialog>
+#include <QBoxLayout>
+#include <QSpinBox>
+#include <QFormLayout>
+#include <QDoubleSpinBox>
+#include <QDialogButtonBox>
+#include <QDialog>
+#include <QComboBox>
 
 #include <cmath>
 
@@ -159,6 +167,13 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
     QPushButton* const addState = button("ControllerAddState", tr("Add State"), tr("Keeps the poses and drawings the layers have on this frame, under a name."));
     QPushButton* const replace = button("ControllerReplaceState", tr("Replace"), tr("The state chosen takes the poses the layers have on this frame."));
     QPushButton* const drop = button("ControllerRemoveState", tr("Remove"), tr("Removes the state chosen."));
+    QPushButton* const train = button("ControllerTrainNearest", tr("Train Nearest"), tr("The state nearest where the controller stands takes the poses the layers have on this frame."));
+    QPushButton* const duplicate = button("ControllerDuplicateState", tr("Duplicate"), tr("Duplicate Position(s): a copy of the state chosen, after it."));
+    QPushButton* const rename = button("ControllerRenameState", tr("Rename"), tr("Rename Pose: the state chosen gets another name."));
+    QPushButton* const autoCreate = button("ControllerAutoCreate", tr("Auto-Create"), tr("Auto-Create Positions: a state for each frame its layers have a keyframe on."));
+    QPushButton* const reset = button("ControllerReset", tr("Default"), tr("Default Value: the controller back where it rests, on this frame."));
+    QPushButton* const jump = button("ControllerJump", tr("Jump to Controller"), tr("Chooses the controller the current layer is part of."));
+    QPushButton* const options = button("ControllerOptions", tr("Settings..."), tr("Blend Type, Interpolation Type, Grid 2D, Slider Timeline, Default Value and how it shows in the Camera view."));
 
     QHBoxLayout* const top = new QHBoxLayout;
     top->addWidget(add);
@@ -168,7 +183,16 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
     stateButtons->addWidget(addState);
     stateButtons->addWidget(replace);
     stateButtons->addWidget(drop);
+    stateButtons->addWidget(duplicate);
+    stateButtons->addWidget(rename);
     stateButtons->addStretch(1);
+    QHBoxLayout* const moreButtons = new QHBoxLayout;
+    moreButtons->addWidget(train);
+    moreButtons->addWidget(autoCreate);
+    moreButtons->addWidget(reset);
+    moreButtons->addWidget(jump);
+    moreButtons->addWidget(options);
+    moreButtons->addStretch(1);
     m_inCamera = new QCheckBox(tr("Show in Camera"), this);
     m_inCamera->setObjectName(QStringLiteral("ControllerInCamera"));
     m_inCamera->setToolTip(tr("The controller's slider in the lower left corner of the Camera view as well."));
@@ -200,6 +224,7 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
     layout->addLayout(top);
     layout->addLayout(lists, 1);
     layout->addLayout(stateButtons);
+    layout->addLayout(moreButtons);
     layout->addWidget(m_pad, 1);
     layout->addLayout(sliderRow);
 
@@ -208,6 +233,33 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
     connect(addState, &QPushButton::clicked, this, &ControllerView::addState);
     connect(replace, &QPushButton::clicked, this, &ControllerView::replaceState);
     connect(drop, &QPushButton::clicked, this, &ControllerView::removeState);
+    connect(train, &QPushButton::clicked, this, [this] {
+        if (currentController() >= 0)
+            m_document->trainNearestState(currentController(), m_timeline->currentFrame());
+    });
+    connect(duplicate, &QPushButton::clicked, this, [this] {
+        if (currentController() >= 0 && m_states->currentRow() >= 0)
+            m_document->duplicateControllerState(currentController(), m_states->currentRow());
+    });
+    connect(rename, &QPushButton::clicked, this, [this] {
+        int const c = currentController(), state = m_states->currentRow();
+        if (c < 0 || state < 0)
+            return;
+        bool ok = false;
+        QString const name = QInputDialog::getText(this, tr("Rename Pose"), tr("Pose Name :"), QLineEdit::Normal, m_document->scene().controllers[c].states[state].name, &ok);
+        if (ok)
+            m_document->renameControllerState(c, state, name);
+    });
+    connect(autoCreate, &QPushButton::clicked, this, [this] {
+        if (currentController() >= 0)
+            m_document->autoCreatePositions(currentController());
+    });
+    connect(reset, &QPushButton::clicked, this, [this] {
+        if (currentController() >= 0)
+            m_document->resetController(currentController(), m_timeline->currentFrame());
+    });
+    connect(options, &QPushButton::clicked, this, &ControllerView::editOptions);
+    connect(jump, &QPushButton::clicked, this, &ControllerView::jumpToController);
     connect(m_controllers, &QListWidget::currentRowChanged, this, [this] {
         if (!m_refreshing)
             refresh();
@@ -261,7 +313,8 @@ void ControllerView::refresh()
         for (Scene::Controller::State const& s : scene.controllers[c].states)
             m_states->addItem(s.name);
     m_states->setCurrentRow(std::min(std::max(0, keepState), m_states->count() - 1));
-    int const states = c >= 0 ? int(scene.controllers[c].states.size()) : 0;
+    bool const timeline = c >= 0 && scene.controllers[c].timeline;
+    int const states = c >= 0 ? (timeline ? scene.controllers[c].timelineLength : int(scene.controllers[c].states.size())) : 0;
     m_slider->setEnabled(states >= 2);
     m_slider->setRange(0, std::max(0, states - 1) * kSteps);
     // (Where it stands on this frame: its keyframes say.)
@@ -295,7 +348,28 @@ void ControllerView::refresh()
         m_overlaySlider->setVisible(!point);
         m_overlayPad->setVisible(point);
         m_overlayName->setText(c >= 0 ? scene.controllers[c].name : QString());
-        m_overlay->setVisible(m_inCamera->isChecked() && states >= (point ? 1 : 2));
+        bool shownHere = true;
+        if (c >= 0) {
+            Scene::Controller const& one = scene.controllers[c];
+            // Text Colour, Text Background Colour, Text Size; Background Box; the pad's size (Constant Size: as set).
+            m_overlayName->setStyleSheet(QStringLiteral("color: %1; background-color: %2; font-size: %3pt; padding: 1px 3px;")
+                                             .arg(one.textColour.name(), one.textBackground.name(QColor::HexArgb))
+                                             .arg(one.textSize));
+            m_overlay->setAutoFillBackground(one.backgroundBox);
+            m_overlay->setFrameShape(one.backgroundBox ? QFrame::StyledPanel : QFrame::NoFrame);
+            m_overlayPad->setFixedSize(one.padSize, one.padSize);
+            // Text Position: beside the control or above it.
+            if (QBoxLayout* const row = qobject_cast<QBoxLayout*>(m_overlay->layout()))
+                row->setDirection(one.textAbove ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
+            // Visibility Context: Based on Selection - shown only while one of its layers (or the Selection Override layer) is
+            // the current one.
+            if (one.visibility == Scene::Controller::BasedOnSelection) {
+                int const current = m_timeline->currentLayer();
+                int const id = current >= 0 && current < scene.layers.size() ? scene.layers[current].id : 0;
+                shownHere = one.selectionOverride != 0 ? id == one.selectionOverride : one.layers.contains(id);
+            }
+        }
+        m_overlay->setVisible(m_inCamera->isChecked() && shownHere && states >= (point ? 1 : 2));
         placeOverlay();
     }
     m_refreshing = false;
@@ -415,4 +489,146 @@ bool ControllerView::eventFilter(QObject* watched, QEvent* event)
     if (watched == m_camera && event->type() == QEvent::Resize)
         placeOverlay();
     return QWidget::eventFilter(watched, event);
+}
+
+void ControllerView::editOptions()
+{
+    int const c = currentController();
+    if (c < 0)
+        return;
+    Scene const& scene = m_document->scene();
+    Scene::Controller options = scene.controllers[c];
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("ControllerOptionsDialog"));
+    dialog.setWindowTitle(tr("Controller Settings: %1").arg(options.name));
+    QFormLayout* const form = new QFormLayout(&dialog);
+    QComboBox* const blend = new QComboBox(&dialog);
+    blend->setObjectName(QStringLiteral("ControllerBlend"));
+    blend->addItems({tr("Normalize Weights"), tr("Highest Weight")});
+    blend->setCurrentIndex(options.blend);
+    QComboBox* const interpolation = new QComboBox(&dialog);
+    interpolation->setObjectName(QStringLiteral("ControllerInterpolation"));
+    interpolation->addItems({tr("Linear"), tr("Smooth")});
+    interpolation->setCurrentIndex(options.interpolation);
+    QCheckBox* const grid = new QCheckBox(tr("Grid 2D"), &dialog);
+    grid->setObjectName(QStringLiteral("ControllerGrid"));
+    grid->setChecked(options.grid);
+    QSpinBox* const gridX = new QSpinBox(&dialog);
+    gridX->setObjectName(QStringLiteral("ControllerGridX"));
+    gridX->setRange(2, 20);
+    gridX->setValue(options.gridX);
+    QSpinBox* const gridY = new QSpinBox(&dialog);
+    gridY->setObjectName(QStringLiteral("ControllerGridY"));
+    gridY->setRange(2, 20);
+    gridY->setValue(options.gridY);
+    QCheckBox* const timeline = new QCheckBox(tr("Slider Timeline"), &dialog);
+    timeline->setObjectName(QStringLiteral("ControllerTimeline"));
+    timeline->setChecked(options.timeline);
+    QSpinBox* const start = new QSpinBox(&dialog);
+    start->setObjectName(QStringLiteral("ControllerTimelineStart"));
+    start->setRange(1, 100000);
+    start->setValue(options.timelineStart + 1);
+    QSpinBox* const length = new QSpinBox(&dialog);
+    length->setObjectName(QStringLiteral("ControllerTimelineLength"));
+    length->setRange(1, 100000);
+    length->setValue(options.timelineLength);
+    QDoubleSpinBox* const defaultValue = new QDoubleSpinBox(&dialog);
+    defaultValue->setObjectName(QStringLiteral("ControllerDefault"));
+    defaultValue->setRange(0, 100000);
+    defaultValue->setDecimals(2);
+    defaultValue->setValue(options.defaultValue);
+    QSpinBox* const textSize = new QSpinBox(&dialog);
+    textSize->setObjectName(QStringLiteral("ControllerTextSize"));
+    textSize->setRange(5, 72);
+    textSize->setValue(options.textSize);
+    // Text Colour and Text Background Colour: buttons showing the colour, a click to choose another.
+    auto colourButton = [&](char const* name, QColor const& now) {
+        QPushButton* const b = new QPushButton(&dialog);
+        b->setObjectName(QLatin1String(name));
+        auto show = [b](QColor const& c) {
+            b->setProperty("colour", c);
+            b->setStyleSheet(QStringLiteral("background-color: %1; min-width: 60px;").arg(c.name(QColor::HexArgb)));
+        };
+        show(now);
+        connect(b, &QPushButton::clicked, &dialog, [b, show, &dialog] {
+            QColor const chosen = QColorDialog::getColor(b->property("colour").value<QColor>(), &dialog, QString(), QColorDialog::ShowAlphaChannel);
+            if (chosen.isValid())
+                show(chosen);
+        });
+        return b;
+    };
+    QPushButton* const textColour = colourButton("ControllerTextColour", options.textColour);
+    QPushButton* const textBack = colourButton("ControllerTextBackground", options.textBackground);
+    QCheckBox* const above = new QCheckBox(tr("Text Position: above the control"), &dialog);
+    above->setChecked(options.textAbove);
+    QCheckBox* const box = new QCheckBox(tr("Background Box"), &dialog);
+    box->setChecked(options.backgroundBox);
+    QSpinBox* const padSize = new QSpinBox(&dialog);
+    padSize->setObjectName(QStringLiteral("ControllerPadSize"));
+    padSize->setRange(40, 600);
+    padSize->setValue(options.padSize);
+    QComboBox* const visibility = new QComboBox(&dialog);
+    visibility->setObjectName(QStringLiteral("ControllerVisibility"));
+    visibility->addItems({tr("Always"), tr("Based on Selection")});
+    visibility->setCurrentIndex(options.visibility);
+    QComboBox* const override = new QComboBox(&dialog);
+    override->setObjectName(QStringLiteral("ControllerSelectionOverride"));
+    override->addItem(tr("Its own layers"), 0);
+    for (Layer const& l : scene.layers)
+        override->addItem(l.name, l.id);
+    override->setCurrentIndex(std::max(0, override->findData(options.selectionOverride)));
+    form->addRow(tr("Blend Type"), blend);
+    form->addRow(tr("Interpolation Type"), interpolation);
+    form->addRow(grid);
+    form->addRow(tr("Grid Count X"), gridX);
+    form->addRow(tr("Grid Count Y"), gridY);
+    form->addRow(timeline);
+    form->addRow(tr("Frame 1 / Custom Frame"), start);
+    form->addRow(tr("Timeline Length"), length);
+    form->addRow(tr("Default Value"), defaultValue);
+    form->addRow(tr("Text Size"), textSize);
+    form->addRow(tr("Text Colour"), textColour);
+    form->addRow(tr("Text Background Colour"), textBack);
+    form->addRow(above);
+    form->addRow(box);
+    form->addRow(tr("Pad size"), padSize);
+    form->addRow(tr("Visibility Context"), visibility);
+    form->addRow(tr("Selection Override"), override);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    options.blend = blend->currentIndex();
+    options.interpolation = interpolation->currentIndex();
+    options.grid = grid->isChecked();
+    options.gridX = gridX->value();
+    options.gridY = gridY->value();
+    options.timeline = timeline->isChecked();
+    options.timelineStart = start->value() - 1;
+    options.timelineLength = length->value();
+    options.defaultValue = defaultValue->value();
+    options.textSize = textSize->value();
+    options.textColour = textColour->property("colour").value<QColor>();
+    options.textBackground = textBack->property("colour").value<QColor>();
+    options.textAbove = above->isChecked();
+    options.backgroundBox = box->isChecked();
+    options.padSize = padSize->value();
+    options.visibility = visibility->currentIndex();
+    options.selectionOverride = override->currentData().toInt();
+    m_document->setControllerOptions(c, options, tr("Controller Settings"));
+}
+
+bool ControllerView::jumpToController()
+{
+    Scene const& scene = m_document->scene();
+    int const current = m_timeline->currentLayer();
+    int const id = current >= 0 && current < scene.layers.size() ? scene.layers[current].id : 0;
+    for (int c = 0; c < scene.controllers.size(); ++c)
+        if (scene.controllers[c].layers.contains(id)) {
+            m_controllers->setCurrentRow(c);
+            return true;
+        }
+    return false;
 }

@@ -68,6 +68,10 @@ public slots:
     void addState();
     void replaceState();
     void removeState();
+    // Controller Settings: Blend Type, Interpolation Type, Grid 2D, Slider Timeline, Default Value, how it shows in the Camera view.
+    void editOptions();
+    // Jump to Controller: the controller the current layer is part of chosen.  False when it is part of none.
+    bool jumpToController();
     void refresh();
 
 private:

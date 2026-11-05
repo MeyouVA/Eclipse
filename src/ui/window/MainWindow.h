@@ -607,6 +607,9 @@ public slots:
     void onActionIkConstraint(QString const& which);
     // Rigging > Constraints: the layer's constraint (kind, anchors, settings, Active Value) and Transform Loop; baking.
     void onActionConstraintSettings();
+    // Animation > Controllers: Apply to Controller, Bake Controller Positions / Bake from Controller (the controller chosen in
+    // the Controllers view), Bake All Controllers, Clean Controllers, Show Controller Setup.
+    void onActionControllerCommand(QString const& which);
     void onActionBakeConstraint(QString const& which);
     void onActionRemoveConstraint();
     void onActionApplyIkConstraints();

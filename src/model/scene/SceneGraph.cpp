@@ -241,6 +241,43 @@ NodeGraph Scene::graphFromLayers() const
     return g;
 }
 
+QVector<double> Scene::Controller::blendedWeights(QPointF spot) const
+{
+    QVector<double> weights(states.size(), 0.0);
+    if (states.isEmpty())
+        return weights;
+    if (grid && gridX >= 2 && gridY >= 2) {
+        // The four states at the corners of the cell the point is in, straight between them (when they are all there).
+        double const u = std::clamp(spot.x(), 0.0, 1.0) * (gridX - 1), v = std::clamp(spot.y(), 0.0, 1.0) * (gridY - 1);
+        int const i = std::min(int(u), gridX - 2), j = std::min(int(v), gridY - 2);
+        double const s = u - i, t = v - j;
+        auto stateAtCorner = [&](int x, int y) {
+            QPointF const corner(double(x) / (gridX - 1), double(y) / (gridY - 1));
+            for (int k = 0; k < states.size(); ++k)
+                if (std::abs(states[k].at.x() - corner.x()) < 1e-6 && std::abs(states[k].at.y() - corner.y()) < 1e-6)
+                    return k;
+            return -1;
+        };
+        int const a = stateAtCorner(i, j), b = stateAtCorner(i + 1, j), c = stateAtCorner(i, j + 1), d = stateAtCorner(i + 1, j + 1);
+        if (a >= 0 && b >= 0 && c >= 0 && d >= 0) {
+            weights[a] += (1 - s) * (1 - t);
+            weights[b] += s * (1 - t);
+            weights[c] += (1 - s) * t;
+            weights[d] += s * t;
+        } else {
+            weights = weightsAt(spot);
+        }
+    } else {
+        weights = weightsAt(spot);
+    }
+    if (blend == HighestWeight) {
+        int const best = int(std::max_element(weights.begin(), weights.end()) - weights.begin());
+        std::fill(weights.begin(), weights.end(), 0.0);
+        weights[best] = 1.0;
+    }
+    return weights;
+}
+
 QVector<double> Scene::Controller::weightsAt(QPointF spot) const
 {
     QVector<double> weights(states.size(), 0.0);

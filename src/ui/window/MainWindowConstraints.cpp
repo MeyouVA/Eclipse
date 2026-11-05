@@ -16,6 +16,8 @@
 #include <QVBoxLayout>
 
 #include "model/document/Commands.h"
+#include "ui/views/ControllerView.h"
+#include <QDockWidget>
 
 void MainWindow::onActionBakeConstraint(QString const& which)
 {
@@ -292,4 +294,50 @@ void MainWindow::onActionConstraintSettings()
         m_document->setConstraintValue(l, frame(), active->value());
     m_document->setLoop(l, loopType->currentIndex(), automatic->isChecked() ? -1 : loopStart->value() - 1, automatic->isChecked() ? -1 : loopEnd->value() - 1);
     m_document->endMacro();
+}
+
+void MainWindow::onActionControllerCommand(QString const& which)
+{
+    ControllerView* const view = findChild<ControllerView*>();
+    int const controller = view ? view->currentController() : -1;
+    if (which == QLatin1String("setup")) {
+        if (QDockWidget* const dock = findChild<QDockWidget*>(QStringLiteral("ControllerDock")))
+            showView(dock);
+        return;
+    }
+    if (which == QLatin1String("all")) {
+        int const baked = m_document->bakeAllControllers();
+        statusBar()->showMessage(baked > 0 ? tr("Bake All Controllers: %n frame(s) keyed.", nullptr, baked) : tr("No Controller Nodes available."), 5000);
+        return;
+    }
+    if (which == QLatin1String("clean")) {
+        int const cleaned = m_document->cleanControllers();
+        statusBar()->showMessage(cleaned > 0 ? tr("Clean Controllers: %n thing(s) taken away.", nullptr, cleaned) : tr("The controllers are clean."), 5000);
+        return;
+    }
+    if (controller < 0) {
+        statusBar()->showMessage(tr("No Controller Nodes available: choose a controller in the Controllers view."), 6000);
+        return;
+    }
+    if (which == QLatin1String("apply")) {
+        // Apply to Controller: the poses the layers have here made a position of the controller.
+        m_document->addControllerState(controller, frame(), QString());
+    } else if (which == QLatin1String("bake")) {
+        int const baked = m_document->bakeController(controller, 0, m_document->scene().frameCount() - 1);
+        statusBar()->showMessage(baked > 0 ? tr("Bake from Controllers: %n frame(s) keyed.", nullptr, baked) : tr("No Controller positions found in provided range."), 5000);
+    } else if (which == QLatin1String("positions")) {
+        // Bake Controller Positions: the controller's own value keyed on every frame of its range.
+        Scene::Controller options = m_document->scene().controllers[controller];
+        int const first = options.point ? (options.pointKeys.isEmpty() ? 0 : options.pointKeys.firstKey()) : (options.keys.isEmpty() ? 0 : options.keys.firstKey());
+        int const last = options.point ? (options.pointKeys.isEmpty() ? 0 : options.pointKeys.lastKey()) : (options.keys.isEmpty() ? 0 : options.keys.lastKey());
+        m_document->beginMacro(tr("Bake Control Position(s)"));
+        for (int f = first; f <= last; ++f) {
+            Scene::Controller const& c = m_document->scene().controllers[controller];
+            if (c.point)
+                m_document->applyControllerPoint(controller, f, c.whereAt(f));
+            else
+                m_document->applyController(controller, f, c.valueAt(f));
+        }
+        m_document->endMacro();
+    }
 }

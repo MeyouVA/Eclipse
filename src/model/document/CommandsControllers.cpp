@@ -219,9 +219,17 @@ void Document::applyController(int controller, int frame, double value)
     Scene::Controller const& c = m_scene.controllers[controller];
     if (c.states.isEmpty())
         return;
+    if (c.timeline) {
+        applyTimelineController(controller, frame, value);
+        return;
+    }
     value = std::clamp(value, 0.0, double(c.states.size()) - 1.0);
     int const a = int(std::floor(value)), b = std::min(a + 1, int(c.states.size()) - 1);
-    double const t = value - a;
+    double t = value - a;
+    if (c.interpolation == Scene::Controller::Smooth)
+        t = t * t * (3.0 - 2.0 * t);        // easing out of one state and into the next
+    if (c.blend == Scene::Controller::HighestWeight)
+        t = t < 0.5 ? 0.0 : 1.0;
     apply(tr("Set Controller"), [&](Scene& s) {
         Scene::Controller& into = s.controllers[controller];
         into.value = value;
@@ -283,7 +291,7 @@ void Document::applyControllerPoint(int controller, int frame, QPointF where)
     if (c.states.isEmpty())
         return;
     where = QPointF(std::clamp(where.x(), 0.0, 1.0), std::clamp(where.y(), 0.0, 1.0));
-    QVector<double> const weights = c.weightsAt(where);
+    QVector<double> const weights = c.blendedWeights(where);
     int const nearest = int(std::max_element(weights.begin(), weights.end()) - weights.begin());
     apply(tr("Set Controller"), [&](Scene& s) {
         Scene::Controller& into = s.controllers[controller];
@@ -406,4 +414,198 @@ bool Document::offsetValue(int layer, int value, double by)
         }
     });
     return true;
+}
+
+void Document::applyTimelineController(int controller, int frame, double value)
+{
+    // Slider Timeline: the layers on this frame as they are on a frame of their own animation.
+    Scene::Controller const& c = m_scene.controllers[controller];
+    int const source = c.timelineStart + std::clamp(int(std::lround(value)), 0, std::max(0, c.timelineLength - 1));
+    apply(tr("Set Controller"), [&](Scene& s) {
+        Scene::Controller& into = s.controllers[controller];
+        into.value = value;
+        into.keys.insert(frame, value);
+        for (int id : into.layers) {
+            int const l = s.layerIndex(id);
+            if (l < 0)
+                continue;
+            Layer& layer = s.layers[l];
+            Pose const pose = layer.poseAt(source);
+            int const drawing = layer.drawingAt(source);
+            keyOn(layer, frame, pose);
+            if (layer.holdsDrawings() && drawing != Layer::kNoDrawing && frame < layer.cells.size())
+                layer.cells[frame] = drawing;
+        }
+    });
+}
+
+void Document::setControllerOptions(int controller, Scene::Controller const& options, QString const& text)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size())
+        return;
+    apply(text, [&](Scene& s) {
+        Scene::Controller& c = s.controllers[controller];
+        QVector<Scene::Controller::State> const states = c.states;
+        QVector<int> const layers = c.layers;
+        QMap<int, double> const keys = c.keys;
+        QMap<int, QPointF> const pointKeys = c.pointKeys;
+        int const id = c.id;
+        c = options;
+        c.id = id;
+        c.states = states;
+        c.layers = layers;
+        c.keys = keys;
+        c.pointKeys = pointKeys;
+        // Grid 2D: its states put on the grid's points, in order (Set Grid Position).
+        if (c.grid && c.point)
+            for (int i = 0; i < c.states.size(); ++i) {
+                int const x = i % c.gridX, y = (i / c.gridX) % c.gridY;
+                c.states[i].at = QPointF(double(x) / (c.gridX - 1), double(y) / (c.gridY - 1));
+            }
+    });
+}
+
+int Document::duplicateControllerState(int controller, int state)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size() || state < 0 || state >= m_scene.controllers[controller].states.size())
+        return -1;
+    int at = -1;
+    apply(tr("Duplicate Position(s)"), [&](Scene& s) {
+        Scene::Controller& c = s.controllers[controller];
+        Scene::Controller::State copy = c.states[state];
+        copy.name = tr("%1 copy").arg(copy.name);
+        at = state + 1;
+        c.states.insert(at, copy);
+    });
+    return at;
+}
+
+bool Document::renameControllerState(int controller, int state, QString const& name)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size() || state < 0 || state >= m_scene.controllers[controller].states.size()
+        || name.trimmed().isEmpty())
+        return false;
+    apply(tr("Rename Pose"), [&](Scene& s) { s.controllers[controller].states[state].name = name.trimmed(); });
+    return true;
+}
+
+int Document::trainNearestState(int controller, int frame)
+{
+    // Train Nearest: the state nearest where the controller stands on this frame takes the poses the layers have here.
+    if (controller < 0 || controller >= m_scene.controllers.size() || m_scene.controllers[controller].states.isEmpty())
+        return -1;
+    Scene::Controller const& c = m_scene.controllers[controller];
+    int nearest = 0;
+    if (c.point) {
+        QVector<double> const w = c.weightsAt(c.whereAt(frame));
+        nearest = int(std::max_element(w.begin(), w.end()) - w.begin());
+    } else {
+        nearest = std::clamp(int(std::lround(c.valueAt(frame))), 0, int(c.states.size()) - 1);
+    }
+    replaceControllerState(controller, nearest, frame);
+    return nearest;
+}
+
+int Document::autoCreatePositions(int controller)
+{
+    // Auto-Create Positions: a state for each frame its layers have a keyframe on (their poses there).
+    if (controller < 0 || controller >= m_scene.controllers.size())
+        return 0;
+    QVector<int> frames;
+    for (int id : m_scene.controllers[controller].layers)
+        if (int const l = m_scene.layerIndex(id); l >= 0)
+            for (Keyframe const& k : m_scene.layers[l].keys)
+                if (!frames.contains(k.frame))
+                    frames.push_back(k.frame);
+    std::sort(frames.begin(), frames.end());
+    if (frames.isEmpty())
+        frames.push_back(0);
+    apply(tr("Auto-Create Positions"), [&](Scene& s) {
+        Scene::Controller& c = s.controllers[controller];
+        for (int f : frames) {
+            Scene::Controller::State state = stateAt(s, c, f);
+            state.name = tr("Frame %1").arg(f + 1);
+            c.states.push_back(state);
+        }
+        if (c.point)
+            for (int i = 0; i < c.states.size(); ++i) {
+                double const angle = -std::numbers::pi / 2.0 + 2.0 * std::numbers::pi * i / double(c.states.size());
+                c.states[i].at = QPointF(0.5 + 0.4 * std::cos(angle), 0.5 + 0.4 * std::sin(angle));
+            }
+    });
+    return int(frames.size());
+}
+
+int Document::bakeController(int controller, int from, int to)
+{
+    // Bake from Controller: the layers keyed, frame by frame, as the controller's keyframes put them (again, after its states
+    // changed); Bake Controller Positions: its own value keyed on each of those frames too.
+    if (controller < 0 || controller >= m_scene.controllers.size())
+        return 0;
+    Scene::Controller const c = m_scene.controllers[controller];
+    beginMacro(tr("Bake from Controllers"));
+    int baked = 0;
+    for (int f = std::max(0, from); f <= to && f < m_scene.frameCount(); ++f) {
+        bool const keyed = c.point ? c.pointKeys.contains(f) : c.keys.contains(f);
+        if (!keyed && f != from && f != to)
+            continue;
+        if (c.point)
+            applyControllerPoint(controller, f, c.whereAt(f));
+        else
+            applyController(controller, f, c.valueAt(f));
+        ++baked;
+    }
+    endMacro();
+    return baked;
+}
+
+int Document::bakeAllControllers()
+{
+    beginMacro(tr("Bake All Controllers"));
+    int baked = 0;
+    for (int c = 0; c < m_scene.controllers.size(); ++c)
+        baked += bakeController(c, 0, m_scene.frameCount() - 1);
+    endMacro();
+    return baked;
+}
+
+int Document::cleanControllers()
+{
+    // Clean Controllers: the layers that are gone taken out of each controller (with their poses), and a controller with no
+    // layer or no state left taken away.
+    int cleaned = 0;
+    Scene trial = m_scene;
+    for (int c = int(trial.controllers.size()) - 1; c >= 0; --c) {
+        Scene::Controller& one = trial.controllers[c];
+        for (int i = int(one.layers.size()) - 1; i >= 0; --i)
+            if (trial.layerIndex(one.layers[i]) < 0) {
+                one.layers.removeAt(i);
+                for (Scene::Controller::State& state : one.states) {
+                    if (i < state.poses.size())
+                        state.poses.removeAt(i);
+                    if (i < state.drawings.size())
+                        state.drawings.removeAt(i);
+                }
+                ++cleaned;
+            }
+        if (one.layers.isEmpty() || one.states.isEmpty()) {
+            trial.controllers.removeAt(c);
+            ++cleaned;
+        }
+    }
+    if (cleaned > 0)
+        apply(tr("Clean Controllers"), [&](Scene& s) { s.controllers = trial.controllers; });
+    return cleaned;
+}
+
+void Document::resetController(int controller, int frame)
+{
+    // Default Value: the slider (or the point) put back where it rests.
+    if (controller < 0 || controller >= m_scene.controllers.size())
+        return;
+    Scene::Controller const& c = m_scene.controllers[controller];
+    if (c.point)
+        applyControllerPoint(controller, frame, c.defaultWhere);
+    else
+        applyController(controller, frame, c.defaultValue);
 }
