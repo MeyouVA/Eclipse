@@ -223,77 +223,22 @@ void Canvas::paintBones(QPainter& painter, QVector<QPointF> const& joints, int p
 void Canvas::boneIkMove(QPointF widgetPos)
 {
     Scene const& now = m_document->scene();
-    if (m_ikChain.isEmpty())
+    if (m_ikChain.isEmpty() || m_ikGrabbed < 0 || m_ikGrabbed >= now.layers.size())
         return;
     for (int l : std::as_const(m_ikChain))
-        if (l < 0 || l >= now.layers.size() || now.layers[l].kind != Layer::Bone)
+        if (l < 0 || l >= now.layers.size())
             return;
+    // The scene's IK, with this view's iterations and nearness (Preferences).
+    Scene::IkOptions options = Scene::ikOptions();
+    options.iterations = m_ikIterations;
+    options.error = m_ikError;
+    Scene::setIkOptions(options);
     Scene posed = now;
-    QPointF const target = toScene(widgetPos);
-    int const grabbed = m_ikChain.first();
-    auto tip = [&] {
-        Layer const& bone = posed.layers[grabbed];
-        return posed.worldTransform(grabbed, m_frame).map(bone.pivot + QPointF(bone.boneLength, 0.0));
-    };
-    for (int round = 0; round < m_ikIterations && QLineF(tip(), target).length() > m_ikError; ++round) {
-        for (int l : std::as_const(m_ikChain)) {
-            Layer& bone = posed.layers[l];
-            if (bone.ikExcluded || bone.ikHoldAngle)
-                continue;       // left out of IK, or keeping its angle: it is not turned to reach
-            QPointF const base = posed.worldTransform(l, m_frame).map(bone.pivot);
-            QPointF const end = tip();
-            double turn = (std::atan2(target.y() - base.y(), target.x() - base.x()) - std::atan2(end.y() - base.y(), end.x() - base.x())) * 180.0 / 3.14159265358979323846;
-            while (turn > 180.0)
-                turn -= 360.0;
-            while (turn < -180.0)
-                turn += 360.0;
-            if (std::abs(turn) < 1e-4)
-                continue;
-            Pose const was = bone.poseAt(m_frame);
-            Pose keep = was;
-            double best = QLineF(end, target).length();
-            // (Whichever way round brings it nearer: a chain that was flipped turns the other way.)
-            for (double const way : {1.0, -1.0}) {
-                Pose tried = was;
-                tried.rotation = was.rotation + way * turn;
-                if (bone.ikLimited)
-                    tried.rotation = std::clamp(tried.rotation, bone.ikMin, bone.ikMax);       // no further than it may turn
-                bone.setKey(m_frame, tried);
-                double const off = QLineF(tip(), target).length();
-                if (off < best - 1e-9) {
-                    best = off;
-                    keep = tried;
-                }
-            }
-            bone.setKey(m_frame, keep);
-        }
-    }
-    // The bones that hold their orientation turned back to the angle they had on screen (those nearer the top first).
-    QVector<int> held;
-    for (auto const& h : std::as_const(m_ikHeld)) {
-        int const l = h.first;
-        if (l < 0 || l >= posed.layers.size())
-            continue;
-        QTransform const w = posed.worldTransform(l, m_frame);
-        double turn = h.second - std::atan2(w.m12(), w.m11()) * 180.0 / 3.14159265358979323846;
-        turn = std::remainder(turn, 360.0);
-        if (std::abs(turn) < 1e-6)
-            continue;
-        Pose pose = posed.layers[l].poseAt(m_frame);
-        // (The angle on screen goes the way the rotation does, or against it when the layer is flipped.)
-        Pose tried = pose;
-        tried.rotation += turn;
-        posed.layers[l].setKey(m_frame, tried);
-        QTransform const after = posed.worldTransform(l, m_frame);
-        if (std::abs(std::remainder(h.second - std::atan2(after.m12(), after.m11()) * 180.0 / 3.14159265358979323846, 360.0)) > 1e-3) {
-            tried.rotation = pose.rotation - turn;
-            posed.layers[l].setKey(m_frame, tried);
-        }
-        held.push_back(l);
-    }
+    QVector<int> touched;
+    posed.solveIK(m_ikGrabbed, m_ikLocal, toScene(widgetPos), m_frame, &touched);
     // What changed goes to the scene as it is dragged, all of it one step when the pen lifts.
     m_committing = true;
-    for (int l : m_ikChain + held) {
+    for (int l : std::as_const(touched)) {
         Pose const pose = posed.layers[l].poseAt(m_frame);
         if (pose == m_document->scene().layers[l].poseAt(m_frame))
             continue;
@@ -302,6 +247,8 @@ void Canvas::boneIkMove(QPointF widgetPos)
             m_document->beginMacro(tr("Inverse Kinematics"));
         }
         m_document->setKeyframe(l, m_frame, pose, tr("Inverse Kinematics"));
+        if (m_ikEase != 0)
+            m_document->setKeyEase(l, m_frame, (m_ikEase & 1) ? 0.5 : 0.0, (m_ikEase & 2) ? 0.5 : 0.0);
     }
     m_committing = false;
     update();
@@ -309,30 +256,25 @@ void Canvas::boneIkMove(QPointF widgetPos)
 
 void Canvas::ikDown(QPointF widgetPos)
 {
+    // Bone Selection Mode: the part under the pointer taken hold of, whichever layer is current.
+    if (m_ikPickAny) {
+        int const under = layerAt(widgetPos);
+        if (under >= 0 && under != m_layer) {
+            emit layerPicked(under);   // (comes back through setCurrentCell)
+            if (m_layer != under)
+                return;
+        }
+    }
     Scene const& scene = m_document->scene();
     if (scene.layers[m_layer].kind == Layer::Bone) {
         if (scene.layers[m_layer].ikNail) {
             emit message(tr("This bone is nailed (Layer Properties > IK): pull a bone that hangs below it."));
             return;
         }
-        m_ikChain = {m_layer};
-        for (int guard = 0, l = scene.parentIndex(m_layer); l >= 0 && guard < 64 && scene.layers[l].kind == Layer::Bone && !scene.layers[l].ikNail;
-             ++guard, l = scene.parentIndex(l))
-            m_ikChain.push_back(l);
-        // The bones that hold their orientation, below the first of the chain: the angles they have now, to keep.
-        m_ikHeld.clear();
-        int const top = m_ikChain.last();
-        for (int l = 0; l < scene.layers.size(); ++l) {
-            if (!scene.layers[l].ikHoldAngle || scene.layers[l].kind != Layer::Bone)
-                continue;
-            bool below = l == top;
-            for (int up = scene.parentIndex(l), guard = 0; up >= 0 && guard < 64 && !below; up = scene.parentIndex(up), ++guard)
-                below = up == top;
-            if (below) {
-                QTransform const w = scene.worldTransform(l, m_frame);
-                m_ikHeld.push_back({l, std::atan2(w.m12(), w.m11()) * 180.0 / 3.14159265358979323846});
-            }
-        }
+        // A bone is pulled by its far end.
+        m_ikGrabbed = m_layer;
+        m_ikLocal = scene.layers[m_layer].pivot + QPointF(scene.layers[m_layer].boneLength, 0.0);
+        m_ikChain = scene.ikChain(m_layer);
         m_ikBegun = false;
         m_drag = DragBoneIK;
         return;
@@ -341,7 +283,22 @@ void Canvas::ikDown(QPointF widgetPos)
     if (scene.layers[m_layer].bonesAt(m_frame).size() < 2) {
         int const parent = scene.parentIndex(m_layer);
         if (parent < 0 || scene.layers[parent].bonesAt(m_frame).size() < 2 || scene.layers[m_layer].parentBone < 0) {
-            emit message(tr("This layer has no bones. Lay a chain on it with the Rigging tool first."));
+            // A part of a hierarchy of layers (pegs, drawings): pulled where it was taken hold of, the layers it hangs from
+            // turned to follow.
+            QVector<int> const chain = scene.ikChain(m_layer);
+            if (chain.isEmpty() || (chain.size() == 1 && parent < 0 && !scene.layers[m_layer].ikTranslateTop)) {
+                emit message(scene.layers[m_layer].ikNail ? tr("This part is nailed (Rigging > IK Constraints): pull a part that hangs below it.")
+                                                         : tr("Inverse Kinematics turns the layers a part hangs from: attach it to a peg or a parent layer first."));
+                return;
+            }
+            QTransform const world = scene.worldTransform(m_layer, m_frame);
+            if (!world.isInvertible())
+                return;
+            m_ikGrabbed = m_layer;
+            m_ikLocal = world.inverted().map(toScene(widgetPos));
+            m_ikChain = chain;
+            m_ikBegun = false;
+            m_drag = DragBoneIK;
             return;
         }
         grabbed = scene.layers[m_layer].parentBone + 1;

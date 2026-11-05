@@ -156,6 +156,9 @@ void MainWindow::applyPreferences()
                                  std::clamp(s.value(QStringLiteral("prefs/proportionDown"), 3).toInt(), 2, 12));
     m_canvas->setSafeMargin(std::clamp(s.value(QStringLiteral("prefs/safeMargin"), 10).toInt(), 1, 30) / 100.0);
     m_canvas->setBackdrop(QColor(s.value(QStringLiteral("prefs/backdrop"), QStringLiteral("#7f7f7f")).toString()));
+    m_canvas->setIkColour(0, QColor(s.value(QStringLiteral("prefs/ikControlColour"), QStringLiteral("#ffd23c")).toString()));
+    m_canvas->setIkColour(1, QColor(s.value(QStringLiteral("prefs/ikMinColour"), QStringLiteral("#3cb4ff")).toString()));
+    m_canvas->setIkColour(2, QColor(s.value(QStringLiteral("prefs/ikMaxColour"), QStringLiteral("#ff5a3c")).toString()));
     m_canvas->setLightTableWash(s.value(QStringLiteral("prefs/lightTableWash"), 30).toInt());
     m_canvas->setLightTableWhite(s.value(QStringLiteral("prefs/lightTableWhite"), 0).toInt());
     m_canvas->setLightTableShade(s.value(QStringLiteral("prefs/lightTableShade"), false).toBool(), s.value(QStringLiteral("prefs/lightTableShadeCamera"), false).toBool());
@@ -258,6 +261,16 @@ void MainWindow::applyPreferences()
     applyColourPreferences(s);
     m_canvas->update();
     m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
+    {
+        Scene::IkOptions ik = Scene::ikOptions();
+        ik.iterations = s.value(QStringLiteral("prefs/ikIterations"), 24).toInt();
+        ik.error = s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble();
+        ik.stopAtIntersection = s.value(QStringLiteral("prefs/ikStopAtIntersection"), true).toBool();
+        ik.allChains = s.value(QStringLiteral("prefs/ikAllChains"), false).toBool();
+        ik.retryIncrement = s.value(QStringLiteral("prefs/ikRetry"), 0.05).toDouble();
+        ik.limitWeight = s.value(QStringLiteral("prefs/ikLimitWeight"), 0.0).toDouble();
+        Scene::setIkOptions(ik);
+    }
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
     m_autoSaveWorkspace = s.value(QStringLiteral("prefs/autoSaveWorkspace"), true).toBool();
     setCurrentViewBorder(s.value(QStringLiteral("prefs/viewBorder"), true).toBool());
@@ -494,6 +507,9 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/scrubResponse"),w.scrubResponse->value());
     s.setValue(QStringLiteral("prefs/scrubDamping"),w.scrubDamping->value());
     s.setValue(QStringLiteral("prefs/backdrop"), w.backdrop->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/ikControlColour"), w.ikControl->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/ikMinColour"), w.ikMinColour->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/ikMaxColour"), w.ikMaxColour->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(w.onionBefore->property("colour").value<QColor>(), w.onionAfter->property("colour").value<QColor>());
     s.setValue(QStringLiteral("welcome/hide"), !w.welcome->isChecked());
     s.setValue(QStringLiteral("prefs/autosaveMinutes"), w.autoSave->value());
@@ -601,6 +617,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/closeGap"), w.closeGap->value());
     s.setValue(QStringLiteral("prefs/ikIterations"), w.ikIterations->value());
     s.setValue(QStringLiteral("prefs/ikError"), w.ikError->value());
+    s.setValue(QStringLiteral("prefs/ikStopAtIntersection"), w.ikStopAtIntersection->isChecked());
+    s.setValue(QStringLiteral("prefs/ikAllChains"), w.ikAllChains->isChecked());
+    s.setValue(QStringLiteral("prefs/ikRetry"), w.ikRetry->value());
+    s.setValue(QStringLiteral("prefs/ikLimitWeight"), w.ikLimitWeight->value());
     s.setValue(QStringLiteral("prefs/renderBlurs"), w.renderBlurs->isChecked());
     s.setValue(QStringLiteral("prefs/renderFocus"), w.renderFocus->isChecked());
     s.setValue(QStringLiteral("prefs/renderToneHighlight"), w.renderToneHighlight->isChecked());

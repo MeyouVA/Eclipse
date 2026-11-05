@@ -111,7 +111,12 @@ private:
     QCheckBox* m_artShown[4] = {nullptr, nullptr, nullptr, nullptr};
     QCheckBox* m_ikExcluded = nullptr;
     QCheckBox* m_ikNail = nullptr;          // IK Nail
-    QCheckBox* m_ikHold = nullptr;          // IK Hold Orientation
+    QCheckBox* m_ikHold = nullptr;
+    QCheckBox* m_ikHoldX = nullptr;
+    QCheckBox* m_ikHoldY = nullptr;
+    QCheckBox* m_ikRotate = nullptr;
+    QCheckBox* m_ikTranslate = nullptr;
+    QDoubleSpinBox* m_ikStiffness = nullptr;          // IK Hold Orientation
     QCheckBox* m_ikLimited = nullptr;
     QDoubleSpinBox* m_ikMin = nullptr;
     QDoubleSpinBox* m_ikMax = nullptr;

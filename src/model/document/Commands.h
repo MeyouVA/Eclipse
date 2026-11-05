@@ -413,6 +413,11 @@ public:
     void syncLayerWith(int layer, int other);
     // IK constraints of a bone: left out of IK; and whether it is turned only between two angles, and which.
     void setIkConstraints(int layer, bool excluded, bool limited, double minimum, double maximum);
+    // Rigging > IK Constraints: on the layers given - "nail", "orientation", "x", "y" set (one step); "min" / "max": the angle
+    // each has on `frame` becomes its least / greatest (limits on); "none": all their IK constraints taken off.
+    bool setIkConstraint(QVector<int> const& layers, QString const& which, int frame);
+    // Apply IK Constraints: the held parts kept, from frame `from` to `to`, where they are on `from` (one step).
+    int applyIkConstraints(int from, int to);
     void setQuad(int layer, QVector<QPointF> const& corners, int frame = 0);
     void insertWarpPoint(int layer, QVector<QPointF> const& points, int index, double along);
     bool convertDeformed(int layer);

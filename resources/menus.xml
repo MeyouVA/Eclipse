@@ -453,6 +453,19 @@
   <menu id="Rigging" text="&amp;Rigging">
    <item id="ToolRigging" icon="tool/rigging" text="&amp;Rigging Tool" shortcut="shortcut.toolRigging" checkable="true" group="tools" responder="window" slot="onActionChooseTool(QString)" itemParameter="rigging"/>
    <separator/>
+   <menu id="RiggingIkConstraints" text="&amp;IK Constraints">
+    <item id="SetIkNail" text="Set IK &amp;Nail" responder="window" slot="onActionIkConstraint(QString)" itemParameter="nail"/>
+    <item id="SetIkHoldOrientation" text="Set IK Hold &amp;Orientation" responder="window" slot="onActionIkConstraint(QString)" itemParameter="orientation"/>
+    <item id="SetIkHoldX" text="Set IK Hold &amp;X" responder="window" slot="onActionIkConstraint(QString)" itemParameter="x"/>
+    <item id="SetIkHoldY" text="Set IK Hold &amp;Y" responder="window" slot="onActionIkConstraint(QString)" itemParameter="y"/>
+    <item id="SetIkMinAngle" text="Set IK &amp;Min Angle" responder="window" slot="onActionIkConstraint(QString)" itemParameter="min"/>
+    <item id="SetIkMaxAngle" text="Set IK M&amp;ax Angle" responder="window" slot="onActionIkConstraint(QString)" itemParameter="max"/>
+    <item id="SetIkExclude" text="&amp;Exclude From IK" responder="window" slot="onActionIkConstraint(QString)" itemParameter="exclude"/>
+    <item id="RemoveIkConstraints" text="&amp;Remove All Constraints" responder="window" slot="onActionIkConstraint(QString)" itemParameter="none"/>
+    <separator/>
+    <item id="SetIkKeyframe" text="Set IK &amp;Keyframe" responder="window" slot="onActionSetIkKeyframe()"/>
+    <item id="ApplyIkConstraints" text="A&amp;pply IK Constraints" responder="window" slot="onActionApplyIkConstraints()"/>
+   </menu>
    <menu id="AnimationDeformation" text="&amp;Deformation">
     <item id="ResetDeformer" icon="anim/deformreset" text="&amp;Reset Deformer" responder="window" slot="onActionResetDeformer()"/>
     <item id="RemoveDeformer" icon="anim/deformremove" text="Re&amp;move Deformer" responder="window" slot="onActionRemoveDeformer()"/>
@@ -960,6 +973,15 @@
    <item id="LeaveSymbol"/>
    <item id="DuplicateSymbol"/>
    <item id="ExpandSymbol"/>
+  </menu>
+  <menu id="CameraIkConstraints" text="IK Constraints">
+   <item id="SetIkNail"/>
+   <item id="SetIkHoldOrientation"/>
+   <item id="SetIkHoldX"/>
+   <item id="SetIkHoldY"/>
+   <item id="SetIkMinAngle"/>
+   <item id="SetIkMaxAngle"/>
+   <item id="RemoveIkConstraints"/>
   </menu>
   <item id="ElementMode"/>
   <separator/>

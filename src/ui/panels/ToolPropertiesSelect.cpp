@@ -32,6 +32,24 @@
 #include "ui/window/MainWindowPrivate.h"
 #include <QFormLayout>
 
+// The IK tool's options.
+void ToolProperties::addIkRows()
+{
+    m_ikPickAny = new QCheckBox(tr("Bone Selection Mode"), this);
+    m_ikPickAny->setObjectName(QStringLiteral("IkPickAny"));
+    m_ikPickAny->setToolTip(tr("Click any part and pull it, without choosing its layer first."));
+    m_ikPickAny->setChecked(m_canvas->ikPickAny());
+    connect(m_ikPickAny, &QCheckBox::toggled, this, [this](bool on) { m_canvas->setIkPickAny(on); });
+    m_form->addRow(m_ikPickAny);
+    m_ikEase = new QComboBox(this);
+    m_ikEase->setObjectName(QStringLiteral("IkEase"));
+    m_ikEase->addItems({tr("None"), tr("Ease In"), tr("Ease Out"), tr("Ease In and Out")});
+    m_ikEase->setToolTip(tr("Ease Shape: an easing preset given to the keyframes IK makes, so that the motion is not mechanical."));
+    m_ikEase->setCurrentIndex(m_canvas->ikEase());
+    connect(m_ikEase, &QComboBox::currentIndexChanged, this, [this](int shape) { m_canvas->setIkEase(shape); });
+    m_form->addRow(tr("Ease Shape"), m_ikEase);
+}
+
 // What the Rigging tool lays down.
 void ToolProperties::addRiggingRows()
 {

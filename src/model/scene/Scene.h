@@ -286,6 +286,27 @@ public:
     // A group layer that puts the layers it holds together into one picture first, for its opacity, blend mode or effects
     // to work on the whole (as a layer that shows a symbol does); and the nearest such group a layer is inside (-1: none).
     bool compositesGroup(int layer, int frame) const;
+    // ---- inverse kinematics over the layers (the IK tool on pegs, drawings and bones) ----
+    // How it works (Preferences > Animation): iterations and how near is near enough; the chain stops at the first layer
+    // more than one chain hangs from (unless all chains are considered); out of reach, tried again nearer by so much; how
+    // far past its limits a part may be pushed (0: not at all).
+    struct IkOptions {
+        int iterations = 24;
+        double error = 0.2;
+        bool stopAtIntersection = true;
+        bool allChains = false;
+        double retryIncrement = 0.05;
+        double limitWeight = 0.0;
+    };
+    ECLIPSE_MODEL_API static void setIkOptions(IkOptions const& options);
+    ECLIPSE_MODEL_API static IkOptions ikOptions();
+    // The parts IK turns when `grabbed` is pulled: it, then those it hangs from, up to a nail or the top.
+    QVector<int> ikChain(int grabbed) const;
+    // The point `local` of layer `grabbed` (its coordinates) brought towards `target` (the scene's) on `frame`: the chain's
+    // poses keyed on that frame (`touched`: which).  Whether it got there.
+    bool solveIK(int grabbed, QPointF local, QPointF target, int frame, QVector<int>* touched = nullptr);
+    // Apply IK Constraints: the parts that are nailed or hold X or Y kept, over frames `from`+1 .. `to`, where they are on `from`.
+    int applyIkConstraints(int from, int to, QVector<int>* touched = nullptr);
     int compositeGroupOf(int layer, int frame) const;
     // Whether the Camera view shows the layer: it is enabled, and solo if any layer is.
     bool shows(int layer) const;
@@ -397,6 +418,8 @@ public:
     static bool& lastLoadUsedFolder();
 
 private:
+    static IkOptions s_ik;
+
     int m_frameCount = 24;
     int m_nextSwatchId = 1;
     int m_nextLayerId = 1;

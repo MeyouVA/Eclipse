@@ -345,6 +345,9 @@ protected:
     float m_copiedWidth = 0.0f;
     double m_nudgeStep = 1.0;
     int m_ikIterations = 24;
+    bool m_ikPickAny = false;
+    int m_ikEase = 0;
+    QColor m_ikColours[3] = {QColor(0xff, 0xd2, 0x3c), QColor(0x3c, 0xb4, 0xff), QColor(0xff, 0x5a, 0x3c)};
     double m_ikError = 0.2;
     int m_propAcross = 3;
     int m_propDown = 3;
@@ -367,6 +370,8 @@ protected:
     QPointF m_dragStartScene;
     Drag m_drag = DragNone;
     QVector<int> m_ikChain;     // the bone taken hold of, then the bones it hangs on, nearest first
+    int m_ikGrabbed = -1;       // the layer pulled with the IK tool, and the point of it (its coordinates) that follows the pointer
+    QPointF m_ikLocal;
     bool m_ikBegun = false;     // whether anything has been turned yet in this drag
     QPointer<Canvas> m_leader;     // the view whose tool settings this one follows (none: its own)
     // The bucket on pixels: how near a colour fills (0-255 a channel), how far the fill reaches under the edge, and what it looks at.

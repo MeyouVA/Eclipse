@@ -603,6 +603,10 @@ public slots:
     void onActionRemoveDeformer();
     // Rigging > Deformation: rest position, Enable Deformation, Kinematic Output, Deformation Settings (influence, scale, lines).
     void onActionCopyPoseToRest();
+    // Rigging > IK Constraints (and the Camera View menu): on the selected layers; Apply IK Constraints from the IK Keyframe.
+    void onActionIkConstraint(QString const& which);
+    void onActionApplyIkConstraints();
+    void onActionSetIkKeyframe();
     // A deformation for each drawing: Set Transformation (its own chain), Default Transformation (the layer's), Convert to New
     // Drawing and Add Deformation Chain, and Transformation Names (the drawings that have one).
     void onActionSetTransformation();
@@ -792,7 +796,11 @@ protected:
 
 private:
     int m_mergeStart = -1, m_mergeEnd = -1;  // Set Merge Range Start/End Frame
-    void startCaptureMotion(int target, int first, int last, int countdown, int fps);
+    void startCaptureMotion(int target, int first, int last, int countdown, int fps, int interval = 1, int smoothing = 0, bool hide = false);
+public:
+    // What Capture Motion keeps of what it recorded: evened out `smoothing` times, a keyframe every `interval` frames.
+    static QVector<QPair<int, Pose>> capturedKeys(QVector<QPair<int, Pose>> poses, int interval, int smoothing);
+private:
     // The Preferences dialog's pages, each made into the widgets it is read back from.
     void preferencesGeneral(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
     void preferencesCamera(struct PreferenceWidgets& w, class QSettings& s, class QDialog& dialog);
@@ -967,7 +975,8 @@ private:
     QPointer<SoundEditor> m_soundEditor;
     QWidget* m_symbolTrail = nullptr;
     std::shared_ptr<struct TemplateEditing> m_templateEdit;
-    std::shared_ptr<Pose> m_copiedDeformation;     // Copy (the Deform tool): the deformers' pose kept to paste
+    std::shared_ptr<Pose> m_copiedDeformation;
+    int m_ikKeyframe = 0;           // IK Keyframe: where Apply IK Constraints starts from     // Copy (the Deform tool): the deformers' pose kept to paste
     void setTemplateEditBorder(QColor const& colour);
 public:
     // The border round the Camera view while a template is edited (invalid: none).

@@ -666,6 +666,11 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.bitmapResolution = std::clamp(lo["bitmapResolution"].toInt(100), 25, 400);
     layer.ikExcluded = lo["ikExcluded"].toBool(false);
     layer.ikNail = lo["ikNail"].toBool(false);
+    layer.ikTranslateTop = lo["ikTranslateTop"].toBool(false);
+    layer.ikHoldX = lo["ikHoldX"].toBool(false);
+    layer.ikHoldY = lo["ikHoldY"].toBool(false);
+    layer.ikCanRotate = lo["ikCanRotate"].toBool(true);
+    layer.ikStiffness = std::clamp(lo["ikStiffness"].toDouble(0.0), 0.0, 1.0);
     layer.ikHoldAngle = lo["ikHoldAngle"].toBool(false);
     if (QJsonArray const limits = lo["ikLimits"].toArray(); limits.size() == 2) {
         layer.ikLimited = true;

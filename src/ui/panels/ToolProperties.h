@@ -140,6 +140,9 @@ private:
     QCheckBox* m_lineCrisp = nullptr;
     QHBoxLayout* m_paperRow = nullptr;      // the paper texture of the brush, and how much of it shows
     QComboBox* m_rigMode = nullptr;
+    QCheckBox* m_ikPickAny = nullptr;
+    QComboBox* m_ikEase = nullptr;
+    void addIkRows();
     QSpinBox* m_weightBone = nullptr;           // Rigging, Weights: the bone painted for
     QDoubleSpinBox* m_weightSize = nullptr;     // and how big a dab is
     QPushButton* m_weightClear = nullptr;       // all the painted weights of the layer taken away

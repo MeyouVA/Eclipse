@@ -238,6 +238,13 @@ struct Layer {
     bool ikLimited = false;
     bool ikNail = false;
     bool ikHoldAngle = false;
+    // IK: the top of a chain may move to reach (Enable Translation if Top of the Hierarchy), except across or down when held
+    // (Hold X / Hold Y); a part may be kept from turning (Enable Rotation off), or turn less (Stiffness, 0..1).
+    bool ikTranslateTop = false;
+    bool ikHoldX = false;
+    bool ikHoldY = false;
+    bool ikCanRotate = true;
+    double ikStiffness = 0.0;
     double ikMin = -90.0;
     double ikMax = 90.0;
     static constexpr double kMinFov = 1.0, kMaxFov = 179.0;

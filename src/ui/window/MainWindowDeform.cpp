@@ -349,3 +349,30 @@ void MainWindow::onActionTransformationNames()
     layout->addWidget(buttons);
     dialog.exec();
 }
+
+void MainWindow::onActionIkConstraint(QString const& which)
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty())
+        layers = {layer()};
+    m_document->setIkConstraint(layers, which, frame());
+}
+
+void MainWindow::onActionSetIkKeyframe()
+{
+    m_ikKeyframe = frame();
+    statusBar()->showMessage(tr("IK Keyframe: frame %1. Apply IK Constraints keeps the held parts where they are on it.").arg(frame() + 1), 6000);
+}
+
+void MainWindow::onActionApplyIkConstraints()
+{
+    // From the IK Keyframe to the current frame (or, before it, from the current frame to it).
+    int const from = std::min(m_ikKeyframe, frame()), to = std::max(m_ikKeyframe, frame());
+    if (to <= from) {
+        statusBar()->showMessage(tr("Set the IK Keyframe on another frame first (Rigging > IK Constraints > Set IK Keyframe)."), 6000);
+        return;
+    }
+    int const fixed = m_document->applyIkConstraints(from, to);
+    statusBar()->showMessage(fixed > 0 ? tr("IK constraints applied to %n part(s), frames %1 to %2.", nullptr, fixed).arg(from + 2).arg(to + 1)
+                                       : tr("No part is nailed or holds X or Y (Rigging > IK Constraints)."), 6000);
+}

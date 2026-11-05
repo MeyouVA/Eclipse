@@ -251,6 +251,13 @@ struct PreferenceWidgets {
     QCheckBox* scalePencil = nullptr;
     QGroupBox* colours = nullptr;
     QGroupBox* palettes = nullptr;
+    QCheckBox* ikStopAtIntersection = nullptr;
+    QPushButton* ikControl = nullptr;
+    QPushButton* ikMinColour = nullptr;
+    QPushButton* ikMaxColour = nullptr;
+    QCheckBox* ikAllChains = nullptr;
+    QDoubleSpinBox* ikRetry = nullptr;
+    QDoubleSpinBox* ikLimitWeight = nullptr;
     QGroupBox* templatesPage = nullptr;
     QCheckBox* packNewTemplates = nullptr;
     QComboBox* copyToLibrary = nullptr;

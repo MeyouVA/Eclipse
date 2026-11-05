@@ -1,5 +1,7 @@
 // Eclipse - the main window: keyframe and transform commands (position keyframes, flip scale, stepping along paths, keyframes over a selection, Capture Motion).
 #include "ui/window/MainWindow.h"
+#include <QSet>
+#include <QCheckBox>
 #include "ui/window/MainWindowPrivate.h"
 
 #include <QCursor>
@@ -183,6 +185,21 @@ void MainWindow::onActionCaptureMotion()
     form->addRow(tr("To frame"), to);
     form->addRow(tr("Countdown"), countdown);
     form->addRow(tr("Frame rate"), rate);
+    QSpinBox* const interval = new QSpinBox(&dialog);
+    interval->setObjectName(QStringLiteral("CaptureInterval"));
+    interval->setRange(1, 100);
+    interval->setValue(1);
+    interval->setToolTip(tr("Keyframe Interval: a keyframe every so many frames (the frames between are tweened)."));
+    QSpinBox* const smoothing = new QSpinBox(&dialog);
+    smoothing->setObjectName(QStringLiteral("CaptureSmoothing"));
+    smoothing->setRange(0, 20);
+    smoothing->setToolTip(tr("Smoothing: the pointer's path evened out so many times before it is kept."));
+    QCheckBox* const hide = new QCheckBox(tr("Hide View Contents"), &dialog);
+    hide->setObjectName(QStringLiteral("CaptureHide"));
+    hide->setToolTip(tr("While capturing, only the layer captured is shown in the Camera view."));
+    form->addRow(tr("Keyframe Interval"), interval);
+    form->addRow(tr("Smoothing"), smoothing);
+    form->addRow(hide);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Cancel, &dialog);
     buttons->addButton(tr("Start"), QDialogButtonBox::AcceptRole);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -190,11 +207,43 @@ void MainWindow::onActionCaptureMotion()
     form->addRow(buttons);
     if (dialog.exec() != QDialog::Accepted)
         return;
-    startCaptureMotion(target, from->value() - 1, std::max(from->value(), to->value()) - 1, countdown->value(), rate->value());
+    startCaptureMotion(target, from->value() - 1, std::max(from->value(), to->value()) - 1, countdown->value(), rate->value(), interval->value(),
+                       smoothing->value(), hide->isChecked());
 }
 
-void MainWindow::startCaptureMotion(int target, int first, int last, int countdown, int fps)
+QVector<QPair<int, Pose>> MainWindow::capturedKeys(QVector<QPair<int, Pose>> poses, int interval, int smoothing)
 {
+    // Smoothing: each place the mean of itself and its two neighbours, so many times (the ends kept).
+    for (int pass = 0; pass < smoothing && poses.size() > 2; ++pass) {
+        QVector<QPair<int, Pose>> const was = poses;
+        for (int i = 1; i + 1 < was.size(); ++i) {
+            poses[i].second.x = (was[i - 1].second.x + was[i].second.x * 2.0 + was[i + 1].second.x) / 4.0;
+            poses[i].second.y = (was[i - 1].second.y + was[i].second.y * 2.0 + was[i + 1].second.y) / 4.0;
+        }
+    }
+    // Keyframe Interval: one every so many frames, and the last.
+    QVector<QPair<int, Pose>> kept;
+    for (int i = 0; i < poses.size(); ++i)
+        if (i % std::max(1, interval) == 0 || i + 1 == poses.size())
+            kept.push_back(poses[i]);
+    return kept;
+}
+
+void MainWindow::startCaptureMotion(int target, int first, int last, int countdown, int fps, int interval, int smoothing, bool hide)
+{
+    // Hide View Contents: only the layer captured (and what it hangs from) shown while capturing.
+    QSet<int> const hiddenBefore = m_canvas->viewHidden();
+    if (hide) {
+        Scene const& scene = m_document->scene();
+        QSet<int> keep{scene.layers[target].id};
+        for (int up = scene.parentIndex(target), guard = 0; up >= 0 && guard < 256; up = scene.parentIndex(up), ++guard)
+            keep.insert(scene.layers[up].id);
+        QSet<int> others = hiddenBefore;
+        for (Layer const& l : scene.layers)
+            if (!keep.contains(l.id))
+                others.insert(l.id);
+        m_canvas->setViewHidden(others);
+    }
     struct Capture {
         int target, frame, last;
         QPointF start;
@@ -204,7 +253,7 @@ void MainWindow::startCaptureMotion(int target, int first, int last, int countdo
     auto* const capture = new Capture{target, first, last, QPointF(), m_document->scene().layers[target].poseAt(first), {}};
     auto* const timer = new QTimer(this);
     timer->setInterval(1000 / std::max(1, fps));
-    connect(timer, &QTimer::timeout, this, [this, capture, timer] {
+    connect(timer, &QTimer::timeout, this, [this, capture, timer, interval, smoothing, hide, hiddenBefore] {
         Scene const& scene = m_document->scene();
         if (capture->target >= scene.layers.size()) {
             timer->stop();
@@ -227,9 +276,11 @@ void MainWindow::startCaptureMotion(int target, int first, int last, int countdo
         if (++capture->frame > capture->last) {
             timer->stop();
             timer->deleteLater();
-            QVector<QPair<int, Pose>> const poses = capture->poses;
+            QVector<QPair<int, Pose>> const poses = capturedKeys(capture->poses, interval, smoothing);
             int const target = capture->target;
             delete capture;
+            if (hide)
+                m_canvas->setViewHidden(hiddenBefore);
             m_document->editScene(tr("Capture Motion"), [&](Scene& s) {
                 for (auto const& [f, p] : poses)
                     s.layers[target].setKey(f, p);

@@ -202,6 +202,15 @@ public:
     bool proportionGrid() const { return m_proportionGrid; }
     double nudgeStep() const { return m_nudgeStep; }
     void setNudgeStep(double pixels) { m_nudgeStep = pixels; }
+    // The IK tool's colours: 0 the control pulled, 1 a part's least angle, 2 its greatest.
+    QColor ikColour(int which) const { return m_ikColours[std::clamp(which, 0, 2)]; }
+    void setIkColour(int which, QColor const& colour) { m_ikColours[std::clamp(which, 0, 2)] = colour; }
+    // The IK tool: Bone Selection Mode (any part clicked is pulled, without choosing its layer first), and the Ease Shape its
+    // keyframes are given (0 none, 1 ease in, 2 ease out, 3 both).
+    bool ikPickAny() const { return m_ikPickAny; }
+    void setIkPickAny(bool on) { m_ikPickAny = on; }
+    int ikEase() const { return m_ikEase; }
+    void setIkEase(int shape) { m_ikEase = std::clamp(shape, 0, 3); }
     int ikIterations() const { return m_ikIterations; }
     void setIkIterations(int rounds) { m_ikIterations = std::clamp(rounds, 1, 500); }
     double ikError() const { return m_ikError; }

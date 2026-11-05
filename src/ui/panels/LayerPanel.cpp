@@ -1,5 +1,7 @@
 #include "ui/panels/LayerPanel.h"
 
+#include <functional>
+
 #include <QCheckBox>
 #include <QGridLayout>
 #include <QComboBox>
@@ -111,6 +113,45 @@ LayerPanel::LayerPanel(Document* document, QWidget* parent) : QWidget(parent), m
         QHBoxLayout* const constraints = new QHBoxLayout;
         constraints->addWidget(m_ikNail);
         constraints->addWidget(m_ikHold);
+        m_ikHoldX = new QCheckBox(tr("Hold X"), m_ikRow);
+        m_ikHoldX->setObjectName(QStringLiteral("IkHoldX"));
+        m_ikHoldX->setToolTip(tr("IK: this part does not move across (Apply IK Constraints keeps it where it is across)."));
+        m_ikHoldY = new QCheckBox(tr("Hold Y"), m_ikRow);
+        m_ikHoldY->setObjectName(QStringLiteral("IkHoldY"));
+        m_ikHoldY->setToolTip(tr("IK: this part does not move up or down (Apply IK Constraints keeps it at its height)."));
+        m_ikRotate = new QCheckBox(tr("Enable Rotation"), m_ikRow);
+        m_ikRotate->setObjectName(QStringLiteral("IkRotate"));
+        m_ikRotate->setToolTip(tr("Off: the IK tool does not turn this part."));
+        m_ikTranslate = new QCheckBox(tr("Enable Translation if Top of the Hierarchy"), m_ikRow);
+        m_ikTranslate->setObjectName(QStringLiteral("IkTranslate"));
+        m_ikTranslate->setToolTip(tr("At the top of a chain (a master peg): it moves, as well as turns, to reach."));
+        m_ikStiffness = number(0.0, 1.0, 0.05, 2);
+        m_ikStiffness->setObjectName(QStringLiteral("IkStiffness"));
+        m_ikStiffness->setToolTip(tr("Stiffness: how little the IK tool turns this part (0: freely, 1: not at all)."));
+        QHBoxLayout* const holds = new QHBoxLayout;
+        holds->addWidget(m_ikHoldX);
+        holds->addWidget(m_ikHoldY);
+        holds->addWidget(m_ikRotate);
+        QHBoxLayout* const stiff = new QHBoxLayout;
+        stiff->addWidget(new QLabel(tr("Stiffness"), m_ikRow));
+        stiff->addWidget(m_ikStiffness, 1);
+        column->addLayout(holds);
+        column->addWidget(m_ikTranslate);
+        column->addLayout(stiff);
+        auto flag = [this](QCheckBox* box, QString const& on, QString const& off, std::function<void(Layer&, bool)> set) {
+            connect(box, &QCheckBox::toggled, this, [this, on, off, set](bool checked) {
+                if (!m_refreshing)
+                    m_document->editLayers({m_layer}, checked ? on : off, [set, checked](Layer& l) { set(l, checked); });
+            });
+        };
+        flag(m_ikHoldX, tr("IK Set Hold X"), tr("IK Remove Hold X"), [](Layer& l, bool v) { l.ikHoldX = v; });
+        flag(m_ikHoldY, tr("IK Set Hold Y"), tr("IK Remove Hold Y"), [](Layer& l, bool v) { l.ikHoldY = v; });
+        flag(m_ikRotate, tr("IK Set Rotation Flag"), tr("IK Set Rotation Flag"), [](Layer& l, bool v) { l.ikCanRotate = v; });
+        flag(m_ikTranslate, tr("IK Set Translation Flag"), tr("IK Set Translation Flag"), [](Layer& l, bool v) { l.ikTranslateTop = v; });
+        connect(m_ikStiffness, &QDoubleSpinBox::valueChanged, this, [this](double v) {
+            if (!m_refreshing)
+                m_document->editLayers({m_layer}, tr("IK Stiffness"), [v](Layer& l) { l.ikStiffness = v; });
+        });
         column->addWidget(m_ikExcluded);
         column->addLayout(constraints);
         column->addLayout(angles);
@@ -487,7 +528,8 @@ void LayerPanel::refresh()
     refreshCameraOptions(layer);
     m_card->setStyleSheet(QStringLiteral("background-color: %1; border: 1px solid #202020; min-height: 16px;").arg(layer.cardColor.name()));
     m_length->setValue(layer.boneLength);
-    m_form->setRowVisible(m_ikRow, layer.kind == Layer::Bone);
+    // (Any part of a chain: bones, pegs and drawing layers.)
+    m_form->setRowVisible(m_ikRow, layer.kind == Layer::Bone || layer.kind == Layer::Peg || layer.kind == Layer::DrawingLayer);
     m_form->setRowVisible(m_artRow, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
     m_form->setRowVisible(m_bitmap, layer.kind == Layer::DrawingLayer && !layer.showsSymbol());
     m_bitmap->setChecked(layer.bitmap);
@@ -524,6 +566,11 @@ void LayerPanel::refresh()
     m_ikExcluded->setChecked(layer.ikExcluded);
     m_ikNail->setChecked(layer.ikNail);
     m_ikHold->setChecked(layer.ikHoldAngle);
+    m_ikHoldX->setChecked(layer.ikHoldX);
+    m_ikHoldY->setChecked(layer.ikHoldY);
+    m_ikRotate->setChecked(layer.ikCanRotate);
+    m_ikTranslate->setChecked(layer.ikTranslateTop);
+    m_ikStiffness->setValue(layer.ikStiffness);
     m_ikLimited->setChecked(layer.ikLimited);
     m_ikMin->setValue(layer.ikMin);
     m_ikMax->setValue(layer.ikMax);

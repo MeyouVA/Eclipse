@@ -191,6 +191,38 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
         Layer const& layer = scene.layers[m_layer];
         if (layer.bonesAt(m_frame).size() >= 2)
             paintBones(painter, Deform::posedJoints(layer.bonesAt(m_frame), poseOf(m_layer, m_frame).bend), m_drag == DragIK ? m_bone : -1);
+        painter.save();
+        painter.resetTransform();
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        // A part that turns only so far: its range shown round its pivot, from its least angle (one colour) to its greatest.
+        if (layer.ikLimited && layer.kind != Layer::Camera) {
+            int const parent = scene.parentIndex(m_layer);
+            QTransform const above = parent >= 0 ? scene.worldTransform(parent, m_frame) * viewTransform() : viewTransform();
+            QPointF const centre = (scene.worldTransform(m_layer, m_frame) * viewTransform()).map(scene.pivotOf(m_layer, m_frame));
+            double const base = std::atan2(above.m12(), above.m11()) * 180.0 / 3.14159265358979323846;
+            double const low = std::min(layer.ikMin, layer.ikMax), high = std::max(layer.ikMin, layer.ikMax);
+            auto ray = [&](double degrees, QColor const& colour) {
+                double const r = (base + degrees) * 3.14159265358979323846 / 180.0;
+                painter.setPen(QPen(colour, 2.0));
+                painter.drawLine(centre, centre + QPointF(std::cos(r), std::sin(r)) * 40.0);
+            };
+            QColor fill = m_ikColours[0];
+            fill.setAlpha(50);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(fill);
+            QRectF const box(centre - QPointF(40, 40), QSizeF(80, 80));
+            painter.drawPie(box, int(-(base + low) * 16), int(-(high - low) * 16));
+            ray(low, m_ikColours[1]);
+            ray(high, m_ikColours[2]);
+        }
+        // The point being pulled.
+        if (m_drag == DragBoneIK && m_ikGrabbed >= 0 && m_ikGrabbed < scene.layers.size()) {
+            QPointF const at = (scene.worldTransform(m_ikGrabbed, m_frame) * viewTransform()).map(m_ikLocal);
+            painter.setPen(QPen(QColor(20, 20, 20), 1));
+            painter.setBrush(m_ikColours[0]);
+            painter.drawEllipse(at, 5.0, 5.0);
+        }
+        painter.restore();
         return true;
     }
     if (m_tool == Rigging && !m_playing && m_layer >= 0 && m_layer < scene.layers.size()) {

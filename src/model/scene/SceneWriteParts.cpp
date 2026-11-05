@@ -923,6 +923,16 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["ikExcluded"] = true;
     if (layer.ikNail)
         layerObject["ikNail"] = true;
+    if (layer.ikTranslateTop)
+        layerObject["ikTranslateTop"] = true;
+    if (layer.ikHoldX)
+        layerObject["ikHoldX"] = true;
+    if (layer.ikHoldY)
+        layerObject["ikHoldY"] = true;
+    if (!layer.ikCanRotate)
+        layerObject["ikCanRotate"] = false;
+    if (layer.ikStiffness > 0.0)
+        layerObject["ikStiffness"] = layer.ikStiffness;
     if (layer.ikHoldAngle)
         layerObject["ikHoldAngle"] = true;
     if (layer.ikLimited)

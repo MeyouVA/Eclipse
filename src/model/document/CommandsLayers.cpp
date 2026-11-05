@@ -692,3 +692,61 @@ bool Document::useDrawingsOf(int layer, int source)
     apply(tr("Change Drawing Element"), [&](Scene& s) { s.useDrawingsOf(layer, source); });
     return true;
 }
+
+bool Document::setIkConstraint(QVector<int> const& layers, QString const& which, int frame)
+{
+    QVector<int> in;
+    for (int l : layers)
+        if (l >= 0 && l < m_scene.layers.size() && !in.contains(l))
+            in.push_back(l);
+    if (in.isEmpty())
+        return false;
+    QString const text = which == QLatin1String("nail")          ? tr("IK Set Nail")
+                         : which == QLatin1String("orientation") ? tr("IK Set Hold Orientation")
+                         : which == QLatin1String("x")           ? tr("IK Set Hold X")
+                         : which == QLatin1String("y")           ? tr("IK Set Hold Y")
+                         : which == QLatin1String("min")         ? tr("Set IK/Min Angle")
+                         : which == QLatin1String("max")         ? tr("Set IK/Max Angle")
+                         : which == QLatin1String("exclude")     ? tr("IK Set Exclusion Flag")
+                                                                 : tr("IK Remove All Constraints");
+    apply(text, [&](Scene& s) {
+        for (int l : in) {
+            Layer& layer = s.layers[l];
+            double const angle = layer.poseAt(frame).rotation;
+            if (which == QLatin1String("nail"))
+                layer.ikNail = true;
+            else if (which == QLatin1String("orientation"))
+                layer.ikHoldAngle = true;
+            else if (which == QLatin1String("x"))
+                layer.ikHoldX = true;
+            else if (which == QLatin1String("y"))
+                layer.ikHoldY = true;
+            else if (which == QLatin1String("exclude"))
+                layer.ikExcluded = true;
+            else if (which == QLatin1String("min")) {
+                layer.ikLimited = true;
+                layer.ikMin = angle;
+                layer.ikMax = std::max(layer.ikMax, angle);
+            } else if (which == QLatin1String("max")) {
+                layer.ikLimited = true;
+                layer.ikMax = angle;
+                layer.ikMin = std::min(layer.ikMin, angle);
+            } else {
+                layer.ikNail = layer.ikHoldAngle = layer.ikHoldX = layer.ikHoldY = layer.ikLimited = layer.ikExcluded = false;
+            }
+        }
+    });
+    return true;
+}
+
+int Document::applyIkConstraints(int from, int to)
+{
+    if (from < 0 || to <= from)
+        return 0;
+    Scene trial = m_scene;
+    int const fixed = trial.applyIkConstraints(from, to);
+    if (fixed == 0)
+        return 0;
+    apply(tr("Apply Inverse Kinematics Constraints"), [&](Scene& s) { s.layers = trial.layers; });
+    return fixed;
+}
