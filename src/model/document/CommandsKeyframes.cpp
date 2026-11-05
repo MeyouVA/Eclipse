@@ -103,6 +103,7 @@ bool Document::createMorph(int layer, int frame)
         morphs.erase(std::remove_if(morphs.begin(), morphs.end(), [&](Morph const& m) { return m.from == from; }), morphs.end());
         Morph morph;
         morph.from = from;
+        morph.quality = Morph::s_quality;
         morphs.push_back(morph);
         std::sort(morphs.begin(), morphs.end(), [](Morph const& a, Morph const& b) { return a.from < b.from; });
     });

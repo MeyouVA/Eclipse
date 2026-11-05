@@ -48,12 +48,41 @@ struct Morph {
     // How far along (0 the first drawing, 1 the second) the morphing is when `t` (0..1) of its time has passed.
     double progress(double t) const;
     QVector<QLineF> hints;
+    // What a hint does (by its place among the hints; one not given is a Contour hint): pins a point of a line or an outline
+    // to a point of its partner (Contour); pairs the shapes it lies on, or in, without pinning them (Zone); pins a point of
+    // a pencil line only (Pencil); has what is in the second drawing alone grow out of its first end (Appearing), or what is
+    // in the first alone shrink into its second end (Vanishing).
+    enum HintType { Contour, Zone, Pencil, Appearing, Vanishing };
+    QVector<int> hintTypes;
+    int hintType(int k) const { return k >= 0 && k < hintTypes.size() ? hintTypes[k] : Contour; }
+    // How finely its lines and outlines are followed (0 coarse .. 1 fine; 0.2 as a new one is made, see s_quality).
+    double quality = 0.2;
+    // Flatten: the painted areas in between of one colour made one, so that see-through colours do not darken where they overlap.
+    bool flatten = false;
+    // A path a morphing layer goes along (its middle), instead of straight from where it is to where it goes; Translation: it
+    // is moved along it; Rotation: it turns as the path turns.  Used: the morphing layers that name it follow it.
+    struct Path {
+        QString name;
+        QPolygonF points;
+        bool used = true;
+        bool translation = true;
+        bool rotation = false;
+        bool operator==(Path const&) const = default;
+    };
+    QVector<Path> paths;
     struct Group {
         QString name;
         QVector<int> first, second;
+        // Its own timing within the morphing (0..1 of it): it starts changing at `start` and is done at `stop`.
+        double start = 0.0;
+        double stop = 1.0;
+        int path = -1;      // the deformation path it follows (in Morph::paths), or -1
         bool operator==(Group const&) const = default;
     };
     QVector<Group> groups;
+    // The quality a new morphing is made with (Preferences > Drawing > Morphing Quality).
+    ECLIPSE_MODEL_API static double s_quality;
+    bool operator==(Morph const&) const = default;
 };
 
 struct SkinDab {

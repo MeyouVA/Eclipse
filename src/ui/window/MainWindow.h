@@ -15,6 +15,8 @@
 #include "audio/sound/SoundPlayer.h"
 
 class SoundEditor;
+class QDialog;
+class MorphInspector;
 class ActionManager;
 class Canvas;
 class Document;
@@ -651,6 +653,20 @@ public slots:
     void onActionDeleteMorphing();
     void onActionConvertMorphing();
     void onActionMorphingEase();
+    // Morphing: Go to First/Previous/Next/Last Frame ("first", "previous", "next", "last"), Switch Between Morphing Key
+    // Drawings, the hint the Morphing tool puts down ("contour", "zone", "pencil", "appearing", "vanishing", "delete"), Suggest
+    // Hints, Hide Hints, Delete All Morphing Hints, Show Other Morphing Key Drawing, Insert Morphing Key Drawing, Replace
+    // Morphing Length, Show/Hide Morphing Inspector.
+    void onActionMorphGoTo(QString const& which);
+    void onActionSwitchMorphKey();
+    void onActionMorphHintMode(QString const& mode);
+    void onActionSuggestHints();
+    void onActionHideHints(bool hidden);
+    void onActionDeleteMorphHints();
+    void onActionShowOtherMorphKey(bool shown);
+    void onActionInsertMorphKey();
+    void onActionReplaceMorphLength();
+    void onActionMorphInspector();
     void onActionPrint();
     void onActionFillSelection();
     void onActionSequenceFill();
@@ -980,6 +996,8 @@ private:
     QStringList m_easeKinds;
     QPointer<QWidget> m_velocityEditor;
     QPointer<SoundEditor> m_soundEditor;
+    QPointer<QDialog> m_morphInspectorWindow;
+    QPointer<MorphInspector> m_morphInspector;
     QWidget* m_symbolTrail = nullptr;
     std::shared_ptr<struct TemplateEditing> m_templateEdit;
     std::shared_ptr<Pose> m_copiedDeformation;

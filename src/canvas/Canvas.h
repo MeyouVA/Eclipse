@@ -31,6 +31,8 @@ public:
 
     // The hints of the morphing shown on this frame with the Morphing tool, where they are in the view.
     QVector<QPointF> morphHintsInView() const;
+    // The Morphing tool's hint mode in which a click on a hint takes it away (Delete Morphing Hint Mode).
+    static constexpr int kDeleteHints = -1;
     void setArt(Art art);
 
     void setTool(Tool tool);
@@ -455,6 +457,18 @@ public slots:
     int currentFrame() const { return m_frame; }
     int morphGroup() const { return m_morphGroup; }
     void setMorphGroup(int group);
+    // The Morphing tool: the type a new hint is (Morph::HintType), or kDeleteHints: a click on a hint takes it away.
+    int hintMode() const { return m_hintMode; }
+    void setHintMode(int mode);
+    // Hide Hints: the hints not shown (nor placed) for now.
+    bool hintsHidden() const { return m_hintsHidden; }
+    void setHintsHidden(bool hidden);
+    // Show Other Morphing Key Drawing: on a key drawing of a morphing, the other one in a thumbnail in a corner.
+    bool otherKeyShown() const { return m_otherKeyShown; }
+    void setOtherKeyShown(bool shown);
+    // Show Morphing Layer in Place: the morphing layer chosen not drawn again on top of the rest.
+    bool morphLayerInPlace() const { return m_morphLayerInPlace; }
+    void setMorphLayerInPlace(bool inPlace);
     int morphShapeAt(QPointF drawingPos) const;
 
     // ---- what the menus call (this view is the "camera" responder) -------------------

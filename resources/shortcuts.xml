@@ -309,7 +309,7 @@
   <shortcut id="shortcut.leaveSymbol" text="Leave Symbol" value="Ctrl+Alt+E"/>
   <shortcut id="shortcut.setEase" text="Set Ease on Selected Keyframes" value=""/>
   <shortcut id="shortcut.toolEnvelope" text="Envelope Tool" value=""/>
-  <shortcut id="shortcut.toolMorphing" text="Morphing Tool" value=""/>
+  <shortcut id="shortcut.toolMorphing" text="Morphing Tool" value="F3"/>
   <shortcut id="shortcut.pasteSpecialAgain" text="Paste Special Again" value=""/>
   <shortcut id="shortcut.renameWithPrefix" text="Rename Drawing with Prefix" value=""/>
   <shortcut id="shortcut.onionNoPrevious" text="Onion Skin: No Previous Drawing" value="~"/>
@@ -455,6 +455,20 @@
   <shortcut id="shortcut.toolCutter" text="Cutter Tool" value="Alt+T"/>
   <shortcut id="shortcut.toolReposition" text="Reposition All Drawings Tool" value=""/>
   <shortcut id="shortcut.createMorphing" text="Create Morphing" value="Alt+M"/>
+  <shortcut id="shortcut.insertMorphKey" text="Insert Morphing Keyframe" value=""/>
+  <shortcut id="shortcut.switchMorphKey" text="Toggle Morphing Key Drawings" value="F4"/>
+  <shortcut id="shortcut.showOtherMorphKey" text="Show Other Morphing Key Drawing" value=""/>
+  <shortcut id="shortcut.morphInspector" text="Show/Hide Morphing Inspector" value=""/>
+  <shortcut id="shortcut.morphPrevious" text="Go to Previous Morphing Frame" value=""/>
+  <shortcut id="shortcut.morphNext" text="Go to Next Morphing Frame" value=""/>
+  <shortcut id="shortcut.morphContourHint" text="Select Morphing Contour Hint Mode" value=""/>
+  <shortcut id="shortcut.morphZoneHint" text="Select Morphing Zone Hint Mode" value=""/>
+  <shortcut id="shortcut.morphPencilHint" text="Enable Morphing Pencil Hint Mode" value=""/>
+  <shortcut id="shortcut.morphAppearingHint" text="Select Morphing Appearing Point Mode" value=""/>
+  <shortcut id="shortcut.morphVanishingHint" text="Select Morphing Vanishing Point Mode" value="F10"/>
+  <shortcut id="shortcut.morphDeleteHintMode" text="Select Delete Morphing Hint Mode" value=""/>
+  <shortcut id="shortcut.suggestHints" text="Suggest Morphing Hints" value=""/>
+  <shortcut id="shortcut.deleteAllMorphHints" text="Delete All Morphing Hints" value=""/>
   <shortcut id="shortcut.toolStroke" text="Stroke Tool" value="Alt+V"/>
   <shortcut id="shortcut.toolCloseGap" text="Close Gap Tool" value="Alt+C"/>
   <shortcut id="shortcut.toolTransform" text="Transform Tool" value="Shift+T"/>

@@ -229,6 +229,15 @@ void MainWindow::preferencesDrawing(PreferenceWidgets& w, QSettings& s, QDialog&
     w.ikLimitWeight->setToolTip(tr("Min/Max Angle Constraint Weight: how far past its limits a part may still be pushed (0: not at all)."));
     w.ikLimitWeight->setValue(s.value(QStringLiteral("prefs/ikLimitWeight"), 0.0).toDouble());
     w.drawingLayout->addRow(tr("IK: Min/Max Angle Constraint Weight"), w.ikLimitWeight);
+    w.morphQuality = new QDoubleSpinBox(w.drawing);
+    w.morphQuality->setObjectName(QStringLiteral("PrefMorphQuality"));
+    w.morphQuality->setRange(0.0, 1.0);
+    w.morphQuality->setDecimals(2);
+    w.morphQuality->setSingleStep(0.05);
+    w.morphQuality->setToolTip(tr("The quality each new morphing sequence starts with: how finely its lines and outlines in between follow the "
+                                  "key drawings."));
+    w.morphQuality->setValue(s.value(QStringLiteral("prefs/morphQuality"), 0.2).toDouble());
+    w.drawingLayout->addRow(tr("Morphing Quality"), w.morphQuality);
     w.thumbnails = new QSpinBox(w.drawing);
     w.thumbnails->setObjectName(QStringLiteral("PrefThumbnailSize"));
     w.thumbnails->setRange(50, 200);

@@ -269,6 +269,7 @@ void MainWindow::applyPreferences()
         ik.allChains = s.value(QStringLiteral("prefs/ikAllChains"), false).toBool();
         ik.retryIncrement = s.value(QStringLiteral("prefs/ikRetry"), 0.05).toDouble();
         ik.limitWeight = s.value(QStringLiteral("prefs/ikLimitWeight"), 0.0).toDouble();
+        Morph::s_quality = std::clamp(s.value(QStringLiteral("prefs/morphQuality"), 0.2).toDouble(), 0.0, 1.0);
         Scene::setIkOptions(ik);
     }
     m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
@@ -621,6 +622,7 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/ikAllChains"), w.ikAllChains->isChecked());
     s.setValue(QStringLiteral("prefs/ikRetry"), w.ikRetry->value());
     s.setValue(QStringLiteral("prefs/ikLimitWeight"), w.ikLimitWeight->value());
+    s.setValue(QStringLiteral("prefs/morphQuality"), w.morphQuality->value());
     s.setValue(QStringLiteral("prefs/renderBlurs"), w.renderBlurs->isChecked());
     s.setValue(QStringLiteral("prefs/renderFocus"), w.renderFocus->isChecked());
     s.setValue(QStringLiteral("prefs/renderToneHighlight"), w.renderToneHighlight->isChecked());

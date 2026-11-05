@@ -571,19 +571,46 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
     QJsonArray morphs;
     for (Morph const& morph : layer.morphs) {
         QJsonArray entry{morph.from, morph.easeIn, morph.easeOut};
-        if (!morph.hints.isEmpty() || !morph.velocity.isEmpty() || !morph.groups.isEmpty()) {
+        // Its other options, kept when they are not as a new one has them: hint types, quality, flatten, deformation paths.
+        QJsonObject extra;
+        bool typed = false;
+        for (int type : morph.hintTypes)
+            typed = typed || type != Morph::Contour;
+        if (typed) {
+            QJsonArray types;
+            for (int type : morph.hintTypes)
+                types.append(type);
+            extra["hintTypes"] = types;
+        }
+        if (morph.quality != 0.2)
+            extra["quality"] = morph.quality;
+        if (morph.flatten)
+            extra["flatten"] = true;
+        if (!morph.paths.isEmpty()) {
+            QJsonArray paths;
+            for (Morph::Path const& path : morph.paths) {
+                QJsonArray points;
+                for (QPointF const& p : path.points)
+                    points.append(QJsonArray{p.x(), p.y()});
+                paths.append(QJsonObject{{"name", path.name}, {"points", points}, {"used", path.used},
+                                         {"translation", path.translation}, {"rotation", path.rotation}});
+            }
+            extra["paths"] = paths;
+        }
+        bool const extras = !extra.isEmpty();
+        if (!morph.hints.isEmpty() || !morph.velocity.isEmpty() || !morph.groups.isEmpty() || extras) {
             QJsonArray hints;
             for (QLineF const& hint : morph.hints)
                 hints.append(QJsonArray{hint.x1(), hint.y1(), hint.x2(), hint.y2()});
             entry.append(hints);
         }
-        if (!morph.velocity.isEmpty() || !morph.groups.isEmpty()) {
+        if (!morph.velocity.isEmpty() || !morph.groups.isEmpty() || extras) {
             QJsonArray curve;
             for (QPointF const& v : morph.velocity)
                 curve.append(QJsonArray{v.x(), v.y()});
             entry.append(curve);
         }
-        if (!morph.groups.isEmpty()) {
+        if (!morph.groups.isEmpty() || extras) {
             // Its morphing layers: a name, the shapes of the first drawing, the shapes of the second.
             QJsonArray groups;
             for (Morph::Group const& g : morph.groups) {
@@ -592,10 +619,16 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
                     first.append(k);
                 for (int k : g.second)
                     second.append(k);
-                groups.append(QJsonArray{g.name, first, second});
+                QJsonArray group{g.name, first, second};
+                Morph::Group const plain;
+                if (g.start != plain.start || g.stop != plain.stop || g.path != plain.path)
+                    group.append(QJsonObject{{"start", g.start}, {"stop", g.stop}, {"path", g.path}});
+                groups.append(group);
             }
             entry.append(groups);
         }
+        if (extras)
+            entry.append(extra);
         morphs.append(entry);
     }
     QJsonArray keys;

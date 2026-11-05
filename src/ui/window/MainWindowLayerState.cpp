@@ -306,6 +306,10 @@ void MainWindow::onActionRenameDrawing()
         return;
     }
     Layer const& current = scene.layers[layer()];
+    if (current.morphing(frame())) {
+        QMessageBox::warning(this, tr("Rename Drawing"), tr("Rename Drawing: Cannot rename inside a morph."));
+        return;
+    }
     int const index = current.drawingAt(frame());
     bool ok = false;
     QString const name = QInputDialog::getText(this, tr("Rename Drawing"), tr("Name (empty: its number, %1):").arg(index + 1), QLineEdit::Normal,

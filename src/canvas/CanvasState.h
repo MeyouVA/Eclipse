@@ -321,6 +321,12 @@ protected:
     QVector<QPointF> m_envRest, m_envNow;
     int m_envPoint = -1;
     int m_morphGroup = -1;
+    int m_hintMode = 0;             // Morph::Contour
+    bool m_hintsHidden = false;
+    bool m_otherKeyShown = false;
+    bool m_morphLayerInPlace = false;
+    int m_pathIndex = -1;           // the deformation path whose point is being dragged, and which point
+    int m_pathPoint = -1;
     int m_hintIndex = -1;
     QPointF m_hintNow;
     bool m_snapping = true;

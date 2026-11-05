@@ -8,9 +8,14 @@
 
 namespace morph_parts {
 
-inline constexpr int kLinePoints = 40;     // a line in between is this many points
+inline constexpr int kLinePoints = 40;     // a line in between is this many points (at the quality a morphing has at first)
 
 inline constexpr int kEdgePoints = 64;     // an outline in between is this many
+
+// The quality of the morphing being made (Morph::quality), and the points a line and an outline in between have at it.
+extern thread_local double t_quality;
+inline int linePoints() { return std::max(8, int(std::lround(kLinePoints * (0.5 + 2.5 * std::clamp(t_quality, 0.0, 1.0))))); }
+inline int edgePoints() { return std::max(12, int(std::lround(kEdgePoints * (0.5 + 2.5 * std::clamp(t_quality, 0.0, 1.0))))); }
 
 struct Sample {
     QPointF pos;

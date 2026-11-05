@@ -166,8 +166,8 @@ bool Document::renameDrawing(int layer, int frame, QString const& name)
     Layer const& l = m_scene.layers[layer];
     int const index = l.cells[frame];
     QString const clean = name.trimmed();
-    if (index == Layer::kNoDrawing || clean == l.drawings[index].name)
-        return false;
+    if (index == Layer::kNoDrawing || clean == l.drawings[index].name || l.morphing(frame))
+        return false;       // (a drawing in between of a morphing is not one of its own: Cannot rename inside a morph)
     for (int i = 0; i < l.drawings.size(); ++i)
         if (i != index && !clean.isEmpty() && l.drawingLabel(i) == clean && l.drawings[i].set == l.drawings[index].set)
             return false;       // two drawings of a drawing layer cannot go by one name

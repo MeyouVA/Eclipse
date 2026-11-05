@@ -875,8 +875,31 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
                 g.first.push_back(k.toInt());
             for (QJsonValue const& k : group.at(2).toArray())
                 g.second.push_back(k.toInt());
+            QJsonObject const timing = group.at(3).toObject();
+            g.start = std::clamp(timing["start"].toDouble(0.0), 0.0, 1.0);
+            g.stop = std::clamp(timing["stop"].toDouble(1.0), 0.0, 1.0);
+            g.path = timing["path"].toInt(-1);
             morph.groups.push_back(g);
         }
+        QJsonObject const extra = values.at(6).toObject();
+        for (QJsonValue const& tv : extra["hintTypes"].toArray())
+            morph.hintTypes.push_back(std::clamp(tv.toInt(), int(Morph::Contour), int(Morph::Vanishing)));
+        morph.quality = std::clamp(extra["quality"].toDouble(0.2), 0.0, 1.0);
+        morph.flatten = extra["flatten"].toBool(false);
+        for (QJsonValue const& pv : extra["paths"].toArray()) {
+            QJsonObject const po = pv.toObject();
+            Morph::Path path;
+            path.name = po["name"].toString();
+            for (QJsonValue const& xy : po["points"].toArray())
+                path.points << QPointF(xy.toArray().at(0).toDouble(), xy.toArray().at(1).toDouble());
+            path.used = po["used"].toBool(true);
+            path.translation = po["translation"].toBool(true);
+            path.rotation = po["rotation"].toBool(false);
+            morph.paths.push_back(path);
+        }
+        for (Morph::Group& g : morph.groups)
+            if (g.path >= morph.paths.size())
+                g.path = -1;
         if (morph.from >= 0)
             layer.morphs.push_back(morph);
     }

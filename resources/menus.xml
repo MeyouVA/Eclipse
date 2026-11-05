@@ -596,6 +596,27 @@
     <item id="DeleteMorphing" icon="anim/morphdelete" text="&amp;Delete Morphing" responder="window" slot="onActionDeleteMorphing()"/>
     <item id="MorphingEase" icon="anim/morphease" text="Morphing &amp;Ease..." responder="window" slot="onActionMorphingEase()"/>
     <item id="ConvertMorphing" icon="anim/morphconvert" text="Convert Morphing to Dra&amp;wings" responder="window" slot="onActionConvertMorphing()"/>
+    <item id="ReplaceMorphLength" text="Replace Morphing &amp;Length..." responder="window" slot="onActionReplaceMorphLength()" tooltip="The frames from the first key drawing of the morphing to the second."/>
+    <item id="InsertMorphKey" text="&amp;Insert Morphing Key Drawing" shortcut="shortcut.insertMorphKey" responder="window" slot="onActionInsertMorphKey()" tooltip="The drawing in between on this frame made a key drawing of its own; the morphing goes on through it."/>
+    <item id="SwitchMorphKey" text="S&amp;witch Between Morphing Key Drawings" shortcut="shortcut.switchMorphKey" responder="window" slot="onActionSwitchMorphKey()"/>
+    <item id="ShowOtherMorphKey" text="Show &amp;Morphing Key Drawing Thumbnail" shortcut="shortcut.showOtherMorphKey" checkable="true" responder="window" slot="onActionShowOtherMorphKey(bool)" tooltip="On a key drawing of a morphing, the other one in a thumbnail in a corner of the view."/>
+    <item id="ModifyDeformationPath" text="Modify Deformation &amp;Path..." responder="window" slot="onActionMorphInspector()" tooltip="The deformation paths of the morphing, in the Morphing Inspector; drag their points with the Morphing tool."/>
+    <item id="MorphInspector" text="Show/Hide Morphing I&amp;nspector" shortcut="shortcut.morphInspector" responder="window" slot="onActionMorphInspector()"/>
+    <separator/>
+    <item id="MorphGoFirst" text="Go to &amp;First Frame" responder="window" slot="onActionMorphGoTo(QString)" itemParameter="first"/>
+    <item id="MorphGoPrevious" text="Go to Pre&amp;vious Frame" shortcut="shortcut.morphPrevious" responder="window" slot="onActionMorphGoTo(QString)" itemParameter="previous"/>
+    <item id="MorphGoNext" text="Go to Ne&amp;xt Frame" shortcut="shortcut.morphNext" responder="window" slot="onActionMorphGoTo(QString)" itemParameter="next"/>
+    <item id="MorphGoLast" text="Go to L&amp;ast Frame" responder="window" slot="onActionMorphGoTo(QString)" itemParameter="last"/>
+    <separator/>
+    <item id="MorphContourHint" text="C&amp;ontour Hint" shortcut="shortcut.morphContourHint" responder="window" slot="onActionMorphHintMode(QString)" itemParameter="contour"/>
+    <item id="MorphZoneHint" text="&amp;Zone Hint" shortcut="shortcut.morphZoneHint" responder="window" slot="onActionMorphHintMode(QString)" itemParameter="zone"/>
+    <item id="MorphPencilHint" text="Pen&amp;cil Hint" shortcut="shortcut.morphPencilHint" responder="window" slot="onActionMorphHintMode(QString)" itemParameter="pencil"/>
+    <item id="MorphAppearingHint" text="Appearin&amp;g Point Hint" shortcut="shortcut.morphAppearingHint" responder="window" slot="onActionMorphHintMode(QString)" itemParameter="appearing"/>
+    <item id="MorphVanishingHint" text="Vanis&amp;hing Point Hint" shortcut="shortcut.morphVanishingHint" responder="window" slot="onActionMorphHintMode(QString)" itemParameter="vanishing"/>
+    <item id="MorphDeleteHintMode" text="Delete Morphing Hint Mo&amp;de" shortcut="shortcut.morphDeleteHintMode" responder="window" slot="onActionMorphHintMode(QString)" itemParameter="delete"/>
+    <item id="SuggestHints" text="S&amp;uggest Hints" shortcut="shortcut.suggestHints" responder="window" slot="onActionSuggestHints()" tooltip="Automatically sets hint points on your key drawings as a help tool."/>
+    <item id="HideHints" text="Hide Hin&amp;ts" checkable="true" responder="window" slot="onActionHideHints(bool)" tooltip="Temporarily hides the hints from the key drawings."/>
+    <item id="DeleteAllMorphHints" text="Delete All Morphing Hi&amp;nts" shortcut="shortcut.deleteAllMorphHints" responder="window" slot="onActionDeleteMorphHints()"/>
    </menu>
    <menu id="AnimationLipSync" text="&amp;Lip-Sync">
     <item id="AutoLipSync" icon="anim/lipsyncauto" text="&amp;Auto Lip-Sync Detection" responder="window" slot="onActionAutoLipSync()"/>
@@ -987,6 +1008,28 @@
    <item id="DuplicateSymbol"/>
    <item id="ExpandSymbol"/>
   </menu>
+  <menu id="CameraMorphing" text="Morphing">
+   <item id="ToolMorphing"/>
+   <separator/>
+   <item id="MorphGoFirst"/>
+   <item id="MorphGoPrevious"/>
+   <item id="MorphGoNext"/>
+   <item id="MorphGoLast"/>
+   <separator/>
+   <item id="MorphContourHint"/>
+   <item id="MorphZoneHint"/>
+   <item id="MorphPencilHint"/>
+   <item id="MorphVanishingHint"/>
+   <item id="MorphAppearingHint"/>
+   <item id="MorphDeleteHintMode"/>
+   <item id="SuggestHints"/>
+   <item id="HideHints"/>
+   <item id="DeleteAllMorphHints"/>
+   <separator/>
+   <item id="SwitchMorphKey"/>
+   <item id="ShowOtherMorphKey"/>
+   <item id="MorphInspector"/>
+  </menu>
   <menu id="CameraIkConstraints" text="IK Constraints">
    <item id="SetIkNail"/>
    <item id="SetIkHoldOrientation"/>
@@ -1339,6 +1382,8 @@
    <item id="DeleteMorphing"/>
    <item id="MorphingEase"/>
    <item id="ConvertMorphing"/>
+   <item id="InsertMorphKey"/>
+   <item id="ReplaceMorphLength"/>
   </menu>
   <separator/>
   <item id="ShowWaveforms" icon="timeline/waveforms" text="Show Sound Waveforms" checkable="true" checked="true" responder="window" slot="onActionToggleWaveforms(bool)"/>

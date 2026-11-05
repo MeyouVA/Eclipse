@@ -8,6 +8,8 @@
 
 namespace morph_parts {
 
+thread_local double t_quality = 0.2;
+
 QVector<Sample> spaced(QVector<Sample> path, int count, bool closed)
 {
     QVector<Sample> out;
@@ -346,8 +348,8 @@ Stroke strokeBetween(Stroke const& a, Stroke const& b, double t, QVector<QLineF>
         return curved;
     }
     bool const closed = a.closed && b.closed;
-    QVector<Sample> const from = spaced(samplesOf(a), kLinePoints, closed);
-    QVector<Sample> const other = spaced(samplesOf(b), kLinePoints, closed);
+    QVector<Sample> const from = spaced(samplesOf(a), linePoints(), closed);
+    QVector<Sample> const other = spaced(samplesOf(b), linePoints(), closed);
     QVector<Sample> const to = aligned(from, other, closed, pinsFor(from, other, hints));
     Stroke out = t < 0.5 ? a : b;
     out.points.clear();
@@ -364,8 +366,8 @@ Stroke strokeBetween(Stroke const& a, Stroke const& b, double t, QVector<QLineF>
 
 QPolygonF outlineBetween(QPolygonF const& a, QPolygonF const& b, double t, QVector<QLineF> const& hints)
 {
-    QVector<Sample> const from = spaced(samplesOf(a), kEdgePoints, true);
-    QVector<Sample> const other = spaced(samplesOf(b), kEdgePoints, true);
+    QVector<Sample> const from = spaced(samplesOf(a), edgePoints(), true);
+    QVector<Sample> const other = spaced(samplesOf(b), edgePoints(), true);
     QVector<Sample> const to = aligned(from, other, true, pinsFor(from, other, hints));
     QPolygonF out;
     for (int i = 0; i < from.size() && i < to.size(); ++i)

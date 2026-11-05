@@ -217,6 +217,19 @@ public:
     bool setMorphGroups(int layer, int index, QVector<Morph::Group> const& groups, QString const& text);
     // The drawings in between made real drawings of the layer, one a frame; the morphing goes.
     bool convertMorph(int layer, int frame);
+    // A morphing of the layer (by its number) with other options - hint types, quality, flatten, morphing layer timing and
+    // deformation paths - its first frame kept.
+    bool setMorph(int layer, int index, Morph const& morph, QString const& text);
+    // Suggest Hints: hints the program finds between its two key drawings, added to its own; how many.
+    int suggestMorphHints(int layer, int index);
+    // Insert Morphing Key Drawing: the drawing in between on `frame` made a key drawing of its own, the morphing split in two
+    // there (one with no morphing layers only; `why` says why not).
+    bool insertMorphKey(int layer, int frame, QString* why = nullptr);
+    // Replace Morphing Length: the first key drawing of the morphing `frame` lies in exposed so many frames (what comes after
+    // moved along).
+    bool setMorphLength(int layer, int frame, int length);
+    // The first (0), previous (1), next (2) or last (3) frame of the morphing `frame` is in, or -1.
+    int morphFrame(int layer, int frame, int which) const;
     void setKeyTween(int layer, int frame, bool tween);
     void clearKeyframes(int layer);
     void setKeyEase(int layer, int frame, double easeIn, double easeOut, double liftIn = 0.0, double liftOut = 0.0);

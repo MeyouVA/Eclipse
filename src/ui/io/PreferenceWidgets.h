@@ -258,6 +258,7 @@ struct PreferenceWidgets {
     QCheckBox* ikAllChains = nullptr;
     QDoubleSpinBox* ikRetry = nullptr;
     QDoubleSpinBox* ikLimitWeight = nullptr;
+    QDoubleSpinBox* morphQuality = nullptr;
     QGroupBox* templatesPage = nullptr;
     QCheckBox* packNewTemplates = nullptr;
     QComboBox* copyToLibrary = nullptr;
