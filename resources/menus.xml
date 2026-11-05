@@ -753,6 +753,7 @@
    <item id="ShowWelcome" icon="misc/welcome" text="Show &amp;Welcome Screen" responder="window" slot="onActionShowWelcome()"/>
    <item id="ShowMessageLog" icon="misc/messagelog" text="&amp;Message Log" responder="window" slot="onActionShowMessageLog()"/>
    <item id="DebugMode" icon="misc/debug" text="&amp;Debug Mode" checkable="true" responder="window" slot="onActionDebugMode(bool)"/>
+   <item id="ScriptingDocs" text="&amp;Scripting Interface Documentation..." responder="window" slot="onActionScriptingDocs()" tooltip="What each object a script sees has."/>
    <separator/>
    <item id="About" icon="misc/about" text="&amp;About..." responder="window" slot="onActionAbout()"/>
   </menu>

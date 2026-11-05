@@ -233,6 +233,26 @@ public:
     void setShortcutOf(QString const& name, QKeySequence const& key);
     bool onToolbar(QString const& name) const;
     void setOnToolbar(QString const& name, bool on);
+    // The scripts on the Scripts toolbar, in the order their buttons go; one moved to the front or the back.
+    QStringList toolbarOrder() const;
+    void moveOnToolbar(QString const& name, bool toFront);
+    // A script's own icon (a picture file; none: its name) and tooltip on the toolbar.
+    QString iconOf(QString const& name) const;
+    void setIconOf(QString const& name, QString const& file);
+    QString tooltipOf(QString const& name) const;
+    void setTooltipOf(QString const& name, QString const& text);
+    // The program scripts are edited in outside Eclipse (Set External Editor); the script shown is opened in it.
+    QString externalEditor() const;
+    void setExternalEditor(QString const& program);
+    bool editExternally();
+    // The script shown changed on disk (as by an external editor): taken in, unless it was changed here too and the
+    // answer is to keep what is here.
+    void takeExternalChange();
+    // The functions a script has (its top-level "function name(" lines), and one of them run (the script first, then it).
+    QStringList functionsOf(QString const& name) const;
+    QString runFunction(QString const& name, QString const& function);
+    QString scriptText() const;
+    void setScriptText(QString const& text);
 
 signals:
     // Scripts were saved, thrown away, or given another shortcut or toolbar button.
@@ -256,5 +276,8 @@ private:
     QPlainTextEdit* m_output;
     class QKeySequenceEdit* m_shortcut = nullptr;
     class QCheckBox* m_toolbar = nullptr;
+    class QFileSystemWatcher* m_watcher = nullptr;
+    QString m_loaded;       // the script's text as it was last read or saved
+    void watch();
     void showCommands();     // the shortcut and toolbar boxes, for the script shown
 };

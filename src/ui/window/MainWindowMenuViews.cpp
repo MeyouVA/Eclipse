@@ -32,6 +32,11 @@
 #include <QFile>
 #include <QMenu>
 #include <QStatusBar>
+#include "ui/views/ScriptGlobals.h"
+#include <QFontDatabase>
+#include <QPlainTextEdit>
+#include <QDialogButtonBox>
+#include <QDialog>
 #include <QToolBar>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -300,7 +305,15 @@ void MainWindow::refreshScriptCommands()
         addToolBar(Qt::TopToolBarArea, m_scriptBar);
     }
     m_scriptBar->clear();
-    for (QString const& name : view->names()) {
+    // (The toolbar's own order first, then the rest by name.)
+    QStringList ordered = view->toolbarOrder();
+    for (QString const& name : view->names())
+        if (!ordered.contains(name))
+            ordered << name;
+    QStringList const exist = view->names();
+    for (QString const& name : ordered) {
+        if (!exist.contains(name))
+            continue;
         QKeySequence const key = view->shortcutOf(name);
         bool const button = view->onToolbar(name);
         if (key.isEmpty() && !button)
@@ -309,6 +322,10 @@ void MainWindow::refreshScriptCommands()
         a->setObjectName(QStringLiteral("ScriptCommand"));
         a->setData(name);
         a->setToolTip(key.isEmpty() ? tr("Runs the script %1").arg(name) : tr("Runs the script %1 (%2)").arg(name, key.toString(QKeySequence::NativeText)));
+        if (QString const tip = view->tooltipOf(name); !tip.isEmpty())
+            a->setToolTip(tip);
+        if (QString const icon = view->iconOf(name); !icon.isEmpty() && QFile::exists(icon))
+            a->setIcon(QIcon(icon));
         if (!key.isEmpty()) {
             a->setShortcut(key);
             a->setShortcutContext(Qt::ApplicationShortcut);
@@ -319,4 +336,24 @@ void MainWindow::refreshScriptCommands()
         connect(a, &QAction::triggered, this, [this, name] { runScript(name); });
     }
     m_scriptBar->setVisible(!m_scriptBar->actions().isEmpty());
+}
+
+void MainWindow::onActionScriptingDocs()
+{
+    QDialog* const dialog = new QDialog(this);
+    dialog->setObjectName(QStringLiteral("ScriptingDocs"));
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle(tr("Scripting Interface Documentation"));
+    QVBoxLayout* const layout = new QVBoxLayout(dialog);
+    QPlainTextEdit* const text = new QPlainTextEdit(scriptingReference(), dialog);
+    text->setObjectName(QStringLiteral("ScriptingDocsText"));
+    text->setReadOnly(true);
+    text->setLineWrapMode(QPlainTextEdit::NoWrap);
+    text->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    layout->addWidget(text);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
+    layout->addWidget(buttons);
+    dialog->resize(900, 640);
+    dialog->show();
 }

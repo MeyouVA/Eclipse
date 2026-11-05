@@ -1,5 +1,6 @@
 // Eclipse - the Script view: the editor, its highlighting, the saved scripts, running them.
 #include "ui/views/ScriptView.h"
+#include "ui/views/ScriptGlobals.h"
 
 #include <atomic>
 #include <chrono>
@@ -19,6 +20,11 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QFileDialog>
+#include <QAction>
+#include <QMenu>
+#include <QProcess>
+#include <QFileSystemWatcher>
 #include <QCheckBox>
 #include <QKeySequenceEdit>
 #include <QLabel>
@@ -209,6 +215,59 @@ ScriptView::ScriptView(Document* document, Timeline* timeline, QWidget* parent)
     buttons->addWidget(new QLabel(tr("Shortcut:"), this));
     buttons->addWidget(m_shortcut);
     buttons->addWidget(m_toolbar);
+    // The toolbar button's place, icon and tooltip, and the external editor.
+    QPushButton* const more = button("ScriptMore", tr("More"), tr("The script's toolbar button, and editing it in another program."));
+    QMenu* const menu = new QMenu(more);
+    auto item = [&](char const* id, QString const& text, QString const& tip, auto slot) {
+        QAction* const a = menu->addAction(text);
+        a->setObjectName(QLatin1String(id));
+        a->setToolTip(tip);
+        connect(a, &QAction::triggered, this, slot);
+        return a;
+    };
+    item("ScriptMoveFront", tr("Move Script to front of toolbar."), tr("Its button first on the Scripts toolbar."), [this] { moveOnToolbar(m_name, true); });
+    item("ScriptMoveBack", tr("Move Script to back of toolbar."), tr("Its button last on the Scripts toolbar."), [this] { moveOnToolbar(m_name, false); });
+    item("ScriptIcon", tr("Customize Icon..."), tr("Customize the icon of the selected script, for use in all application toolbars."), [this] {
+        if (m_name.isEmpty())
+            return;
+        QString const file = QFileDialog::getOpenFileName(this, tr("Script Icon"), QString(), tr("Pictures (*.png *.svg *.ico *.jpg *.bmp)"));
+        if (!file.isEmpty())
+            setIconOf(m_name, file);
+    });
+    item("ScriptTooltip", tr("Customize Tooltip..."), tr("Customize the tooltip of the selected script, for use in all application toolbars."), [this] {
+        if (m_name.isEmpty())
+            return;
+        bool ok = false;
+        QString const text = QInputDialog::getText(this, tr("Script Tooltip"), tr("Tooltip:"), QLineEdit::Normal, tooltipOf(m_name), &ok);
+        if (ok)
+            setTooltipOf(m_name, text);
+    });
+    item("ScriptRunFunction", tr("Run Function..."), tr("One function of the script run (the script is run first, so what it sets up is there)."), [this] {
+        QStringList const functions = functionsOf(m_name);
+        if (functions.isEmpty()) {
+            m_output->appendPlainText(tr("The script has no functions."));
+            return;
+        }
+        bool ok = false;
+        QString const function = QInputDialog::getItem(this, tr("Run Function"), tr("Functions"), functions, 0, false, &ok);
+        if (!ok)
+            return;
+        QString const said = runFunction(m_name, function);
+        m_output->appendPlainText(said.isEmpty() ? tr("%1: done.").arg(function) : said);
+    });
+    menu->addSeparator();
+    item("ScriptSetExternalEditor", tr("Set External Editor..."), tr("The program scripts are edited in outside Eclipse."), [this] {
+        QString const program = QFileDialog::getOpenFileName(this, tr("External Editor Application:"), externalEditor());
+        if (!program.isEmpty())
+            setExternalEditor(program);
+    });
+    item("ScriptEditExternally", tr("Edit in External Editor"), tr("The script opened in the external editor; what is saved there comes back here."), [this] {
+        if (!editExternally())
+            m_output->appendPlainText(externalEditor().isEmpty() ? tr("Set an external editor first (More > Set External Editor...).")
+                                                                 : tr("The external editor could not be started."));
+    });
+    more->setMenu(menu);
+    buttons->addWidget(more);
     buttons->addWidget(run);
     QSplitter* const upDown = new QSplitter(Qt::Vertical, this);
     upDown->addWidget(m_text);
@@ -336,8 +395,10 @@ bool ScriptView::open(QString const& name)
     if (!file.open(QIODevice::ReadOnly))
         return false;
     m_name = name;
-    m_text->setPlainText(QString::fromUtf8(file.readAll()));
+    m_loaded = QString::fromUtf8(file.readAll());
+    m_text->setPlainText(m_loaded);
     refreshList();
+    watch();
     return true;
 }
 
@@ -369,9 +430,11 @@ void ScriptView::saveScript()
         m_output->appendPlainText(tr("The script could not be saved to %1.").arg(QDir::toNativeSeparators(pathOf(m_name))));
         return;
     }
-    file.write(m_text->toPlainText().toUtf8());
+    m_loaded = m_text->toPlainText();
+    file.write(m_loaded.toUtf8());
     file.close();
     refreshList();
+    watch();
 }
 
 void ScriptView::deleteScript()
@@ -415,6 +478,16 @@ QString ScriptView::run(QString const& code, QString const& name)
     engine.globalObject().setProperty(QStringLiteral("effects"), engine.newQObject(&effects));
     engine.globalObject().setProperty(QStringLiteral("views"), engine.newQObject(&views));
     engine.evaluate(QStringLiteral("function log(t) { __out.log(String(t)); } var print = log;"));
+    QObject parts;
+    ScriptContext context;
+    context.document = m_document;
+    context.timeline = m_timeline;
+    context.window = window();
+    context.engine = &engine;
+    context.output = &output;
+    context.layers = &layers;
+    context.folder = m_folder;
+    installScriptGlobals(context, &parts);
 
     // A script that never ends is stopped after a while.
     std::atomic<bool> finished{false};
@@ -440,4 +513,143 @@ QString ScriptView::run(QString const& code, QString const& name)
     else if (result.isError())
         said << tr("Line %1: %2").arg(result.property(QStringLiteral("lineNumber")).toInt()).arg(result.toString());
     return said.join(QLatin1Char('\n'));
+}
+
+QStringList ScriptView::toolbarOrder() const
+{
+    return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("scripts/toolbar")).toStringList();
+}
+
+void ScriptView::moveOnToolbar(QString const& name, bool toFront)
+{
+    if (name.isEmpty())
+        return;
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    QStringList shown = s.value(QStringLiteral("scripts/toolbar")).toStringList();
+    if (!shown.removeAll(name))
+        return;
+    if (toFront)
+        shown.prepend(name);
+    else
+        shown << name;
+    s.setValue(QStringLiteral("scripts/toolbar"), shown);
+    emit scriptsChanged();
+}
+
+QString ScriptView::iconOf(QString const& name) const
+{
+    return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("scriptIcons/") + name).toString();
+}
+
+void ScriptView::setIconOf(QString const& name, QString const& file)
+{
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    if (file.isEmpty())
+        s.remove(QStringLiteral("scriptIcons/") + name);
+    else
+        s.setValue(QStringLiteral("scriptIcons/") + name, file);
+    emit scriptsChanged();
+}
+
+QString ScriptView::tooltipOf(QString const& name) const
+{
+    return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("scriptTooltips/") + name).toString();
+}
+
+void ScriptView::setTooltipOf(QString const& name, QString const& text)
+{
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    if (text.trimmed().isEmpty())
+        s.remove(QStringLiteral("scriptTooltips/") + name);
+    else
+        s.setValue(QStringLiteral("scriptTooltips/") + name, text.trimmed());
+    emit scriptsChanged();
+}
+
+QString ScriptView::externalEditor() const
+{
+    return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("scripts/externalEditor")).toString();
+}
+
+void ScriptView::setExternalEditor(QString const& program)
+{
+    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("scripts/externalEditor"), program);
+}
+
+bool ScriptView::editExternally()
+{
+    if (m_name.isEmpty() || externalEditor().isEmpty())
+        return false;
+    saveScript();
+    return QProcess::startDetached(externalEditor(), {QDir::toNativeSeparators(pathOf(m_name))});
+}
+
+QString ScriptView::scriptText() const
+{
+    return m_text->toPlainText();
+}
+
+void ScriptView::setScriptText(QString const& text)
+{
+    m_text->setPlainText(text);
+}
+
+void ScriptView::watch()
+{
+    if (!m_watcher) {
+        m_watcher = new QFileSystemWatcher(this);
+        connect(m_watcher, &QFileSystemWatcher::fileChanged, this, [this] { takeExternalChange(); });
+    }
+    if (!m_watcher->files().isEmpty())
+        m_watcher->removePaths(m_watcher->files());
+    if (!m_name.isEmpty() && QFile::exists(pathOf(m_name)))
+        m_watcher->addPath(pathOf(m_name));
+}
+
+void ScriptView::takeExternalChange()
+{
+    if (m_name.isEmpty())
+        return;
+    QFile file(pathOf(m_name));
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    QString const onDisk = QString::fromUtf8(file.readAll());
+    file.close();
+    watch();    // (some editors write a new file in place of the old)
+    if (onDisk == m_loaded)
+        return;
+    bool const changedHere = m_text->toPlainText() != m_loaded;
+    if (changedHere && ScriptMessageBox::interactive()
+        && QMessageBox::question(this, tr("Script modified in external editor"),
+                                 tr("The currently selected script was modified in an external editor. Are you sure you want to overwrite it?"))
+               == QMessageBox::Yes) {
+        // (What is here kept, and written over what the other program saved.)
+        saveScript();
+        return;
+    }
+    m_loaded = onDisk;
+    m_text->setPlainText(onDisk);
+    m_output->appendPlainText(tr("Script modified in external editor: %1 read again.").arg(m_name));
+}
+
+QStringList ScriptView::functionsOf(QString const& name) const
+{
+    QFile file(pathOf(name));
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    QStringList found;
+    static QRegularExpression const declared(QStringLiteral(R"(^function\s+([A-Za-z_$][\w$]*)\s*\()"), QRegularExpression::MultilineOption);
+    for (auto it = declared.globalMatch(QString::fromUtf8(file.readAll())); it.hasNext();)
+        found << it.next().captured(1);
+    return found;
+}
+
+QString ScriptView::runFunction(QString const& name, QString const& function)
+{
+    QFile file(pathOf(name));
+    if (!file.open(QIODevice::ReadOnly))
+        return tr("There is no script called %1.").arg(name);
+    if (!functionsOf(name).contains(function))
+        return tr("The script %1 has no function %2.").arg(name, function);
+    return run(QString::fromUtf8(file.readAll()) + QStringLiteral("\n") + function + QStringLiteral("();\n"), name);
 }

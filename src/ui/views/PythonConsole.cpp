@@ -24,6 +24,7 @@
 
 #include "model/document/Commands.h"
 #include "ui/timeline/Timeline.h"
+#include "ui/views/ScriptGlobals.h"
 #include "ui/views/ScriptView.h"
 
 namespace {
@@ -57,7 +58,8 @@ class _Part:
         return _ask({"call": self._path, "args": list(args)}).get("result")
     def __repr__(self):
         return "<eclipse " + self._path + ">"
-for _name in ("scene", "frame", "layers", "palette", "effects", "views"):
+_names = ("scene", "frame", "layers", "palette", "effects", "views", "node", "column", "Drawing", "selection", "MessageLog", "MessageBox", "Action", "preferences", "specialFolders", "about", "System", "render")
+for _name in _names:
     globals()[_name] = _Part(_name)
 class _Said(io.TextIOBase):
     def write(self, text):
@@ -65,7 +67,8 @@ class _Said(io.TextIOBase):
             _send({"out": text})
         return len(text)
 sys.stdout = sys.stderr = _Said()
-_space = {"scene": scene, "frame": frame, "layers": layers, "palette": palette, "effects": effects, "views": views, "__name__": "__console__"}
+_space = {_n: globals()[_n] for _n in _names}
+_space["__name__"] = "__console__"
 while True:
     line = _in.readline()
     if not line:
@@ -167,6 +170,16 @@ bool PythonConsole::start()
         }
         QJSEngine::setObjectOwnership(out, QJSEngine::CppOwnership);
         m_engine->globalObject().setProperty(QStringLiteral("__out"), m_engine->newQObject(out));
+        // (And the rest: node, column, selection, MessageLog...)
+        ScriptContext context;
+        context.document = m_document;
+        context.timeline = m_timeline;
+        context.window = window();
+        context.engine = m_engine;
+        context.output = out;
+        context.layers = static_cast<ScriptLayers*>(parts[2]);
+        context.folder = ScriptView::defaultFolder();
+        installScriptGlobals(context, this);
     }
     delete m_process;
     m_process = new QProcess(this);

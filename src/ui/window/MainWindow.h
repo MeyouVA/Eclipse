@@ -736,6 +736,8 @@ public slots:
     void onActionShowScanInfo(bool shown);
     // Show Particles as Dots: the particles drawn as dots in the Camera view (quicker); renders are not changed.
     void onActionShowParticlesAsDots(bool dots);
+    // Help > Scripting Interface Documentation: the objects scripts see, and what each has.
+    void onActionScriptingDocs();
     void onActionAcquireTwain();
     void onActionImportSpriteSheet();
     void onActionImportPdf();
