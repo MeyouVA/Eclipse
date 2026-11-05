@@ -26,6 +26,19 @@
    <item id="ManageVersions" icon="file/saveversion" text="&amp;Manage Versions..." responder="window" slot="onActionManageVersions()"/>
    <item id="BackupScene" icon="file/backup" text="&amp;Backup Scene" responder="window" slot="onActionBackupScene()"/>
    <item id="DeleteBackupFiles" icon="file/backup" text="Delete Backup &amp;Files..." responder="window" slot="onActionDeleteBackupFiles()"/>
+   <menu id="FileDatabase" text="&amp;Database">
+    <item id="DatabaseManager" text="Database &amp;Manager..." responder="window" slot="onActionDatabaseManager()" tooltip="The scene database: environments, jobs and scenes, their versions, stages, rights and users."/>
+    <item id="LoadFromDatabase" text="&amp;Load From Database..." responder="window" slot="onActionDatabaseManager()" tooltip="A scene opened from the database, and the rights to modify it got."/>
+    <item id="SaveToDatabase" text="&amp;Save to Database..." responder="window" slot="onActionSaveToDatabase()" tooltip="The scene saved back to the database as a new version, with a comment."/>
+    <item id="UpdateDatabaseScene" text="&amp;Update Database Scene..." responder="window" slot="onActionUpdateDatabaseScene()" tooltip="This scene put into the database: a new scene, or a new version of one of the same name."/>
+    <item id="DatabaseVersions" text="Database &amp;Versions..." responder="window" slot="onActionDatabaseVersions()" tooltip="The versions of the database scene: which one it opens at."/>
+    <separator/>
+    <item id="GetPaletteRights" text="Get Rights To Modify All Palettes" responder="window" slot="onActionGetPaletteRights()"/>
+    <item id="ReleasePaletteRights" text="Release Rights To Modify Palettes" responder="window" slot="onActionReleasePaletteRights()"/>
+    <separator/>
+    <item id="RenderQueue" text="&amp;Batch Rendering..." responder="window" slot="onActionRenderQueue()" tooltip="Scenes queued to be rendered one after another, the highest priority first."/>
+    <item id="AddToRenderQueue" text="&amp;Add Scene to Batch Rendering" responder="window" slot="onActionAddToRenderQueue()"/>
+   </menu>
    <separator/>
    <menu id="Import" text="&amp;Import">
     <item id="ImportImages" icon="file/importimages" text="&amp;Images..." responder="window" slot="onActionImportImages()"/>
@@ -128,6 +141,10 @@
     <item id="UngroupLayers" icon="timeline/ungroup" text="&amp;Ungroup Selected Layers" shortcut="shortcut.ungroup" responder="window" slot="onActionUngroupLayers()"/>
     <item id="MoveToParentGroup" icon="timeline/toparentgroup" text="&amp;Move to Parent Group" responder="window" slot="onActionMoveToParentGroup()"/>
    </menu>
+   <separator/>
+   <item id="GetDrawingRights" text="&amp;Get Rights to Modify Drawings" responder="window" slot="onActionGetDrawingRights()" tooltip="The rights to modify the drawings shown here by the layers selected (a scene from the database)."/>
+   <item id="ReleaseDrawingRights" text="&amp;Release Rights to Modify Drawings" responder="window" slot="onActionReleaseDrawingRights()"/>
+   <item id="ForceReleaseDrawingRights" text="&amp;Force Release Rights to Modify Drawings" responder="window" slot="onActionForceReleaseDrawingRights()" tooltip="The rights taken away from whoever has them."/>
    <separator/>
    <item id="Preferences" icon="misc/preferences" text="Pre&amp;ferences..." shortcut="shortcut.preferences" responder="window" slot="onActionPreferences()"/>
    <item id="EditShortcuts" icon="misc/shortcuts" text="&amp;Keyboard Shortcuts..." shortcut="shortcut.editShortcuts" responder="window" slot="onActionEditShortcuts()"/>

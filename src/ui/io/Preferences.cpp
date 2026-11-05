@@ -669,6 +669,10 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/middlePans"), w.middlePans->isChecked());
     s.setValue(QStringLiteral("prefs/performanceReport"), w.performance->isChecked());
     s.setValue(QStringLiteral("prefs/modelScale"), w.modelScale->value());
+    s.setValue(QStringLiteral("prefs/databaseRoot"), w.databaseRoot->text().trimmed());
+    s.setValue(QStringLiteral("prefs/databaseUser"), w.databaseUser->text().trimmed());
+    s.setValue(QStringLiteral("prefs/autoRightsDrawings"), w.autoRightsDrawings->isChecked());
+    s.setValue(QStringLiteral("prefs/autoRightsPalettes"), w.autoRightsPalettes->isChecked());
     s.setValue(QStringLiteral("prefs/functionGrid"), w.functionGrid->isChecked());
     s.setValue(QStringLiteral("prefs/functionLoadLimit"), w.functionLoadLimit->value());
     s.setValue(QStringLiteral("prefs/pathConstantZ"), w.pathConstantZ->isChecked());

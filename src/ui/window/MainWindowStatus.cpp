@@ -35,6 +35,7 @@
 void MainWindow::updateTitle()
 {
     QString const name = editingTemplate() ? tr("Template Edition: %1").arg(QFileInfo(editedTemplate()).completeBaseName())
+                         : !m_dbScene.isEmpty() ? tr("%1 / %2 / %3 (version %4%5)").arg(m_dbEnvironment, m_dbJob, m_dbScene).arg(m_dbVersion).arg(m_dbReadOnly ? tr(", to look at") : QString())
                          : m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).fileName();
     Effects::setSceneName(m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).completeBaseName());
     // (Inside a symbol: which, after the name of the scene.)

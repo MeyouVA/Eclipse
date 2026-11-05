@@ -79,6 +79,7 @@ void MainWindow::onActionCloseScene()
     if (!confirmDiscard())
         return;
     stop();
+    leaveDatabaseScene();
     m_path.clear();
     m_document->reset(Scene());
     m_timeline->setCurrentCell(0, 0);
@@ -99,6 +100,7 @@ bool MainWindow::createScene(QString const& path, int width, int height, double 
     scene.height = height;
     scene.fps = fps;
     scene.fov = std::clamp(fov > 0.0 ? fov : Layer::kDefaultFov, m_document->minimumFov(), m_document->maximumFov());
+    leaveDatabaseScene();
     m_path.clear();
     m_document->reset(scene);
     m_timeline->setCurrentCell(0, 0);
@@ -139,6 +141,8 @@ bool MainWindow::openFile(QString const& path)
     bool const oldFile = !Scene::lastLoadUsedFolder();
     QStringList const missing = Scene::lastMissingFiles();
     stop();
+    if (!m_openingFromDatabase)
+        leaveDatabaseScene();
     m_path = path;
     m_document->reset(scene);
     m_timeline->setCurrentCell(int(scene.layers.size()) - 1, 0);
@@ -277,6 +281,14 @@ bool MainWindow::onActionSave()
         if (!saved && !error.isEmpty())
             QMessageBox::critical(this, tr("Eclipse"), tr("The template could not be saved.\n%1").arg(error));
         return saved;
+    }
+    // (A scene from the database: saved back to it, as a new version.)
+    if (!m_dbScene.isEmpty()) {
+        QString error;
+        if (saveToDatabase(QString(), &error) > 0)
+            return true;
+        QMessageBox::warning(this, tr("Eclipse"), error);
+        return false;
     }
     return m_path.isEmpty() ? onActionSaveAs() : saveTo(m_path);
 }
@@ -525,6 +537,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
         event->ignore();
         return;
     }
+    leaveDatabaseScene();
     if (!m_autoSaveWorkspace && m_persistWorkspaces && workspaceChanged()) {
         QMessageBox::StandardButton const answer
             = QMessageBox::question(this, tr("Eclipse"), tr("Some workspace have been changed. Do you wish to save them?"),

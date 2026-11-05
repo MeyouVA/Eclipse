@@ -10,6 +10,11 @@ struct PreferenceWidgets {
     QFormLayout* generalLayout = nullptr;
     QCheckBox* focusOnEnter = nullptr;
     QDoubleSpinBox* modelScale = nullptr;
+    // The scene database: its folder, who is working, and the rights got as a scene is opened.
+    QLineEdit* databaseRoot = nullptr;
+    QLineEdit* databaseUser = nullptr;
+    QCheckBox* autoRightsDrawings = nullptr;
+    QCheckBox* autoRightsPalettes = nullptr;
     QSpinBox* undoLevels = nullptr;
     QDoubleSpinBox* minimumFov = nullptr;
     QDoubleSpinBox* maximumFov = nullptr;

@@ -461,6 +461,20 @@ public slots:
     // `files`: the models, one after the other; returns the layer, or -1 (`error` says why).
     int import3DModels(QStringList const& files, QString* error = nullptr);
 public:
+    // The scene database: a scene opened from it (at a version; 0 the current one), the rights to modify it got
+    // (when someone else has them it is open to look at); saved back as a new version; the scene put into it.
+    bool openFromDatabase(QString const& environment, QString const& job, QString const& scene, int version, QString* error = nullptr);
+    int saveToDatabase(QString const& comment, QString* error = nullptr);
+    bool addToDatabase(QString const& environment, QString const& job, QString const& name, QString* error = nullptr);
+    // The rights the database scene's rights given up (when another scene is opened, or Eclipse closed).
+    void leaveDatabaseScene();
+    // Rights to modify the drawings shown on this frame by the layers selected (or all the scene's), got or released;
+    // how many (-1: the scene is not from the database).  And the palettes'.
+    int drawingRights(bool release, bool force, bool all);
+    int paletteRights(bool release, bool force);
+    QString databaseScene() const { return m_dbScene; }
+    int databaseVersion() const { return m_dbVersion; }
+    bool databaseReadOnly() const { return m_dbReadOnly; }
     // Where a layer's model is, how big, and its own look of it.
     struct ModelSettings {
         QPointF centre;
@@ -738,6 +752,19 @@ public slots:
     void onActionShowParticlesAsDots(bool dots);
     // Help > Scripting Interface Documentation: the objects scripts see, and what each has.
     void onActionScriptingDocs();
+    // ---- the scene database (File > Database) ----
+    void onActionDatabaseManager();
+    void onActionSaveToDatabase();
+    void onActionUpdateDatabaseScene();
+    void onActionDatabaseVersions();
+    void onActionGetDrawingRights();
+    void onActionReleaseDrawingRights();
+    void onActionForceReleaseDrawingRights();
+    void onActionGetPaletteRights();
+    void onActionReleasePaletteRights();
+    // Batch Rendering: the queue, and the scene added to it.
+    void onActionRenderQueue();
+    void onActionAddToRenderQueue();
     void onActionAcquireTwain();
     void onActionImportSpriteSheet();
     void onActionImportPdf();
@@ -1127,6 +1154,10 @@ private:     // while a template is being edited: the scene put aside
     PalettePanel* m_palette = nullptr;
     ColourEditor* m_colourEditor = nullptr;
     QString m_path;
+    QString m_dbEnvironment, m_dbJob, m_dbScene;
+    int m_dbVersion = 0;
+    bool m_dbReadOnly = false;
+    bool m_openingFromDatabase = false;
     QList<QDockWidget*> m_docks;
     QList<ViewTitleBar*> m_titleBars;
     QWidget* m_activeView = nullptr;
