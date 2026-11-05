@@ -179,7 +179,7 @@ char const* effectTypeName(Effect::Type type)
     static char const* const names[] = {"gaussianBlur", "boxBlur", "zoomBlur", "bokehBlur", "antiFlicker", "colourFade", "colourOverride", "channelSwap",
                                         "colourLevels", "colourScreen", "contrast", "gamma", "colourBanding", "dither", "shine", "lensFlare", "burnIn",
                                         "turbulentNoise", "grid", "refract", "shake", "quake", "unsharpMask", "increaseOpacity", "animatePencilTexture", "colourSpace", "lookUpTable",
-                                        "holdTiming", "holdTransformationTiming", "retime", "retimeTransformation", "loop", "loopTransformation", "shapeCurve"};
+                                        "holdTiming", "holdTransformationTiming", "retime", "retimeTransformation", "loop", "loopTransformation", "shapeCurve", "normalMap", "lightShader"};
     static_assert(sizeof(names) / sizeof(names[0]) == Effect::TypeCount - Effect::GaussianBlur);
     return type >= Effect::GaussianBlur && type < Effect::TypeCount ? names[type - Effect::GaussianBlur] : "";
 }
@@ -447,6 +447,8 @@ if (!d.model.isEmpty()) {
     drawing["modelCentre"] = QJsonArray{d.modelCentre.x(), d.modelCentre.y()};
     if (d.modelScale != 1.0)
         drawing["modelScale"] = d.modelScale;
+    if (!d.modelLook.plain())
+        drawing["model3d"] = Model3D::toJson(d.modelLook);
     if (QString const relative = pathFrom(folder, d.model); !relative.isEmpty())
         drawing["modelRelative"] = relative;
 }

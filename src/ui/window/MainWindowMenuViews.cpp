@@ -176,6 +176,7 @@ void MainWindow::createWindowsMenuViews()
         view->setObjectName(QStringLiteral("Graph3DView"));
         connect(m_timeline, &Timeline::currentCellChanged, view, &Graph3DView::setCurrentCell);
         connect(view, &Graph3DView::layerPicked, this, [this](int l) { m_timeline->setCurrentCell(l, frame()); });
+        connect(view, &Graph3DView::message, this, [this](QString const& text) { statusBar()->showMessage(text, 6000); });
         addView(tr("3D Graph"), QStringLiteral("Graph3DDock"), view, Qt::RightDockWidgetArea)->hide();
     }
     // Preview Manager: the frames rendered once, to play from.

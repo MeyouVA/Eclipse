@@ -5,10 +5,16 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QObject>
 #include <QRegularExpression>
 #include <QSet>
 #include <QTextStream>
+#include <QUrl>
+
+#include "model/geometry/Model3D.h"
 
 namespace {
 
@@ -56,6 +62,18 @@ QStringList modelParts(QString const& obj)
     // (A map line ends with the file; options such as -s 1 1 1 come before it.)
     static QRegularExpression const map(QStringLiteral("^(?:map_\\w+|bump|disp|decal|refl)\\s+(?:.*\\s)?(\\S+)$"));
     QDir const beside = QFileInfo(obj).absoluteDir();
+    if (QFileInfo(obj).suffix().compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0) {
+        // glTF: the buffers and pictures it names beside it (those inside it, as data, need nothing more).
+        QFile in(obj);
+        if (!in.open(QIODevice::ReadOnly))
+            return parts;
+        QJsonObject const root = QJsonDocument::fromJson(in.readAll()).object();
+        for (char const* list : {"buffers", "images"})
+            for (QJsonValue const& v : root[QLatin1String(list)].toArray())
+                if (QString const uri = v.toObject()["uri"].toString(); !uri.isEmpty() && !uri.startsWith(QStringLiteral("data:")) && !parts.contains(uri))
+                    parts << QUrl::fromPercentEncoding(uri.toUtf8());
+        return parts;
+    }
     for (QString const& library : read(obj, mtl)) {
         parts << library;
         for (QString const& picture : read(beside.absoluteFilePath(library), map))
@@ -147,7 +165,7 @@ int Scene::packFiles(QString const& folder, QString* error)
             continue;       // missing: nothing to take along (the template keeps naming it)
         if (QDir::cleanPath(source.absoluteFilePath()).startsWith(into + QLatin1Char('/'), Qt::CaseInsensitive))
             continue;       // already in the folder
-        bool const model = source.suffix().compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0;
+        bool const model = Model3D::isModelFile(source.fileName());
         // A model goes into a folder of its own, its materials and their pictures where it looks for them.
         QString const name = place(source.fileName());
         QString const target = model ? QDir(into).filePath(QFileInfo(name).completeBaseName() + QStringLiteral("/") + source.fileName())

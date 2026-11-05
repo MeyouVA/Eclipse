@@ -360,6 +360,7 @@ Drawing Canvas::withArt(Drawing const& art) const
             whole.model = real->model;
             whole.modelCentre = real->modelCentre;
             whole.modelScale = real->modelScale;
+            whole.modelLook = real->modelLook;
             whole.trace = real->trace;
             whole.pivotSet = real->pivotSet;
             whole.pivot = real->pivot;

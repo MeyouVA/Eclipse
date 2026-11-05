@@ -1,6 +1,7 @@
 // Eclipse - a drawing: its painted areas, its pictures, its lines.
 #pragma once
 
+#include "model/geometry/Model3D.h"
 #include "model/scene/Stroke.h"
 #include "EclipseExport.h"
 
@@ -112,6 +113,7 @@ struct Drawing {
     QVector<QPointF> rig;
     QPointF modelCentre;    // where the middle of the model is, in the drawing
     double modelScale = 1.0;    // how big, as a share of Model3D::kSize at its biggest
+    Model3D::Look modelLook;    // its own look of the model: its own turn, the camera, the light, the parts hidden or moved
     enum Mark { NoMark, KeyMark, BreakdownMark, InBetweenMark };
     int mark = NoMark;
     // Shift and Trace: where the drawing is shown while tracing from it (its lines stay where they are).

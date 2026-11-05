@@ -40,6 +40,10 @@ public:
     // Where the pivot of a layer is in the view.
     QPointF layerPoint(int layer) const;
     QSize sizeHint() const override { return QSize(420, 320); }
+    enum Navigation { NavigateOrbit, NavigateTruck, NavigateDolly };
+    Navigation navigation() const { return m_navigation; }
+    void setNavigation(Navigation navigation);
+    double viewZ() const { return m_viewZ; }
 
 public slots:
     void setCurrentCell(int layer, int frame);
@@ -55,6 +59,15 @@ public slots:
     void onActionMoveBackward();
     void onActionClippingPlanes();
     void setCameraCone(bool on) { m_cameraCone = on; update(); }
+    // 3D Navigation: what a drag with the left button does - turn round what is looked at (Orbit), slide the view
+    // across (Truck), or move into and out of the scene (Dolly).
+    void onActionNavigationOrbit() { setNavigation(NavigateOrbit); }
+    void onActionNavigationTruck() { setNavigation(NavigateTruck); }
+    void onActionNavigationDolly() { setNavigation(NavigateDolly); }
+    // Move to Fit 3D: the whole scene in the view.
+    void onActionMoveToFit();
+    // Reset to Camera: seen again from where it starts, in front of the camera.
+    void onActionResetToCamera() { resetView(); }
     bool cameraCone() const { return m_cameraCone; }
 
 signals:
@@ -109,6 +122,7 @@ private:
     QPointF m_pressed;
     bool m_moved = false;
     bool m_cameraCone = true;
+    Navigation m_navigation = NavigateOrbit;
     QPointer<Canvas> m_drawingCanvas;
     Canvas* m_planeEditor = nullptr;
     int m_facingLayer = -1;

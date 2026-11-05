@@ -147,7 +147,11 @@ Drawing shown(Drawing const& drawing, Layer const& layer, Pose const& pose, int 
         // A 3D model: a picture of it, turned as the layer is, under whatever is drawn over it.
         Drawing out = drawing;
         out.model.clear();
-        if (Picture picture; Model3D::picture(drawing.model, pose.rotX, pose.rotY, picture)) {
+        // (The drawing's own turn first, then the layer's.)
+        Model3D::Look look = drawing.modelLook;
+        look.rotX += pose.rotX;
+        look.rotY += pose.rotY;
+        if (Picture picture; Model3D::picture(drawing.model, look, picture)) {
             picture.transform(QTransform::fromScale(drawing.modelScale, drawing.modelScale)
                               * QTransform::fromTranslate(drawing.modelCentre.x(), drawing.modelCentre.y()));
             out.pictures.prepend(picture);

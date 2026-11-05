@@ -195,6 +195,20 @@ QVector<P> const& table(Effect::Type type)
         {"applyX", QT_TRANSLATE_NOOP("Effect", "Apply on X"), P::Toggle, 0, 1, 1, nullptr, nullptr},
         {"applyY", QT_TRANSLATE_NOOP("Effect", "Apply on Y"), P::Toggle, 0, 1, 1, nullptr, nullptr},
         {"seed", QT_TRANSLATE_NOOP("Effect", "Seed"), P::Whole, 0, 99999, 1, nullptr, nullptr}};
+    static QVector<P> const normalMap = {
+        {"depth", QT_TRANSLATE_NOOP("Effect", "Depth"), P::Number, 0, 20, 1, nullptr, QT_TRANSLATE_NOOP("Effect", "How steeply the edges rise (more: steeper).")},
+        {"flipY", QT_TRANSLATE_NOOP("Effect", "Invert Y (Normal Map Converter)"), P::Toggle, 0, 1, 0, nullptr,
+         QT_TRANSLATE_NOOP("Effect", "The green channel turned over, as other programs read normal maps (Y down).")}};
+    static QVector<P> const lightShader = {
+        {"angle", QT_TRANSLATE_NOOP("Effect", "Light Source Position"), P::Number, -360, 360, 135, nullptr,
+         QT_TRANSLATE_NOOP("Effect", "Where the light comes from, round from the right (degrees, anticlockwise: 90 from above).")},
+        {"elevation", QT_TRANSLATE_NOOP("Effect", "Light Source Elevation"), P::Number, 1, 90, 45, nullptr, QT_TRANSLATE_NOOP("Effect", "How high the light is off the page (90: straight above).")},
+        {"colour", QT_TRANSLATE_NOOP("Effect", "Light Colour"), P::Colour, 0, kWhite, kWhite, nullptr, nullptr},
+        {"intensity", QT_TRANSLATE_NOOP("Effect", "Adjust Light Intensity"), P::Number, 0, 10, 1, nullptr, nullptr},
+        {"depth", QT_TRANSLATE_NOOP("Effect", "Depth"), P::Number, 0, 20, 1, nullptr, QT_TRANSLATE_NOOP("Effect", "How steeply the edges rise (more: steeper).")},
+        {"ambient", QT_TRANSLATE_NOOP("Effect", "Shadow Darkness"), P::Number, 0, 1, 0.25, nullptr, QT_TRANSLATE_NOOP("Effect", "How dark the side turned away from the light gets, at the darkest (0: black).")},
+        {"specular", QT_TRANSLATE_NOOP("Effect", "Specular Strength"), P::Number, 0, 1, 0.3, nullptr, nullptr},
+        {"shininess", QT_TRANSLATE_NOOP("Effect", "Specular Transparency"), P::Number, 1, 256, 24, nullptr, QT_TRANSLATE_NOOP("Effect", "How small and sharp the shine is.")}};
     static QVector<P> const unsharp = {
         {"strength", QT_TRANSLATE_NOOP("Effect", "Amount"), P::Number, 0, 10, 1, nullptr, nullptr},
         {"threshold", QT_TRANSLATE_NOOP("Effect", "Threshold"), P::Number, 0, 1, 0, nullptr, QT_TRANSLATE_NOOP("Effect", "Differences smaller than this are left as they are.")}};
@@ -217,6 +231,8 @@ QVector<P> const& table(Effect::Type type)
         {"close", QT_TRANSLATE_NOOP("Effect", "Close Shape Contour"), P::Toggle, 0, 1, 0, nullptr, QT_TRANSLATE_NOOP("Effect", "On: the curve comes back to its start and the shape it makes is filled.")}};
     switch (type) {
     case Effect::ShapeCurve: return shapeCurve;
+    case Effect::NormalMap: return normalMap;
+    case Effect::LightShader: return lightShader;
     case Effect::HoldTiming:
     case Effect::HoldTransformationTiming: return hold;
     case Effect::Retime:
@@ -339,6 +355,8 @@ Effect::Amount Effect::amountOf(Type type)
     case Loop:
     case LoopTransformation: return {nullptr, 0, 1.0, 1.0};
     case ShapeCurve: return {QT_TRANSLATE_NOOP("Effect", "Line Width"), 2, 6.0, 500.0};
+    case NormalMap:
+    case LightShader: return {QT_TRANSLATE_NOOP("Effect", "Bevel"), 2, 8.0, 500.0};
     case ColourOverride:
     case ColourSpace:
     case AnimatePencilTexture: return {nullptr, 0, 1.0, 1.0};

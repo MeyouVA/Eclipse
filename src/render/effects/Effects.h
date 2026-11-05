@@ -139,6 +139,11 @@ void colourScaleMore(QImage& image, double alpha, double hue, double saturation,
 // Every colour given one hue (degrees) and saturation, keeping its lightness, `amount` of the way.
 void colorize(QImage& image, double hue, double saturation, double lightness, double amount);
 void increaseOpacity(QImage& image, double factor);
+// Shading: the picture's normals as colours (x red, y green, z blue), worked out from its shape, its edges sloping over
+// `bevel` pixels; Light Shader: lit by a light from `angle` round and `elevation` up, so the edges facing it shine.
+void normalMap(QImage& image, double bevel, double depth, bool flipY);
+void lightShader(QImage& image, double bevel, double depth, double angle, double elevation, QColor const& light, double intensity, double ambient,
+                 double specular, double shininess);
 void grain(QImage& image, double amount, quint32 seed, double smooth);
 
 // Light, generators and moves.

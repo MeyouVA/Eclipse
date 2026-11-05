@@ -707,6 +707,10 @@
     <item id="Set3DAnimationTiming" icon="tool/turn3d" text="Set 3D &amp;Animation Timing..." responder="window" slot="onActionSet3DAnimationTiming()"/>
     <item id="Snapshot3D" icon="file/importimages" text="&amp;Snapshot 3D" responder="window" slot="onActionSnapshot3D()"/>
     <item id="Update3DModelPosition" icon="anim/reset" text="&amp;Update 3D Model Position" responder="window" slot="onActionUpdate3DModelPosition()"/>
+    <separator/>
+    <item id="Model3DSettings" icon="tool/turn3d" text="3D &amp;Model Settings..." responder="window" slot="onActionModel3DSettings()" tooltip="The model's own turn and scaling, the camera it is seen through, its light and its toon shading."/>
+    <item id="FitModelToView" text="&amp;Fit Model to View" responder="window" slot="onActionFitModelToView()" tooltip="Each model of the layer in the middle of the camera frame, filling it, facing the camera."/>
+    <item id="Render3DModel" text="&amp;Render 3D Model to Bitmap Layer" responder="window" slot="onActionRender3DModelToBitmap()" tooltip="The model drawn frame by frame on a bitmap layer of its own; the model layer is hidden."/>
    </menu>
    <separator/>
    <item id="LayerProperties" icon="timeline/layerprops" text="Layer Proper&amp;ties..." responder="window" slot="onActionShowLayerProperties()"/>
@@ -2083,6 +2087,14 @@
   <item id="MoveViewForward"/>
   <item id="MoveViewBackward"/>
   <item id="PerspectiveClippingPlanes"/>
+  <menu id="PerspectiveNavigation" text="3D Navigation">
+   <item id="NavigateOrbit" text="Orbit" responder="focus" slot="onActionNavigationOrbit()" tooltip="3D Navigation: a drag turns the Perspective view round what it looks at."/>
+   <item id="NavigateTruck" text="Truck" responder="focus" slot="onActionNavigationTruck()" tooltip="3D Navigation: a drag slides the Perspective view across."/>
+   <item id="NavigateDolly" text="Dolly" responder="focus" slot="onActionNavigationDolly()" tooltip="3D Navigation: a drag moves the Perspective view into the scene and out of it."/>
+   <separator/>
+   <item id="MoveToFit3D" text="Move to Fit 3D" responder="focus" slot="onActionMoveToFit()" tooltip="The whole scene in the Perspective view."/>
+   <item id="ResetToCamera" text="Reset to Camera" responder="focus" slot="onActionResetToCamera()" tooltip="The Perspective view seen again from in front of the camera."/>
+  </menu>
   <item id="ZoomIn"/>
   <item id="ZoomOut"/>
   <item id="ResetZoom"/>
@@ -2090,6 +2102,10 @@
   <item id="ResetView"/>
   <separator/>
   <item id="CameraCone"/>
+  <item id="EditCut"/>
+  <item id="EditCopy"/>
+  <item id="EditPaste"/>
+  <item id="EditDelete"/>
   <item id="PasteInPlace"/>
   <item id="LayerProperties"/>
   <item id="LayerEditor"/>
@@ -2106,6 +2122,7 @@
   <item id="SelectPrevKeyframePoint"/>
   <item id="SelectNextKeyframePoint"/>
   <submenu id="menu.animationTools" text="&amp;Animation Tools"/>
+  <item id="CaptureMotion"/>
   <separator/>
   <item id="InsertCamera"/>
  </menu>

@@ -257,7 +257,11 @@ void PerspectiveView::mouseMoveEvent(QMouseEvent* event)
         m_moved = true;
     if (!m_moved)
         return;
-    if (m_drag == Orbit)
+    if (m_drag == Orbit && m_navigation == NavigateDolly) {
+        // (Up the view: into the scene.)
+        Scene const& scene = m_document->scene();
+        moveView(-d.y() * std::max(scene.width, scene.height) * 0.004);
+    } else if (m_drag == Orbit && m_navigation == NavigateOrbit)
         setOrbit(m_yaw + d.x() * 0.4, m_pitch - d.y() * 0.4);
     else {
         m_pan += d;

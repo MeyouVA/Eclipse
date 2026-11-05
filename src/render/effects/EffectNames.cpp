@@ -56,6 +56,8 @@ QString kindName(Effect::Type type)
     case Effect::Loop: return QObject::tr("Loop");
     case Effect::LoopTransformation: return QObject::tr("Loop Transformation");
     case Effect::ShapeCurve: return QObject::tr("Shape-Curve");
+    case Effect::NormalMap: return QObject::tr("Normal Map");
+    case Effect::LightShader: return QObject::tr("Light Shader");
     default: return name(Effect::made(type), Scene()).section(QStringLiteral("  "), 0, 0);
     }
 }
@@ -216,6 +218,8 @@ QString name(Effect const& effect, Scene const& scene)
     case Effect::Loop:
     case Effect::LoopTransformation:
     case Effect::ShapeCurve:
+    case Effect::NormalMap:
+    case Effect::LightShader:
     case Effect::AnimatePencilTexture: {
         Effect::Amount const a = Effect::amountOf(effect.type);
         QString const kind = kindName(effect.type);

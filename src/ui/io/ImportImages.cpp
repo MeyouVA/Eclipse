@@ -861,7 +861,7 @@ int MainWindow::importImages(ImageImport const& options, QString* error)
 
 void MainWindow::onActionImport3DModel()
 {
-    QStringList files = QFileDialog::getOpenFileNames(this, tr("Import 3D Models"), QString(), tr("3D Models (*.obj)"));
+    QStringList files = QFileDialog::getOpenFileNames(this, tr("Import 3D Models"), QString(), tr("3D Models (%1)").arg(Model3D::fileFilter()));
     if (files.isEmpty())
         return;
     files.sort(Qt::CaseInsensitive);    // a numbered run of them, in its order

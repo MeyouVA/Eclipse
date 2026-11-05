@@ -73,3 +73,30 @@ void PerspectiveView::onActionFrameSelected()
     m_zoom = zoom;
     update();
 }
+
+void PerspectiveView::setNavigation(Navigation navigation)
+{
+    m_navigation = navigation;
+    setCursor(navigation == NavigateTruck ? Qt::OpenHandCursor : navigation == NavigateDolly ? Qt::SizeVerCursor : Qt::ArrowCursor);
+    emit message(navigation == NavigateTruck ? tr("3D Navigation: Truck - drag to slide the view.")
+                 : navigation == NavigateDolly ? tr("3D Navigation: Dolly - drag up to move in, down to move out.")
+                                               : tr("3D Navigation: Orbit - drag to turn the view."));
+}
+
+void PerspectiveView::onActionMoveToFit()
+{
+    // Every layer's sheet in the view, as Frame Selected puts one.
+    QRectF box;
+    for (int l = 0; l < m_document->scene().layers.size(); ++l) {
+        QPolygonF const quad = layerPolygon(l);
+        if (!quad.isEmpty())
+            box = box.isNull() ? quad.boundingRect() : box.united(quad.boundingRect());
+    }
+    if (box.isNull())
+        return;
+    double const factor = std::min(width() * 0.8 / std::max(box.width(), 1.0), height() * 0.8 / std::max(box.height(), 1.0));
+    double const zoom = std::clamp(m_zoom * factor, 0.1, 20.0);
+    m_pan = (m_pan - box.center() + QPointF(width() / 2.0, height() / 2.0)) * (zoom / m_zoom);
+    m_zoom = zoom;
+    update();
+}

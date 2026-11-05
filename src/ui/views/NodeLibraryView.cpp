@@ -132,6 +132,8 @@ static Entry const kEffects[] = {
     {QT_TR_NOOP("Retime Transformation"), "effect:79", QT_TR_NOOP("Moves what comes in as at another frame, its drawings as they are"), QT_TR_NOOP("Timing")},
     {QT_TR_NOOP("Loop"), "effect:80", QT_TR_NOOP("Loops the pictures and moves of what comes in: frames Loop Start to Loop End over and over"), QT_TR_NOOP("Timing")},
     {QT_TR_NOOP("Loop Transformation"), "effect:81", QT_TR_NOOP("Loops only the moves of what comes in, to make cycles; the drawings change as they do"), QT_TR_NOOP("Timing")},
+    {QT_TR_NOOP("Normal Map"), "effect:83", QT_TR_NOOP("Computes the normal of all vector drawings above, as colours"), QT_TR_NOOP("Light")},
+    {QT_TR_NOOP("Light Shader"), "effect:84", QT_TR_NOOP("This creates illumination from light source over the shape of what is drawn"), QT_TR_NOOP("Light")},
     {QT_TR_NOOP("Shape-Curve"), "effect:82", QT_TR_NOOP("Draws a curve from one position to another, led by two handles, in a colour and width of its own"), QT_TR_NOOP("Generator")},
     {QT_TR_NOOP("Animate Pencil Texture"), "effect:73", QT_TR_NOOP("The grain of the pencil lines of the layer that comes in moved along them each frame (in a graph wired by hand)"), QT_TR_NOOP("Filter")},
 };

@@ -327,6 +327,13 @@ bool apply(QImage& image, Effect const& e, Context const& c)
     case Effect::IncreaseOpacity:
         increaseOpacity(image, amount);
         return true;
+    case Effect::NormalMap:
+        normalMap(image, amount * ppu, e.value("depth"), e.flag("flipY"));
+        return true;
+    case Effect::LightShader:
+        lightShader(image, amount * ppu, e.value("depth"), e.value("angle"), e.value("elevation"), e.colourValue("colour"), e.value("intensity"), e.value("ambient"),
+                    e.value("specular"), e.value("shininess"));
+        return true;
     case Effect::ColourSpace: {
         // (No name: the scene's working space; without colour management there is nothing to convert from or to.)
         QString const from = e.fromSpace.isEmpty() ? c.workingSpace : e.fromSpace;

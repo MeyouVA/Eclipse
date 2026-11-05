@@ -404,6 +404,8 @@ Drawing drawingFromJson(QJsonValue const& dv, QString const& folder, QHash<QStri
     if (QJsonArray const centre = dv.toObject()["modelCentre"].toArray(); centre.size() == 2)
         d.modelCentre = QPointF(centre[0].toDouble(), centre[1].toDouble());
     d.modelScale = std::clamp(dv.toObject()["modelScale"].toDouble(1.0), 0.01, 100.0);
+    if (dv.toObject().contains("model3d"))
+        d.modelLook = Model3D::lookFromJson(dv.toObject()["model3d"].toObject());
     d.set = dv.toObject()["set"].toString();
     if (QJsonArray const rig = dv.toObject()["rig"].toArray(); rig.size() >= 4)
         for (int i = 0; i + 1 < rig.size(); i += 2)

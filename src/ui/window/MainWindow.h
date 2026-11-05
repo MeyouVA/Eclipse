@@ -13,6 +13,7 @@
 #include <QTimer>
 
 #include "audio/sound/SoundPlayer.h"
+#include "model/geometry/Model3D.h"
 
 class SoundEditor;
 class QDialog;
@@ -323,6 +324,12 @@ public slots:
     void onActionSnapshot3D();
     void onActionUpdate3DModelPosition();
     void set3DAnimationTiming(int layer, int first, int hold);
+    // 3D Model Settings: the model's own turn, scaling, camera, light and toon shading, seen as they are changed.
+    void onActionModel3DSettings();
+    // Fit Model to View: each model of the layer in the middle of the camera frame, filling it.
+    void onActionFitModelToView();
+    // Render 3D Model: the model drawn, frame by frame, on a bitmap layer of its own (the model layer hidden).
+    void onActionRender3DModelToBitmap();
 
     // ---- Play ----
     void onActionTogglePlayback();
@@ -453,6 +460,23 @@ public slots:
     void onActionImport3DModel();
     // `files`: the models, one after the other; returns the layer, or -1 (`error` says why).
     int import3DModels(QStringList const& files, QString* error = nullptr);
+public:
+    // Where a layer's model is, how big, and its own look of it.
+    struct ModelSettings {
+        QPointF centre;
+        double scale = 1.0;
+        Model3D::Look look;
+    };
+    // The settings of the model drawing shown on `frame` (false: none there).
+    bool modelSettings(int layer, int frame, ModelSettings& out) const;
+    // Given to the model drawing shown on `frame`, or with `allInLayer` to each model of the layer (the layer's parts
+    // hidden or moved are kept for each).
+    bool setModelSettings(int layer, int frame, ModelSettings const& settings, bool allInLayer);
+    void fitModelToView(int layer);
+    // The new layer, or -1 (`error` says why).
+    int render3DModelToBitmap(int layer, QString* error = nullptr);
+
+public slots:
     void onActionImportMovie();
     void onActionImportReference();
     void onActionExportGif();
