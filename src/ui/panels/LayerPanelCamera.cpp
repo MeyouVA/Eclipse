@@ -35,6 +35,9 @@ void LayerPanel::buildCameraOptions()
             return;
         double const near = m_nearPlane->value();
         double const far = m_farPlane->value() > 0.0 ? std::max(m_farPlane->value(), near + 0.001) : 0.0;
+        // (The far plane is kept beyond the near one, and the user told so.)
+        if (m_farPlane->value() > 0.0 && m_farPlane->value() <= near)
+            emit message(tr("Warning, Far Plane value is lower than Near Plane value: the far plane is kept just beyond the near one."));
         m_document->editLayers({m_layer}, tr("Change Camera Clipping"), [near, far](Layer& layer) {
             layer.nearPlane = near;
             layer.farPlane = far;

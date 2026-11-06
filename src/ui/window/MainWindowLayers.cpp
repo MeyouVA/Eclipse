@@ -1,5 +1,6 @@
 // Eclipse - the main window: adding, deleting, duplicating and tagging layers; the Timeline's view modes.
 #include "ui/window/MainWindow.h"
+#include "ui/io/Ask.h"
 
 #include "actions/manager/ActionManager.h"
 #include <QCheckBox>
@@ -205,7 +206,7 @@ void MainWindow::onActionDeleteLayer()
 {
     // (Preferences > General: Ask before deleting layers.)
     if (QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("prefs/confirmLayerDelete"), false).toBool()
-        && QMessageBox::question(this, tr("Delete Layers"), tr("You are about to delete Layer(s)\nPlease Confirm.")) != QMessageBox::Yes)
+        && !Ask::confirm(this, QStringLiteral("deleteLayers"), tr("Delete Layers"), tr("You are about to delete Layer(s)\nPlease Confirm.")))
         return;
     m_document->removeLayers(m_timeline->selectedLayers());
 }

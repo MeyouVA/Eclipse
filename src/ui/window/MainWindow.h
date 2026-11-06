@@ -245,6 +245,9 @@ public:
         bool removeOnStop = true;
         QStringList* written = nullptr;     // told the files written
         QProgressDialog* progress = nullptr;    // told how many are done; its Cancel stops the render
+        // Files there already: asked about (Overwrite, Overwrite All, Skip, Skip All, Cancel); for checks, the buttons
+        // pressed in turn. Skipped frames count as written.
+        QStringList overwriteAnswers;
     };
     // Returns how many were written; fewer than asked means it stopped, with a message.
     int exportImages(ImageExport const& options, QString* error);

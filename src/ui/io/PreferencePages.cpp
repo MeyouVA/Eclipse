@@ -56,6 +56,7 @@
 #include <QTranslator>
 #include <tuple>
 #include "ui/io/PreferenceWidgets.h"
+#include "ui/io/Ask.h"
 
 void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog& dialog)
 {
@@ -140,6 +141,18 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.confirmLayerDelete->setToolTip(tr("Delete Layers asks first (You are about to delete Layer(s). Please Confirm.)."));
     w.confirmLayerDelete->setChecked(s.value(QStringLiteral("prefs/confirmLayerDelete"), false).toBool());
     w.generalLayout->addRow(w.confirmLayerDelete);
+    // The questions told Never Ask Again, asked again.
+    {
+        QPushButton* const again = new QPushButton(tr("Ask Again Questions Not Asked"), w.general);
+        again->setObjectName(QStringLiteral("PrefAskAgain"));
+        again->setToolTip(tr("The questions answered with Never Ask Again are asked again."));
+        again->setEnabled(!Ask::keptQuestions().isEmpty());
+        connect(again, &QPushButton::clicked, again, [again] {
+            Ask::askAgain();
+            again->setEnabled(false);
+        });
+        w.generalLayout->addRow(again);
+    }
     w.syncBitmapColour = new QCheckBox(tr("Keep the bitmap colour in sync with the vector colour"), w.general);
     w.syncBitmapColour->setObjectName(QStringLiteral("PrefSyncBitmapColour"));
     w.syncBitmapColour->setToolTip(tr("With Independent Bitmap Colour on, choosing a colour in the palette makes it the bitmap colour too."));

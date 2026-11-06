@@ -1,5 +1,6 @@
 // Eclipse - writing the scene out: frames as pictures, an animated GIF, the sound.
 #include "ui/window/MainWindow.h"
+#include "ui/io/Ask.h"
 
 #include <functional>
 
@@ -97,6 +98,30 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
     QVector<int> frames;
     for (int f = first; f <= last; ++f)
         frames.push_back(f);
+    // Pictures there already: overwritten or left as they are, as answered.
+    int skipped = 0;
+    {
+        Ask::Overwrite question(this, tr("Export Images"));
+        question.setAnswers(options.overwriteAnswers);
+        QVector<int> kept;
+        for (int f : std::as_const(frames)) {
+            if (!QFileInfo::exists(fileOf(f))) {
+                kept << f;
+                continue;
+            }
+            Ask::Overwrite::Answer const answer = question.ask(fileOf(f));
+            if (answer == Ask::Overwrite::Cancel) {
+                if (error)
+                    *error = tr("Cancelled: no picture was written.");
+                return 0;
+            }
+            if (answer == Ask::Overwrite::Replace)
+                kept << f;
+            else
+                ++skipped;
+        }
+        frames = kept;
+    }
     std::atomic<int> written{0};
     QStringList made;
     QMutex madeLock;
@@ -162,7 +187,7 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
         *error = why.isEmpty() ? tr("Stopped.") : why;
     if (options.written)
         *options.written = made;
-    return written;
+    return written + skipped;
 }
 
 void MainWindow::askExportImages(bool preview)
