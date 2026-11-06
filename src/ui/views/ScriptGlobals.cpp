@@ -578,7 +578,7 @@ QString ScriptFolders::resource() const { return QCoreApplication::applicationDi
 QString ScriptAbout::getVersionInfoStr() const
 {
     QString const version = QCoreApplication::applicationVersion();
-    return QStringLiteral("Eclipse %1").arg(version.isEmpty() ? QStringLiteral("0.2.0") : version);
+    return QStringLiteral("Eclipse %1").arg(version.isEmpty() ? QStringLiteral("0.3.0") : version);
 }
 
 QString ScriptAbout::getApplicationPath() const { return QCoreApplication::applicationFilePath(); }

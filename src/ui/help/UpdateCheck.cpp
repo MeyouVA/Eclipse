@@ -48,7 +48,7 @@ QNetworkRequest request(QUrl const& url)
 QString currentVersion()
 {
     QString const v = QApplication::applicationVersion();
-    return v.isEmpty() ? QStringLiteral("0.2.0") : v;
+    return v.isEmpty() ? QStringLiteral("0.3.0") : v;
 }
 
 QUrl feed()

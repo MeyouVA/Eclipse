@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 {
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("Configuration Editor"));
-    QApplication::setApplicationVersion(QStringLiteral("0.2.0"));
+    QApplication::setApplicationVersion(QStringLiteral("0.3.0"));
     QSettings const prefs(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
     Theme::apply(app, ActionManager::defaultDirectory(), prefs.value(QStringLiteral("prefs/darkStyle"), true).toBool() ? QStringLiteral("dark") : QStringLiteral("light"), nullptr);
     QApplication::setWindowIcon(QIcon(ActionManager::defaultDirectory() + QStringLiteral("/eclipse.png")));

@@ -33,7 +33,7 @@ ECLIPSE_UI_API void printError(QString const& text);
 // file): ECLIPSE_TOOLS_FOLDER when it is set, else Eclipse's folder of the user's application data.
 ECLIPSE_UI_API QString dataFolder();
 
-// The version of the programs ("Eclipse 0.2.0"), read from resources/version.txt beside them when it is there.
+// The version of the programs ("Eclipse 0.3.0"), read from resources/version.txt beside them when it is there.
 ECLIPSE_UI_API QString versionLine();
 ECLIPSE_UI_API QString versionFile();
 

@@ -10,7 +10,7 @@ int main(int argc, char** argv)
         qputenv("QT_QPA_PLATFORM", "offscreen;windows");    // (no window; the usual platform if offscreen is not there)
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("eclipse-info"));
-    QGuiApplication::setApplicationVersion(QStringLiteral("0.2.0"));
+    QGuiApplication::setApplicationVersion(QStringLiteral("0.3.0"));
     return ToolInfo::run(QGuiApplication::arguments().mid(1), [](QString const& line, bool isError) {
         if (isError)
             CommandLine::printError(line);

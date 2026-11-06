@@ -11,7 +11,7 @@ int main(int argc, char** argv)
         qputenv("QT_QPA_PLATFORM", "offscreen;windows");    // (no window; the usual platform if offscreen is not there)
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("eclipse-batch"));
-    QApplication::setApplicationVersion(QStringLiteral("0.2.0"));
+    QApplication::setApplicationVersion(QStringLiteral("0.3.0"));
     BatchRun::Options options;
     QString error;
     if (!BatchRun::parse(QApplication::arguments().mid(1), options, &error)) {

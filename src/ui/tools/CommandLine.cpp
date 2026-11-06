@@ -231,7 +231,7 @@ QString versionFile()
 
 QString versionLine()
 {
-    QString product = QStringLiteral("Eclipse"), version = QStringLiteral("0.2.0"), build;
+    QString product = QStringLiteral("Eclipse"), version = QStringLiteral("0.3.0"), build;
     QFile file(versionFile());
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         for (QString const& line : QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))) {
