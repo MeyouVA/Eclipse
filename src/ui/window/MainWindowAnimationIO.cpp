@@ -2,6 +2,7 @@
 #include "ui/window/MainWindow.h"
 
 #include "formats/anim/AtomAnimation.h"
+#include "formats/anim/UsdAnimation.h"
 #include "model/document/Commands.h"
 #include "ui/timeline/Timeline.h"
 #include "ui/window/MainWindowPrivate.h"
@@ -62,7 +63,7 @@ bool askOptions(QWidget* parent, bool exporting, bool& fields, double& scale, bo
 {
     QDialog dialog(parent);
     dialog.setObjectName(exporting ? QStringLiteral("ExportAnimationDialog") : QStringLiteral("ImportAnimationDialog"));
-    dialog.setWindowTitle(exporting ? QObject::tr("Export ATOM Animation File") : QObject::tr("Import ATOM Animation File"));
+    dialog.setWindowTitle(exporting ? QObject::tr("Export Animation File") : QObject::tr("Import Animation File"));
     QFormLayout* const form = new QFormLayout(&dialog);
     QCheckBox* const inFields = new QCheckBox(QObject::tr("Positions in fields (1 = a twelfth of the scene's width)"), &dialog);
     inFields->setChecked(fields);
@@ -106,7 +107,7 @@ bool MainWindow::importAnimation(QString const& path, bool fields, double scale,
     Scene read = m_document->scene();
     AtomAnimation::Result const result = AtomAnimation::read(read, path, options);
     if (result.ok)
-        m_document->editScene(tr("Import ATOM Animation File"), [&read](Scene& s) { s = read; });
+        m_document->editScene(UsdAnimation::isUsd(path) ? tr("Import USD Animation File") : tr("Import ATOM Animation File"), [&read](Scene& s) { s = read; });
     tell(this, statusBar(), false, result, said);
     return result.ok;
 }
@@ -130,7 +131,9 @@ bool MainWindow::exportAnimation(QString const& path, bool fields, double scale,
 
 void MainWindow::onActionImportAnimation()
 {
-    QString const path = QFileDialog::getOpenFileName(this, tr("Import ATOM Animation File"), QString(), tr("ATOM animation (*.atom);;All files (*)"));
+    QString const path = QFileDialog::getOpenFileName(this, tr("Import Animation File"), QString(),
+                                                      tr("Animation files (*.atom *.usda *.usd *.usdc *.usdz);;Maya ATOM files (*.atom);;USD files (*.usd *.usda *.usdc *.usdz);;"
+                                                         "USDA files (*.usda);;USDZ files (*.usdz);;All files (*)"));
     if (path.isEmpty())
         return;
     bool fields = true, overwrite = true, selectedOnly = false;
@@ -142,7 +145,8 @@ void MainWindow::onActionImportAnimation()
 
 void MainWindow::onActionExportAnimation()
 {
-    QString const path = QFileDialog::getSaveFileName(this, tr("Export ATOM Animation File"), QString(), tr("ATOM animation (*.atom)"),
+    QString const path = QFileDialog::getSaveFileName(this, tr("Export Animation File"), QString(),
+                                                      tr("Maya ATOM file (*.atom);;USDA file (*.usda);;USD binary file (*.usdc);;USDZ file (*.usdz)"),
                                                       nullptr, QFileDialog::DontConfirmOverwrite);
     if (path.isEmpty())
         return;
@@ -150,5 +154,6 @@ void MainWindow::onActionExportAnimation()
     double scale = 1.0;
     if (!askOptions(this, true, fields, scale, overwrite, selectedOnly))
         return;
-    exportAnimation(path.endsWith(QLatin1String(".atom"), Qt::CaseInsensitive) ? path : path + QStringLiteral(".atom"), fields, scale, overwrite, selectedOnly);
+    bool const known = path.endsWith(QLatin1String(".atom"), Qt::CaseInsensitive) || UsdAnimation::isUsd(path);
+    exportAnimation(known ? path : path + QStringLiteral(".atom"), fields, scale, overwrite, selectedOnly);
 }

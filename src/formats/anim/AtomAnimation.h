@@ -4,6 +4,7 @@
 // Channels: translateX/Y/Z - position X, Y (up the picture is up the curve) and Z; rotateX/Y/Z - the angles (Z the other way
 // round, as up is); scaleX/Y. Times count from 1 in the file's own frame rate. With `fields`, a position of 1 is one field (a
 // twelfth of the scene's width); without, it is a unit of the scene.
+// A USD file (.usda, .usdc, .usdz) given to read or write goes to UsdAnimation.
 #pragma once
 
 #include <QString>

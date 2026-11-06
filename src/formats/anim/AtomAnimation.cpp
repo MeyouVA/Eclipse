@@ -1,6 +1,7 @@
 // Eclipse - layers' keyframes in ATOM files (see AtomAnimation.h).
 #include "formats/anim/AtomAnimation.h"
 
+#include "formats/anim/UsdAnimation.h"
 #include "model/scene/Scene.h"
 
 #include <QCoreApplication>
@@ -222,6 +223,8 @@ QString writeText(Scene const& scene, Options const& options, Result* result)
 
 Result write(Scene const& scene, QString const& path, Options const& options)
 {
+    if (UsdAnimation::isUsd(path))
+        return UsdAnimation::write(scene, path, options);
     Result result;
     if (path.trimmed().isEmpty()) {
         result.error = tr("No file has been selected for export.");
@@ -264,10 +267,8 @@ Result read(Scene& scene, QString const& path, Options const& options)
         return result;
     }
     QString const suffix = QFileInfo(path).suffix().toLower();
-    if (suffix == QLatin1String("usd") || suffix == QLatin1String("usda") || suffix == QLatin1String("usdc") || suffix == QLatin1String("usdz")) {
-        result.error = tr("Unsupported file type '%1' for animation import!").arg(suffix);
-        return result;
-    }
+    if (UsdAnimation::isUsd(path))
+        return UsdAnimation::read(scene, path, options);
     if (suffix != QLatin1String("atom")) {
         result.error = tr("Unsupported file-extension '%1' for animation import.").arg(suffix);
         return result;
