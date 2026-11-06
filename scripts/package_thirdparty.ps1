@@ -34,6 +34,12 @@ try {
             Get-ChildItem -LiteralPath (Join-Path $source $package) -Force | Where-Object { $_.Name -ne '.installed.json' -and ($package -ne 'imagemagick' -or $_.Extension -ne '.exe' -or $_.Name -eq 'magick.exe') } | Copy-Item -Destination $folder -Recurse -Force
         }
     }
+    # USD (x64 only): its Python package beside the bundled Python, when it is there.
+    if (Test-Path -LiteralPath (Join-Path $source 'usd\pxr\usd_ms.dll') -PathType Leaf) {
+        $folder = Join-Path $runtime 'usd'
+        New-Item -ItemType Directory -Path $folder -Force | Out-Null
+        Get-ChildItem -LiteralPath (Join-Path $source 'usd') -Force | Where-Object { $_.Name -ne '.installed.json' } | Copy-Item -Destination $folder -Recurse -Force
+    }
     Copy-Item -LiteralPath (Join-Path $source 'LICENSES.md') -Destination $runtime -Force
     Write-Host "Third-party runtime copied to $runtime"
     exit 0

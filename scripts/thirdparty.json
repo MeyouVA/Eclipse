@@ -48,6 +48,18 @@
     }
   },
   {
+    "name": "usd",
+    "version": "26.11 (usd-core, for the bundled Python 3.13)",
+    "license": "Tomorrow Open Source Technology License 1.0 (Pixar); TBB under the Apache License 2.0",
+    "purpose": "USD animation files: .usdc and .usdz read and written, and USD stages put together, through the bundled Python",
+    "url": "https://files.pythonhosted.org/packages/02/79/872355c8418b8659e2b0e1436083a5bcdf43edb75d6ba8f531e4b1300113/usd_core-26.11-cp313-none-win_amd64.whl",
+    "bytes": 13116328,
+    "sha256": "9d6dab0d6933b23bd567b90532fea3c5aef8f6d435ccf3551f788f93c366e0b4",
+    "archive": "usd-core-26.11-cp313-win_amd64.whl",
+    "x64Only": true,
+    "notices": ["usd_core-26.11.dist-info/licenses/LICENSE.txt"]
+  },
+  {
     "name": "x265",
     "version": "4.2",
     "source": true,

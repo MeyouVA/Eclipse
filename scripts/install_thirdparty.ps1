@@ -29,6 +29,10 @@ try {
     Write-Host "Native CPU architecture: $native; selected packages: $Architecture (Intel and AMD both use x64)."
     $manifest = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'thirdparty.json') -Raw | ConvertFrom-Json
     if ($Architecture -eq 'arm64') {
+        # (A package built only for x64 - USD - is left out on ARM64; Eclipse goes without what it gives.)
+        $skipped = @($manifest | Where-Object { $_.x64Only } | ForEach-Object { $_.name })
+        if ($skipped.Count) { Write-Host "Not available for ARM64, left out: $($skipped -join ', ')" }
+        $manifest = @($manifest | Where-Object { -not $_.x64Only })
         foreach ($package in $manifest) {
             if ($package.source) { continue }
             if (-not $package.arm64) { throw "No pinned ARM64 package is available for $($package.name). Nothing downloaded." }
@@ -47,7 +51,9 @@ try {
     $downloadRoot = Join-Path $root '.downloads'
     if ((Test-Path -LiteralPath $downloadRoot) -and ((Get-Item -LiteralPath $downloadRoot).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'The download directory must not be a reparse point.' }
     New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
-    $tar = (Get-Command tar.exe -ErrorAction Stop).Source
+    # (Windows' own tar reads zip archives and wheels too; another tar earlier on the path - Git's - may not.)
+    $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+    if (-not (Test-Path -LiteralPath $tar)) { $tar = (Get-Command tar.exe -ErrorAction Stop).Source }
     $sevenZip = Join-Path $env:ProgramFiles '7-Zip\7z.exe'
     if (-not (Test-Path -LiteralPath $sevenZip)) {
         $available = Get-Command 7z.exe -ErrorAction SilentlyContinue
@@ -107,7 +113,9 @@ try {
     $notices = @('# Third-party software', '', 'Keep the original license, copyright and notice files shipped inside every package when packaging runtime files.', '')
     foreach ($package in $manifest) {
         $notices += @("## $($package.name) $($package.version)", '', $package.license, '', "Used for: $($package.purpose)", '', "Source: $($package.url)", '', "Archive SHA-256: $($package.sha256)", '')
-        foreach ($noticeName in @('NOTICE.txt','LICENSE.txt','COPYING','COPYING.LESSER')) {
+        $noticeNames = @('NOTICE.txt','LICENSE.txt','COPYING','COPYING.LESSER')
+        if ($package.notices) { $noticeNames += @($package.notices) }
+        foreach ($noticeName in $noticeNames) {
             $noticePath = Join-Path (Join-Path $root $package.name) $noticeName
             if (Test-Path -LiteralPath $noticePath) {
                 $notices += @("### Original $noticeName", '', (Get-Content -LiteralPath $noticePath -Raw), '')

@@ -58,6 +58,7 @@ QString number(double v)
 struct Interpreter {
     QString program;
     QStringList prefix;
+    QString path;       // a folder put first on its module path (the USD package that comes with Eclipse)
 };
 
 int run(Interpreter const& python, QString const& code, QStringList const& arguments, QString* err, int wait = 120000)
@@ -65,7 +66,15 @@ int run(Interpreter const& python, QString const& code, QStringList const& argum
     QTemporaryDir quiet;    // (run where nothing of its own lies about to be imported by mistake)
     QProcess process;
     process.setWorkingDirectory(quiet.path());
-    process.start(python.program, python.prefix + QStringList{QStringLiteral("-c"), code} + arguments);
+    // (The bundled Python reads only the folders its ._pth names, so the USD package's folder is added by the code itself.)
+    QString lead;
+    if (!python.path.isEmpty()) {
+        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+        environment.insert(QStringLiteral("ECLIPSE_USD_PATH"), QDir::toNativeSeparators(python.path));
+        process.setProcessEnvironment(environment);
+        lead = QStringLiteral("import os, sys; sys.path.insert(0, os.environ['ECLIPSE_USD_PATH'])\n");
+    }
+    process.start(python.program, python.prefix + QStringList{QStringLiteral("-c"), lead + code} + arguments);
     if (!process.waitForStarted(10000))
         return -1;
     if (!process.waitForFinished(wait)) {
@@ -82,22 +91,27 @@ int run(Interpreter const& python, QString const& code, QStringList const& argum
 QVector<Interpreter> pythons()
 {
     QVector<Interpreter> found;
-    if (QString const bundled = ThirdParty::executable(QStringLiteral("python"), QStringLiteral("python")); !bundled.isEmpty())
-        found.push_back({bundled, {}});
+    // First the Python that comes with Eclipse, with the USD package that comes with it (thirdparty/python, thirdparty/usd);
+    // then the computer's own Pythons, in case one of them has the package.
+    if (QString const bundled = ThirdParty::executable(QStringLiteral("python"), QStringLiteral("python")); !bundled.isEmpty()) {
+        if (QString const usd = ThirdParty::folder(QStringLiteral("usd")); !usd.isEmpty())
+            found.push_back({bundled, {}, usd});
+        found.push_back({bundled, {}, {}});
+    }
     for (char const* name : {"python", "python3"}) {
         QString const program = QStandardPaths::findExecutable(QLatin1String(name));
         // (Windows' own stand-in that only offers to install Python from the Store is no Python.)
         if (!program.isEmpty() && !program.contains(QLatin1String("WindowsApps"), Qt::CaseInsensitive))
-            found.push_back({program, {}});
+            found.push_back({program, {}, {}});
     }
     if (QString const launcher = QStandardPaths::findExecutable(QStringLiteral("py")); !launcher.isEmpty()) {
-        found.push_back({launcher, {}});
+        found.push_back({launcher, {}, {}});
         QProcess list;
         list.start(launcher, {QStringLiteral("--list")});
         if (list.waitForFinished(10000)) {
             static QRegularExpression const kVersion(QStringLiteral(R"(-V:(\S+))"));
             for (auto it = kVersion.globalMatch(QString::fromUtf8(list.readAllStandardOutput())); it.hasNext();)
-                found.push_back({launcher, {QStringLiteral("-V:") + it.next().captured(1)}});
+                found.push_back({launcher, {QStringLiteral("-V:") + it.next().captured(1)}, {}});
         }
     }
     return found;
@@ -128,7 +142,8 @@ QString const kNoPackage = QStringLiteral("NO_USD_PACKAGE");
 
 QString needsPackage()
 {
-    return tr("USD files other than .usda need the USD package for Python (install it with: pip install usd-core).");
+    return tr("USD files other than .usda need the USD package that comes with Eclipse (thirdparty\\usd, put there by scripts\\install_thirdparty.bat), "
+              "or a Python of the computer's own with it (pip install usd-core).");
 }
 
 // ---- writing ----

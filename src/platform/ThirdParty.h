@@ -7,6 +7,18 @@
 
 namespace ThirdParty {
 
+// A package's folder beside the program (thirdparty/<package>, or ../thirdparty/<package> in a build), or empty.
+inline QString folder(QString const& package)
+{
+    QDir const app(QCoreApplication::applicationDirPath());
+    for (QString const& root : {app.filePath(QStringLiteral("thirdparty")), app.filePath(QStringLiteral("../thirdparty"))}) {
+        QFileInfo const dir(QDir(root).filePath(package));
+        if (dir.isDir())
+            return dir.canonicalFilePath();
+    }
+    return {};
+}
+
 inline QString executable(QString const& package, QString const& name)
 {
     QDir const app(QCoreApplication::applicationDirPath());
