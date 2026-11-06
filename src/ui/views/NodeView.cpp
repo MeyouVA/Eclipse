@@ -414,10 +414,57 @@ QPointF NodeView::cableMiddle(int child) const
 int NodeView::nodeAt(QPointF widgetPos) const
 {
     QVector<QPointF> const p = positions();
-    for (int l = int(p.size()) - 1; l >= 0; --l)
-        if (nodeShown(l) && QRectF(toWidget(p[l]), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom)).contains(widgetPos))
+    Scene const& scene = m_document->scene();
+    for (int l = int(p.size()) - 1; l >= 0; --l) {
+        if (!nodeShown(l))
+            continue;
+        if (QRectF(toWidget(p[l]), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom)).contains(widgetPos))
             return l;
+        // The effects that hang under a layer (particles, blurs ...) are its own: a press on one is a press on the layer.
+        for (int e = 0; l < scene.layers.size() && e < scene.layers[l].effects.size(); ++e)
+            if (QRectF(toWidget(p[l] + QPointF(0, 40.0 * (e + 1))), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom)).contains(widgetPos))
+                return l;
+    }
     return -1;
+}
+
+QRectF NodeView::layerCompositeRect() const
+{
+    return QRectF(toWidget(compositePos(positions())), QSizeF(kNodeWidth * m_zoom, kNodeHeight * m_zoom));
+}
+
+QRectF NodeView::layerDisplayRect() const
+{
+    QRectF const composite = layerCompositeRect();
+    return QRectF(composite.left(), composite.bottom() + 40.0 * m_zoom, composite.width(), composite.height());
+}
+
+void NodeView::wireKeepingLayout()
+{
+    if (graphMode())
+        return;
+    Scene const& scene = m_document->scene();
+    QVector<QPointF> const pos = positions();
+    QPointF const composite = compositePos(pos);
+    NodeGraph g = scene.graphFromLayers();
+    for (GraphNode& n : g.nodes) {
+        if (n.group != 0)
+            continue;
+        if (n.kind == GraphNode::LayerNode) {
+            if (int const l = scene.layerIndex(n.layer); l >= 0 && l < pos.size() && nodeShown(l))
+                n.at = pos[l];
+        } else if (n.kind == GraphNode::Composite) {
+            n.at = composite;
+        } else if (n.kind == GraphNode::Display) {
+            n.at = composite + QPointF(0.0, kNodeHeight + 40.0);
+        }
+    }
+    m_graphGroup = 0;
+    m_graphPicked.clear();
+    m_graphNode = 0;
+    m_document->setGraph(g, tr("Wire the Graph by Hand"));
+    emit statusMessage(tr("The graph is now wired by hand: every node can be picked, moved and cabled. Node View > Stack the Layers Again goes back."));
+    update();
 }
 
 int NodeView::cableAt(QPointF widgetPos) const

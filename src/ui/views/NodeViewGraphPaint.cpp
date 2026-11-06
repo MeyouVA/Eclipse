@@ -665,6 +665,26 @@ void NodeView::paintGraphMode(QPainter& p)
             }
         }
         if (n.kind == GraphNode::LayerNode) {
+            // The effects it keeps itself (particles, motion blur ...): tags under it.
+            if (int const l = scene.layerIndex(n.layer); l >= 0) {
+                QFont const was = p.font();
+                QFont tagFont = was;
+                tagFont.setPointSizeF(std::max(4.5, was.pointSizeF() * 0.85));
+                p.setFont(tagFont);
+                for (int e = 0; e < scene.layers[l].effects.size(); ++e) {
+                    Effect const& fx = scene.layers[l].effects[e];
+                    QRectF const tag = graphEffectTag(n.id, e).translated(shift(n.id));
+                    p.setPen(QPen(InterfaceColours::get("nodeDark"), 1));
+                    p.setBrush(fx.enabled ? InterfaceColours::get("nodeEffect") : InterfaceColours::get("nodeEffect").darker(190));
+                    p.drawRoundedRect(tag, 3 * m_zoom, 3 * m_zoom);
+                    p.setPen(QColor(240, 240, 240));
+                    QString const name = Effects::name(fx, scene).section(QStringLiteral("  "), 0, 0);
+                    p.drawText(tag.adjusted(4 * m_zoom, 0, -2 * m_zoom, 0), Qt::AlignVCenter | Qt::AlignLeft,
+                               p.fontMetrics().elidedText(name, Qt::ElideRight, int(tag.width() - 6 * m_zoom)));
+                }
+                p.setFont(was);
+                p.setPen(QPen(InterfaceColours::get("nodeDark"), 1));
+            }
             // Its transformation ports: small squares at its two ends.
             double const s = 3.5 * m_zoom;
             p.setBrush(QColor(230, 160, 60));

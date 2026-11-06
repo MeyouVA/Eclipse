@@ -49,6 +49,14 @@ public:
     QString pathText() const;
     QRectF groupInputRect() const;
     QRectF groupOutputRect() const;
+    // The layers stacked as they are: where the composite and the display stand in the view.
+    QRectF layerCompositeRect() const;
+    QRectF layerDisplayRect() const;
+    // The graph wired by hand from the layers as they stack, every node kept where the view shows it now (so that a drag
+    // begun on the composite or the display goes on under the pointer).
+    void wireKeepingLayout();
+    // Wired by hand: the tags under a layer's node naming the effects it keeps itself (particles, motion blur ...).
+    QRectF graphEffectTag(int id, int effect) const;
     // The layers the input node is cabled to: those that hang from the group itself.
     QVector<int> groupInputs() const;
     QPointF navigatorPoint(QPointF graph) const;

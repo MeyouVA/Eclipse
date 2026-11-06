@@ -177,7 +177,25 @@ void NodeView::paintLayerMode(QPainter& p)
             node(rectOf(pos[l] + QPointF(0, 40.0 * (e + 1))), text, InterfaceColours::get("nodeEffect"), false, !layer.effects[e].enabled || !layer.visible);
         }
     }
+    // Their pins: an effect's in and out; the composite's inputs (one for each picture that comes in) and its output.
+    p.setPen(QPen(InterfaceColours::get("nodePortImageDark"), 1));
+    p.setBrush(InterfaceColours::get("nodePortImage"));
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        if (!nodeShown(l))
+            continue;
+        for (int e = 0; e < scene.layers[l].effects.size(); ++e) {
+            QRectF const er = rectOf(pos[l] + QPointF(0, 40.0 * (e + 1)));
+            p.drawEllipse(QPointF(er.center().x(), er.top()), 3.5 * m_zoom, 3.5 * m_zoom);
+            p.drawEllipse(QPointF(er.center().x(), er.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
+        }
+    }
     node(composite, tr("Composite"), InterfaceColours::get("nodeComposite"), false, false);
+    p.setPen(QPen(InterfaceColours::get("nodePortImageDark"), 1));
+    p.setBrush(InterfaceColours::get("nodePortImage"));
+    for (int i = 0; i < std::max<int>(1, int(drawings.size())); ++i)
+        p.drawEllipse(QPointF(composite.left() + composite.width() * (i + 1.0) / (std::max<int>(1, int(drawings.size())) + 1.0), composite.top()), 3.5 * m_zoom, 3.5 * m_zoom);
+    p.drawEllipse(QPointF(composite.center().x(), composite.bottom()), 4.5 * m_zoom, 4.5 * m_zoom);
+    p.drawEllipse(QPointF(display.center().x(), display.top()), 3.5 * m_zoom, 3.5 * m_zoom);
     if (enteredGroup() >= 0) {
         // In a group the composite goes out of the group, not to the display; and what comes in is a node of its own.
         node(display, tr("Group Output"), InterfaceColours::get("nodeProxyPort"), false, false, InterfaceColours::get("nodeProxyPortDark"));
@@ -270,6 +288,25 @@ void NodeView::mousePressEvent(QMouseEvent* event)
     if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton)
         return;
     Scene const& scene = m_document->scene();
+    // The composite and the display (or their pins): nodes of their own only in a graph wired by hand - so it is wired by
+    // hand, everything left where it stands, and the press goes on there (a drag, a cable pulled from a pin).
+    // (Only where nothing else is: a layer's node, its effects or the ports of the layers come first.)
+    bool onLayer = nodeAt(m_pressPos) >= 0;
+    for (int l = 0; l < scene.layers.size() && !onLayer; ++l)
+        if (nodeShown(l)) {
+            QRectF const r = nodeRect(l);
+            onLayer = QLineF(QPointF(r.center().x(), r.bottom()), m_pressPos).length() <= std::max(5.0, 7.0 * m_zoom)
+                      || QLineF(QPointF(r.center().x(), r.top()), m_pressPos).length() <= std::max(5.0, 7.0 * m_zoom);
+        }
+    if (event->button() == Qt::LeftButton && enteredGroup() < 0 && !onLayer) {
+        double const pin = 5.0 * m_zoom;
+        for (QRectF const& r : {layerCompositeRect(), layerDisplayRect()})
+            if (r.adjusted(-pin, -pin, pin, pin).contains(m_pressPos)) {
+                wireKeepingLayout();
+                graphPress(event);
+                return;
+            }
+    }
     // The port under a node: pull a cable out of it.
     if (event->button() == Qt::LeftButton) {
         for (int l = int(scene.layers.size()) - 1; l >= 0; --l) {

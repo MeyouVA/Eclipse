@@ -232,11 +232,29 @@ int NodeView::groupGraphNodes(QVector<int> const& ids)
 
 int NodeView::graphNodeAt(QPointF widgetPos) const
 {
-    NodeGraph const& g = m_document->scene().graph;
-    for (int i = int(g.nodes.size()) - 1; i >= 0; --i)
-        if (graphNodeRect(g.nodes[i].id).contains(widgetPos))
-            return g.nodes[i].id;
+    Scene const& scene = m_document->scene();
+    NodeGraph const& g = scene.graph;
+    for (int i = int(g.nodes.size()) - 1; i >= 0; --i) {
+        GraphNode const& n = g.nodes[i];
+        if (graphNodeRect(n.id).contains(widgetPos))
+            return n.id;
+        if (n.kind == GraphNode::LayerNode)
+            if (int const l = scene.layerIndex(n.layer); l >= 0)
+                for (int e = 0; e < scene.layers[l].effects.size(); ++e)
+                    if (graphEffectTag(n.id, e).contains(widgetPos))
+                        return n.id;
+    }
     return 0;
+}
+
+QRectF NodeView::graphEffectTag(int id, int effect) const
+{
+    QRectF const r = graphNodeRect(id);
+    if (r.isNull())
+        return QRectF();
+    // Down its left half, clear of the output pin in the middle.
+    double const h = 16.0 * m_zoom;
+    return QRectF(r.left(), r.bottom() + 6.0 * m_zoom + effect * (h + 3.0 * m_zoom), r.width() * 0.42, h);
 }
 
 NodeView::GraphPort NodeView::graphPortAt(QPointF widgetPos) const
