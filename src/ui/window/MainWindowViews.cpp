@@ -419,6 +419,9 @@ void MainWindow::createCameraView()
     m_messageLabel = new QLabel(status);
     m_messageLabel->setObjectName(QStringLiteral("MessageLabel"));
     m_messageLabel->setAlignment(Qt::AlignCenter);
+    // (However long a message is, it takes only the room the strip has - cut short, whole in its tooltip - and never widens the view.)
+    m_messageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_messageLabel->setMinimumWidth(0);
     m_statusLabel = new QLabel(status);
     m_statusLabel->setObjectName(QStringLiteral("StatusLabel"));
     m_drawingLabel = new QLabel(status);

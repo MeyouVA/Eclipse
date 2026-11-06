@@ -8,6 +8,8 @@
 #include <QMessageBox>
 #include <QStatusBar>
 
+#include <algorithm>
+
 #include "actions/manager/ActionManager.h"
 #include "actions/dialogs/ShortcutsDialog.h"
 #include "audio/sound/Sound.h"
@@ -275,7 +277,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     m_toolName = tr("Brush");
     m_messageLabel->setText(m_toolName);
     connect(statusBar(), &QStatusBar::messageChanged, this, [this](QString const& text) {
-        m_messageLabel->setText(text.isEmpty() ? m_toolName : text);
+        QString const shown = text.isEmpty() ? m_toolName : text;
+        m_messageLabel->setToolTip(text);
+        m_messageLabel->setText(m_messageLabel->fontMetrics().elidedText(shown, Qt::ElideRight, std::max(60, m_messageLabel->width() - 8)));
         m_messageLabel->setStyleSheet(text.isEmpty() ? QString() : QStringLiteral("color: #e6e6e6;"));
     });
 
