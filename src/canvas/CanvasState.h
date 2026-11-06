@@ -454,6 +454,10 @@ protected:
     QPointF m_thickPress;        // where the pen went down
     bool m_thickOneSide = false; // Alt: only the side pulled on
     bool m_thickExisting = false;   // a thickness point that was there (not one put down by this press)
+    int m_thickPickedStroke = -1;   // the Pencil Editor: the thickness point picked (clicked, dragged or put down), which Delete takes away
+    int m_thickPickedKey = -1;
+    int m_thickPickedLayer = -1, m_thickPickedDrawing = -1;     // (on the drawing it was picked on)
+    int m_thickInterpolation = 0;   // how new thickness points go on to the next (ThicknessPoint::Interpolation)
     bool m_inked = false;        // the Ink tool: whether the drag has coloured a line yet
     QPointF m_turnFrom;          // Turn in Space: where the pen went down (in the view)
     int m_envPicked = -1;       // the point pressed last (its place among the points, times three): its handles show

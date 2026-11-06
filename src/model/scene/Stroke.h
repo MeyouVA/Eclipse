@@ -41,7 +41,19 @@ struct ThicknessPoint {
     double at = 0.0;
     float left = 1.0f;
     float right = 1.0f;
-    bool operator==(ThicknessPoint const& o) const { return at == o.at && left == o.left && right == o.right; }
+    // How thick the line was there before the point was edited (when it was put down): what the Pencil Editor's number keys
+    // scale from. Negative: as it is now.
+    float origLeft = -1.0f;
+    float origRight = -1.0f;
+    // How the thickness goes on from here to the next point.
+    enum Interpolation { Smooth, Linear, Step, Ease, InterpolationCount };
+    int interpolation = Smooth;
+    float baseLeft() const { return origLeft >= 0.0f ? origLeft : left; }
+    float baseRight() const { return origRight >= 0.0f ? origRight : right; }
+    bool operator==(ThicknessPoint const& o) const
+    {
+        return at == o.at && left == o.left && right == o.right && origLeft == o.origLeft && origRight == o.origRight && interpolation == o.interpolation;
+    }
 };
 
 // One pen stroke, in scene coordinates (pixels of the camera frame).

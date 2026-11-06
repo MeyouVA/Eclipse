@@ -146,11 +146,25 @@ if (drag == DragThickness) {
             if (line.thickness.size() > 1 && m_thickKey >= 0 && m_thickKey < line.thickness.size()) {
                 line.thickness.removeAt(m_thickKey);
                 Drawing const art = m_eraseArt;
+                pickThicknessPoint(-1, -1);
                 commitDrawing(art, tr("Remove Thickness Point"));
             }
-        } else if (m_thickMoved) {
-            Drawing const art = m_eraseArt;
-            commitDrawing(art, m_opacityMode ? tr("Pencil Line Opacity") : tr("Pencil Line Thickness"));
+        } else {
+            // The point clicked or dragged is the one picked (Delete takes it away).
+            int const stroke = m_thickStroke, key = m_thickKey;
+            if (m_thickMoved) {
+                Drawing const art = m_eraseArt;
+                commitDrawing(art, m_opacityMode ? tr("Pencil Line Opacity") : tr("Pencil Line Thickness"));
+            } else if (!m_thickExisting && !m_opacityMode) {
+                // A click on the line: the thickness point is put there, as it is (no need to pull).
+                Drawing const art = m_eraseArt;
+                commitDrawing(art, tr("Add Thickness Point"));
+            }
+            if (!m_opacityMode) {
+                pickThicknessPoint(stroke, key);
+                if (!m_thickMoved)
+                    emit message(tr("Thickness point picked: a number key sets its thickness (1 as it was, 2 twice that ... Shift for tenths, 0 none), Delete takes it away."));
+            }
         }
     }
     m_eraseArt = Drawing();

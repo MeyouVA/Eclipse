@@ -144,6 +144,13 @@ Stroke strokeFromJson(QJsonObject const& o)
         if (s.thickness.isEmpty() || key.at > s.thickness.last().at)
             s.thickness.push_back(key);
     }
+    QJsonArray const more = o["thicknessMore"].toArray();
+    for (int i = 0; i + 3 < more.size(); i += 4)
+        if (int const k = more[i].toInt(-1); k >= 0 && k < s.thickness.size()) {
+            s.thickness[k].interpolation = std::clamp(more[i + 1].toInt(0), 0, int(ThicknessPoint::InterpolationCount) - 1);
+            s.thickness[k].origLeft = float(std::clamp(more[i + 2].toDouble(-1.0), -1.0, 100.0));
+            s.thickness[k].origRight = float(std::clamp(more[i + 3].toDouble(-1.0), -1.0, 100.0));
+        }
     s.link = std::max(0, o["link"].toInt(0));
     return s;
 }

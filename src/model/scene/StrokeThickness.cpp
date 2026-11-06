@@ -133,8 +133,25 @@ ThicknessPoint Stroke::sidesAlong(QVector<ThicknessPoint> keys, double length, b
     int j = 0;
     while (j + 2 < keys.size() && keys[j + 1].at <= length)
         ++j;
-    result.left = float(std::max(0.0, smoothBetween(keys, j, length, &ThicknessPoint::left)));
-    result.right = float(std::max(0.0, smoothBetween(keys, j, length, &ThicknessPoint::right)));
+    // As the point it leaves says: a smooth curve through the points, straight, held until the next, or eased out and in.
+    double const h = keys[j + 1].at - keys[j].at;
+    double const t = h > 1e-12 ? std::clamp((length - keys[j].at) / h, 0.0, 1.0) : 1.0;
+    switch (keys[j].interpolation) {
+    case ThicknessPoint::Linear:
+    case ThicknessPoint::Ease: {
+        double const u = keys[j].interpolation == ThicknessPoint::Ease ? t * t * (3.0 - 2.0 * t) : t;
+        result.left = float(std::max(0.0, keys[j].left + (keys[j + 1].left - keys[j].left) * u));
+        result.right = float(std::max(0.0, keys[j].right + (keys[j + 1].right - keys[j].right) * u));
+        break;
+    }
+    case ThicknessPoint::Step:
+        result.left = keys[j].left;
+        result.right = keys[j].right;
+        break;
+    default:
+        result.left = float(std::max(0.0, smoothBetween(keys, j, length, &ThicknessPoint::left)));
+        result.right = float(std::max(0.0, smoothBetween(keys, j, length, &ThicknessPoint::right)));
+    }
     return result;
 }
 
@@ -159,7 +176,10 @@ void Stroke::ownThickness()
         return;
     for (int i = 0; i < points.size(); ++i) {
         StrokePoint& p = points[i];
-        thickness.push_back({double(i), float(p.pressure * (1.0 + p.lean)), float(p.pressure * (1.0 - p.lean))});
+        ThicknessPoint key{double(i), float(p.pressure * (1.0 + p.lean)), float(p.pressure * (1.0 - p.lean))};
+        key.origLeft = key.left;
+        key.origRight = key.right;
+        thickness.push_back(key);
         p.pressure = 1.0f;
         p.lean = 0.0f;
     }
@@ -300,9 +320,13 @@ int Stroke::thicknessPointAt(double at, double near)
             return k;
     ThicknessPoint key = sidesAt(at);
     key.at = at;
+    key.origLeft = key.left;        // (as the line is there now: what it was before this point is edited)
+    key.origRight = key.right;
     int k = 0;
     while (k < thickness.size() && thickness[k].at < at)
         ++k;
+    // (Put into a span, it goes on as the span did.)
+    key.interpolation = k > 0 ? thickness[k - 1].interpolation : ThicknessPoint::Smooth;
     thickness.insert(k, key);
     return k;
 }

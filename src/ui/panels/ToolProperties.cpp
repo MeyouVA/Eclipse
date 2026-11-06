@@ -353,7 +353,7 @@ void ToolProperties::showFor(int tool)
                                       "ToolEditGradient", "ToolReposition", "ToolStamp", "ToolPencilEditor", "ToolPerspective", "ToolInk", "ToolSmoothEditor", "ToolEnvelope", "ToolMorphing", "ToolRepaintBrush", "ToolSplineOffset", "ToolTurn3D", "ToolPencilRetouch", "ToolShiftTrace", "ToolDrawingPivot", "ToolStaticCamera"};
     QAction* const action = m_actions->action(QLatin1String(ids[tool]));
     QString const name = action ? action->text().remove(QLatin1Char('&')) : tr("Tool");
-    bool const any = tool == T::Transform || tool == T::DrawingPivot || tool == T::Ink || draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Reposition || tool == T::Eraser || tool == T::IK || Canvas::isPaintTool(Canvas::Tool(tool));
+    bool const any = tool == T::PencilEditor || tool == T::Transform || tool == T::DrawingPivot || tool == T::Ink || draws || lines || text || tool == T::Morphing || tool == T::Select || tool == T::Cutter || tool == T::Rigging || tool == T::Dropper || tool == T::Stamp || tool == T::Envelope || tool == T::Reposition || tool == T::Eraser || tool == T::IK || Canvas::isPaintTool(Canvas::Tool(tool));
     m_form->setRowVisible(m_rigMode, tool == T::Rigging);
     m_form->setRowVisible(m_ikPickAny, tool == T::IK);
     m_form->setRowVisible(m_ikEase, tool == T::IK);
@@ -395,6 +395,8 @@ void ToolProperties::showFor(int tool)
         m_form->setRowVisible(check, shown);
     }
     m_form->setRowVisible(m_scaleThickness, tool == T::Select);
+    if (m_thickInterpolation)
+        m_form->setRowVisible(m_thickInterpolation, tool == T::PencilEditor);
     m_form->setRowVisible(m_tipToCamera, brush || pencil);
     {
         QSignalBlocker const quiet(m_tipToCamera);

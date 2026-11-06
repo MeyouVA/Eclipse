@@ -712,6 +712,16 @@ public slots:
     void onActionSnapAllLayers(bool on) { m_snapAllLayers = on; }
     // The Pencil Editor's mode: Adjust Opacity (true) or Adjust Thickness.
     void setPencilEditorOpacity(bool on);
+    // The Pencil Editor: the thickness point picked (-1, -1: none), and taking it away (Delete). False when there is none to take
+    // (or the line has only that one).
+    QPoint pickedThicknessPoint() const { return QPoint(m_thickPickedStroke, m_thickPickedKey); }
+    void pickThicknessPoint(int stroke, int key);
+    bool removePickedThicknessPoint();
+    // The picked point's thickness made `factor` times what it was before it was edited (0: none, the point kept).
+    bool scalePickedThicknessPoint(double factor);
+    // How thickness points go on to the next: new ones, and the one picked (ThicknessPoint::Interpolation).
+    int thicknessInterpolation() const { return m_thickInterpolation; }
+    void setThicknessInterpolation(int way);
     bool pencilEditorOpacity() const { return m_opacityMode; }
     void setShowGuides(bool on)
     {
@@ -884,6 +894,8 @@ signals:
     // The gap closed by the paint tools changed (from the Auto Gap Closing menu); a pencil texture taken by the eyedropper.
     void closeGapChanged(double size);
     void lineTextureTaken(int texture);
+    // The Pencil Editor picked a thickness point: how it goes on to the next.
+    void thicknessPointPicked(int interpolation);
     void stampsChanged();
 
 protected:

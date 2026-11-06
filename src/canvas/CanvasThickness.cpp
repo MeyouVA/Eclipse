@@ -1,6 +1,7 @@
 // Eclipse - the Camera view: the thickness of pencil lines, apart from their points - the Pencil
 // Editor's thickness points, and the thickness stencils of the Line tool and the Polyline.
 #include "canvas/Canvas.h"
+#include "model/document/Commands.h"
 
 #include <algorithm>
 #include <cmath>
@@ -83,8 +84,10 @@ void Canvas::thicknessPointDown(QPointF p, Qt::KeyboardModifiers modifiers)
         }
     }
     m_thickExisting = key >= 0;
-    if (key < 0)
+    if (key < 0) {
         key = line.thicknessPointAt(at);
+        line.thickness[key].interpolation = m_thickInterpolation;
+    }
     m_thickKey = key;
     double const place = line.thickness[key].at;
     m_thickPos0 = line.pointAt(place);
@@ -95,6 +98,93 @@ void Canvas::thicknessPointDown(QPointF p, Qt::KeyboardModifiers modifiers)
     m_thickPress = p;
     m_drag = DragThickness;
     update();
+}
+
+void Canvas::pickThicknessPoint(int stroke, int key)
+{
+    m_thickPickedStroke = stroke;
+    m_thickPickedKey = stroke >= 0 ? key : -1;
+    Scene const& scene = m_document->scene();
+    m_thickPickedLayer = stroke >= 0 ? m_layer : -1;
+    m_thickPickedDrawing = stroke >= 0 && m_layer >= 0 && m_layer < scene.layers.size() ? scene.layers[m_layer].drawingAt(m_frame) : -1;
+    if (Drawing const* const d = currentDrawing(); d && stroke >= 0 && stroke < d->strokes.size()) {
+        Stroke line = d->strokes[stroke];
+        line.ownThickness();
+        if (key >= 0 && key < line.thickness.size()) {
+            m_thickInterpolation = line.thickness[key].interpolation;
+            emit thicknessPointPicked(m_thickInterpolation);
+        }
+    }
+    update();
+}
+
+bool Canvas::removePickedThicknessPoint()
+{
+    Drawing const* const d = currentDrawing();
+    Scene const& scene = m_document->scene();
+    bool const same = m_thickPickedLayer == m_layer && m_layer >= 0 && m_layer < scene.layers.size()
+                      && scene.layers[m_layer].drawingAt(m_frame) == m_thickPickedDrawing;
+    if (!d || !same || m_thickPickedStroke < 0 || m_thickPickedStroke >= d->strokes.size()) {
+        emit message(tr("Click a thickness point of a pencil line to pick it, then press Delete to take it away."));
+        return false;
+    }
+    Drawing edited = *d;
+    Stroke& line = edited.strokes[m_thickPickedStroke];
+    line.ownThickness();
+    if (m_thickPickedKey < 0 || m_thickPickedKey >= line.thickness.size()) {
+        pickThicknessPoint(-1, -1);
+        return false;
+    }
+    if (line.thickness.size() <= 1) {
+        emit message(tr("A pencil line keeps at least one thickness point."));
+        return false;
+    }
+    line.thickness.removeAt(m_thickPickedKey);
+    pickThicknessPoint(-1, -1);
+    commitDrawing(edited, tr("Remove Thickness Point"));
+    return true;
+}
+
+bool Canvas::scalePickedThicknessPoint(double factor)
+{
+    Drawing const* const d = currentDrawing();
+    Scene const& scene = m_document->scene();
+    bool const same = m_thickPickedLayer == m_layer && m_layer >= 0 && m_layer < scene.layers.size()
+                      && scene.layers[m_layer].drawingAt(m_frame) == m_thickPickedDrawing;
+    if (!d || !same || m_thickPickedStroke < 0 || m_thickPickedStroke >= d->strokes.size())
+        return false;
+    Drawing edited = *d;
+    Stroke& line = edited.strokes[m_thickPickedStroke];
+    line.ownThickness();
+    if (m_thickPickedKey < 0 || m_thickPickedKey >= line.thickness.size())
+        return false;
+    ThicknessPoint& key = line.thickness[m_thickPickedKey];
+    float const left = key.baseLeft(), right = key.baseRight();
+    key.origLeft = left;
+    key.origRight = right;
+    key.left = float(std::max(0.0, left * factor));
+    key.right = float(std::max(0.0, right * factor));
+    commitDrawing(edited, tr("Scale Thickness Point"));
+    emit message(tr("Thickness point at %1% of its thickness before it was edited.").arg(qRound(factor * 100.0)));
+    return true;
+}
+
+void Canvas::setThicknessInterpolation(int way)
+{
+    m_thickInterpolation = std::clamp(way, 0, int(ThicknessPoint::InterpolationCount) - 1);
+    Drawing const* const d = currentDrawing();
+    Scene const& scene = m_document->scene();
+    bool const same = m_thickPickedLayer == m_layer && m_layer >= 0 && m_layer < scene.layers.size()
+                      && scene.layers[m_layer].drawingAt(m_frame) == m_thickPickedDrawing;
+    if (!d || !same || m_thickPickedStroke < 0 || m_thickPickedStroke >= d->strokes.size())
+        return;
+    Drawing edited = *d;
+    Stroke& line = edited.strokes[m_thickPickedStroke];
+    line.ownThickness();
+    if (m_thickPickedKey < 0 || m_thickPickedKey >= line.thickness.size() || line.thickness[m_thickPickedKey].interpolation == m_thickInterpolation)
+        return;
+    line.thickness[m_thickPickedKey].interpolation = m_thickInterpolation;
+    commitDrawing(edited, tr("Thickness Point Interpolation"));
 }
 
 void Canvas::setPencilEditorOpacity(bool on)

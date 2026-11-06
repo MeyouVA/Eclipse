@@ -324,6 +324,7 @@ void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)
 {
     Drawing const* const d = currentDrawing();
     m_thickStroke = m_thickKey = -1;
+    pickThicknessPoint(-1, -1);    // (a press away from the points picks none)
     if (d && (modifiers & Qt::ControlModifier)) {
         for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
             if (d->strokes[i].width <= 0.0f || d->strokes[i].points.size() < 2 || !d->strokes[i].hit(p, 4.0 / std::max(m_zoom, 1e-6)))
@@ -332,9 +333,12 @@ void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)
             Stroke& line = edited.strokes[i];
             line.ownThickness();
             int const had = int(line.thickness.size());
-            line.thicknessPointAt(line.placeAt(p), 1e-3);
-            if (line.thickness.size() > had)
+            int const key = line.thicknessPointAt(line.placeAt(p), 1e-3);
+            if (line.thickness.size() > had) {
+                line.thickness[key].interpolation = m_thickInterpolation;
                 commitDrawing(edited, tr("Add Thickness Point"));
+            }
+            pickThicknessPoint(i, key);
             update();
             return;
         }

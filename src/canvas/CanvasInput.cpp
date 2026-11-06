@@ -70,6 +70,14 @@ bool Canvas::event(QEvent* event)
         int const key = static_cast<QKeyEvent*>(event)->key();
         if (key == Qt::Key_Return || key == Qt::Key_Enter) { event->accept(); return true; }
     }
+    // The Pencil Editor with a thickness point picked: the number keys are its, not the menus'.
+    if (event->type() == QEvent::ShortcutOverride && m_tool == PencilEditor && m_thickPickedStroke >= 0) {
+        QKeyEvent const* const key = static_cast<QKeyEvent*>(event);
+        if ((key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9) || (key->nativeVirtualKey() >= 0x30 && key->nativeVirtualKey() <= 0x39)) {
+            event->accept();
+            return true;
+        }
+    }
     if (event->type() == QEvent::ShortcutOverride && static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape
         && (m_drag != DragNone || m_bending || m_tabletActive)) {
         event->accept();
@@ -217,6 +225,22 @@ void Canvas::keyPressEvent(QKeyEvent* event)
     if (event->key() == Qt::Key_Escape && (m_drag != DragNone || m_bending || m_tabletActive)) {
         // Abandon what is being dragged.
         cancelInput();
+        return;
+    }
+    // The Pencil Editor: a number key scales the thickness point picked from what it was before it was edited - 1 as it was, 2
+    // twice ... 9; with Shift tenths (Shift+5 half); 0 none at all (the point stays).
+    if (m_tool == PencilEditor && m_drag == DragNone && m_thickPickedStroke >= 0) {
+        int digit = event->key() >= Qt::Key_0 && event->key() <= Qt::Key_9 ? event->key() - Qt::Key_0 : -1;
+        if (digit < 0 && event->nativeVirtualKey() >= 0x30 && event->nativeVirtualKey() <= 0x39)
+            digit = int(event->nativeVirtualKey()) - 0x30;     // (Shift and a digit along the top gives a sign, not the digit)
+        if (digit >= 0) {
+            scalePickedThicknessPoint(digit == 0 ? 0.0 : (event->modifiers() & Qt::ShiftModifier) ? digit / 10.0 : double(digit));
+            return;
+        }
+    }
+    // The Pencil Editor: Backspace (like Delete) takes away the thickness point picked.
+    if (m_tool == PencilEditor && m_drag == DragNone && (event->key() == Qt::Key_Backspace || event->key() == Qt::Key_Delete)) {
+        removePickedThicknessPoint();
         return;
     }
     // The Pencil Editor: the up and down arrows switch between Adjust Thickness and Adjust Opacity.

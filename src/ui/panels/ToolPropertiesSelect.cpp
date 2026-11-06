@@ -353,6 +353,20 @@ void ToolProperties::addLineShapeRows()
     connect(m_canvas, &Canvas::selectionChanged, this, showSelected);
     connect(m_canvas, &Canvas::toolChanged, this, showSelected);
     showSelected();
+
+    // The Pencil Editor: how the thickness goes on from a point to the next - for the point picked and for new ones.
+    m_thickInterpolation = new QComboBox(this);
+    m_thickInterpolation->setObjectName(QStringLiteral("ThicknessInterpolation"));
+    m_thickInterpolation->addItems({tr("Smooth"), tr("Linear"), tr("Step"), tr("Ease In and Out")});
+    m_thickInterpolation->setToolTip(tr("How the thickness changes from a thickness point to the next: a smooth curve through the points, a straight change, "
+                                        "held until the next point, or easing out of one and into the next. Applies to the point picked and to new points."));
+    m_thickInterpolation->setCurrentIndex(m_canvas->thicknessInterpolation());
+    connect(m_thickInterpolation, &QComboBox::currentIndexChanged, m_canvas, &Canvas::setThicknessInterpolation);
+    connect(m_canvas, &Canvas::thicknessPointPicked, this, [this](int way) {
+        QSignalBlocker const quiet(m_thickInterpolation);
+        m_thickInterpolation->setCurrentIndex(way);
+    });
+    m_form->addRow(tr("Interpolation"), m_thickInterpolation);
     m_shapeRow->addStretch();
     m_form->addRow(m_shapeRow);
 

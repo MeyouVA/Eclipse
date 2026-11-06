@@ -695,10 +695,11 @@ void Canvas::paintViewLayer(QPainter& painter, int l, QRectF const& frameRect, Q
                     QPointF const right = where.map(centre - across * (line.width / 2.0 * key.right));
                     QPointF const middle = where.map(centre);
                     bool const held = i == m_thickStroke && k == m_thickKey;
+                    bool const picked = m_drag != DragThickness && i == m_thickPickedStroke && k == m_thickPickedKey;
                     painter.setPen(QPen(QColor(60, 200, 230), 1.0));
                     painter.drawLine(left, right);
-                    painter.setPen(QPen(QColor(20, 20, 20), 1.0));
-                    painter.setBrush(held ? QColor(255, 255, 255) : QColor(60, 200, 230));
+                    painter.setPen(picked ? QPen(QColor(255, 120, 40), 2.0) : QPen(QColor(20, 20, 20), 1.0));
+                    painter.setBrush(held || picked ? QColor(255, 255, 255) : QColor(60, 200, 230));
                     QPolygonF diamond;
                     diamond << middle + QPointF(0, -4) << middle + QPointF(4, 0) << middle + QPointF(0, 4) << middle + QPointF(-4, 0);
                     painter.drawPolygon(diamond);

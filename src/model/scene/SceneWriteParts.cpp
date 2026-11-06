@@ -84,6 +84,15 @@ QJsonObject strokeToJson(Stroke const& s)
         thick << std::round(key.at * 10000.0) / 10000.0 << std::round(double(key.left) * 1000.0) / 1000.0 << std::round(double(key.right) * 1000.0) / 1000.0;
     if (!thick.isEmpty())
         o["thickness"] = thick;
+    // Of those points: how the thickness goes on from each, and how thick it was before it was edited (index, way, left, right).
+    QJsonArray more;
+    for (int k = 0; k < s.thickness.size(); ++k) {
+        ThicknessPoint const& key = s.thickness[k];
+        if (key.interpolation != ThicknessPoint::Smooth || key.origLeft >= 0.0f || key.origRight >= 0.0f)
+            more << k << key.interpolation << std::round(double(key.origLeft) * 1000.0) / 1000.0 << std::round(double(key.origRight) * 1000.0) / 1000.0;
+    }
+    if (!more.isEmpty())
+        o["thicknessMore"] = more;
     if (!opacities.isEmpty())
         o["opacity"] = opacities;
     if (s.join != Stroke::RoundJoin)

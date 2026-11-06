@@ -72,6 +72,7 @@ private:
     void addStylusRows();
     void addAutoFlattenRow();
     void addLineShapeRows();
+    class QComboBox* m_thickInterpolation = nullptr;     // the Pencil Editor: how its thickness points go on to the next
     void fillTextureBox(class QComboBox* box, int current);
     class QToolButton* textureButton(QString const& name);
     void addThicknessRow();
