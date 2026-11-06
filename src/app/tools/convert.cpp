@@ -7,7 +7,7 @@
 int main(int argc, char** argv)
 {
     if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
-        qputenv("QT_QPA_PLATFORM", "offscreen");
+        qputenv("QT_QPA_PLATFORM", "offscreen;windows");    // (no window; the usual platform if offscreen is not there)
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("eclipse-convert"));
     QGuiApplication::setApplicationVersion(QStringLiteral("0.2.0"));

@@ -8,7 +8,7 @@ int main(int argc, char** argv)
 {
     // No window is ever shown: the scripts' views and dialogs are made off the screen.
     if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
-        qputenv("QT_QPA_PLATFORM", "offscreen");
+        qputenv("QT_QPA_PLATFORM", "offscreen;windows");    // (no window; the usual platform if offscreen is not there)
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("eclipse-batch"));
     QApplication::setApplicationVersion(QStringLiteral("0.2.0"));

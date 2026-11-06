@@ -20,11 +20,13 @@ if exist Release\Eclipse.exe (
 )
 
 cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=%CMAKE_PREFIX_PATH%" || exit /b 1
-cmake --build out --target Eclipse || exit /b 1
+cmake --build out --target Eclipse EclipseTool_batch EclipseTool_convert EclipseTool_info EclipseTool_config EclipseTool_services || exit /b 1
 
 if exist Release.new rmdir /s /q Release.new
 mkdir Release.new || exit /b 1
 copy /y out\Eclipse.exe Release.new\ >nul || exit /b 1
+rem The small programs beside it: the batch program, the converters, information, the Configuration Editor and the Service Launcher.
+for %%t in (batch convert info config services) do copy /y out\eclipse-%%t.exe Release.new\ >nul || exit /b 1
 rem The libraries the program is made of: they must stay beside it.
 copy /y out\EclipseColour.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseModel.dll Release.new\ >nul || exit /b 1
@@ -36,7 +38,10 @@ copy /y out\EclipseCanvas.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseUi.dll Release.new\ >nul || exit /b 1
 xcopy /e /i /q /y resources Release.new\resources >nul || exit /b 1
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\package_thirdparty.ps1 -Destination "%~dp0Release.new" || exit /b 1
-"%QT_ROOT%\bin\windeployqt.exe" --release --no-translations Release.new\Eclipse.exe Release.new\EclipseUi.dll Release.new\EclipseCanvas.dll Release.new\EclipseActions.dll Release.new\EclipseFormats.dll Release.new\EclipseRender.dll Release.new\EclipseAudio.dll Release.new\EclipseModel.dll Release.new\EclipseColour.dll >nul || exit /b 1
+"%QT_ROOT%\bin\windeployqt.exe" --release --no-translations Release.new\Eclipse.exe Release.new\eclipse-batch.exe Release.new\eclipse-convert.exe Release.new\eclipse-info.exe Release.new\eclipse-config.exe Release.new\eclipse-services.exe Release.new\EclipseUi.dll Release.new\EclipseCanvas.dll Release.new\EclipseActions.dll Release.new\EclipseFormats.dll Release.new\EclipseRender.dll Release.new\EclipseAudio.dll Release.new\EclipseModel.dll Release.new\EclipseColour.dll >nul || exit /b 1
+
+rem The console programs (batch, convert, info) run with no window, through Qt's offscreen platform, which windeployqt leaves out.
+copy /y "%QT_ROOT%\plugins\platforms\qoffscreen.dll" Release.new\platforms\ >nul || exit /b 1
 
 if exist Release rmdir /s /q Release
 if exist Release (
