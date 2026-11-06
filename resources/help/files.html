@@ -1,7 +1,7 @@
 <html><head><meta charset="utf-8"><title>Importing, exporting and files</title><style>body { background: #2b2b2e; color: #d6d8dc; font-family: 'Segoe UI', sans-serif; font-size: 10pt; margin: 14px; } h1 { color: #ffffff; font-size: 16pt; } h2 { color: #7fd0de; font-size: 12pt; margin-top: 16px; } a { color: #6fc3d6; } b { color: #ffffff; } li { margin-bottom: 4px; }</style></head><body>
 <p><a href="index.html">Contents</a></p>
 <h1>Importing, exporting and files</h1>
-<h2>Import</h2>
+<h2 id="import">Import</h2>
 <ul>
 <li><b>Images</b>: kept in the scene as bitmaps, or traced into vector shapes (black and white, or in colours).</li>
 <li><b>Link to Images</b>: the pictures stay in their files and are read each time.</li>
@@ -13,14 +13,14 @@
 <li><b>FLA (Flash Document)</b>: a Flash document of the XFL kind (CS5 and after), a layer for each of its layers - symbols, motion and shape tweens with their eases, masks, text, gradients, ragged, dashed and dotted lines, lines of varying width, blend modes and filters, bitmaps, video and sound. Its colours become a palette, its frame labels scene markers. Scripts are not run: they are kept as notes on markers.</li>
 <li><b>3D Models</b>: Wavefront OBJ files (with their MTL colours and textures) on a layer of their own. Turn the layer in space - the X and Y angles of the Transform tool, Layer Properties or the Timeline - and the model turns, drawn with depth and light. Several files make a 3D animation, one a frame.</li>
 </ul>
-<h2>Export</h2>
+<h2 id="export">Export</h2>
 <ul>
 <li><b>Images</b>: a numbered picture for each frame, in the format chosen in the dialog, including PNG, TIFF, layered PSD, EXR, WebP, HEIC, AVIF, JPEG 2000 and JPEG XL - see <a href="render.html">Rendering and preview</a>, and <a href="colourmanagement.html">Colour management</a> for their colour spaces.</li>
 <li><b>Movie</b> and <b>Animated GIF</b> (need ffmpeg), at the scene's size, a part of it, or a width of your own.</li>
 <li><b>Audio</b>: all frames or a frame range, mixed or as separate sound tracks. Choose WAV, AIFF, MP3, AAC/M4A, Vorbis, Opus, FLAC, ALAC, WMA or AC-3, with the rate, bit depth and channel choices available for that format. WAV, AIFF, FLAC and ALAC offer rates up to 192 kHz. Mixing keeps floating-point precision until encoding; movie sound is mixed at 48 kHz. Playback previews use 16-bit stereo at 44100 Hz.</li>
 <li><b>SWF</b>: the scene as a Flash movie of vector shapes, with its sound.</li>
 </ul>
-<h2>Keeping work safe</h2>
+<h2 id="keeping-work-safe">Keeping work safe</h2>
 <ul>
 <li><b>Save as New Version</b> saves beside the scene as name_v2, name_v3...</li>
 <li><b>Backup Scene</b> makes a dated copy.</li>

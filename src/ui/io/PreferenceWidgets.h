@@ -6,6 +6,13 @@
 struct PreferenceWidgets {
     QGroupBox* general = nullptr;
     QCheckBox* welcome = nullptr;
+    // Help and the program: help pages in English, opened in the web browser; updates looked for; usage statistics kept;
+    // the welcome image while Eclipse starts.
+    QCheckBox* helpInEnglish = nullptr;
+    QCheckBox* helpInBrowser = nullptr;
+    QCheckBox* autoUpdateCheck = nullptr;
+    QCheckBox* usageStatistics = nullptr;
+    QCheckBox* welcomeImage = nullptr;
     QSpinBox* autoSave = nullptr;
     QFormLayout* generalLayout = nullptr;
     QCheckBox* focusOnEnter = nullptr;

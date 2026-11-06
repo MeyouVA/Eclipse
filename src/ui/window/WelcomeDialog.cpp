@@ -1,4 +1,6 @@
 #include "ui/window/WelcomeDialog.h"
+
+#include "ui/help/HelpCenter.h"
 #include "model/scene/Layer.h"
 #include <algorithm>
 #include <cmath>
@@ -251,6 +253,40 @@ WelcomeDialog::WelcomeDialog(QString const& resourceDirectory, QWidget* parent, 
     QVBoxLayout* const openLayout = new QVBoxLayout(openBox);
     openLayout->addWidget(m_recent, 1);
     openLayout->addWidget(openButton, 0, Qt::AlignRight);
+
+    // ---- help ----
+    QGroupBox* const helpBox = new QGroupBox(tr("Get Help"), openBox);
+    helpBox->setObjectName(QStringLiteral("WelcomeHelp"));
+    QVBoxLayout* const helpLayout = new QVBoxLayout(helpBox);
+    QLabel* const question = new QLabel(tr("Have a question? We're here to help."), helpBox);
+    question->setWordWrap(true);
+    helpLayout->addWidget(question);
+    QHBoxLayout* const helpButtons = new QHBoxLayout;
+    auto helpButton = [&](QString const& text, QString const& name, QString const& topic) {
+        QPushButton* const b = new QPushButton(text, helpBox);
+        b->setObjectName(name);
+        b->setAutoDefault(false);
+        helpButtons->addWidget(b);
+        connect(b, &QPushButton::clicked, this, [this, topic] {
+            m_choice = ShowHelp;
+            m_helpTopic = topic;
+            accept();
+        });
+    };
+    helpButton(tr("Getting Started"), QStringLiteral("WelcomeGettingStarted"), QStringLiteral("start.html"));
+    helpButton(tr("Get Help"), QStringLiteral("WelcomeGetHelp"), QStringLiteral("index.html"));
+    helpLayout->addLayout(helpButtons);
+    // Video tutorials, where links.conf has a place for them.
+    if (QString const tutorials = HelpCenter::link(QStringLiteral("tutorials")); !tutorials.isEmpty()) {
+        QLabel* const videos = new QLabel(QStringLiteral("<a href=\"%1\"><b>%2</b></a><br>%3").arg(tutorials.toHtmlEscaped(), tr("Watch Video Tutorials"),
+                                                                                                tr("Learn Eclipse at your own pace online.")),
+                                          helpBox);
+        videos->setObjectName(QStringLiteral("WelcomeTutorials"));
+        videos->setOpenExternalLinks(true);
+        videos->setWordWrap(true);
+        helpLayout->addWidget(videos);
+    }
+    openLayout->addWidget(helpBox);
 
     QHBoxLayout* const boxes = new QHBoxLayout;
     boxes->setContentsMargins(8, 8, 8, 0);

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The help topic of each place in Eclipse: the views (by their names), widgets and commands whose page is not the
+     Commands page. F1 over a place, or What's This, opens its page. A command or a preference with no line here goes
+     to its own entry of the Commands or Preferences page. -->
+<topics>
+ <topic id="CameraDock cameraDock Canvas CameraView" page="render.html#the-camera-view"/>
+ <topic id="TimelineDock Timeline" page="timeline.html#layers"/>
+ <topic id="XsheetDock Xsheet" page="timeline.html#xsheet"/>
+ <topic id="ToolPropertiesDock ToolProperties" page="drawing.html#the-drawing-tools"/>
+ <topic id="ColourDock PalettePanel" page="colour.html#palettes"/>
+ <topic id="LayerPropertiesDock" page="timeline.html#layers"/>
+ <topic id="NodeViewDock NodeLibraryDock" page="effects.html#the-node-graph"/>
+ <topic id="ScriptDock PythonDock" page="effects.html#scripts"/>
+ <topic id="FunctionDock" page="animation.html#keyframes"/>
+ <topic id="ControllerDock" page="animation.html#pose-controllers"/>
+ <topic id="Graph3DDock TopViewDock SideViewDock PerspectiveViewDock" page="animation.html#depth"/>
+ <topic id="GuidesDock" page="drawing.html#guides"/>
+ <topic id="OnionSkinDock" page="drawing.html#changing-what-is-drawn"/>
+ <topic id="LibraryDock" page="rigging.html#templates"/>
+ <topic id="LipSyncDock" page="sound.html"/>
+ <topic id="DrawingSubstitutionDock" page="rigging.html#a-cut-out-character"/>
+ <topic id="PreviewManagerDock" page="render.html#writing-frames"/>
+ <topic id="ReferenceDock DeskDock" page="files.html#import"/>
+ <topic id="StoryboardDock" page="files.html#export"/>
+ <topic id="HelpWindow HelpView" page="index.html"/>
+ <topic id="PreferencesDialog" page="preferences.html"/>
+ <topic id="ShortcutsDialog" page="keys.html"/>
+</topics>

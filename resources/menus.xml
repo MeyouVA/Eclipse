@@ -774,9 +774,24 @@
   </menu>
 
   <menu id="Help" text="&amp;Help">
-   <item id="EclipseHelp" icon="misc/help" text="Eclipse &amp;Help" shortcut="shortcut.help" responder="window" slot="onActionHelp()"/>
+   <item id="EclipseHelp" icon="misc/help" text="Eclipse &amp;Help" responder="window" slot="onActionHelp()" tooltip="The help pages: their contents, and a search through them."/>
+   <item id="ContextHelp" text="&amp;Help on What Is Under the Pointer" shortcut="shortcut.help" responder="window" slot="onActionContextHelp()" tooltip="The help page of the command, view or setting under the pointer (or of the command picked in an open menu)."/>
+   <item id="WhatsThis" text="Show &amp;What's This" shortcut="shortcut.whatsThis" responder="window" slot="onActionWhatsThis()" tooltip="Click anything to be told what it is; F1 then opens its page."/>
+   <item id="GettingStarted" text="&amp;Getting Started" responder="window" slot="onActionGettingStarted()" tooltip="The first steps: making a scene, drawing, timing and exporting."/>
+   <item id="OnlineHelp" text="&amp;Online Help..." responder="window" slot="onActionOnlineHelp()" tooltip="Eclipse's documentation on the web."/>
+   <item id="EclipseOnWeb" text="Eclipse on the &amp;Web..." responder="window" slot="onActionEclipseOnWeb()" tooltip="Eclipse's website."/>
    <separator/>
    <item id="ShowWelcome" icon="misc/welcome" text="Show &amp;Welcome Screen" responder="window" slot="onActionShowWelcome()"/>
+   <item id="ShowLatestNews" text="Show &amp;Latest News..." responder="window" slot="onActionShowLatestNews()" tooltip="What is new in this version (and in a newer one, once Check for Updates has found it)."/>
+   <item id="CheckForUpdates" text="&amp;Check for Updates..." responder="window" slot="onActionCheckForUpdates()" tooltip="Looks up the latest release of Eclipse on the web."/>
+   <separator/>
+   <item id="ShowReadMe" text="Show &amp;Read Me" responder="window" slot="onActionShowReadMe()"/>
+   <item id="ShowLicense" text="Show Li&amp;cense" responder="window" slot="onActionShowLicense()"/>
+   <item id="ShowCredits" text="Show C&amp;redits" responder="window" slot="onActionShowCredits()" tooltip="The programs and libraries Eclipse uses, and their licences."/>
+   <separator/>
+   <item id="ReportIssue" text="Report an &amp;Issue..." responder="window" slot="onActionReportIssue()" tooltip="A report of what happened, with the version and the computer, to copy, save or take to the issue page."/>
+   <item id="UsageStatistics" text="&amp;Usage Statistics..." responder="window" slot="onActionUsageStatistics()" tooltip="Anonymous counts of how you use Eclipse, kept on this computer only - if you want them."/>
+   <item id="UsageTester" text="Usage Statistics &amp;Tester..." responder="window" slot="onActionUsageTester()" tooltip="Records usage hits by hand (in Debug Mode)."/>
    <item id="ShowMessageLog" icon="misc/messagelog" text="&amp;Message Log" responder="window" slot="onActionShowMessageLog()"/>
    <item id="DebugMode" icon="misc/debug" text="&amp;Debug Mode" checkable="true" responder="window" slot="onActionDebugMode(bool)"/>
    <item id="ScriptingDocs" text="&amp;Scripting Interface Documentation..." responder="window" slot="onActionScriptingDocs()" tooltip="What each object a script sees has."/>

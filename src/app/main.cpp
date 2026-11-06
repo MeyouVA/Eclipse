@@ -2,6 +2,7 @@
 #include <QIcon>
 #include <QMessageBox>
 #include <QSettings>
+#include <QSplashScreen>
 
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/Theme.h"
@@ -38,8 +39,21 @@ int main(int argc, char** argv)
     // The icon of its windows (the program file has the same one built in).
     QApplication::setWindowIcon(QIcon(ActionManager::defaultDirectory() + QStringLiteral("/eclipse.png")));
 
+    // Preferences > General: Eclipse's picture while it starts.
+    QSplashScreen* splash = nullptr;
+    if (prefs.value(QStringLiteral("prefs/welcomeImage"), false).toBool()) {
+        QPixmap picture(ActionManager::defaultDirectory() + QStringLiteral("/eclipse.png"));
+        splash = new QSplashScreen(picture.isNull() ? picture : picture.scaled(320, 320, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        splash->showMessage(QStringLiteral("Eclipse %1").arg(QApplication::applicationVersion()), Qt::AlignBottom | Qt::AlignHCenter, Qt::white);
+        splash->show();
+        QApplication::processEvents();
+    }
+
     MainWindow window;
     window.restoreWorkspace();
+    // (Gone before the welcome screen comes up.)
+    delete splash;
+    window.startupChecks();
     QStringList const args = QApplication::arguments();
     if (args.size() > 1) {
         window.show();

@@ -80,6 +80,23 @@ void MainWindow::preferencesGeneral(PreferenceWidgets& w, QSettings& s, QDialog&
     w.modelScale->setToolTip(tr("How big a 3D model comes in: 1 is %1 scene units at its biggest.").arg(400));
     w.modelScale->setValue(s.value(QStringLiteral("prefs/modelScale"), 1.0).toDouble());
     w.generalLayout->addRow(w.welcome);
+    auto check = [&](QCheckBox*& box, char const* name, QString const& text, QString const& key, QString const& tip) {
+        box = new QCheckBox(text, w.general);
+        box->setObjectName(QLatin1String(name));
+        box->setToolTip(tip);
+        box->setChecked(s.value(key, false).toBool());
+        w.generalLayout->addRow(box);
+    };
+    check(w.welcomeImage, "PrefWelcomeImage", tr("Show the welcome image while Eclipse starts"), QStringLiteral("prefs/welcomeImage"),
+          tr("Eclipse's picture and version are shown while the program starts."));
+    check(w.helpInEnglish, "PrefHelpInEnglish", tr("Show help in English"), QStringLiteral("prefs/helpInEnglish"),
+          tr("The help pages, and the help for what is under the pointer, in English even when the interface is in another language."));
+    check(w.helpInBrowser, "PrefHelpInBrowser", tr("Open help pages in the web browser"), QStringLiteral("prefs/helpInBrowser"),
+          tr("The help pages are opened in the web browser rather than in Eclipse's help window."));
+    check(w.autoUpdateCheck, "PrefAutoUpdateCheck", tr("Automatically check for updates"), QStringLiteral("prefs/autoUpdateCheck"),
+          tr("Once a day, when Eclipse starts, the latest release is looked up on the web and a newer one is offered."));
+    check(w.usageStatistics, "PrefUsageStatistics", tr("Keep anonymous usage statistics on this computer"), QStringLiteral("prefs/usageStatistics"),
+          tr("Counts of the commands and views used and how long Eclipse is used, kept on this computer only (Help > Usage Statistics...). Nothing is sent anywhere."));
     w.generalLayout->addRow(tr("Save the scene by itself every"), w.autoSave);
     w.generalLayout->addRow(new QLabel(tr("(Only a scene that has been saved once, and only when it has changed.)"), w.general));
     w.undoLevels = new QSpinBox(w.general);

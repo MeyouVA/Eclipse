@@ -29,7 +29,7 @@ class ECLIPSE_UI_API WelcomeDialog : public QDialog {
     Q_OBJECT
 
 public:
-    enum Choice { Nothing, CreateScene, OpenScene };
+    enum Choice { Nothing, CreateScene, OpenScene, ShowHelp };
 
     explicit WelcomeDialog(QString const& resourceDirectory, QWidget* parent = nullptr, bool newSceneOnly = false);
 
@@ -37,6 +37,8 @@ public:
     Choice choice() const { return m_choice; }
     // The file of the scene to open, or of the scene to make.
     QString path() const { return m_path; }
+    // Get Help / Getting Started: the help page asked for (with ShowHelp).
+    QString helpTopic() const { return m_helpTopic; }
     Resolution resolution() const;
 
     // The sizes that come with the program, then the user's own.
@@ -56,6 +58,7 @@ private:
     QVector<Resolution> m_resolutions;
     Choice m_choice = Nothing;
     QString m_path;
+    QString m_helpTopic;
 
     QLineEdit* m_name;
     QComboBox* m_location;

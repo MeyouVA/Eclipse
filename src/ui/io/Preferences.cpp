@@ -68,6 +68,7 @@
 
 #include <tuple>
 #include "ui/io/PreferenceWidgets.h"
+#include "ui/help/HelpCenter.h"
 
 static QSettings preferences()
 {
@@ -475,6 +476,11 @@ void MainWindow::onActionPreferences()
     layout->addLayout(presetRow);
     layout->addWidget(tabs);
     layout->addWidget(buttons);
+    // (Only made, for the help's page of every preference.)
+    if (m_preferencesForHelp) {
+        HelpCenter::writePreferencesPage(&dialog);
+        return;
+    }
     int const result = dialog.exec();
     s.setValue(QStringLiteral("prefs/lastTab"), tabs->currentIndex());
     if (reopen || presetChosen) {
@@ -517,6 +523,11 @@ void MainWindow::onActionPreferences()
     s.setValue(QStringLiteral("prefs/ikMaxColour"), w.ikMaxColour->property("colour").value<QColor>().name());
     m_canvas->setOnionColours(w.onionBefore->property("colour").value<QColor>(), w.onionAfter->property("colour").value<QColor>());
     s.setValue(QStringLiteral("welcome/hide"), !w.welcome->isChecked());
+    s.setValue(QStringLiteral("prefs/welcomeImage"), w.welcomeImage->isChecked());
+    s.setValue(QStringLiteral("prefs/helpInEnglish"), w.helpInEnglish->isChecked());
+    s.setValue(QStringLiteral("prefs/helpInBrowser"), w.helpInBrowser->isChecked());
+    s.setValue(QStringLiteral("prefs/autoUpdateCheck"), w.autoUpdateCheck->isChecked());
+    s.setValue(QStringLiteral("prefs/usageStatistics"), w.usageStatistics->isChecked());
     s.setValue(QStringLiteral("prefs/autosaveMinutes"), w.autoSave->value());
     s.setValue(QStringLiteral("prefs/lasso"), w.selectMode->currentIndex() == 0);
     s.setValue(QStringLiteral("prefs/overlayUnderlay"), w.moreArt->isChecked());

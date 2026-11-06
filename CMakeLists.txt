@@ -9,7 +9,7 @@ list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/thirdparty" "${CMAKE_SOURCE_
 if(EXISTS "${CMAKE_SOURCE_DIR}/thirdparty/qt/lib/cmake/Qt6/Qt6Config.cmake")
     set(Qt6_DIR "${CMAKE_SOURCE_DIR}/thirdparty/qt/lib/cmake/Qt6" CACHE PATH "Bundled Qt configuration" FORCE)
 endif()
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg PrintSupport Qml)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg PrintSupport Qml Network)
 find_package(libheif CONFIG QUIET PATHS "${CMAKE_SOURCE_DIR}/thirdparty/heif/lib/cmake/libheif" NO_DEFAULT_PATH)
 if(TARGET heif)
     add_executable(EclipseHeifTool src/media/HeifEncode.cpp)
@@ -74,7 +74,7 @@ target_link_libraries(EclipseCanvas PUBLIC EclipseModel EclipseRender EclipseAct
 
 # The window and all its views.
 eclipse_module(EclipseUi ui ECLIPSE_UI_BUILD)
-target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseFormats EclipseRender EclipseCanvas EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport winmm)
+target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseFormats EclipseRender EclipseCanvas EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport Qt6::Network winmm)
 if(WIN32)
     # Scanning, through Windows Image Acquisition.
     target_link_libraries(EclipseUi PRIVATE wiaguid ole32 oleaut32)
@@ -138,4 +138,7 @@ endif()
 # The menus, toolbars and shortcuts are read at run time from `resources` next to the program.
 add_custom_target(EclipseResources ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resources ${CMAKE_BINARY_DIR}/resources
+    # The documents Help shows: the Read Me, the licence and the third-party notices (when they are there).
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/README.md ${CMAKE_SOURCE_DIR}/LICENSE ${CMAKE_BINARY_DIR}/resources/about
+    COMMAND ${CMAKE_COMMAND} -DFROM=${CMAKE_SOURCE_DIR}/thirdparty/LICENSES.md -DTO=${CMAKE_BINARY_DIR}/resources/about/notices.md -P ${CMAKE_SOURCE_DIR}/resources/about/copy_if_there.cmake
     COMMENT "Copying resources")

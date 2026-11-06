@@ -117,6 +117,11 @@ void MainWindow::onActionShowWelcome()
         show();
         QApplication::processEvents();  // the views get their sizes before a scene is fitted to them
     }
+    // Get Help / Getting Started: the page, over the window as it is.
+    if (accepted && welcome.choice() == WelcomeDialog::ShowHelp) {
+        showHelp(welcome.helpTopic() == QLatin1String("index.html") ? QString() : welcome.helpTopic());
+        return;
+    }
     if (!accepted || !confirmDiscard())
         return;
     if (welcome.choice() == WelcomeDialog::OpenScene) {

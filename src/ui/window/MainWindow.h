@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <QMainWindow>
+#include <QUrl>
 #include <QTimer>
 
 #include "audio/sound/SoundPlayer.h"
@@ -126,6 +127,20 @@ public:
     bool workspaceChanged() const;
     void holdBackFloating();
     void restoreWorkspace();
+    // ---- help, updates, what the program says about itself ----
+    // What the program does when it starts (from main): usage statistics' session, the update check of the day.
+    void startupChecks();
+    // The help window, at a topic (page#part; empty: the contents); the pages made from the program written first.
+    class HelpView* showHelp(QString const& topic = QString());
+    // commands.html and preferences.html written from the menus and the Preferences dialog.
+    void writeHelpPages();
+    // The topic of a widget (the action picked in an open menu first); and the words What's This shows for it.
+    QString contextTopic(QWidget* widget) const;
+    QString whatsThisFor(QWidget* widget) const;
+    // Check for Updates against a feed (empty: links.conf's); `quiet`: said only when there is one. Whether one was
+    // found; `message` says what was found or what went wrong. The release found is kept for Show Latest News.
+    bool checkForUpdates(QUrl const& feed = QUrl(), bool quiet = false, QString* message = nullptr);
+    QString latestNews() const;
 
     // The file a new version of `path` is saved as: name_v2, name_v3 ...
     static QString nextVersionPath(QString const& path);
@@ -934,6 +949,19 @@ public slots:
 
     // ---- Help ----
     void onActionAbout();
+    void onActionContextHelp();
+    void onActionWhatsThis();
+    void onActionGettingStarted();
+    void onActionOnlineHelp();
+    void onActionEclipseOnWeb();
+    void onActionShowLatestNews();
+    void onActionCheckForUpdates();
+    void onActionShowReadMe();
+    void onActionShowLicense();
+    void onActionShowCredits();
+    void onActionReportIssue();
+    void onActionUsageStatistics();
+    void onActionUsageTester();
     void onActionShowWelcome();
 
 protected:
@@ -1207,6 +1235,10 @@ private:     // while a template is being edited: the scene put aside
     QTimer m_playTimer;
     bool m_loop = true;
     bool m_debugMode = false;
+    bool m_preferencesForHelp = false;      // the Preferences dialog only made, for the help's page
+    QString m_whatsThisTopic;               // the topic What's This last told of (F1 opens it)
+    QString m_newsNotes;                    // the notes of a newer release Check for Updates found
+    QString m_newsVersion;
     QStringList m_playViews;
     // Mini Playback: the few frames either side of one, over and over; what to go back to when it stops.
     bool m_mini = false;
