@@ -325,6 +325,33 @@ void Canvas::thicknessDown(QPointF p, Qt::KeyboardModifiers modifiers)
     Drawing const* const d = currentDrawing();
     m_thickStroke = m_thickKey = -1;
     pickThicknessPoint(-1, -1);    // (a press away from the points picks none)
+    if (d && (modifiers & Qt::ControlModifier) && (modifiers & Qt::ShiftModifier)) {
+        // Ctrl+Shift and a click on a thickness point: back to the thickness it had before it was edited.
+        QTransform const view = layerViewTransform();
+        for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
+            Stroke line = d->strokes[i];
+            if (line.width <= 0.0f || line.points.size() < 2)
+                continue;
+            line.ownThickness();
+            for (int k = 0; k < line.thickness.size(); ++k) {
+                if (QLineF(view.map(line.pointAt(line.thickness[k].at)), view.map(p)).length() > 8.0)
+                    continue;
+                Drawing edited = *d;
+                Stroke& owned = edited.strokes[i];
+                owned.ownThickness();
+                ThicknessPoint& key = owned.thickness[k];
+                key.left = key.baseLeft();
+                key.right = key.baseRight();
+                commitDrawing(edited, tr("Reset Thickness Point"));
+                pickThicknessPoint(i, k);
+                emit message(tr("Thickness point back to its thickness before it was edited."));
+                update();
+                return;
+            }
+        }
+        emit message(tr("Ctrl+Shift and a click on a thickness point puts it back to its thickness before it was edited."));
+        return;
+    }
     if (d && (modifiers & Qt::ControlModifier)) {
         for (int i = int(d->strokes.size()) - 1; i >= 0; --i) {
             if (d->strokes[i].width <= 0.0f || d->strokes[i].points.size() < 2 || !d->strokes[i].hit(p, 4.0 / std::max(m_zoom, 1e-6)))

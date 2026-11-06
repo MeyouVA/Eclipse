@@ -227,14 +227,14 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         cancelInput();
         return;
     }
-    // The Pencil Editor: a number key scales the thickness point picked from what it was before it was edited - 1 as it was, 2
-    // twice ... 9; with Shift tenths (Shift+5 half); 0 none at all (the point stays).
+    // The Pencil Editor: a number key sets the thickness point picked to so many tenths of what it was before it was edited - 1 a
+    // tenth ... 9 nine tenths, 0 none at all (the point stays); with Ctrl so many times it (Ctrl+1 as it was, Ctrl+2 twice ...).
     if (m_tool == PencilEditor && m_drag == DragNone && m_thickPickedStroke >= 0) {
         int digit = event->key() >= Qt::Key_0 && event->key() <= Qt::Key_9 ? event->key() - Qt::Key_0 : -1;
         if (digit < 0 && event->nativeVirtualKey() >= 0x30 && event->nativeVirtualKey() <= 0x39)
             digit = int(event->nativeVirtualKey()) - 0x30;     // (Shift and a digit along the top gives a sign, not the digit)
         if (digit >= 0) {
-            scalePickedThicknessPoint(digit == 0 ? 0.0 : (event->modifiers() & Qt::ShiftModifier) ? digit / 10.0 : double(digit));
+            scalePickedThicknessPoint(digit == 0 ? 0.0 : (event->modifiers() & Qt::ControlModifier) ? double(digit) : digit / 10.0);
             return;
         }
     }

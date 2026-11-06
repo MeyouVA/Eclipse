@@ -163,7 +163,8 @@ if (drag == DragThickness) {
             if (!m_opacityMode) {
                 pickThicknessPoint(stroke, key);
                 if (!m_thickMoved)
-                    emit message(tr("Thickness point picked: a number key sets its thickness (1 as it was, 2 twice that ... Shift for tenths, 0 none), Delete takes it away."));
+                    emit message(tr("Thickness point picked: a number key sets it to tenths of its thickness before editing (5 half, 0 none), Ctrl and a number to times it "
+                                    "(Ctrl+1 as it was); Ctrl+Shift+click resets it; Delete takes it away."));
             }
         }
     }
