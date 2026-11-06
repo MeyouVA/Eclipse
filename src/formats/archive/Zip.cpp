@@ -1,6 +1,8 @@
 // Eclipse - the zip reader, with a deflate unpacker of its own.
 #include "formats/archive/Zip.h"
 
+#include <algorithm>
+
 #include <array>
 #include <vector>
 
@@ -216,18 +218,87 @@ QByteArray inflate(QByteArray const& data, bool* ok)
     return good ? out : QByteArray();
 }
 
+quint32 crc32(QByteArray const& bytes)
+{
+    static quint32 const* const table = [] {
+        static quint32 t[256];
+        for (quint32 n = 0; n < 256; ++n) {
+            quint32 c = n;
+            for (int bit = 0; bit < 8; ++bit)
+                c = (c >> 1) ^ ((c & 1u) ? 0xedb88320u : 0u);
+            t[n] = c;
+        }
+        return t;
+    }();
+    quint32 crc = 0xffffffffu;
+    for (char byte : bytes)
+        crc = table[(crc ^ quint8(byte)) & 0xffu] ^ (crc >> 8);
+    return ~crc;
+}
+
+QByteArray write(QList<QPair<QString, QByteArray>> const& files, QDateTime modified)
+{
+    if (!modified.isValid())
+        modified = QDateTime::currentDateTime();
+    QDate const date = modified.date();
+    QTime const time = modified.time();
+    quint16 const dosTime = quint16((time.hour() << 11) | (time.minute() << 5) | (time.second() / 2));
+    quint16 const dosDate = quint16(((std::max(1980, date.year()) - 1980) << 9) | (date.month() << 5) | date.day());
+    QByteArray out, directory;
+    auto put16 = [](QByteArray& to, quint32 v) { to.append(char(v & 0xff)).append(char((v >> 8) & 0xff)); };
+    auto put32 = [&](QByteArray& to, quint32 v) { put16(to, v & 0xffff); put16(to, v >> 16); };
+    for (auto const& [name, body] : files) {
+        QByteArray const utf8 = name.toUtf8();
+        // qCompress is a zlib stream after a 4-byte size: its 2-byte header and 4-byte check taken off leave raw deflate.
+        QByteArray const packed = qCompress(body, 9);
+        QByteArray const deflated = packed.size() > 10 ? packed.mid(6, packed.size() - 10) : QByteArray();
+        bool const deflate = !body.isEmpty() && deflated.size() < body.size();
+        QByteArray const stored = deflate ? deflated : body;
+        quint32 const crc = crc32(body);
+        quint32 const offset = quint32(out.size());
+        auto header = [&](QByteArray& to, bool central) {
+            put32(to, central ? 0x02014b50u : 0x04034b50u);
+            if (central)
+                put16(to, 20);              // made by
+            put16(to, 20);                  // needed to extract
+            put16(to, 0x0800);              // the name in UTF-8
+            put16(to, deflate ? 8 : 0);
+            put16(to, dosTime);
+            put16(to, dosDate);
+            put32(to, crc);
+            put32(to, quint32(stored.size()));
+            put32(to, quint32(body.size()));
+            put16(to, quint32(utf8.size()));
+            put16(to, 0);                   // extra
+            if (central) {
+                put16(to, 0);               // comment
+                put16(to, 0);               // disk
+                put16(to, 0);               // internal attributes
+                put32(to, name.endsWith(QLatin1Char('/')) ? 0x10u : 0u);
+                put32(to, offset);
+            }
+            to.append(utf8);
+        };
+        header(out, false);
+        out.append(stored);
+        header(directory, true);
+    }
+    quint32 const at = quint32(out.size());
+    out.append(directory);
+    put32(out, 0x06054b50u);
+    put16(out, 0);
+    put16(out, 0);
+    put16(out, quint32(files.size()));
+    put16(out, quint32(files.size()));
+    put32(out, quint32(directory.size()));
+    put32(out, at);
+    put16(out, 0);
+    return out;
+}
+
 QHash<QString, QByteArray> read(QByteArray const& archive)
 {
     QHash<QString, QByteArray> files;
-    auto crc32 = [](QByteArray const& bytes) {
-        quint32 crc = 0xffffffffu;
-        for (char byte : bytes) {
-            crc ^= quint8(byte);
-            for (int bit = 0; bit < 8; ++bit)
-                crc = (crc >> 1) ^ ((crc & 1u) ? 0xedb88320u : 0u);
-        }
-        return ~crc;
-    };
     qsizetype directoryEnd = archive.lastIndexOf(QByteArray("PK\x05\x06", 4));
     while (directoryEnd >= 0 && (directoryEnd + 22 > archive.size()
            || directoryEnd + 22 + le16(archive, directoryEnd + 20) != archive.size()))

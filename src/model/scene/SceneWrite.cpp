@@ -12,6 +12,7 @@
 #include <QFile>
 #include <QSaveFile>
 #include <QJsonArray>
+#include <QCoreApplication>
 #include <QJsonDocument>
 
 #include <algorithm>
@@ -375,7 +376,11 @@ bool Scene::writeSceneFile(QString const& path, QJsonObject const& whole, QStrin
             *error = file.errorString();
         return false;
     }
-    QByteArray bytes = QJsonDocument(whole).toJson(QJsonDocument::Compact);
+    // The program that saved it, for those that look at the file later (eclipse-info).
+    QJsonObject withSource = whole;
+    if (!QCoreApplication::applicationName().isEmpty() && !withSource.contains(QStringLiteral("savedWith")))
+        withSource[QStringLiteral("savedWith")] = QStringLiteral("%1 %2").arg(QCoreApplication::applicationName(), QCoreApplication::applicationVersion()).trimmed();
+    QByteArray bytes = QJsonDocument(withSource).toJson(QJsonDocument::Compact);
     // Packed (Preferences): a mark, then the scene zlib-packed.
     if (compressFiles())
         bytes = QByteArray("ECLZ") + qCompress(bytes, 9);

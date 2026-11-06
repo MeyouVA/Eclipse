@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- How a picture is put in a frame when eclipse-convert makes it a drawing (-alignment <name>).
+     Eclipse has Fit, Fill, Fit Width, Fit Height, Centre and Top Left; those here are added (or take their place).
+     fit: none, fit, fill, width or height; horizontal: left, centre or right; vertical: top, centre or bottom;
+     scale: after fitting. -->
+<alignments>
+ <alignment name="Bottom Centre" fit="width" horizontal="centre" vertical="bottom" scale="1"/>
+ <alignment name="Half Size" fit="fit" horizontal="centre" vertical="centre" scale="0.5"/>
+</alignments>

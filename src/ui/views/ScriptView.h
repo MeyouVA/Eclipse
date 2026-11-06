@@ -221,6 +221,12 @@ public:
     static QString defaultFolder();
 
     QString run(QString const& code, QString const& name = QString());
+    // Whether the last run stopped at an error or ran too long; and what the next runs see as `arguments` (an array of
+    // strings, as the batch program passes them).
+    bool lastRunFailed() const { return m_failed; }
+    void setArguments(QStringList const& arguments) { m_arguments = arguments; }
+    // How long a run may take before it is stopped (seconds; 0: no end, as a batch run has).
+    void setTimeLimit(int seconds) { m_timeLimit = seconds; }
 
     // The script shown, by name (without .js); false when there is none of that name.
     bool open(QString const& name);
@@ -278,6 +284,9 @@ private:
     class QCheckBox* m_toolbar = nullptr;
     class QFileSystemWatcher* m_watcher = nullptr;
     QString m_loaded;       // the script's text as it was last read or saved
+    QStringList m_arguments;
+    bool m_failed = false;
+    int m_timeLimit = 10;
     void watch();
     void showCommands();     // the shortcut and toolbar boxes, for the script shown
 };

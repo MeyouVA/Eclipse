@@ -94,6 +94,25 @@ if(MSVC)
     target_compile_options(Eclipse PRIVATE /W4 /utf-8 /permissive- /wd4251 /wd4275)
 endif()
 
+# The small programs beside it: the batch program, the file converters, information and status (console programs),
+# and the Configuration Editor and the Service Launcher (windows).
+foreach(tool batch convert info config services)
+    if(tool STREQUAL "config" OR tool STREQUAL "services")
+        add_executable(EclipseTool_${tool} WIN32 src/app/tools/${tool}.cpp)
+    else()
+        add_executable(EclipseTool_${tool} src/app/tools/${tool}.cpp)
+    endif()
+    set_target_properties(EclipseTool_${tool} PROPERTIES OUTPUT_NAME "eclipse-${tool}")
+    if(WIN32)
+        target_sources(EclipseTool_${tool} PRIVATE src/app/Eclipse.rc)
+    endif()
+    target_link_libraries(EclipseTool_${tool} PRIVATE EclipseUi)
+    if(MSVC)
+        target_compile_options(EclipseTool_${tool} PRIVATE /W4 /utf-8 /permissive- /wd4251 /wd4275)
+    endif()
+    add_dependencies(Eclipse EclipseTool_${tool})
+endforeach()
+
 # The tests, where the tests folder is there (it is not part of what is given out).
 if(EXISTS ${CMAKE_SOURCE_DIR}/tests/model_test.cpp AND EXISTS ${CMAKE_SOURCE_DIR}/tests/ui_test.cpp)
     # A small console test of the model and the sound detection (no window needed).

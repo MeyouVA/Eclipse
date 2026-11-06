@@ -1,0 +1,3 @@
+# The version the programs say they are (eclipse-info -version).
+product = Eclipse
+version = 0.2.0

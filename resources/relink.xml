@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Where a scene's media went: eclipse-convert -relink relink.xml scene.ecl changes each path the scene
+     names that starts with `from` to start with `to` (the first rule that fits; -dryrun only lists them).
+     Copy this file, and write a rule for each folder that moved:
+     <path from="D:/Old/Sounds" to="E:/Project/Sounds"/> -->
+<relink>
+</relink>

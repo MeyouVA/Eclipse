@@ -5,6 +5,9 @@
 #include "EclipseExport.h"
 
 #include <QByteArray>
+#include <QDateTime>
+#include <QList>
+#include <QPair>
 #include <QHash>
 #include <QString>
 
@@ -14,5 +17,9 @@ namespace Zip {
 ECLIPSE_FORMATS_API QHash<QString, QByteArray> read(QByteArray const& archive);
 // Raw deflated data (RFC 1951) unpacked; empty, and `ok` false, when it is broken.
 ECLIPSE_FORMATS_API QByteArray inflate(QByteArray const& data, bool* ok = nullptr);
+// The files (by their names in the archive, folders as "a/b.png") as a .zip: deflated where that makes them smaller,
+// else stored; `modified` the time written on each (invalid: now).
+ECLIPSE_FORMATS_API QByteArray write(QList<QPair<QString, QByteArray>> const& files, QDateTime modified = QDateTime());
+ECLIPSE_FORMATS_API quint32 crc32(QByteArray const& bytes);
 
 }

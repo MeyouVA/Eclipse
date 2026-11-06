@@ -488,11 +488,15 @@ QString ScriptView::run(QString const& code, QString const& name)
     context.layers = &layers;
     context.folder = m_folder;
     installScriptGlobals(context, &parts);
+    engine.globalObject().setProperty(QStringLiteral("arguments"), engine.toScriptValue(m_arguments));
 
     // A script that never ends is stopped after a while.
     std::atomic<bool> finished{false};
-    std::thread watch([&engine, &finished] {
-        for (int waited = 0; waited < 200 && !finished; ++waited)
+    int const ticks = m_timeLimit * 20;
+    std::thread watch([&engine, &finished, ticks] {
+        if (ticks <= 0)
+            return;
+        for (int waited = 0; waited < ticks && !finished; ++waited)
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         if (!finished)
             engine.setInterrupted(true);
@@ -508,6 +512,7 @@ QString ScriptView::run(QString const& code, QString const& name)
         stack->undo();
 
     QStringList said = output.lines;
+    m_failed = engine.isInterrupted() || result.isError();
     if (engine.isInterrupted())
         said << tr("Stopped: the script ran for too long.");
     else if (result.isError())
