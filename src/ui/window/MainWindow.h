@@ -1301,7 +1301,7 @@ private:     // while a template is being edited: the scene put aside
     QPointF m_pointer;                 // where the pointer is over the Camera view, in fields
     bool m_pointerKnown = false;
     class QToolButton* m_zoomLabel = nullptr;   // in the strip under the Camera view
-    QLabel* m_messageLabel = nullptr;  // the tool in use, or something the user should know
+    class ElidedLabel* m_messageLabel = nullptr;  // the tool in use, or something the user should know (cut to the room there is)
     QString m_toolName;
     std::function<void()> m_refreshToolProperties;
     // "brush", "pencil" or "eraser" for the tools that have presets; else empty.

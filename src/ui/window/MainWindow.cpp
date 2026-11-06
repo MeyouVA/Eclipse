@@ -1,5 +1,6 @@
 // Eclipse - the main window: how it is put together and how its parts are wired to each other.
 #include "ui/window/MainWindow.h"
+#include "ui/window/ElidedLabel.h"
 #include "model/geometry/Deform.h"
 
 #include <QApplication>
@@ -238,7 +239,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         if (QAction* const a = m_actions->action(QLatin1String(ids[tool]))) {
             m_toolName = a->text().remove(QLatin1Char('&'));
             if (statusBar()->currentMessage().isEmpty())
-                m_messageLabel->setText(m_toolName);
+                m_messageLabel->setFullText(m_toolName);
         }
     });
     connect(m_document, &Document::changed, this, [this] {
@@ -275,11 +276,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     statusBar()->hide();
     m_toolName = tr("Brush");
-    m_messageLabel->setText(m_toolName);
+    m_messageLabel->setFullText(m_toolName);
     connect(statusBar(), &QStatusBar::messageChanged, this, [this](QString const& text) {
-        QString const shown = text.isEmpty() ? m_toolName : text;
-        m_messageLabel->setToolTip(text);
-        m_messageLabel->setText(m_messageLabel->fontMetrics().elidedText(shown, Qt::ElideRight, std::max(60, m_messageLabel->width() - 8)));
+        m_messageLabel->setFullText(text.isEmpty() ? m_toolName : text);
         m_messageLabel->setStyleSheet(text.isEmpty() ? QString() : QStringLiteral("color: #e6e6e6;"));
     });
 

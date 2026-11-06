@@ -1,5 +1,6 @@
 // Eclipse - the main window: its views put in their panels; the Camera view and the Timeline with their toolbars.
 #include "ui/window/MainWindow.h"
+#include "ui/window/ElidedLabel.h"
 #include "colour/spaces/ColourConfig.h"
 #include <QMessageBox>
 #include <QScrollArea>
@@ -416,12 +417,9 @@ void MainWindow::createCameraView()
                     [this, percent] { m_canvas->setZoomPercent(percent); });
         m_zoomLabel->setMenu(zoomMenu);
     }
-    m_messageLabel = new QLabel(status);
+    m_messageLabel = new ElidedLabel(status);
     m_messageLabel->setObjectName(QStringLiteral("MessageLabel"));
     m_messageLabel->setAlignment(Qt::AlignCenter);
-    // (However long a message is, it takes only the room the strip has - cut short, whole in its tooltip - and never widens the view.)
-    m_messageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    m_messageLabel->setMinimumWidth(0);
     m_statusLabel = new QLabel(status);
     m_statusLabel->setObjectName(QStringLiteral("StatusLabel"));
     m_drawingLabel = new QLabel(status);
