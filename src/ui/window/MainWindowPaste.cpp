@@ -1,6 +1,7 @@
 // Eclipse - the main window: Paste Special (what of the cells and keyframes is pasted, and how the drawings come) and the paste presets.
 #include "ui/window/MainWindow.h"
 
+#include <QSettings>
 #include <QCheckBox>
 #include <QApplication>
 #include <QComboBox>
@@ -135,6 +136,22 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     edges->setToolTip(tr("The layers pasted onto get keyframes where the paste begins and ends, so that their motion outside it stays as it was."));
     edges->setChecked(options.edgeKeys);
     more->addRow(edges);
+    // Symbols: how a symbol pasted from the Library comes in.
+    QSettings symbolSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    QGroupBox* const symbols = new QGroupBox(tr("Symbols:"), advanced);
+    symbols->setObjectName(QStringLiteral("PasteSymbols"));
+    QVBoxLayout* const symbolRows = new QVBoxLayout(symbols);
+    QCheckBox* const reuse = new QCheckBox(tr("Reuse Existing Elements"), symbols);
+    reuse->setObjectName(QStringLiteral("PasteSymbolsReuse"));
+    reuse->setToolTip(tr("When pasting from the Library, determine if the symbols will be duplicated or reused."));
+    reuse->setChecked(symbolSettings.value(QStringLiteral("paste/symbolsReuse"), true).toBool());
+    QCheckBox* const allFrames = new QCheckBox(tr("Paste all Frames of the symbol (full movie)"), symbols);
+    allFrames->setObjectName(QStringLiteral("PasteSymbolsAllFrames"));
+    allFrames->setToolTip(tr("When pasting from the Library, create an exposure for each frame of the symbol."));
+    allFrames->setChecked(symbolSettings.value(QStringLiteral("paste/symbolsAllFrames"), true).toBool());
+    symbolRows->addWidget(reuse);
+    symbolRows->addWidget(allFrames);
+    more->addRow(symbols);
     tabs->addTab(advanced, tr("Advanced"));
 
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -143,6 +160,8 @@ bool MainWindow::pasteDialog(Timeline::PasteOptions& options, QString const& tit
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     if (dialog.exec() != QDialog::Accepted)
         return false;
+    symbolSettings.setValue(QStringLiteral("paste/symbolsReuse"), reuse->isChecked());
+    symbolSettings.setValue(QStringLiteral("paste/symbolsAllFrames"), allFrames->isChecked());
     options.drawings = drawings->isChecked();
     options.keyframes = keys->isChecked();
     options.cycles = cycles->value();

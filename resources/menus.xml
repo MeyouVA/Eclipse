@@ -52,6 +52,7 @@
     <item id="ImportReference" icon="file/importreference" text="To &amp;Reference View..." responder="window" slot="onActionImportReference()"/>
     <item id="ImportSpriteSheet" icon="file/importimages" text="Sprite Shee&amp;ts..." responder="window" slot="onActionImportSpriteSheet()" tooltip="A sprite sheet cut into a drawing for each sprite, on a new layer."/>
     <item id="ImportTransformations" text="&amp;Transformations..." responder="window" slot="onActionImportTransformations()" tooltip="Keyframes written by Export Transformations, onto the layers selected from the current frame."/>
+    <item id="ImportAnimation" text="Animation &amp;File (ATOM)..." responder="window" slot="onActionImportAnimation()" tooltip="Import ATOM Animation File: the curves of an animation transfer file set as keyframes on the layers of the same names."/>
     <item id="ImportAnimatic" icon="file/importmovie" text="&amp;Animatic Project..." responder="window" slot="onActionImportAnimatic()" tooltip="An editing program's sequence (Final Cut Pro XML, EDL or OpenTimelineIO) brought in: reference images, sound, shots and markers."/>
     <item id="ImportPdf" icon="file/importimages" text="&amp;PDF / Illustrator..." responder="window" slot="onActionImportPdf()" tooltip="The vector artwork of a PDF or Illustrator file: a drawing for each page, a layer for each of its layers."/>
     <separator/>
@@ -61,6 +62,7 @@
    <menu id="Export" text="&amp;Export">
     <item id="ExportFrames" icon="file/exportframes" text="&amp;Images..." shortcut="shortcut.exportFrames" responder="window" slot="onActionExportFrames()"/>
     <item id="ExportTransformations" text="&amp;Transformations..." responder="window" slot="onActionExportTransformations()" tooltip="The keyframes of the layers selected, in a file of their own."/>
+    <item id="ExportAnimation" text="Animation &amp;File (ATOM)..." responder="window" slot="onActionExportAnimation()" tooltip="The keyframes of the layers as an ATOM animation transfer file, for 3D programs."/>
     <item id="ExportMovie" icon="file/exportmovie" text="&amp;Movie..." shortcut="shortcut.exportMovie" responder="window" slot="onActionExportMovie()"/>
     <item id="ExportGif" icon="file/exportgif" text="Animated &amp;GIF..." shortcut="shortcut.exportGif" responder="window" slot="onActionExportGif()"/>
     <item id="PublishGameEngine" icon="file/exportframes" text="Publish for &amp;Game Engine..." responder="window" slot="onActionPublishGameEngine()" tooltip="Opens the Publish for Game Engine dialog box: the frames in one sprite sheet with a JSON file saying where each is."/>
@@ -500,6 +502,9 @@
     <item id="SetIkMaxAngle" text="Set IK M&amp;ax Angle" responder="window" slot="onActionIkConstraint(QString)" itemParameter="max"/>
     <item id="SetIkExclude" text="&amp;Exclude From IK" responder="window" slot="onActionIkConstraint(QString)" itemParameter="exclude"/>
     <item id="RemoveIkConstraints" text="&amp;Remove All Constraints" responder="window" slot="onActionIkConstraint(QString)" itemParameter="none"/>
+    <item id="ResetIkConstraintsSelected" text="Reset ALL IK Constraints for &amp;Selected Joints" responder="window" slot="onActionIkConstraint(QString)" itemParameter="resetSelected"/>
+    <item id="ResetIkConstraintsAll" text="Reset A&amp;LL IK Constraints" responder="window" slot="onActionIkConstraint(QString)" itemParameter="resetAll"/>
+    <item id="ClearIkKeyframes" text="IK &amp;Clear All Affected Keyframes" responder="window" slot="onActionIkConstraint(QString)" itemParameter="clearKeys" tooltip="The keyframes on this frame of the layers the IK tool turns when the current one is pulled."/>
     <separator/>
     <item id="SetIkKeyframe" text="Set IK &amp;Keyframe" responder="window" slot="onActionSetIkKeyframe()"/>
     <item id="ApplyIkConstraints" text="A&amp;pply IK Constraints" responder="window" slot="onActionApplyIkConstraints()"/>
@@ -743,6 +748,8 @@
    <item id="LayerEditor" icon="timeline/layerprops" text="Editor..." shortcut="shortcut.toggleEditor" responder="window" slot="onActionToggleEditor()"/>
    <item id="SetPropertiesManyLayers" icon="timeline/layerprops" text="Set Properties on &amp;Many Layers..." responder="window" slot="onActionSetPropertiesOnManyLayers()"/>
    <item id="ShowAttributeInformation" text="Attribute &amp;Information..." responder="window" slot="onActionShowAttributeInformation()"/>
+   <item id="ConvertToSplitPosition" text="Convert to Split Positio&amp;n..." responder="window" slot="onActionConvertToSplitPosition()" tooltip="The selected layers' positions split into X, Y and Z, each going its own way, with their paths kept."/>
+   <item id="ConvertToPathPosition" text="Remove Split Position" responder="window" slot="onActionConvertToPathPosition()" tooltip="The selected layers' positions put back on a path through their keyframes, that control points can bend."/>
    <menu id="AnimationControllers" text="&amp;Controllers">
     <item id="ReassignTargetAttributes" text="&amp;Reassign Target Attributes..." responder="window" slot="onActionReassignTargetAttributes()"/>
     <item id="RemoveAttributeBinding" text="Remove Attribute &amp;Binding..." responder="window" slot="onActionRemoveAttributeBinding()"/>
@@ -755,6 +762,12 @@
     <item id="BakeAllControllers" text="Bake A&amp;ll Controllers" responder="window" slot="onActionControllerCommand(QString)" itemParameter="all"/>
     <item id="CleanControllers" text="Clea&amp;n Controllers" responder="window" slot="onActionControllerCommand(QString)" itemParameter="clean"/>
     <item id="ShowControllerSetup" text="Show Controller &amp;Setup" responder="window" slot="onActionControllerCommand(QString)" itemParameter="setup"/>
+    <item id="CreateControllerTiming" text="Create Controller &amp;Timing" responder="window" slot="onActionControllerCommand(QString)" itemParameter="timing" tooltip="The drawings the controller's layers show set on every frame, as its keys put them."/>
+    <item id="CreateControllerDrawings" text="Create Controller &amp;Drawings" responder="window" slot="onActionControllerCommand(QString)" itemParameter="drawings" tooltip="Each state of the controller a drawing of its own on each of its drawing layers."/>
+    <item id="CreateControllerTimingAndDrawings" text="Create Controller Timing &amp;and Drawings" responder="window" slot="onActionControllerCommand(QString)" itemParameter="timingDrawings"/>
+    <separator/>
+    <item id="NewMasterController" text="New &amp;Master Controller" responder="window" slot="onActionControllerCommand(QString)" itemParameter="master" tooltip="A controller whose script makes sliders, points, lines and check boxes in the Camera view."/>
+    <item id="EditMasterControllerScript" text="Master Controller Scrip&amp;t..." responder="window" slot="onActionControllerCommand(QString)" itemParameter="script"/>
    </menu>
    <item id="PublishAttributeMode" text="&amp;Publish Attribute Mode" checkable="true" responder="window" slot="onActionPublishAttributeMode(bool)"/>
    <item id="ClearPublishedAttributes" text="Clear Publis&amp;hed Attributes" responder="window" slot="onActionClearPublishedAttributes()"/>
@@ -1294,6 +1307,8 @@
    <item id="QuickEaseOut" icon="anim/easeout" text="Quick Ease Out" shortcut="shortcut.quickEaseOut" responder="window" slot="onActionQuickEase(QString)" itemParameter="out"/>
    <item id="SetEaseMultiple" icon="anim/easeset" text="Set Ease for Multiple Parameters..." shortcut="shortcut.setEaseMultiple" responder="window" slot="onActionSetEaseMultiple()"/>
    <item id="ApplyEaseToSelection" icon="anim/easeset" text="Apply Ease to Selection" shortcut="shortcut.applyEase" responder="window" slot="onActionApplyEaseToSelection()"/>
+   <separator/>
+   <item id="CaptureMotion"/>
   </menu>
   <menu id="TimelineKeyframes" text="Keyframes of the Layer">
    <item id="LayerStopMotionKeys" icon="timeline/stopmotionkey" text="Set Stop-Motion Keyframes" responder="window" slot="onActionLayerKeys(QString)" itemParameter="stop"/>
@@ -1316,6 +1331,7 @@
    <item id="TimelineViewGroup" icon="timeline/viewselected" text="Show Layers in Same Group" checkable="true" group="timelineView" shortcut="shortcut.viewSameGroup" responder="window" slot="onActionTimelineViewMode(QString)" itemParameter="group"/>
    <separator/>
    <item id="NextViewMode" icon="timeline/viewall" text="Cycle to Next View Mode" shortcut="shortcut.nextViewMode" responder="window" slot="onActionNextViewMode()"/>
+   <item id="ShowControllerSetup"/>
    <item id="CentreOnSelection" icon="timeline/viewselected" text="Centre on Selection" shortcut="shortcut.centreOnSelection" responder="window" slot="onActionCentreOnSelection()"/>
   </menu>
   <menu id="TimelineThumbnails" text="Thumbnails">
@@ -1438,6 +1454,16 @@
    <item id="ReassignTargetAttributes"/>
    <item id="RemoveAttributeBinding"/>
    <item id="RemoveAllAttributeBindings"/>
+   <separator/>
+   <item id="ApplyToController"/>
+   <item id="BakeControllerPositions"/>
+   <item id="BakeFromController"/>
+   <item id="BakeAllControllers"/>
+   <separator/>
+   <item id="CreateControllerTiming"/>
+   <item id="CreateControllerDrawings"/>
+   <item id="CreateControllerTimingAndDrawings"/>
+   <item id="ShowControllerSetup"/>
   </menu>
   <menu id="TimelineLipSync" text="Lip-Sync">
    <item id="AutoLipSync"/>

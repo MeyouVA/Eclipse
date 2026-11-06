@@ -538,6 +538,23 @@ void Canvas::paintLayerDrawing(QPainter& painter, Scene const& scene, int l, int
         painter.restore();
         return;
     }
+    if (layer.glue && layer.holdsDrawings() && !drawing.isEmpty() && opacity > 0.0) {
+        // Glue: within its radius of the joint, the piece drawn first as it lies at the glue angle, so that where it turns away
+        // from the piece it is jointed to the crack between them shows the piece, not what is behind.
+        Pose const pose = scene.poseOf(l, frame);
+        Pose lying = pose;
+        lying.rotation = layer.glueAngle;
+        QTransform const turned = layer.matrixFor(pose);
+        if (turned.isInvertible() && std::abs(pose.rotation - layer.glueAngle) > 1e-6) {
+            painter.save();
+            painter.setTransform(layer.matrixFor(lying) * turned.inverted() * painter.transform());
+            QPainterPath disc;
+            disc.addEllipse(layer.pivot, layer.glueRadius, layer.glueRadius);
+            painter.setClipPath(disc, Qt::IntersectClip);
+            paintDrawing(painter, scene, drawing, opacity);
+            painter.restore();
+        }
+    }
     if (!effects) {
         paintDrawing(painter, scene, drawing, opacity);
         return;

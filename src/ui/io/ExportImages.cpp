@@ -2,6 +2,7 @@
 #include "ui/window/MainWindow.h"
 #include "ui/io/Ask.h"
 
+#include <QSet>
 #include <functional>
 
 #include <algorithm>
@@ -68,17 +69,27 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
     }
     // Each layer apart as well (a layered format): the scene with only that layer of drawings shown, on nothing.
     bool const layered = options.layers && format->layers;
+    // Groups as Layers: a layer inside a group is part of the file's layer of its outermost group.
+    QVector<int> unitOf(scene.layers.size());
+    for (int l = 0; l < scene.layers.size(); ++l) {
+        unitOf[l] = l;
+        if (options.groupsAsLayers)
+            for (int up = scene.parentIndex(l), guard = 0; up >= 0 && guard < 256; up = scene.parentIndex(up), ++guard)
+                if (scene.layers[up].kind == Layer::Group)
+                    unitOf[l] = up;
+    }
     QVector<Scene> alone(layered ? scene.layers.size() : 0);
     if (layered)
         for (int l = 0; l < scene.layers.size(); ++l) {
             Layer const& layer = scene.layers[l];
-            if (!layer.holdsDrawings() && layer.kind != Layer::ColourCard)
+            if ((!layer.holdsDrawings() && layer.kind != Layer::ColourCard) || (unitOf[l] != l && !alone[unitOf[l]].layers.isEmpty()))
                 continue;
-            Scene& only = alone[l];
+            int const unit = unitOf[l];
+            Scene& only = alone[unit];
             only = scene;
             only.background = Qt::transparent;
             for (int other = 0; other < only.layers.size(); ++other)
-                if (other != l && (only.layers[other].holdsDrawings() || only.layers[other].kind == Layer::ColourCard))
+                if (unitOf[other] != unit && (only.layers[other].holdsDrawings() || only.layers[other].kind == Layer::ColourCard))
                     only.layers[other].visible = false;
         }
     auto fileOf = [&](int f) {
@@ -147,9 +158,14 @@ int MainWindow::exportImages(ImageExport const& options, QString* error)
         bool ok = false;
         if (layered) {
             QVector<ImageFiles::Layer> parts;
-            for (int l : scene.drawOrder(f))
-                if (l < alone.size() && !alone[l].layers.isEmpty() && scene.enabled(l))
-                    parts.push_back({scene.layers[l].name, FrameRender::inSpace(scene, FrameRender::frame(alone[l], f, size, options.preview), space, true)});
+            QSet<int> done;
+            for (int l : scene.drawOrder(f)) {
+                int const unit = l < unitOf.size() ? unitOf[l] : l;
+                if (unit < alone.size() && !alone[unit].layers.isEmpty() && scene.enabled(l) && !done.contains(unit)) {
+                    done.insert(unit);
+                    parts.push_back({scene.layers[unit].name, FrameRender::inSpace(scene, FrameRender::frame(alone[unit], f, size, options.preview), space, true)});
+                }
+            }
             ok = ImageFiles::saveLayered(parts, FrameRender::inSpace(scene, image, space, true), fileOf(f), &why, space);
         } else {
             ok = ImageFiles::save(FrameRender::inSpace(scene, image, space, floats || options.depth >= 16), fileOf(f), format->suffix, &why, std::clamp(options.quality, 1, 100), space);
@@ -215,10 +231,15 @@ void MainWindow::askExportImages(bool preview)
     QCheckBox* const layers = new QCheckBox(tr("Each layer apart too (Photoshop layers)"), &dialog);
     layers->setObjectName(QStringLiteral("ExportLayers"));
     layers->setToolTip(tr("A multi-layer write: every layer of drawings in the frame as a layer of its own, the frame as a whole as well."));
-    auto showLayers = [format, layers] {
+    QCheckBox* const groups = new QCheckBox(tr("Groups as Layers"), &dialog);
+    groups->setObjectName(QStringLiteral("ExportGroupsAsLayers"));
+    groups->setToolTip(tr("In the layered file, each group of layers is one layer, its layers put together (off: Separated Layers, each layer apart)."));
+    auto showLayers = [format, layers, groups] {
         ImageFiles::Format const* const f = ImageFiles::find(format->currentData().toString());
         layers->setEnabled(f && f->layers);
+        groups->setEnabled(layers->isEnabled() && layers->isChecked());
     };
+    connect(layers, &QCheckBox::toggled, &dialog, showLayers);
     connect(format, &QComboBox::currentIndexChanged, &dialog, showLayers);
     showLayers();
     // Colour management on: the colour space the files are written in.
@@ -318,13 +339,13 @@ void MainWindow::askExportImages(bool preview)
             movieFormat->addItem(f.name, f.suffix);
     movieFormat->setCurrentIndex(std::max(0, movieFormat->findData(QStringLiteral("mp4"))));
     movieFormat->setEnabled(false);
-    connect(kind, &QComboBox::currentIndexChanged, &dialog, [kind, movieFormat, format, digits, layers, showLayers] {
+    connect(kind, &QComboBox::currentIndexChanged, &dialog, [kind, movieFormat, format, digits, layers, groups, showLayers] {
         bool const movie = kind->currentIndex() == 1;
         movieFormat->setEnabled(movie);
         format->setEnabled(!movie);
         digits->setEnabled(!movie);
         if (movie)
-            layers->setEnabled(false);
+            layers->setEnabled(false), groups->setEnabled(false);
         else
             showLayers();
     });
@@ -347,6 +368,7 @@ void MainWindow::askExportImages(bool preview)
     form->addRow(tr("Colours"), colours);
     form->addRow(tr("Compression"), compression);
     form->addRow(QString(), layers);
+    form->addRow(QString(), groups);
     form->addRow(tr("Colour Space"), space);
     form->addRow(tr("From frame"), from);
     form->addRow(tr("To frame"), to);
@@ -370,6 +392,7 @@ void MainWindow::askExportImages(bool preview)
     options.percent = resolution->currentData().toInt();
     options.preview = preview;
     options.layers = layers->isEnabled() && layers->isChecked();
+    options.groupsAsLayers = options.layers && groups->isChecked();
     options.colourSpace = ColourSpaceBox::chosen(space);
     options.digits = digits->currentData().toInt();
     options.depth = depth->currentData().toInt();

@@ -1,6 +1,7 @@
 // Eclipse - the main window: symbols expanded in groups, the Library's symbols, symbols from drawn art, and the editing stack.
 #include "ui/window/MainWindow.h"
 
+#include <QSettings>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
@@ -120,7 +121,11 @@ void MainWindow::onActionCopyPivotToParentSymbol()
 
 int MainWindow::insertLibrarySymbol(int id)
 {
-    int const at = m_document->insertSymbol(id, layer());
+    // Paste Special > Symbols: reused or duplicated; every frame of it, or its first frame on this one.
+    QSettings const settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    bool const reuse = settings.value(QStringLiteral("paste/symbolsReuse"), true).toBool();
+    bool const allFrames = settings.value(QStringLiteral("paste/symbolsAllFrames"), true).toBool();
+    int const at = m_document->insertSymbol(id, layer(), reuse, allFrames, frame());
     if (at >= 0) {
         m_timeline->clearRange();
         m_timeline->setCurrentCell(at, frame());

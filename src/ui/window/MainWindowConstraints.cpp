@@ -305,6 +305,16 @@ void MainWindow::onActionControllerCommand(QString const& which)
             showView(dock);
         return;
     }
+    if (which == QLatin1String("master") && view) {
+        if (QDockWidget* const dock = findChild<QDockWidget*>(QStringLiteral("ControllerDock")))
+            showView(dock);
+        view->newMasterController();
+        return;
+    }
+    if (which == QLatin1String("script") && view && controller >= 0) {
+        view->editScript();
+        return;
+    }
     if (which == QLatin1String("all")) {
         int const baked = m_document->bakeAllControllers();
         statusBar()->showMessage(baked > 0 ? tr("Bake All Controllers: %n frame(s) keyed.", nullptr, baked) : tr("No Controller Nodes available."), 5000);
@@ -325,6 +335,13 @@ void MainWindow::onActionControllerCommand(QString const& which)
     } else if (which == QLatin1String("bake")) {
         int const baked = m_document->bakeController(controller, 0, m_document->scene().frameCount() - 1);
         statusBar()->showMessage(baked > 0 ? tr("Bake from Controllers: %n frame(s) keyed.", nullptr, baked) : tr("No Controller positions found in provided range."), 5000);
+    } else if (which == QLatin1String("timing") || which == QLatin1String("drawings") || which == QLatin1String("timingDrawings")) {
+        // Create Controller Timing / Drawings: the states' drawings made, and the layers' exposures set as the controller goes.
+        m_document->beginMacro(tr("Setting Drawing Controller"));
+        int const drawings = which != QLatin1String("timing") ? m_document->createControllerDrawings(controller) : 0;
+        int const frames = which != QLatin1String("drawings") ? m_document->createControllerTiming(controller, 0, m_document->scene().frameCount() - 1) : 0;
+        m_document->endMacro();
+        statusBar()->showMessage(tr("Setting Drawing Controller: %1 drawing(s) made, %2 frame(s) timed.").arg(drawings).arg(frames), 5000);
     } else if (which == QLatin1String("positions")) {
         // Bake Controller Positions: the controller's own value keyed on every frame of its range.
         Scene::Controller options = m_document->scene().controllers[controller];

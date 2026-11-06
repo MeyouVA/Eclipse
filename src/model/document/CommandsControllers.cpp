@@ -3,6 +3,7 @@
 
 #include "model/document/CommandsPrivate.h"
 
+#include <QSet>
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -557,6 +558,90 @@ int Document::bakeController(int controller, int from, int to)
     }
     endMacro();
     return baked;
+}
+
+int Document::createControllerTiming(int controller, int from, int to)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size() || m_scene.controllers[controller].states.isEmpty())
+        return 0;
+    int set = 0;
+    apply(tr("Set Controller Drawing Timing"), [&](Scene& s) {
+        Scene::Controller const& c = s.controllers[controller];
+        for (int f = std::max(0, from); f <= to && f < s.frameCount(); ++f) {
+            // The state that weighs most there.
+            int strongest = 0;
+            if (c.point) {
+                QVector<double> const weights = c.blendedWeights(c.whereAt(f));
+                for (int i = 1; i < weights.size(); ++i)
+                    if (weights[i] > weights[strongest])
+                        strongest = i;
+            } else if (!c.timeline) {
+                strongest = std::clamp(int(std::lround(c.valueAt(f))), 0, int(c.states.size()) - 1);
+            }
+            Scene::Controller::State const& state = c.states[std::clamp(strongest, 0, int(c.states.size()) - 1)];
+            bool changed = false;
+            for (int i = 0; i < c.layers.size() && i < state.drawings.size(); ++i) {
+                int const l = s.layerIndex(c.layers[i]);
+                if (l < 0 || !s.layers[l].holdsDrawings())
+                    continue;
+                Layer& layer = s.layers[l];
+                int const drawing = state.drawings[i];
+                if (drawing >= 0 && drawing < layer.drawings.size() && f < layer.cells.size() && layer.cells[f] != drawing) {
+                    layer.cells[f] = drawing;
+                    changed = true;
+                }
+            }
+            set += changed;
+        }
+    });
+    return set;
+}
+
+int Document::createControllerDrawings(int controller)
+{
+    if (controller < 0 || controller >= m_scene.controllers.size() || m_scene.controllers[controller].states.isEmpty())
+        return 0;
+    int made = 0;
+    apply(tr("Create Controller Drawings"), [&](Scene& s) {
+        Scene::Controller& c = s.controllers[controller];
+        for (int i = 0; i < c.layers.size(); ++i) {
+            int const l = s.layerIndex(c.layers[i]);
+            if (l < 0 || !s.layers[l].holdsDrawings())
+                continue;
+            Layer& layer = s.layers[l];
+            QSet<int> taken;
+            for (Scene::Controller::State& state : c.states) {
+                while (state.drawings.size() <= i)
+                    state.drawings.push_back(-1);
+                int const had = state.drawings[i];
+                if (had >= 0 && had < layer.drawings.size() && !taken.contains(had)) {
+                    taken.insert(had);
+                    continue;   // (a drawing of its own already)
+                }
+                int source = had >= 0 && had < layer.drawings.size() ? had : -1;
+                for (int f = 0; source < 0 && f < layer.cells.size(); ++f)
+                    if (layer.cells[f] != Layer::kNoDrawing)
+                        source = layer.cells[f];
+                Drawing copy = source >= 0 ? layer.drawings[source] : Drawing();
+                QString name = state.name.trimmed().isEmpty() ? tr("State") : state.name.trimmed();
+                auto nameTaken = [&layer](QString const& n) {
+                    for (Drawing const& d : layer.drawings)
+                        if (d.name == n)
+                            return true;
+                    return false;
+                };
+                for (int n = 2; nameTaken(name); ++n)
+                    name = QStringLiteral("%1_%2").arg(state.name.trimmed().isEmpty() ? tr("State") : state.name.trimmed()).arg(n);
+                copy.name = name;
+                layer.drawings.push_back(copy);
+                state.drawings[i] = int(layer.drawings.size()) - 1;
+                taken.insert(state.drawings[i]);
+                ++made;
+            }
+            layer.keepDrawingIdentitiesUnique();
+        }
+    });
+    return made;
 }
 
 int Document::bakeAllControllers()

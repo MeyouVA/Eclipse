@@ -100,8 +100,16 @@ public:
         bool backgroundBox = true;
         bool constantSize = true;
         int padSize = 130;
-        enum Visibility { Always, BasedOnSelection };
+        // Show Controls Mode: always, only when one of its layers (or the Selection Override layer) is the current one, or never.
+        enum Visibility { Always, BasedOnSelection, Never };
         int visibility = Always;
+        // A Master Controller: its controls are made by its own script (JavaScript), which puts sliders, points, lines, check
+        // boxes and labels in the Camera view that set the attributes it names. `data` is what the script keeps for itself
+        // between runs (Set data); `onLoad`: its script's onLoad() is run when the scene is opened.
+        bool master = false;
+        QString script;
+        QString data;
+        bool onLoad = false;
         int selectionOverride = 0;      // a layer id (0: its own layers)
         // The weights of the states on a 2D point's pad, as the blend type and grid have them.
         QVector<double> blendedWeights(QPointF spot) const;

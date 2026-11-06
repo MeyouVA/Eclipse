@@ -441,8 +441,12 @@ bool ScriptViews::isOpen(QString const& name) const
 bool ScriptViews::open(QString const& name)
 {
     QDockWidget* const d = dock(name);
-    if (!d)
+    if (!d) {
+        // (Run by the batch program there is no window, and so no Xsheet.)
+        if (m_output && name.compare(QStringLiteral("Xsheet"), Qt::CaseInsensitive) == 0 && !canvas())
+            m_output->log(tr("XSheet is not available in batch."));
         return false;
+    }
     d->show();
     d->raise();
     return true;
@@ -582,6 +586,21 @@ bool ScriptLayers::setAttribute(QString const& path, int frame, double v)
             m_document->editLayers({layer}, tr("Set Attribute Value"), [i, v](Layer& l) { l.customAttributes[i].value = v; });
             return true;
         }
+    return false;
+}
+
+bool ScriptLayers::hasAttribute(QString const& path) const
+{
+    QString name;
+    int const layer = layerOfPath(path, &name);
+    if (layer < 0)
+        return false;
+    if (attributeValue(name) >= 0)
+        return true;
+    QString const custom = name.startsWith(QLatin1String("custom.")) ? name.mid(7) : name;
+    for (CustomAttribute const& a : m_document->scene().layers[layer].customAttributes)
+        if (a.name.compare(custom, Qt::CaseInsensitive) == 0)
+            return true;
     return false;
 }
 

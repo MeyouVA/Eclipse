@@ -799,6 +799,8 @@ QJsonObject layerToJson(Layer const& layer, QString const& folder, QJsonObject& 
         layerObject["embeddedPivot"] = layer.embeddedPivot;
     if (layer.separatePosition)
         layerObject["separatePosition"] = true;
+    if (layer.glue)
+        layerObject["glue"] = QJsonObject{{"radius", layer.glueRadius}, {"angle", layer.glueAngle}};
     if (!layer.separateScale)
         layerObject["separateScale"] = false;
     if (layer.ignoreParentScale)

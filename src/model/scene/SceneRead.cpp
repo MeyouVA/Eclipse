@@ -121,7 +121,11 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
         c.backgroundBox = co["backgroundBox"].toBool(true);
         c.constantSize = co["constantSize"].toBool(true);
         c.padSize = std::clamp(co["padSize"].toInt(130), 40, 600);
-        c.visibility = std::clamp(co["visibility"].toInt(0), 0, 1);
+        c.visibility = std::clamp(co["visibility"].toInt(0), 0, 2);
+        c.master = co["master"].toBool(false);
+        c.script = co["script"].toString();
+        c.data = co["data"].toString();
+        c.onLoad = co["onLoad"].toBool(false);
         c.selectionOverride = co["selectionOverride"].toInt(0);
         for (QJsonValue const& kv : co["keys"].toArray())
             if (QJsonArray const k = kv.toArray(); k.size() == 2)

@@ -234,7 +234,8 @@ public:
         int first = 0, last = -1;   // frames; -1: the last of the scene
         int percent = 100;          // of the scene's resolution
         bool preview = false;       // quick: no smoothing of edges
-        bool layers = false;        // in a layered format, each layer of drawings apart too
+        bool layers = false;        // in a layered format, each layer of drawings apart too (Separated Layers)
+        bool groupsAsLayers = false;    // ... and each group of layers one layer of the file, its layers together
         QString colourSpace;        // the files' colour space (empty: the working space; EXR: its linear form)
         int digits = 4;             // Suffix: the frame number in so many digits (01, 001, 0001, 00001)
         QSize size;                 // Width / Height of one's own (invalid: the scene's, by `percent`)
@@ -251,6 +252,10 @@ public:
     };
     // Returns how many were written; fewer than asked means it stopped, with a message.
     int exportImages(ImageExport const& options, QString* error);
+    // File > Import / Export > Animation File: keyframes from / to an ATOM file (formats/anim/AtomAnimation.h), the result told
+    // in the status bar (and, with a screen, a box saying Import Success, Import Warnings or Import Error). True when done.
+    bool importAnimation(QString const& path, bool fields, double scale, QStringList* said = nullptr);
+    bool exportAnimation(QString const& path, bool fields, double scale, bool overwrite, bool selectedOnly, QStringList* said = nullptr);
     // A frame of the scene on a page, as large as the page takes it.
     bool printFrame(QPrinter& printer, int frame);
     int fillSelection();
@@ -384,6 +389,8 @@ public slots:
     void onActionCloneLayer();
     void onActionCloneLayerTiming();
     void onActionInsertControlPoint();
+    void onActionConvertToSplitPosition();
+    void onActionConvertToPathPosition();
     void onActionInsertPositionKeyframe();
     void onActionFlipScale(QString const& axis);
     void onActionStopMotionMode(bool on);
@@ -805,6 +812,8 @@ public slots:
     void onActionImportPdf();
     // File > Export > Transformations... and File > Import > Transformations...: the keyframes of the layers selected.
     void onActionExportTransformations();
+    void onActionExportAnimation();
+    void onActionImportAnimation();
     // Play > Test SWF Movie: the scene written as a Flash movie to a file of its own and opened in the player.
     void onActionPreviewSwf();
     void onActionExportCsv();

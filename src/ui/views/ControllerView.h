@@ -6,6 +6,7 @@
 #include <QWidget>
 
 class Document;
+class MasterControls;
 class QLabel;
 class QListWidget;
 class QPushButton;
@@ -62,8 +63,16 @@ public:
     void setCameraHost(QWidget* camera);
     void setShownInCamera(bool on);
 
+    // The Master Controller's controls in the view (and in the Camera view, when it shows there).
+    MasterControls* masterControls() const { return m_master; }
+    MasterControls* cameraMasterControls() const { return m_overlayMaster; }
+
 public slots:
     void newController();
+    // A Master Controller for the layers selected (or none): a script makes its controls (see MasterControls.h).
+    void newMasterController();
+    // Its script, and whether its onLoad() runs when the scene is opened.
+    void editScript();
     void deleteController();
     void addState();
     void replaceState();
@@ -90,6 +99,9 @@ private:
     class QCheckBox* m_point = nullptr;     // a 2D point instead of a slider
     ControllerPad* m_pad = nullptr;
     ControllerPad* m_overlayPad = nullptr;
+    MasterControls* m_master = nullptr;
+    MasterControls* m_overlayMaster = nullptr;
+    QList<QWidget*> m_stateParts;       // what a Master Controller does without: its states and their buttons
     void placeOverlay();
     bool eventFilter(QObject* watched, QEvent* event) override;
 };

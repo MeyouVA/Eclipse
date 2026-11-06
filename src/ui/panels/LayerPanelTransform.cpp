@@ -7,7 +7,10 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QSpinBox>
 #include <QVBoxLayout>
+
+#include <cmath>
 
 #include "model/document/Commands.h"
 
@@ -60,6 +63,25 @@ void LayerPanel::buildTransformOptions()
                                      "Pin To Camera: it moves, turns and zooms with the camera, so it holds still in the picture.\n"
                                      "Project on Camera Plane: its depth only sets what is in front; it is not made bigger or smaller by it."));
     column->addWidget(m_cameraAlignment);
+    // Glue: the crack at the joint filled (see Layer::glue).
+    QHBoxLayout* const glue = new QHBoxLayout;
+    m_glue = new QCheckBox(tr("Glue"), m_transformRow);
+    m_glue->setObjectName(QStringLiteral("LayerGlue"));
+    m_glue->setToolTip(tr("Glue: repairs the crack that opens at the joint when this piece turns away from the piece it hangs on.\n"
+                          "Near its pivot, the piece is also drawn behind itself as it lies at the glue angle."));
+    m_glueRadius = new QSpinBox(m_transformRow);
+    m_glueRadius->setObjectName(QStringLiteral("LayerGlueRadius"));
+    m_glueRadius->setRange(1, 2000);
+    m_glueRadius->setToolTip(tr("Glue radius: how far from the pivot the crack is filled."));
+    m_glueAngle = new QSpinBox(m_transformRow);
+    m_glueAngle->setObjectName(QStringLiteral("LayerGlueAngle"));
+    m_glueAngle->setRange(-360, 360);
+    m_glueAngle->setSuffix(QStringLiteral("\u00b0"));
+    m_glueAngle->setToolTip(tr("Glue angle: the angle at which this piece lies along the piece it hangs on (usually its rest angle, 0)."));
+    glue->addWidget(m_glue);
+    glue->addWidget(m_glueRadius, 1);
+    glue->addWidget(m_glueAngle, 1);
+    column->addLayout(glue);
     m_form->insertRow(m_form->rowCount() - 1, tr("Transformation"), m_transformRow);
 
     auto flag = [this](QCheckBox* box, QString const& on, QString const& off, void (*set)(Layer&, bool)) {
@@ -100,6 +122,20 @@ void LayerPanel::buildTransformOptions()
         if (!m_refreshing)
             m_document->editLayers({m_layer}, tr("Change Drawing Pivot"), [index](Layer& l) { l.embeddedPivot = index; });
     });
+    auto glued = [this] {
+        if (m_refreshing)
+            return;
+        bool const on = m_glue->isChecked();
+        int const radius = m_glueRadius->value(), angle = m_glueAngle->value();
+        m_document->editLayers({m_layer}, on ? tr("Glue") : tr("Remove Glue"), [on, radius, angle](Layer& l) {
+            l.glue = on;
+            l.glueRadius = radius;
+            l.glueAngle = angle;
+        });
+    };
+    connect(m_glue, &QCheckBox::toggled, this, glued);
+    connect(m_glueRadius, &QSpinBox::valueChanged, this, glued);
+    connect(m_glueAngle, &QSpinBox::valueChanged, this, glued);
     connect(m_cameraAlignment, &QComboBox::currentIndexChanged, this, [this](int index) {
         if (!m_refreshing)
             m_document->editLayers({m_layer}, tr("Change Camera Alignment"), [index](Layer& l) { l.cameraAlignment = index; });
@@ -124,6 +160,13 @@ void LayerPanel::refreshTransformOptions(Layer const& layer)
     // (A peg takes a drawing's pivot from a layer attached to it, as that layer says.)
     m_embeddedPivot->setVisible(layer.holdsDrawings());
     m_cameraAlignment->setCurrentIndex(std::clamp(layer.cameraAlignment, 0, int(Layer::AlignmentCount) - 1));
+    m_glue->setChecked(layer.glue);
+    m_glueRadius->setValue(layer.glueRadius);
+    m_glueAngle->setValue(int(std::lround(layer.glueAngle)));
+    m_glueRadius->setEnabled(layer.glue);
+    m_glueAngle->setEnabled(layer.glue);
+    for (QWidget* w : {static_cast<QWidget*>(m_glue), static_cast<QWidget*>(m_glueRadius), static_cast<QWidget*>(m_glueAngle)})
+        w->setVisible(layer.holdsDrawings());
     m_scaleY->setEnabled(layer.separateScale && !m_scaleY->property("driven").toBool());
     if (m_skew)
         m_skew->setEnabled(layer.separateScale && !m_skew->property("driven").toBool());

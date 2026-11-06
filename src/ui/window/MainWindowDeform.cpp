@@ -352,9 +352,24 @@ void MainWindow::onActionTransformationNames()
 
 void MainWindow::onActionIkConstraint(QString const& which)
 {
+    if (which == QLatin1String("clearKeys")) {
+        int const cleared = m_document->clearIkKeyframes(layer(), frame());
+        statusBar()->showMessage(cleared > 0 ? tr("IK Clear All Affected Keyframes: %n keyframe(s).", nullptr, cleared)
+                                             : tr("No keyframe of the IK chain on this frame."), 5000);
+        return;
+    }
     QVector<int> layers = m_timeline->selectedLayers();
-    if (layers.isEmpty())
+    if (which == QLatin1String("resetAll")) {
+        layers.clear();
+        for (int l = 0; l < m_document->scene().layers.size(); ++l)
+            layers.push_back(l);
+    }
+    if (layers.isEmpty() && layer() >= 0)
         layers = {layer()};
+    if (layers.isEmpty()) {
+        statusBar()->showMessage(tr("No Joint Selected"), 4000);
+        return;
+    }
     m_document->setIkConstraint(layers, which, frame());
 }
 

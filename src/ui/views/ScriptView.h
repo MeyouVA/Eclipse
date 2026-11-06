@@ -115,6 +115,8 @@ public:
     Q_INVOKABLE double attribute(QString const& path, int frame) const;
     Q_INVOKABLE bool setAttribute(QString const& path, int frame, double value);
     Q_INVOKABLE QStringList attributes(int layer) const;
+    // Whether the path names an attribute there is.
+    Q_INVOKABLE bool hasAttribute(QString const& path) const;
 
 private:
     bool has(int layer) const;
@@ -183,7 +185,7 @@ class ECLIPSE_UI_API ScriptViews : public QObject {
     Q_PROPERTY(double zoom READ zoom WRITE setZoom)
 
 public:
-    ScriptViews(QWidget* window, QObject* parent) : QObject(parent), m_window(window) {}
+    ScriptViews(QWidget* window, QObject* parent, class ScriptOutput* output = nullptr) : QObject(parent), m_window(window), m_output(output) {}
     Q_INVOKABLE QStringList list() const;
     Q_INVOKABLE bool isOpen(QString const& name) const;
     Q_INVOKABLE bool open(QString const& name);
@@ -197,6 +199,7 @@ private:
     class QDockWidget* dock(QString const& name) const;
     class Canvas* canvas() const;
     QWidget* m_window;
+    class ScriptOutput* m_output;
 };
 
 // Takes what a script logs.

@@ -466,7 +466,7 @@ QString ScriptView::run(QString const& code, QString const& name)
     ScriptLayers layers(m_document, m_timeline, &engine, nullptr);
     ScriptPalette palette(m_document, nullptr);
     ScriptEffects effects(m_document, nullptr);
-    ScriptViews views(window(), nullptr);
+    ScriptViews views(window(), nullptr, &output);
     for (QObject* o : {static_cast<QObject*>(&output), static_cast<QObject*>(&scene), static_cast<QObject*>(&frame), static_cast<QObject*>(&layers),
                        static_cast<QObject*>(&palette), static_cast<QObject*>(&effects), static_cast<QObject*>(&views)})
         QJSEngine::setObjectOwnership(o, QJSEngine::CppOwnership);

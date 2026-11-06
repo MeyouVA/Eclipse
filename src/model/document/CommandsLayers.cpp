@@ -606,6 +606,29 @@ int Document::insertSymbol(int symbolId, int above)
     return at;
 }
 
+int Document::insertSymbol(int symbolId, int above, bool reuse, bool allFrames, int frame)
+{
+    if (reuse && allFrames)
+        return insertSymbol(symbolId, above);
+    if (!m_scene.findSymbol(symbolId))
+        return -1;
+    int at = -1;
+    apply(reuse ? tr("Insert Symbol") : tr("Duplicate elements"), [&](Scene& s) {
+        int const shown = reuse ? symbolId : s.copySymbol(symbolId);
+        if (shown <= 0)
+            return;
+        at = s.addSymbolInstance(shown, above >= 0 && above < s.layers.size() ? above + 1 : -1);
+        if (at >= 0 && !allFrames) {
+            // Its first frame only, exposed on the frame pasted on.
+            QVector<int>& cells = s.layers[at].cells;
+            std::fill(cells.begin(), cells.end(), int(Layer::kNoDrawing));
+            if (frame >= 0 && frame < cells.size())
+                cells[frame] = 0;
+        }
+    });
+    return at;
+}
+
 int Document::insertEmptySymbol(QString const& name, int above)
 {
     int at = -1;
@@ -677,6 +700,27 @@ int Document::addCloneLayer(int layer, bool timing)
     return at;
 }
 
+int Document::clearIkKeyframes(int layer, int frame)
+{
+    if (layer < 0 || layer >= m_scene.layers.size())
+        return 0;
+    QVector<int> chain = m_scene.ikChain(layer);
+    if (!chain.contains(layer))
+        chain.push_back(layer);
+    int cleared = 0;
+    for (int l : std::as_const(chain))
+        cleared += l >= 0 && l < m_scene.layers.size() && m_scene.layers[l].keyIndex(frame) >= 0;
+    if (cleared == 0)
+        return 0;
+    apply(tr("IK Clear All Affected Keyframes"), [&](Scene& s) {
+        for (int l : std::as_const(chain))
+            if (l >= 0 && l < s.layers.size())
+                if (int const k = s.layers[l].keyIndex(frame); k >= 0)
+                    s.layers[l].keys.removeAt(k);
+    });
+    return cleared;
+}
+
 void Document::makeCloneIndependent(int layer)
 {
     if (layer < 0 || layer >= m_scene.layers.size() || m_scene.layers[layer].cloneGroup == 0)
@@ -708,6 +752,8 @@ bool Document::setIkConstraint(QVector<int> const& layers, QString const& which,
                          : which == QLatin1String("min")         ? tr("Set IK/Min Angle")
                          : which == QLatin1String("max")         ? tr("Set IK/Max Angle")
                          : which == QLatin1String("exclude")     ? tr("IK Set Exclusion Flag")
+                         : which == QLatin1String("resetAll")    ? tr("Reset ALL IK Constraints")
+                         : which == QLatin1String("resetSelected") ? tr("Reset ALL IK Constraints for Selected Joints")
                                                                  : tr("IK Remove All Constraints");
     apply(text, [&](Scene& s) {
         for (int l : in) {

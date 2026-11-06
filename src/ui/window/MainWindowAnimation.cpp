@@ -13,6 +13,7 @@
 #include <QPlainTextEdit>
 
 #include "actions/manager/ActionManager.h"
+#include <QApplication>
 #include <QInputDialog>
 
 #include "audio/sound/Sound.h"
@@ -52,6 +53,38 @@ void MainWindow::onActionInsertControlPoint()
     m_actions->setChecked(QStringLiteral("ShowControl"), true);
     m_canvas->onActionShowControl(true);
     statusBar()->showMessage(tr("Control point added. With the Transform tool, drag it to bend the path; Animation > Lock in Time makes it a keyframe."), 8000);
+}
+
+// Convert to Split Position: X, Y and Z each go their own way; the path kept by a keyframe on every frame it bends over (or
+// only the keyframes kept, when asked).
+void MainWindow::onActionConvertToSplitPosition()
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty() && layer() >= 0)
+        layers = {layer()};
+    bool keysOnly = false;
+    if (QApplication::platformName() != QLatin1String("offscreen") && QApplication::platformName() != QLatin1String("minimal")) {
+        QStringList const ways{tr("Keep the path: a keyframe on every frame it bends over"), tr("Keep only the keyframes")};
+        bool ok = false;
+        QString const way = QInputDialog::getItem(this, tr("Convert to Split Position"), tr("Split Position(s):"), ways, 0, false, &ok);
+        if (!ok)
+            return;
+        keysOnly = way == ways[1];
+    }
+    int const changed = m_document->convertToSplitPosition(layers, keysOnly);
+    statusBar()->showMessage(changed > 0 ? tr("Converted to Split Position: %n layer(s).", nullptr, changed)
+                                         : tr("No layer chosen has a path position to split."), 5000);
+}
+
+// Remove Split Position: the positions back on a path through the keyframes.
+void MainWindow::onActionConvertToPathPosition()
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty() && layer() >= 0)
+        layers = {layer()};
+    int const changed = m_document->convertToPathPosition(layers);
+    statusBar()->showMessage(changed > 0 ? tr("Removing Split Position(s): %n layer(s) on a path again.", nullptr, changed)
+                                         : tr("No layer chosen has a split position."), 5000);
 }
 
 // A keyframe on this frame, and a drawing of its own for it: a new pose to draw, in one step.

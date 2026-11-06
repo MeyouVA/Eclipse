@@ -355,6 +355,12 @@ struct Layer {
     int embeddedPivot = PivotNotUsed;
     // Separate: x, y and z go each their own way between keyframes, with no path of control points.
     bool separatePosition = false;
+    // Glue: the crack that opens where a piece turns at its joint, filled. Within `glueRadius` of its pivot the piece is drawn
+    // a second time, behind itself, turned as it would be at `glueAngle` (the way it lies along what it hangs on), so the gap
+    // between it and the piece it is jointed to shows art instead of what is behind.
+    bool glue = false;
+    int glueRadius = 24;
+    double glueAngle = 0.0;
     // Separate: width and height are scaled each on its own; locked, they keep in proportion (and the layer cannot be skewed).
     bool separateScale = true;
     bool ignoreParentScale = false;

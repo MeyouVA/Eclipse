@@ -197,10 +197,13 @@ QString ScriptNode::add(QString const& parent, QString const& name, QString cons
         made = m_c.document->addPeg(above);
     else if (kind == QLatin1String("GROUP"))
         made = m_c.document->addGroup(above);
-    else if (kind == QLatin1String("READ") || kind == QLatin1String("DRAWING") || kind.isEmpty())
+    else if (kind == QLatin1String("READ") || kind == QLatin1String("DRAWING") || kind == QLatin1String("IMAGE") || kind.isEmpty())
         made = m_c.document->addLayer(above);
-    else
+    else {
+        if (m_c.output)
+            m_c.output->log(tr("Port creation requires a type -- 'image' or 'peg' is accepted."));
         return QString();
+    }
     if (made < 0)
         return QString();
     if (!name.trimmed().isEmpty())
@@ -308,7 +311,11 @@ bool ScriptColumn::setEntry(QString const& name, int, int frame, QString const& 
     if (m_c.layers->expose(l, frame, value))
         return true;
     m_c.layers->newDrawing(l, frame);
-    return m_c.layers->renameDrawing(l, frame, value);
+    if (m_c.layers->renameDrawing(l, frame, value))
+        return true;
+    if (m_c.output)
+        m_c.output->log(tr("Failed to set the value in the XSheet."));
+    return false;
 }
 
 bool ScriptColumn::rename(QString const& oldName, QString const& newName)
@@ -806,7 +813,7 @@ QStringList scriptGlobalNames()
 {
     return {QStringLiteral("node"), QStringLiteral("column"), QStringLiteral("Drawing"), QStringLiteral("selection"), QStringLiteral("MessageLog"),
             QStringLiteral("MessageBox"), QStringLiteral("Action"), QStringLiteral("preferences"), QStringLiteral("specialFolders"), QStringLiteral("about"),
-            QStringLiteral("System"), QStringLiteral("render")};
+            QStringLiteral("System"), QStringLiteral("render"), QStringLiteral("AnimationIO")};
 }
 
 extern char const* const kScriptPrelude[];
@@ -828,6 +835,7 @@ void installScriptGlobals(ScriptContext const& c, QObject* owner)
         {QStringLiteral("about"), new ScriptAbout(owner)},
         {QStringLiteral("System"), new ScriptSystem(c, owner)},
         {QStringLiteral("render"), new ScriptRender(c, owner)},
+        {QStringLiteral("AnimationIO"), new ScriptAnimationIO(c, owner)},
         {QStringLiteral("__ui"), new ScriptUi(c, owner)}};
     for (auto const& [name, object] : parts) {
         QJSEngine::setObjectOwnership(object, QJSEngine::CppOwnership);
@@ -860,6 +868,7 @@ column         numberOf, getName, type, getEntry(name, 1, frame), setEntry(name,
 Drawing        numberOf(column), name(column, i), isExists(column, name), create(column, name)
 selection      selectedNodes, numberOfNodesSelected, selectedNode, clearSelection, addNodeToSelection, selectAll,
                isSelectionRange, startFrame, numberOfFrames
+AnimationIO    importAnimation(path, {fields, scale}), exportAnimation(path, {fields, scale, overwrite, selectedOnly}) - ATOM files
 MessageLog     trace, debug, error, isDebug, setDebug, clearLog
 MessageBox     information, warning, critical, question
 Action         perform(id), validate(id), ids()

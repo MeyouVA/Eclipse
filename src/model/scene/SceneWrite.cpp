@@ -196,6 +196,14 @@ QJsonObject Scene::toJson(QString const& folder) const
             controller["visibility"] = c.visibility;
         if (c.selectionOverride != 0)
             controller["selectionOverride"] = c.selectionOverride;
+        if (c.master) {
+            controller["master"] = true;
+            controller["script"] = c.script;
+            if (!c.data.isEmpty())
+                controller["data"] = c.data;
+            if (c.onLoad)
+                controller["onLoad"] = true;
+        }
         controllerArray.append(controller);
     }
     QJsonArray writeArray;

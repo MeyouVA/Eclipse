@@ -122,6 +122,9 @@ private:
     QDoubleSpinBox* m_ikMax = nullptr;
     QWidget* m_transformRow = nullptr;      // separate or locked values, angle limits, the drawing pivot
     QCheckBox* m_separatePosition = nullptr;
+    QCheckBox* m_glue = nullptr;
+    class QSpinBox* m_glueRadius = nullptr;
+    class QSpinBox* m_glueAngle = nullptr;
     QCheckBox* m_separateScale = nullptr;
     QCheckBox* m_ignoreParentScale = nullptr;
     QCheckBox* m_animatable = nullptr;

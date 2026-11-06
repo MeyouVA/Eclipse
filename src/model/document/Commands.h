@@ -338,6 +338,10 @@ public:
     void setGraph(NodeGraph const& graph, QString const& text);
     int createSymbol(QVector<int> const& layers, QString const& name);
     int insertSymbol(int symbolId, int above);
+    // Pasted from the Library (Paste Special > Symbols): the symbol itself shown (Reuse Existing Elements) or a copy of its own
+    // (its elements duplicated); every frame of it exposed from frame 0 (Paste all Frames of the symbol) or only its first frame,
+    // on `frame`. The new layer, or -1.
+    int insertSymbol(int symbolId, int above, bool reuse, bool allFrames, int frame);
     int expandSymbol(int layer, bool inGroup = false);
     // A new symbol with one empty drawing layer, and a layer above `above` that shows it.  Returns that layer.
     int insertEmptySymbol(QString const& name, int above);
@@ -398,6 +402,16 @@ public:
     // Pose controllers (see Scene::Controller).  `controller` is its place in the scene's list.
     int addController(QString const& name, QVector<int> const& layers);
     void removeController(int controller);
+    // A Master Controller: a controller whose controls its script makes (Scene::Controller::master). Its place, or -1.
+    int addMasterController(QString const& name, QVector<int> const& layers, QString const& script);
+    void setControllerScript(int controller, QString const& script);
+    // Master Controller - Set data: what its script keeps between runs.
+    void setControllerData(int controller, QString const& data);
+    // Convert to Split Position: the layers' positions made separate (x, y and z each its own way), with their path kept - each
+    // span that bent along control points keyed on every frame (or only at the keyframes, when `keysOnly`). Remove Split
+    // Position: back to a path through the keyframes. The layers changed.
+    int convertToSplitPosition(QVector<int> const& layers, bool keysOnly);
+    int convertToPathPosition(QVector<int> const& layers);
     void renameController(int controller, QString const& name);
     // The poses (and drawings) the controller's layers have on `frame`, kept as a state; or put in place of one.
     int addControllerState(int controller, int frame, QString const& name);
@@ -410,6 +424,12 @@ public:
     int autoCreatePositions(int controller);
     int bakeController(int controller, int from, int to);
     int bakeAllControllers();
+    // Create Controller Timing (Set Controller Drawing Timing): the drawings its layers show set on every frame from `from` to `to`,
+    // as the controller's keys put them (the nearest state's). The frames set.
+    int createControllerTiming(int controller, int from, int to);
+    // Create Controller Drawings: each state given a drawing of its own on each of its drawing layers (a copy of the one it shows,
+    // named after the state), to be redrawn for that state. The drawings made.
+    int createControllerDrawings(int controller);
     int cleanControllers();
     void resetController(int controller, int frame);
     void applyTimelineController(int controller, int frame, double value);
@@ -437,6 +457,8 @@ public:
     // A clone of the layer: the same drawings and timing, changed on either; its place, or -1.
     int addCloneLayer(int layer, bool timing = true);
     void makeCloneIndependent(int layer);
+    // IK Clear All Affected Keyframes: the keyframes on `frame` of the layers the IK tool turns when `layer` is pulled. How many.
+    int clearIkKeyframes(int layer, int frame);
     // Advanced Element Mode (Layer Properties): the layer shows the drawings of another (-1: its own again).
     bool useDrawingsOf(int layer, int source);
     void syncLayerWith(int layer, int other);

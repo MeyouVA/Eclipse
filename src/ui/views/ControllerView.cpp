@@ -1,5 +1,7 @@
 // Eclipse - Pose Controllers.
 #include "ui/views/ControllerView.h"
+#include "ui/views/MasterControls.h"
+#include <QPlainTextEdit>
 #include <QColorDialog>
 #include <QBoxLayout>
 #include <QSpinBox>
@@ -175,8 +177,13 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
     QPushButton* const jump = button("ControllerJump", tr("Jump to Controller"), tr("Chooses the controller the current layer is part of."));
     QPushButton* const options = button("ControllerOptions", tr("Settings..."), tr("Blend Type, Interpolation Type, Grid 2D, Slider Timeline, Default Value and how it shows in the Camera view."));
 
+    QPushButton* const addMaster = button("ControllerNewMaster", tr("New Master"),
+                                          tr("New Master Controller: its script makes sliders, points, lines and check boxes in the Camera view that set the attributes it names."));
+    QPushButton* const script = button("ControllerScript", tr("Script..."), tr("The Master Controller's script, and whether its onLoad() runs when the scene is opened."));
     QHBoxLayout* const top = new QHBoxLayout;
     top->addWidget(add);
+    top->addWidget(addMaster);
+    top->addWidget(script);
     top->addWidget(remove);
     top->addStretch(1);
     QHBoxLayout* const stateButtons = new QHBoxLayout;
@@ -227,6 +234,18 @@ ControllerView::ControllerView(Document* document, Timeline* timeline, QWidget* 
     layout->addLayout(moreButtons);
     layout->addWidget(m_pad, 1);
     layout->addLayout(sliderRow);
+    m_master = new MasterControls(document, timeline, this);
+    m_master->setObjectName(QStringLiteral("ControllerMasterControls"));
+    layout->addWidget(m_master);
+    m_stateParts = {m_states, addState, replace, drop, train, duplicate, rename, autoCreate, reset, m_point};
+    connect(addMaster, &QPushButton::clicked, this, &ControllerView::newMasterController);
+    connect(script, &QPushButton::clicked, this, &ControllerView::editScript);
+    // On Load: when a scene is opened, each Master Controller that asks has its onLoad() run.
+    connect(m_document, &Document::resetDone, this, [this] {
+        for (int c = 0; c < m_document->scene().controllers.size(); ++c)
+            if (m_document->scene().controllers[c].master && m_document->scene().controllers[c].onLoad)
+                MasterControls::runOnLoad(m_document, m_timeline, c);
+    });
 
     connect(add, &QPushButton::clicked, this, &ControllerView::newController);
     connect(remove, &QPushButton::clicked, this, &ControllerView::deleteController);
@@ -339,14 +358,21 @@ void ControllerView::refresh()
             pad->setPoint(where);
             pad->setEnabled(states >= 1);
         }
-    m_pad->setVisible(point);
-    m_slider->setVisible(!point);
-    m_value->setVisible(!point);
+    bool const master = c >= 0 && scene.controllers[c].master;
+    m_pad->setVisible(point && !master);
+    m_slider->setVisible(!point && !master);
+    m_value->setVisible(!point && !master);
+    for (QWidget* w : std::as_const(m_stateParts))
+        w->setVisible(!master);
+    m_master->setVisible(master);
+    m_master->setController(master ? c : -1);
     if (m_overlay) {
         m_overlaySlider->setRange(m_slider->minimum(), m_slider->maximum());
         m_overlaySlider->setValue(m_slider->value());
-        m_overlaySlider->setVisible(!point);
-        m_overlayPad->setVisible(point);
+        m_overlaySlider->setVisible(!point && !master);
+        m_overlayPad->setVisible(point && !master);
+        m_overlayMaster->setVisible(master);
+        m_overlayMaster->setController(master ? c : -1);
         m_overlayName->setText(c >= 0 ? scene.controllers[c].name : QString());
         bool shownHere = true;
         if (c >= 0) {
@@ -368,8 +394,11 @@ void ControllerView::refresh()
                 int const id = current >= 0 && current < scene.layers.size() ? scene.layers[current].id : 0;
                 shownHere = one.selectionOverride != 0 ? id == one.selectionOverride : one.layers.contains(id);
             }
+            // Show Controls Mode: Never.
+            if (one.visibility == Scene::Controller::Never)
+                shownHere = false;
         }
-        m_overlay->setVisible(m_inCamera->isChecked() && shownHere && states >= (point ? 1 : 2));
+        m_overlay->setVisible(m_inCamera->isChecked() && shownHere && (master ? m_overlayMaster->count() > 0 : states >= (point ? 1 : 2)));
         placeOverlay();
     }
     m_refreshing = false;
@@ -456,6 +485,11 @@ void ControllerView::setCameraHost(QWidget* camera)
     row->addWidget(m_overlayName);
     row->addWidget(m_overlaySlider, 1);
     row->addWidget(m_overlayPad);
+    m_overlayMaster = new MasterControls(m_document, m_timeline, m_overlay);
+    m_overlayMaster->setObjectName(QStringLiteral("CameraMasterControls"));
+    m_overlayMaster->setMinimumWidth(200);
+    m_overlayMaster->hide();
+    row->addWidget(m_overlayMaster, 1);
     // As the slider in the view: set when it is let go, or moved with the keys.
     connect(m_overlaySlider, &QSlider::sliderReleased, this, [this] { setValue(m_overlaySlider->value() / double(kSteps)); });
     connect(m_overlaySlider, &QSlider::valueChanged, this, [this](int v) {
@@ -569,7 +603,17 @@ void ControllerView::editOptions()
     padSize->setValue(options.padSize);
     QComboBox* const visibility = new QComboBox(&dialog);
     visibility->setObjectName(QStringLiteral("ControllerVisibility"));
-    visibility->addItems({tr("Always"), tr("Based on Selection")});
+    visibility->addItems({tr("Always"), tr("Based on Selection"), tr("Never")});
+    visibility->setToolTip(tr("Show Controls Mode: when the controller shows in the Camera view."));
+    // Base Pose: the state the controller rests on (where Default puts it).
+    QComboBox* const basePose = new QComboBox(&dialog);
+    basePose->setObjectName(QStringLiteral("ControllerBasePose"));
+    basePose->addItem(tr("(Default Value)"), -1);
+    for (int s = 0; s < options.states.size(); ++s)
+        basePose->addItem(options.states[s].name, s);
+    for (int s = 0; s < options.states.size(); ++s)
+        if (options.point ? options.states[s].at == options.defaultWhere : std::abs(options.defaultValue - s) < 1e-9)
+            basePose->setCurrentIndex(s + 1);
     visibility->setCurrentIndex(options.visibility);
     QComboBox* const override = new QComboBox(&dialog);
     override->setObjectName(QStringLiteral("ControllerSelectionOverride"));
@@ -586,13 +630,14 @@ void ControllerView::editOptions()
     form->addRow(tr("Frame 1 / Custom Frame"), start);
     form->addRow(tr("Timeline Length"), length);
     form->addRow(tr("Default Value"), defaultValue);
+    form->addRow(tr("Base Pose:"), basePose);
     form->addRow(tr("Text Size"), textSize);
     form->addRow(tr("Text Colour"), textColour);
     form->addRow(tr("Text Background Colour"), textBack);
     form->addRow(above);
     form->addRow(box);
     form->addRow(tr("Pad size"), padSize);
-    form->addRow(tr("Visibility Context"), visibility);
+    form->addRow(tr("Show Controls Mode"), visibility);
     form->addRow(tr("Selection Override"), override);
     QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -609,6 +654,12 @@ void ControllerView::editOptions()
     options.timelineStart = start->value() - 1;
     options.timelineLength = length->value();
     options.defaultValue = defaultValue->value();
+    if (int const base = basePose->currentData().toInt(); base >= 0 && base < options.states.size()) {
+        if (options.point)
+            options.defaultWhere = options.states[base].at;
+        else
+            options.defaultValue = base;
+    }
     options.textSize = textSize->value();
     options.textColour = textColour->property("colour").value<QColor>();
     options.textBackground = textBack->property("colour").value<QColor>();
@@ -618,6 +669,62 @@ void ControllerView::editOptions()
     options.visibility = visibility->currentIndex();
     options.selectionOverride = override->currentData().toInt();
     m_document->setControllerOptions(c, options, tr("Controller Settings"));
+}
+
+void ControllerView::newMasterController()
+{
+    QVector<int> layers = m_timeline->selectedLayers();
+    if (layers.isEmpty() && m_timeline->currentLayer() >= 0)
+        layers = {m_timeline->currentLayer()};
+    Scene const& scene = m_document->scene();
+    // A script to start from: a turn and a place for the first layer chosen.
+    QString script = tr("// A Master Controller: the controls this script makes set the attributes they name.\n"
+                        "// controls.slider / point / line / check / label - see Help > Scripting Interface Documentation.\n");
+    if (!layers.isEmpty() && layers.first() >= 0 && layers.first() < scene.layers.size()) {
+        QString const name = scene.layers[layers.first()].name;
+        script += QStringLiteral("controls.slider({attribute: \"%1:rotation.angle\", min: -180, max: 180, label: \"%2\"});\n"
+                                 "controls.point({x: \"%1:position.x\", y: \"%1:position.y\", min: -300, max: 300, label: \"%3\"});\n")
+                      .arg(name, tr("Angle"), tr("Position"));
+    }
+    int const at = m_document->addMasterController(QString(), layers, script);
+    if (at >= 0) {
+        refresh();
+        m_controllers->setCurrentRow(at);
+    }
+}
+
+void ControllerView::editScript()
+{
+    int const c = currentController();
+    if (c < 0)
+        return;
+    Scene::Controller options = m_document->scene().controllers[c];
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("MasterControllerScriptDialog"));
+    dialog.setWindowTitle(tr("Master Controller Script: %1").arg(options.name));
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    QPlainTextEdit* const text = new QPlainTextEdit(options.script, &dialog);
+    text->setObjectName(QStringLiteral("MasterControllerScript"));
+    text->setMinimumSize(460, 260);
+    QCheckBox* const onLoad = new QCheckBox(tr("On Load: run its onLoad() when the scene is opened"), &dialog);
+    onLoad->setObjectName(QStringLiteral("MasterControllerOnLoad"));
+    onLoad->setChecked(options.onLoad);
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(text, 1);
+    layout->addWidget(onLoad);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    m_document->beginMacro(tr("Master Controller Script"));
+    m_document->setControllerScript(c, text->toPlainText());
+    if (options.onLoad != onLoad->isChecked()) {
+        options = m_document->scene().controllers[c];
+        options.onLoad = onLoad->isChecked();
+        m_document->setControllerOptions(c, options, tr("Master Controller - On Load"));
+    }
+    m_document->endMacro();
 }
 
 bool ControllerView::jumpToController()

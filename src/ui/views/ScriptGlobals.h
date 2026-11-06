@@ -28,6 +28,7 @@
 #include "EclipseExport.h"
 
 #include <QJSValue>
+#include <QJSValueIterator>
 #include <QObject>
 #include <QSize>
 #include <QStringList>
@@ -223,6 +224,22 @@ public:
 
 private:
     QString m_scripts;
+};
+
+// AnimationIO: keyframes from and to ATOM files.
+//   AnimationIO.importAnimation(path [, {fields: true, scale: 1}]), AnimationIO.exportAnimation(path [, {fields, scale, overwrite,
+//   selectedOnly}]) - true when done; what went wrong goes to the output.
+class ECLIPSE_UI_API ScriptAnimationIO : public QObject {
+    Q_OBJECT
+
+public:
+    ScriptAnimationIO(ScriptContext const& c, QObject* parent) : QObject(parent), m_c(c) {}
+    Q_INVOKABLE bool importAnimation(QJSValue const& path = QJSValue(), QJSValue const& options = QJSValue(), QJSValue const& extra = QJSValue());
+    Q_INVOKABLE bool exportAnimation(QJSValue const& path = QJSValue(), QJSValue const& options = QJSValue(), QJSValue const& extra = QJSValue());
+
+private:
+    bool run(bool exporting, QJSValue const& path, QJSValue const& options, QJSValue const& extra);
+    ScriptContext m_c;
 };
 
 class ECLIPSE_UI_API ScriptAbout : public QObject {

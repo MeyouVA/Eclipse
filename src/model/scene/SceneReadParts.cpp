@@ -481,6 +481,11 @@ Layer layerFromJson(QJsonObject const& lo, QString const& folder, QHash<QString,
     layer.thumbnails = lo["thumbnails"].toBool(false);
     layer.embeddedPivot = std::clamp(lo["embeddedPivot"].toInt(0), 0, int(Layer::PivotOnParentPeg));
     layer.separatePosition = lo["separatePosition"].toBool(false);
+    if (QJsonObject const glue = lo["glue"].toObject(); !glue.isEmpty()) {
+        layer.glue = true;
+        layer.glueRadius = std::clamp(glue["radius"].toInt(24), 1, 2000);
+        layer.glueAngle = glue["angle"].toDouble(0.0);
+    }
     layer.separateScale = lo["separateScale"].toBool(true);
     layer.ignoreParentScale = lo["ignoreParentScale"].toBool(false);
     layer.cameraAlignment = std::clamp(lo["cameraAlignment"].toInt(Layer::AlignNormal), 0, int(Layer::AlignmentCount) - 1);
