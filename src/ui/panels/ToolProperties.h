@@ -90,7 +90,7 @@ private:
     // A slider with a box beside it, under a label.
     QLayout* addSetting(QString const& label, QString const& tip, int min, int max, int value, QString const& suffix, std::function<void(int)> apply);
     // A box of small pictures: how a line starts (kind 0), ends (1), or turns a corner (2).
-    void addShapeBox(QString const& label, QString const& tip, int kind, QStringList const& names, std::function<void(int)> apply);
+    class QComboBox* addShapeBox(QString const& label, QString const& tip, int kind, QStringList const& names, std::function<void(int)> apply);
     // The sizes of the kind of tool in hand, then the ones the user made for it.
     void listPresets(bool brush, bool eraser, bool draws);
 

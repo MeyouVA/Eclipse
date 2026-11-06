@@ -57,6 +57,29 @@ template <class Change> void Canvas::restyleSelection(QString const& text, Chang
     update();
 }
 
+bool Canvas::takeSelectedLineStyle()
+{
+    Drawing const* const d = currentDrawing();
+    if (!d)
+        return false;
+    int line = -1;
+    if (m_tool == ContourEditor && m_ceStroke >= 0 && m_ceStroke < d->strokes.size())
+        line = m_ceStroke;
+    else if (selecting())
+        for (int i : m_selStrokes)
+            if (i >= 0 && i < d->strokes.size()) {
+                line = i;
+                break;
+            }
+    if (line < 0)
+        return false;
+    Stroke const& s = d->strokes[line];
+    m_join = s.join;
+    m_capStart = s.capStart;
+    m_capEnd = s.capEnd;
+    return true;
+}
+
 void Canvas::setJoinStyle(int join)
 {
     m_join = Stroke::Join(std::clamp(join, 0, 2));

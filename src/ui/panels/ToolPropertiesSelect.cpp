@@ -313,7 +313,7 @@ static QIcon endPicture(int kind, int which)
     return QIcon(pixmap);
 }
 
-void ToolProperties::addShapeBox(QString const& label, QString const& tip, int kind, QStringList const& names, std::function<void(int)> apply)
+QComboBox* ToolProperties::addShapeBox(QString const& label, QString const& tip, int kind, QStringList const& names, std::function<void(int)> apply)
 {
     QComboBox* const box = new QComboBox(this);
     box->setObjectName(label);
@@ -328,18 +328,31 @@ void ToolProperties::addShapeBox(QString const& label, QString const& tip, int k
     connect(box, &QComboBox::currentIndexChanged, this, apply);
     m_shapeRow->addWidget(new QLabel(label, this));
     m_shapeRow->addWidget(box);
+    return box;
 }
 
 void ToolProperties::addLineShapeRows()
 {
     m_shapeRow = new QHBoxLayout;
     QString const applies = tr(" Applies to new lines and to selected ones; shows on lines of one thickness.");
-    addShapeBox(tr("Start"), tr("The start of a line: round, or cut off square.") + applies, 0, {tr("Round"), tr("Flat")},
-                [this](int index) { m_canvas->setStartCap(index); });
-    addShapeBox(tr("End"), tr("The end of a line: round, or cut off square.") + applies, 1, {tr("Round"), tr("Flat")},
-                [this](int index) { m_canvas->setEndCap(index); });
-    addShapeBox(tr("Join"), tr("Corners of a line: rounded, carried on to a point (mitre), or cut flat (bevel).") + applies, 2,
-                {tr("Round"), tr("Mitre"), tr("Bevel")}, [this](int index) { m_canvas->setJoinStyle(index); });
+    QComboBox* const start = addShapeBox(tr("Start"), tr("The start of a line: round, or cut off square.") + applies, 0, {tr("Round"), tr("Flat")},
+                                         [this](int index) { m_canvas->setStartCap(index); });
+    QComboBox* const end = addShapeBox(tr("End"), tr("The end of a line: round, or cut off square.") + applies, 1, {tr("Round"), tr("Flat")},
+                                       [this](int index) { m_canvas->setEndCap(index); });
+    QComboBox* const join = addShapeBox(tr("Join"), tr("Corners of a line: rounded, carried on to a point (mitre), or cut flat (bevel).") + applies, 2,
+                                        {tr("Round"), tr("Mitre"), tr("Bevel")}, [this](int index) { m_canvas->setJoinStyle(index); });
+    // Another line selected: the boxes show its start, end and join (without changing it).
+    auto showSelected = [this, start, end, join] {
+        if (!m_canvas->takeSelectedLineStyle())
+            return;
+        QSignalBlocker const a(start), b(end), c(join);
+        start->setCurrentIndex(m_canvas->startCap());
+        end->setCurrentIndex(m_canvas->endCap());
+        join->setCurrentIndex(m_canvas->joinStyle());
+    };
+    connect(m_canvas, &Canvas::selectionChanged, this, showSelected);
+    connect(m_canvas, &Canvas::toolChanged, this, showSelected);
+    showSelected();
     m_shapeRow->addStretch();
     m_form->addRow(m_shapeRow);
 

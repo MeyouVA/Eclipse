@@ -91,6 +91,13 @@ public:
         return float(pressure * (1.0 + sensitivity / 100.0 * lean * 1.5));
     }
     void setJoinStyle(int join);
+    // The join and the two ends new lines get (Tool Properties' Start, End and Join).
+    int joinStyle() const { return int(m_join); }
+    int startCap() const { return int(m_capStart); }
+    int endCap() const { return int(m_capEnd); }
+    // A line selected (or the one the Contour Editor works on): its join and ends become the ones in use, so that Tool
+    // Properties shows them and they are not changed by choosing what they already are. False when no line is selected.
+    bool takeSelectedLineStyle();
     void setStartCap(int cap);
     void setEndCap(int cap);
     void setLineTexture(int texture);

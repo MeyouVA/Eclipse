@@ -152,12 +152,14 @@ void Canvas::contourDown(QPointF p, Qt::KeyboardModifiers modifiers)
             m_ceStroke = i;
             m_ceFill = -1;
             m_cePoint = added;
+            emit selectionChanged();
             m_dragNow = edited.strokes[i].points[added].pos;
             m_drag = DragPoint;
             return;
         }
         m_ceStroke = i;
         m_ceFill = -1;
+        emit selectionChanged();    // (another line: Tool Properties shows its start, end and join)
         startBend(d->strokes[i], p, modifiers);
         return;
     }
