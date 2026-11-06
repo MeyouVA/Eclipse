@@ -14,7 +14,7 @@
 
 <img src="docs/images/bounce.gif" alt="A ball bouncing across the hills, animated in Eclipse" width="560">
 
-<sub>The demo scene in <code>Demo/</code>: drawn, timed and rendered in Eclipse.</sub>
+<sub>A short demo scene, drawn, timed and rendered in Eclipse.</sub>
 
 </div>
 
@@ -41,7 +41,7 @@ Movies, extra image formats, USD files and the Python console use the bundled to
 <td width="50%" valign="top">
 
 ### ✏️ Draw
-Vector brush, pencil, shapes, text, paint bucket and more. Lines keep their points, so you can reshape them later. Four art layers in every drawing, linked colour palettes, guides, onion skin and a light table.
+Vector brush, pencil, shapes, text, paint bucket and more. Lines keep their points, so you can reshape them later. Four art layers in every drawing, linked colour palettes with gradients and picture textures, guides, onion skin and a light table.
 
 </td>
 <td width="50%" valign="top">
@@ -132,7 +132,7 @@ Sound layers with scrubbing, a sound element editor, and lip-sync detected from 
 - Brush, pencil, eraser, line, rectangle, ellipse and polyline tools; paint bucket and ink tool; text, cutter, dropper and stamp tools.
 - Perspective and envelope tools to reshape a selection; pencil and smooth editors; a tool that repositions every drawing of a layer at once.
 - Overlay, line art, colour art and underlay layers in every drawing.
-- Palettes linked to the artwork (change a colour and everything painted with it changes), gradients, palettes shared between scenes.
+- Palettes linked to the artwork (change a colour and everything painted with it changes), gradients, picture textures (placed and scaled with the Edit Gradient tool), palettes shared between scenes.
 - Guides: rulers, grids, 1-, 2- and 3-point perspective, and a symmetry axis.
 - Clean-up: remove dirt and stray lines, close gaps, protected colours.
 
