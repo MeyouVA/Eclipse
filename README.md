@@ -1,281 +1,248 @@
+<div align="center">
+
 # Eclipse
 
-Eclipse is a 2D animation program for Windows, written in C++ with Qt 6. It is for
-hand-drawn and cut-out animation: you draw with vector tools on layers, time the drawings
-on a timeline or an exposure sheet, move and bend them with pegs and deformers, and export
-the result as a movie or as pictures.
+**A 2D animation program for Windows — hand-drawn and cut-out, from the first sketch to the finished movie.**
 
-Its layout and way of working follow the conventions of professional animation software,
-so the views, menus and shortcuts will feel familiar if you have used one. All of the
-code and all of the icons are Eclipse's own.
+[![Download](https://img.shields.io/github/v/release/MeyouVA/Eclipse?label=download&style=for-the-badge&color=2a8a96)](https://github.com/MeyouVA/Eclipse/releases)
+&nbsp;
+![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=for-the-badge&logo=windows)
+&nbsp;
+![C++20 / Qt 6](https://img.shields.io/badge/C%2B%2B20-Qt%206-41CD52?style=for-the-badge&logo=qt&logoColor=white)
+&nbsp;
+[![zlib licence](https://img.shields.io/badge/licence-zlib-lightgrey?style=for-the-badge)](LICENSE)
 
-![The main window](docs/images/main-window.png)
+<img src="docs/images/bounce.gif" alt="A ball bouncing across the hills, animated in Eclipse" width="560">
 
-Eclipse is under active development. Expect rough edges.
+<sub>The demo scene in <code>Demo/</code>: drawn, timed and rendered in Eclipse.</sub>
 
-**Download:** the latest build is on the [Releases page](https://github.com/MeyouVA/Eclipse/releases) - unzip it
-anywhere and run `Eclipse.exe`. Nothing has to be installed (FFmpeg is needed only for movies; see below).
+</div>
 
-## What it does
+![Eclipse's main window showing the demo scene in the Render View](docs/images/main-window.png)
 
-**Drawing**
+> **Early days.** Eclipse is under active development. Expect rough edges, and please report what you find.
 
-- Brush, pencil, eraser, line, rectangle, ellipse and polyline tools; a paint bucket with
-  several modes and an ink tool; a text tool; a cutter; a dropper; a stamp; perspective and
-  envelope tools to reshape a selection; pencil and smooth editors; a tool that repositions
-  every drawing of a layer at once.
-- Vector artwork: lines keep their points and can be reshaped with the Contour Editor.
-- Four art layers in every drawing: overlay, line art, colour art and underlay.
-- Colour palettes whose colours are linked to the artwork (change a colour and everything
-  painted with it changes), including gradients; palettes can be linked to a file shared
-  between scenes.
-- Guides to draw along: rulers, grids, 1-, 2- and 3-point perspective, and a symmetry axis
-  that mirrors what you draw.
-- Clean-up commands: remove dirt and stray lines, close gaps, unpaint or repaint a
-  selection; protected colours that the paint tools leave alone.
-- Onion skin, light table, grids, alignment guides, and a rotating, mirrorable view.
+---
 
-**Animating**
+## ⬇️ Get it
 
-- A Timeline and an Xsheet, with exposure commands (extend, hold, fill, cycle, sequence);
-  drawings can be named and typed into the Xsheet.
-- Keyframes with ease, motion and stop-motion keyframes, and a Function view of the curves;
-  position, scale, rotation, skew, depth and opacity are all animated.
-- Drawings marked as keys, breakdowns and in-betweens; frames marked with colours; tagged
-  layers.
-- Pegs, layer hierarchies, bones, curve and envelope deformers, and inverse kinematics.
-- Morphing between two drawings, guided by hints and by groups of shapes that only change into each other.
-- Pose controllers: poses of several layers kept under names, blended with a slider or a 2D pad, and keyframed.
-- 3D models (Wavefront OBJ, with their colours and textures) on layers of their own, turned in space with the layer.
-- Depth: layers nearer to and further from the camera, several cameras, and Top, Side and
-  Perspective views.
-- Sound layers, sound scrubbing, and lip-sync detection - from the sound, or from the words typed - that can be mapped
-  onto mouth drawings.
-- Sound Element Editor for clips, loops, gain envelopes and ordered audio effects, including filters, echo,
-  reverb, pitch and tempo. Sound files are collected into the scene folder when saving. Preferences control
-  sound-column visibility/colour and analog scrubbing; tempo markers have a starting frame.
-- Forward and backward scene playback with ranges, loop pauses, speed changes and assignable jog/shuttle
-  commands. Seeking while playing follows the chosen frame; editing the scene stops playback.
-  Sound plays during forward playback at 100% speed; reverse and other speeds are silent.
-- Playback Viewer, under Play or Windows, reads a folder of picture frames in natural filename order.
-  It offers independent frame/range/rate/speed controls, reverse play, zoom/pan, reload/unload,
-  frame/time and file-property displays, and a bounded image cache. Each picture file supplies
-  its first image. It also opens movies through the bundled decoder, with temporary frames,
-  stereo sound and volume. Movie sound plays forward at native FPS and 100% speed.
-  Cache can be disabled, and review resolution can be full, half or quarter size. Record and Play
-  opens recorded previews in this viewer. Viewer loads do not edit the scene.
-  Preview Manager can send its current rendered frames and sound directly to the viewer, retaining
-  an independent snapshot without movie encoding. Preferences > Timeline sets viewer cache and
-  resolution defaults, and Xsheet playback highlighting can be paused while the scene plays.
-  Viewer preroll adds silent blank frames before playback and around loops, with loop and preroll
-  defaults in Preferences. Colour, individual RGB channels and alpha can be inspected without
-  changing source pixels. First/Last visit the loaded sequence endpoints. Play/Stop keyboard
-  shortcuts act on key release. Top, Side and Perspective each have an independent playback switch,
-  including their context menus and an assignable command for the focused planning view.
-  Reload/Unload Frames offers a selected range and shows which frames are loaded. Unloading pictures
-  keeps their sequence positions and sound timing; unloaded slots display blank. Snapshot originals
-  remain available for reload until the entire clip is unloaded. Movie range reload restores prepared
-  pictures; Reload Entire Source refreshes the movie and sound. A per-file properties browser shows
-  original dimensions, format, path, depth, alpha and colour profile, independently of review resolution.
+1. Download the latest build from the **[Releases page](https://github.com/MeyouVA/Eclipse/releases)**.
+2. Unzip it anywhere.
+3. Run `Eclipse.exe`. Nothing has to be installed.
 
-**Effects and compositing**
+Movies, extra image formats, USD files and the Python console use the bundled tools in `thirdparty/` — they come with the release.
 
-- Over forty effects on a layer, each one animatable: blurs (directional, radial, variable, motion, depth of field),
-  colour (tint, curves, hue-saturation, brightness-contrast, gradients), glow, shadow, bloom, particles, mattes and
-  cutters, field charts - and Script (JavaScript run on the picture) and External (any program run on it).
-- A node graph: wire layers, effects, composites and groups together by hand in the Node View, and the frame is made as
-  the graph says.
-- Scripting: a Script Editor (JavaScript) and a Python console that work on the scene.
+---
 
-**Views**
+## ✨ Highlights
 
-Camera, Drawing, Timeline, Xsheet, Tool Properties, Layer Properties, Colour, Library,
-Node View, Node Library, Function, Onion Skin, Drawing Substitution, Top, Side,
-Perspective, Lip-Sync, Scene Markers, Guides, Metadata, Reference, Message Log and more.
-Views can be dragged, tabbed together, floated, and saved as workspaces.
+<table>
+<tr>
+<td width="50%" valign="top">
 
-| | |
-|---|---|
-| ![Perspective view](docs/images/perspective-view.png) | ![Lip-Sync view](docs/images/lip-sync-view.png) |
-| Layers standing at different depths in front of the camera | Mouth shapes detected in a sound, frame by frame |
+### ✏️ Draw
+Vector brush, pencil, shapes, text, paint bucket and more. Lines keep their points, so you can reshape them later. Four art layers in every drawing, linked colour palettes, guides, onion skin and a light table.
 
-![Function view](docs/images/function-view.png)
+</td>
+<td width="50%" valign="top">
 
-**Files**
+### 🎞️ Time it
+A **Timeline** and an **Xsheet** side by side, with exposure commands (hold, extend, fill, cycle, sequence). Drawings can be named and typed straight into the sheet.
 
-- Scenes are saved as `.ecl` files.
-- Imports pictures, movies, sound, 3D models (OBJ), pages from a scanner, Flash movies (SWF) and Flash documents
-  (FLA, the XFL kind of Flash CS5 and after: symbols, tweens, masks, text, bitmaps, video and sound come across).
-  A Flash movie can come in as a rig - a drawing layer on a peg for each depth of it, its motion as keyframes - or
-  frame by frame on one layer; as layers it can also go into the Library as a template.
-- Exports movies, picture sequences, animated GIFs and Flash movies (SWF): each drawing written once and moved
-  frame by frame, with gradients, pictures, lines, sound, opacity, tints, blurs, glows, shadows, blend modes and
-  cutters (as masks); and a report of anything Flash has no like of.
-  Movies and sound formats use the bundled [FFmpeg](https://ffmpeg.org/) tools in `thirdparty/`,
-  installed with the script below; no FFmpeg entry on `PATH` is needed.
-- Image import and export share one format registry, including PNG, JPEG, TIFF, layered PSD, EXR,
-  GIF, WebP, APNG, HEIC/HEIF, AVIF, JPEG 2000, JPEG XL, QOI, DDS, icons and portable image formats.
-  Animated GIF, WebP and APNG import as drawings with exposure timing. Camera RAW is read-only.
-  Profiles, alpha and high-depth pixels are retained where their file format supports them.
-  SVG import can keep the picture or convert its paths into editable strokes and fills, with native
-  curve handles and supported gradients. Raster effects and embedded bitmaps require picture import.
-  ICNS import also reads classic masked, indexed, planar RLE, ARGB and JPEG 2000 icon elements.
-  Additional picture formats include PAM/PNM, Farbfeld, MIFF, MNG, JNG, JPEG-LS, VBN, XWD,
-  X-Face, Sun Raster, VIFF, PICT, DCX, FITS, VICAR, Cineon, MATLAB images, Palm, OTB, HRZ,
-  MTV, IPL, CALS and SIXEL. Photo CD, WPG, DICOM and compressed SVG are import-only.
-  X-Face requires 48 by 48 pixels and HRZ requires 256 by 240. Headerless pixel/audio/video
-  streams need their encoding parameters and are not covered by automatic format detection.
-  Import Images, Link Images, Reference and Library ask for raw-image dimensions, channel layout,
-  sample depth, byte order and header offset, with optional channel planes and an ICC profile.
-  Save the scene first: decoded copies stay with it; links track those copies. Raw images read
-  the first picture, using tightly packed samples or the selected planar layout.
-- Movie export offers MP4, MOV, AVI, MKV, WebM, M4V, MPEG, WMV, FLV, OGV and MXF, with codec choices
-  appropriate to each container. ProRes 4444, PNG, Animation, uncompressed and WebM exports can keep
-  transparency in compatible containers. DNxHD uses 1920 by 1080 frames; DNxHR accepts other sizes.
-  The scene's audible tracks are mixed into movies. Picture sequences can also be kept separately.
-  Additional movie exports include NUT, MPEG transport streams, 3GP/3G2, ASF and silent YUV4MPEG.
-  AVI and NUT offer lossless FFV1 and HuffYUV with alpha. Import also lists additional legacy
-  and elementary movie streams handled by the bundled decoder; available subtypes vary by codec.
-  Headerless movies have explicit pixel-layout, dimensions, recording-rate and header-offset
-  settings, plus YUV matrix/range choices. Rational rates such as 30000/1001 are accepted.
-  Supported layouts include 8/16-bit RGB and alpha, subsampled YUV and float32 RGB/alpha;
-  float imports retain HDR values. Rows must be tightly packed. Movie import can be cancelled,
-  and extracted sound keeps its source rate and channel count in a floating-point WAV copy.
-- Audio export offers WAV, AIFF, MP3, AAC/M4A, Vorbis, Opus, FLAC, ALAC, WMA and AC-3, with sample
-  rate and mono/stereo choices. WAV and AIFF support 8/16/24/32-bit integer and 32-bit float files.
-  Export all frames or a selected range, mixed or as separate sound tracks. Audio decoding, effects
-  and mixing use 64-bit floating-point samples at the export rate, up to 192 kHz for lossless audio.
-  Playback previews use 16-bit stereo at 44100 Hz; movies receive a precise 48 kHz mix.
-  Additional audio exports include AU, CAF, Wave64, SoX native, True Audio, WavPack, MP2 and
-  Enhanced AC-3. Import lists additional compressed, tracker and legacy sound families; this
-  does not guarantee every historical encoding within a container can be decoded.
-  Raw PCM/float, A-law, mu-law, VIDC and G.726 imports ask for encoding, byte order, rate,
-  channels and bytes to skip. Save the scene first: the decoded sound is kept as a precise
-  WAV in its audio folder. Sound clips and Library imports use the same settings.
-- Templates can be kept in a Library and dropped into other scenes.
-  The Library menu manages folders, write access, thumbnail generation and item details.
-  Eclipse acquires a library write lock on the first edit. Use Right To Modify to release or request it.
-  Delete Folder sends a child folder and its contents to the Recycle Bin. F5 refreshes the focused library list.
-- Help pages are built in (Help > Eclipse Help, F1).
+</td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/editing.png" alt="Editing the ball with the Transform tool"></td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
-## Building
+### 🦴 Animate
+Pegs, bones, deformers, inverse kinematics, morphing and pose controllers — plus **Master Controllers**, whose own scripts put sliders and pads in the Camera view.
 
-Eclipse builds on Windows with the Microsoft compiler.
+</td>
+<td width="50%" valign="top">
 
-### What you need
+### 📈 Shape the motion
+Every value has a curve in the **Function** view: ease, linear, held — edited point by point.
+
+</td>
+</tr>
+<tr>
+<td><img src="docs/images/xsheet.png" alt="The Xsheet"></td>
+<td><img src="docs/images/function-view.png" alt="The Function view"></td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🧩 Composite
+Over forty animatable effects (blur, glow, shadow, particles, colour, mattes…) and a **Node View** for wiring layers, effects and composites by hand.
+
+</td>
+<td width="50%" valign="top">
+
+### 🖊️ Fine-tune your lines
+The **Pencil Editor** puts thickness points on a line: click to add one, type a number to size it, pick how it blends into the next.
+
+</td>
+</tr>
+<tr>
+<td><img src="docs/images/node-view.png" alt="The Node View"></td>
+<td><img src="docs/images/pencil-editor.png" alt="Thickness points in the Pencil Editor"></td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🎥 Work in depth
+Layers at different distances from the camera, several cameras, and Top, Side and **Perspective** views.
+
+</td>
+<td width="50%" valign="top">
+
+### 🔊 Sound and lip-sync
+Sound layers with scrubbing, a sound element editor, and lip-sync detected from the sound or the words.
+
+</td>
+</tr>
+<tr>
+<td><img src="docs/images/perspective-view.png" alt="The Perspective view"></td>
+<td><img src="docs/images/lip-sync-view.png" alt="The Lip-Sync view"></td>
+</tr>
+</table>
+
+<p align="center"><img src="docs/images/timeline.png" alt="The Timeline"></p>
+
+---
+
+## 📦 Files in and out
 
 | | |
 |---|---|
-| **Visual Studio 2022 or later** | with the "Desktop development with C++" workload |
-| **CMake 3.21 or later** | and **Ninja** (both come with Visual Studio) |
-| **Qt 6** (built and tested with 6.8) | the MSVC 64-bit kit; the modules used are Core, Gui, Widgets, Svg, PrintSupport and Qml |
+| **Scenes** | Saved as `.ecl` |
+| **Movies out** | MP4, MOV, AVI, MKV, WebM, GIF and more, with ProRes, DNxHD and transparent formats |
+| **Pictures** | PNG, JPEG, TIFF, layered PSD, EXR, WebP, HEIC, AVIF and dozens more, in and out |
+| **Animation** | Maya ATOM and USD (`.usda`, `.usdc`, `.usdz`) keyframes, in and out |
+| **Flash** | SWF in and out; FLA documents in, as a rig or frame by frame |
+| **Also in** | Sound, movies, 3D models (OBJ), SVG and PDF artwork, scanners, editing timelines (EDL, Final Cut XML, OpenTimelineIO) |
 
-### The quick way
+<details>
+<summary><b>The full list of what Eclipse can do</b></summary>
 
-From the folder you cloned into:
+#### Drawing
+- Brush, pencil, eraser, line, rectangle, ellipse and polyline tools; paint bucket and ink tool; text, cutter, dropper and stamp tools.
+- Perspective and envelope tools to reshape a selection; pencil and smooth editors; a tool that repositions every drawing of a layer at once.
+- Overlay, line art, colour art and underlay layers in every drawing.
+- Palettes linked to the artwork (change a colour and everything painted with it changes), gradients, palettes shared between scenes.
+- Guides: rulers, grids, 1-, 2- and 3-point perspective, and a symmetry axis.
+- Clean-up: remove dirt and stray lines, close gaps, protected colours.
+
+#### Animating
+- Keyframes with ease, motion and stop-motion keys; position, scale, rotation, skew, depth and opacity all animate.
+- Key, breakdown and in-between drawings; coloured frame marks; tagged layers.
+- Pegs, layer hierarchies, bones, curve, envelope and point deformers, glue at the joints, and inverse kinematics.
+- Morphing guided by hints.
+- Pose and Master Controllers; split positions; constraints and springs.
+- 3D models on layers of their own, turned in space with the layer.
+
+#### Sound and playback
+- Sound layers, scrubbing, clips, loops, gain envelopes and audio effects.
+- Lip-sync from the sound or from typed words, mapped onto mouth drawings.
+- Forward and backward playback with ranges and speeds; a Playback Viewer for picture sequences and movies.
+
+#### Effects and scripting
+- Blurs, colour corrections, glow, shadow, bloom, particles, mattes, cutters and field charts — each animatable.
+- Script (JavaScript run on the picture) and External (any program run on it) effects.
+- A Script Editor (JavaScript) and a Python console that work on the scene.
+
+#### Command-line programs
+- `eclipse-batch` renders and runs scripts without the window; `eclipse-convert`, `eclipse-info`, `eclipse-config` and `eclipse-services` handle files, settings and render queues.
+
+#### Help
+- Built-in help pages (Help > Eclipse Help, F1) and context help for every view.
+
+</details>
+
+---
+
+## 🛠️ Building from source
+
+You need **Visual Studio 2022+** (Desktop development with C++), **CMake 3.21+** with **Ninja**, and **Qt 6.8** (MSVC 64-bit).
 
 ```bat
 build.bat
 ```
 
-The script finds Visual Studio by itself and looks for Qt under `C:\Qt`. If your Qt is
-somewhere else, say where before you run it:
+The program is built into `out\`. Run `out\Eclipse.exe`.
+
+If Qt is not under `C:\Qt`, say where first:
 
 ```bat
 set QT_ROOT=D:\Qt\6.8.3\msvc2022_64
 build.bat
 ```
 
-The program is built into `out\`. Run `out\Eclipse.exe`.
-
-To make a folder you can copy to another computer (the program, its resources, and the Qt
-files it needs):
+To make a folder you can copy to another computer:
 
 ```bat
 package.bat
 ```
 
-That writes a `Release` folder.
+<details>
+<summary><b>Third-party tools (FFmpeg, ImageMagick, Python, USD)</b></summary>
 
-### By hand with CMake
-
-Open an "x64 Native Tools Command Prompt for VS", then:
-
-```bat
-cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
-cmake --build out
-C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --no-translations out\Eclipse.exe out\EclipseUi.dll out\EclipseCanvas.dll out\EclipseActions.dll out\EclipseFormats.dll out\EclipseRender.dll out\EclipseAudio.dll out\EclipseModel.dll out\EclipseColour.dll
-```
-
-Replace the Qt path with yours. The last line copies the Qt files next to the program and
-only has to be run once.
-
-## Local third-party packages
-
-The pinned download plan is in `scripts/thirdparty.json`. Preview it without downloading:
+The pinned list is in `scripts/thirdparty.json`. Preview it without downloading anything:
 
 ```bat
 scripts\install_thirdparty.bat
 ```
 
-After reviewing and approving the packages, install them with:
+Then install:
 
 ```bat
 scripts\install_thirdparty.bat -Install
 ```
 
-The installer checks archive sizes and SHA-256 hashes before extraction, verifies existing
-installations before skipping them, and fails rather than replacing an unknown installation.
-It detects the native Windows CPU architecture even from an emulated shell. Intel and AMD
-64-bit CPUs use the same x64 packages; ARM64 uses pinned native ARM64 packages. Unsupported
-architectures fail clearly. Preview another target without downloading with
-`scripts\install_thirdparty.bat -Architecture arm64`; use `-Install` only after reviewing
-and approving that target's download list. Existing packages of another architecture are
-never silently replaced. Package selection does not change the Qt/MSVC build target.
-Packages and their original notices stay in the ignored `thirdparty/` directory; the installer
-also writes `thirdparty/LICENSES.md`. The FFmpeg package in this initial plan is a GPL build
-to provide software H.264 and HEVC encoders. Its notices and those of its bundled codecs must
-be retained. ImageMagick delegates and Python bundled components have their own notices too.
+- Every download is checked against its size and SHA-256 before it is unpacked.
+- Packages go into the ignored `thirdparty/` folder, with their licences gathered in `thirdparty/LICENSES.md`.
+- `package.bat` copies what the program needs at run time into `Release/thirdparty`.
+- On ARM64 Windows, packages built only for x64 (USD) are left out.
 
-The installer uses an existing 7-Zip installation for `.7z` packages and Windows `tar` for ZIP
-packages. It does not download an extractor automatically. FFmpeg is found only in the bundled
-packages, independent of PATH. The Python console prefers the bundled interpreter. Packaging
-copies runtime executables, DLLs, configuration and original notices into `Release/thirdparty`;
-download archives, development headers and import libraries are left out.
+</details>
 
-The build checks `thirdparty/qt` before `QT_ROOT` or the usual `C:/Qt`
-installation, and CMake searches `thirdparty` first. Qt 6 for MSVC is currently installed
-separately. No Qt SDK download is included in this plan.
+<details>
+<summary><b>Building by hand with CMake</b></summary>
 
-## How the code is laid out
+From an "x64 Native Tools Command Prompt for VS":
 
-Eclipse is eight libraries and a small program that starts them. Each folder under `src`
-is one module:
+```bat
+cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
+cmake --build out
+```
 
-| Module | Folder | What is in it |
+Then run `windeployqt` once on `out\Eclipse.exe` and its DLLs to copy the Qt files beside them.
+
+</details>
+
+---
+
+## 🗂️ How the code is laid out
+
+| Module | Folder | What's in it |
 |---|---|---|
-| `EclipseColour.dll` | `src/colour` | Colour management: colour spaces, OpenColorIO configurations, look-up tables and ICC profiles |
-| `EclipseModel.dll` | `src/model` | The scene: layers, drawings, keyframes, and every change to them as a step that can be undone |
-| `EclipseAudio.dll` | `src/audio` | Reading, mixing and playing sound; lip-sync detection |
-| `EclipseFormats.dll` | `src/formats` | Other programs' files: Flash `.fla` and `.swf` in, `.swf` out, Flash video, zip archives |
-| `EclipseRender.dll` | `src/render` | Pictures of the scene without the window: what layer effects do to a picture |
-| `EclipseActions.dll` | `src/actions` | Menus, toolbars and shortcuts, and the look of the program |
-| `EclipseCanvas.dll` | `src/canvas` | The Camera and Drawing views and all their tools |
-| `EclipseUi.dll` | `src/ui` | The main window and all of its views |
-| `Eclipse.exe` | `src/app` | Starts the window |
+| `EclipseColour` | `src/colour` | Colour spaces, OpenColorIO, LUTs and ICC profiles |
+| `EclipseModel` | `src/model` | The scene: layers, drawings, keyframes, and undoable changes |
+| `EclipseAudio` | `src/audio` | Reading, mixing and playing sound; lip-sync |
+| `EclipseFormats` | `src/formats` | Other programs' files: Flash, ATOM, USD, zip |
+| `EclipseRender` | `src/render` | Rendering and layer effects |
+| `EclipseActions` | `src/actions` | Menus, toolbars, shortcuts and the look |
+| `EclipseCanvas` | `src/canvas` | The Camera and Drawing views and their tools |
+| `EclipseUi` | `src/ui` | The main window and all its views |
+| `Eclipse.exe` | `src/app` | Starts the window (plus the command-line programs) |
 
-The menus, toolbars, keyboard shortcuts and icons are not compiled in. They are read when
-the program starts from the `resources` folder beside it (`menus.xml`, `toolbars.xml`,
-`shortcuts.xml`, and `icons/`), so they can be changed without rebuilding.
+Menus, toolbars, shortcuts and icons live in `resources/` and are read at start-up, so they can be changed without rebuilding.
 
-## Platform
+---
 
-Windows 10 or later, 64-bit. Sound playback uses the Windows multimedia API, so the
-program does not build on other systems as it stands.
+## 📄 Licence
 
-## Licence
-
-Eclipse is free to use, change and share, including in commercial work, under the
-[zlib licence](LICENSE). The one thing you may not do is pass it off as your own: you
-must not claim you wrote the original, changed versions must be marked as changed, and
-the licence notice stays with the source.
+Eclipse is free to use, change and share — including in commercial work — under the [zlib licence](LICENSE). Just don't claim you wrote the original, and mark changed versions as changed.
