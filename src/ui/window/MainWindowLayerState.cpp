@@ -540,7 +540,7 @@ namespace {
 // The group a layer is in (the nearest Group above it), or -1.
 int groupAround(Scene const& scene, int l)
 {
-    for (int p = scene.parentIndex(l); p >= 0; p = scene.parentIndex(p))
+    for (int p = scene.parentIndex(l), guard = 0; p >= 0 && guard < 256; p = scene.parentIndex(p), ++guard)
         if (scene.layers[p].kind == Layer::Group)
             return p;
     return -1;

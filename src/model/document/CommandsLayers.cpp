@@ -251,9 +251,10 @@ int Document::groupLayer(int layer)
     int at = -1;
     apply(tr("Group Selection"), [&](Scene& s) {
         int const up = s.parentIndex(layer);
+        int const upId = up >= 0 ? s.layers[up].id : 0;     // (by id: the group put in moves the layers after it along)
         at = s.addLayer(s.layers[layer].name + QStringLiteral("-G"), layer + 1, Layer::Group);
         // The group takes the place of the layer under what it was attached to.
-        s.layers[at].parent = up >= 0 ? s.layers[up].id : 0;
+        s.layers[at].parent = upId;
         s.layers[at].parentBone = s.layers[layer].parentBone;
         s.layers[layer].parent = s.layers[at].id;
         s.layers[layer].parentBone = -1;
@@ -275,9 +276,21 @@ int Document::groupLayers(QVector<int> const& layers)
     int at = -1;
     apply(tr("Group Selection"), [&](Scene& s) {
         int const front = in.last();
-        int const up = s.parentIndex(front);
+        // The group goes where the front layer hangs - but not inside anything of the selection itself (a layer that hangs, through
+        // others, from one that is selected would put the group inside what is moved into it: a loop of parents).
+        auto insideSelection = [&](int l) {
+            for (int guard = 0; l >= 0 && guard < 256; l = s.parentIndex(l), ++guard)
+                if (in.contains(l))
+                    return true;
+            return false;
+        };
+        int up = s.parentIndex(front);
+        for (int guard = 0; up >= 0 && insideSelection(up) && guard < 256; ++guard)
+            up = s.parentIndex(up);
+        // (By its id: the group put in just in front moves every layer after it along by one, the one it hangs from too.)
+        int const upId = up >= 0 && !in.contains(up) ? s.layers[up].id : 0;
         at = s.addLayer(s.layers[front].name + QStringLiteral("-G"), front + 1, Layer::Group);
-        s.layers[at].parent = up >= 0 && !in.contains(up) ? s.layers[up].id : 0;
+        s.layers[at].parent = upId;
         for (int l : in) {
             // A layer attached to another of the selection stays attached to it.
             if (in.contains(s.parentIndex(l)))
