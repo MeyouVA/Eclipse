@@ -19,6 +19,7 @@
 #include "ui/views/GuidesView.h"
 #include "ui/views/CoordView.h"
 #include "ui/views/MetadataView.h"
+#include "ui/views/StoryboardView.h"
 #include "ui/views/PythonConsole.h"
 #include "ui/views/ScriptView.h"
 #include "ui/views/ControllerView.h"
@@ -147,6 +148,14 @@ void MainWindow::createWindowsMenuViews()
         view->setObjectName(QStringLiteral("MetadataView"));
         connect(m_timeline, &Timeline::currentCellChanged, view, &MetadataView::setCurrentCell);
         addView(tr("Metadata"), QStringLiteral("MetadataDock"), view, Qt::RightDockWidgetArea)->hide();
+    }
+    // Storyboard: the scene's shots and panels, their timing and captions.
+    {
+        StoryboardView* const view = new StoryboardView(m_document, this);
+        view->setObjectName(QStringLiteral("StoryboardView"));
+        connect(m_timeline, &Timeline::currentCellChanged, view, &StoryboardView::setCurrentCell);
+        connect(view, &StoryboardView::frameRequested, m_timeline, &Timeline::setCurrentFrame);
+        addView(tr("Storyboard"), QStringLiteral("StoryboardDock"), view, Qt::BottomDockWidgetArea)->hide();
     }
     {
         ControllerView* const view = new ControllerView(m_document, m_timeline, this);

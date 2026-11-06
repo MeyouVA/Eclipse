@@ -52,6 +52,7 @@
     <item id="ImportReference" icon="file/importreference" text="To &amp;Reference View..." responder="window" slot="onActionImportReference()"/>
     <item id="ImportSpriteSheet" icon="file/importimages" text="Sprite Shee&amp;ts..." responder="window" slot="onActionImportSpriteSheet()" tooltip="A sprite sheet cut into a drawing for each sprite, on a new layer."/>
     <item id="ImportTransformations" text="&amp;Transformations..." responder="window" slot="onActionImportTransformations()" tooltip="Keyframes written by Export Transformations, onto the layers selected from the current frame."/>
+    <item id="ImportAnimatic" icon="file/importmovie" text="&amp;Animatic Project..." responder="window" slot="onActionImportAnimatic()" tooltip="An editing program's sequence (Final Cut Pro XML, EDL or OpenTimelineIO) brought in: reference images, sound, shots and markers."/>
     <item id="ImportPdf" icon="file/importimages" text="&amp;PDF / Illustrator..." responder="window" slot="onActionImportPdf()" tooltip="The vector artwork of a PDF or Illustrator file: a drawing for each page, a layer for each of its layers."/>
     <separator/>
     <item id="AcquireTwain" icon="file/importimages" text="&amp;Acquire from TWAIN..." shortcut="shortcut.acquireTwain" responder="window" slot="onActionAcquireTwain()" tooltip="Opens the TWAIN interface. Scanned images are sent to the preview area and are imported into the scene."/>
@@ -68,6 +69,11 @@
     <item id="ExportLayoutImageSelection" icon="file/exportframes" text="Layout Image from &amp;Selection..." responder="window" slot="onActionExportLayoutImageFromSelection()" tooltip="The frame as it is, only the layers selected in the Timeline, written to a picture file."/>
     <item id="ExportSwf" icon="file/exportmovie" text="&amp;SWF..." responder="window" slot="onActionExportSwf()"/>
     <item id="ExportOpenGLFrames" icon="file/exportopengl" text="&amp;OpenGL Frames..." responder="window" slot="onActionExportOpenGLFrames()"/>
+    <item id="ExportEdl" text="&amp;Edit Decision List (EDL)..." responder="window" slot="onActionExportTimeline(QString)" itemParameter="edl" tooltip="The storyboard's shots as a CMX 3600 edit decision list."/>
+    <item id="ExportFcpXml" text="&amp;Final Cut Pro XML..." responder="window" slot="onActionExportTimeline(QString)" itemParameter="xml" tooltip="The storyboard's shots, the sound and the markers as a Final Cut Pro XML sequence."/>
+    <item id="ExportOtio" text="Open&amp;TimelineIO..." responder="window" slot="onActionExportTimeline(QString)" itemParameter="otio" tooltip="The storyboard's shots, the sound and the markers as an OpenTimelineIO timeline."/>
+    <item id="ExportStoryboardPdf" text="Storyboard &amp;PDF..." responder="window" slot="onActionStoryboardPdf()" tooltip="The storyboard printed to a PDF, laid out as a profile says."/>
+    <item id="ExportCaptions" text="Storyboard Ca&amp;ptions..." responder="window" slot="onActionExportCaptions()" tooltip="Exports all captions in the storyboard, as text or as a table."/>
     <item id="ExportCsv" text="Xsheet as &amp;CSV..." responder="window" slot="onActionExportCsv()" tooltip="Export CSV: the exposure sheet as a table, a row for each frame, a column for each drawing layer."/>
     <separator/>
     <item id="ExportAudio" icon="file/exportaudio" text="&amp;Audio..." responder="window" slot="onActionExportAudio()"/>
@@ -318,6 +324,9 @@
     <item id="AutoRenderWrite" icon="file/exportframes" text="Auto Render &amp;Write" checkable="true" shortcut="shortcut.autoRenderWrite" responder="window" slot="onActionAutoRenderWrite(bool)" tooltip="Each frame the Render View renders in full is also written by the write outputs that are on (images)."/>
    </menu>
    <item id="ElementManager" icon="misc/elements" text="&amp;Element Manager..." responder="window" slot="onActionElementManager()"/>
+   <separator/>
+   <item id="ShotsToMarkers" text="&amp;Markers from Shots" responder="window" slot="onActionShotsToMarkers()" tooltip="A marker on the Timeline ruler over each shot of the storyboard."/>
+   <item id="ShotsFromMarkers" text="S&amp;hots from Markers" responder="window" slot="onActionShotsFromMarkers()" tooltip="The storyboard made again: a shot from each marker to the next."/>
   </menu>
 
   <menu id="Drawing" text="&amp;Drawing">

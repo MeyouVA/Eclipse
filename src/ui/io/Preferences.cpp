@@ -1,4 +1,5 @@
 // Eclipse - the main window: preferences - applied, the dialog, preference sets, languages, the style editor.
+#include "ui/views/StoryboardView.h"
 #include "ui/window/MainWindow.h"
 #include "ui/views/NodeLibraryView.h"
 #include <QInputDialog>
@@ -368,6 +369,8 @@ void MainWindow::onActionPreferences()
     preferencesNodeView(w, s, dialog);
     preferencesOnion(w, s, dialog);
     preferencesSound(w, s, dialog);
+    std::function<void()> saveStoryboard;
+    QGroupBox* const storyboardPage = StoryboardView::preferencesPage(&dialog, &saveStoryboard);
     preferencesDrawing(w, s, dialog);
     preferencesColours(w, s, dialog);
     preferencesPalettes(w, s, dialog);
@@ -461,7 +464,7 @@ void MainWindow::onActionPreferences()
     // A tab for each kind of setting.
     QTabWidget* const tabs = new QTabWidget(&dialog);
     tabs->setObjectName(QStringLiteral("PreferencesTabs"));
-    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.colourPage, w.soundPage, w.advanced, w.templatesPage}) {
+    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.colourPage, w.soundPage, storyboardPage, w.advanced, w.templatesPage}) {
         QString const title = page->title();
         page->setTitle(QString());
         page->setFlat(true);
@@ -482,6 +485,7 @@ void MainWindow::onActionPreferences()
     }
     if (result != QDialog::Accepted)
         return;
+    saveStoryboard();
     s.setValue(QStringLiteral("prefs/lightTableWash"), w.wash->value());
     s.setValue(QStringLiteral("prefs/lightTableWhite"), w.lightWhite->value());
     s.setValue(QStringLiteral("prefs/lightTableShade"), w.lightShade->isChecked());

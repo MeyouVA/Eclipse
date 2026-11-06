@@ -243,6 +243,8 @@ QJsonObject Scene::toJson(QString const& folder) const
     // (Written only when they are not as a new scene has them, so older scenes read the same.)
     if (colourManaged)
         whole["colourManaged"] = true;
+    if (!storyboard.isEmpty() || !storyboard.title.isEmpty())
+        whole["storyboard"] = storyboard.toJson();
     if (workingSpace != QLatin1String("sRGB"))
         whole["workingSpace"] = workingSpace;
     if (textureSpace != QLatin1String("sRGB"))

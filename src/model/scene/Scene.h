@@ -7,6 +7,7 @@
 
 #include "model/scene/FunctionColumn.h"
 #include "model/scene/NodeGraph.h"
+#include "model/scene/Storyboard.h"
 
 #include <QHash>
 #include <QJsonValue>
@@ -159,6 +160,8 @@ public:
     static QPointF alongGuide(QPointF from, QPointF to, QPointF way);
     // Names and values kept with the scene.
     QVector<QPair<QString, QString>> metadata;
+    // Its storyboard: shots, panels and their captions (empty: none).
+    Storyboard storyboard;
     // The pictures of the Reference view: the files they are read from.
     QStringList references;
     // The Desk: drawings kept at hand to trace from (Shift and Trace), by layer id and drawing.

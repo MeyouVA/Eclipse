@@ -475,6 +475,16 @@ public:
     QString databaseScene() const { return m_dbScene; }
     int databaseVersion() const { return m_dbVersion; }
     bool databaseReadOnly() const { return m_dbReadOnly; }
+    // Storyboards and editing programs: an animatic (Final Cut Pro XML, EDL or OpenTimelineIO) brought in whole - its
+    // shots, sound and markers, and pictures from `imageFolder` (an exported image sequence; empty: the clips' own
+    // pictures) - the shots made (-1, with `error`); the storyboard written out as a timeline (by the file's suffix:
+    // .edl, .otio, else Final Cut Pro XML) whose clips play `movie`; the storyboard printed with a PDF profile (empty: the
+    // first); markers made from the shots, and shots from the markers (how many).
+    int importAnimatic(QString const& path, QString const& imageFolder, QString* error = nullptr);
+    bool exportTimeline(QString const& path, QString const& movie, QString* error = nullptr);
+    bool exportStoryboardPdf(QString const& path, QString const& profileName, QString* error = nullptr);
+    int shotsToMarkers();
+    int shotsFromMarkers();
     // Where a layer's model is, how big, and its own look of it.
     struct ModelSettings {
         QPointF centre;
@@ -765,6 +775,13 @@ public slots:
     // Batch Rendering: the queue, and the scene added to it.
     void onActionRenderQueue();
     void onActionAddToRenderQueue();
+    // ---- storyboards and editing programs ----
+    void onActionImportAnimatic();
+    void onActionExportTimeline(QString const& kind);
+    void onActionStoryboardPdf();
+    void onActionExportCaptions();
+    void onActionShotsToMarkers();
+    void onActionShotsFromMarkers();
     void onActionAcquireTwain();
     void onActionImportSpriteSheet();
     void onActionImportPdf();

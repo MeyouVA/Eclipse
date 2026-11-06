@@ -67,6 +67,7 @@ bool Scene::fromJson(QJsonObject const& json, Scene& out, QString* error, QStrin
             scene.guides.push_back(guide);
     }
     scene.metadata = pairsFromJson(json["metadata"].toArray());
+    scene.storyboard = Storyboard::fromJson(json["storyboard"].toObject());
     for (QJsonValue const& rv : json["references"].toArray())
         scene.references << found(folder, rv.toObject()["file"].toString(), rv.toObject()["relative"].toString());
     for (QJsonValue const& dv : json["desk"].toArray()) {
