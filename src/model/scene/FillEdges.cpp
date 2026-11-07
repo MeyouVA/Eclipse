@@ -34,7 +34,7 @@ QVector<Stroke> Stroke::minus(QVector<QPolygonF> const& area, double tolerance, 
             StrokePoint here = drawn[i];
             here.handles = here.corner = false;
             if (i > 0) {
-                StrokePoint const& before = line.last().at;
+                StrokePoint const before = line.last().at;     // (a copy: the points put in below can move the list)
                 double const length = QLineF(before.pos, here.pos).length();
                 int const steps = std::clamp(int(std::ceil(length)), 1, 4000);
                 for (int k = 1; k < steps; ++k) {
