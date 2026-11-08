@@ -1,0 +1,317 @@
+// Eclipse - the main window: title and status, which commands are on, undo and redo, choosing a tool.
+#include "animation/ui/window/MainWindow.h"
+
+#include <QDataStream>
+#include <QUndoStack>
+#include <QApplication>
+#include <QFileInfo>
+#include <QDialog>
+#include <QDir>
+#include <QHBoxLayout>
+#include <QMessageBox>
+#include <QPushButton>
+
+#include "render/effects/Effects.h"
+#include <QStatusBar>
+#include <QTextBrowser>
+#include <QVBoxLayout>
+
+#include "actions/manager/ActionManager.h"
+#include "actions/dialogs/ShortcutsDialog.h"
+#include "audio/sound/Sound.h"
+#include "model/document/Commands.h"
+#include "canvas/Canvas.h"
+#include "animation/ui/io/MovieExport.h"
+#include "animation/ui/panels/PalettePanel.h"
+#include "animation/ui/timeline/Timeline.h"
+#include "animation/ui/timeline/Xsheet.h"
+#include "animation/ui/views/DepthView.h"
+#include "animation/ui/views/LipSyncView.h"
+#include "animation/ui/views/PerspectiveView.h"
+
+#include "animation/ui/window/MainWindowPrivate.h"
+#include <QLabel>
+
+void MainWindow::updateTitle()
+{
+    QString const name = editingTemplate() ? tr("Template Edition: %1").arg(QFileInfo(editedTemplate()).completeBaseName())
+                         : !m_dbScene.isEmpty() ? tr("%1 / %2 / %3 (version %4%5)").arg(m_dbEnvironment, m_dbJob, m_dbScene).arg(m_dbVersion).arg(m_dbReadOnly ? tr(", to look at") : QString())
+                         : m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).fileName();
+    Effects::setSceneName(m_path.isEmpty() ? tr("Untitled") : QFileInfo(m_path).completeBaseName());
+    // (Inside a symbol: which, after the name of the scene.)
+    QStringList const trail = m_document->symbolTrail();
+    QString const inside = trail.isEmpty() ? QString() : QStringLiteral(" [%1]").arg(trail.join(QStringLiteral(" > ")));
+    setWindowTitle(QStringLiteral("%1%2%3 - Eclipse").arg(name, m_document->unsaved() ? QStringLiteral("*") : QString(), inside));
+    updateSymbolTrail();
+}
+
+void MainWindow::updateActionStates()
+{
+    Scene const& scene = m_document->scene();
+    int const l = layer(), f = frame();
+    if (l < 0 || l >= scene.layers.size())
+        return;
+    Layer const& current = scene.layers[l];
+    m_actions->setChecked(QStringLiteral("SoloMode"), scene.soloMode);
+    auto set = [this](char const* id, bool enabled) {
+        if (QAction* const a = m_actions->action(QLatin1String(id)))
+            a->setEnabled(enabled);
+    };
+    set("ExpandSymbol", current.showsSymbol());
+    set("EditSymbol", current.showsSymbol());
+    set("DuplicateSymbol", current.showsSymbol());
+    set("LeaveSymbol", m_document->insideSymbol());
+    set("ExpandSymbolInGroups", current.showsSymbol());
+    // While a template is edited, the scene's own file commands wait (it is put aside); Close Template Edition brings it back.
+    bool const editing = editingTemplate();
+    for (char const* id : {"New", "Open", "CloseScene", "SaveAs", "SaveNewVersion", "ManageVersions", "BackupScene"})
+        set(id, !editing);
+    set("LeaveTemplateEdit", editing);
+    set("CopyPivotToParentSymbol", m_document->insideSymbol());
+    set("CloneLayer", current.holdsDrawings());
+    set("AddSyncedLayer", current.holdsDrawings() && !current.showsSymbol());
+    set("CloneLayerTiming", current.holdsDrawings() && !current.showsSymbol());
+    set("MakeCloneIndependent", current.cloneGroup != 0);
+    set("SyncLayerWith", current.holdsDrawings() && !current.showsSymbol());
+    set("InsertSymbol", !scene.symbols.isEmpty());
+    // Keyframes.
+    bool const keyHere = current.keyIndex(f) >= 0;
+    bool const keyBefore = keyHere || current.previousKeyFrame(f) >= 0;
+    set("DeleteKeyframe", keyHere);
+    set("GotoPrevKeyframe", current.previousKeyFrame(f) >= 0);
+    set("GotoNextKeyframe", current.nextKeyFrame(f) >= 0);
+    set("SetMotionKeyframe", keyBefore);
+    set("SetStopMotionKeyframe", keyBefore);
+    // Drawings and their exposure: a layer that holds drawings, and for most a drawing in the cell.
+    bool const draws = current.holdsDrawings();
+    bool const cell = draws && current.drawingAt(f) != Layer::kNoDrawing;
+    set("CreateEmptyDrawing", draws);
+    set("DeleteDrawing", cell);
+    set("EditSceneMarker", scene.markerAt(f) >= 0);
+    set("DeleteSceneMarker", scene.markerAt(f) >= 0);
+    set("ToggleLayerOnion", draws);
+    set("DuplicateDrawing", cell);
+    bool exposureCell = false, exposureLayer = false, extend = false;
+    bool addExposureKey = false, removeDuplicates = false, drawingBank = false;
+    int const first = m_timeline->selectionFirstFrame();
+    for (int selected : exposureLayers()) {
+        Layer const& target = scene.layers[selected];
+        exposureLayer = true;
+        exposureCell = exposureCell || target.drawingAt(first) != Layer::kNoDrawing;
+        addExposureKey = addExposureKey || (target.drawingAt(first) != Layer::kNoDrawing && !target.isKey(first));
+        removeDuplicates = removeDuplicates || !target.keyExposures.isEmpty();
+        drawingBank = drawingBank || !target.drawings.isEmpty();
+        int source = first;
+        while (source >= 0 && target.drawingAt(source) == Layer::kNoDrawing)
+            --source;
+        extend = extend || source >= 0;
+    }
+    set("ExtendExposure", extend);
+    set("ExtendExposureTo", extend);
+    set("ExtendExposureToEnd", extend);
+    set("ClearExposure", exposureLayer);
+    for (char const* id : {"IncreaseExposure", "DecreaseExposure", "SetExposure1", "SetExposure2", "SetExposure3", "SetExposure4", "SetExposure5",
+                          "SetExposure6", "SetExposure7", "SetExposure8", "SetExposure9", "SetExposureAsk"})
+        set(id, exposureCell);
+    set("ClearExposureAndPull", exposureLayer);
+    set("AddKeyExposure", addExposureKey);
+    set("RemoveKeyExposure", exposureCell);
+    set("RemoveDuplicateKeyExposure", removeDuplicates);
+    for (char const* id : {"Hold1", "Hold2", "Hold3", "Hold4", "HoldExposure"})
+        set(id, exposureLayer);
+    set("FillCellsRandomly", drawingBank);
+    set("InsertBlankCell", exposureLayer);
+    set("FillEmptyCells", exposureLayer);
+    set("PreviousDrawing", draws && current.previousDrawingFrame(f) >= 0);
+    set("NextDrawing", draws && current.nextDrawingFrame(f) >= 0);
+    set("SubstitutePrevious", cell && current.drawings.size() > 1);
+    set("SubstituteNext", cell && current.drawings.size() > 1);
+    // Where the layer hangs.
+    bool const attached = scene.parentIndex(l) >= 0, carries = scene.hasChildren(l);
+    set("DetachLayer", attached);
+    set("SelectParent", attached);
+    set("SelectChild", carries);
+    set("CollapseExpand", carries);
+    set("AttachLayer", scene.layers.size() > 1);
+    // With several layers selected, a command is there if it has something to do on any of them.
+    bool canLock = false, canUnlock = false, coloured = false;
+    for (int s : m_timeline->selectedLayers()) {
+        canLock = canLock || !scene.layers[s].locked;
+        canUnlock = canUnlock || scene.layers[s].locked;
+        coloured = coloured || scene.layers[s].trackColor.isValid();
+    }
+    set("LockLayer", canLock);
+    set("UnlockLayer", canUnlock);
+    set("DefaultTrackColour", coloured);
+    set("MoveSoundHere", current.kind == Layer::Sound);
+    set("SplitSoundClip", current.kind == Layer::Sound);
+    set("InsertSilentCells", current.kind == Layer::Sound);
+    // What is selected in the drawing.
+    bool const picked = m_canvas->selecting() && m_canvas->hasSelection();
+    for (char const* id : {"FlipHorizontal", "FlipVertical", "Rotate90CW", "Rotate90CCW", "Rotate180", "BringToFront", "SendToBack",
+                           "BringForward", "SendBackward"})
+        set(id, picked);
+}
+
+void MainWindow::updateStatus()
+{
+    Scene const& scene = m_document->scene();
+    if (layer() < 0 || layer() >= scene.layers.size())
+        return;
+    // The drawing under the playhead, by the layer's name and its own: "Drawing-1".
+    Layer const& current = scene.layers[layer()];
+    int const drawing = current.holdsDrawings() ? current.drawingAt(frame()) : Layer::kNoDrawing;
+    m_drawingLabel->setText(!current.holdsDrawings() ? current.name
+                            : drawing == Layer::kNoDrawing ? tr("%1 Empty Cell").arg(current.name)
+                            : current.drawings[drawing].set.isEmpty() ? tr("%1-%2").arg(current.name, current.drawingLabel(drawing))
+                                                                      : tr("%1-%2 (%3)").arg(current.name, current.drawingLabel(drawing), current.drawings[drawing].set));
+    // The frame, and where the pointer is.
+    m_statusLabel->setText(m_pointerKnown ? tr("Fr %1      %2:%3").arg(frame() + 1).arg(m_pointer.x(), 0, 'f', 2).arg(m_pointer.y(), 0, 'f', 2)
+                                          : tr("Fr %1").arg(frame() + 1));
+    // The colour in hand.
+    Swatch const* const swatch = m_palette ? scene.findSwatch(m_palette->currentSwatch()) : nullptr;
+    m_colourLabel->setText(swatch ? swatch->name : QString());
+    m_colourPatch->setStyleSheet(swatch ? QStringLiteral("background: %1; border: 1px solid #101010;").arg(swatch->color.name()) : QString());
+}
+
+void MainWindow::onActionUndo()
+{
+    stepUndo(false);
+}
+
+void MainWindow::onActionRedo()
+{
+    stepUndo(true);
+}
+
+namespace {
+// Enough of a drawing to tell whether it changed.
+QByteArray drawingPrint(Drawing const& d)
+{
+    QByteArray print;
+    QDataStream out(&print, QIODevice::WriteOnly);
+    for (int sheet = 0; sheet < Drawing::SheetCount; ++sheet) {
+        out << qint32(d.strokesOf(sheet).size()) << qint32(d.fillsOf(sheet).size());
+        for (Stroke const& s : d.strokesOf(sheet)) {
+            out << s.width << s.color << qint32(s.points.size());
+            for (StrokePoint const& p : s.points)
+                out << p.pos << p.pressure;
+            for (ThicknessPoint const& key : s.thickness)
+                out << key.at << key.left << key.right;
+        }
+        for (Fill const& f : d.fillsOf(sheet)) {
+            out << f.color << qint32(f.swatch) << qint32(f.outlines.size());
+            for (QPolygonF const& o : f.outlines)
+                out << o;
+        }
+    }
+    out << qint32(d.pictures.size());
+    for (Picture const& p : d.pictures)
+        out << p.placement;
+    return print;
+}
+}
+
+void MainWindow::stepUndo(bool redo)
+{
+    QUndoStack* const stack = m_document->undoStack();
+    if (!m_restoreDrawingOnUndo) {
+        redo ? stack->redo() : stack->undo();
+        return;
+    }
+    // The drawings before, to find the one the step changes.
+    Scene const before = m_document->scene();
+    redo ? stack->redo() : stack->undo();
+    Scene const& after = m_document->scene();
+    for (int l = 0; l < after.layers.size(); ++l) {
+        Layer const& layer = after.layers[l];
+        int const was = before.layerIndex(layer.id);
+        if (was < 0 || !layer.holdsDrawings())
+            continue;
+        Layer const& old = before.layers[was];
+        // What a frame shows changed (a drawing put on it, or taken off): the nearest such frame.
+        int nearest = -1;
+        for (int f = 0; f < std::max(layer.cells.size(), old.cells.size()); ++f)
+            if (layer.cells.value(f, Layer::kNoDrawing) != old.cells.value(f, Layer::kNoDrawing)
+                && (nearest < 0 || std::abs(f - frame()) < std::abs(nearest - frame())))
+                nearest = f;
+        if (nearest >= 0) {
+            if (l != this->layer() || nearest != frame())
+                m_timeline->setCurrentCell(l, std::min(nearest, std::max(0, m_document->scene().frameCount() - 1)));
+            return;
+        }
+        for (int d = 0; d < layer.drawings.size(); ++d) {
+            if (d < old.drawings.size() && drawingPrint(old.drawings[d]) == drawingPrint(layer.drawings[d]))
+                continue;
+            // This drawing changed: go to the frame nearest the current one that shows it (unless it is shown here).
+            if (l == this->layer() && layer.drawingAt(frame()) == d)
+                return;
+            int best = -1;
+            for (int f = 0; f < layer.cells.size(); ++f)
+                if (layer.cells[f] == d && (best < 0 || std::abs(f - frame()) < std::abs(best - frame())))
+                    best = f;
+            if (best >= 0)
+                m_timeline->setCurrentCell(l, best);
+            return;
+        }
+    }
+}
+
+void MainWindow::onActionEditShortcuts()
+{
+    ShortcutsDialog dialog(m_actions, this);
+    dialog.exec();
+}
+
+void MainWindow::stepColour(int direction)
+{
+    QVector<Swatch> const& palette = m_document->scene().palette;
+    for (int i = 0; i < palette.size(); ++i) {
+        if (palette[i].id != m_palette->currentSwatch())
+            continue;
+        if (i + direction >= 0 && i + direction < palette.size())
+            m_palette->setCurrentSwatch(palette[i + direction].id);
+        return;
+    }
+}
+
+void MainWindow::onActionChooseTool(QString const& name)
+{
+    static QHash<QString, Canvas::Tool> const tools{
+        {QStringLiteral("select"), Canvas::Select}, {QStringLiteral("transform"), Canvas::Transform},
+        {QStringLiteral("brush"), Canvas::Brush},   {QStringLiteral("eraser"), Canvas::Eraser},
+        {QStringLiteral("paint"), Canvas::Paint},   {QStringLiteral("hand"), Canvas::Hand},
+        {QStringLiteral("pencil"), Canvas::Pencil}, {QStringLiteral("line"), Canvas::Line},
+        {QStringLiteral("rectangle"), Canvas::Rectangle}, {QStringLiteral("ellipse"), Canvas::Ellipse},
+        {QStringLiteral("contour"), Canvas::ContourEditor}, {QStringLiteral("rigging"), Canvas::Rigging},
+        {QStringLiteral("ik"), Canvas::IK}, {QStringLiteral("dropper"), Canvas::Dropper},
+        {QStringLiteral("zoom"), Canvas::Zoom}, {QStringLiteral("polyline"), Canvas::Polyline},
+        {QStringLiteral("paintunpainted"), Canvas::PaintUnpainted}, {QStringLiteral("repaint"), Canvas::Repaint},
+        {QStringLiteral("unpaint"), Canvas::Unpaint}, {QStringLiteral("text"), Canvas::Text},
+        {QStringLiteral("rotateview"), Canvas::RotateView}, {QStringLiteral("cutter"), Canvas::Cutter},
+        {QStringLiteral("stroke"), Canvas::StrokeTool}, {QStringLiteral("closegap"), Canvas::CloseGap},
+        {QStringLiteral("gradient"), Canvas::EditGradient}, {QStringLiteral("reposition"), Canvas::Reposition}, {QStringLiteral("stamp"), Canvas::Stamp}, {QStringLiteral("pencileditor"), Canvas::PencilEditor}, {QStringLiteral("perspective"), Canvas::Perspective}, {QStringLiteral("ink"), Canvas::Ink}, {QStringLiteral("pencilretouch"), Canvas::PencilRetouch}, {QStringLiteral("smootheditor"), Canvas::SmoothEditor}, {QStringLiteral("envelope"), Canvas::Envelope}, {QStringLiteral("morphing"), Canvas::Morphing}, {QStringLiteral("repaintbrush"), Canvas::RepaintBrush}, {QStringLiteral("splineoffset"), Canvas::SplineOffset}, {QStringLiteral("turn3d"), Canvas::Turn3D}, {QStringLiteral("shifttrace"), Canvas::ShiftTrace}, {QStringLiteral("drawingpivot"), Canvas::DrawingPivot}, {QStringLiteral("staticcamera"), Canvas::StaticCamera}};
+    m_canvas->setRepositionCurrent(name == QLatin1String("repositiondrawing"));
+    if (name == QLatin1String("repositiondrawing")) {
+        m_canvas->setTool(Canvas::Reposition);
+        statusBar()->showMessage(tr("Reposition Drawing: drag to move the whole of the current drawing within its layer."), 5000);
+        return;
+    }
+    if (tools.contains(name)) {
+        m_canvas->setTransformMode(Canvas::TransformAll);       // the Transform tool itself does everything
+        m_canvas->setTool(tools.value(name));
+    }
+}
+
+// Animation > Tools > Translate, Rotate, Scale: the Transform tool, doing that only.
+void MainWindow::onActionTransformMode(QString const& mode)
+{
+    m_canvas->setTool(Canvas::Transform);
+    m_canvas->setTransformMode(mode == QLatin1String("translate") ? Canvas::TranslateOnly : mode == QLatin1String("rotate") ? Canvas::RotateOnly
+                               : mode == QLatin1String("skew") ? Canvas::SkewOnly : mode == QLatin1String("maintain") ? Canvas::MaintainSize : Canvas::ScaleOnly);
+    statusBar()->showMessage(mode == QLatin1String("translate") ? tr("Translate: drag the layer anywhere to move it.")
+                             : mode == QLatin1String("rotate") ? tr("Rotate: drag anywhere to turn the layer about its pivot.")
+                             : mode == QLatin1String("skew") ? tr("Skew: drag to the right or the left to lean the layer over.")
+                             : mode == QLatin1String("maintain") ? tr("Maintain Size: drag up to send the layer away from the camera, down to bring it nearer; it looks as big as before.")
+                                                              : tr("Scale: drag away from the pivot to make the layer bigger, towards it smaller."), 6000);
+}

@@ -84,6 +84,8 @@ bool ActionManager::loadShortcuts(QString const& path, QString* error)
     }
     // The keys the user changed, kept apart from the file so that it can be replaced.
     QSettings settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    if (!m_settingsGroup.isEmpty())
+        settings.beginGroup(m_settingsGroup);
     settings.beginGroup(QStringLiteral("shortcuts"));
 
     QXmlStreamReader xml(&file);
@@ -179,7 +181,7 @@ QAction* ActionManager::actionFor(Node const& reference)
     QAction* const action = new QAction(item.value("text"), this);
     action->setObjectName(id);
     if (item.attr.contains(QStringLiteral("icon")))
-        action->setIcon(Theme::icon(m_directory, item.value("icon")));
+        action->setIcon(Theme::icon(m_iconDirectory.isEmpty() ? m_directory : m_iconDirectory, item.value("icon")));
     if (item.attr.contains(QStringLiteral("tooltip")))
         action->setToolTip(item.value("tooltip"));
     if (item.value("checkable") == QLatin1String("true")) {
@@ -425,6 +427,8 @@ QStringList ActionManager::toolbarAvailable(QString const& toolbarId) const
 QStringList ActionManager::toolbarEntries(QString const& toolbarId) const
 {
     QSettings settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    if (!m_settingsGroup.isEmpty())
+        settings.beginGroup(m_settingsGroup);
     QString const key = QStringLiteral("toolbars/") + toolbarId;
     if (!settings.contains(key))
         return toolbarDefaultEntries(toolbarId);
@@ -467,6 +471,8 @@ QIcon ActionManager::toolbarEntryIcon(QString const& toolbarId, QString const& e
 void ActionManager::setToolbarEntries(QString const& toolbarId, QStringList const& entries)
 {
     QSettings settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    if (!m_settingsGroup.isEmpty())
+        settings.beginGroup(m_settingsGroup);
     QString const key = QStringLiteral("toolbars/") + toolbarId;
     if (entries == toolbarDefaultEntries(toolbarId))
         settings.remove(key);
@@ -608,6 +614,8 @@ void ActionManager::setShortcut(QString const& id, QKeySequence const& key)
             continue;
         s.key = key;
         QSettings settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+        if (!m_settingsGroup.isEmpty())
+            settings.beginGroup(m_settingsGroup);
         settings.beginGroup(QStringLiteral("shortcuts"));
         if (key == s.defaultKey)
             settings.remove(id);

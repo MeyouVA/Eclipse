@@ -12,5 +12,5 @@ cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=%CMAK
 cmake --build out || exit /b 1
 rem Copy the Qt runtime next to the program the first time.
 rem (The libraries of Eclipse are looked at too: what only they use of Qt is needed as well.)
-if not exist out\Qt6Qml.dll "%QT_ROOT%\bin\windeployqt.exe" --no-translations --no-compiler-runtime out\Eclipse.exe out\EclipseUi.dll out\EclipseActions.dll out\EclipseAudio.dll out\EclipseModel.dll out\EclipseColour.dll >nul
+if not exist out\Qt6Qml.dll "%QT_ROOT%\bin\windeployqt.exe" --no-translations --no-compiler-runtime out\Eclipse.exe out\EclipseUi.dll out\EclipseLauncher.dll out\EclipseBoardUi.dll out\EclipseBoardModel.dll out\EclipseActions.dll out\EclipseAudio.dll out\EclipseModel.dll out\EclipseColour.dll >nul || exit /b 1
 echo Built: %~dp0out\Eclipse.exe

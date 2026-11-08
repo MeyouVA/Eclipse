@@ -1,6 +1,6 @@
 // Eclipse - what each module shows to the others.
 //
-// Eclipse is built as eight libraries and a small program that starts them:
+// Eclipse is built as libraries and a small program that starts them:
 //   EclipseColour   src/colour    colour management: colour spaces, OpenColorIO configurations, LUTs, ICC profiles
 //   EclipseModel    src/model     the scene: layers, drawings, keyframes, and the commands that change them
 //                     scene/        what a scene is made of, and reading and writing it
@@ -19,13 +19,16 @@
 //                     dialogs/      changing shortcuts and toolbars
 //                     theme/        colours and icons
 //   EclipseCanvas   src/canvas    the Camera and Drawing views and their tools
-//   EclipseUi       src/ui        the window and all its views
-//                     window/       the main window, its title bars, the Welcome window
+//   EclipseUi       src/animation/ui  the animation main window and its views
+//                     window/       the animation main window and its title bars
 //                     timeline/     the Timeline, the Xsheet, the Function view
 //                     panels/       Tool Properties, Layer Properties, Colour, Drawing Substitution, effects, the Library
 //                     views/        Node View, Top / Side / Perspective, Lip-Sync, and the smaller views
 //                     io/           importing, exporting, printing
-//   Eclipse.exe     src/app       starts the window
+//   EclipseBoardModel src/board/model  project files for the storyboard app
+//   EclipseLauncher   src/launcher     the shared Welcome window
+//   EclipseBoardUi    src/board/ui     the storyboard main window
+//   Eclipse.exe       src/app          starts the selected application
 // A class marked with the macro of its module can be used from the modules built on it.
 // (Plain functions and structs are shown by the build itself; the macro is what a class
 // with signals and slots, or with a value shared by all its objects, needs as well.)
@@ -37,6 +40,24 @@
 #    define ECLIPSE_COLOUR_API Q_DECL_EXPORT
 #else
 #    define ECLIPSE_COLOUR_API Q_DECL_IMPORT
+#endif
+
+#if defined(ECLIPSE_BOARD_MODEL_BUILD)
+#    define ECLIPSE_BOARD_MODEL_API Q_DECL_EXPORT
+#else
+#    define ECLIPSE_BOARD_MODEL_API Q_DECL_IMPORT
+#endif
+
+#if defined(ECLIPSE_BOARD_UI_BUILD)
+#    define ECLIPSE_BOARD_UI_API Q_DECL_EXPORT
+#else
+#    define ECLIPSE_BOARD_UI_API Q_DECL_IMPORT
+#endif
+
+#if defined(ECLIPSE_LAUNCHER_BUILD)
+#    define ECLIPSE_LAUNCHER_API Q_DECL_EXPORT
+#else
+#    define ECLIPSE_LAUNCHER_API Q_DECL_IMPORT
 #endif
 
 #if defined(ECLIPSE_MODEL_BUILD)

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<toolbars>
+ <toolbar id="BoardProjectToolbar" text="Project">
+  <item id="BoardNew"/>
+  <item id="BoardOpen"/>
+  <item id="BoardSave"/>
+ </toolbar>
+ <toolbar id="BoardArrangementToolbar" text="Scenes and Panels">
+  <item id="BoardNewScene"/>
+  <item id="BoardNewPanel"/>
+  <item id="BoardDuplicatePanel"/>
+ </toolbar>
+ <toolbar id="BoardDrawingToolbar" text="Drawing Tools">
+  <item id="BoardSelect"/>
+  <item id="BoardBrush"/>
+  <item id="BoardPencil"/>
+  <item id="BoardEraser"/>
+  <item id="BoardPaint"/>
+  <item id="BoardHand"/>
+  <item id="BoardZoom"/>
+ </toolbar>
+</toolbars>

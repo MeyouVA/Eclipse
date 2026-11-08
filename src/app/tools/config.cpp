@@ -5,7 +5,7 @@
 
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/Theme.h"
-#include "ui/tools/ConfigEditor.h"
+#include "animation/ui/tools/ConfigEditor.h"
 
 int main(int argc, char** argv)
 {

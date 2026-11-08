@@ -36,9 +36,10 @@ copy /y out\EclipseRender.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseActions.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseCanvas.dll Release.new\ >nul || exit /b 1
 copy /y out\EclipseUi.dll Release.new\ >nul || exit /b 1
+for %%m in (EclipseLauncher EclipseBoardUi EclipseBoardModel) do copy /y out\%%m.dll Release.new\ >nul || exit /b 1
 xcopy /e /i /q /y resources Release.new\resources >nul || exit /b 1
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\package_thirdparty.ps1 -Destination "%~dp0Release.new" || exit /b 1
-"%QT_ROOT%\bin\windeployqt.exe" --release --no-translations Release.new\Eclipse.exe Release.new\eclipse-batch.exe Release.new\eclipse-convert.exe Release.new\eclipse-info.exe Release.new\eclipse-config.exe Release.new\eclipse-services.exe Release.new\EclipseUi.dll Release.new\EclipseCanvas.dll Release.new\EclipseActions.dll Release.new\EclipseFormats.dll Release.new\EclipseRender.dll Release.new\EclipseAudio.dll Release.new\EclipseModel.dll Release.new\EclipseColour.dll >nul || exit /b 1
+"%QT_ROOT%\bin\windeployqt.exe" --release --no-translations Release.new\Eclipse.exe Release.new\eclipse-batch.exe Release.new\eclipse-convert.exe Release.new\eclipse-info.exe Release.new\eclipse-config.exe Release.new\eclipse-services.exe Release.new\EclipseUi.dll Release.new\EclipseLauncher.dll Release.new\EclipseBoardUi.dll Release.new\EclipseBoardModel.dll Release.new\EclipseCanvas.dll Release.new\EclipseActions.dll Release.new\EclipseFormats.dll Release.new\EclipseRender.dll Release.new\EclipseAudio.dll Release.new\EclipseModel.dll Release.new\EclipseColour.dll >nul || exit /b 1
 
 rem The console programs (batch, convert, info) run with no window, through Qt's offscreen platform, which windeployqt leaves out.
 copy /y "%QT_ROOT%\plugins\platforms\qoffscreen.dll" Release.new\platforms\ >nul || exit /b 1

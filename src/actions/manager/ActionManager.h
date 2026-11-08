@@ -40,6 +40,8 @@ public:
 
     explicit ActionManager(QObject* parent = nullptr);
 
+    void setSettingsGroup(QString const& group) { m_settingsGroup = group; }
+    void setIconDirectory(QString const& directory) { m_iconDirectory = directory; }
     bool load(QString const& directory, QString* error);
     // Where the files are looked for: the `resources` folder next to the program.
     static QString defaultDirectory();
@@ -127,6 +129,8 @@ private:
     QHash<QString, QActionGroup*> m_groups;
     QVector<Shortcut> m_shortcuts;
     QString m_directory;
+    QString m_settingsGroup;
+    QString m_iconDirectory;
     QList<QPointer<QToolBar>> m_liveToolbars;
     QStringList m_categories;
 };

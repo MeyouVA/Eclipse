@@ -1,8 +1,8 @@
 // Eclipse - eclipse-info: what files are, the version, the computer and the state of the work (see ui/tools/ToolInfo.h).
 #include <QGuiApplication>
 
-#include "ui/tools/CommandLine.h"
-#include "ui/tools/ToolInfo.h"
+#include "animation/ui/tools/CommandLine.h"
+#include "animation/ui/tools/ToolInfo.h"
 
 int main(int argc, char** argv)
 {

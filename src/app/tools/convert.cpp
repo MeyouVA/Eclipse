@@ -1,8 +1,8 @@
 // Eclipse - eclipse-convert: the file converters (see ui/tools/FileConvert.h).
 #include <QGuiApplication>
 
-#include "ui/tools/CommandLine.h"
-#include "ui/tools/FileConvert.h"
+#include "animation/ui/tools/CommandLine.h"
+#include "animation/ui/tools/FileConvert.h"
 
 int main(int argc, char** argv)
 {

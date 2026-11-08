@@ -5,8 +5,8 @@
 
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/Theme.h"
-#include "ui/tools/ServiceLauncher.h"
-#include "ui/tools/ServiceLauncherWindow.h"
+#include "animation/ui/tools/ServiceLauncher.h"
+#include "animation/ui/tools/ServiceLauncherWindow.h"
 
 int main(int argc, char** argv)
 {

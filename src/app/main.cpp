@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QFileInfo>
 #include <QIcon>
 #include <QMessageBox>
 #include <QSettings>
@@ -7,8 +8,9 @@
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/Theme.h"
 
-#include "ui/window/MainWindow.h"
-#include "ui/window/WelcomeDialog.h"
+#include "animation/ui/window/MainWindow.h"
+#include "board/ui/BoardWindow.h"
+#include "launcher/WelcomeDialog.h"
 
 int main(int argc, char** argv)
 {
@@ -49,19 +51,52 @@ int main(int argc, char** argv)
         QApplication::processEvents();
     }
 
-    MainWindow window;
-    window.restoreWorkspace();
-    // (Gone before the welcome screen comes up.)
     delete splash;
-    window.startupChecks();
+
+    QString path;
+    QString helpTopic;
+    Resolution resolution;
+    auto choice = WelcomeDialog::Nothing;
+    bool storyboard = false;
     QStringList const args = QApplication::arguments();
     if (args.size() > 1) {
-        window.show();
-        window.openFile(args[1]);
+        path = args[1];
+        storyboard = QFileInfo(path).suffix().compare(QLatin1String("ecb"), Qt::CaseInsensitive) == 0;
+        choice = storyboard ? WelcomeDialog::OpenBoardProject : WelcomeDialog::OpenScene;
+    } else if (prefs.value(QStringLiteral("welcome/hide"), false).toBool()) {
+        storyboard = prefs.value(QStringLiteral("welcome/lastApp")).toString() == QLatin1String("board");
     } else {
-        window.onActionShowWelcome();  // shows the window once a scene is made or chosen
-        if (!window.isVisible())
-            return 0;  // the welcome window was closed: nothing was started
+        WelcomeDialog welcome(ActionManager::defaultDirectory(), WelcomeDialog::Mode::Launcher);
+        if (welcome.exec() != QDialog::Accepted)
+            return 0;
+        choice = welcome.choice();
+        path = welcome.path();
+        helpTopic = welcome.helpTopic();
+        resolution = welcome.resolution();
+        storyboard = choice == WelcomeDialog::OpenBoardProject;
     }
+
+    if (storyboard) {
+        BoardWindow window;
+        if (!path.isEmpty() && !window.openProject(path))
+            return 1;
+        QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("welcome/lastApp"), QStringLiteral("board"));
+        window.show();
+        return QApplication::exec();
+    }
+
+    MainWindow window;
+    window.restoreWorkspace();
+    window.startupChecks();
+    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("welcome/lastApp"), QStringLiteral("animation"));
+    window.show();
+    if (args.size() == 1)
+        QApplication::processEvents();
+    if (choice == WelcomeDialog::OpenScene)
+        window.openFile(path);
+    else if (choice == WelcomeDialog::CreateScene)
+        window.createScene(path, resolution.width, resolution.height, resolution.fps, resolution.fov);
+    else if (choice == WelcomeDialog::ShowHelp)
+        window.showHelp(helpTopic == QLatin1String("index.html") ? QString() : helpTopic);
     return QApplication::exec();
 }

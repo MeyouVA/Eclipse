@@ -20,7 +20,7 @@ if(TARGET heif)
     endif()
 endif()
 
-# Eclipse is eight libraries and a small program that starts them (see src/EclipseExport.h).
+# Eclipse is built as libraries and a small program that starts them (see src/EclipseExport.h).
 # Each folder of src is a module, sorted into sub-folders by what the files are for; a source
 # file put anywhere under a module's folder is built into that module.
 # The libraries land beside the programs, where Windows looks for them.
@@ -73,8 +73,17 @@ eclipse_module(EclipseCanvas canvas ECLIPSE_CANVAS_BUILD)
 target_link_libraries(EclipseCanvas PUBLIC EclipseModel EclipseRender EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets PRIVATE Qt6::Svg)
 
 # The window and all its views.
-eclipse_module(EclipseUi ui ECLIPSE_UI_BUILD)
-target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseFormats EclipseRender EclipseCanvas EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport Qt6::Network winmm)
+eclipse_module(EclipseBoardModel board/model ECLIPSE_BOARD_MODEL_BUILD)
+target_link_libraries(EclipseBoardModel PUBLIC EclipseModel Qt6::Gui)
+
+eclipse_module(EclipseLauncher launcher ECLIPSE_LAUNCHER_BUILD)
+target_link_libraries(EclipseLauncher PUBLIC EclipseBoardModel Qt6::Widgets PRIVATE EclipseActions EclipseModel)
+
+eclipse_module(EclipseBoardUi board/ui ECLIPSE_BOARD_UI_BUILD)
+target_link_libraries(EclipseBoardUi PUBLIC EclipseBoardModel Qt6::Widgets PRIVATE EclipseLauncher EclipseActions EclipseCanvas)
+
+eclipse_module(EclipseUi animation/ui ECLIPSE_UI_BUILD)
+target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseFormats EclipseRender EclipseCanvas EclipseActions EclipseLauncher Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport Qt6::Network winmm)
 if(WIN32)
     # Scanning, through Windows Image Acquisition.
     target_link_libraries(EclipseUi PRIVATE wiaguid ole32 oleaut32)
@@ -89,7 +98,7 @@ if(WIN32)
     # The icon of the program file.
     target_sources(Eclipse PRIVATE src/app/Eclipse.rc)
 endif()
-target_link_libraries(Eclipse PRIVATE EclipseUi)
+target_link_libraries(Eclipse PRIVATE EclipseUi EclipseBoardUi EclipseLauncher)
 if(MSVC)
     target_compile_options(Eclipse PRIVATE /W4 /utf-8 /permissive- /wd4251 /wd4275)
 endif()

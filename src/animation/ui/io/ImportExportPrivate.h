@@ -1,0 +1,52 @@
+// Eclipse - what importing and exporting have in common.
+#pragma once
+
+#include "animation/ui/window/MainWindow.h"
+#include <functional>
+#include <algorithm>
+#include <cmath>
+#include <QApplication>
+#include <QCoreApplication>
+#include <QDockWidget>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QImageReader>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QMessageBox>
+#include <QPainter>
+#include <QPageLayout>
+#include <QPrintDialog>
+#include <QPrinter>
+#include <QMouseEvent>
+#include <QWheelEvent>
+#include <QProcess>
+#include <QProgressDialog>
+#include <QPushButton>
+#include <QInputDialog>
+#include <QRadioButton>
+#include <QRegularExpression>
+#include <QSettings>
+#include <QSpinBox>
+#include <QStatusBar>
+#include <QVBoxLayout>
+#include "audio/sound/Sound.h"
+#include "model/document/Commands.h"
+#include "model/geometry/Vectorize.h"
+#include "canvas/Canvas.h"
+#include "animation/ui/panels/LibraryView.h"
+#include "animation/ui/io/MovieExport.h"
+#include "animation/ui/panels/PalettePanel.h"
+#include "animation/ui/timeline/Timeline.h"
+#include "render/images/ImageFiles.h"
+
+inline QString const kImageFilter = ImageFiles::fileFilter();

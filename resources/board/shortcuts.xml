@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shortcuts>
+ <category id="Project" text="Project">
+  <shortcut id="shortcut.new" text="New Project" value="Ctrl+N"/>
+  <shortcut id="shortcut.open" text="Open Project" value="Ctrl+O"/>
+  <shortcut id="shortcut.save" text="Save Project" value="Ctrl+S"/>
+  <shortcut id="shortcut.undo" text="Undo" value="Ctrl+Z"/>
+  <shortcut id="shortcut.redo" text="Redo" value="Ctrl+Shift+Z"/>
+  <shortcut id="shortcut.quit" text="Quit" value="Ctrl+Q"/>
+ </category>
+ <category id="Panels" text="Scenes and Panels">
+  <shortcut id="shortcut.boardNewPanel" text="New Panel" value="P"/>
+ </category>
+</shortcuts>

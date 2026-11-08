@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<menus>
+ <menu id="menu.main" text="Main Menu">
+  <menu id="File" text="&amp;File">
+   <item id="BoardNew" icon="file/new" text="&amp;New Project..." shortcut="shortcut.new" responder="window" slot="showWelcome()"/>
+   <item id="BoardOpen" icon="file/open" text="&amp;Open Project..." shortcut="shortcut.open" responder="window" slot="chooseProject()"/>
+   <menu id="BoardRecent" text="Open &amp;Recent" responder="window" aboutToShowSlot="showRecent(QMenu*)"/>
+   <item id="BoardSave" icon="file/save" text="&amp;Save Project" shortcut="shortcut.save" responder="window" slot="saveProject()"/>
+   <item id="BoardSettings" text="Project Settings..." responder="window" slot="editProjectSettings()"/>
+   <separator/>
+   <item id="BoardQuit" text="&amp;Quit" shortcut="shortcut.quit" responder="window" slot="close()"/>
+  </menu>
+  <menu id="Edit" text="&amp;Edit">
+   <item id="BoardUndo" text="&amp;Undo" shortcut="shortcut.undo" responder="window" slot="undo()"/>
+   <item id="BoardRedo" text="&amp;Redo" shortcut="shortcut.redo" responder="window" slot="redo()"/>
+  </menu>
+  <menu id="View" text="&amp;View">
+   <item id="BoardFitStage" text="Fit Stage" responder="window" slot="fitStage()"/>
+  </menu>
+  <menu id="Storyboard" text="&amp;Storyboard">
+   <item id="BoardNewScene" icon="timeline/adddrawing" text="New Scene" responder="window" slot="editArrangement(QString)" itemParameter="new-scene"/>
+   <item id="BoardDuplicateScene" text="Duplicate Scene" responder="window" slot="editArrangement(QString)" itemParameter="duplicate-scene"/>
+   <item id="BoardSplitScene" text="Split Scene Before Panel" responder="window" slot="editArrangement(QString)" itemParameter="split-scene"/>
+   <item id="BoardRemoveScene" text="Delete Scene" responder="window" slot="editArrangement(QString)" itemParameter="remove-scene"/>
+   <separator/>
+   <item id="BoardNewPanel" icon="timeline/newdrawing" text="New Panel" shortcut="shortcut.boardNewPanel" responder="window" slot="editArrangement(QString)" itemParameter="new-panel"/>
+   <item id="BoardDuplicatePanel" icon="timeline/duplicatedrawing" text="Duplicate Panel" responder="window" slot="editArrangement(QString)" itemParameter="duplicate-panel"/>
+   <item id="BoardSplitPanel" text="Split Panel..." responder="window" slot="editArrangement(QString)" itemParameter="split-panel"/>
+   <item id="BoardRemovePanel" icon="timeline/deletedrawing" text="Delete Panel" responder="window" slot="editArrangement(QString)" itemParameter="remove-panel"/>
+  </menu>
+  <menu id="Tools" text="&amp;Tools">
+   <item id="BoardSelect" icon="tool/select" text="Select" checkable="true" group="BoardStageTools" responder="window" slot="chooseStageTool(QString)" itemParameter="select"/>
+   <item id="BoardBrush" icon="tool/brush" text="Brush" checkable="true" group="BoardStageTools" responder="window" slot="chooseStageTool(QString)" itemParameter="brush"/>
+   <item id="BoardPencil" icon="tool/pencil" text="Pencil" checkable="true" group="BoardStageTools" responder="window" slot="chooseStageTool(QString)" itemParameter="pencil"/>
+   <item id="BoardEraser" icon="tool/eraser" text="Eraser" checkable="true" group="BoardStageTools" responder="window" slot="chooseStageTool(QString)" itemParameter="eraser"/>
+   <item id="BoardPaint" icon="tool/paint" text="Paint" checkable="true" group="BoardStageTools" responder="window" slot="chooseStageTool(QString)" itemParameter="paint"/>
+   <item id="BoardHand" icon="tool/hand" text="Hand" checkable="true" group="BoardStageTools" responder="window" slot="chooseStageTool(QString)" itemParameter="hand"/>
+   <item id="BoardZoom" icon="tool/zoom" text="Zoom" checkable="true" group="BoardStageTools" responder="window" slot="chooseStageTool(QString)" itemParameter="zoom"/>
+  </menu>
+  <menu id="Windows" text="&amp;Windows">
+   <item id="BoardThumbnailsShow" text="Show Thumbnails" responder="window" slot="showThumbnails()"/>
+   <item id="BoardResetLayout" text="Restore Default Workspace" responder="window" slot="restoreDefaultLayout()"/>
+  </menu>
+  <menu id="Help" text="&amp;Help">
+   <item id="BoardWelcome" text="Show Welcome Screen" responder="window" slot="showWelcome()"/>
+  </menu>
+ </menu>
+</menus>

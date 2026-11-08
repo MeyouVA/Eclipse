@@ -1,0 +1,846 @@
+// Eclipse - the main window: preferences - applied, the dialog, preference sets, languages, the style editor.
+#include "animation/ui/views/StoryboardView.h"
+#include "animation/ui/window/MainWindow.h"
+#include "animation/ui/views/NodeLibraryView.h"
+#include <QInputDialog>
+#include <QStandardPaths>
+#include "model/scene/SceneProject.h"
+
+#include <functional>
+
+#include <algorithm>
+#include <cmath>
+
+#include <QApplication>
+#include <QTimer>
+#include <QPlainTextEdit>
+#include <QCheckBox>
+#include "animation/ui/panels/ColourEditor.h"
+#include "animation/ui/panels/LayerPanel.h"
+#include <QTabWidget>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QPushButton>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QSettings>
+#include <QSpinBox>
+#include <QVBoxLayout>
+#include <QDirIterator>
+#include <QMessageBox>
+#include <QSet>
+#include <QStatusBar>
+
+#include "audio/sound/Sound.h"
+#include "model/document/Commands.h"
+#include "canvas/Canvas.h"
+#include "canvas/FrameRender.h"
+#include "animation/ui/timeline/Timeline.h"
+#include "animation/ui/timeline/Xsheet.h"
+#include "animation/ui/timeline/FunctionView.h"
+#include "animation/ui/views/PreviewManagerView.h"
+#include "animation/ui/views/PlaybackView.h"
+#include "animation/ui/views/CoordView.h"
+#include "actions/manager/ActionManager.h"
+#include <QAction>
+#include <QToolButton>
+#include "animation/ui/panels/LibraryView.h"
+#include "animation/ui/panels/SubstitutionPanel.h"
+#include "animation/ui/io/MovieExport.h"
+#include "animation/ui/panels/PalettePanel.h"
+#include "animation/ui/io/ImportExportPrivate.h"
+#include "animation/ui/views/NodeView.h"
+#include "animation/ui/views/DepthView.h"
+#include "animation/ui/views/PerspectiveView.h"
+#include "actions/theme/InterfaceColours.h"
+#include <QHeaderView>
+#include <QTreeWidget>
+#include <QLibraryInfo>
+#include <QTranslator>
+
+#include <tuple>
+#include "animation/ui/io/PreferenceWidgets.h"
+#include "animation/ui/help/HelpCenter.h"
+
+static QSettings preferences()
+{
+    return QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+}
+
+void MainWindow::applyPreferences()
+{
+    QSettings const s = preferences();
+    // The colours the views paint with: read again, and every view painted with them.
+    InterfaceColours::reload();
+    // Generate Thumbnails Automatically: the Xsheet shows the drawings' thumbnails.
+    if (m_xsheet && s.value(QStringLiteral("prefs/autoThumbnails"), false).toBool())
+        m_xsheet->setThumbnails(true);
+    for (DepthView* view : findChildren<DepthView*>())
+        view->setPlanningPreferences(s.value(QStringLiteral("prefs/planningDefaultZoom"), 100).toDouble() / 100.0,
+                                     s.value(QStringLiteral("prefs/planningThumbnailSize"), 64).toInt());
+    for (DepthView* view : findChildren<DepthView*>())
+        view->setSelectionShading(s.value(QStringLiteral("prefs/selectionShading"), true).toBool());
+    for (QWidget* const w : findChildren<QWidget*>())
+        w->update();
+    m_canvas->setLasso(s.value(QStringLiteral("prefs/lasso"), true).toBool());
+    m_canvas->setPencilLinesOpacity(s.value(QStringLiteral("prefs/pencilLinesOpacity"), 100).toInt());
+    m_canvas->setBitmapCanvasSize(s.value(QStringLiteral("prefs/bitmapCanvas"), 150).toInt(),
+                                  s.value(QStringLiteral("prefs/bitmapCanvasHeight"), s.value(QStringLiteral("prefs/bitmapCanvas"), 150)).toInt());
+    m_canvas->setBitmapPpi(s.value(QStringLiteral("prefs/bitmapPpi"), 72).toInt());
+    m_canvas->setBitmapCameraDensity(s.value(QStringLiteral("prefs/bitmapCameraDensity"), false).toBool());
+    bool const outlineLocked = s.value(QStringLiteral("prefs/outlineLocked"), false).toBool();
+    if (m_appliedOutlinePreference != int(outlineLocked)) {
+        if (QAction* const action = m_actions->action(QStringLiteral("OutlineLocked"))) {
+            if (action->isChecked() != outlineLocked)
+                action->trigger();
+            else
+                m_canvas->onActionOutlineLocked(outlineLocked);
+            m_appliedOutlinePreference = int(outlineLocked);
+        }
+    }
+    bool const bboxSelection = s.value(QStringLiteral("prefs/bboxSelection"), false).toBool();
+    if (m_appliedBBoxPreference != int(bboxSelection)) {
+        if (QAction* const action = m_actions->action(QStringLiteral("BBoxSelectionStyle"))) {
+            if (action->isChecked() != bboxSelection)
+                action->trigger();
+            else
+                m_canvas->onActionBBoxSelectionStyle(bboxSelection);
+            m_appliedBBoxPreference = int(bboxSelection);
+        }
+    }
+    m_canvas->setBitmapCanvasBasis(s.value(QStringLiteral("prefs/bitmapCanvasBasis"), 0).toInt());
+    m_canvas->setPressureFeel(s.value(QStringLiteral("prefs/pressureFeel"), 50).toInt());
+    // Palettes: element palettes shown, the Colour view's background, colour recovery and what pasted templates do with colours.
+    bool const recovery = s.value(QStringLiteral("prefs/colourRecovery"), true).toBool();
+    Canvas::s_colourRecovery = recovery;
+    Canvas::s_interactiveRecovery = s.value(QStringLiteral("prefs/interactiveRecovery"), false).toBool();
+    Scene::setReplacementColour(recovery ? QColor() : s.value(QStringLiteral("prefs/replacementColour"), QColor(255, 0, 0)).value<QColor>());
+    Scene::setPasteColours(s.value(QStringLiteral("prefs/pasteColours"), 0).toInt());
+    Scene::setPasteNewDrawings(s.value(QStringLiteral("prefs/pasteNewDrawings"), true).toBool());
+    Scene::setPasteSymbolsIfMissing(s.value(QStringLiteral("prefs/pasteSymbolsIfMissing"), false).toBool());
+    if (NodeLibraryView* const nodes = findChild<NodeLibraryView*>(QStringLiteral("NodeLibraryView")))
+        nodes->refreshTemplates();
+    m_palette->setElementPalettesShown(s.value(QStringLiteral("prefs/advancedPalettes"), true).toBool());
+    m_palette->setListBackground(s.value(QStringLiteral("prefs/paletteBackground"), QColor()).value<QColor>());
+    m_palette->setSwatchGrid(s.value(QStringLiteral("colour/grid"), false).toBool());
+    m_canvas->setStickyDropper(s.value(QStringLiteral("prefs/stickyDropper"), false).toBool());
+    m_canvas->setCloseGapInPixels(s.value(QStringLiteral("prefs/gapInPixels"), false).toBool());
+    bool const moreArt = s.value(QStringLiteral("prefs/overlayUnderlay"), false).toBool();
+    for (char const* id : {"SetOverlayArt", "SetUnderlayArt"}) {
+        if (QAction* const a = m_actions->action(QLatin1String(id)))
+            a->setVisible(moreArt);
+        if (QToolButton* const b = findChild<QToolButton*>(QStringLiteral("Art") + QLatin1String(id)))
+            b->setVisible(moreArt);
+    }
+    if (!moreArt && (m_canvas->art() == Canvas::OverlayArt || m_canvas->art() == Canvas::UnderlayArt))
+        m_canvas->setArt(Canvas::LineArt);
+    m_document->setUndoLevels(std::clamp(s.value(QStringLiteral("prefs/undoLevels"), 100).toInt(), 0, 10000));
+    CellBlock::forceEdgeKeys = s.value(QStringLiteral("prefs/pasteForceKeys"), true).toBool();
+    Timeline::pasteAddsEdgeKeys() = s.value(QStringLiteral("prefs/pasteEdgeKeys"), false).toBool();
+    m_document->setFovLimits(s.value(QStringLiteral("prefs/minimumFov"), Layer::kMinFov).toDouble(),
+                             s.value(QStringLiteral("prefs/maximumFov"), Layer::kMaxFov).toDouble());
+    if (m_layerPanel)
+        m_layerPanel->refreshFovLimits();
+    m_document->setNameDrawingsByFrame(s.value(QStringLiteral("prefs/nameByFrame"), false).toBool());
+    m_document->setExtendPreviousExposure(s.value(QStringLiteral("prefs/extendExposure"), true).toBool());
+    m_document->setStopMotionKeys(s.value(QStringLiteral("prefs/stopMotionKeys"), false).toBool());
+    m_canvas->setKeysFrameOne(s.value(QStringLiteral("prefs/keyFrameOne"), true).toBool());
+    m_canvas->setNudgeStep(std::clamp(s.value(QStringLiteral("prefs/nudge"), 1).toInt(), 1, 100));
+    m_canvas->setProportionParts(std::clamp(s.value(QStringLiteral("prefs/proportionAcross"), 3).toInt(), 2, 12),
+                                 std::clamp(s.value(QStringLiteral("prefs/proportionDown"), 3).toInt(), 2, 12));
+    m_canvas->setSafeMargin(std::clamp(s.value(QStringLiteral("prefs/safeMargin"), 10).toInt(), 1, 30) / 100.0);
+    m_canvas->setBackdrop(QColor(s.value(QStringLiteral("prefs/backdrop"), QStringLiteral("#7f7f7f")).toString()));
+    m_canvas->setIkColour(0, QColor(s.value(QStringLiteral("prefs/ikControlColour"), QStringLiteral("#ffd23c")).toString()));
+    m_canvas->setIkColour(1, QColor(s.value(QStringLiteral("prefs/ikMinColour"), QStringLiteral("#3cb4ff")).toString()));
+    m_canvas->setIkColour(2, QColor(s.value(QStringLiteral("prefs/ikMaxColour"), QStringLiteral("#ff5a3c")).toString()));
+    m_canvas->setLightTableWash(s.value(QStringLiteral("prefs/lightTableWash"), 30).toInt());
+    m_canvas->setLightTableWhite(s.value(QStringLiteral("prefs/lightTableWhite"), 0).toInt());
+    m_canvas->setLightTableShade(s.value(QStringLiteral("prefs/lightTableShade"), false).toBool(), s.value(QStringLiteral("prefs/lightTableShadeCamera"), false).toBool());
+    m_canvas->setOnionWashRange(s.value(QStringLiteral("prefs/onionWashMin"), 20).toInt(), s.value(QStringLiteral("prefs/onionWashMax"), 60).toInt());
+    m_autoSaveMinutes = std::clamp(s.value(QStringLiteral("prefs/autosaveMinutes"), 0).toInt(), 0, 240);
+    // Timeline: how wide a frame is to begin with.  Render: the preview's size, and whether it keeps itself up to date.
+    m_timeline->setCellWidth(std::clamp(s.value(QStringLiteral("prefs/frameWidth"), 8).toInt(), 4, 30));
+    m_timeline->setRulerLocked(s.value(QStringLiteral("prefs/lockTimelineRuler"), false).toBool());
+    m_loopPause = std::clamp(s.value(QStringLiteral("prefs/loopPause"), 0).toInt(), 0, 5000);
+    for(auto* view : findChildren<PlaybackView*>()) view->applyPreferences();
+    bool const sheetPlayback=s.value(QStringLiteral("prefs/xsheetPlayback"),true).toBool();
+    m_xsheet->setProperty("playbackEnabled",sheetPlayback); m_actions->setChecked(QStringLiteral("XsheetPlayback"),sheetPlayback);
+    if(sheetPlayback || !m_playTimer.isActive()) m_xsheet->setCurrentCell(layer(),frame());
+    for (Canvas* const view : findChildren<Canvas*>()) {
+        view->setBackgroundWash(s.value(QStringLiteral("prefs/washCamera"), false).toBool(), s.value(QStringLiteral("prefs/washDrawing"), false).toBool(),
+                                s.value(QStringLiteral("prefs/washPercent"), 50).toInt(), s.value(QStringLiteral("prefs/washColour"), QColor(Qt::white)).value<QColor>());
+        view->setWashStalePreview(s.value(QStringLiteral("prefs/washStalePreview"), false).toBool());
+        view->setZoomOnMouse(s.value(QStringLiteral("prefs/zoomOnMouse"), false).toBool());
+        view->setZoomLimits(s.value(QStringLiteral("prefs/zoomMin"), 2).toInt(), s.value(QStringLiteral("prefs/zoomMax"), 6400).toInt());
+        view->setDefaultZoom(s.value(QStringLiteral("prefs/defaultZoom"), 100).toInt());
+        view->setQuickCloseUpFactor(s.value(QStringLiteral("prefs/quickCloseUp"), 4.0).toDouble());
+        view->setPaperZoom(s.value(QStringLiteral("prefs/paperZoom"), false).toBool(), s.value(QStringLiteral("prefs/screenPpi"), 96).toInt());
+        view->setPaperZoomMost(s.value(QStringLiteral("prefs/paperZoomMost"), 4).toInt());
+        view->setHighlightStrengths(s.value(QStringLiteral("prefs/highlightIntensity"), 35).toInt(), s.value(QStringLiteral("prefs/highlightColourOpacity"), 18).toInt());
+        view->setInvertScroll(s.value(QStringLiteral("prefs/invertScroll"), false).toBool());
+        view->setBonesAsJoints(s.value(QStringLiteral("prefs/bonesAsJoints"), false).toBool());
+        view->setGestures(s.value(QStringLiteral("prefs/gestures"), false).toBool(), s.value(QStringLiteral("prefs/touchSensitivity"), 100).toInt());
+        view->setSquareGridDivisions(s.value(QStringLiteral("prefs/gridColumns"), 0).toInt(), s.value(QStringLiteral("prefs/gridRows"), 24).toInt());
+        view->setBacklightColour(s.value(QStringLiteral("prefs/backlightColour"), QColor(34, 34, 38)).value<QColor>());
+        if (view->magnifying())
+            view->onActionMagnifier(true);
+        emit view->zoomChanged();
+    }
+    m_actions->setChecked(QStringLiteral("LockTimelineRuler"), m_timeline->rulerLocked());
+    if (PreviewManagerView* const preview = findChild<PreviewManagerView*>()) {
+        preview->setSizePercent(s.value(QStringLiteral("prefs/previewSize"), 50).toInt());
+        bool const autoRender = s.value(QStringLiteral("prefs/autoRender"), false).toBool();
+        if (preview->autoRender() != autoRender) {
+            preview->setAutoRender(autoRender);
+            m_actions->setChecked(QStringLiteral("AutoRender"), autoRender);
+        }
+    }
+    // Tools: the size the drawing tools start with (set through the Size box, so Tool Properties shows it).
+    if (s.contains(QStringLiteral("prefs/toolSize")))
+        if (QSpinBox* const size = findChild<QSpinBox*>(QStringLiteral("ToolSize")))
+            size->setValue(std::clamp(s.value(QStringLiteral("prefs/toolSize")).toInt(), 1, 200));
+    // Smoothing and corners of drawn lines (through Tool Properties, so it shows them).
+    for (auto const& [key, box, usual] : {std::tuple<char const*, char const*, int>{"prefs/smoothing", "Smoothing", 25}, {"prefs/corners", "Corners", 50}})
+        if (s.contains(QLatin1String(key)))
+            if (QSpinBox* const spin = findChild<QSpinBox*>(QLatin1String(box)))
+                spin->setValue(s.value(QLatin1String(key), usual).toInt());
+    // Onion skin: how many drawings either side, and how strongly (as set; otherwise as it is).
+    if (s.contains(QStringLiteral("prefs/onionPrevious")) || s.contains(QStringLiteral("prefs/onionNext")))
+        m_canvas->setOnionRange(std::clamp(s.value(QStringLiteral("prefs/onionPrevious"), m_canvas->onionPrevious()).toInt(), 0, 6),
+                                std::clamp(s.value(QStringLiteral("prefs/onionNext"), m_canvas->onionNext()).toInt(), 0, 6));
+    if (s.contains(QStringLiteral("prefs/onionOpacity")))
+        m_canvas->setOnionOpacity(std::clamp(s.value(QStringLiteral("prefs/onionOpacity"), 50).toInt(), 5, 100));
+    // Node View: the map in the corner, cables, the magnifier, backdrops and the rest.
+    applyNodePreferences(s);
+    // Units: positions in fields or in pixels.
+    if (CoordView* const coord = findChild<CoordView*>())
+        coord->setPixelUnits(s.value(QStringLiteral("prefs/units"), 0).toInt() == 1);
+    // Sound: heard while playing, and while the frame is changed by hand.
+    m_soundOn = s.value(QStringLiteral("prefs/soundOn"), true).toBool();
+    m_actions->setChecked(QStringLiteral("PlaySound"), m_soundOn);
+    m_scrub = s.value(QStringLiteral("prefs/scrub"), false).toBool();
+    m_analogScrub=s.value(QStringLiteral("prefs/analogScrub"),false).toBool();
+    m_scrubResponse=std::clamp(s.value(QStringLiteral("prefs/scrubResponse"),5).toInt(),1,20);
+    m_scrubDamping=std::clamp(s.value(QStringLiteral("prefs/scrubDamping"),10).toInt(),0,50);
+    m_scrubFrame=-1; m_scrubClock.invalidate();
+    m_actions->setChecked(QStringLiteral("PlayScrub"), m_scrub);
+    m_autoSave.stop();
+    if (m_autoSaveMinutes > 0)
+        m_autoSave.start(m_autoSaveMinutes * 60 * 1000);
+    m_keepBackup = s.value(QStringLiteral("prefs/keepBackup"), true).toBool();
+    m_askAutoSave = s.value(QStringLiteral("prefs/askAutoSave"), false).toBool();
+    m_preroll = std::max(0, s.value(QStringLiteral("prefs/preroll"), 0).toInt());
+    m_timeline->setKindShown(Layer::Sound, s.value(QStringLiteral("prefs/timelineSound"), true).toBool());
+    m_timeline->setKindShown(Layer::Group, s.value(QStringLiteral("prefs/timelineGroups"), true).toBool());
+    m_timeline->setShowWaveforms(s.value(QStringLiteral("prefs/timelineWaveforms"), true).toBool());
+    m_timeline->setShowSceneEnd(s.value(QStringLiteral("prefs/timelineSceneEnd"), true).toBool());
+    m_timeline->setReduceIndentation(s.value(QStringLiteral("prefs/timelineReduceIndent"), false).toBool());
+    m_timeline->setOverwriteDrop(s.value(QStringLiteral("prefs/overwriteDrop"), true).toBool());
+    m_actions->setChecked(QStringLiteral("OverwriteDrop"), m_timeline->overwriteDrop());
+    m_document->setRippleMarkers(s.value(QStringLiteral("prefs/rippleMarkers"), false).toBool());
+    m_actions->setChecked(QStringLiteral("RippleSceneMarkers"), m_document->rippleMarkers());
+    m_canvas->setBrushOutline(s.value(QStringLiteral("prefs/brushOutline"), false).toBool());
+    m_canvas->setOnionBrightnessAlpha(s.value(QStringLiteral("prefs/onionBrightnessAlpha"), false).toBool());
+    m_canvas->setOnionOver(s.value(QStringLiteral("prefs/onionOver"), false).toBool());
+    m_canvas->setOnionEnhanced(s.value(QStringLiteral("prefs/onionEnhanced"), false).toBool());
+    m_canvas->setIkIterations(s.value(QStringLiteral("prefs/ikIterations"), 24).toInt());
+    m_document->setSubstitutionCycles(s.value(QStringLiteral("prefs/drawingCycle"), true).toBool());
+    m_document->setSubstitutionKeys(s.value(QStringLiteral("prefs/substitutionKeys"), true).toBool());
+    m_canvas->setFieldChart(s.value(QStringLiteral("prefs/fieldsAcross"), 12).toInt(), s.value(QStringLiteral("prefs/fieldsDown"), 12).toInt());
+    Canvas::setBlursEnabled(s.value(QStringLiteral("prefs/renderBlurs"), true).toBool());
+    Canvas::setFocusEnabled(s.value(QStringLiteral("prefs/renderFocus"), true).toBool());
+    Canvas::setToneHighlightEnabled(s.value(QStringLiteral("prefs/renderToneHighlight"), true).toBool());
+    Canvas::setColourOverrideEnabled(s.value(QStringLiteral("prefs/renderColourOverride"), true).toBool());
+    applyRenderPreferences(s);
+    applyColourPreferences(s);
+    m_canvas->update();
+    m_canvas->setIkError(s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble());
+    {
+        Scene::IkOptions ik = Scene::ikOptions();
+        ik.iterations = s.value(QStringLiteral("prefs/ikIterations"), 24).toInt();
+        ik.error = s.value(QStringLiteral("prefs/ikError"), 0.2).toDouble();
+        ik.stopAtIntersection = s.value(QStringLiteral("prefs/ikStopAtIntersection"), true).toBool();
+        ik.allChains = s.value(QStringLiteral("prefs/ikAllChains"), false).toBool();
+        ik.retryIncrement = s.value(QStringLiteral("prefs/ikRetry"), 0.05).toDouble();
+        ik.limitWeight = s.value(QStringLiteral("prefs/ikLimitWeight"), 0.0).toDouble();
+        Morph::s_quality = std::clamp(s.value(QStringLiteral("prefs/morphQuality"), 0.2).toDouble(), 0.0, 1.0);
+        Scene::setIkOptions(ik);
+    }
+    m_focusOnEnter = s.value(QStringLiteral("prefs/focusOnEnter"), false).toBool();
+    m_autoSaveWorkspace = s.value(QStringLiteral("prefs/autoSaveWorkspace"), true).toBool();
+    setCurrentViewBorder(s.value(QStringLiteral("prefs/viewBorder"), true).toBool());
+    m_canvas->setMiddleButtonPans(s.value(QStringLiteral("prefs/middlePans"), true).toBool());
+    m_canvas->setPerformanceReport(s.value(QStringLiteral("prefs/performanceReport"), false).toBool());
+    m_canvas->setPasteBehaviour(s.value(QStringLiteral("prefs/pasteBehaviour"), 0).toInt());
+    setCurrentViewBorderColour(QColor(s.value(QStringLiteral("prefs/viewBorderColour"), QStringLiteral("#c8281e")).toString()));
+    m_canvas->setBoneColours(QColor(s.value(QStringLiteral("prefs/boneColour"), QStringLiteral("#5adc8c")).toString()),
+                             QColor(s.value(QStringLiteral("prefs/boneSelectedColour"), QStringLiteral("#ffffff")).toString()));
+    m_restoreDrawingOnUndo = s.value(QStringLiteral("prefs/restoreDrawingOnUndo"), false).toBool();
+    Scene::setCompressFiles(s.value(QStringLiteral("prefs/compressScenes"), false).toBool());
+    m_autoSaveQuiet = std::clamp(s.value(QStringLiteral("prefs/autosaveQuietSeconds"), 1).toInt(), 0, 600);
+    {
+        int const thumbnails = std::clamp(s.value(QStringLiteral("prefs/thumbnailSize"), 100).toInt(), 50, 200);
+        if (m_library)
+            m_library->setThumbnailScale(thumbnails);
+        if (m_substitution)
+            m_substitution->setThumbnailScale(thumbnails);
+    }
+    if (FunctionView* const function = findChild<FunctionView*>()) {
+        function->graph()->setGridShown(s.value(QStringLiteral("prefs/functionGrid"), true).toBool());
+        function->graph()->setLoadLimit(s.value(QStringLiteral("prefs/functionLoadLimit"), 50).toInt());
+    }
+    m_editorsOnTop = s.value(QStringLiteral("prefs/editorsOnTop"), true).toBool();
+    FunctionColumn::defaultBezier = s.value(QStringLiteral("prefs/defaultBezier"), true).toBool();
+    FunctionColumn::defaultBezierVelocity = s.value(QStringLiteral("prefs/defaultBezierVelocity"), true).toBool();
+    FunctionColumn::defaultConstantZ = s.value(QStringLiteral("prefs/pathConstantZ"), false).toBool();
+    if (Xsheet* const xsheet = findChild<Xsheet*>())
+        xsheet->setColumnWidth(s.value(QStringLiteral("prefs/xsheetColumnWidth"), 78).toInt());
+    if (Xsheet* const xsheet = findChild<Xsheet*>()) {
+        xsheet->setCentreOnFrame(s.value(QStringLiteral("prefs/xsheetCentre"), false).toBool());
+        xsheet->setDefaultHold(s.value(QStringLiteral("prefs/xsheetHold"), 1).toInt());
+    }
+    applySheetPreferences(s, !m_preferencesApplied);
+    applyAnimationPreferences(s, !m_preferencesApplied);
+    // (These two set how things start: the toggles in the menus change them afterwards.)
+    if (!m_preferencesApplied) {
+        bool const loop = s.value(QStringLiteral("prefs/loop"), true).toBool();
+        m_actions->setChecked(QStringLiteral("PlayLoop"), loop);
+        onActionToggleLoop(loop);
+        // The Select tool's lasso, and the gaps the paint bucket closes, as Eclipse starts (their tool properties change them after).
+        m_canvas->setLasso(s.value(QStringLiteral("prefs/selectLasso"), true).toBool());
+        if (s.value(QStringLiteral("prefs/showStrokes"), false).toBool()) {
+            m_actions->setChecked(QStringLiteral("ShowStrokes"), true);
+            m_canvas->onActionShowStrokes(true);
+        }
+        m_canvas->setCloseGapSize(std::clamp(s.value(QStringLiteral("prefs/closeGap"), 2.0).toDouble(), 0.0, 50.0));
+        bool const onTop = s.value(QStringLiteral("prefs/drawingOnTop"), false).toBool();
+        m_actions->setChecked(QStringLiteral("CurrentDrawingOnTop"), onTop);
+        m_canvas->onActionCurrentDrawingOnTop(onTop);
+    }
+    m_preferencesApplied = true;
+    // Onion skins that fade with distance: the nearest drawings so strong, the furthest so faint, those between in step.
+    if (s.value(QStringLiteral("prefs/onionFade"), false).toBool()) {
+        int const nearest = std::clamp(s.value(QStringLiteral("prefs/onionNearest"), 100).toInt(), 0, 100);
+        int const furthest = std::clamp(s.value(QStringLiteral("prefs/onionFurthest"), 30).toInt(), 0, 100);
+        for (bool after : {false, true})
+            for (int step = 0; step < Canvas::kOnionSteps; ++step)
+                m_canvas->setOnionStrength(after, step, nearest + (furthest - nearest) * step / std::max(1, Canvas::kOnionSteps - 1));
+    }
+}
+
+void MainWindow::placeCameraView()
+{
+    for (DepthView* view : findChildren<DepthView*>())
+        view->resetView();
+    for (PerspectiveView* view : findChildren<PerspectiveView*>()) {
+        view->resetView();
+        view->setClippingPlanes(1.0, 100000.0);
+    }
+    // As the preferences say: the whole frame in the view, or at its own size.
+    m_canvas->fitToWindow();
+    if (preferences().value(QStringLiteral("prefs/cameraZoom"), 0).toInt() == 1)
+        m_canvas->onActionResetZoom();
+}
+
+void MainWindow::onActionPreferences()
+{
+    QSettings s = preferences();
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("PreferencesDialog"));
+    dialog.setWindowTitle(tr("Preferences"));
+
+    PreferenceWidgets w;
+    preferencesGeneral(w, s, dialog);
+    preferencesCamera(w, s, dialog);
+    preferencesSheet(w, s, dialog);
+    preferencesAnimation(w, s, dialog);
+    preferencesAdvanced(w, s, dialog);
+    preferencesTimeline(w, s, dialog);
+    preferencesRender(w, s, dialog);
+    preferencesColourManagement(w, s, dialog);
+    preferencesTools(w, s, dialog);
+    preferencesNodeView(w, s, dialog);
+    preferencesOnion(w, s, dialog);
+    preferencesSound(w, s, dialog);
+    std::function<void()> saveStoryboard;
+    QGroupBox* const storyboardPage = StoryboardView::preferencesPage(&dialog, &saveStoryboard);
+    preferencesDrawing(w, s, dialog);
+    preferencesColours(w, s, dialog);
+    preferencesPalettes(w, s, dialog);
+    preferencesTemplates(w, s, dialog);
+
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    // Presets: preference sets kept by name beside Eclipse's settings - taken up when chosen, made from the preferences now, taken away.
+    QDir const presetFolder(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/preference-presets"));
+    w.presets = new QComboBox(&dialog);
+    w.presets->setObjectName(QStringLiteral("PrefPresets"));
+    w.presets->addItem(tr("(choose a preset)"));
+    for (QFileInfo const& one : presetFolder.entryInfoList({QStringLiteral("*.eclprefs")}, QDir::Files, QDir::Name))
+        w.presets->addItem(one.completeBaseName(), one.absoluteFilePath());
+    QPushButton* const createPreset = new QPushButton(tr("Create..."), &dialog);
+    createPreset->setObjectName(QStringLiteral("PrefCreatePreset"));
+    QPushButton* const removePreset = new QPushButton(tr("Remove"), &dialog);
+    removePreset->setObjectName(QStringLiteral("PrefRemovePreset"));
+    QHBoxLayout* const presetRow = new QHBoxLayout;
+    presetRow->addWidget(new QLabel(tr("Presets:"), &dialog));
+    presetRow->addWidget(w.presets, 1);
+    presetRow->addWidget(createPreset);
+    presetRow->addWidget(removePreset);
+    connect(createPreset, &QPushButton::clicked, &dialog, [this, &dialog, presetFolder, &w] {
+        bool ok = false;
+        QString const name = QInputDialog::getText(&dialog, tr("Create Preset"), tr("Name of the preset (the preferences as they are saved now):"), QLineEdit::Normal, QString(), &ok).trimmed();
+        if (!ok || name.isEmpty())
+            return;
+        presetFolder.mkpath(QStringLiteral("."));
+        QString const path = presetFolder.filePath(SceneProject::fileName(name, QStringLiteral("preset")) + QStringLiteral(".eclprefs"));
+        if (!savePreferenceSet(path)) {
+            QMessageBox::warning(&dialog, tr("Create Preset"), tr("Error while writing preference file: %1").arg(path));
+            return;
+        }
+        if (w.presets->findData(path) < 0)
+            w.presets->addItem(QFileInfo(path).completeBaseName(), path);
+        w.presets->setCurrentIndex(w.presets->findData(path));
+    });
+    connect(removePreset, &QPushButton::clicked, &dialog, [&w] {
+        int const index = w.presets->currentIndex();
+        if (index <= 0)
+            return;
+        QFile::remove(w.presets->itemData(index).toString());
+        w.presets->removeItem(index);
+    });
+    bool presetChosen = false;
+    connect(w.presets, &QComboBox::activated, &dialog, [this, &dialog, &w, &presetChosen](int index) {
+        if (index <= 0)
+            return;
+        if (!loadPreferenceSet(w.presets->itemData(index).toString())) {
+            QMessageBox::warning(&dialog, tr("Presets"), tr("Unable to open preference file: %1").arg(w.presets->itemData(index).toString()));
+            return;
+        }
+        presetChosen = true;
+        dialog.reject();
+    });
+    // Preference sets: every preference saved to a file and loaded back; or all of them as they were to begin with.
+    QPushButton* const saveSet = buttons->addButton(tr("Save..."), QDialogButtonBox::ActionRole);
+    saveSet->setObjectName(QStringLiteral("PrefSaveSet"));
+    saveSet->setToolTip(tr("Save the current preferences to a file."));
+    QPushButton* const loadSet = buttons->addButton(tr("Load..."), QDialogButtonBox::ActionRole);
+    loadSet->setObjectName(QStringLiteral("PrefLoadSet"));
+    loadSet->setToolTip(tr("Load preferences from a file."));
+    QPushButton* const defaults = buttons->addButton(tr("Restore All Defaults"), QDialogButtonBox::ResetRole);
+    defaults->setObjectName(QStringLiteral("PrefRestoreDefaults"));
+    bool reopen = false;
+    connect(saveSet, &QPushButton::clicked, &dialog, [this, &dialog] {
+        QString const path = QFileDialog::getSaveFileName(&dialog, tr("Save Preferences"), QStringLiteral("preferences.eclprefs"), tr("Preferences (*.eclprefs)"));
+        if (!path.isEmpty() && !savePreferenceSet(path))
+            QMessageBox::warning(&dialog, tr("Save Preferences"), tr("Error while writing preference file: %1").arg(path));
+    });
+    connect(loadSet, &QPushButton::clicked, &dialog, [this, &dialog, &reopen] {
+        QString const path = QFileDialog::getOpenFileName(&dialog, tr("Load Preferences"), QString(), tr("Preferences (*.eclprefs)"));
+        if (path.isEmpty())
+            return;
+        if (!loadPreferenceSet(path)) {
+            QMessageBox::warning(&dialog, tr("Load Preferences"), tr("Unable to open preference file: %1").arg(path));
+            return;
+        }
+        reopen = true;
+        dialog.reject();
+    });
+    connect(defaults, &QPushButton::clicked, &dialog, [this, &dialog, &reopen] {
+        if (QMessageBox::question(&dialog, tr("Restore default preferences"), tr("Restore all default preferences?")) != QMessageBox::Yes)
+            return;
+        restoreDefaultPreferences();
+        reopen = true;
+        dialog.reject();
+    });
+    // A tab for each kind of setting.
+    QTabWidget* const tabs = new QTabWidget(&dialog);
+    tabs->setObjectName(QStringLiteral("PreferencesTabs"));
+    for (QGroupBox* const page : {w.general, w.camera, w.animationPage, w.sheet, w.timelinePage, w.drawing, w.toolsPage, w.onionPage, w.nodePage, w.colours, w.palettes, w.renderPage, w.colourPage, w.soundPage, storyboardPage, w.advanced, w.templatesPage}) {
+        QString const title = page->title();
+        page->setTitle(QString());
+        page->setFlat(true);
+        tabs->addTab(page, title);
+    }
+    tabs->setCurrentIndex(std::clamp(s.value(QStringLiteral("prefs/lastTab"), 0).toInt(), 0, tabs->count() - 1));
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addLayout(presetRow);
+    layout->addWidget(tabs);
+    layout->addWidget(buttons);
+    // (Only made, for the help's page of every preference.)
+    if (m_preferencesForHelp) {
+        HelpCenter::writePreferencesPage(&dialog);
+        return;
+    }
+    int const result = dialog.exec();
+    s.setValue(QStringLiteral("prefs/lastTab"), tabs->currentIndex());
+    if (reopen || presetChosen) {
+        // (Preferences loaded or put back: in effect now, and shown again.)
+        applyPreferences();
+        QTimer::singleShot(0, this, &MainWindow::onActionPreferences);
+        return;
+    }
+    if (result != QDialog::Accepted)
+        return;
+    saveStoryboard();
+    s.setValue(QStringLiteral("prefs/lightTableWash"), w.wash->value());
+    s.setValue(QStringLiteral("prefs/lightTableWhite"), w.lightWhite->value());
+    s.setValue(QStringLiteral("prefs/lightTableShade"), w.lightShade->isChecked());
+    s.setValue(QStringLiteral("prefs/lightTableShadeCamera"), w.lightShadeCamera->isChecked());
+    s.setValue(QStringLiteral("prefs/gridOnDefault"), w.gridOnDefault->isChecked());
+    s.setValue(QStringLiteral("prefs/onionWashMin"), w.onionWashMin->value());
+    s.setValue(QStringLiteral("prefs/onionWashMax"), w.onionWashMax->value());
+    s.setValue(QStringLiteral("prefs/frameWidth"), w.frameWidth->value());
+    s.setValue(QStringLiteral("prefs/previewSize"), w.previewSize->currentData().toInt());
+    s.setValue(QStringLiteral("prefs/autoRender"), w.autoRender->isChecked());
+    if (w.toolSize->value() != int(m_canvas->brushWidth()) || s.contains(QStringLiteral("prefs/toolSize")))
+        s.setValue(QStringLiteral("prefs/toolSize"), w.toolSize->value());
+    s.setValue(QStringLiteral("prefs/soundOn"), w.soundOn->isChecked());
+    s.setValue(QStringLiteral("prefs/units"), w.units->currentIndex());
+    s.setValue(QStringLiteral("prefs/smoothing"), w.smoothing->value());
+    s.setValue(QStringLiteral("prefs/corners"), w.corners->value());
+    saveNodePreferences(w, s);
+    saveColourPreferences(w, s);
+    s.setValue(QStringLiteral("prefs/onionPrevious"), w.onionCountBefore->value());
+    s.setValue(QStringLiteral("prefs/onionNext"), w.onionCountAfter->value());
+    s.setValue(QStringLiteral("prefs/onionOpacity"), w.onionStrength->value());
+    s.setValue(QStringLiteral("prefs/scrub"), w.scrub->isChecked());
+    s.setValue(QStringLiteral("prefs/analogScrub"),w.analogScrub->isChecked());
+    s.setValue(QStringLiteral("prefs/scrubResponse"),w.scrubResponse->value());
+    s.setValue(QStringLiteral("prefs/scrubDamping"),w.scrubDamping->value());
+    s.setValue(QStringLiteral("prefs/backdrop"), w.backdrop->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/ikControlColour"), w.ikControl->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/ikMinColour"), w.ikMinColour->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/ikMaxColour"), w.ikMaxColour->property("colour").value<QColor>().name());
+    m_canvas->setOnionColours(w.onionBefore->property("colour").value<QColor>(), w.onionAfter->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("welcome/hide"), !w.welcome->isChecked());
+    s.setValue(QStringLiteral("prefs/welcomeImage"), w.welcomeImage->isChecked());
+    s.setValue(QStringLiteral("prefs/helpInEnglish"), w.helpInEnglish->isChecked());
+    s.setValue(QStringLiteral("prefs/helpInBrowser"), w.helpInBrowser->isChecked());
+    s.setValue(QStringLiteral("prefs/autoUpdateCheck"), w.autoUpdateCheck->isChecked());
+    s.setValue(QStringLiteral("prefs/usageStatistics"), w.usageStatistics->isChecked());
+    s.setValue(QStringLiteral("prefs/autosaveMinutes"), w.autoSave->value());
+    s.setValue(QStringLiteral("prefs/lasso"), w.selectMode->currentIndex() == 0);
+    s.setValue(QStringLiteral("prefs/overlayUnderlay"), w.moreArt->isChecked());
+    s.setValue(QStringLiteral("prefs/nudge"), w.nudge->value());
+    s.setValue(QStringLiteral("prefs/undoLevels"), w.undoLevels->value());
+    s.setValue(QStringLiteral("prefs/minimumFov"), w.minimumFov->value());
+    s.setValue(QStringLiteral("prefs/maximumFov"), w.maximumFov->value());
+    s.setValue(QStringLiteral("prefs/pasteForceKeys"), w.pasteForceKeys->isChecked());
+    s.setValue(QStringLiteral("prefs/pasteEdgeKeys"), w.pasteEdgeKeys->isChecked());
+    s.setValue(QStringLiteral("prefs/confirmLayerDelete"), w.confirmLayerDelete->isChecked());
+    s.setValue(QStringLiteral("prefs/syncBitmapColour"), w.syncBitmapColour->isChecked());
+    s.setValue(QStringLiteral("prefs/keyFrameOne"), w.frameOne->isChecked());
+    s.setValue(QStringLiteral("prefs/outlineLocked"), w.outlineLocked->isChecked());
+    s.setValue(QStringLiteral("prefs/bboxSelection"), w.bboxSelection->isChecked());
+    s.setValue(QStringLiteral("prefs/washCamera"), w.washCamera->isChecked());
+    s.setValue(QStringLiteral("prefs/washDrawing"), w.washDrawing->isChecked());
+    s.setValue(QStringLiteral("prefs/washPercent"), w.washPercent->value());
+    s.setValue(QStringLiteral("prefs/washColour"), w.washColour->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/washStalePreview"), w.washStalePreview->isChecked());
+    s.setValue(QStringLiteral("prefs/selectionShading"), w.selectionShading->isChecked());
+    s.setValue(QStringLiteral("prefs/extendExposure"), w.extend->isChecked());
+    s.setValue(QStringLiteral("prefs/stopMotionKeys"), w.stopMotion->isChecked());
+    s.setValue(QStringLiteral("prefs/loopPause"), w.loopPause->value());
+    s.setValue(QStringLiteral("prefs/playbackCacheEnabled"),w.playbackCacheEnabled->isChecked());
+    s.setValue(QStringLiteral("prefs/playbackCacheMb"),w.playbackCacheMb->value());
+    s.setValue(QStringLiteral("prefs/playbackResolution"),w.playbackResolution->currentData().toInt());
+    s.setValue(QStringLiteral("prefs/xsheetPlayback"),w.xsheetPlayback->isChecked());
+    s.setValue(QStringLiteral("prefs/viewerPreroll"),w.viewerPreroll->value());
+    s.setValue(QStringLiteral("prefs/viewerLoop"),w.viewerLoop->isChecked());
+    s.setValue(QStringLiteral("prefs/zoomOnMouse"), w.zoomOnMouse->isChecked());
+    s.setValue(QStringLiteral("prefs/defaultZoom"), w.defaultZoom->value());
+    s.setValue(QStringLiteral("prefs/planningDefaultZoom"), w.planningDefaultZoom->value());
+    s.setValue(QStringLiteral("prefs/planningThumbnailSize"), w.planningThumbnailSize->value());
+    s.setValue(QStringLiteral("prefs/zoomMin"), w.zoomMin->value());
+    s.setValue(QStringLiteral("prefs/zoomMax"), w.zoomMax->value());
+    s.setValue(QStringLiteral("prefs/quickCloseUp"), w.quickCloseUp->value());
+    s.setValue(QStringLiteral("prefs/paperZoom"), w.paperZoom->isChecked());
+    s.setValue(QStringLiteral("prefs/screenPpi"), w.screenPpi->value());
+    s.setValue(QStringLiteral("prefs/paperZoomMost"), w.paperZoomMost->value());
+    s.setValue(QStringLiteral("prefs/magnifyZoom"), w.magnifyZoom->value());
+    s.setValue(QStringLiteral("prefs/magnifyWidth"), w.magnifyWidth->value());
+    s.setValue(QStringLiteral("prefs/magnifyHeight"), w.magnifyHeight->value());
+    s.setValue(QStringLiteral("prefs/magnifyOffsetX"), w.magnifyOffsetX->value());
+    s.setValue(QStringLiteral("prefs/magnifyOffsetY"), w.magnifyOffsetY->value());
+    s.setValue(QStringLiteral("prefs/backlightColour"), w.backlightColour->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/drawingThumbnails"), w.drawingThumbnails->currentData().toString());
+    s.setValue(QStringLiteral("prefs/pressureFeel"), w.pressureFeel->value());
+    s.setValue(QStringLiteral("prefs/nameByFrame"), w.byFrame->isChecked());
+    s.setValue(QStringLiteral("prefs/proportionAcross"), w.gridAcross->value());
+    s.setValue(QStringLiteral("prefs/proportionDown"), w.gridDown->value());
+    s.setValue(QStringLiteral("prefs/safeMargin"), w.safe->value());
+    s.setValue(QStringLiteral("prefs/keepBackup"), w.keepBackup->isChecked());
+    s.setValue(QStringLiteral("prefs/askConvertScenes"), w.askConvertScenes->isChecked());
+    s.setValue(QStringLiteral("prefs/timecodeFont"), w.timecodeFont->currentFont().family());
+    s.setValue(QStringLiteral("prefs/timecodeColour"), w.timecodeColour->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/timecodeBackground"), w.timecodeBackground->property("colour").value<QColor>());
+    s.setValue(QStringLiteral("prefs/timecodeHeight"), w.timecodeHeight->value());
+    s.setValue(QStringLiteral("prefs/timecodePosition"), w.timecodePosition->currentIndex());
+    s.setValue(QStringLiteral("prefs/invertScroll"), w.invertScroll->isChecked());
+    s.setValue(QStringLiteral("prefs/gestures"), w.gestures->isChecked());
+    s.setValue(QStringLiteral("prefs/touchSensitivity"), w.touchSensitivity->value());
+    s.setValue(QStringLiteral("prefs/bonesAsJoints"), w.bonesAsJoints->isChecked());
+    s.setValue(QStringLiteral("prefs/highlightIntensity"), w.highlightIntensity->value());
+    s.setValue(QStringLiteral("prefs/highlightColourOpacity"), w.highlightColourOpacity->value());
+    s.setValue(QStringLiteral("prefs/gridColumns"), w.gridColumns->value());
+    s.setValue(QStringLiteral("prefs/gridRows"), w.gridRows->value());
+    s.setValue(QStringLiteral("prefs/autoThumbnails"), w.autoThumbnails->isChecked());
+    s.setValue(QStringLiteral("prefs/askAutoSave"), w.askAutoSave->isChecked());
+    s.setValue(QStringLiteral("prefs/cameraZoom"), w.cameraZoom->currentIndex());
+    s.setValue(QStringLiteral("prefs/timelineSound"), w.showSound->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineWaveforms"), w.waveforms->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineGroups"), w.showGroups->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineSceneEnd"), w.sceneEnd->isChecked());
+    s.setValue(QStringLiteral("prefs/timelineReduceIndent"), w.reduceIndent->isChecked());
+    s.setValue(QStringLiteral("prefs/preroll"), w.preroll->value());
+    s.setValue(QStringLiteral("prefs/brushOutline"), w.brushOutline->isChecked());
+    s.setValue(QStringLiteral("prefs/loop"), w.loopAtStart->isChecked());
+    s.setValue(QStringLiteral("prefs/lipSyncLead"), w.lipLead->value());
+    s.setValue(QStringLiteral("prefs/onionBrightnessAlpha"), w.onionBrightness->isChecked());
+    s.setValue(QStringLiteral("prefs/lineArtBitmap"), w.lineArtBitmap->isChecked());
+    s.setValue(QStringLiteral("prefs/thumbnailSize"), w.thumbnails->value());
+    s.setValue(QStringLiteral("prefs/pencilLinesOpacity"), w.lineOpacity->value());
+    s.setValue(QStringLiteral("prefs/bitmapCanvas"), w.bitmapCanvas->value());
+    s.setValue(QStringLiteral("prefs/bitmapCanvasHeight"), w.bitmapCanvasHeight->value());
+    s.setValue(QStringLiteral("prefs/bitmapPpi"), w.bitmapPpi->value());
+    s.setValue(QStringLiteral("prefs/bitmapCameraDensity"), w.bitmapCameraDensity->isChecked());
+    s.setValue(QStringLiteral("prefs/bitmapCanvasBasis"), w.canvasBasis->currentIndex());
+    s.setValue(QStringLiteral("prefs/advancedElementMode"), w.elementMode->isChecked());
+    s.setValue(QStringLiteral("prefs/initialTool"), w.initialTool->currentData().toString());
+    s.setValue(QStringLiteral("prefs/scalePencilThickness"), w.scalePencil->isChecked());
+    s.setValue(QStringLiteral("prefs/onionOver"), w.onionOver->isChecked());
+    s.setValue(QStringLiteral("prefs/onionOriginal"), w.onionStyle->currentIndex() == 1);
+    m_canvas->setOnionOriginal(w.onionStyle->currentIndex() == 1);
+    m_canvas->setOnionOutlines(w.onionStyle->currentIndex() == 2);
+    m_canvas->setOnionOthers(w.onionOthers->isChecked());
+    s.setValue(QStringLiteral("prefs/onionEnhanced"), w.onionEnhanced->isChecked());
+    s.setValue(QStringLiteral("prefs/selectLasso"), w.selectLasso->isChecked());
+    s.setValue(QStringLiteral("prefs/showStrokes"), w.showStrokes->isChecked());
+    s.setValue(QStringLiteral("prefs/drawingCycle"), w.drawingCycle->isChecked());
+    s.setValue(QStringLiteral("prefs/substitutionKeys"), w.substitutionKeys->isChecked());
+    s.setValue(QStringLiteral("prefs/fieldsAcross"), w.fieldsAcross->value());
+    s.setValue(QStringLiteral("prefs/fieldsDown"), w.fieldsDown->value());
+    s.setValue(QStringLiteral("prefs/closeGap"), w.closeGap->value());
+    s.setValue(QStringLiteral("prefs/ikIterations"), w.ikIterations->value());
+    s.setValue(QStringLiteral("prefs/ikError"), w.ikError->value());
+    s.setValue(QStringLiteral("prefs/ikStopAtIntersection"), w.ikStopAtIntersection->isChecked());
+    s.setValue(QStringLiteral("prefs/ikAllChains"), w.ikAllChains->isChecked());
+    s.setValue(QStringLiteral("prefs/ikRetry"), w.ikRetry->value());
+    s.setValue(QStringLiteral("prefs/ikLimitWeight"), w.ikLimitWeight->value());
+    s.setValue(QStringLiteral("prefs/morphQuality"), w.morphQuality->value());
+    s.setValue(QStringLiteral("prefs/pdfSeparateLayers"), w.pdfSeparateLayers->isChecked());
+    s.setValue(QStringLiteral("prefs/pdfCmyk"), w.pdfCmyk->isChecked());
+    if (w.vectorizeStyle->currentText() != s.value(QStringLiteral("prefs/vectorizeStyle"), QStringLiteral("Default Style")).toString()) {
+        s.setValue(QStringLiteral("prefs/vectorizeStyle"), w.vectorizeStyle->currentText());
+        s.remove(QStringLiteral("prefs/vectorizeOptions"));
+    }
+    s.setValue(QStringLiteral("prefs/renderBlurs"), w.renderBlurs->isChecked());
+    s.setValue(QStringLiteral("prefs/renderFocus"), w.renderFocus->isChecked());
+    s.setValue(QStringLiteral("prefs/renderToneHighlight"), w.renderToneHighlight->isChecked());
+    s.setValue(QStringLiteral("prefs/renderColourOverride"), w.renderColourOverride->isChecked());
+    s.setValue(QStringLiteral("prefs/renderThreads"), w.renderThreads->value());
+    s.setValue(QStringLiteral("prefs/renderCacheMb"), w.renderCacheMb->value());
+    s.setValue(QStringLiteral("prefs/viewAntialiasMode"), w.viewAntialiasMode->currentIndex());
+    s.setValue(QStringLiteral("prefs/effectsTimeout"), w.effectsTimeout->value());
+    s.setValue(QStringLiteral("prefs/drawTimeout"), w.drawTimeout->value());
+    s.setValue(QStringLiteral("prefs/newAntialiasing"), w.newAntialiasing->currentIndex());
+    s.setValue(QStringLiteral("prefs/newAntialiasExponent"), w.newAntialiasExponent->value());
+    for (auto const& [box, key] : {std::pair<QCheckBox*, char const*>{w.disableRenderPreview, "prefs/disableRenderPreview"}, {w.lineTextures, "prefs/lineTextures"},
+                                   {w.viewCutters, "prefs/viewCutters"}, {w.viewTextures, "prefs/viewTextures"}, {w.viewPencilTextures, "prefs/viewPencilTextures"},
+                                   {w.viewLineThickness, "prefs/viewLineThickness"}, {w.viewEffects, "prefs/viewEffects"}, {w.viewAntialias, "prefs/viewAntialias"},
+                                   {w.smoothTextures, "prefs/smoothTextures"}})
+        s.setValue(QLatin1String(key), box->isChecked());
+    s.setValue(QStringLiteral("prefs/xsheetCentre"), w.xsheetCentre->isChecked());
+    s.setValue(QStringLiteral("prefs/xsheetHold"), w.xsheetHold->value());
+    s.setValue(QStringLiteral("prefs/focusOnEnter"), w.focusOnEnter->isChecked());
+    s.setValue(QStringLiteral("prefs/autoSaveWorkspace"), w.autoWorkspace->isChecked());
+    s.setValue(QStringLiteral("prefs/viewBorder"), w.viewBorder->isChecked());
+    s.setValue(QStringLiteral("prefs/restoreDrawingOnUndo"), w.restoreDrawing->isChecked());
+    s.setValue(QStringLiteral("prefs/viewBorderColour"), w.borderColour->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/boneColour"), w.boneColour->property("colour").value<QColor>().name());
+    s.setValue(QStringLiteral("prefs/boneSelectedColour"), w.boneSelected->property("colour").value<QColor>().name());
+    for (int g = 0; g < w.viewColours->topLevelItemCount(); ++g)
+        for (int i = 0; i < w.viewColours->topLevelItem(g)->childCount(); ++i) {
+            QTreeWidgetItem* const item = w.viewColours->topLevelItem(g)->child(i);
+            QColor const colour = item->data(1, Qt::UserRole).value<QColor>();
+            InterfaceColours::set(item->data(0, Qt::UserRole).toString(), colour == item->data(0, Qt::UserRole + 1).value<QColor>() ? QColor() : colour);
+        }
+    s.setValue(QStringLiteral("prefs/darkStyle"), w.darkStyle->isChecked());
+    s.setValue(QStringLiteral("prefs/interfaceScale"), w.uiScale->value());
+    s.setValue(QStringLiteral("prefs/language"), w.language->currentData().toString());
+    s.setValue(QStringLiteral("prefs/compressScenes"), w.compress->isChecked());
+    s.setValue(QStringLiteral("prefs/autosaveQuietSeconds"), w.quiet->value());
+    s.setValue(QStringLiteral("prefs/pasteBehaviour"), w.pasteBehaviour->currentIndex());
+    s.setValue(QStringLiteral("prefs/middlePans"), w.middlePans->isChecked());
+    s.setValue(QStringLiteral("prefs/performanceReport"), w.performance->isChecked());
+    s.setValue(QStringLiteral("prefs/modelScale"), w.modelScale->value());
+    s.setValue(QStringLiteral("prefs/databaseRoot"), w.databaseRoot->text().trimmed());
+    s.setValue(QStringLiteral("prefs/databaseUser"), w.databaseUser->text().trimmed());
+    s.setValue(QStringLiteral("prefs/autoRightsDrawings"), w.autoRightsDrawings->isChecked());
+    s.setValue(QStringLiteral("prefs/autoRightsPalettes"), w.autoRightsPalettes->isChecked());
+    s.setValue(QStringLiteral("prefs/functionGrid"), w.functionGrid->isChecked());
+    s.setValue(QStringLiteral("prefs/functionLoadLimit"), w.functionLoadLimit->value());
+    s.setValue(QStringLiteral("prefs/pathConstantZ"), w.pathConstantZ->isChecked());
+    s.setValue(QStringLiteral("prefs/editorsOnTop"), w.editorsOnTop->isChecked());
+    s.setValue(QStringLiteral("prefs/defaultBezier"), w.defaultBezier->isChecked());
+    s.setValue(QStringLiteral("prefs/defaultBezierVelocity"), w.defaultBezierVelocity->isChecked());
+    s.setValue(QStringLiteral("prefs/xsheetColumnWidth"), w.columnWidth->value());
+    s.setValue(QStringLiteral("prefs/drawingOnTop"), w.onTop->isChecked());
+    s.setValue(QStringLiteral("prefs/onionFade"), w.onionFade->isChecked());
+    s.setValue(QStringLiteral("prefs/onionNearest"), w.onionNearest->value());
+    s.setValue(QStringLiteral("prefs/onionFurthest"), w.onionFurthest->value());
+    savePalettePreferences(w, s);
+    saveTemplatePreferences(w, s);
+    saveSheetPreferences(w, s);
+    saveAnimationPreferences(w, s);
+    s.sync();
+    applyPreferences();
+}
+
+bool MainWindow::savePreferenceSet(QString const& path) const
+{
+    // Every preference, as an ini file.
+    QFile::remove(path);
+    QSettings out(path, QSettings::IniFormat);
+    QSettings const in(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    for (QString const& key : in.allKeys())
+        if (key.startsWith(QStringLiteral("prefs/")) && key != QStringLiteral("prefs/lastTab"))
+            out.setValue(key, in.value(key));
+    out.sync();
+    return out.status() == QSettings::NoError && QFileInfo::exists(path);
+}
+
+bool MainWindow::loadPreferenceSet(QString const& path)
+{
+    if (!QFileInfo::exists(path))
+        return false;
+    QSettings const in(path, QSettings::IniFormat);
+    QStringList const keys = in.allKeys();
+    bool any = false;
+    for (QString const& key : keys)
+        any = any || key.startsWith(QStringLiteral("prefs/"));
+    if (in.status() != QSettings::NoError || !any)
+        return false;
+    QSettings out(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    for (QString const& key : keys)
+        if (key.startsWith(QStringLiteral("prefs/")))
+            out.setValue(key, in.value(key));
+    return true;
+}
+
+QStringList MainWindow::languages()
+{
+    QStringList codes = {QStringLiteral("en")};
+    QDir const dir(ActionManager::defaultDirectory() + QStringLiteral("/translations"));
+    for (QString const& file : dir.entryList({QStringLiteral("eclipse_*.qm")}, QDir::Files, QDir::Name))
+        codes.append(file.mid(8, file.size() - 11));
+    return codes;
+}
+
+bool MainWindow::installLanguage(QString const& code)
+{
+    if (code.isEmpty() || code == QStringLiteral("en"))
+        return true;
+    QTranslator* const own = new QTranslator(qApp);
+    if (!own->load(QStringLiteral("eclipse_") + code, ActionManager::defaultDirectory() + QStringLiteral("/translations"))) {
+        delete own;
+        return false;
+    }
+    QCoreApplication::installTranslator(own);
+    // Qt's own words (the buttons of its dialogs), when Qt has them in that language.
+    QTranslator* const qt = new QTranslator(qApp);
+    if (qt->load(QStringLiteral("qtbase_") + code, QLibraryInfo::path(QLibraryInfo::TranslationsPath))
+        || qt->load(QStringLiteral("qtbase_") + code, QCoreApplication::applicationDirPath() + QStringLiteral("/translations")))
+        QCoreApplication::installTranslator(qt);
+    else
+        delete qt;
+    return true;
+}
+
+void MainWindow::restoreDefaultPreferences()
+{
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    int const tab = s.value(QStringLiteral("prefs/lastTab"), 0).toInt();
+    s.remove(QStringLiteral("prefs"));
+    s.setValue(QStringLiteral("prefs/lastTab"), tab);
+}
+
+void MainWindow::showStyleEditor()
+{
+    // Additions to the look, in Qt's style sheet language: shown as they are typed when Apply is pressed, kept by Save.
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("StyleEditor"));
+    dialog.setWindowTitle(tr("Style Editor"));
+    QPlainTextEdit* const text = new QPlainTextEdit(&dialog);
+    text->setObjectName(QStringLiteral("StyleEditorText"));
+    QSettings s(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
+    QString const kept = s.value(QStringLiteral("prefs/styleExtra")).toString();
+    text->setPlainText(kept);
+    text->setPlaceholderText(tr("For example:\nQMenu { font-size: 11pt; }"));
+    QString const base = qApp->property("eclipseBaseStyle").toString();
+    QDialogButtonBox* const buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Apply | QDialogButtonBox::Close, &dialog);
+    connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, &dialog, [text, base] { qApp->setStyleSheet(base + QLatin1Char('\n') + text->toPlainText()); });
+    connect(buttons->button(QDialogButtonBox::Save), &QPushButton::clicked, &dialog, [text, base, &dialog] {
+        QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("prefs/styleExtra"), text->toPlainText());
+        qApp->setStyleSheet(base + QLatin1Char('\n') + text->toPlainText());
+        dialog.accept();
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, [kept, base, &dialog] {
+        // (Closed without saving: as it was.)
+        qApp->setStyleSheet(base + QLatin1Char('\n') + kept);
+        dialog.reject();
+    });
+    QVBoxLayout* const layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("Style Sheet: additions to Eclipse's look"), &dialog));
+    layout->addWidget(text, 1);
+    layout->addWidget(buttons);
+    dialog.resize(520, 380);
+    dialog.exec();
+}
+
+// Preferences > Render: rendering threads, the Render View, what the Camera view leaves out, its time limits and antialiasing.
+void MainWindow::applyRenderPreferences(QSettings const& s)
+{
+    FrameRender::setThreads(s.value(QStringLiteral("prefs/renderThreads"), 0).toInt());
+    Layer::newLayers.antialiasing = std::clamp(s.value(QStringLiteral("prefs/newAntialiasing"), 2).toInt(), 0, 3);
+    Layer::newLayers.antialiasExponent = std::clamp(s.value(QStringLiteral("prefs/newAntialiasExponent"), 1.0).toDouble(), 0.1, 10.0);
+    Canvas::setRenderSwitch(Canvas::LineTextures, s.value(QStringLiteral("prefs/lineTextures"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewCutters, s.value(QStringLiteral("prefs/viewCutters"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewTextures, s.value(QStringLiteral("prefs/viewTextures"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewPencilTextures, s.value(QStringLiteral("prefs/viewPencilTextures"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewLineThickness, s.value(QStringLiteral("prefs/viewLineThickness"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewEffects, s.value(QStringLiteral("prefs/viewEffects"), true).toBool());
+    Canvas::setRenderSwitch(Canvas::ViewSmoothPictures, s.value(QStringLiteral("prefs/smoothTextures"), true).toBool());
+    for (Canvas* const view : findChildren<Canvas*>()) {
+        view->setRenderCacheSize(s.value(QStringLiteral("prefs/renderCacheMb"), 256).toInt());
+        view->setViewTimeouts(s.value(QStringLiteral("prefs/effectsTimeout"), 0).toInt(), s.value(QStringLiteral("prefs/drawTimeout"), 0).toInt());
+        view->setViewAntialiasing(s.value(QStringLiteral("prefs/viewAntialias"), true).toBool(), s.value(QStringLiteral("prefs/viewAntialiasMode"), 0).toInt() == 1);
+    }
+    bool const autoRender = s.value(QStringLiteral("view/autoRender"), true).toBool();
+    m_canvas->setAutoRender(autoRender);
+    m_actions->setChecked(QStringLiteral("ViewAutoRender"), autoRender);
+    bool const progressive = s.value(QStringLiteral("view/progressiveRender"), false).toBool();
+    m_canvas->setProgressiveRender(progressive);
+    m_actions->setChecked(QStringLiteral("ProgressiveRender"), progressive);
+    // Without the render preview in the Camera view: its view modes and buttons are not offered there.
+    bool const noPreview = s.value(QStringLiteral("prefs/disableRenderPreview"), false).toBool();
+    if (QComboBox* const mode = findChild<QComboBox*>(QStringLiteral("ViewMode"))) {
+        if (noPreview && mode->currentIndex() == int(Canvas::ViewRender))
+            mode->setCurrentIndex(int(Canvas::ViewNormal));
+        mode->setVisible(!noPreview);
+    }
+    if (QWidget* const controls = findChild<QWidget*>(QStringLiteral("RenderViewControls")))
+        controls->setVisible(!noPreview && m_canvas->viewMode() == Canvas::ViewRender);
+    if (QAction* const render = m_actions->action(QStringLiteral("ViewRenderMode")))
+        render->setEnabled(!noPreview);
+}

@@ -1,8 +1,8 @@
 // Eclipse - eclipse-batch: scenes rendered and scripts run on them without a window (see ui/tools/BatchRun.h).
 #include <QApplication>
 
-#include "ui/tools/BatchRun.h"
-#include "ui/tools/CommandLine.h"
+#include "animation/ui/tools/BatchRun.h"
+#include "animation/ui/tools/CommandLine.h"
 
 int main(int argc, char** argv)
 {
