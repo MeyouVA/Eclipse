@@ -236,8 +236,11 @@ Then run `windeployqt` once on `out\Eclipse.exe` and its DLLs to copy the Qt fil
 | `EclipseRender` | `src/render` | Rendering and layer effects |
 | `EclipseActions` | `src/actions` | Menus, toolbars, shortcuts and the look |
 | `EclipseCanvas` | `src/canvas` | The Camera and Drawing views and their tools |
-| `EclipseUi` | `src/ui` | The main window and all its views |
-| `Eclipse.exe` | `src/app` | Starts the window (plus the command-line programs) |
+| `EclipseUi` | `src/animation/ui` | The Animation main window and its views |
+| `EclipseBoardModel` | `src/board/model` | Project files for the Storyboard app |
+| `EclipseBoardUi` | `src/board/ui` | The Storyboard main window |
+| `EclipseLauncher` | `src/launcher` | The shared Welcome window |
+| `Eclipse.exe` | `src/app` | Starts the chosen app (plus entry points for the command-line programs) |
 
 Menus, toolbars, shortcuts and icons live in `resources/` and are read at start-up, so they can be changed without rebuilding.
 
