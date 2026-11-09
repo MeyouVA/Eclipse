@@ -1,8 +1,8 @@
 #include "board/ui/BoardLayers.h"
+#include "board/ui/BoardLayerPreview.h"
 #include "board/model/BoardDocument.h"
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/Theme.h"
-#include "canvas/Canvas.h"
 
 #include <QHeaderView>
 #include <QKeyEvent>
@@ -10,7 +10,6 @@
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
-#include <QPainter>
 #include <QScopedValueRollback>
 #include <QSignalBlocker>
 #include <QStyledItemDelegate>
@@ -195,23 +194,8 @@ void BoardLayers::updatePreview(int index)
     auto* item = m_list->topLevelItem(index);
     if (!item)
         return;
-    auto const& project = m_document->project();
-    auto const& layer = current->layers[index];
-    Scene scene;
-    scene.width = project.width;
-    scene.height = project.height;
     QSize const size = m_list->iconSize();
-    QPixmap thumbnail(size * 2);
-    thumbnail.fill(QColor(238, 238, 238));
-    QPainter painter(&thumbnail);
-    double const scale = std::min(double(thumbnail.width()) / project.width, double(thumbnail.height()) / project.height);
-    painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-    painter.translate((thumbnail.width() - project.width * scale) / 2, (thumbnail.height() - project.height * scale) / 2);
-    painter.scale(scale, scale);
-    painter.setClipRect(QRectF(0, 0, project.width, project.height));
-    Canvas::paintDrawing(painter, scene, layer.drawing, 1.0);
-    painter.end();
-    auto const preview = thumbnail.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    auto const preview = boardLayerPreview(m_document->project(), current->layers[index], size);
     QIcon icon(preview);
     icon.addPixmap(preview, QIcon::Selected);
     item->setIcon(0, icon);

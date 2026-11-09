@@ -29,6 +29,7 @@
   <shortcut id="shortcut.BoardRefreshThumbnails" text="Regenerate Panel Thumbnails" value=""/>
   <shortcut id="shortcut.BoardImportImageLayers" text="Import Images as Layers" value=""/>
   <shortcut id="shortcut.BoardImportImageScenes" text="Import Images as Scenes" value=""/>
+  <shortcut id="shortcut.BoardImportImageLibrary" text="Import Images into Library" value=""/>
   <shortcut id="shortcut.BoardExportFrame" text="Export Current Image" value=""/>
   <shortcut id="shortcut.BoardExportPdf" text="Storyboard PDF" value=""/>
   <shortcut id="shortcut.BoardExportCsv" text="Export Captions CSV" value=""/>
@@ -138,6 +139,7 @@
   <shortcut id="shortcut.BoardThumbnailsShow" text="Show Thumbnails" value=""/>
   <shortcut id="shortcut.BoardLayersShow" text="Show Panel Layers" value=""/>
   <shortcut id="shortcut.BoardCaptionsShow" text="Show Captions" value=""/>
+  <shortcut id="shortcut.BoardLibraryShow" text="Show Library" value=""/>
   <shortcut id="shortcut.BoardTimelineShow" text="Show Timeline" value=""/>
   <shortcut id="shortcut.BoardResetLayout" text="Restore Default Workspace" value=""/>
  </category>

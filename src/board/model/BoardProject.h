@@ -15,6 +15,9 @@ struct ECLIPSE_BOARD_MODEL_API BoardProject {
     QVector<BoardShot> shots = {};
     QStringList captionFields = Storyboard::defaultCaptionFields();
     BoardSound sound = {};
+    QVector<BoardLayer> library = {};
+    static constexpr qsizetype maxLibraryItems = 512;
+    static constexpr qsizetype maxLibraryName = 128;
 
     QString create(QString const& directory, QString* error = nullptr) const;
     bool save(QString const& path, QString* error = nullptr) const;

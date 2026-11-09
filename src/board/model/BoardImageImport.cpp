@@ -5,12 +5,25 @@
 #include <QSet>
 #include <algorithm>
 
-bool BoardDocument::importPictures(int shot, int panel, QVector<QPair<QString, QImage>> const& images, int framesPerScene)
+namespace {
+BoardLayer pictureLayer(BoardProject const& project, QString const& name, QImage const& image)
 {
-    if (!hasPanel(shot, panel) || images.isEmpty() || framesPerScene < 0 || framesPerScene > 1000000
-        || (framesPerScene > 0 && !canGrow(images.size(), qint64(images.size()) * framesPerScene)))
-        return false;
+    double const scale = std::min({1.0, double(project.width) / image.width(), double(project.height) / image.height()});
+    Picture picture;
+    picture.image = image;
+    picture.size = image.size();
+    picture.ownProfile = image.colorSpace().isValid();
+    picture.placement.translate((project.width - image.width() * scale) / 2,
+                                (project.height - image.height() * scale) / 2);
+    picture.placement.scale(scale, scale);
+    Drawing drawing;
+    drawing.pictures.append(std::move(picture));
+    return {name, BoardLayer::Kind::Bitmap, true, std::move(drawing)};
+}
+}
 
+bool BoardDocument::canEmbedPictures(QVector<QPair<QString, QImage>> const& images) const
+{
     qint64 bytes = 0;
     QSet<qint64> counted;
     auto count = [&bytes, &counted](QImage const& image) {
@@ -24,27 +37,43 @@ bool BoardDocument::importPictures(int shot, int panel, QVector<QPair<QString, Q
             for (auto const& layer : item.layers)
                 for (auto const& picture : layer.drawing.pictures)
                     count(picture.image);
-
-    QVector<BoardLayer> layers;
-    layers.reserve(images.size());
+    for (auto const& layer : m_project.library)
+        for (auto const& picture : layer.drawing.pictures)
+            count(picture.image);
     for (auto const& [name, image] : images) {
         if (name.trimmed().isEmpty() || image.isNull() || image.sizeInBytes() > BoardProjectJson::maxEmbeddedImageBytes)
             return false;
         count(image);
         if (bytes > BoardProjectJson::maxEmbeddedImagesBytes)
             return false;
-        double const scale = std::min({1.0, double(m_project.width) / image.width(), double(m_project.height) / image.height()});
-        Picture picture;
-        picture.image = image;
-        picture.size = image.size();
-        picture.ownProfile = image.colorSpace().isValid();
-        picture.placement.translate((m_project.width - image.width() * scale) / 2,
-                                    (m_project.height - image.height() * scale) / 2);
-        picture.placement.scale(scale, scale);
-        Drawing drawing;
-        drawing.pictures.append(std::move(picture));
-        layers.append({name, BoardLayer::Kind::Bitmap, true, std::move(drawing)});
     }
+    return true;
+}
+
+bool BoardDocument::addLibraryImages(QVector<QPair<QString, QImage>> const& images)
+{
+    if (m_path.isEmpty() || images.isEmpty() || images.size() > BoardProject::maxLibraryItems - m_project.library.size()
+        || !canEmbedPictures(images))
+        return false;
+    auto next = m_project;
+    for (auto const& [name, image] : images)
+        appendLibraryLayer(next.library, pictureLayer(m_project, name, image));
+    if (next.toBytes().isEmpty())
+        return false;
+    apply(std::move(next), tr("Import Images into Library"));
+    return true;
+}
+
+bool BoardDocument::importPictures(int shot, int panel, QVector<QPair<QString, QImage>> const& images, int framesPerScene)
+{
+    if (!hasPanel(shot, panel) || images.isEmpty() || framesPerScene < 0 || framesPerScene > 1000000
+        || (framesPerScene > 0 && !canGrow(images.size(), qint64(images.size()) * framesPerScene)) || !canEmbedPictures(images))
+        return false;
+
+    QVector<BoardLayer> layers;
+    layers.reserve(images.size());
+    for (auto const& [name, image] : images)
+        layers.append(pictureLayer(m_project, name, image));
 
     auto next = m_project;
     if (framesPerScene == 0) {

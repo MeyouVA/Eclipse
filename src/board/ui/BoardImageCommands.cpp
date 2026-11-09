@@ -1,5 +1,6 @@
 #include "board/ui/BoardWindow.h"
 #include "board/model/BoardProjectJson.h"
+#include "board/ui/BoardLibrary.h"
 #include "board/ui/BoardPlayback.h"
 #include "board/ui/BoardTimeline.h"
 #include "board/ui/export/BoardRender.h"
@@ -15,11 +16,12 @@
 void BoardWindow::importBoardImages(QString const& operation)
 {
     auto const [shot, panel] = m_selected;
-    if (!m_document.panel(shot, panel))
+    bool const toLibrary = operation == QLatin1String("library");
+    if (toLibrary ? m_document.path().isEmpty() : !m_document.panel(shot, panel))
         return;
     m_playback->stop();
     bool const asScenes = operation == QLatin1String("scenes");
-    QString const title = asScenes ? tr("Import Images as Scenes") : tr("Import Images as Layers");
+    QString const title = toLibrary ? tr("Import Images into Library") : (asScenes ? tr("Import Images as Scenes") : tr("Import Images as Layers"));
     QStringList const files = QFileDialog::getOpenFileNames(this, title, QFileInfo(m_document.path()).absolutePath(),
         ImageFiles::fileFilter(), nullptr, QFileDialog::HideNameFilterDetails);
     if (files.isEmpty())
@@ -42,12 +44,17 @@ void BoardWindow::importBoardImages(QString const& operation)
     }
 
     int const frames = asScenes ? defaultPanelFrames(m_document.project().fps) : 0;
-    if (!m_document.importPictures(shot, panel, images, frames)) {
+    bool const imported = toLibrary ? m_document.addLibraryImages(images) : m_document.importPictures(shot, panel, images, frames);
+    if (!imported) {
         QMessageBox::warning(this, title, tr("These images could not be added within the current project’s limits."));
         return;
     }
     if (asScenes)
         selectPanel(shot + 1, 0);
+    if (toLibrary) {
+        showBoardView(QStringLiteral("library"));
+        m_library->selectLastItem();
+    }
     statusBar()->showMessage(tr("Imported %n image(s)", nullptr, int(images.size())), 5000);
 }
 

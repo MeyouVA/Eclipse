@@ -24,6 +24,7 @@
    <menu id="BoardImport" text="&amp;Import">
     <item id="BoardImportImageLayers" text="Images as Layers..." shortcut="shortcut.BoardImportImageLayers" responder="window" slot="importBoardImages(QString)" itemParameter="layers"/>
     <item id="BoardImportImageScenes" text="Images as Scenes..." shortcut="shortcut.BoardImportImageScenes" responder="window" slot="importBoardImages(QString)" itemParameter="scenes"/>
+    <item id="BoardImportImageLibrary" text="Images into Library..." shortcut="shortcut.BoardImportImageLibrary" responder="window" slot="importBoardImages(QString)" itemParameter="library"/>
    </menu>
    <menu id="BoardExport" text="&amp;Export">
     <item id="BoardExportFrame" text="Current Image..." shortcut="shortcut.BoardExportFrame" responder="window" slot="exportBoardFrame()"/>
@@ -157,6 +158,7 @@
    <item id="BoardThumbnailsShow" text="Show Thumbnails" shortcut="shortcut.BoardThumbnailsShow" responder="window" slot="showBoardView(QString)" itemParameter="thumbnails"/>
    <item id="BoardLayersShow" text="Show Panel Layers" shortcut="shortcut.BoardLayersShow" responder="window" slot="showBoardView(QString)" itemParameter="layers"/>
    <item id="BoardCaptionsShow" text="Show Captions" shortcut="shortcut.BoardCaptionsShow" responder="window" slot="showBoardView(QString)" itemParameter="captions"/>
+   <item id="BoardLibraryShow" text="Show Library" shortcut="shortcut.BoardLibraryShow" responder="window" slot="showBoardView(QString)" itemParameter="library"/>
    <item id="BoardTimelineShow" text="Show Timeline" shortcut="shortcut.BoardTimelineShow" responder="window" slot="showBoardView(QString)" itemParameter="timeline"/>
    <item id="BoardResetLayout" text="Restore Default Workspace" shortcut="shortcut.BoardResetLayout" responder="window" slot="restoreDefaultLayout()"/>
   </menu>

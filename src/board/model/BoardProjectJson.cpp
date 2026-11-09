@@ -144,6 +144,15 @@ bool readLayer(QJsonObject const& json, QHash<QString, QImage> const& images, Bo
     layer.drawing = scene_read::drawingFromJson(drawing, {}, images);
     return BoardProjectJson::supportedDrawing(layer.drawing);
 }
+
+bool validLibraryName(QString const& name, QSet<QString>& names)
+{
+    QString const key = name.toCaseFolded();
+    if (name.isEmpty() || name != name.trimmed() || name.size() > BoardProject::maxLibraryName || names.contains(key))
+        return false;
+    names.insert(key);
+    return true;
+}
 }
 
 bool BoardProjectJson::supportedDrawing(Drawing const& drawing)
@@ -186,6 +195,35 @@ bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QS
     QHash<qint64, QString> imageKeys;
     QSet<qint64> countedImages;
     qint64 imageBytes = 0;
+    auto encodeLayer = [&](BoardLayer const& layer, QJsonArray& layers) {
+        if (layer.name.trimmed().isEmpty() || !supportedDrawing(layer.drawing))
+            return fail(error, "A layer has an invalid name or unsupported artwork.");
+        for (Picture const& picture : layer.drawing.pictures) {
+            qint64 const key = picture.image.cacheKey();
+            if (!countedImages.contains(key)) {
+                countedImages.insert(key);
+                imageBytes += picture.image.sizeInBytes();
+                if (imageBytes > maxEmbeddedImagesBytes)
+                    return fail(error, "The embedded layer images are too large.");
+            }
+        }
+        layers.append(QJsonObject{{"name", layer.name}, {"visible", layer.visible}, {"locked", layer.locked},
+            {"kind", layer.kind == BoardLayer::Kind::Bitmap ? "bitmap" : "vector"},
+            {"drawing", scene_write::drawingToJson(layer.drawing, {}, images, imageKeys)}});
+        return true;
+    };
+    if (project.library.size() > BoardProject::maxLibraryItems)
+        return fail(error, "The project library has too many items.");
+    QSet<QString> names;
+    QJsonArray library;
+    for (auto const& item : project.library) {
+        if (!validLibraryName(item.name, names) || !item.visible || item.locked)
+            return fail(error, "The project library contains an invalid item.");
+        if (!encodeLayer(item, library))
+            return false;
+    }
+    if (!library.isEmpty())
+        json["library"] = library;
     for (qsizetype s = 0; s < shots.size(); ++s) {
         auto shot = shots[s].toObject();
         if (project.shots[s].namesLocked)
@@ -194,22 +232,9 @@ bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QS
         for (qsizetype p = 0; p < panels.size(); ++p) {
             auto panel = panels[p].toObject();
             QJsonArray layers;
-            for (BoardLayer const& layer : project.shots[s].panels[p].layers) {
-                if (layer.name.trimmed().isEmpty() || !supportedDrawing(layer.drawing))
-                    return fail(error, "A layer has an invalid name or unsupported artwork.");
-                for (Picture const& picture : layer.drawing.pictures) {
-                    qint64 const key = picture.image.cacheKey();
-                    if (!countedImages.contains(key)) {
-                        countedImages.insert(key);
-                        imageBytes += picture.image.sizeInBytes();
-                        if (imageBytes > maxEmbeddedImagesBytes)
-                            return fail(error, "The embedded layer images are too large.");
-                    }
-                }
-                layers.append(QJsonObject{{"name", layer.name}, {"visible", layer.visible}, {"locked", layer.locked},
-                    {"kind", layer.kind == BoardLayer::Kind::Bitmap ? "bitmap" : "vector"},
-                    {"drawing", scene_write::drawingToJson(layer.drawing, {}, images, imageKeys)}});
-            }
+            for (BoardLayer const& layer : project.shots[s].panels[p].layers)
+                if (!encodeLayer(layer, layers))
+                    return false;
             panel["layers"] = layers;
             if (!writeCamera(project.shots[s].panels[p], panel))
                 return fail(error, "A panel contains an invalid camera key.");
@@ -239,7 +264,7 @@ bool BoardProjectJson::decode(QJsonObject const& json, BoardProject& project, QS
             return fail(error, "The sound track is invalid.");
     }
     if (!json.contains("content")) {
-        if (json.contains("images"))
+        if (json.contains("images") || json.contains("library"))
             return fail(error, "Project content is missing.");
         project.shots = {{QStringLiteral("1"), {}, {}, {BoardProject::blankPanel(int(std::lround(project.fps)))}}};
         return true;
@@ -250,6 +275,18 @@ bool BoardProjectJson::decode(QJsonObject const& json, BoardProject& project, QS
     QHash<QString, QImage> images;
     if (!readImages(json["images"], images))
         return fail(error, "The embedded layer images are invalid or too large.");
+    if (json.contains("library")) {
+        auto const library = json["library"].toArray();
+        if (!json["library"].isArray() || library.size() > BoardProject::maxLibraryItems)
+            return fail(error, "The project has an invalid library.");
+        QSet<QString> names;
+        for (auto const& value : library) {
+            BoardLayer item;
+            if (!readLayer(value.toObject(), images, item) || !validLibraryName(item.name, names) || !item.visible || item.locked)
+                return fail(error, "The project library contains an invalid item.");
+            project.library.push_back(std::move(item));
+        }
+    }
 
     Storyboard const timing = Storyboard::fromJson(content);
     auto const shots = content["shots"].toArray();

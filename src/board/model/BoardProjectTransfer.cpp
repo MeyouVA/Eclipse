@@ -144,6 +144,10 @@ bool BoardDocument::insertProject(BoardProject source, QString const& sourceFile
     }
     if (next.captionFields.size() > 128)
         return fail(tr("The combined board has too many caption fields."));
+    if (source.library.size() > BoardProject::maxLibraryItems - next.library.size())
+        return fail(tr("The combined board has too many library items."));
+    for (auto& item : source.library)
+        appendLibraryLayer(next.library, std::move(item));
 
     QSet<QString> names;
     for (auto const& shot : std::as_const(next.shots))

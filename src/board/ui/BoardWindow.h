@@ -8,6 +8,7 @@
 class ActionManager;
 class BoardCaptions;
 class BoardLayers;
+class BoardLibrary;
 class BoardPlayback;
 class BoardStage;
 class BoardThumbnails;
@@ -104,6 +105,7 @@ private:
     BoardThumbnails* m_thumbnails = nullptr;
     BoardCaptions* m_captions = nullptr;
     BoardLayers* m_layers = nullptr;
+    BoardLibrary* m_library = nullptr;
     BoardTimeline* m_timeline = nullptr;
     BoardPlayback* m_playback = nullptr;
     QDockWidget* m_thumbnailDock = nullptr;

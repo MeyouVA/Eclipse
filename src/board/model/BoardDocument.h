@@ -44,6 +44,11 @@ public:
     bool setLayerFlags(int shot, int panel, int layer, bool visible, bool locked);
     bool setLayerDrawing(int shot, int panel, int layer, Drawing const& drawing, QString const& label = {});
     bool importPictures(int shot, int panel, QVector<QPair<QString, QImage>> const& images, int framesPerScene = 0);
+    bool addLibraryImages(QVector<QPair<QString, QImage>> const& images);
+    bool addLayerToLibrary(int shot, int panel, int layer);
+    bool placeLibraryItem(int item, int shot, int panel, int before);
+    bool renameLibraryItem(int item, QString const& name);
+    bool removeLibraryItem(int item);
     bool setCaption(int shot, int panel, QString const& field, QString const& text, quint64 session = 0);
     static constexpr qsizetype captionCsvLimit = 32 * 1024 * 1024;
     int updateCaptionsFromCsv(QByteArray const& bytes, QString* error = nullptr);
@@ -64,6 +69,8 @@ private:
     bool hasPanel(int shot, int panel) const;
     bool hasLayer(int shot, int panel, int layer) const;
     static bool writePanelCaption(BoardPanel& panel, QString const& field, QString const& text);
+    static void appendLibraryLayer(QVector<BoardLayer>& items, BoardLayer layer);
+    bool canEmbedPictures(QVector<QPair<QString, QImage>> const& images) const;
     bool fitsFrames(int frames, int replacing = 0) const;
     bool appendPanelAllowed(int frames) const;
     bool canGrow(qsizetype panels, qint64 frames) const;

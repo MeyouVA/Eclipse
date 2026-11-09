@@ -1,6 +1,7 @@
 #include "board/ui/BoardWindow.h"
 #include "board/ui/BoardCaptions.h"
 #include "board/ui/BoardLayers.h"
+#include "board/ui/BoardLibrary.h"
 #include "board/ui/BoardPlayback.h"
 #include "board/ui/BoardStage.h"
 #include "board/ui/BoardThumbnails.h"
@@ -53,9 +54,15 @@ void BoardWindow::buildWorkspace()
     m_outline->setUniformItemSizes(true);
     m_inspectorTabs->addTab(m_outline, tr("Storyboard"));
     m_inspectorTabs->addTab(m_stage->createToolProperties(m_inspectorTabs), tr("Tool Properties"));
+    m_library = new BoardLibrary(&m_document, m_inspectorTabs);
+    m_inspectorTabs->addTab(m_library, tr("Library"));
     m_captionDock->setWidget(m_inspectorTabs);
     splitDockWidget(m_layerDock, m_captionDock, Qt::Horizontal);
-    connect(m_layers, &BoardLayers::layerSelected, m_stage, &BoardStage::chooseLayer);
+    connect(m_layers, &BoardLayers::layerSelected, this, [this](int layer) {
+        m_stage->chooseLayer(layer);
+        m_library->setPanel(m_selected.first, m_selected.second, layer);
+    });
+    connect(m_library, &BoardLibrary::importRequested, this, [this] { importBoardImages(QStringLiteral("library")); });
     buildTimeline();
 }
 
@@ -101,6 +108,7 @@ void BoardWindow::selectPanel(int shot, int panel, bool fit, bool syncTiming)
     }
     m_selected = {shot, panel};
     int const layer = m_layers->showPanel(shot, panel);
+    m_library->setPanel(shot, panel, layer);
     m_stage->showPanel(shot, panel, layer, fit);
     int const start = m_timeline->panelStart(shot, panel);
     if (start >= 0)
@@ -148,6 +156,7 @@ void BoardWindow::updatePanelActions()
     for (auto id : {"BoardImportImageLayers", "BoardImportImageScenes", "BoardExportFrame",
                     "BoardExportPdf", "BoardExportCsv", "BoardExportMovie", "BoardExportImages", "BoardExportAnimation"})
         enabled(id, selected);
+    enabled("BoardImportImageLibrary", !m_document.path().isEmpty() && m_document.project().library.size() < BoardProject::maxLibraryItems);
     updatePlaybackActions();
     updateCameraActions();
 }
@@ -174,9 +183,9 @@ void BoardWindow::showBoardView(QString const& view)
 {
     if (view == QLatin1String("layers"))
         m_layerDock->show();
-    else if (view == QLatin1String("captions")) {
+    else if (view == QLatin1String("captions") || view == QLatin1String("library")) {
         m_captionDock->show();
-        m_inspectorTabs->setCurrentWidget(m_captions);
+        m_inspectorTabs->setCurrentWidget(view == QLatin1String("library") ? static_cast<QWidget*>(m_library) : m_captions);
     } else if (view == QLatin1String("timeline")) {
         m_timelineDock->show();
         m_timelineDock->raise();
