@@ -49,6 +49,8 @@ private slots:
     void redo();
     void editArrangement(QString const& operation);
     void editSceneDetails(QString const& operation);
+    void renamePanel();
+    void lockSceneNames(bool locked);
     void chooseStageTool(QString const& tool);
     void fitStage();
     void showBoardView(QString const& view);
@@ -107,6 +109,7 @@ private:
     QTabWidget* m_inspectorTabs = nullptr;
     QListView* m_outline = nullptr;
     bool m_cameraPreview = false;
+    bool m_customPanelNames = false;
     bool m_exporting = false;
     bool m_sizeDefaultOnMaximize = false;
     QString m_workspace = QStringLiteral("horizontal");

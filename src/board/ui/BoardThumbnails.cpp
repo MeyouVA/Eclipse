@@ -1,6 +1,8 @@
 #include "board/ui/BoardThumbnails.h"
 #include "board/ui/BoardStage.h"
 #include "board/model/BoardDocument.h"
+#include "actions/manager/ActionManager.h"
+#include "actions/theme/Theme.h"
 #include "canvas/Canvas.h"
 
 #include <QAbstractListModel>
@@ -19,10 +21,12 @@ namespace {
 constexpr auto panelMime = "application/x-eclipse-panel-index";
 constexpr QSize thumbnailSize{168, 168};
 constexpr QSize cardSize{194, 200};
+constexpr int namesLockedRole = Qt::UserRole + 1;
 
 class ThumbnailCard : public QStyledItemDelegate {
 public:
-    using QStyledItemDelegate::QStyledItemDelegate;
+    explicit ThumbnailCard(QObject* parent)
+        : QStyledItemDelegate(parent), m_lock(Theme::icon(ActionManager::defaultDirectory(), QStringLiteral("timeline/lock"))) {}
 
     QSize sizeHint(QStyleOptionViewItem const&, QModelIndex const&) const override { return cardSize; }
 
@@ -36,7 +40,11 @@ public:
         painter->setPen(QPen(border, selected ? 2 : 1));
         painter->drawRect(card.adjusted(1, 1, -1, -1));
         QRect const label = card.adjusted(9, 3, -9, 0);
-        QRect const title(label.topLeft(), QSize(label.width(), 20));
+        QRect title(label.topLeft(), QSize(label.width(), 20));
+        if (index.data(namesLockedRole).toBool()) {
+            m_lock.paint(painter, QRect(title.right() - 13, title.top() + 3, 14, 14));
+            title.adjust(0, 0, -18, 0);
+        }
         painter->setPen(option.palette.windowText().color());
         painter->drawText(title, Qt::AlignVCenter, option.fontMetrics.elidedText(index.data().toString(), Qt::ElideRight, title.width()));
         auto const icon = index.data(Qt::DecorationRole).value<QIcon>();
@@ -44,6 +52,9 @@ public:
         icon.paint(painter, art);
         painter->restore();
     }
+
+private:
+    QIcon m_lock;
 };
 }
 
@@ -103,14 +114,25 @@ public:
             return {};
         auto const& shot = project.shots[s];
         auto const& panelData = shot.panels[p];
-        if (role == Qt::DisplayRole)
-            return BoardThumbnails::tr("%1 · %2/%3 · %4f").arg(shot.name).arg(p + 1).arg(shot.panels.size()).arg(panelData.length);
+        if (role == namesLockedRole)
+            return shot.namesLocked;
+        QString const panelName = panelData.name.trimmed();
+        if (role == Qt::DisplayRole) {
+            QString label = BoardThumbnails::tr("%1/%2").arg(p + 1).arg(shot.panels.size());
+            if (!panelName.isEmpty())
+                label = BoardThumbnails::tr("%1 (%2)").arg(panelName, label);
+            return BoardThumbnails::tr("%1 · %2 · %3f").arg(shot.name, label).arg(panelData.length);
+        }
         if (role == Qt::ToolTipRole) {
             QString tooltip = BoardThumbnails::tr("Scene %1, Panel %2 (%3 frames)").arg(shot.name).arg(p + 1).arg(panelData.length);
+            if (!panelName.isEmpty())
+                tooltip += QLatin1Char('\n') + BoardThumbnails::tr("Panel name: %1").arg(panelName);
             if (!shot.sequence.isEmpty())
                 tooltip += QLatin1Char('\n') + BoardThumbnails::tr("Sequence %1").arg(shot.sequence);
             if (!shot.act.isEmpty())
                 tooltip += QLatin1Char('\n') + BoardThumbnails::tr("Act %1").arg(shot.act);
+            if (shot.namesLocked)
+                tooltip += QLatin1Char('\n') + BoardThumbnails::tr("Scene and panel names are locked.");
             return tooltip + QLatin1Char('\n') + BoardThumbnails::tr("Drag to move a panel. Shift-drag to move the scene.");
         }
         if (role != Qt::DecorationRole)

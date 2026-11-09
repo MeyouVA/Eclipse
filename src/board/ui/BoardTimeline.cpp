@@ -35,16 +35,20 @@ void BoardTimeline::setProject(BoardProject const& project)
     }
     m_spans = project.spans();
     m_cameraKeys.clear();
-    for (auto const& span : m_spans)
-        for (auto const& key : project.shots[span.shot].panels[span.panel].camera)
+    m_panelLabels.clear();
+    m_panelLabels.reserve(m_spans.size());
+    for (auto const& span : m_spans) {
+        auto const& shot = project.shots[span.shot];
+        auto const& panel = shot.panels[span.panel];
+        QString const name = panel.name.trimmed();
+        m_panelLabels.append(tr("%1 · %2").arg(shot.name, name.isEmpty() ? QString::number(span.panel + 1) : name));
+        for (auto const& key : panel.camera)
             m_cameraKeys.append(span.start + key.frame);
-    m_sound = project.sound;
-    m_names.clear();
-    m_dissolves.clear();
-    for (auto const& shot : project.shots) {
-        m_names.push_back(shot.name);
-        m_dissolves.push_back(shot.dissolve);
     }
+    m_sound = project.sound;
+    m_dissolves.clear();
+    for (auto const& shot : project.shots)
+        m_dissolves.push_back(shot.dissolve);
     m_length = m_spans.isEmpty() ? 0 : m_spans.last().start + m_spans.last().length;
     m_frame = std::clamp(m_frame, 0, std::max(0, m_length - 1));
     updateScrollBar();
@@ -148,7 +152,7 @@ void BoardTimeline::paintEvent(QPaintEvent*)
             }
             painter.setPen((selected ? colors.highlightedText() : colors.text()).color());
             painter.drawText(rect.adjusted(5, 0, -3, 0), Qt::AlignVCenter,
-                painter.fontMetrics().elidedText(tr("%1 · %2   %3f").arg(m_names[span->shot]).arg(span->panel + 1)
+                painter.fontMetrics().elidedText(tr("%1   %2f").arg(m_panelLabels[span - m_spans.constData()])
                     .arg(length), Qt::ElideRight, std::max(0, int(rect.width()) - 8)));
         }
     if (!m_sound.asset.isEmpty()) {

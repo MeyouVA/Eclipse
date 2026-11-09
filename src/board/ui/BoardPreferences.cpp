@@ -1,4 +1,5 @@
 #include "board/ui/BoardWindow.h"
+#include "board/ui/BoardCaptions.h"
 #include "actions/dialogs/ShortcutsDialog.h"
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/AppSettings.h"
@@ -33,6 +34,10 @@ void BoardWindow::editPreferences()
     loop->setObjectName(QStringLiteral("BoardDefaultLoop"));
     loop->setChecked(prefs.value(QStringLiteral("loop"), false).toBool());
     layout->addRow(loop);
+    auto* panelNames = new QCheckBox(tr("Allow custom panel names"), &dialog);
+    panelNames->setObjectName(QStringLiteral("BoardAllowCustomPanelNames"));
+    panelNames->setChecked(prefs.value(QStringLiteral("customPanelNames"), false).toBool());
+    layout->addRow(panelNames);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -42,6 +47,7 @@ void BoardWindow::editPreferences()
     prefs.setValue(QStringLiteral("panelFrames"), frames->value());
     prefs.setValue(QStringLiteral("cameraGuide"), guides->isChecked());
     prefs.setValue(QStringLiteral("loop"), loop->isChecked());
+    prefs.setValue(QStringLiteral("customPanelNames"), panelNames->isChecked());
     applyPreferences();
 }
 
@@ -55,6 +61,9 @@ void BoardWindow::applyPreferences()
     m_actions->setChecked(QStringLiteral("BoardLoop"), loop);
     showCameraGuide(guide);
     loopPlayback(loop);
+    m_customPanelNames = prefs.value(QStringLiteral("customPanelNames"), false).toBool();
+    m_captions->setCustomPanelNames(m_customPanelNames);
+    updatePanelActions();
 }
 
 int BoardWindow::defaultPanelFrames(double fps) const

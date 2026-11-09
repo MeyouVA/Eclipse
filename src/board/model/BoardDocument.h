@@ -23,6 +23,8 @@ public:
     QString splitProject(int firstSceneOfSecondPart, QString const& name, QString const& directory, QString* error = nullptr) const;
     bool insertProject(BoardProject source, QString const& sourceFile, int after, bool useImportedSound, QString* error = nullptr);
     bool setSceneDetails(int scene, QString const& name, QString const& sequence, QString const& act);
+    bool setPanelName(int scene, int panel, QString const& name);
+    bool setSceneNamesLocked(int scene, bool locked);
     bool renameSceneGroup(int scene, BoardProject::SceneGroup group, QString const& name);
     bool setTitles(QString const& title, QString const& subtitle);
     bool addShot(QString const& name, int frames, int after = -1);

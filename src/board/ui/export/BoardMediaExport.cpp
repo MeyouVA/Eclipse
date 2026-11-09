@@ -38,8 +38,10 @@ bool BoardExport::pdf(BoardProject const& project, QString const& projectFile, Q
     if (!staging.isValid())
         return fail(error, tr("Could not create a temporary output folder."));
     QString const generated = staging.filePath(QStringLiteral("board.pdf"));
+    Storyboard::Naming naming;
+    naming.customPanelNames = true;
     bool imageFailed = false;
-    bool const written = StoryboardPdf::writeWithFrames(scene, profile, generated, projectFile, {},
+    bool const written = StoryboardPdf::writeWithFrames(scene, profile, generated, projectFile, naming,
         [&](int frame, QSize size) {
             QImage const picture = render.frame(frame, size, scene.background, false, false);
             imageFailed |= picture.isNull();

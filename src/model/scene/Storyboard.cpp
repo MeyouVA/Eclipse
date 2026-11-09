@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 QStringList Storyboard::defaultCaptionFields()
 {
@@ -287,7 +288,7 @@ QString Storyboard::captionsText(QStringList const& fields, Naming const& naming
 
 static QString csvCell(QString const& value)
 {
-    if (!value.contains(u',') && !value.contains(u'"') && !value.contains(u'\n'))
+    if (!value.contains(u',') && !value.contains(u'"') && !value.contains(u'\n') && !value.contains(u'\r'))
         return value;
     QString quoted = value;
     quoted.replace(u'"', QStringLiteral("\"\""));
@@ -304,13 +305,17 @@ QByteArray Storyboard::captionsCsv(double fps, bool timecode, Naming const& nami
     for (QString const& h : std::as_const(header))
         cells << csvCell(h);
     out += cells.join(u',') + u'\n';
+    qint64 frame = start;
     for (int s = 0; s < shots.size(); ++s)
         for (int p = 0; p < shots[s].panels.size(); ++p) {
+            int const length = shots[s].panels[p].length;
+            int const startFrame = int(std::min(frame, qint64(std::numeric_limits<int>::max())));
             cells = {csvCell(shots[s].act), csvCell(shots[s].sequence), csvCell(shots[s].name), csvCell(panelName(s, p, naming)),
-                     duration(panelStart(s, p), fps, timecode), duration(shots[s].panels[p].length, fps, timecode)};
+                     duration(startFrame, fps, timecode), duration(length, fps, timecode)};
             for (QString const& field : captionFields)
                 cells << csvCell(caption(s, p, field));
             out += cells.join(u',') + u'\n';
+            frame += std::max(1, length);
         }
     return out.toUtf8();
 }

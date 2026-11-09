@@ -128,6 +128,10 @@ void BoardWindow::updatePanelActions()
     enabled("BoardSplitScene", selected && panel > 0);
     enabled("BoardSplitProject", selected && shots.size() > 1);
     enabled("BoardSceneDetails", selected);
+    bool const namesLocked = selected && shots[shot].namesLocked;
+    enabled("BoardLockSceneNames", selected);
+    m_actions->setChecked(QStringLiteral("BoardLockSceneNames"), namesLocked);
+    enabled("BoardRenamePanel", selected && m_customPanelNames && !namesLocked);
     enabled("BoardRenameSequence", selected && !shots[shot].sequence.trimmed().isEmpty());
     enabled("BoardRenameAct", selected && !shots[shot].act.trimmed().isEmpty());
     enabled("BoardNewPanel", selected);
@@ -139,7 +143,7 @@ void BoardWindow::updatePanelActions()
     enabled("BoardPanelDuration", selected);
     enabled("BoardDissolve", selected && shot > 0);
     for (auto id : {"BoardImportImageLayers", "BoardImportImageScenes", "BoardExportFrame",
-                    "BoardExportPdf", "BoardExportMovie", "BoardExportImages", "BoardExportAnimation"})
+                    "BoardExportPdf", "BoardExportCsv", "BoardExportMovie", "BoardExportImages", "BoardExportAnimation"})
         enabled(id, selected);
     updatePlaybackActions();
     updateCameraActions();

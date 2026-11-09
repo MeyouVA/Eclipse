@@ -10,6 +10,7 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QProgressDialog>
+#include <QSaveFile>
 #include <QScopedValueRollback>
 #include <QStatusBar>
 
@@ -45,6 +46,21 @@ void BoardWindow::exportBoard(QString const& operation)
         if (!output.endsWith(QStringLiteral(".pdf"), Qt::CaseInsensitive) && !appendSuffix(output, QStringLiteral(".pdf")))
             return;
         ok = BoardExport::pdf(project, projectFile, output, profiles[names.indexOf(profile)], &error);
+    } else if (operation == QLatin1String("csv")) {
+        output = QFileDialog::getSaveFileName(this, tr("Export Captions CSV"), directory.filePath(project.name + QStringLiteral(".csv")),
+            tr("CSV (*.csv)"));
+        if (output.isEmpty())
+            return;
+        if (!output.endsWith(QStringLiteral(".csv"), Qt::CaseInsensitive) && !appendSuffix(output, QStringLiteral(".csv")))
+            return;
+        Storyboard::Naming naming;
+        naming.customPanelNames = true;
+        naming.showTotal = false;
+        QByteArray const csv = project.timeline().captionsCsv(project.fps, false, naming);
+        QSaveFile file(output);
+        ok = file.open(QIODevice::WriteOnly) && file.write(csv) == csv.size() && file.commit();
+        if (!ok)
+            error = file.errorString();
     } else if (operation == QLatin1String("animation")) {
         QString const parent = QFileDialog::getExistingDirectory(this, tr("Choose a Folder for Animation Export"), directory.absolutePath());
         if (parent.isEmpty())

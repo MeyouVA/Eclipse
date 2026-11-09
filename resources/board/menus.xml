@@ -27,6 +27,7 @@
    <menu id="BoardExport" text="&amp;Export">
     <item id="BoardExportFrame" text="Current Image..." shortcut="shortcut.BoardExportFrame" responder="window" slot="exportBoardFrame()"/>
     <item id="BoardExportPdf" icon="file/print" text="Storyboard PDF..." shortcut="shortcut.BoardExportPdf" responder="window" slot="exportBoard(QString)" itemParameter="pdf"/>
+    <item id="BoardExportCsv" text="Captions CSV..." shortcut="shortcut.BoardExportCsv" responder="window" slot="exportBoard(QString)" itemParameter="csv"/>
     <item id="BoardExportMovie" icon="file/exportmovie" text="Animatic Movie..." shortcut="shortcut.BoardExportMovie" responder="window" slot="exportBoard(QString)" itemParameter="movie"/>
     <item id="BoardExportImages" icon="file/exportframes" text="PNG Image Sequence..." shortcut="shortcut.BoardExportImages" responder="window" slot="exportBoard(QString)" itemParameter="images"/>
     <item id="BoardExportAnimation" text="Eclipse Animation Scene..." shortcut="shortcut.BoardExportAnimation" responder="window" slot="exportBoard(QString)" itemParameter="animation"/>
@@ -74,11 +75,13 @@
    <item id="BoardDuplicateScene" text="Duplicate Scene" shortcut="shortcut.BoardDuplicateScene" responder="window" slot="editArrangement(QString)" itemParameter="duplicate-scene"/>
    <item id="BoardSplitScene" text="Split Scene Before Panel" shortcut="shortcut.BoardSplitScene" responder="window" slot="editArrangement(QString)" itemParameter="split-scene"/>
    <item id="BoardSceneDetails" text="Edit Scene Details..." shortcut="shortcut.BoardSceneDetails" responder="window" slot="editSceneDetails(QString)" itemParameter="scene"/>
+   <item id="BoardLockSceneNames" text="Lock Scene and Panel Names" checkable="true" shortcut="shortcut.BoardLockSceneNames" responder="window" slot="lockSceneNames(bool)"/>
    <item id="BoardRenameSequence" text="Rename Sequence..." shortcut="shortcut.BoardRenameSequence" responder="window" slot="editSceneDetails(QString)" itemParameter="sequence"/>
    <item id="BoardRenameAct" text="Rename Act..." shortcut="shortcut.BoardRenameAct" responder="window" slot="editSceneDetails(QString)" itemParameter="act"/>
    <item id="BoardRemoveScene" text="Delete Scene" shortcut="shortcut.BoardRemoveScene" responder="window" slot="editArrangement(QString)" itemParameter="remove-scene"/>
    <separator/>
    <item id="BoardNewPanel" icon="timeline/newdrawing" text="New Panel" shortcut="shortcut.boardNewPanel" responder="window" slot="editArrangement(QString)" itemParameter="new-panel"/>
+   <item id="BoardRenamePanel" text="Rename Panel..." shortcut="shortcut.BoardRenamePanel" responder="window" slot="renamePanel()"/>
    <item id="BoardDuplicatePanel" icon="timeline/duplicatedrawing" text="Duplicate Panel" shortcut="shortcut.BoardDuplicatePanel" responder="window" slot="editArrangement(QString)" itemParameter="duplicate-panel"/>
    <item id="BoardSplitPanel" text="Split Panel..." shortcut="shortcut.BoardSplitPanel" responder="window" slot="editArrangement(QString)" itemParameter="split-panel"/>
    <item id="BoardRemovePanel" icon="timeline/deletedrawing" text="Delete Panel" shortcut="shortcut.BoardRemovePanel" responder="window" slot="editArrangement(QString)" itemParameter="remove-panel"/>

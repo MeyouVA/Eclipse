@@ -25,6 +25,7 @@ struct BoardShot {
     QString act;
     QVector<BoardPanel> panels;
     int dissolve = 0;
+    bool namesLocked = false;
 };
 
 struct BoardSound {

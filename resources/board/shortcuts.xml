@@ -31,6 +31,7 @@
   <shortcut id="shortcut.BoardImportImageScenes" text="Import Images as Scenes" value=""/>
   <shortcut id="shortcut.BoardExportFrame" text="Export Current Image" value=""/>
   <shortcut id="shortcut.BoardExportPdf" text="Storyboard PDF" value=""/>
+  <shortcut id="shortcut.BoardExportCsv" text="Export Captions CSV" value=""/>
   <shortcut id="shortcut.BoardExportMovie" text="Animatic Movie" value=""/>
   <shortcut id="shortcut.BoardExportImages" text="PNG Image Sequence" value=""/>
   <shortcut id="shortcut.BoardExportAnimation" text="Eclipse Animation Scene" value=""/>
@@ -67,10 +68,12 @@
   <shortcut id="shortcut.BoardDuplicateScene" text="Duplicate Scene" value=""/>
   <shortcut id="shortcut.BoardSplitScene" text="Split Scene Before Panel" value=""/>
   <shortcut id="shortcut.BoardSceneDetails" text="Edit Scene Details" value=""/>
+  <shortcut id="shortcut.BoardLockSceneNames" text="Lock Scene and Panel Names" value=""/>
   <shortcut id="shortcut.BoardRenameSequence" text="Rename Sequence" value=""/>
   <shortcut id="shortcut.BoardRenameAct" text="Rename Act" value=""/>
   <shortcut id="shortcut.BoardRemoveScene" text="Delete Scene" value=""/>
   <shortcut id="shortcut.BoardDuplicatePanel" text="Duplicate Panel" value=""/>
+  <shortcut id="shortcut.BoardRenamePanel" text="Rename Panel" value=""/>
   <shortcut id="shortcut.BoardSplitPanel" text="Split Panel" value=""/>
   <shortcut id="shortcut.BoardRemovePanel" text="Delete Panel" value=""/>
   <shortcut id="shortcut.BoardPanelDuration" text="Panel Duration" value=""/>

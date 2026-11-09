@@ -36,7 +36,7 @@ private:
     int visibleFrames() const;
     void updateScrollBar();
     QVector<BoardSpan> m_spans;
-    QStringList m_names;
+    QStringList m_panelLabels;
     QVector<int> m_dissolves;
     QVector<int> m_cameraKeys;
     BoardSound m_sound;

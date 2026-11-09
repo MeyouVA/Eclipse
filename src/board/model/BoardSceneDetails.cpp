@@ -16,7 +16,7 @@ bool BoardDocument::setSceneDetails(int scene, QString const& name, QString cons
         bool const duplicate = std::any_of(m_project.shots.cbegin(), m_project.shots.cend(), [&](BoardShot const& other) {
             return &other != &current && other.name.compare(newName, Qt::CaseInsensitive) == 0;
         });
-        if (duplicate)
+        if (current.namesLocked || duplicate)
             return false;
     }
     BoardProject next = m_project;
@@ -25,6 +25,28 @@ bool BoardDocument::setSceneDetails(int scene, QString const& name, QString cons
     changed.sequence = newSequence;
     changed.act = newAct;
     apply(std::move(next), tr("Edit Scene Details"));
+    return true;
+}
+
+bool BoardDocument::setPanelName(int scene, int panel, QString const& name)
+{
+    auto const* current = this->panel(scene, panel);
+    QString const trimmed = name.trimmed();
+    if (!current || m_project.shots[scene].namesLocked || current->name == trimmed)
+        return false;
+    BoardProject next = m_project;
+    next.shots[scene].panels[panel].name = trimmed;
+    apply(std::move(next), tr("Rename Panel"));
+    return true;
+}
+
+bool BoardDocument::setSceneNamesLocked(int scene, bool locked)
+{
+    if (!hasPanel(scene, 0) || m_project.shots[scene].namesLocked == locked)
+        return false;
+    BoardProject next = m_project;
+    next.shots[scene].namesLocked = locked;
+    apply(std::move(next), locked ? tr("Lock Scene and Panel Names") : tr("Unlock Scene and Panel Names"));
     return true;
 }
 

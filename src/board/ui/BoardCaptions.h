@@ -16,6 +16,7 @@ class BoardCaptions : public QWidget {
 public:
     explicit BoardCaptions(BoardDocument* document, QWidget* parent = nullptr);
     void showPanel(int shot, int panel);
+    void setCustomPanelNames(bool enabled);
     bool writingCaption() const { return m_writing; }
     void editFields(bool add);
 
@@ -24,6 +25,7 @@ protected:
 
 private:
     void rebuildFields(QStringList const& fields);
+    void updatePanelLabel();
     void storeText(QPlainTextEdit* editor, QString const& field);
     BoardDocument* m_document;
     QLineEdit* m_sceneField;
@@ -38,4 +40,5 @@ private:
     int m_shot = -1;
     int m_panel = -1;
     bool m_writing = false;
+    bool m_customPanelNames = false;
 };

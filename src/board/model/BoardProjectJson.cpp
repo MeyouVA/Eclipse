@@ -188,6 +188,8 @@ bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QS
     qint64 imageBytes = 0;
     for (qsizetype s = 0; s < shots.size(); ++s) {
         auto shot = shots[s].toObject();
+        if (project.shots[s].namesLocked)
+            shot["namesLocked"] = true;
         auto panels = shot["panels"].toArray();
         for (qsizetype p = 0; p < panels.size(); ++p) {
             auto panel = panels[p].toObject();
@@ -254,9 +256,13 @@ bool BoardProjectJson::decode(QJsonObject const& json, BoardProject& project, QS
     for (qsizetype s = 0; s < shots.size(); ++s) {
         auto const& timed = timing.shots[s];
         BoardShot shot{timed.name, timed.sequence, timed.act, {}};
+        auto const stored = shots[s].toObject();
+        if (stored.contains("namesLocked") && !stored["namesLocked"].isBool())
+            return fail(error, "A scene has an invalid name lock.");
+        shot.namesLocked = stored["namesLocked"].toBool(false);
         if (timed.transition == QLatin1String("Dissolve"))
             shot.dissolve = std::clamp(timed.transitionLength, 0, 1000000);
-        auto const panels = shots[s].toObject()["panels"].toArray();
+        auto const panels = stored["panels"].toArray();
         for (qsizetype p = 0; p < panels.size(); ++p) {
             BoardPanel panel;
             static_cast<Storyboard::Panel&>(panel) = timed.panels[p];

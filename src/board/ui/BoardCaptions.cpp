@@ -25,6 +25,7 @@ BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
         setStyleSheet(QStringLiteral("QPlainTextEdit#BoardCaptionEditor { background: #181818; border: 1px solid #505050; }"));
     m_sceneField->setReadOnly(true);
     m_panelField->setReadOnly(true);
+    m_panelField->setObjectName(QStringLiteral("BoardPanelLabel"));
     m_duration->setObjectName(QStringLiteral("BoardPanelDurationFrames"));
     m_duration->setRange(1, 1000000);
     m_duration->setKeyboardTracking(false);
@@ -60,6 +61,10 @@ BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
             if (auto const* current = m_document->panel(m_shot, m_panel))
                 m_duration->setValue(current->length);
     });
+    connect(m_panelField, &QLineEdit::editingFinished, this, [this] {
+        if (!m_panelField->isReadOnly() && !m_document->setPanelName(m_shot, m_panel, m_panelField->text()))
+            updatePanelLabel();
+    });
     showPanel(-1, -1);
 }
 
@@ -77,7 +82,7 @@ void BoardCaptions::showPanel(int shot, int panel)
     if (m_fields != fields)
         rebuildFields(fields);
     m_sceneField->setText(current ? project.shots[shot].name : QString());
-    m_panelField->setText(current ? tr("%1 / %2").arg(panel + 1).arg(project.shots[shot].panels.size()) : QString());
+    updatePanelLabel();
     m_duration->setEnabled(current != nullptr);
     m_duration->setValue(current ? current->length : 1);
     m_durationHint->setText(current ? tr("%1 s").arg(locale().toString(current->length / project.fps, 'f', 2)) : QString());
@@ -95,6 +100,30 @@ void BoardCaptions::showPanel(int shot, int panel)
         if (editor->toPlainText() != text)
             editor->setPlainText(text);
     }
+}
+
+void BoardCaptions::setCustomPanelNames(bool enabled)
+{
+    m_customPanelNames = enabled;
+    updatePanelLabel();
+}
+
+void BoardCaptions::updatePanelLabel()
+{
+    auto const* panel = m_document->panel(m_shot, m_panel);
+    if (!panel) {
+        m_panelField->setReadOnly(true);
+        m_panelField->setPlaceholderText({});
+        m_panelField->clear();
+        return;
+    }
+    auto const& scene = m_document->project().shots[m_shot];
+    bool const editable = m_customPanelNames && !scene.namesLocked;
+    QString const position = tr("%1 / %2").arg(m_panel + 1).arg(scene.panels.size());
+    QString const name = panel->name.trimmed();
+    m_panelField->setReadOnly(!editable);
+    m_panelField->setPlaceholderText(editable ? position : QString());
+    m_panelField->setText(editable ? name : (name.isEmpty() ? position : tr("%1 (%2)").arg(name, position)));
 }
 
 void BoardCaptions::rebuildFields(QStringList const& fields)

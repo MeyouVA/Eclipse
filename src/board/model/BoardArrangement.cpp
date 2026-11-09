@@ -37,6 +37,7 @@ bool BoardDocument::splitShot(int shot, int firstPanel)
     auto next = m_project;
     auto& source = next.shots[shot];
     BoardShot tail{uniqueShotName(source.name), source.sequence, source.act, source.panels.mid(firstPanel)};
+    tail.namesLocked = source.namesLocked;
     source.panels.resize(firstPanel);
     next.shots.insert(shot + 1, std::move(tail));
     apply(std::move(next), tr("Split Scene"));

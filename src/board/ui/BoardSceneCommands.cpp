@@ -35,6 +35,9 @@ void BoardWindow::editSceneDetails(QString const& operation)
     dialog.setWindowTitle(tr("Edit Scene Details"));
     auto* layout = new QFormLayout(&dialog);
     auto* name = new QLineEdit(shot.name, &dialog);
+    name->setReadOnly(shot.namesLocked);
+    if (shot.namesLocked)
+        name->setToolTip(tr("Unlock Scene and Panel Names to change the scene name."));
     auto* sequence = new QLineEdit(shot.sequence, &dialog);
     auto* act = new QLineEdit(shot.act, &dialog);
     name->setObjectName(QStringLiteral("BoardSceneName"));
@@ -52,4 +55,23 @@ void BoardWindow::editSceneDetails(QString const& operation)
     if (!m_document.setSceneDetails(scene, name->text(), sequence->text(), act->text())
         && (name->text().trimmed().isEmpty() || name->text().trimmed() != oldName.trimmed()))
         QMessageBox::warning(this, dialog.windowTitle(), tr("Enter a unique, nonempty scene name."));
+}
+
+void BoardWindow::renamePanel()
+{
+    auto const [scene, index] = m_selected;
+    auto const* panel = m_document.panel(scene, index);
+    if (!panel || !m_customPanelNames || m_document.project().shots[scene].namesLocked)
+        return;
+    m_playback->stop();
+    bool accepted = false;
+    QString const name = QInputDialog::getText(this, tr("Rename Panel"), tr("Panel name (leave blank for its number):"),
+        QLineEdit::Normal, panel->name, &accepted);
+    if (accepted)
+        m_document.setPanelName(scene, index, name);
+}
+
+void BoardWindow::lockSceneNames(bool locked)
+{
+    m_document.setSceneNamesLocked(m_selected.first, locked);
 }
