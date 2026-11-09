@@ -32,22 +32,28 @@ bool BoardWindow::loadProject(QString const& path)
     return true;
 }
 
+void BoardWindow::convertLegacyProject()
+{
+    QString const path = m_document.path();
+    offerLegacyConversion(path);
+}
+
 void BoardWindow::offerLegacyConversion(QString const& path)
 {
     if (m_document.path() != path || !m_document.isLegacyProject())
         return;
     QMessageBox prompt(QMessageBox::Question, tr("Convert Legacy Board"),
-        tr("This project uses the older single-file layout. Convert a copy to create a new project folder and leave the original file intact. "
-           "If you open the original, saving it later will update it in place."),
+        tr("This board uses the older single-file layout. Convert it in its current folder? "
+           "Eclipse will update the .ecb file in place and store its artwork in that folder."),
         QMessageBox::NoButton, this);
     prompt.setObjectName(QStringLiteral("BoardLegacyConversion"));
-    auto* convert = prompt.addButton(tr("Convert a Copy…"), QMessageBox::AcceptRole);
+    auto* convert = prompt.addButton(tr("Convert Project"), QMessageBox::AcceptRole);
     auto* open = prompt.addButton(tr("Open Original"), QMessageBox::RejectRole);
     prompt.setDefaultButton(open);
     prompt.setEscapeButton(open);
     prompt.exec();
-    if (prompt.clickedButton() == convert)
-        convertLegacyProject();
+    if (prompt.clickedButton() == convert && m_document.path() == path && m_document.isLegacyProject() && saveChanges())
+        statusBar()->showMessage(tr("Project converted in its current folder."), 5000);
 }
 
 void BoardWindow::rememberProjectPath()

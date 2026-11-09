@@ -20,7 +20,6 @@ public:
     bool save(QString* error = nullptr);
     bool saveAs(QString const& path, QString* error = nullptr);
     bool isLegacyProject() const { return m_legacy; }
-    bool convertLegacyCopy(QString const& directory, QString* error = nullptr);
     qsizetype moveUnusedArtwork(QString& recoveryFolder, QString* error = nullptr) const;
     QString extractProject(int first, int last, QString const& name, QString const& directory, QString* error = nullptr) const;
     QString splitProject(int firstSceneOfSecondPart, QString const& name, QString const& directory, QString* error = nullptr) const;
@@ -80,8 +79,6 @@ private:
     QString writeSceneRange(int first, int last, QString const& name, QString const& directory, QString* error) const;
     QString uniqueShotName(QString const& base) const;
     QSet<QString> soundAssets() const;
-    bool copyTo(QString const& path, QString* error) const;
-    void adoptSavedCopy(QString const& path);
     void resetProject(BoardProject project, QString path, bool legacy = false);
     void apply(BoardProject project, QString const& label, quint64 session = 0);
 

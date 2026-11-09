@@ -38,7 +38,7 @@ Open the `.ecb` file inside its project folder. It holds scenes, panel timing, c
 
 To enable double-click opening in Windows Explorer, run `.\register_storyboard_file_type.ps1` in PowerShell beside the packaged `Eclipse.exe`. In a source checkout, run `.\scripts\register_storyboard_file_type.ps1` after building. Run it again after moving Eclipse so Explorer uses the new location.
 
-Move or copy the whole folder to keep its artwork and sound with the project. **File → Save and Pack** creates a portable ZIP. When you open an older single-file board, Eclipse offers to convert a copy into a new project folder. If you choose **Open Original**, you can convert a copy later under **File → Project Management** or save the original to update it in place.
+Move or copy the whole folder to keep its artwork and sound with the project. **File → Save and Pack** creates a portable ZIP. When you open an older single-file board, **Convert Project** updates the current `.ecb` in place and stores its artwork in the existing folder. If you choose **Open Original**, you can convert it later under **File → Project Management** or update it by saving.
 
 **File → Project Management → Clean Up Project Artwork** checks saved boards and versions in the same folder. It moves unused drawings and pictures into a recovery folder, keeping their original relative paths.
 
