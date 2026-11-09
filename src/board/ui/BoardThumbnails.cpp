@@ -105,9 +105,14 @@ public:
         auto const& panelData = shot.panels[p];
         if (role == Qt::DisplayRole)
             return BoardThumbnails::tr("%1 · %2/%3 · %4f").arg(shot.name).arg(p + 1).arg(shot.panels.size()).arg(panelData.length);
-        if (role == Qt::ToolTipRole)
-            return BoardThumbnails::tr("Scene %1, Panel %2 (%3 frames)\nDrag to move a panel. Shift-drag to move the scene.")
-                .arg(shot.name).arg(p + 1).arg(panelData.length);
+        if (role == Qt::ToolTipRole) {
+            QString tooltip = BoardThumbnails::tr("Scene %1, Panel %2 (%3 frames)").arg(shot.name).arg(p + 1).arg(panelData.length);
+            if (!shot.sequence.isEmpty())
+                tooltip += QLatin1Char('\n') + BoardThumbnails::tr("Sequence %1").arg(shot.sequence);
+            if (!shot.act.isEmpty())
+                tooltip += QLatin1Char('\n') + BoardThumbnails::tr("Act %1").arg(shot.act);
+            return tooltip + QLatin1Char('\n') + BoardThumbnails::tr("Drag to move a panel. Shift-drag to move the scene.");
+        }
         if (role != Qt::DecorationRole)
             return {};
         if (auto const* icon = m_icons.object(index.row()))

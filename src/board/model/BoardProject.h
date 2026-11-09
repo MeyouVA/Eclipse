@@ -4,6 +4,8 @@
 #include "board/model/BoardContent.h"
 
 struct ECLIPSE_BOARD_MODEL_API BoardProject {
+    enum class SceneGroup { Sequence, Act };
+
     QString name;
     QString title;
     QString subtitle;
@@ -21,6 +23,8 @@ struct ECLIPSE_BOARD_MODEL_API BoardProject {
     static bool fromBytes(QByteArray const& bytes, BoardProject& project, QString* error = nullptr);
     Storyboard timeline() const;
     QVector<BoardSpan> spans() const;
+    QPair<int, int> groupRange(int scene, SceneGroup group) const;
     QString audioPath(QString const& projectFile) const;
     static BoardPanel blankPanel(int frames);
+    static bool validName(QString const& name);
 };

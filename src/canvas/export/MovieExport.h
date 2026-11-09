@@ -48,6 +48,8 @@ struct Source {
     std::function<QImage(int frame, QSize size, QColor background, bool deep)> picture;
     QString audioPath;
     double audioStart = 0.0;
+    double audioOffset = 0.0;
+    double audioLength = -1.0;
 };
 
 ECLIPSE_CANVAS_API bool write(Scene const& scene, QString const& path, std::function<bool(int frame)> const& progress, QString* error,

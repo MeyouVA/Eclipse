@@ -162,7 +162,8 @@ bool BoardProjectJson::validSound(BoardSound const& sound)
         return sound == BoardSound{};
     static QRegularExpression const assetPattern(QStringLiteral("\\A[0-9a-f]{32}(?:\\.[A-Za-z0-9]{1,12})?\\z"));
     return assetPattern.match(sound.asset).hasMatch() && !sound.name.trimmed().isEmpty() && sound.name.size() <= 256
-        && sound.start >= 0 && sound.length > 0 && qint64(sound.start) + sound.length <= std::numeric_limits<int>::max();
+        && sound.start >= 0 && sound.sourceOffset >= 0 && sound.length > 0
+        && qint64(std::max(sound.start, sound.sourceOffset)) + sound.length <= std::numeric_limits<int>::max();
 }
 
 bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QString* error)
@@ -171,8 +172,11 @@ bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QS
         return fail(error, "The sound track is invalid.");
     if (!project.sound.asset.isEmpty()) {
         auto const& sound = project.sound;
-        json["sound"] = QJsonObject{{"asset", sound.asset}, {"name", sound.name}, {"start", sound.start},
-                                    {"length", sound.length}, {"muted", sound.muted}};
+        QJsonObject stored{{"asset", sound.asset}, {"name", sound.name}, {"start", sound.start},
+                           {"length", sound.length}, {"muted", sound.muted}};
+        if (sound.sourceOffset != 0)
+            stored["sourceOffset"] = sound.sourceOffset;
+        json["sound"] = stored;
     }
     QJsonObject content = project.timeline().toJson();
     if (!validTimeline(content))
@@ -227,7 +231,8 @@ bool BoardProjectJson::decode(QJsonObject const& json, BoardProject& project, QS
     if (json.contains("sound")) {
         auto const audio = json["sound"].toObject();
         project.sound = {audio["asset"].toString(), audio["name"].toString(),
-                         audio["start"].toInt(-1), audio["length"].toInt(-1), audio["muted"].toBool(false)};
+                         audio["start"].toInt(-1), audio["length"].toInt(-1), audio["muted"].toBool(false),
+                         audio.contains("sourceOffset") ? audio["sourceOffset"].toInt(-1) : 0};
         if (!validSound(project.sound))
             return fail(error, "The sound track is invalid.");
     }

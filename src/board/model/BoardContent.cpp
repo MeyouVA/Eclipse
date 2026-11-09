@@ -2,6 +2,20 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <algorithm>
+
+BoardSound BoardSound::within(int first, int end) const
+{
+    int const begin = std::max(first, start);
+    int const finish = std::min(end, start + length);
+    if (asset.isEmpty() || finish <= begin)
+        return {};
+    auto clipped = *this;
+    clipped.start = begin - first;
+    clipped.sourceOffset += begin - start;
+    clipped.length = finish - begin;
+    return clipped;
+}
 
 BoardPanel BoardProject::blankPanel(int frames)
 {
@@ -45,6 +59,25 @@ QVector<BoardSpan> BoardProject::spans() const
             frame += length;
         }
     return result;
+}
+
+QPair<int, int> BoardProject::groupRange(int scene, SceneGroup group) const
+{
+    if (scene < 0 || scene >= shots.size())
+        return {-1, -1};
+    auto const& current = shots[scene];
+    auto sameGroup = [&](int index) {
+        auto const& other = shots[index];
+        return current.act.compare(other.act, Qt::CaseInsensitive) == 0
+            && (group == SceneGroup::Act || current.sequence.compare(other.sequence, Qt::CaseInsensitive) == 0);
+    };
+    int first = scene;
+    int end = scene + 1;
+    while (first > 0 && sameGroup(first - 1))
+        --first;
+    while (end < shots.size() && sameGroup(end))
+        ++end;
+    return {first, end};
 }
 
 QString BoardProject::audioPath(QString const& projectFile) const

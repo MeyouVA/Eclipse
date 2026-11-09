@@ -41,12 +41,14 @@ private slots:
     void saveNewVersion();
     void archiveProject(QString const& operation);
     void restoreArchive();
+    void transferProject(QString const& operation);
     void closeProject();
     void regenerateThumbnails();
     void editProjectSettings();
     void undo();
     void redo();
     void editArrangement(QString const& operation);
+    void editSceneDetails(QString const& operation);
     void chooseStageTool(QString const& tool);
     void fitStage();
     void showBoardView(QString const& view);
@@ -66,6 +68,8 @@ private:
     bool loadProject(QString const& path);
     bool saveChanges();
     void saveProjectCopy(QString const& path);
+    void extractScenes(bool split);
+    void insertScenes(bool append);
     void rememberProjectPath();
     bool confirmDiscard();
     void updateProjectState();

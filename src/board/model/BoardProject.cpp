@@ -17,8 +17,9 @@ QString tr(char const* message)
 {
     return QCoreApplication::translate("BoardProject", message);
 }
+}
 
-bool validName(QString const& name)
+bool BoardProject::validName(QString const& name)
 {
     if (name.isEmpty() || name.size() > 120 || name != name.trimmed() || name.endsWith(QLatin1Char('.')))
         return false;
@@ -30,9 +31,10 @@ bool validName(QString const& name)
     return !reserved.match(name).hasMatch();
 }
 
+namespace {
 bool validProject(BoardProject const& project)
 {
-    return validName(project.name) && project.title.size() <= 4096 && project.subtitle.size() <= 4096
+    return BoardProject::validName(project.name) && project.title.size() <= 4096 && project.subtitle.size() <= 4096
         && project.width >= 1 && project.width <= 32768 && project.height >= 1 && project.height <= 32768
         && std::isfinite(project.fps) && project.fps >= 1.0 && project.fps <= 240.0;
 }

@@ -66,6 +66,8 @@ bool BoardExport::movie(BoardProject const& project, QString const& projectFile,
     if (!project.sound.muted && project.sound.start < render.length()) {
         source.audioPath = project.audioPath(projectFile);
         source.audioStart = project.sound.start / project.fps;
+        source.audioOffset = project.sound.sourceOffset / project.fps;
+        source.audioLength = project.sound.length / project.fps;
         if (!source.audioPath.isEmpty() && !QFileInfo(source.audioPath).isFile())
             return fail(error, tr("The sound file is missing: %1").arg(project.sound.name));
     }

@@ -19,6 +19,11 @@ public:
     void close();
     bool save(QString* error = nullptr);
     bool saveAs(QString const& path, QString* error = nullptr);
+    QString extractProject(int first, int last, QString const& name, QString const& directory, QString* error = nullptr) const;
+    QString splitProject(int firstSceneOfSecondPart, QString const& name, QString const& directory, QString* error = nullptr) const;
+    bool insertProject(BoardProject source, QString const& sourceFile, int after, bool useImportedSound, QString* error = nullptr);
+    bool setSceneDetails(int scene, QString const& name, QString const& sequence, QString const& act);
+    bool renameSceneGroup(int scene, BoardProject::SceneGroup group, QString const& name);
     bool setTitles(QString const& title, QString const& subtitle);
     bool addShot(QString const& name, int frames, int after = -1);
     bool removeShot(int shot);
@@ -56,6 +61,7 @@ private:
     bool fitsFrames(int frames, int replacing = 0) const;
     bool appendPanelAllowed(int frames) const;
     bool canGrow(qsizetype panels, qint64 frames) const;
+    QString writeSceneRange(int first, int last, QString const& name, QString const& directory, QString* error) const;
     QString uniqueShotName(QString const& base) const;
     QSet<QString> soundAssets() const;
     void resetProject(BoardProject project, QString path);

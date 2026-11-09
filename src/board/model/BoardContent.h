@@ -33,7 +33,9 @@ struct BoardSound {
     int start = 0;
     int length = 0;
     bool muted = false;
+    int sourceOffset = 0;
     bool operator==(BoardSound const&) const = default;
+    BoardSound within(int first, int end) const;
 };
 
 struct BoardSpan {

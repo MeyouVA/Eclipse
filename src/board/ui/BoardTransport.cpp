@@ -130,18 +130,6 @@ void BoardWindow::editTiming(QString const& operation)
     }
 }
 
-namespace {
-int sequenceBoundary(QVector<BoardShot> const& scenes, int index, int direction)
-{
-    QString const sequence = scenes[index].sequence;
-    QString const act = scenes[index].act;
-    int adjacent = index + direction;
-    while (adjacent >= 0 && adjacent < scenes.size() && scenes[adjacent].sequence == sequence && scenes[adjacent].act == act)
-        adjacent += direction;
-    return adjacent;
-}
-}
-
 void BoardWindow::navigateBoard(QString const& operation)
 {
     auto const* span = m_timeline->spanAt(m_timeline->frame());
@@ -150,7 +138,8 @@ void BoardWindow::navigateBoard(QString const& operation)
     int const start = span->start;
     int const end = start + span->length;
     int const shot = span->shot;
-    auto const& scenes = m_document.project().shots;
+    auto const& project = m_document.project();
+    auto const& scenes = project.shots;
     int frame = -1;
     if (operation == QLatin1String("panel-first")) {
         frame = start;
@@ -167,11 +156,12 @@ void BoardWindow::navigateBoard(QString const& operation)
     } else if (operation == QLatin1String("scene-next")) {
         frame = m_timeline->panelStart(shot + 1, 0);
     } else if (operation == QLatin1String("sequence-previous")) {
-        int const previous = sequenceBoundary(scenes, shot, -1);
+        auto const group = BoardProject::SceneGroup::Sequence;
+        int const previous = project.groupRange(shot, group).first - 1;
         if (previous >= 0)
-            frame = m_timeline->panelStart(sequenceBoundary(scenes, previous, -1) + 1, 0);
+            frame = m_timeline->panelStart(project.groupRange(previous, group).first, 0);
     } else if (operation == QLatin1String("sequence-next")) {
-        frame = m_timeline->panelStart(sequenceBoundary(scenes, shot, 1), 0);
+        frame = m_timeline->panelStart(project.groupRange(shot, BoardProject::SceneGroup::Sequence).second, 0);
     } else if (operation == QLatin1String("go-to-frame")) {
         m_playback->stop();
         bool accepted = false;

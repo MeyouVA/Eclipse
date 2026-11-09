@@ -21,6 +21,10 @@
   <shortcut id="shortcut.BoardPack" text="Save and Pack" value=""/>
   <shortcut id="shortcut.BoardBackup" text="Back Up Storyboard" value=""/>
   <shortcut id="shortcut.BoardRestore" text="Restore and Open Backup" value=""/>
+  <shortcut id="shortcut.BoardExtract" text="Extract Scenes to Project" value=""/>
+  <shortcut id="shortcut.BoardSplitProject" text="Split Project" value=""/>
+  <shortcut id="shortcut.BoardInsert" text="Insert Project After Current Scene" value=""/>
+  <shortcut id="shortcut.BoardMerge" text="Merge Project at End" value=""/>
   <shortcut id="shortcut.BoardSettings" text="Project Settings" value=""/>
   <shortcut id="shortcut.BoardRefreshThumbnails" text="Regenerate Panel Thumbnails" value=""/>
   <shortcut id="shortcut.BoardImportImageLayers" text="Import Images as Layers" value=""/>
@@ -62,6 +66,9 @@
   <shortcut id="shortcut.BoardNewScene" text="New Scene" value=""/>
   <shortcut id="shortcut.BoardDuplicateScene" text="Duplicate Scene" value=""/>
   <shortcut id="shortcut.BoardSplitScene" text="Split Scene Before Panel" value=""/>
+  <shortcut id="shortcut.BoardSceneDetails" text="Edit Scene Details" value=""/>
+  <shortcut id="shortcut.BoardRenameSequence" text="Rename Sequence" value=""/>
+  <shortcut id="shortcut.BoardRenameAct" text="Rename Act" value=""/>
   <shortcut id="shortcut.BoardRemoveScene" text="Delete Scene" value=""/>
   <shortcut id="shortcut.BoardDuplicatePanel" text="Duplicate Panel" value=""/>
   <shortcut id="shortcut.BoardSplitPanel" text="Split Panel" value=""/>

@@ -54,7 +54,7 @@ void BoardWindow::updateProjectState()
             action->setEnabled(on);
     };
     for (auto const* id : {"BoardSave", "BoardSaveAs", "BoardSaveVersion", "BoardPack", "BoardBackup",
-                           "BoardClose", "BoardRefreshThumbnails"})
+                           "BoardClose", "BoardRefreshThumbnails", "BoardExtract", "BoardInsert", "BoardMerge"})
         enabled(id, loaded);
     enabled("BoardSettings", loaded);
     enabled("BoardUndo", history->canUndo());

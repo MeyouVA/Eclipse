@@ -96,8 +96,8 @@ void BoardPlayback::startSound(int frame)
         return;
     m_soundStarted = true;
     double const samplesPerFrame = double(SoundData::kRate) / project.fps;
-    qint64 const first = std::llround((frame - clip.start) * samplesPerFrame);
-    qint64 const last = std::llround((end - clip.start) * samplesPerFrame);
+    qint64 const first = std::llround((clip.sourceOffset + (frame - clip.start)) * samplesPerFrame);
+    qint64 const last = std::llround((clip.sourceOffset + (end - clip.start)) * samplesPerFrame);
     if (!m_player.play(m_sound->samples, first, last - first))
         emit message(tr("The audio output could not be opened."));
 }

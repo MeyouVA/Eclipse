@@ -12,6 +12,12 @@
    <item id="BoardPack" text="Save and Pack..." shortcut="shortcut.BoardPack" responder="window" slot="archiveProject(QString)" itemParameter="pack"/>
    <item id="BoardBackup" text="Back Up Storyboard..." shortcut="shortcut.BoardBackup" responder="window" slot="archiveProject(QString)" itemParameter="backup"/>
    <item id="BoardRestore" text="Restore and Open Backup..." shortcut="shortcut.BoardRestore" responder="window" slot="restoreArchive()"/>
+   <menu id="BoardProjectManagement" text="Project Management">
+    <item id="BoardSplitProject" text="Split Project..." shortcut="shortcut.BoardSplitProject" responder="window" slot="transferProject(QString)" itemParameter="split"/>
+    <item id="BoardExtract" text="Extract Scenes..." shortcut="shortcut.BoardExtract" responder="window" slot="transferProject(QString)" itemParameter="extract"/>
+    <item id="BoardInsert" text="Insert Project After Current Scene..." shortcut="shortcut.BoardInsert" responder="window" slot="transferProject(QString)" itemParameter="insert"/>
+    <item id="BoardMerge" text="Merge Project at End..." shortcut="shortcut.BoardMerge" responder="window" slot="transferProject(QString)" itemParameter="merge"/>
+   </menu>
    <item id="BoardSettings" text="Project Settings..." shortcut="shortcut.BoardSettings" responder="window" slot="editProjectSettings()"/>
    <item id="BoardRefreshThumbnails" text="Regenerate Panel Thumbnails" shortcut="shortcut.BoardRefreshThumbnails" responder="window" slot="regenerateThumbnails()"/>
    <menu id="BoardImport" text="&amp;Import">
@@ -67,6 +73,9 @@
    <item id="BoardNewScene" icon="timeline/adddrawing" text="New Scene" shortcut="shortcut.BoardNewScene" responder="window" slot="editArrangement(QString)" itemParameter="new-scene"/>
    <item id="BoardDuplicateScene" text="Duplicate Scene" shortcut="shortcut.BoardDuplicateScene" responder="window" slot="editArrangement(QString)" itemParameter="duplicate-scene"/>
    <item id="BoardSplitScene" text="Split Scene Before Panel" shortcut="shortcut.BoardSplitScene" responder="window" slot="editArrangement(QString)" itemParameter="split-scene"/>
+   <item id="BoardSceneDetails" text="Edit Scene Details..." shortcut="shortcut.BoardSceneDetails" responder="window" slot="editSceneDetails(QString)" itemParameter="scene"/>
+   <item id="BoardRenameSequence" text="Rename Sequence..." shortcut="shortcut.BoardRenameSequence" responder="window" slot="editSceneDetails(QString)" itemParameter="sequence"/>
+   <item id="BoardRenameAct" text="Rename Act..." shortcut="shortcut.BoardRenameAct" responder="window" slot="editSceneDetails(QString)" itemParameter="act"/>
    <item id="BoardRemoveScene" text="Delete Scene" shortcut="shortcut.BoardRemoveScene" responder="window" slot="editArrangement(QString)" itemParameter="remove-scene"/>
    <separator/>
    <item id="BoardNewPanel" icon="timeline/newdrawing" text="New Panel" shortcut="shortcut.boardNewPanel" responder="window" slot="editArrangement(QString)" itemParameter="new-panel"/>

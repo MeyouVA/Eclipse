@@ -126,6 +126,10 @@ void BoardWindow::updatePanelActions()
     enabled("BoardDuplicateScene", selected);
     enabled("BoardRemoveScene", selected && shots.size() > 1);
     enabled("BoardSplitScene", selected && panel > 0);
+    enabled("BoardSplitProject", selected && shots.size() > 1);
+    enabled("BoardSceneDetails", selected);
+    enabled("BoardRenameSequence", selected && !shots[shot].sequence.trimmed().isEmpty());
+    enabled("BoardRenameAct", selected && !shots[shot].act.trimmed().isEmpty());
     enabled("BoardNewPanel", selected);
     enabled("BoardDuplicatePanel", selected);
     enabled("BoardRemovePanel", selected && shots[shot].panels.size() > 1);

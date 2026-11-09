@@ -114,6 +114,8 @@ bool BoardExport::animation(BoardProject const& project, QString const& projectF
         clip.file = path;
         clip.start = project.sound.start;
         clip.stop = project.sound.start + project.sound.length;
+        clip.offset = project.sound.sourceOffset / project.fps;
+        clip.length = project.sound.length / project.fps;
         sound.soundClips.append(std::move(clip));
     }
     return publishFolder(folder, [&](QDir const& staging) {

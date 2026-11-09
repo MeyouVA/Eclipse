@@ -72,15 +72,23 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
         args << QStringLiteral("-ss") << QString::number(first / scene.fps, 'f', 4) << QStringLiteral("-t")
              << QString::number((last - first + 1) / scene.fps, 'f', 4) << QStringLiteral("-i") << wav;
     double const relativeStart = source.audioStart - first / scene.fps;
+    double const skipped = std::max(0.0, -relativeStart);
+    double const available = (last - first + 1) / scene.fps - std::max(0.0, relativeStart);
+    double const audioDuration = source.audioLength < 0.0 ? available : std::min(available, source.audioLength - skipped);
     bool const sourceAudio = source.picture && !source.audioPath.isEmpty() && !format->audioEncoder.isEmpty()
-        && relativeStart < (last - first + 1) / scene.fps;
+        && audioDuration > 0.0;
     if (sourceAudio) {
-        args << (relativeStart < 0.0 ? QStringLiteral("-ss") : QStringLiteral("-itsoffset"))
-             << QString::number(std::abs(relativeStart), 'f', 9) << QStringLiteral("-i") << source.audioPath;
+        if (source.audioOffset + skipped > 0.0)
+            args << QStringLiteral("-ss") << QString::number(source.audioOffset + skipped, 'f', 9);
+        if (relativeStart > 0.0)
+            args << QStringLiteral("-itsoffset") << QString::number(relativeStart, 'f', 9);
+        args << QStringLiteral("-i") << source.audioPath;
     }
     bool const hasSound = !sound.isEmpty() || sourceAudio;
     args << QStringLiteral("-map") << QStringLiteral("0:v:0");
     if(hasSound) args << QStringLiteral("-map") << QStringLiteral("1:a:0");
+    if (sourceAudio)
+        args << QStringLiteral("-af") << QStringLiteral("atrim=duration=%1").arg(audioDuration, 0, 'f', 9);
     MovieExport::Options encoding=options; encoding.frameRate=scene.fps;
     args << encoderArguments(suffix, encoding, hasSound);
     args << QStringLiteral("-t") << QString::number((last-first+1)/scene.fps,'f',6);
