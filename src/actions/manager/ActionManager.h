@@ -41,6 +41,7 @@ public:
     explicit ActionManager(QObject* parent = nullptr);
 
     void setSettingsGroup(QString const& group) { m_settingsGroup = group; }
+    QString const& settingsGroup() const { return m_settingsGroup; }
     void setIconDirectory(QString const& directory) { m_iconDirectory = directory; }
     bool load(QString const& directory, QString* error);
     // Where the files are looked for: the `resources` folder next to the program.

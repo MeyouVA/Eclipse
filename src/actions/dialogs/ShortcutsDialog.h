@@ -26,10 +26,10 @@ public:
     void applySetText(QStringList const& lines);
     bool saveSetFile(QString const& path) const;
     bool loadSetFile(QString const& path);
-    static QStringList setNames();
+    static QStringList setNames(QString const& settingsGroup = {});
     void saveSet(QString const& name);
     bool useSet(QString const& name);
-    static void deleteSet(QString const& name);
+    static void deleteSet(QString const& name, QString const& settingsGroup = {});
     QKeySequence editedKey(QString const& id) const { return m_keys.value(id); }
 
 private:

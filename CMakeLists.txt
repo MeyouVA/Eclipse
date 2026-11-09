@@ -70,7 +70,7 @@ target_link_libraries(EclipseActions PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets PRIV
 
 # The Camera and Drawing views and their tools.
 eclipse_module(EclipseCanvas canvas ECLIPSE_CANVAS_BUILD)
-target_link_libraries(EclipseCanvas PUBLIC EclipseModel EclipseRender EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets PRIVATE Qt6::Svg)
+target_link_libraries(EclipseCanvas PUBLIC EclipseModel EclipseRender EclipseActions Qt6::Core Qt6::Gui Qt6::Widgets PRIVATE Qt6::Svg EclipseAudio)
 
 # The window and all its views.
 eclipse_module(EclipseBoardModel board/model ECLIPSE_BOARD_MODEL_BUILD)
@@ -80,7 +80,7 @@ eclipse_module(EclipseLauncher launcher ECLIPSE_LAUNCHER_BUILD)
 target_link_libraries(EclipseLauncher PUBLIC EclipseBoardModel Qt6::Widgets PRIVATE EclipseActions EclipseModel)
 
 eclipse_module(EclipseBoardUi board/ui ECLIPSE_BOARD_UI_BUILD)
-target_link_libraries(EclipseBoardUi PUBLIC EclipseBoardModel Qt6::Widgets PRIVATE EclipseLauncher EclipseActions EclipseCanvas)
+target_link_libraries(EclipseBoardUi PUBLIC EclipseBoardModel Qt6::Widgets PRIVATE EclipseLauncher EclipseActions EclipseCanvas EclipseAudio)
 
 eclipse_module(EclipseUi animation/ui ECLIPSE_UI_BUILD)
 target_link_libraries(EclipseUi PUBLIC EclipseModel EclipseAudio EclipseFormats EclipseRender EclipseCanvas EclipseActions EclipseLauncher Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml PRIVATE Qt6::Svg Qt6::PrintSupport Qt6::Network winmm)

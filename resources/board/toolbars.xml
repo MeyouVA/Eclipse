@@ -5,6 +5,10 @@
   <item id="BoardOpen"/>
   <item id="BoardSave"/>
  </toolbar>
+ <toolbar id="BoardEditToolbar" text="Edit">
+  <item id="BoardUndo"/>
+  <item id="BoardRedo"/>
+ </toolbar>
  <toolbar id="BoardArrangementToolbar" text="Scenes and Panels">
   <item id="BoardNewScene"/>
   <item id="BoardNewPanel"/>
@@ -16,7 +20,26 @@
   <item id="BoardPencil"/>
   <item id="BoardEraser"/>
   <item id="BoardPaint"/>
+  <item id="BoardToolContour"/>
+  <item id="BoardToolCutter"/>
+  <item id="BoardToolText"/>
+  <item id="BoardToolRectangle"/>
+  <item id="BoardToolEllipse"/>
+  <item id="BoardToolLine"/>
+  <item id="BoardToolDropper"/>
+  <item id="BoardToolRotateView"/>
   <item id="BoardHand"/>
   <item id="BoardZoom"/>
+  <item id="BoardCameraTool"/>
+  <item id="BoardCameraPreview"/>
+ </toolbar>
+ <toolbar id="BoardTransportToolbar" text="Playback">
+  <item id="BoardFirstFrame"/>
+  <item id="BoardPreviousFrame"/>
+  <item id="BoardPlay"/>
+  <item id="BoardStop"/>
+  <item id="BoardNextFrame"/>
+  <item id="BoardLastFrame"/>
+  <item id="BoardLoop"/>
  </toolbar>
 </toolbars>

@@ -11,4 +11,118 @@
  <category id="Panels" text="Scenes and Panels">
   <shortcut id="shortcut.boardNewPanel" text="New Panel" value="P"/>
  </category>
+ <category id="Playback" text="Playback">
+  <shortcut id="shortcut.boardPlay" text="Play / Pause" value="Ctrl+Return"/>
+ </category>
+ <category id="board.file" text="File">
+  <shortcut id="shortcut.BoardSettings" text="Project Settings" value=""/>
+  <shortcut id="shortcut.BoardImportImageLayers" text="Import Images as Layers" value=""/>
+  <shortcut id="shortcut.BoardImportImageScenes" text="Import Images as Scenes" value=""/>
+  <shortcut id="shortcut.BoardExportFrame" text="Export Current Image" value=""/>
+  <shortcut id="shortcut.BoardExportPdf" text="Storyboard PDF" value=""/>
+  <shortcut id="shortcut.BoardExportMovie" text="Animatic Movie" value=""/>
+  <shortcut id="shortcut.BoardExportImages" text="PNG Image Sequence" value=""/>
+  <shortcut id="shortcut.BoardExportAnimation" text="Eclipse Animation Scene" value=""/>
+ </category>
+ <category id="board.edit" text="Edit">
+  <shortcut id="shortcut.BoardPreferences" text="Preferences" value=""/>
+  <shortcut id="shortcut.BoardShortcuts" text="Keyboard Shortcuts" value=""/>
+ </category>
+ <category id="board.view" text="View">
+  <shortcut id="shortcut.BoardFitStage" text="Fit Stage" value=""/>
+  <shortcut id="shortcut.BoardTimelineZoomIn" text="Zoom In Timeline" value=""/>
+  <shortcut id="shortcut.BoardTimelineZoomOut" text="Zoom Out Timeline" value=""/>
+ </category>
+ <category id="board.play" text="Play">
+  <shortcut id="shortcut.BoardFirstFrame" text="First Frame" value=""/>
+  <shortcut id="shortcut.BoardPreviousFrame" text="Previous Frame" value=""/>
+  <shortcut id="shortcut.BoardStop" text="Stop" value=""/>
+  <shortcut id="shortcut.BoardNextFrame" text="Next Frame" value=""/>
+  <shortcut id="shortcut.BoardLastFrame" text="Last Frame" value=""/>
+  <shortcut id="shortcut.BoardLoop" text="Loop" value=""/>
+  <shortcut id="shortcut.BoardPanelFirst" text="First Frame of Panel" value=""/>
+  <shortcut id="shortcut.BoardPanelLast" text="Last Frame of Panel" value=""/>
+  <shortcut id="shortcut.BoardPanelPrevious" text="Previous Panel" value=""/>
+  <shortcut id="shortcut.BoardPanelNext" text="Next Panel" value=""/>
+  <shortcut id="shortcut.BoardScenePrevious" text="Previous Scene" value=""/>
+  <shortcut id="shortcut.BoardSceneNext" text="Next Scene" value=""/>
+  <shortcut id="shortcut.BoardSequencePrevious" text="Previous Sequence" value=""/>
+  <shortcut id="shortcut.BoardSequenceNext" text="Next Sequence" value=""/>
+  <shortcut id="shortcut.BoardGoToScene" text="Go to Scene" value=""/>
+  <shortcut id="shortcut.BoardGoToFrame" text="Go to Frame" value=""/>
+ </category>
+ <category id="board.storyboard" text="Storyboard">
+  <shortcut id="shortcut.BoardNewScene" text="New Scene" value=""/>
+  <shortcut id="shortcut.BoardDuplicateScene" text="Duplicate Scene" value=""/>
+  <shortcut id="shortcut.BoardSplitScene" text="Split Scene Before Panel" value=""/>
+  <shortcut id="shortcut.BoardRemoveScene" text="Delete Scene" value=""/>
+  <shortcut id="shortcut.BoardDuplicatePanel" text="Duplicate Panel" value=""/>
+  <shortcut id="shortcut.BoardSplitPanel" text="Split Panel" value=""/>
+  <shortcut id="shortcut.BoardRemovePanel" text="Delete Panel" value=""/>
+  <shortcut id="shortcut.BoardPanelDuration" text="Panel Duration" value=""/>
+  <shortcut id="shortcut.BoardDissolve" text="Scene Dissolve" value=""/>
+ </category>
+ <category id="board.tools" text="Tools">
+  <shortcut id="shortcut.BoardSelect" text="Select" value=""/>
+  <shortcut id="shortcut.BoardBrush" text="Brush" value=""/>
+  <shortcut id="shortcut.BoardPencil" text="Pencil" value=""/>
+  <shortcut id="shortcut.BoardEraser" text="Eraser" value=""/>
+  <shortcut id="shortcut.BoardPaint" text="Paint" value=""/>
+  <shortcut id="shortcut.BoardHand" text="Hand" value=""/>
+  <shortcut id="shortcut.BoardZoom" text="Zoom" value=""/>
+  <shortcut id="shortcut.BoardToolContour" text="Contour Editor" value=""/>
+  <shortcut id="shortcut.BoardToolPencilEditor" text="Pencil Line Editor" value=""/>
+  <shortcut id="shortcut.BoardToolPencilRetouch" text="Pencil Retouch" value=""/>
+  <shortcut id="shortcut.BoardToolCutter" text="Cutter" value=""/>
+  <shortcut id="shortcut.BoardToolPerspective" text="Perspective" value=""/>
+  <shortcut id="shortcut.BoardToolStamp" text="Stamp" value=""/>
+  <shortcut id="shortcut.BoardToolText" text="Text" value=""/>
+  <shortcut id="shortcut.BoardToolRectangle" text="Rectangle" value=""/>
+  <shortcut id="shortcut.BoardToolEllipse" text="Ellipse" value=""/>
+  <shortcut id="shortcut.BoardToolLine" text="Line" value=""/>
+  <shortcut id="shortcut.BoardToolPolyline" text="Polyline" value=""/>
+  <shortcut id="shortcut.BoardToolPaintUnpainted" text="Paint Unpainted" value=""/>
+  <shortcut id="shortcut.BoardToolUnpaint" text="Unpaint" value=""/>
+  <shortcut id="shortcut.BoardToolCloseGap" text="Close Gap" value=""/>
+  <shortcut id="shortcut.BoardToolEditGradient" text="Edit Gradient and Texture" value=""/>
+  <shortcut id="shortcut.BoardToolDropper" text="Dropper" value=""/>
+  <shortcut id="shortcut.BoardToolRotateView" text="Rotate View" value=""/>
+ </category>
+ <category id="board.camera" text="Camera">
+  <shortcut id="shortcut.BoardCameraTool" text="Camera Tool" value=""/>
+  <shortcut id="shortcut.BoardCameraGuide" text="Show Camera Frame" value=""/>
+  <shortcut id="shortcut.BoardCameraPreview" text="Preview Through Camera" value=""/>
+  <shortcut id="shortcut.BoardCameraAdd" text="Add Camera Key at Playhead" value=""/>
+  <shortcut id="shortcut.BoardCameraStart" text="Add Camera Key at Panel Start" value=""/>
+  <shortcut id="shortcut.BoardCameraEnd" text="Add Camera Key at Panel End" value=""/>
+  <shortcut id="shortcut.BoardCameraEdit" text="Edit Camera Key at Playhead" value=""/>
+  <shortcut id="shortcut.BoardCameraRemove" text="Remove Camera Key at Playhead" value=""/>
+  <shortcut id="shortcut.BoardCameraPrevious" text="Previous Camera Key" value=""/>
+  <shortcut id="shortcut.BoardCameraNext" text="Next Camera Key" value=""/>
+ </category>
+ <category id="board.caption" text="Caption">
+  <shortcut id="shortcut.BoardCaptionAdd" text="Add Caption Field" value=""/>
+  <shortcut id="shortcut.BoardCaptionRemove" text="Remove Caption Field" value=""/>
+ </category>
+ <category id="board.sound" text="Sound">
+  <shortcut id="shortcut.BoardSoundImport" text="Import Sound" value=""/>
+  <shortcut id="shortcut.BoardSoundPosition" text="Sound Start Frame" value=""/>
+  <shortcut id="shortcut.BoardSoundMute" text="Mute Sound" value=""/>
+  <shortcut id="shortcut.BoardSoundRemove" text="Remove Sound" value=""/>
+ </category>
+ <category id="board.windows" text="Windows">
+  <shortcut id="shortcut.workspace.overview" text="Overview" value=""/>
+  <shortcut id="shortcut.workspace.horizontal" text="Horizontal" value=""/>
+  <shortcut id="shortcut.workspace.vertical" text="Vertical" value=""/>
+  <shortcut id="shortcut.workspace.drawing" text="Drawing" value=""/>
+  <shortcut id="shortcut.workspace.timeline" text="Timeline" value=""/>
+  <shortcut id="shortcut.BoardThumbnailsShow" text="Show Thumbnails" value=""/>
+  <shortcut id="shortcut.BoardLayersShow" text="Show Panel Layers" value=""/>
+  <shortcut id="shortcut.BoardCaptionsShow" text="Show Captions" value=""/>
+  <shortcut id="shortcut.BoardTimelineShow" text="Show Timeline" value=""/>
+  <shortcut id="shortcut.BoardResetLayout" text="Restore Default Workspace" value=""/>
+ </category>
+ <category id="board.help" text="Help">
+  <shortcut id="shortcut.BoardWelcome" text="Show Welcome Screen" value=""/>
+ </category>
 </shortcuts>

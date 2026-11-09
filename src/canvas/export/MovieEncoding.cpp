@@ -1,4 +1,4 @@
-#include "animation/ui/io/MovieExport.h"
+#include "canvas/export/MovieExport.h"
 #include "model/media/MediaFormats.h"
 #include <algorithm>
 

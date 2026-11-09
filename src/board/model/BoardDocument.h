@@ -12,6 +12,7 @@ public:
     BoardProject const& project() const { return m_project; }
     QUndoStack* undoStack() { return &m_undo; }
     QString const& path() const { return m_path; }
+    BoardPanel const* panel(int shot, int panel) const;
 
     bool open(QString const& path, QString* error = nullptr);
     bool save(QString* error = nullptr);
@@ -21,10 +22,21 @@ public:
     bool addPanel(int shot, int frames, int after = -1);
     bool removePanel(int shot, int panel);
     bool setPanelLength(int shot, int panel, int frames);
-    bool addLayer(int shot, int panel, QString const& name, BoardLayer::Kind kind);
+    bool setDissolve(int shot, int frames);
+    bool setCameraKey(int shot, int panel, int frame, BoardCameraPose const& pose);
+    bool removeCameraKey(int shot, int panel, int frame);
+    bool setSound(BoardSound const& sound);
+    bool addLayer(int shot, int panel, QString const& name, BoardLayer::Kind kind, int before = -1);
     bool removeLayer(int shot, int panel, int layer);
+    bool duplicateLayer(int shot, int panel, int layer);
+    bool renameLayer(int shot, int panel, int layer, QString const& name);
+    bool moveLayer(int shot, int panel, int layer, int to);
+    bool setLayerFlags(int shot, int panel, int layer, bool visible, bool locked);
     bool setLayerDrawing(int shot, int panel, int layer, Drawing const& drawing, QString const& label = {});
-    bool setCaption(int shot, int panel, QString const& field, QString const& text);
+    bool importPictures(int shot, int panel, QVector<QPair<QString, QImage>> const& images, int framesPerScene = 0);
+    bool setCaption(int shot, int panel, QString const& field, QString const& text, quint64 session = 0);
+    bool addCaptionField(QString const& field);
+    bool removeCaptionField(QString const& field);
     bool duplicateShot(int shot);
     bool splitShot(int shot, int firstPanel);
     bool duplicatePanel(int shot, int panel);
@@ -42,7 +54,7 @@ private:
     bool appendPanelAllowed(int frames) const;
     bool canGrow(qsizetype panels, qint64 frames) const;
     QString uniqueShotName(QString const& base) const;
-    void apply(BoardProject project, QString const& label);
+    void apply(BoardProject project, QString const& label, quint64 session = 0);
 
     BoardProject m_project;
     QString m_path;

@@ -1,5 +1,4 @@
 #include "board/model/BoardDocument.h"
-#include "board/model/BoardProjectJson.h"
 
 #include <QFileInfo>
 #include <QSignalBlocker>
@@ -8,16 +7,27 @@
 
 class BoardEdit final : public QUndoCommand {
 public:
-    BoardEdit(BoardProject& current, BoardProject next, QString const& label)
-        : QUndoCommand(label), m_current(current), m_before(current), m_after(std::move(next)) {}
+    BoardEdit(BoardProject& current, BoardProject next, QString const& label, quint64 session)
+        : QUndoCommand(label), m_current(current), m_before(current), m_after(std::move(next)), m_session(session) {}
 
     void redo() override { m_current = m_after; }
     void undo() override { m_current = m_before; }
+    int id() const override { return m_session == 0 ? -1 : 1; }
+
+    bool mergeWith(QUndoCommand const* other) override
+    {
+        auto const* edit = dynamic_cast<BoardEdit const*>(other);
+        if (!edit || edit->m_session != m_session)
+            return false;
+        m_after = edit->m_after;
+        return true;
+    }
 
 private:
     BoardProject& m_current;
     BoardProject m_before;
     BoardProject m_after;
+    quint64 m_session;
 };
 
 BoardDocument::BoardDocument(QObject* parent) : QObject(parent)
@@ -59,6 +69,11 @@ bool BoardDocument::hasPanel(int shot, int panel) const
     return shot >= 0 && shot < m_project.shots.size() && panel >= 0 && panel < m_project.shots[shot].panels.size();
 }
 
+BoardPanel const* BoardDocument::panel(int shot, int panel) const
+{
+    return hasPanel(shot, panel) ? &m_project.shots[shot].panels[panel] : nullptr;
+}
+
 bool BoardDocument::hasLayer(int shot, int panel, int layer) const
 {
     return hasPanel(shot, panel) && layer >= 0 && layer < m_project.shots[shot].panels[panel].layers.size();
@@ -84,9 +99,9 @@ bool BoardDocument::canGrow(qsizetype panels, qint64 frames) const
     return panels <= 50000 && frames <= std::numeric_limits<int>::max();
 }
 
-void BoardDocument::apply(BoardProject project, QString const& label)
+void BoardDocument::apply(BoardProject project, QString const& label, quint64 session)
 {
-    m_undo.push(new BoardEdit(m_project, std::move(project), label));
+    m_undo.push(new BoardEdit(m_project, std::move(project), label, session));
 }
 
 bool BoardDocument::setTitles(QString const& title, QString const& subtitle)
@@ -152,68 +167,10 @@ bool BoardDocument::setPanelLength(int shot, int panel, int frames)
     if (frames == previous || !fitsFrames(frames, previous))
         return false;
     auto next = m_project;
-    next.shots[shot].panels[panel].length = frames;
+    auto& edited = next.shots[shot].panels[panel];
+    if (frames < previous)
+        edited.camera = BoardCamera::slice(edited.camera, 0, frames);
+    edited.length = frames;
     apply(std::move(next), tr("Change Panel Duration"));
-    return true;
-}
-
-bool BoardDocument::addLayer(int shot, int panel, QString const& name, BoardLayer::Kind kind)
-{
-    if (!hasPanel(shot, panel) || name.trimmed().isEmpty())
-        return false;
-    auto next = m_project;
-    next.shots[shot].panels[panel].layers.push_back({name.trimmed(), kind, true, {}});
-    apply(std::move(next), tr("Add Layer"));
-    return true;
-}
-
-bool BoardDocument::removeLayer(int shot, int panel, int layer)
-{
-    if (!hasLayer(shot, panel, layer))
-        return false;
-    auto next = m_project;
-    next.shots[shot].panels[panel].layers.removeAt(layer);
-    apply(std::move(next), tr("Remove Layer"));
-    return true;
-}
-
-bool BoardDocument::setLayerDrawing(int shot, int panel, int layer, Drawing const& drawing, QString const& label)
-{
-    if (!hasLayer(shot, panel, layer) || !BoardProjectJson::supportedDrawing(drawing))
-        return false;
-    auto next = m_project;
-    next.shots[shot].panels[panel].layers[layer].drawing = drawing;
-    apply(std::move(next), label.isEmpty() ? tr("Edit Layer Artwork") : label);
-    return true;
-}
-
-bool BoardDocument::setCaption(int shot, int panel, QString const& field, QString const& text)
-{
-    QString const name = field.trimmed();
-    if (!hasPanel(shot, panel) || name.isEmpty() || name.size() > 128)
-        return false;
-    auto next = m_project;
-    auto& captions = next.shots[shot].panels[panel].captions;
-    for (qsizetype i = 0; i < captions.size(); ++i) {
-        if (captions[i].field.compare(name, Qt::CaseInsensitive) != 0)
-            continue;
-        if (captions[i].text == text)
-            return false;
-        if (text.isEmpty())
-            captions.removeAt(i);
-        else
-            captions[i].text = text;
-        apply(std::move(next), tr("Edit Caption"));
-        return true;
-    }
-    if (text.isEmpty())
-        return false;
-    if (!next.captionFields.contains(name, Qt::CaseInsensitive)) {
-        if (next.captionFields.size() >= 128)
-            return false;
-        next.captionFields.push_back(name);
-    }
-    captions.push_back({name, text});
-    apply(std::move(next), tr("Edit Caption"));
     return true;
 }

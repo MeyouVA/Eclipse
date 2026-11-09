@@ -72,7 +72,7 @@ ShortcutsDialog::ShortcutsDialog(ActionManager* manager, QWidget* parent) : QDia
     m_sets->setObjectName(QStringLiteral("ShortcutSets"));
     m_sets->setMinimumWidth(160);
     m_sets->addItem(tr("(as they are)"));
-    m_sets->addItems(setNames());
+    m_sets->addItems(setNames(m_manager->settingsGroup()));
     QPushButton* const newSet = new QPushButton(tr("New Set..."), this);
     newSet->setObjectName(QStringLiteral("ShortcutSetNew"));
     newSet->setToolTip(tr("Create a new set based on the current shortcut keys."));
@@ -111,7 +111,7 @@ ShortcutsDialog::ShortcutsDialog(ActionManager* manager, QWidget* parent) : QDia
         if (QMessageBox::question(this, tr("Delete Keyboard Shortcut Set"), tr("Are you sure you want to delete the keyboard shortcut set %1?").arg(name))
             != QMessageBox::Yes)
             return;
-        deleteSet(name);
+        deleteSet(name, m_manager->settingsGroup());
         m_sets->removeItem(index);
         m_sets->setCurrentIndex(0);
     });
@@ -277,30 +277,38 @@ bool ShortcutsDialog::loadSetFile(QString const& path)
     return true;
 }
 
-QStringList ShortcutsDialog::setNames()
+namespace {
+QString setsGroup(QString const& group)
+{
+    return group.isEmpty() ? QStringLiteral("shortcutSets") : group + QStringLiteral("/shortcutSets");
+}
+}
+
+QStringList ShortcutsDialog::setNames(QString const& settingsGroup)
 {
     QSettings settings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"));
-    settings.beginGroup(QStringLiteral("shortcutSets"));
+    settings.beginGroup(setsGroup(settingsGroup));
     return settings.childKeys();
 }
 
 void ShortcutsDialog::saveSet(QString const& name)
 {
-    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(QStringLiteral("shortcutSets/") + name, setText());
+    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).setValue(setsGroup(m_manager->settingsGroup()) + QLatin1Char('/') + name, setText());
 }
 
 bool ShortcutsDialog::useSet(QString const& name)
 {
-    QStringList const lines = QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).value(QStringLiteral("shortcutSets/") + name).toStringList();
+    QStringList const lines = QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse"))
+        .value(setsGroup(m_manager->settingsGroup()) + QLatin1Char('/') + name).toStringList();
     if (lines.isEmpty())
         return false;
     applySetText(lines);
     return true;
 }
 
-void ShortcutsDialog::deleteSet(QString const& name)
+void ShortcutsDialog::deleteSet(QString const& name, QString const& settingsGroup)
 {
-    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).remove(QStringLiteral("shortcutSets/") + name);
+    QSettings(QStringLiteral("Eclipse"), QStringLiteral("Eclipse")).remove(setsGroup(settingsGroup) + QLatin1Char('/') + name);
 }
 
 void ShortcutsDialog::accept()

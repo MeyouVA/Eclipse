@@ -12,11 +12,39 @@
 #include <QMimeData>
 #include <QPainter>
 #include <QSignalBlocker>
+#include <QStyledItemDelegate>
 #include <cmath>
 
 namespace {
 constexpr auto panelMime = "application/x-eclipse-panel-index";
-constexpr QSize thumbnailSize{128, 72};
+constexpr QSize thumbnailSize{168, 168};
+constexpr QSize cardSize{194, 200};
+
+class ThumbnailCard : public QStyledItemDelegate {
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QSize sizeHint(QStyleOptionViewItem const&, QModelIndex const&) const override { return cardSize; }
+
+    void paint(QPainter* painter, QStyleOptionViewItem const& option, QModelIndex const& index) const override
+    {
+        painter->save();
+        QRect const card = option.rect.adjusted(1, 1, -1, -1);
+        bool const selected = option.state.testFlag(QStyle::State_Selected);
+        QColor const border = selected ? option.palette.highlight().color() : option.palette.mid().color();
+        painter->fillRect(card, option.palette.window());
+        painter->setPen(QPen(border, selected ? 2 : 1));
+        painter->drawRect(card.adjusted(1, 1, -1, -1));
+        QRect const label = card.adjusted(9, 3, -9, 0);
+        QRect const title(label.topLeft(), QSize(label.width(), 20));
+        painter->setPen(option.palette.windowText().color());
+        painter->drawText(title, Qt::AlignVCenter, option.fontMetrics.elidedText(index.data().toString(), Qt::ElideRight, title.width()));
+        auto const icon = index.data(Qt::DecorationRole).value<QIcon>();
+        QRect const art(QPoint(card.center().x() - thumbnailSize.width() / 2, title.bottom() + 1), thumbnailSize);
+        icon.paint(painter, art);
+        painter->restore();
+    }
+};
 }
 
 class BoardThumbnailModel : public QAbstractListModel {
@@ -77,17 +105,22 @@ public:
             return {};
         if (auto const* icon = m_icons.object(index.row()))
             return *icon;
-        QPixmap image(thumbnailSize);
-        image.fill(QColor(43, 43, 43));
+        QPixmap image(thumbnailSize * 3);
+        image.fill(QColor(238, 238, 238));
         double const scale = std::min(double(image.width()) / project.width, double(image.height()) / project.height);
         QPainter painter(&image);
         painter.setRenderHint(QPainter::Antialiasing);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
         painter.translate((image.width() - project.width * scale) / 2.0, (image.height() - project.height * scale) / 2.0);
         painter.scale(scale, scale);
         painter.setClipRect(QRectF(0, 0, project.width, project.height));
-        Canvas::paintFrame(painter, boardPanelScene(project, s, p), 0);
+        Canvas::paintFrame(painter, boardPanelScene(project, s, p, BoardCamera::poseAt(panelData.camera, 0)), 0);
+        QPen guide(QColor(177, 177, 177));
+        guide.setCosmetic(true);
+        painter.setPen(guide);
+        painter.drawRect(QRectF(0, 0, project.width, project.height));
         painter.end();
-        QIcon const icon(image);
+        QIcon const icon(image.scaled(thumbnailSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
         m_icons.insert(index.row(), new QIcon(icon));
         return icon;
     }
@@ -103,25 +136,43 @@ BoardThumbnails::BoardThumbnails(BoardDocument* document, QWidget* parent)
 {
     setObjectName(QStringLiteral("BoardThumbnails"));
     setModel(m_panels);
+    setItemDelegate(new ThumbnailCard(this));
     setViewMode(QListView::IconMode);
-    setFlow(QListView::LeftToRight);
     setWrapping(false);
     setMovement(QListView::Static);
     setUniformItemSizes(true);
     setIconSize(thumbnailSize);
-    setGridSize(QSize(150, 104));
-    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setGridSize(cardSize + QSize(16, 12));
+    setContentsMargins(8, 4, 8, 2);
     setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
     setSelectionMode(QAbstractItemView::SingleSelection);
     setDragDropMode(QAbstractItemView::DragDrop);
     setDefaultDropAction(Qt::MoveAction);
     setDropIndicatorShown(false);
-    setMinimumHeight(120);
+    setVertical(false);
     connect(selectionModel(), &QItemSelectionModel::currentChanged, this, [this](QModelIndex const& current) {
         auto const [shot, panel] = m_panels->panel(current.row());
         if (shot >= 0)
             emit panelSelected(shot, panel);
     });
+}
+
+void BoardThumbnails::setVertical(bool vertical)
+{
+    vertical = vertical && !m_overview;
+    setFlow(vertical ? QListView::TopToBottom : QListView::LeftToRight);
+    bool const grid = m_overview;
+    setWrapping(grid);
+    setMinimumSize(vertical ? QSize(gridSize().width() + 16, 100) : QSize(0, 218));
+    setHorizontalScrollBarPolicy(vertical || grid ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAsNeeded);
+    setVerticalScrollBarPolicy(vertical || grid ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
+    setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+}
+
+void BoardThumbnails::setOverview(bool overview)
+{
+    m_overview = overview;
+    setVertical(flow() == QListView::TopToBottom);
 }
 
 void BoardThumbnails::rebuild()
@@ -180,10 +231,14 @@ void BoardThumbnails::dropEvent(QDropEvent* event)
         return;
     QPoint const point = event->position().toPoint();
     QModelIndex target = indexAt(point);
+    bool const vertical = flow() == QListView::TopToBottom;
     if (!target.isValid()) {
         QRect const first = visualRect(m_panels->index(0));
-        double const column = double(point.x() - first.center().x()) / gridSize().width();
-        int const row = std::clamp(int(std::lround(column)), 0, m_panels->rowCount() - 1);
+        int const x = int(std::lround(double(point.x() - first.center().x()) / gridSize().width()));
+        int const y = int(std::lround(double(point.y() - first.center().y()) / gridSize().height()));
+        int const columns = std::max(1, viewport()->width() / gridSize().width());
+        int const position = vertical ? y : isWrapping() ? std::max(0, y) * columns + std::clamp(x, 0, columns - 1) : x;
+        int const row = std::clamp(position, 0, m_panels->rowCount() - 1);
         target = m_panels->index(row);
     }
     QByteArray const payload = event->mimeData()->data(QLatin1String(panelMime));
@@ -194,6 +249,7 @@ void BoardThumbnails::dropEvent(QDropEvent* event)
     if (sourceShot < 0 || targetShot < 0)
         return;
     event->acceptProposedAction();
+    QPoint const middle = visualRect(target).center();
     emit panelDropped(sourceShot, sourcePanel, targetShot, targetPanel,
-                      point.x() >= visualRect(target).center().x(), payload.endsWith(":scene"));
+                      vertical ? point.y() >= middle.y() : point.x() >= middle.x(), payload.endsWith(":scene"));
 }

@@ -1,15 +1,17 @@
 #include "board/ui/BoardWindow.h"
+#include "board/ui/BoardPlayback.h"
+#include "board/ui/BoardTimeline.h"
 
 #include <QInputDialog>
-#include <cmath>
 
 void BoardWindow::editArrangement(QString const& operation)
 {
+    m_playback->stop();
     auto const [shot, panel] = m_selected;
     auto const& project = m_document.project();
     if (shot < 0 || shot >= project.shots.size() || panel < 0 || panel >= project.shots[shot].panels.size())
         return;
-    int const frames = int(std::lround(project.fps));
+    int const frames = defaultPanelFrames(project.fps);
     if (operation == QLatin1String("new-scene")) {
         if (m_document.addShot(QString::number(project.shots.size() + 1), frames, shot))
             selectPanel(shot + 1, 0);
@@ -34,9 +36,11 @@ void BoardWindow::editArrangement(QString const& operation)
         int const length = project.shots[shot].panels[panel].length;
         if (length < 2)
             return;
-        bool accepted = false;
-        int const first = QInputDialog::getInt(this, tr("Split Panel"), tr("Frames in the first panel:"),
-                                              length / 2, 1, length - 1, 1, &accepted);
+        int first = m_timeline->frame() - m_timeline->panelStart(shot, panel);
+        bool accepted = first > 0 && first < length;
+        if (!accepted)
+            first = QInputDialog::getInt(this, tr("Split Panel"), tr("Frames in the first panel:"),
+                                        length / 2, 1, length - 1, 1, &accepted);
         if (accepted && m_document.splitPanel(shot, panel, first))
             selectPanel(shot, panel + 1);
     }

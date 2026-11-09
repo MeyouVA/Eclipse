@@ -64,6 +64,8 @@ bool BoardDocument::splitPanel(int shot, int panel, int firstFrames)
     auto& panels = next.shots[shot].panels;
     BoardPanel tail = panels[panel];
     tail.length -= firstFrames;
+    tail.camera = BoardCamera::slice(panels[panel].camera, firstFrames, tail.length);
+    panels[panel].camera = BoardCamera::slice(panels[panel].camera, 0, firstFrames);
     panels[panel].length = firstFrames;
     panels.insert(panel + 1, std::move(tail));
     apply(std::move(next), tr("Split Panel"));

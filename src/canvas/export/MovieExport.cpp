@@ -1,4 +1,4 @@
-#include "animation/ui/io/MovieExport.h"
+#include "canvas/export/MovieExport.h"
 
 #include <algorithm>
 #include <cmath>
@@ -20,7 +20,8 @@
 
 namespace MovieExport {
 
-bool write(Scene const& scene, QString const& path, std::function<bool(int frame)> const& progress, QString* error, Options const& options)
+bool write(Scene const& scene, QString const& path, std::function<bool(int frame)> const& progress, QString* error,
+           Options const& options, Source const& source)
 {
     auto fail = [&](QString const& why) {
         if (error)
@@ -57,7 +58,7 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     int const wide = options.size.isValid() ? std::max(2, options.size.width()) : std::max(2, int(std::lround(scene.width * scale)));
     int const high = options.size.isValid() ? std::max(2, options.size.height()) : std::max(2, int(std::lround(scene.height * scale)));
     if(codecId==MediaFormats::DnxHD && (wide!=1920 || high!=1080)) return fail(QStringLiteral("DNxHD requires 1920 by 1080 frames. Use DNxHR for other dimensions."));
-    QVector<double> const sound = format->audioEncoder.isEmpty() ? QVector<double>() : Sound::mixPrecise(scene,0,-1,48000);
+    QVector<double> const sound = format->audioEncoder.isEmpty() || source.picture ? QVector<double>() : Sound::mixPrecise(scene,0,-1,48000);
     QString const wav = scratch.filePath(QStringLiteral("sound.wav"));
     if (!sound.isEmpty() && (!scratch.isValid() || !Sound::writePreciseWav(wav, sound, 48000, error)))
         return false;
@@ -70,10 +71,18 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
     if (!sound.isEmpty())
         args << QStringLiteral("-ss") << QString::number(first / scene.fps, 'f', 4) << QStringLiteral("-t")
              << QString::number((last - first + 1) / scene.fps, 'f', 4) << QStringLiteral("-i") << wav;
+    double const relativeStart = source.audioStart - first / scene.fps;
+    bool const sourceAudio = source.picture && !source.audioPath.isEmpty() && !format->audioEncoder.isEmpty()
+        && relativeStart < (last - first + 1) / scene.fps;
+    if (sourceAudio) {
+        args << (relativeStart < 0.0 ? QStringLiteral("-ss") : QStringLiteral("-itsoffset"))
+             << QString::number(std::abs(relativeStart), 'f', 9) << QStringLiteral("-i") << source.audioPath;
+    }
+    bool const hasSound = !sound.isEmpty() || sourceAudio;
     args << QStringLiteral("-map") << QStringLiteral("0:v:0");
-    if(!sound.isEmpty()) args << QStringLiteral("-map") << QStringLiteral("1:a:0");
+    if(hasSound) args << QStringLiteral("-map") << QStringLiteral("1:a:0");
     MovieExport::Options encoding=options; encoding.frameRate=scene.fps;
-    args << encoderArguments(suffix, encoding, !sound.isEmpty());
+    args << encoderArguments(suffix, encoding, hasSound);
     args << QStringLiteral("-t") << QString::number((last-first+1)/scene.fps,'f',6);
     args << QDir::toNativeSeparators(generated);
 
@@ -89,22 +98,29 @@ bool write(Scene const& scene, QString const& path, std::function<bool(int frame
         return fail(why);
     };
     // A few frames at a time rendered on the cores, then sent down the pipe in order.
-    int const chunk = std::max(1, FrameRender::threadsUsed() * 2);
-    for (int at = first; at <= last; at += chunk) {
+    int const chunk = source.picture ? 1 : std::max(1, FrameRender::threadsUsed() * 2);
+    for (qint64 offset = first; offset <= last; offset += chunk) {
+        int const at = int(offset);
         QVector<int> frames;
-        for (int f = at; f <= std::min(last, at + chunk - 1); ++f)
-            frames.push_back(f);
+        for (qint64 f = at; f <= std::min(qint64(last), offset + chunk - 1); ++f)
+            frames.push_back(int(f));
         QVector<QImage> batch(frames.size());
         QImage* const held = batch.data();
         QString const space = options.colourSpace;
-        FrameRender::render(rendered, frames, QSize(wide, high), false, [held, at, &rendered, space, codec](int f, QImage const& picture) {
-            held[f - at] = FrameRender::inSpace(rendered, picture, space, codec->deep);
-            return QString();
-        }, nullptr);
+        if (!source.picture)
+            FrameRender::render(rendered, frames, QSize(wide, high), false, [held, at, &rendered, space, codec](int f, QImage const& picture) {
+                held[f - at] = FrameRender::inSpace(rendered, picture, space, codec->deep);
+                return QString();
+            }, nullptr);
         for (int i = 0; i < batch.size(); ++i) {
             // (Told of each frame as it goes down the pipe, in order.)
             if (progress && !progress(at + i))
                 return abandon(QStringLiteral("Stopped."));
+            if (source.picture) {
+                batch[i] = source.picture(frames[i], QSize(wide, high), rendered.background, codec->deep);
+                if (batch[i].size() != QSize(wide, high))
+                    return abandon(QStringLiteral("Could not render frame %1.").arg(frames[i] + 1));
+            }
             if (options.timecode || options.frameNumber) {
                 // Hours, minutes, seconds and frames (and, or, the frame's number), on a dark band.
                 int const frameNow = frames[i], perSecond = std::max(1, int(std::lround(scene.fps)));

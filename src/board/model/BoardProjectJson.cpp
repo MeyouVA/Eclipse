@@ -6,11 +6,49 @@
 
 #include <QCoreApplication>
 #include <QJsonArray>
+#include <QRegularExpression>
 #include <QSet>
 #include <cmath>
 #include <limits>
 
 namespace {
+bool readCamera(QJsonValue const& value, BoardPanel& panel)
+{
+    if (value.isUndefined())
+        return true;
+    if (!value.isArray())
+        return false;
+    double const missing = std::numeric_limits<double>::quiet_NaN();
+    int previous = -1;
+    for (auto const& entry : value.toArray()) {
+        auto const key = entry.toObject();
+        int const frame = key["frame"].toInt(-1);
+        BoardCameraPose const pose{{key["x"].toDouble(missing), key["y"].toDouble(missing)},
+                                   key["zoom"].toDouble(missing), key["rotation"].toDouble(missing)};
+        if (frame <= previous || frame >= panel.length || !BoardCamera::valid(pose))
+            return false;
+        panel.camera.push_back({frame, pose});
+        previous = frame;
+    }
+    return true;
+}
+
+bool writeCamera(BoardPanel const& panel, QJsonObject& json)
+{
+    QJsonArray camera;
+    int previous = -1;
+    for (auto const& key : panel.camera) {
+        if (key.frame <= previous || key.frame >= panel.length || !BoardCamera::valid(key.pose))
+            return false;
+        camera.append(QJsonObject{{"frame", key.frame}, {"x", key.pose.offset.x()}, {"y", key.pose.offset.y()},
+                                  {"zoom", key.pose.zoom}, {"rotation", key.pose.rotation}});
+        previous = key.frame;
+    }
+    if (!camera.isEmpty())
+        json["camera"] = camera;
+    return true;
+}
+
 bool fail(QString* error, char const* message)
 {
     if (error)
@@ -79,7 +117,7 @@ bool readImages(QJsonValue const& value, QHash<QString, QImage>& images)
             return false;
         QImage const image = ImageFiles::decodeEmbedded(bytes.decoded);
         decodedBytes += image.sizeInBytes();
-        if (image.isNull() || decodedBytes > 512 * 1024 * 1024)
+        if (image.isNull() || decodedBytes > BoardProjectJson::maxEmbeddedImagesBytes)
             return false;
         scene_write::rememberPng(image, bytes.decoded);
         images.insert(it.key(), image);
@@ -102,6 +140,7 @@ bool readLayer(QJsonObject const& json, QHash<QString, QImage> const& images, Bo
     }
     layer.kind = kind == QLatin1String("bitmap") ? BoardLayer::Kind::Bitmap : BoardLayer::Kind::Vector;
     layer.visible = json["visible"].toBool(true);
+    layer.locked = json["locked"].toBool(false);
     layer.drawing = scene_read::drawingFromJson(drawing, {}, images);
     return BoardProjectJson::supportedDrawing(layer.drawing);
 }
@@ -112,13 +151,29 @@ bool BoardProjectJson::supportedDrawing(Drawing const& drawing)
     if (!drawing.model.isEmpty())
         return false;
     for (Picture const& picture : drawing.pictures)
-        if (picture.linked || picture.image.isNull() || picture.image.sizeInBytes() > 128 * 1024 * 1024)
+        if (picture.linked || picture.image.isNull() || picture.image.sizeInBytes() > maxEmbeddedImageBytes)
             return false;
     return true;
 }
 
+bool BoardProjectJson::validSound(BoardSound const& sound)
+{
+    if (sound.asset.isEmpty())
+        return sound == BoardSound{};
+    static QRegularExpression const assetPattern(QStringLiteral("\\A[0-9a-f]{32}(?:\\.[A-Za-z0-9]{1,12})?\\z"));
+    return assetPattern.match(sound.asset).hasMatch() && !sound.name.trimmed().isEmpty() && sound.name.size() <= 256
+        && sound.start >= 0 && sound.length > 0 && qint64(sound.start) + sound.length <= std::numeric_limits<int>::max();
+}
+
 bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QString* error)
 {
+    if (!validSound(project.sound))
+        return fail(error, "The sound track is invalid.");
+    if (!project.sound.asset.isEmpty()) {
+        auto const& sound = project.sound;
+        json["sound"] = QJsonObject{{"asset", sound.asset}, {"name", sound.name}, {"start", sound.start},
+                                    {"length", sound.length}, {"muted", sound.muted}};
+    }
     QJsonObject content = project.timeline().toJson();
     if (!validTimeline(content))
         return fail(error, "Invalid scenes, panels or captions.");
@@ -141,15 +196,17 @@ bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QS
                     if (!countedImages.contains(key)) {
                         countedImages.insert(key);
                         imageBytes += picture.image.sizeInBytes();
-                        if (imageBytes > 512 * 1024 * 1024)
+                        if (imageBytes > maxEmbeddedImagesBytes)
                             return fail(error, "The embedded layer images are too large.");
                     }
                 }
-                layers.append(QJsonObject{{"name", layer.name}, {"visible", layer.visible},
+                layers.append(QJsonObject{{"name", layer.name}, {"visible", layer.visible}, {"locked", layer.locked},
                     {"kind", layer.kind == BoardLayer::Kind::Bitmap ? "bitmap" : "vector"},
                     {"drawing", scene_write::drawingToJson(layer.drawing, {}, images, imageKeys)}});
             }
             panel["layers"] = layers;
+            if (!writeCamera(project.shots[s].panels[p], panel))
+                return fail(error, "A panel contains an invalid camera key.");
             panels[p] = panel;
         }
         shot["panels"] = panels;
@@ -167,6 +224,13 @@ bool BoardProjectJson::encode(BoardProject const& project, QJsonObject& json, QS
 
 bool BoardProjectJson::decode(QJsonObject const& json, BoardProject& project, QString* error)
 {
+    if (json.contains("sound")) {
+        auto const audio = json["sound"].toObject();
+        project.sound = {audio["asset"].toString(), audio["name"].toString(),
+                         audio["start"].toInt(-1), audio["length"].toInt(-1), audio["muted"].toBool(false)};
+        if (!validSound(project.sound))
+            return fail(error, "The sound track is invalid.");
+    }
     if (!json.contains("content")) {
         if (json.contains("images"))
             return fail(error, "Project content is missing.");
@@ -185,11 +249,16 @@ bool BoardProjectJson::decode(QJsonObject const& json, BoardProject& project, QS
     for (qsizetype s = 0; s < shots.size(); ++s) {
         auto const& timed = timing.shots[s];
         BoardShot shot{timed.name, timed.sequence, timed.act, {}};
+        if (timed.transition == QLatin1String("Dissolve"))
+            shot.dissolve = std::clamp(timed.transitionLength, 0, 1000000);
         auto const panels = shots[s].toObject()["panels"].toArray();
         for (qsizetype p = 0; p < panels.size(); ++p) {
             BoardPanel panel;
             static_cast<Storyboard::Panel&>(panel) = timed.panels[p];
-            auto const layers = panels[p].toObject()["layers"];
+            auto const panelObject = panels[p].toObject();
+            if (!readCamera(panelObject["camera"], panel))
+                return fail(error, "A panel contains an invalid camera key.");
+            auto const layers = panelObject["layers"];
             if (!layers.isArray())
                 return fail(error, "A panel has an invalid layer list.");
             for (auto const& layerValue : layers.toArray()) {

@@ -10,6 +10,8 @@ class BoardThumbnails : public QListView {
 public:
     explicit BoardThumbnails(BoardDocument* document, QWidget* parent = nullptr);
     void rebuild();
+    void setVertical(bool vertical);
+    void setOverview(bool overview);
     void selectPanel(int shot, int panel);
     void refreshPanel(int shot, int panel);
 
@@ -26,4 +28,5 @@ protected:
 private:
     bool acceptsDrag(QDropEvent const* event) const;
     BoardThumbnailModel* m_panels;
+    bool m_overview = false;
 };

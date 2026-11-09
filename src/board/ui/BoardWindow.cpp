@@ -1,4 +1,5 @@
 #include "board/ui/BoardWindow.h"
+#include "board/ui/BoardStage.h"
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/AppSettings.h"
 
@@ -7,6 +8,7 @@
 #include <QDir>
 #include <QMessageBox>
 #include <QStatusBar>
+#include <QTimer>
 #include <QToolBar>
 
 BoardWindow::BoardWindow(QWidget* parent) : QMainWindow(parent), m_actions(new ActionManager(this))
@@ -27,16 +29,15 @@ BoardWindow::BoardWindow(QWidget* parent) : QMainWindow(parent), m_actions(new A
             if (auto* toolbar = m_actions->createToolbar(id, this))
                 addToolBar(id == QLatin1String("BoardDrawingToolbar") ? Qt::LeftToolBarArea : Qt::TopToolBarArea, toolbar);
         m_actions->installShortcuts(this);
+        m_stage->setViewActions({m_actions->action(QStringLiteral("BoardFitStage")),
+            m_actions->action(QStringLiteral("BoardCameraGuide")), m_actions->action(QStringLiteral("BoardCameraPreview"))});
         m_actions->setChecked(QStringLiteral("BoardBrush"), true);
     } else {
         QMessageBox::warning(this, tr("Eclipse Storyboard"), error);
     }
 
-    m_defaultLayout = saveState();
-    QSettings prefs = settings();
-    prefs.beginGroup(QStringLiteral("board/workspace"));
-    restoreGeometry(prefs.value(QStringLiteral("geometry")).toByteArray());
-    restoreState(prefs.value(QStringLiteral("layout")).toByteArray());
+    loadWorkspaceSettings();
+    applyPreferences();
     connect(&m_document, &BoardDocument::projectChanged, this, &BoardWindow::updateProjectState);
     connect(&m_document, &BoardDocument::projectChanged, this, &BoardWindow::refreshWorkspace);
     connect(m_document.undoStack(), &QUndoStack::cleanChanged, this, &BoardWindow::updateProjectState);
@@ -75,16 +76,27 @@ void BoardWindow::closeEvent(QCloseEvent* event)
         event->ignore();
         return;
     }
-    QSettings prefs = settings();
-    prefs.beginGroup(QStringLiteral("board/workspace"));
-    prefs.setValue(QStringLiteral("geometry"), saveGeometry());
-    prefs.setValue(QStringLiteral("layout"), saveState());
+    saveWorkspaceSettings();
     QMainWindow::closeEvent(event);
 }
 
-void BoardWindow::restoreDefaultLayout()
+void BoardWindow::showEvent(QShowEvent* event)
 {
-    restoreState(m_defaultLayout);
+    QMainWindow::showEvent(event);
+    if (m_sizeDefaultOnMaximize)
+        QTimer::singleShot(0, this, [this] {
+            if (m_sizeDefaultOnMaximize)
+                sizeReferenceLayout();
+        });
+}
+
+void BoardWindow::resizeEvent(QResizeEvent* event)
+{
+    QMainWindow::resizeEvent(event);
+    if (m_sizeDefaultOnMaximize && isMaximized()) {
+        m_sizeDefaultOnMaximize = false;
+        QTimer::singleShot(0, this, [this] { sizeReferenceLayout(); });
+    }
 }
 
 void BoardWindow::undo() { m_document.undoStack()->undo(); }
