@@ -9,6 +9,7 @@ class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
 class QSpinBox;
+class QScrollArea;
 class QVBoxLayout;
 
 class BoardCaptions : public QWidget {
@@ -17,6 +18,8 @@ public:
     explicit BoardCaptions(BoardDocument* document, QWidget* parent = nullptr);
     void showPanel(int shot, int panel);
     void setCustomPanelNames(bool enabled);
+    void highlightMatch(QString const& field, int position, int length);
+    void clearMatchHighlight();
     bool writingCaption() const { return m_writing; }
     void editFields(bool add);
 
@@ -31,6 +34,7 @@ private:
     QLineEdit* m_sceneField;
     QLineEdit* m_panelField;
     QSpinBox* m_duration;
+    QScrollArea* m_scroll;
     QLabel* m_durationHint;
     QVBoxLayout* m_fieldsLayout;
     QStringList m_fields;

@@ -55,6 +55,8 @@ private slots:
     void fitStage();
     void showBoardView(QString const& view);
     void editCaptionFields(QString const& operation);
+    void updateCaptionsCsv();
+    void findInCaptions();
     void useTransport(QString const& operation);
     void loopPlayback(bool enabled);
     void editTiming(QString const& operation);

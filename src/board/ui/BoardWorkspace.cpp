@@ -140,6 +140,8 @@ void BoardWindow::updatePanelActions()
     enabled("BoardSplitPanel", selected && shots[shot].panels[panel].length > 1);
     enabled("BoardCaptionAdd", selected);
     enabled("BoardCaptionRemove", selected);
+    enabled("BoardUpdateCaptionCsv", selected);
+    enabled("BoardFindCaption", selected);
     enabled("BoardPanelDuration", selected);
     enabled("BoardDissolve", selected && shot > 0);
     for (auto id : {"BoardImportImageLayers", "BoardImportImageScenes", "BoardExportFrame",

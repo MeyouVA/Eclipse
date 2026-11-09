@@ -32,6 +32,7 @@
   <shortcut id="shortcut.BoardExportFrame" text="Export Current Image" value=""/>
   <shortcut id="shortcut.BoardExportPdf" text="Storyboard PDF" value=""/>
   <shortcut id="shortcut.BoardExportCsv" text="Export Captions CSV" value=""/>
+  <shortcut id="shortcut.BoardUpdateCaptionCsv" text="Update Captions from CSV" value=""/>
   <shortcut id="shortcut.BoardExportMovie" text="Animatic Movie" value=""/>
   <shortcut id="shortcut.BoardExportImages" text="PNG Image Sequence" value=""/>
   <shortcut id="shortcut.BoardExportAnimation" text="Eclipse Animation Scene" value=""/>
@@ -118,6 +119,7 @@
   <shortcut id="shortcut.BoardCameraNext" text="Next Camera Key" value=""/>
  </category>
  <category id="board.caption" text="Caption">
+  <shortcut id="shortcut.BoardFindCaption" text="Find in Captions" value="Ctrl+Shift+F"/>
   <shortcut id="shortcut.BoardCaptionAdd" text="Add Caption Field" value=""/>
   <shortcut id="shortcut.BoardCaptionRemove" text="Remove Caption Field" value=""/>
  </category>

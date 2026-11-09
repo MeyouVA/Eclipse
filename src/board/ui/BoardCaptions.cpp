@@ -15,11 +15,13 @@
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QTextCursor>
+#include <QTextEdit>
 #include <QVBoxLayout>
 
 BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
     : QWidget(parent), m_document(document), m_sceneField(new QLineEdit(this)), m_panelField(new QLineEdit(this)),
-      m_duration(new QSpinBox(this)), m_durationHint(new QLabel(this))
+      m_duration(new QSpinBox(this)), m_scroll(new QScrollArea(this)), m_durationHint(new QLabel(this))
 {
     if (settings().value(QStringLiteral("prefs/darkStyle"), true).toBool())
         setStyleSheet(QStringLiteral("QPlainTextEdit#BoardCaptionEditor { background: #181818; border: 1px solid #505050; }"));
@@ -33,13 +35,12 @@ BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
     auto* durationRow = new QHBoxLayout;
     durationRow->addWidget(m_duration);
     durationRow->addWidget(m_durationHint, 1);
-    auto* scroll = new QScrollArea(this);
-    auto* fields = new QWidget(scroll);
+    auto* fields = new QWidget(m_scroll);
     m_fieldsLayout = new QVBoxLayout(fields);
     m_fieldsLayout->setContentsMargins(0, 0, 4, 0);
-    scroll->setWidget(fields);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
+    m_scroll->setWidget(fields);
+    m_scroll->setWidgetResizable(true);
+    m_scroll->setFrameShape(QFrame::NoFrame);
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(6, 4, 6, 4);
     layout->setSpacing(4);
@@ -55,7 +56,7 @@ BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
             layout->addLayout(durationRow);
     }
     layout->addSpacing(8);
-    layout->addWidget(scroll, 1);
+    layout->addWidget(m_scroll, 1);
     connect(m_duration, &QSpinBox::editingFinished, this, [this] {
         if (!m_document->setPanelLength(m_shot, m_panel, m_duration->value()))
             if (auto const* current = m_document->panel(m_shot, m_panel))
@@ -70,6 +71,7 @@ BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
 
 void BoardCaptions::showPanel(int shot, int panel)
 {
+    clearMatchHighlight();
     m_editing = nullptr;
     m_shot = shot;
     m_panel = panel;
@@ -106,6 +108,46 @@ void BoardCaptions::setCustomPanelNames(bool enabled)
 {
     m_customPanelNames = enabled;
     updatePanelLabel();
+}
+
+void BoardCaptions::highlightMatch(QString const& field, int position, int length)
+{
+    clearMatchHighlight();
+    for (qsizetype i = 0; i < m_fields.size(); ++i) {
+        if (m_fields[i].compare(field, Qt::CaseInsensitive) != 0)
+            continue;
+        auto* editor = m_editors[i];
+        if (position < 0 || length <= 0 || position + length >= editor->document()->characterCount())
+            return;
+        QTextCursor cursor = editor->textCursor();
+        cursor.setPosition(position);
+        cursor.setPosition(position + length, QTextCursor::KeepAnchor);
+        editor->setTextCursor(cursor);
+        QTextEdit::ExtraSelection highlight;
+        highlight.cursor = cursor;
+        highlight.format.setBackground(editor->palette().highlight());
+        highlight.format.setForeground(editor->palette().highlightedText());
+        editor->setExtraSelections({highlight});
+        m_scroll->ensureWidgetVisible(editor);
+        editor->ensureCursorVisible();
+        return;
+    }
+}
+
+void BoardCaptions::clearMatchHighlight()
+{
+    for (auto* editor : m_editors) {
+        auto const highlights = editor->extraSelections();
+        if (highlights.isEmpty())
+            continue;
+        editor->setExtraSelections({});
+        QTextCursor cursor = editor->textCursor();
+        QTextCursor const match = highlights.first().cursor;
+        if (cursor.selectionStart() == match.selectionStart() && cursor.selectionEnd() == match.selectionEnd()) {
+            cursor.clearSelection();
+            editor->setTextCursor(cursor);
+        }
+    }
 }
 
 void BoardCaptions::updatePanelLabel()
@@ -170,6 +212,7 @@ bool BoardCaptions::eventFilter(QObject* object, QEvent* event)
 
 void BoardCaptions::storeText(QPlainTextEdit* editor, QString const& field)
 {
+    clearMatchHighlight();
     if (editor != m_editing) {
         m_editing = editor;
         ++m_session;

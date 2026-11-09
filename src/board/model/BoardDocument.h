@@ -45,6 +45,9 @@ public:
     bool setLayerDrawing(int shot, int panel, int layer, Drawing const& drawing, QString const& label = {});
     bool importPictures(int shot, int panel, QVector<QPair<QString, QImage>> const& images, int framesPerScene = 0);
     bool setCaption(int shot, int panel, QString const& field, QString const& text, quint64 session = 0);
+    static constexpr qsizetype captionCsvLimit = 32 * 1024 * 1024;
+    int updateCaptionsFromCsv(QByteArray const& bytes, QString* error = nullptr);
+    int replaceCaptionText(QString const& find, QString const& replacement, Qt::CaseSensitivity sensitivity, QString* error = nullptr);
     bool addCaptionField(QString const& field);
     bool removeCaptionField(QString const& field);
     bool duplicateShot(int shot);
@@ -60,6 +63,7 @@ signals:
 private:
     bool hasPanel(int shot, int panel) const;
     bool hasLayer(int shot, int panel, int layer) const;
+    static bool writePanelCaption(BoardPanel& panel, QString const& field, QString const& text);
     bool fitsFrames(int frames, int replacing = 0) const;
     bool appendPanelAllowed(int frames) const;
     bool canGrow(qsizetype panels, qint64 frames) const;

@@ -20,6 +20,7 @@
    </menu>
    <item id="BoardSettings" text="Project Settings..." shortcut="shortcut.BoardSettings" responder="window" slot="editProjectSettings()"/>
    <item id="BoardRefreshThumbnails" text="Regenerate Panel Thumbnails" shortcut="shortcut.BoardRefreshThumbnails" responder="window" slot="regenerateThumbnails()"/>
+   <item id="BoardUpdateCaptionCsv" text="Update Captions from CSV..." shortcut="shortcut.BoardUpdateCaptionCsv" responder="window" slot="updateCaptionsCsv()"/>
    <menu id="BoardImport" text="&amp;Import">
     <item id="BoardImportImageLayers" text="Images as Layers..." shortcut="shortcut.BoardImportImageLayers" responder="window" slot="importBoardImages(QString)" itemParameter="layers"/>
     <item id="BoardImportImageScenes" text="Images as Scenes..." shortcut="shortcut.BoardImportImageScenes" responder="window" slot="importBoardImages(QString)" itemParameter="scenes"/>
@@ -131,6 +132,7 @@
    <item id="BoardCameraNext" text="Next Camera Key" shortcut="shortcut.BoardCameraNext" responder="window" slot="editCamera(QString)" itemParameter="next"/>
   </menu>
   <menu id="Caption" text="&amp;Caption">
+   <item id="BoardFindCaption" text="Find in Captions..." shortcut="shortcut.BoardFindCaption" responder="window" slot="findInCaptions()"/>
    <item id="BoardCaptionAdd" text="Add Caption Field..." shortcut="shortcut.BoardCaptionAdd" responder="window" slot="editCaptionFields(QString)" itemParameter="add"/>
    <item id="BoardCaptionRemove" text="Remove Caption Field..." shortcut="shortcut.BoardCaptionRemove" responder="window" slot="editCaptionFields(QString)" itemParameter="remove"/>
   </menu>
