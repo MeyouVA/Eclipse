@@ -1,0 +1,70 @@
+QMainWindow#BoardWindow::separator {
+    width: 6px;
+    height: 6px;
+}
+
+#BoardWindow > QMenuBar::item {
+    padding: 3px 7px;
+}
+
+#BoardWindow > QToolBar QToolButton {
+    padding: 4px 5px;
+}
+
+#BoardDrawingToolbar QToolButton {
+    padding: 4px 5px;
+}
+
+#BoardStageTitle, #BoardWindow QDockWidget::title {
+    background-color: palette(button);
+    border: 1px solid palette(mid);
+}
+
+#BoardStageFooter, #BoardLayerTools, #BoardInspectorSoundtrack {
+    border: 1px solid palette(mid);
+}
+
+#BoardInspectorTabs::tab-bar {
+    alignment: right;
+}
+
+#BoardInspectorTabs QTabBar::tab {
+    padding: 4px 9px;
+}
+
+#BoardThumbnails, #BoardLayerList, #BoardCaptionScroll, #BoardCaptionScroll > QWidget > QWidget {
+    background-color: palette(window);
+}
+
+#BoardLayerList::item {
+    border-bottom: 1px solid palette(shadow);
+}
+
+#BoardCaptionHeading, #BoardLayerHeading {
+    background-color: palette(button);
+}
+
+#BoardCaptionHeading QToolButton {
+    padding: 2px 4px;
+}
+
+#BoardDurationTimecode {
+    background-color: palette(base);
+    border: 1px solid palette(mid);
+}
+
+#BoardWindow[boardDark="true"] #BoardCaptionEditor,
+#BoardWindow[boardDark="true"] #BoardDurationTimecode {
+    background-color: #181818;
+    border: 1px solid #505050;
+}
+
+#BoardWindow[boardDark="true"] #BoardCaptionHeading,
+#BoardWindow[boardDark="true"] #BoardLayerHeading {
+    background-color: #4b4b4b;
+}
+
+#BoardWindow[boardDark="true"] #BoardDrawingToolbar QToolButton:checked {
+    background-color: #242424;
+    border-color: #252525;
+}

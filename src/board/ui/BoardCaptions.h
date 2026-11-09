@@ -5,12 +5,14 @@
 #include <QVector>
 
 class BoardDocument;
+class QAction;
 class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
 class QSpinBox;
 class QScrollArea;
 class QVBoxLayout;
+class QToolBar;
 
 class BoardCaptions : public QWidget {
     Q_OBJECT
@@ -18,6 +20,8 @@ public:
     explicit BoardCaptions(BoardDocument* document, QWidget* parent = nullptr);
     void showPanel(int shot, int panel);
     void setCustomPanelNames(bool enabled);
+    void setFindAction(QAction* action);
+    void setSoundtrackActions(QList<QAction*> const& actions);
     void highlightMatch(QString const& field, int position, int length);
     void clearMatchHighlight();
     bool writingCaption() const { return m_writing; }
@@ -36,6 +40,9 @@ private:
     QSpinBox* m_duration;
     QScrollArea* m_scroll;
     QLabel* m_durationHint;
+    QLabel* m_selectionInfo;
+    QToolBar* m_soundtrack;
+    QAction* m_findAction = nullptr;
     QVBoxLayout* m_fieldsLayout;
     QStringList m_fields;
     QVector<QPlainTextEdit*> m_editors;

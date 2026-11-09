@@ -53,6 +53,8 @@ private slots:
     void lockSceneNames(bool locked);
     void chooseStageTool(QString const& tool);
     void fitStage();
+    void zoomStage(QString const& direction);
+    void populateLayerMenu(QMenu* menu);
     void showBoardView(QString const& view);
     void editCaptionFields(QString const& operation);
     void updateCaptionsCsv();

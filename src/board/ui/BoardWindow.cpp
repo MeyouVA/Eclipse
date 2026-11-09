@@ -1,4 +1,5 @@
 #include "board/ui/BoardWindow.h"
+#include "board/ui/BoardCaptions.h"
 #include "board/ui/BoardStage.h"
 #include "actions/manager/ActionManager.h"
 #include "actions/theme/AppSettings.h"
@@ -6,32 +7,51 @@
 #include <QAction>
 #include <QCloseEvent>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QTimer>
 #include <QToolBar>
+#include <QActionGroup>
 
 BoardWindow::BoardWindow(QWidget* parent) : QMainWindow(parent), m_actions(new ActionManager(this))
 {
     setObjectName(QStringLiteral("BoardWindow"));
+    setProperty("boardDark", settings().value(QStringLiteral("prefs/darkStyle"), true).toBool());
     setWindowTitle(tr("Eclipse Storyboard"));
     resize(1200, 760);
     buildWorkspace();
 
     QString const resources = ActionManager::defaultDirectory();
+    QFile workspaceStyle(QDir(resources).filePath(QStringLiteral("board/workspace.qss")));
+    if (workspaceStyle.open(QIODevice::ReadOnly))
+        setStyleSheet(QString::fromUtf8(workspaceStyle.readAll()));
     m_actions->setSettingsGroup(QStringLiteral("board"));
     m_actions->setIconDirectory(resources);
     m_actions->registerResponder(QStringLiteral("window"), this);
     QString error;
     if (m_actions->load(QDir(resources).filePath(QStringLiteral("board")), &error)) {
         m_actions->populateMenuBar(QStringLiteral("menu.main"), menuBar());
-        for (QString const& id : m_actions->toolbarIds())
-            if (auto* toolbar = m_actions->createToolbar(id, this))
+        for (QString const& id : m_actions->toolbarIds()) {
+            if (auto* toolbar = m_actions->createToolbar(id, this)) {
+                toolbar->setIconSize(QSize(20, 20));
                 addToolBar(id == QLatin1String("BoardDrawingToolbar") ? Qt::LeftToolBarArea : Qt::TopToolBarArea, toolbar);
+            }
+        }
         m_actions->installShortcuts(this);
         m_stage->setViewActions({m_actions->action(QStringLiteral("BoardFitStage")),
-            m_actions->action(QStringLiteral("BoardCameraGuide")), m_actions->action(QStringLiteral("BoardCameraPreview"))});
+            m_actions->action(QStringLiteral("BoardCameraGuide")), m_actions->action(QStringLiteral("BoardCameraPreview")),
+            m_actions->action(QStringLiteral("BoardStageZoomOut")), m_actions->action(QStringLiteral("BoardStageZoomIn"))});
+        m_captions->setFindAction(m_actions->action(QStringLiteral("BoardFindCaption")));
+        m_captions->setSoundtrackActions({m_actions->action(QStringLiteral("BoardFirstFrame")),
+            m_actions->action(QStringLiteral("BoardStop")), m_actions->action(QStringLiteral("BoardPlay")),
+            m_actions->action(QStringLiteral("BoardLastFrame")), m_actions->action(QStringLiteral("BoardSoundImport")),
+            m_actions->action(QStringLiteral("BoardSoundMute")), m_actions->action(QStringLiteral("BoardSoundRemove"))});
+        if (auto* brush = m_actions->action(QStringLiteral("BoardBrush"))) {
+            if (auto* tools = brush->actionGroup())
+                connect(tools, &QActionGroup::triggered, this, [this](QAction* action) { m_stage->setToolLabel(action->iconText()); });
+        }
         m_actions->setChecked(QStringLiteral("BoardBrush"), true);
     } else {
         QMessageBox::warning(this, tr("Eclipse Storyboard"), error);

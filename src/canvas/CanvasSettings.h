@@ -436,6 +436,9 @@ public:
     bool overlayBrush() const { return m_overlayBrush; }
 
 protected:
+    double m_fitMargin = 24.0;
+    QColor m_frameEdge{70, 70, 70};
+    bool m_drawingLabel = true;
     // A setting changed that shows: the view painted again.
     virtual void settingChanged() = 0;
 };

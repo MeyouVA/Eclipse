@@ -4,34 +4,71 @@
   <item id="BoardNew"/>
   <item id="BoardOpen"/>
   <item id="BoardSave"/>
+  <item id="BoardSaveAs"/>
  </toolbar>
  <toolbar id="BoardEditToolbar" text="Edit">
   <item id="BoardUndo"/>
   <item id="BoardRedo"/>
  </toolbar>
- <toolbar id="BoardArrangementToolbar" text="Scenes and Panels">
-  <item id="BoardNewScene"/>
-  <item id="BoardNewPanel"/>
-  <item id="BoardDuplicatePanel"/>
+ <toolbar id="BoardViewToolbar" text="Views">
+  <item id="workspace.horizontal"/>
+  <item id="workspace.overview"/>
+  <item id="workspace.vertical"/>
+  <item id="workspace.drawing"/>
+  <item id="workspace.timeline"/>
+  <separator/>
+  <item id="BoardStageZoomOut"/>
+  <item id="BoardStageZoomIn"/>
+  <item id="BoardFitStage"/>
  </toolbar>
- <toolbar id="BoardDrawingToolbar" text="Drawing Tools">
-  <item id="BoardSelect"/>
-  <item id="BoardBrush"/>
+ <toolbar id="BoardArrangementToolbar" text="Scenes and Panels">
+  <item id="BoardNewPanel"/>
+  <item id="BoardNewScene"/>
+  <item id="BoardDuplicatePanel"/>
+  <item id="BoardRemovePanel"/>
+  <separator/>
+  <item id="BoardCameraAdd"/>
+  <item id="BoardCameraPreview"/>
+ </toolbar>
+ <toolbar id="BoardDrawingToolbar" text="Drawing Tools" orientation="vertical">
+  <multibutton id="boardSelectionTools">
+   <item id="BoardSelect"/>
+   <item id="BoardToolCutter"/>
+  </multibutton>
+  <multibutton id="boardContourTools">
+   <item id="BoardToolContour"/>
+   <item id="BoardToolPencilEditor"/>
+   <item id="BoardToolPencilRetouch"/>
+   <item id="BoardToolPerspective"/>
+   <item id="BoardToolEditGradient"/>
+  </multibutton>
+  <multibutton id="boardBrushTools">
+   <item id="BoardBrush"/>
+   <item id="BoardToolStamp"/>
+  </multibutton>
   <item id="BoardPencil"/>
   <item id="BoardEraser"/>
-  <item id="BoardPaint"/>
-  <item id="BoardToolContour"/>
-  <item id="BoardToolCutter"/>
   <item id="BoardToolText"/>
-  <item id="BoardToolRectangle"/>
-  <item id="BoardToolEllipse"/>
-  <item id="BoardToolLine"/>
+  <multibutton id="boardShapeTools">
+   <item id="BoardToolRectangle"/>
+   <item id="BoardToolEllipse"/>
+   <item id="BoardToolLine"/>
+   <item id="BoardToolPolyline"/>
+  </multibutton>
+  <multibutton id="boardPaintTools">
+   <item id="BoardPaint"/>
+   <item id="BoardToolPaintUnpainted"/>
+   <item id="BoardToolUnpaint"/>
+   <item id="BoardToolCloseGap"/>
+  </multibutton>
   <item id="BoardToolDropper"/>
-  <item id="BoardToolRotateView"/>
-  <item id="BoardHand"/>
-  <item id="BoardZoom"/>
+  <multibutton id="boardNavigationTools">
+   <item id="BoardHand"/>
+   <item id="BoardZoom"/>
+   <item id="BoardToolRotateView"/>
+  </multibutton>
   <item id="BoardCameraTool"/>
-  <item id="BoardCameraPreview"/>
+  <item id="BoardCameraPreview" visible="false"/>
  </toolbar>
  <toolbar id="BoardTransportToolbar" text="Playback">
   <item id="BoardFirstFrame"/>
@@ -41,5 +78,6 @@
   <item id="BoardNextFrame"/>
   <item id="BoardLastFrame"/>
   <item id="BoardLoop"/>
+  <item id="BoardSoundMute"/>
  </toolbar>
 </toolbars>

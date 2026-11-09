@@ -17,7 +17,10 @@ Pose boardCameraLayerPose(BoardCameraPose const& pose)
     return result;
 }
 
-BoardCameraCanvas::BoardCameraCanvas(Document* document, QWidget* parent) : Canvas(document, parent) {}
+BoardCameraCanvas::BoardCameraCanvas(Document* document, QWidget* parent) : Canvas(document, parent)
+{
+    setFramePresentation(38.0, QColor(164, 164, 164), false);
+}
 
 void BoardCameraCanvas::setCameraTool(bool on)
 {

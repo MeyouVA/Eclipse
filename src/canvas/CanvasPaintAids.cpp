@@ -18,7 +18,7 @@ bool Canvas::paintViewAids(QPainter& painter, QRectF const& frameRect, QTransfor
     Q_UNUSED(view);
     painter.setTransform(cameraViewTransform());
     painter.setClipping(false);
-    QPen border(QColor(70, 70, 70));
+    QPen border(m_frameEdge);
     border.setCosmetic(true);
     painter.setPen(border);
     painter.setBrush(Qt::NoBrush);

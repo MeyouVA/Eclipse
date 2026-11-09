@@ -209,7 +209,7 @@ void Canvas::paintEvent(QPaintEvent*)
         aids.setRenderHint(QPainter::Antialiasing, true);
         if (m_deformationMesh)
             paintDeformationMesh(aids);
-        if (drawingTool && m_viewMode == ViewNormal)
+        if (m_drawingLabel && drawingTool && m_viewMode == ViewNormal)
             paintDrawingLabel(aids);
     }
     gFineFills = true;

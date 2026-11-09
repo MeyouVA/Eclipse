@@ -4,8 +4,12 @@
 #include "board/model/BoardDocument.h"
 #include "model/document/Commands.h"
 
+#include <QApplication>
 #include <QScopedValueRollback>
+#include <QDoubleSpinBox>
+#include <QFormLayout>
 #include <QLabel>
+#include <QPainter>
 #include <QToolBar>
 #include <QStackedLayout>
 #include <QTimer>
@@ -50,7 +54,8 @@ Scene boardPanelScene(BoardProject const& project, int shot, int panel, BoardCam
 BoardStage::BoardStage(BoardDocument* document, QWidget* parent)
     : QWidget(parent), m_board(document), m_scratch(new Document),
       m_canvas(new BoardCameraCanvas(m_scratch, this)), m_preview(new BoardPreview(this)), m_stack(new QStackedLayout),
-      m_viewBar(new QToolBar(this)), m_zoomLabel(new QLabel(this))
+      m_viewBar(new QToolBar(this)), m_zoomLabel(new QLabel(this)), m_layerLabel(new QLabel(this)),
+      m_toolLabel(new QLabel(tr("Brush"), this))
 {
     m_scratch->QObject::setParent(m_canvas);
     m_scratch->setUndoLevels(1);
@@ -58,18 +63,23 @@ BoardStage::BoardStage(BoardDocument* document, QWidget* parent)
     m_canvas->setAcceptDrops(false);
     m_canvas->setBackdrop(stagePaper);
     auto* title = new QLabel(tr("Stage View"), this);
-    title->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    title->setContentsMargins(4, 0, 9, 0);
-    title->setFixedHeight(24);
+    title->setObjectName(QStringLiteral("BoardStageTitle"));
+    title->setAlignment(Qt::AlignCenter);
+    title->setFixedSize(120, 22);
+    auto* heading = new QHBoxLayout;
+    heading->addStretch();
+    heading->addWidget(title);
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setContentsMargins(1, 1, 1, 1);
     layout->setSpacing(0);
-    layout->addWidget(title);
+    layout->addLayout(heading);
     layout->addLayout(m_stack, 1);
     m_viewBar->setIconSize(QSize(16, 16));
+    m_viewBar->setObjectName(QStringLiteral("BoardStageFooter"));
     layout->addWidget(m_viewBar);
     m_stack->addWidget(m_canvas);
     m_stack->addWidget(m_preview);
+    connect(qApp, &QApplication::focusChanged, this, [this] { update(); });
     connect(m_scratch->undoStack(), &QUndoStack::indexChanged, this, &BoardStage::captureArtwork);
     connect(m_canvas, &Canvas::message, this, &BoardStage::message);
     connect(m_canvas, &Canvas::zoomChanged, this, [this] {
@@ -81,6 +91,14 @@ BoardStage::BoardStage(BoardDocument* document, QWidget* parent)
     showPanel(-1, -1, -1, false);
 }
 
+void BoardStage::paintEvent(QPaintEvent*)
+{
+    QPainter painter(this);
+    QWidget const* focused = QApplication::focusWidget();
+    painter.setPen(focused && (focused == this || isAncestorOf(focused)) ? QColor(190, 61, 55) : palette().mid().color());
+    painter.drawRect(rect().adjusted(0, 0, -1, -1));
+}
+
 void BoardStage::setViewActions(QList<QAction*> const& actions)
 {
     for (auto* action : actions)
@@ -89,6 +107,13 @@ void BoardStage::setViewActions(QList<QAction*> const& actions)
     m_zoomLabel->setContentsMargins(8, 0, 8, 0);
     m_zoomLabel->setText(tr("%1%").arg(qRound(m_canvas->zoomPercent())));
     m_viewBar->addWidget(m_zoomLabel);
+    m_layerLabel->setContentsMargins(8, 0, 8, 0);
+    m_viewBar->addWidget(m_layerLabel);
+    auto* space = new QWidget(m_viewBar);
+    space->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    m_viewBar->addWidget(space);
+    m_toolLabel->setContentsMargins(8, 0, 12, 0);
+    m_viewBar->addWidget(m_toolLabel);
 }
 
 void BoardStage::showPanel(int shot, int panel, int layer, bool resetView)
@@ -110,6 +135,7 @@ void BoardStage::chooseLayer(int layer)
     m_layer = layer;
     int const mapped = layer < 0 ? -1 : int(m_scratch->scene().layers.size()) - 1 - layer;
     m_canvas->setCurrentCell(mapped, 0);
+    m_layerLabel->setText(mapped < 0 ? QString() : m_scratch->scene().layers[mapped].name);
 }
 
 void BoardStage::captureArtwork()
@@ -170,6 +196,21 @@ void BoardStage::chooseTool(QString const& tool)
 }
 
 void BoardStage::fit() { m_canvas->fitToWindow(); }
+void BoardStage::zoom(bool in) { m_canvas->zoomBy(in ? 1.25 : 0.8); }
+void BoardStage::setToolLabel(QString const& text) { m_toolLabel->setText(text); }
+
+QWidget* BoardStage::createToolProperties(QWidget* parent)
+{
+    auto* panel = new QWidget(parent);
+    auto* form = new QFormLayout(panel);
+    auto* width = new QDoubleSpinBox(panel);
+    width->setRange(0.1, 512.0);
+    width->setDecimals(1);
+    width->setValue(m_canvas->brushWidth());
+    form->addRow(tr("Stroke width"), width);
+    connect(width, &QDoubleSpinBox::valueChanged, m_canvas, [this](double value) { m_canvas->setBrushWidth(value); });
+    return panel;
+}
 
 void BoardStage::showPreview(QPair<int, int> panel, int frame, QPair<int, int> previous, double mix)
 {

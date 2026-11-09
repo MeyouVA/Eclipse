@@ -52,6 +52,7 @@ void BoardWindow::buildWorkspace()
     m_outline->setIconSize(QSize(46, 46));
     m_outline->setUniformItemSizes(true);
     m_inspectorTabs->addTab(m_outline, tr("Storyboard"));
+    m_inspectorTabs->addTab(m_stage->createToolProperties(m_inspectorTabs), tr("Tool Properties"));
     m_captionDock->setWidget(m_inspectorTabs);
     splitDockWidget(m_layerDock, m_captionDock, Qt::Horizontal);
     connect(m_layers, &BoardLayers::layerSelected, m_stage, &BoardStage::chooseLayer);
@@ -160,6 +161,8 @@ void BoardWindow::chooseStageTool(QString const& tool)
     m_stage->chooseTool(tool);
 }
 void BoardWindow::fitStage() { m_stage->fit(); }
+void BoardWindow::zoomStage(QString const& direction) { m_stage->zoom(direction == QLatin1String("in")); }
+void BoardWindow::populateLayerMenu(QMenu* menu) { m_layers->populateMenu(menu); }
 
 void BoardWindow::regenerateThumbnails()
 {

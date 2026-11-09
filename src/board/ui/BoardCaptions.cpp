@@ -1,8 +1,12 @@
 #include "board/ui/BoardCaptions.h"
 #include "board/model/BoardDocument.h"
-#include "actions/theme/AppSettings.h"
+#include "actions/manager/ActionManager.h"
+#include "actions/theme/Theme.h"
 
 #include <QEvent>
+#include <QApplication>
+#include <QClipboard>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QKeyEvent>
@@ -10,6 +14,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QScopedValueRollback>
 #include <QScrollArea>
@@ -17,36 +22,44 @@
 #include <QSpinBox>
 #include <QTextCursor>
 #include <QTextEdit>
+#include <QToolBar>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
     : QWidget(parent), m_document(document), m_sceneField(new QLineEdit(this)), m_panelField(new QLineEdit(this)),
-      m_duration(new QSpinBox(this)), m_scroll(new QScrollArea(this)), m_durationHint(new QLabel(this))
+      m_duration(new QSpinBox(this)), m_scroll(new QScrollArea(this)), m_durationHint(new QLabel(this)),
+      m_selectionInfo(new QLabel(this)), m_soundtrack(new QToolBar(this))
 {
-    if (settings().value(QStringLiteral("prefs/darkStyle"), true).toBool())
-        setStyleSheet(QStringLiteral("QPlainTextEdit#BoardCaptionEditor { background: #181818; border: 1px solid #505050; }"));
     m_sceneField->setReadOnly(true);
     m_panelField->setReadOnly(true);
     m_panelField->setObjectName(QStringLiteral("BoardPanelLabel"));
     m_duration->setObjectName(QStringLiteral("BoardPanelDurationFrames"));
     m_duration->setRange(1, 1000000);
     m_duration->setKeyboardTracking(false);
-    m_duration->setSuffix(tr(" frames"));
+    m_duration->setAccessibleName(tr("Duration in frames"));
+    m_durationHint->setObjectName(QStringLiteral("BoardDurationTimecode"));
+    m_durationHint->setAlignment(Qt::AlignCenter);
+    m_durationHint->setMinimumWidth(79);
+    m_durationHint->setMinimumHeight(25);
     auto* durationRow = new QHBoxLayout;
+    durationRow->addWidget(m_durationHint);
     durationRow->addWidget(m_duration);
-    durationRow->addWidget(m_durationHint, 1);
+    durationRow->addStretch();
     auto* fields = new QWidget(m_scroll);
     m_fieldsLayout = new QVBoxLayout(fields);
-    m_fieldsLayout->setContentsMargins(0, 0, 4, 0);
+    m_fieldsLayout->setContentsMargins(0, 0, 0, 0);
+    m_fieldsLayout->setSpacing(8);
     m_scroll->setWidget(fields);
     m_scroll->setWidgetResizable(true);
     m_scroll->setFrameShape(QFrame::NoFrame);
+    m_scroll->setObjectName(QStringLiteral("BoardCaptionScroll"));
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(6, 4, 6, 4);
+    layout->setContentsMargins(5, 3, 5, 4);
     layout->setSpacing(4);
-    for (auto const& [text, field] : {qMakePair(tr("Scene"), static_cast<QWidget*>(m_sceneField)),
-                                     qMakePair(tr("Panel"), static_cast<QWidget*>(m_panelField)),
-                                     qMakePair(tr("Duration"), static_cast<QWidget*>(m_duration))}) {
+    for (auto const& [text, field] : {qMakePair(tr("Scene:"), static_cast<QWidget*>(m_sceneField)),
+                                     qMakePair(tr("Panel:"), static_cast<QWidget*>(m_panelField)),
+                                     qMakePair(tr("Duration:"), static_cast<QWidget*>(m_duration))}) {
         auto* label = new QLabel(text, this);
         label->setBuddy(field);
         layout->addWidget(label);
@@ -55,7 +68,43 @@ BoardCaptions::BoardCaptions(BoardDocument* document, QWidget* parent)
         else
             layout->addLayout(durationRow);
     }
-    layout->addSpacing(8);
+    auto* selection = new QToolButton(this);
+    selection->setText(tr("Selection Information"));
+    selection->setCheckable(true);
+    selection->setArrowType(Qt::RightArrow);
+    selection->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    auto* line = new QFrame(this);
+    line->setFrameShape(QFrame::HLine);
+    auto* selectionRow = new QHBoxLayout;
+    selectionRow->addWidget(selection);
+    selectionRow->addWidget(line, 1);
+    layout->addLayout(selectionRow);
+    m_selectionInfo->setWordWrap(true);
+    m_selectionInfo->hide();
+    layout->addWidget(m_selectionInfo);
+    connect(selection, &QToolButton::toggled, this, [this, selection](bool open) {
+        selection->setArrowType(open ? Qt::DownArrow : Qt::RightArrow);
+        m_selectionInfo->setVisible(open);
+    });
+    auto* sound = new QToolButton(this);
+    sound->setText(tr("Soundtrack"));
+    sound->setCheckable(true);
+    sound->setChecked(true);
+    sound->setArrowType(Qt::DownArrow);
+    sound->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    auto* soundLine = new QFrame(this);
+    soundLine->setFrameShape(QFrame::HLine);
+    auto* soundRow = new QHBoxLayout;
+    soundRow->addWidget(sound);
+    soundRow->addWidget(soundLine, 1);
+    layout->addLayout(soundRow);
+    m_soundtrack->setObjectName(QStringLiteral("BoardInspectorSoundtrack"));
+    m_soundtrack->setIconSize(QSize(16, 16));
+    layout->addWidget(m_soundtrack);
+    connect(sound, &QToolButton::toggled, this, [this, sound](bool open) {
+        sound->setArrowType(open ? Qt::DownArrow : Qt::RightArrow);
+        m_soundtrack->setVisible(open);
+    });
     layout->addWidget(m_scroll, 1);
     connect(m_duration, &QSpinBox::editingFinished, this, [this] {
         if (!m_document->setPanelLength(m_shot, m_panel, m_duration->value()))
@@ -87,7 +136,15 @@ void BoardCaptions::showPanel(int shot, int panel)
     updatePanelLabel();
     m_duration->setEnabled(current != nullptr);
     m_duration->setValue(current ? current->length : 1);
-    m_durationHint->setText(current ? tr("%1 s").arg(locale().toString(current->length / project.fps, 'f', 2)) : QString());
+    m_durationHint->setText(current ? Storyboard::duration(current->length, project.fps, true) : QString());
+    m_duration->setToolTip(tr("Duration in frames"));
+    if (current) {
+        auto const& scene = project.shots[shot];
+        m_selectionInfo->setText(tr("Scene %1 · Panel %2 of %3 · %n layer(s)", nullptr, int(current->layers.size()))
+            .arg(scene.name).arg(panel + 1).arg(scene.panels.size()));
+    } else {
+        m_selectionInfo->setText(tr("No panel selected"));
+    }
     for (qsizetype i = 0; i < m_fields.size(); ++i) {
         QString text;
         if (current)
@@ -108,6 +165,15 @@ void BoardCaptions::setCustomPanelNames(bool enabled)
 {
     m_customPanelNames = enabled;
     updatePanelLabel();
+}
+
+void BoardCaptions::setFindAction(QAction* action) { m_findAction = action; }
+
+void BoardCaptions::setSoundtrackActions(QList<QAction*> const& actions)
+{
+    for (auto* action : actions)
+        if (action)
+            m_soundtrack->addAction(action);
 }
 
 void BoardCaptions::highlightMatch(QString const& field, int position, int length)
@@ -177,19 +243,50 @@ void BoardCaptions::rebuildFields(QStringList const& fields)
     }
     m_editors.clear();
     m_fields = fields;
+    QString const resources = ActionManager::defaultDirectory();
     for (auto const& field : m_fields) {
-        auto* label = new QLabel(field, this);
+        auto* section = new QWidget(m_scroll->widget());
+        auto* sectionLayout = new QVBoxLayout(section);
+        sectionLayout->setContentsMargins(0, 0, 0, 0);
+        sectionLayout->setSpacing(0);
+        auto* header = new QWidget(section);
+        header->setObjectName(QStringLiteral("BoardCaptionHeading"));
+        auto* row = new QHBoxLayout(header);
+        row->setContentsMargins(10, 1, 3, 1);
+        row->setSpacing(3);
+        auto* label = new QLabel(field, header);
         label->setTextFormat(Qt::PlainText);
-        auto* editor = new QPlainTextEdit(this);
+        auto* editor = new QPlainTextEdit(section);
         editor->setObjectName(QStringLiteral("BoardCaptionEditor"));
         editor->setAccessibleName(field);
         editor->setUndoRedoEnabled(false);
         editor->setTabChangesFocus(true);
-        editor->setMinimumHeight(66);
+        editor->setMinimumHeight(59);
         editor->installEventFilter(this);
         label->setBuddy(editor);
-        m_fieldsLayout->addWidget(label);
-        m_fieldsLayout->addWidget(editor, 1);
+        row->addWidget(label, 1);
+        auto* copy = new QToolButton(header);
+        copy->setIcon(Theme::icon(resources, QStringLiteral("edit/copy")));
+        copy->setIconSize(QSize(14, 14));
+        copy->setToolTip(tr("Copy caption"));
+        copy->setAccessibleName(copy->toolTip());
+        connect(copy, &QToolButton::clicked, editor, [editor] { QApplication::clipboard()->setText(editor->toPlainText()); });
+        row->addWidget(copy);
+        auto* more = new QToolButton(header);
+        more->setText(QStringLiteral("⋮"));
+        more->setToolTip(tr("Caption commands"));
+        more->setAccessibleName(more->toolTip());
+        connect(more, &QToolButton::clicked, editor, [this, more, editor] {
+            QMenu menu(more);
+            menu.addAction(tr("Select All Text"), editor, [editor] { editor->setFocus(); editor->selectAll(); });
+            if (m_findAction)
+                menu.addAction(m_findAction);
+            menu.exec(more->mapToGlobal(more->rect().bottomLeft()));
+        });
+        row->addWidget(more);
+        sectionLayout->addWidget(header);
+        sectionLayout->addWidget(editor, 1);
+        m_fieldsLayout->addWidget(section, 1);
         m_editors.push_back(editor);
         connect(editor, &QPlainTextEdit::textChanged, this, [this, editor, field] { storeText(editor, field); });
     }

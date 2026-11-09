@@ -3,7 +3,7 @@
  <menu id="menu.main" text="Main Menu">
   <menu id="File" text="&amp;File">
    <item id="BoardNew" icon="file/new" text="&amp;New Project..." shortcut="shortcut.new" responder="window" slot="showWelcome()"/>
-   <item id="BoardOpen" icon="file/open" text="&amp;Open Project..." shortcut="shortcut.open" responder="window" slot="chooseProject()"/>
+   <item id="BoardOpen" icon="board/open" text="&amp;Open Project..." shortcut="shortcut.open" responder="window" slot="chooseProject()"/>
    <menu id="BoardRecent" text="Open &amp;Recent" responder="window" aboutToShowSlot="showRecent(QMenu*)"/>
    <item id="BoardClose" text="&amp;Close Project" shortcut="shortcut.BoardClose" responder="window" slot="closeProject()"/>
    <item id="BoardSave" icon="file/save" text="&amp;Save Project" shortcut="shortcut.save" responder="window" slot="saveProject()"/>
@@ -45,14 +45,16 @@
   </menu>
   <menu id="View" text="&amp;View">
    <item id="BoardFitStage" icon="view/resetview" text="Fit Stage" shortcut="shortcut.BoardFitStage" responder="window" slot="fitStage()"/>
+   <item id="BoardStageZoomOut" icon="view/zoomout" text="Zoom Out Stage" responder="window" slot="zoomStage(QString)" itemParameter="out"/>
+   <item id="BoardStageZoomIn" icon="view/zoomin" text="Zoom In Stage" responder="window" slot="zoomStage(QString)" itemParameter="in"/>
    <item id="BoardTimelineZoomIn" text="Zoom In Timeline" shortcut="shortcut.BoardTimelineZoomIn" responder="window" slot="editTiming(QString)" itemParameter="zoom-in"/>
    <item id="BoardTimelineZoomOut" text="Zoom Out Timeline" shortcut="shortcut.BoardTimelineZoomOut" responder="window" slot="editTiming(QString)" itemParameter="zoom-out"/>
   </menu>
   <menu id="Play" text="&amp;Play">
    <item id="BoardFirstFrame" icon="play/first" text="First Frame" shortcut="shortcut.BoardFirstFrame" responder="window" slot="useTransport(QString)" itemParameter="first"/>
    <item id="BoardPreviousFrame" icon="play/prev" text="Previous Frame" shortcut="shortcut.BoardPreviousFrame" responder="window" slot="useTransport(QString)" itemParameter="previous"/>
-   <item id="BoardPlay" icon="play/play" text="Play / Pause" checkable="true" shortcut="shortcut.boardPlay" responder="window" slot="useTransport(QString)" itemParameter="play"/>
-   <item id="BoardStop" icon="play/stop" text="Stop" shortcut="shortcut.BoardStop" responder="window" slot="useTransport(QString)" itemParameter="stop"/>
+   <item id="BoardPlay" icon="board/play" text="Play / Pause" checkable="true" shortcut="shortcut.boardPlay" responder="window" slot="useTransport(QString)" itemParameter="play"/>
+   <item id="BoardStop" icon="board/stop" text="Stop" shortcut="shortcut.BoardStop" responder="window" slot="useTransport(QString)" itemParameter="stop"/>
    <item id="BoardNextFrame" icon="play/next" text="Next Frame" shortcut="shortcut.BoardNextFrame" responder="window" slot="useTransport(QString)" itemParameter="next"/>
    <item id="BoardLastFrame" icon="play/last" text="Last Frame" shortcut="shortcut.BoardLastFrame" responder="window" slot="useTransport(QString)" itemParameter="last"/>
    <item id="BoardLoop" icon="play/loop" text="Loop" checkable="true" shortcut="shortcut.BoardLoop" responder="window" slot="loopPlayback(bool)"/>
@@ -90,12 +92,38 @@
    <item id="BoardPanelDuration" text="Panel Duration..." shortcut="shortcut.BoardPanelDuration" responder="window" slot="editTiming(QString)" itemParameter="duration"/>
    <item id="BoardDissolve" text="Scene Dissolve..." shortcut="shortcut.BoardDissolve" responder="window" slot="editTiming(QString)" itemParameter="dissolve"/>
   </menu>
+  <menu id="Layer" text="&amp;Layer" responder="window" aboutToShowSlot="populateLayerMenu(QMenu*)"/>
+  <menu id="Camera" text="C&amp;amera">
+   <item id="BoardCameraTool" icon="timeline/addcamera" text="Camera Tool" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardCameraTool" responder="window" slot="chooseStageTool(QString)" itemParameter="camera"/>
+   <item id="BoardCameraGuide" icon="view/safearea" text="Show Camera Frame" checkable="true" checked="true" shortcut="shortcut.BoardCameraGuide" responder="window" slot="showCameraGuide(bool)"/>
+   <item id="BoardCameraPreview" icon="play/renderplay" text="Preview Through Camera" checkable="true" shortcut="shortcut.BoardCameraPreview" responder="window" slot="showCameraPreview(bool)"/>
+   <separator/>
+   <item id="BoardCameraAdd" icon="timeline/addkey" text="Add Camera Key at Playhead" shortcut="shortcut.BoardCameraAdd" responder="window" slot="editCamera(QString)" itemParameter="add"/>
+   <item id="BoardCameraStart" text="Add Camera Key at Panel Start" shortcut="shortcut.BoardCameraStart" responder="window" slot="editCamera(QString)" itemParameter="start"/>
+   <item id="BoardCameraEnd" text="Add Camera Key at Panel End" shortcut="shortcut.BoardCameraEnd" responder="window" slot="editCamera(QString)" itemParameter="end"/>
+   <item id="BoardCameraEdit" text="Edit Camera Key at Playhead..." shortcut="shortcut.BoardCameraEdit" responder="window" slot="editCamera(QString)" itemParameter="edit"/>
+   <item id="BoardCameraRemove" text="Remove Camera Key at Playhead" shortcut="shortcut.BoardCameraRemove" responder="window" slot="editCamera(QString)" itemParameter="remove"/>
+   <separator/>
+   <item id="BoardCameraPrevious" text="Previous Camera Key" shortcut="shortcut.BoardCameraPrevious" responder="window" slot="editCamera(QString)" itemParameter="previous"/>
+   <item id="BoardCameraNext" text="Next Camera Key" shortcut="shortcut.BoardCameraNext" responder="window" slot="editCamera(QString)" itemParameter="next"/>
+  </menu>
+  <menu id="Sound" text="&amp;Sound">
+   <item id="BoardSoundImport" icon="timeline/addsound" text="Import Sound..." shortcut="shortcut.BoardSoundImport" responder="window" slot="editSound(QString)" itemParameter="import"/>
+   <item id="BoardSoundPosition" text="Sound Start Frame..." shortcut="shortcut.BoardSoundPosition" responder="window" slot="editSound(QString)" itemParameter="position"/>
+   <item id="BoardSoundMute" icon="play/sound" text="Mute Sound" checkable="true" shortcut="shortcut.BoardSoundMute" responder="window" slot="editSound(QString)" itemParameter="mute"/>
+   <item id="BoardSoundRemove" icon="edit/delete" text="Remove Sound" shortcut="shortcut.BoardSoundRemove" responder="window" slot="editSound(QString)" itemParameter="remove"/>
+  </menu>
+  <menu id="Caption" text="&amp;Caption">
+   <item id="BoardFindCaption" text="Find in Captions..." shortcut="shortcut.BoardFindCaption" responder="window" slot="findInCaptions()"/>
+   <item id="BoardCaptionAdd" text="Add Caption Field..." shortcut="shortcut.BoardCaptionAdd" responder="window" slot="editCaptionFields(QString)" itemParameter="add"/>
+   <item id="BoardCaptionRemove" text="Remove Caption Field..." shortcut="shortcut.BoardCaptionRemove" responder="window" slot="editCaptionFields(QString)" itemParameter="remove"/>
+  </menu>
   <menu id="Tools" text="&amp;Tools">
    <item id="BoardSelect" icon="tool/select" text="Select" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardSelect" responder="window" slot="chooseStageTool(QString)" itemParameter="select"/>
-   <item id="BoardBrush" icon="tool/brush" text="Brush" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardBrush" responder="window" slot="chooseStageTool(QString)" itemParameter="brush"/>
-   <item id="BoardPencil" icon="tool/pencil" text="Pencil" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardPencil" responder="window" slot="chooseStageTool(QString)" itemParameter="pencil"/>
+   <item id="BoardBrush" icon="board/brush" text="Brush" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardBrush" responder="window" slot="chooseStageTool(QString)" itemParameter="brush"/>
+   <item id="BoardPencil" icon="board/pencil" text="Pencil" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardPencil" responder="window" slot="chooseStageTool(QString)" itemParameter="pencil"/>
    <item id="BoardEraser" icon="tool/eraser" text="Eraser" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardEraser" responder="window" slot="chooseStageTool(QString)" itemParameter="eraser"/>
-   <item id="BoardPaint" icon="tool/paint" text="Paint" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardPaint" responder="window" slot="chooseStageTool(QString)" itemParameter="paint"/>
+   <item id="BoardPaint" icon="board/paint" text="Paint" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardPaint" responder="window" slot="chooseStageTool(QString)" itemParameter="paint"/>
    <item id="BoardHand" icon="tool/hand" text="Hand" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardHand" responder="window" slot="chooseStageTool(QString)" itemParameter="hand"/>
    <item id="BoardZoom" icon="tool/zoom" text="Zoom" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardZoom" responder="window" slot="chooseStageTool(QString)" itemParameter="zoom"/>
    <separator/>
@@ -117,38 +145,13 @@
    <item id="BoardToolDropper" icon="tool/dropper" text="Dropper" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardToolDropper" responder="window" slot="chooseStageTool(QString)" itemParameter="dropper"/>
    <item id="BoardToolRotateView" icon="tool/rotateview" text="Rotate View" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardToolRotateView" responder="window" slot="chooseStageTool(QString)" itemParameter="rotateview"/>
   </menu>
-  <menu id="Camera" text="C&amp;amera">
-   <item id="BoardCameraTool" icon="timeline/addcamera" text="Camera Tool" checkable="true" group="BoardStageTools" shortcut="shortcut.BoardCameraTool" responder="window" slot="chooseStageTool(QString)" itemParameter="camera"/>
-   <item id="BoardCameraGuide" icon="view/safearea" text="Show Camera Frame" checkable="true" checked="true" shortcut="shortcut.BoardCameraGuide" responder="window" slot="showCameraGuide(bool)"/>
-   <item id="BoardCameraPreview" icon="play/renderplay" text="Preview Through Camera" checkable="true" shortcut="shortcut.BoardCameraPreview" responder="window" slot="showCameraPreview(bool)"/>
-   <separator/>
-   <item id="BoardCameraAdd" icon="timeline/addkey" text="Add Camera Key at Playhead" shortcut="shortcut.BoardCameraAdd" responder="window" slot="editCamera(QString)" itemParameter="add"/>
-   <item id="BoardCameraStart" text="Add Camera Key at Panel Start" shortcut="shortcut.BoardCameraStart" responder="window" slot="editCamera(QString)" itemParameter="start"/>
-   <item id="BoardCameraEnd" text="Add Camera Key at Panel End" shortcut="shortcut.BoardCameraEnd" responder="window" slot="editCamera(QString)" itemParameter="end"/>
-   <item id="BoardCameraEdit" text="Edit Camera Key at Playhead..." shortcut="shortcut.BoardCameraEdit" responder="window" slot="editCamera(QString)" itemParameter="edit"/>
-   <item id="BoardCameraRemove" text="Remove Camera Key at Playhead" shortcut="shortcut.BoardCameraRemove" responder="window" slot="editCamera(QString)" itemParameter="remove"/>
-   <separator/>
-   <item id="BoardCameraPrevious" text="Previous Camera Key" shortcut="shortcut.BoardCameraPrevious" responder="window" slot="editCamera(QString)" itemParameter="previous"/>
-   <item id="BoardCameraNext" text="Next Camera Key" shortcut="shortcut.BoardCameraNext" responder="window" slot="editCamera(QString)" itemParameter="next"/>
-  </menu>
-  <menu id="Caption" text="&amp;Caption">
-   <item id="BoardFindCaption" text="Find in Captions..." shortcut="shortcut.BoardFindCaption" responder="window" slot="findInCaptions()"/>
-   <item id="BoardCaptionAdd" text="Add Caption Field..." shortcut="shortcut.BoardCaptionAdd" responder="window" slot="editCaptionFields(QString)" itemParameter="add"/>
-   <item id="BoardCaptionRemove" text="Remove Caption Field..." shortcut="shortcut.BoardCaptionRemove" responder="window" slot="editCaptionFields(QString)" itemParameter="remove"/>
-  </menu>
-  <menu id="Sound" text="&amp;Sound">
-   <item id="BoardSoundImport" icon="timeline/addsound" text="Import Sound..." shortcut="shortcut.BoardSoundImport" responder="window" slot="editSound(QString)" itemParameter="import"/>
-   <item id="BoardSoundPosition" text="Sound Start Frame..." shortcut="shortcut.BoardSoundPosition" responder="window" slot="editSound(QString)" itemParameter="position"/>
-   <item id="BoardSoundMute" text="Mute Sound" checkable="true" shortcut="shortcut.BoardSoundMute" responder="window" slot="editSound(QString)" itemParameter="mute"/>
-   <item id="BoardSoundRemove" text="Remove Sound" shortcut="shortcut.BoardSoundRemove" responder="window" slot="editSound(QString)" itemParameter="remove"/>
-  </menu>
   <menu id="Windows" text="&amp;Windows">
    <menu id="BoardWorkspaces" text="&amp;Workspace">
-    <item id="workspace.overview" text="Overview" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.overview" responder="window" slot="switchWorkspace(QString)" itemParameter="overview"/>
-    <item id="workspace.horizontal" text="Horizontal" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.horizontal" responder="window" slot="switchWorkspace(QString)" itemParameter="horizontal"/>
-    <item id="workspace.vertical" text="Vertical" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.vertical" responder="window" slot="switchWorkspace(QString)" itemParameter="vertical"/>
-    <item id="workspace.drawing" text="Drawing" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.drawing" responder="window" slot="switchWorkspace(QString)" itemParameter="drawing"/>
-    <item id="workspace.timeline" text="Timeline" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.timeline" responder="window" slot="switchWorkspace(QString)" itemParameter="timeline"/>
+   <item id="workspace.overview" icon="view/grid" text="Overview" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.overview" responder="window" slot="switchWorkspace(QString)" itemParameter="overview"/>
+   <item id="workspace.horizontal" icon="view/workspace" text="Horizontal" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.horizontal" responder="window" slot="switchWorkspace(QString)" itemParameter="horizontal"/>
+   <item id="workspace.vertical" icon="view/guidevertical" text="Vertical" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.vertical" responder="window" slot="switchWorkspace(QString)" itemParameter="vertical"/>
+   <item id="workspace.drawing" icon="view/drawingontop" text="Drawing" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.drawing" responder="window" slot="switchWorkspace(QString)" itemParameter="drawing"/>
+   <item id="workspace.timeline" icon="play/views" text="Timeline" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.timeline" responder="window" slot="switchWorkspace(QString)" itemParameter="timeline"/>
    </menu>
    <separator/>
    <item id="BoardThumbnailsShow" text="Show Thumbnails" shortcut="shortcut.BoardThumbnailsShow" responder="window" slot="showBoardView(QString)" itemParameter="thumbnails"/>

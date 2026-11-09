@@ -5,32 +5,93 @@
 #include "canvas/Canvas.h"
 
 #include <QHeaderView>
+#include <QKeyEvent>
 #include <QInputDialog>
+#include <QLabel>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QScopedValueRollback>
 #include <QSignalBlocker>
+#include <QStyledItemDelegate>
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 
+namespace {
+class LayerFlagDelegate : public QStyledItemDelegate {
+public:
+    LayerFlagDelegate(QIcon on, QIcon off, QObject* parent)
+        : QStyledItemDelegate(parent), m_on(std::move(on)), m_off(std::move(off)) {}
+
+    void paint(QPainter* painter, QStyleOptionViewItem const& option, QModelIndex const& index) const override
+    {
+        QStyleOptionViewItem item(option);
+        initStyleOption(&item, index);
+        item.features &= ~QStyleOptionViewItem::HasCheckIndicator;
+        item.widget->style()->drawControl(QStyle::CE_ItemViewItem, &item, painter, item.widget);
+        QRect const iconRect(item.rect.center() - QPoint(6, 6), QSize(14, 14));
+        bool const checked = index.data(Qt::CheckStateRole).toInt() == Qt::Checked;
+        auto const& icon = checked ? m_on : m_off;
+        icon.paint(painter, iconRect, Qt::AlignCenter, checked ? QIcon::Normal : QIcon::Disabled);
+    }
+
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, QStyleOptionViewItem const& option, QModelIndex const& index) override
+    {
+        if (event->type() == QEvent::MouseButtonRelease) {
+            auto const* mouse = static_cast<QMouseEvent const*>(event);
+            if (mouse->button() != Qt::LeftButton || !option.rect.contains(mouse->position().toPoint()))
+                return false;
+        } else if (event->type() == QEvent::KeyPress) {
+            auto const* key = static_cast<QKeyEvent const*>(event);
+            if (key->key() != Qt::Key_Space && key->key() != Qt::Key_Select)
+                return false;
+        } else {
+            return false;
+        }
+        if (!(index.flags() & Qt::ItemIsUserCheckable) || !(index.flags() & Qt::ItemIsEnabled))
+            return false;
+        return model->setData(index, index.data(Qt::CheckStateRole).toInt() == Qt::Checked ? Qt::Unchecked : Qt::Checked,
+                              Qt::CheckStateRole);
+    }
+
+private:
+    QIcon m_on;
+    QIcon m_off;
+};
+}
+
 BoardLayers::BoardLayers(BoardDocument* document, QWidget* parent)
-    : QWidget(parent), m_document(document), m_list(new QTreeWidget(this)), m_add(new QToolButton(this))
+    : QWidget(parent), m_document(document), m_list(new QTreeWidget(this)), m_add(new QToolButton(this)), m_layerType(new QLabel(this))
 {
     m_list->setObjectName(QStringLiteral("BoardLayerList"));
     m_list->setHeaderLabels({tr("Layer"), tr("Type"), tr("Visible"), tr("Locked")});
+    m_list->setHeaderHidden(true);
     m_list->setRootIsDecorated(false);
     m_list->setUniformRowHeights(true);
-    m_list->setIconSize(QSize(66, 38));
+    m_list->setIconSize(QSize(72, 42));
     m_list->header()->setStretchLastSection(false);
     m_list->header()->setSectionResizeMode(0, QHeaderView::Stretch);
-    for (int column = 1; column < m_list->columnCount(); ++column)
-        m_list->header()->setSectionResizeMode(column, QHeaderView::ResizeToContents);
+    m_list->header()->setMinimumSectionSize(18);
+    m_list->hideColumn(1);
+    m_list->header()->moveSection(m_list->header()->visualIndex(2), 0);
+    for (int column : {2, 3}) {
+        m_list->header()->setSectionResizeMode(column, QHeaderView::Fixed);
+        m_list->setColumnWidth(column, 21);
+    }
 
     QString const icons = ActionManager::defaultDirectory();
+    auto const eye = Theme::icon(icons, QStringLiteral("timeline/enable"));
+    m_list->setItemDelegateForColumn(2, new LayerFlagDelegate(eye, eye, m_list));
+    m_list->setItemDelegateForColumn(3, new LayerFlagDelegate(Theme::icon(icons, QStringLiteral("timeline/lock")),
+        Theme::icon(icons, QStringLiteral("timeline/unlock")), m_list));
     auto* tools = new QToolBar(this);
-    tools->setIconSize(QSize(18, 18));
+    tools->setObjectName(QStringLiteral("BoardLayerTools"));
+    tools->setIconSize(QSize(16, 16));
+    auto* space = new QWidget(tools);
+    space->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    tools->addWidget(space);
     m_add->setIcon(Theme::icon(icons, QStringLiteral("timeline/adddrawing")));
     m_add->setToolTip(tr("Add Layer"));
     m_add->setAccessibleName(tr("Add Layer"));
@@ -51,10 +112,27 @@ BoardLayers::BoardLayers(BoardDocument* document, QWidget* parent)
     m_down = command(tr("Move Layer Down"), "timeline/layerdown", "down");
     m_remove = command(tr("Delete Layer"), "timeline/deletelayer", "remove");
 
+    auto* header = new QWidget(this);
+    header->setObjectName(QStringLiteral("BoardLayerHeading"));
+    header->setFixedHeight(29);
+    auto* heading = new QHBoxLayout(header);
+    heading->setContentsMargins(3, 0, 4, 0);
+    auto* layerCommands = new QToolButton(header);
+    layerCommands->setText(QStringLiteral("››"));
+    layerCommands->setToolTip(tr("Layer commands"));
+    layerCommands->setAccessibleName(layerCommands->toolTip());
+    auto* layerMenu = new QMenu(layerCommands);
+    connect(layerMenu, &QMenu::aboutToShow, this, [this, layerMenu] { populateMenu(layerMenu); });
+    layerCommands->setMenu(layerMenu);
+    layerCommands->setPopupMode(QToolButton::InstantPopup);
+    heading->addWidget(layerCommands);
+    heading->addStretch();
+    heading->addWidget(m_layerType);
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(4, 4, 4, 0);
-    layout->setSpacing(2);
-    layout->addWidget(m_list);
+    layout->setContentsMargins(1, 0, 1, 0);
+    layout->setSpacing(0);
+    layout->addWidget(header);
+    layout->addWidget(m_list, 1);
     layout->addWidget(tools);
     connect(m_list, &QTreeWidget::currentItemChanged, this, [this] {
         updateActions();
@@ -86,6 +164,9 @@ int BoardLayers::showPanel(int shot, int panel)
     if (auto const* current = m_document->panel(shot, panel))
         for (auto const& layer : current->layers) {
             auto* item = new QTreeWidgetItem({layer.name, layer.kind == BoardLayer::Kind::Bitmap ? tr("Bitmap") : tr("Vector")});
+            item->setToolTip(0, tr("%1 · %2 layer").arg(layer.name, item->text(1)));
+            item->setToolTip(2, tr("Toggle layer visibility"));
+            item->setToolTip(3, tr("Toggle layer lock"));
             item->setCheckState(2, layer.visible ? Qt::Checked : Qt::Unchecked);
             item->setCheckState(3, layer.locked ? Qt::Checked : Qt::Unchecked);
             m_list->addTopLevelItem(item);
@@ -97,6 +178,14 @@ int BoardLayers::showPanel(int shot, int panel)
 }
 
 void BoardLayers::refreshSelectedPreview() { updatePreview(row()); }
+
+void BoardLayers::populateMenu(QMenu* menu)
+{
+    menu->clear();
+    menu->addActions(m_add->menu()->actions());
+    menu->addSeparator();
+    menu->addActions({m_rename, m_duplicate, m_up, m_down, m_remove});
+}
 
 void BoardLayers::updatePreview(int index)
 {
@@ -122,8 +211,11 @@ void BoardLayers::updatePreview(int index)
     painter.setClipRect(QRectF(0, 0, project.width, project.height));
     Canvas::paintDrawing(painter, scene, layer.drawing, 1.0);
     painter.end();
-    item->setIcon(0, QIcon(thumbnail.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
-    item->setSizeHint(0, QSize(0, size.height() + 8));
+    auto const preview = thumbnail.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    QIcon icon(preview);
+    icon.addPixmap(preview, QIcon::Selected);
+    item->setIcon(0, icon);
+    item->setSizeHint(0, QSize(0, size.height() + 4));
 }
 
 int BoardLayers::row() const { return m_list->indexOfTopLevelItem(m_list->currentItem()); }
@@ -131,7 +223,10 @@ int BoardLayers::row() const { return m_list->indexOfTopLevelItem(m_list->curren
 void BoardLayers::updateActions()
 {
     int const current = row();
+    m_layerType->setText(current < 0 ? QString() : tr("%1 layer").arg(m_list->currentItem()->text(1)));
     m_add->setEnabled(m_document->panel(m_shot, m_panel) != nullptr);
+    for (auto* action : m_add->menu()->actions())
+        action->setEnabled(m_add->isEnabled());
     m_rename->setEnabled(current >= 0);
     m_duplicate->setEnabled(current >= 0);
     m_remove->setEnabled(current >= 0);

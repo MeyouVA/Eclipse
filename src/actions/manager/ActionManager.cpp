@@ -18,6 +18,8 @@
 
 #include <QMouseEvent>
 
+#include <algorithm>
+
 #include "actions/dialogs/ToolbarDialog.h"
 #include "actions/theme/Theme.h"
 
@@ -432,11 +434,31 @@ QStringList ActionManager::toolbarEntries(QString const& toolbarId) const
     QString const key = QStringLiteral("toolbars/") + toolbarId;
     if (!settings.contains(key))
         return toolbarDefaultEntries(toolbarId);
-    // What the user chose, less anything a newer definition file no longer has.
     QStringList out;
-    for (QString const& entry : settings.value(key).toStringList())
-        if (entry == kSeparatorEntry || toolbarChild(toolbarId, entry))
+    for (QString const& entry : settings.value(key).toStringList()) {
+        if (entry == kSeparatorEntry) {
             out << entry;
+            continue;
+        }
+        QString id = entry;
+        if (!toolbarChild(toolbarId, id)) {
+            // Keep saved entries that have moved from individual buttons into a group.
+            id.clear();
+            auto const toolbar = m_toolbars.constFind(toolbarId);
+            if (toolbar != m_toolbars.constEnd())
+                for (auto const& group : toolbar->children) {
+                    if (group.type != Node::MultiButton)
+                        continue;
+                    auto const matchesEntry = [&](Node const& child) { return child.value("id") == entry; };
+                    if (std::any_of(group.children.cbegin(), group.children.cend(), matchesEntry)) {
+                        id = group.value("id");
+                        break;
+                    }
+                }
+        }
+        if (!id.isEmpty() && !out.contains(id))
+            out << id;
+    }
     return out;
 }
 

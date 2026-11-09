@@ -115,5 +115,5 @@ void BoardWindow::sizeReferenceLayout()
     else if (m_workspace == QLatin1String("timeline"))
         resizeDocks({m_timelineDock}, {height() * 32 / 100}, Qt::Vertical);
     else
-        resizeDocks({m_thumbnailDock}, {height() * 23 / 100}, Qt::Vertical);
+        resizeDocks({m_thumbnailDock}, {height() * 24 / 100}, Qt::Vertical);
 }

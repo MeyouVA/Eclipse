@@ -899,6 +899,7 @@ signals:
     void stampsChanged();
 
 protected:
+    void setFramePresentation(double fitMargin, QColor const& edge, bool drawingLabel);
     void paintEvent(QPaintEvent*) override;
     void resizeEvent(QResizeEvent*) override;
     void mousePressEvent(QMouseEvent*) override;

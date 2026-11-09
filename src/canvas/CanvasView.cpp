@@ -369,12 +369,18 @@ QPointF Canvas::toLayer(QPointF widgetPos) const
     return layerViewTransform().inverted().map(widgetPos);
 }
 
+void Canvas::setFramePresentation(double fitMargin, QColor const& edge, bool drawingLabel)
+{
+    m_fitMargin = fitMargin;
+    m_frameEdge = edge;
+    m_drawingLabel = drawingLabel;
+}
+
 void Canvas::fitToWindow()
 {
     Scene const& scene = m_document->scene();
-    double const margin = 24.0;
-    double const zx = (width() - 2 * margin) / scene.width;
-    double const zy = (height() - 2 * margin) / scene.height;
+    double const zx = (width() - 2 * m_fitMargin) / scene.width;
+    double const zy = (height() - 2 * m_fitMargin) / scene.height;
     m_zoom = std::max(0.02, std::min(zx, zy));
     emit zoomChanged();
     m_pan = QPointF();
