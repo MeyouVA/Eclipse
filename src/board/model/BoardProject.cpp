@@ -1,4 +1,5 @@
 #include "board/model/BoardProject.h"
+#include "board/model/BoardProjectFolder.h"
 #include "board/model/BoardProjectJson.h"
 
 #include <QCoreApplication>
@@ -7,11 +8,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
-#include <QSaveFile>
+#include <QTemporaryDir>
 #include <cmath>
 
 namespace {
-constexpr qint64 kFileLimit = 128 * 1024 * 1024;
+constexpr qsizetype kFileLimit = BoardProjectFolder::maxProjectBytes;
 
 QString tr(char const* message)
 {
@@ -38,6 +39,41 @@ bool validProject(BoardProject const& project)
         && project.width >= 1 && project.width <= 32768 && project.height >= 1 && project.height <= 32768
         && std::isfinite(project.fps) && project.fps >= 1.0 && project.fps <= 240.0;
 }
+
+bool readProject(QByteArray const& bytes, QString const& path, BoardProject& project, QString* error)
+{
+    if (error)
+        error->clear();
+    auto fail = [error](QString const& message) {
+        if (error)
+            *error = message;
+        return false;
+    };
+    if (bytes.size() > kFileLimit)
+        return fail(tr("The project exceeds the file size limit."));
+    QJsonParseError parse;
+    QJsonDocument const document = QJsonDocument::fromJson(bytes, &parse);
+    if (!document.isObject())
+        return fail(tr("Invalid project JSON: %1").arg(parse.errorString()));
+    auto json = document.object();
+    if (json["format"].toString() != QLatin1String("eclipse-board") || json["version"].toInt() != 1)
+        return fail(tr("This is not a supported Eclipse Storyboard file."));
+
+    BoardProject loaded{json["name"].toString(), json["title"].toString(), json["subtitle"].toString(),
+                        json["width"].toInt(), json["height"].toInt(), json["fps"].toDouble(), {}};
+    if (!validProject(loaded))
+        return fail(tr("The project has an invalid name or camera settings."));
+    if (json.contains("storage")) {
+        if (path.isEmpty())
+            return fail(tr("Open this project from its folder to read its artwork."));
+        if (!BoardProjectFolder::assemble(path, json, error))
+            return false;
+    }
+    if (!BoardProjectJson::decode(json, loaded, error))
+        return false;
+    project = std::move(loaded);
+    return true;
+}
 }
 
 QString BoardProject::create(QString const& directory, QString* error) const
@@ -51,33 +87,32 @@ QString BoardProject::create(QString const& directory, QString* error) const
     };
     if (!validProject(*this))
         return fail(tr("Enter a valid project name, title and camera settings."));
-    QDir const parent(directory);
+    QDir parent(directory);
     if (directory.trimmed().isEmpty() || !parent.exists())
         return fail(tr("The project directory does not exist."));
-    if (!parent.mkdir(name))
-        return fail(tr("Could not create the project folder. The name may already be in use or the directory may be read-only."));
+    QFileInfo const destination(parent.filePath(name));
+    if (destination.exists() || destination.isSymLink())
+        return fail(tr("A file or folder with that project name already exists."));
+    QTemporaryDir staged(parent.filePath(QStringLiteral(".board-create-XXXXXX")));
+    if (!staged.isValid())
+        return fail(tr("Could not prepare the project folder: %1").arg(staged.errorString()));
 
-    QString const path = parent.absoluteFilePath(name + QLatin1Char('/') + name + QStringLiteral(".ecb"));
+    QString const filename = name + QStringLiteral(".ecb");
     BoardProject initial = *this;
     if (initial.shots.isEmpty())
         initial.shots = {{QStringLiteral("1"), {}, {}, {blankPanel(int(std::lround(fps)))}}};
-    if (initial.save(path, error))
-        return path;
-    parent.rmdir(name);
-    return {};
+    if (!initial.save(staged.filePath(filename), error))
+        return {};
+    if (!parent.rename(QDir(staged.path()).dirName(), name))
+        return fail(tr("Could not publish the project folder. The name may already be in use or the directory may be read-only."));
+    staged.setAutoRemove(false);
+    return QDir(destination.absoluteFilePath()).absoluteFilePath(filename);
 }
 
 bool BoardProject::save(QString const& path, QString* error) const
 {
     QByteArray const bytes = toBytes(error);
-    if (bytes.isEmpty())
-        return false;
-    QSaveFile file(path);
-    if (file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit())
-        return true;
-    if (error)
-        *error = tr("Could not save the project: %1").arg(file.errorString());
-    return false;
+    return !bytes.isEmpty() && BoardProjectFolder::save(path, bytes, error);
 }
 
 QByteArray BoardProject::toBytes(QString* error) const
@@ -107,7 +142,7 @@ bool BoardProject::open(QString const& path, BoardProject& project, QString* err
     if (file.open(QIODevice::ReadOnly)) {
         QByteArray const bytes = file.read(kFileLimit + 1);
         if (file.error() == QFile::NoError)
-            return fromBytes(bytes, project, error);
+            return readProject(bytes, path, project, error);
     }
     if (error)
         *error = file.errorString();
@@ -116,32 +151,5 @@ bool BoardProject::open(QString const& path, BoardProject& project, QString* err
 
 bool BoardProject::fromBytes(QByteArray const& bytes, BoardProject& project, QString* error)
 {
-    if (error)
-        error->clear();
-    auto fail = [error](QString const& message) {
-        if (error)
-            *error = message;
-        return false;
-    };
-    if (bytes.size() > kFileLimit)
-        return fail(tr("The project exceeds the file size limit."));
-
-    QJsonParseError parse;
-    QJsonDocument const document = QJsonDocument::fromJson(bytes, &parse);
-    if (!document.isObject())
-        return fail(tr("Invalid project JSON: %1").arg(parse.errorString()));
-    QJsonObject const json = document.object();
-    if (json.value(QStringLiteral("format")).toString() != QLatin1String("eclipse-board")
-        || json.value(QStringLiteral("version")).toInt() != 1)
-        return fail(tr("This is not a supported Eclipse Storyboard file."));
-
-    BoardProject loaded{json.value(QStringLiteral("name")).toString(), json.value(QStringLiteral("title")).toString(),
-                        json.value(QStringLiteral("subtitle")).toString(), json.value(QStringLiteral("width")).toInt(),
-                        json.value(QStringLiteral("height")).toInt(), json.value(QStringLiteral("fps")).toDouble(), {}};
-    if (!validProject(loaded))
-        return fail(tr("The project has an invalid name or camera settings."));
-    if (!BoardProjectJson::decode(json, loaded, error))
-        return false;
-    project = std::move(loaded);
-    return true;
+    return readProject(bytes, {}, project, error);
 }

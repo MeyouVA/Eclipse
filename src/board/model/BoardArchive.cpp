@@ -109,11 +109,9 @@ QString BoardArchive::restore(QString const& archive, QString const& directory, 
         return reject(tr("Could not prepare the restore folder: %1").arg(staged.errorString()));
     QDir const working(staged.path());
     QString const filename = project.name + QStringLiteral(".ecb");
-    if (!writeFile(working.filePath(filename), *projectBytes, error))
+    if (!project.save(working.filePath(filename), error))
         return {};
     if (hasAudio) {
-        if (!working.mkdir(QStringLiteral("audio")))
-            return reject(tr("Could not create the restored audio folder."));
         if (!writeFile(working.filePath(audioEntry), *audioBytes, error))
             return {};
     }

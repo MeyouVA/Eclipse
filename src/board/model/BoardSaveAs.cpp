@@ -1,4 +1,5 @@
 #include "board/model/BoardDocument.h"
+#include "board/model/BoardProjectFolder.h"
 
 #include <QDir>
 #include <QFile>
@@ -86,7 +87,8 @@ bool BoardDocument::saveAs(QString const& path, QString* error)
     if (!staged.isValid())
         return fail(tr("Could not prepare the project copy: %1").arg(staged.errorString()));
     QString const projectFile = staged.filePath(QStringLiteral("copy.ecb"));
-    if (!m_project.save(projectFile, error))
+    auto const bytes = m_project.toBytes(error);
+    if (bytes.isEmpty() || !BoardProjectFolder::save(projectFile, bytes, error, folder.absolutePath()))
         return false;
     QFile copy(projectFile);
     if (!copy.rename(destination.absoluteFilePath()))
