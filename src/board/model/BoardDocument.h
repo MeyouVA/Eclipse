@@ -21,6 +21,7 @@ public:
     bool saveAs(QString const& path, QString* error = nullptr);
     bool isLegacyProject() const { return m_legacy; }
     bool convertLegacyCopy(QString const& directory, QString* error = nullptr);
+    qsizetype moveUnusedArtwork(QString& recoveryFolder, QString* error = nullptr) const;
     QString extractProject(int first, int last, QString const& name, QString const& directory, QString* error = nullptr) const;
     QString splitProject(int firstSceneOfSecondPart, QString const& name, QString const& directory, QString* error = nullptr) const;
     bool insertProject(BoardProject source, QString const& sourceFile, int after, bool useImportedSound, QString* error = nullptr);

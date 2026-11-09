@@ -38,6 +38,8 @@ Open the `.ecb` file inside its project folder. It holds scenes, panel timing, c
 
 Move or copy the whole folder to keep its artwork and sound with the project. **File → Save and Pack** creates a portable ZIP. When you open an older single-file board, Eclipse offers to convert a copy into a new project folder. If you choose **Open Original**, you can convert a copy later under **File → Project Management** or save the original to update it in place.
 
+**File → Project Management → Clean Up Project Artwork** checks saved boards and versions in the same folder. It moves unused drawings and pictures into a recovery folder, keeping their original relative paths.
+
 ---
 
 ## ✨ Highlights

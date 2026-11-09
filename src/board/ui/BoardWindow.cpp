@@ -78,6 +78,7 @@ void BoardWindow::updateProjectState()
         enabled(id, loaded);
     enabled("BoardSettings", loaded);
     enabled("BoardConvertLegacy", m_document.isLegacyProject());
+    enabled("BoardCleanArtwork", loaded && !m_document.isLegacyProject());
     enabled("BoardUndo", history->canUndo());
     enabled("BoardRedo", history->canRedo());
     updatePanelActions();

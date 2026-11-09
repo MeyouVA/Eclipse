@@ -41,6 +41,7 @@ private slots:
     void saveProjectAs();
     void saveNewVersion();
     void convertLegacyProject();
+    void cleanProjectArtwork();
     void archiveProject(QString const& operation);
     void restoreArchive();
     void transferProject(QString const& operation);

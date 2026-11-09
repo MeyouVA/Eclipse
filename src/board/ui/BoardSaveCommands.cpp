@@ -8,6 +8,30 @@
 #include <QRegularExpression>
 #include <QStatusBar>
 
+void BoardWindow::cleanProjectArtwork()
+{
+    if (m_document.path().isEmpty() || m_document.isLegacyProject())
+        return;
+    QString const title = tr("Clean Up Project Artwork");
+    if (QMessageBox::question(this, title,
+            tr("Check all saved Storyboard files in this folder and move unused drawings and pictures to a recovery folder?"),
+            QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel) != QMessageBox::Yes)
+        return;
+    QString recovery;
+    QString error;
+    auto const count = m_document.moveUnusedArtwork(recovery, &error);
+    if (count < 0) {
+        if (!recovery.isEmpty())
+            error += QStringLiteral("\n\n") + QDir::toNativeSeparators(recovery);
+        QMessageBox::warning(this, title, error);
+    } else if (count == 0) {
+        QMessageBox::information(this, title, tr("No unused drawings or pictures were found."));
+    } else {
+        QMessageBox::information(this, title,
+            tr("Moved %n unused artwork file(s) to:\n%1", nullptr, int(count)).arg(QDir::toNativeSeparators(recovery)));
+    }
+}
+
 void BoardWindow::convertLegacyProject()
 {
     if (!m_document.isLegacyProject())

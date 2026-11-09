@@ -88,7 +88,7 @@ bool BoardDocument::copyTo(QString const& path, QString* error) const
     if (destination.suffix().compare(QLatin1String("ecb"), Qt::CaseInsensitive) != 0 || !folder.exists())
         return fail(tr("Choose a new .ecb file in an existing folder."));
 
-    QLockFile lock(folder.filePath(QStringLiteral(".eclipse-board-copy.lock")));
+    QLockFile lock(folder.filePath(QLatin1String(BoardProjectFolder::copyLockName)));
     lock.setStaleLockTime(0);
     if (!lock.tryLock())
         return fail(tr("Could not lock the destination folder. Check that it is writable and retry."));

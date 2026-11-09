@@ -14,6 +14,7 @@
    <item id="BoardRestore" text="Restore and Open Backup..." shortcut="shortcut.BoardRestore" responder="window" slot="restoreArchive()"/>
    <menu id="BoardProjectManagement" text="Project Management">
    <item id="BoardConvertLegacy" text="Convert Legacy Project Copy..." shortcut="shortcut.BoardConvertLegacy" responder="window" slot="convertLegacyProject()"/>
+   <item id="BoardCleanArtwork" text="Clean Up Project Artwork..." shortcut="shortcut.BoardCleanArtwork" responder="window" slot="cleanProjectArtwork()"/>
     <item id="BoardSplitProject" text="Split Project..." shortcut="shortcut.BoardSplitProject" responder="window" slot="transferProject(QString)" itemParameter="split"/>
     <item id="BoardExtract" text="Extract Scenes..." shortcut="shortcut.BoardExtract" responder="window" slot="transferProject(QString)" itemParameter="extract"/>
     <item id="BoardInsert" text="Insert Project After Current Scene..." shortcut="shortcut.BoardInsert" responder="window" slot="transferProject(QString)" itemParameter="insert"/>

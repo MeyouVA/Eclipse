@@ -147,10 +147,23 @@ bool mapLayers(QJsonObject& json, auto const& convert)
 }
 }
 
+QRegularExpression const& BoardProjectFolder::drawingAssetPattern()
+{
+    static QRegularExpression const pattern(QStringLiteral(R"(\Aelements/drawings/([0-9a-f]{64})\.ecd\z)"));
+    return pattern;
+}
+
+QRegularExpression const& BoardProjectFolder::pictureAssetPattern()
+{
+    static QRegularExpression const pattern(QStringLiteral(R"(\Aelements/pictures/([0-9a-f]{64})\.(?:png|tif)\z)"));
+    return pattern;
+}
+
 bool BoardProjectFolder::save(QString const& path, QByteArray const& embedded, QString* error, QString const& assetRoot)
 {
     QDir const root = assetRoot.isEmpty() ? QFileInfo(path).absoluteDir() : QDir(assetRoot);
-    QLockFile lock(root.filePath(QStringLiteral(".eclipse-board-save.lock")));
+    QLockFile lock(root.filePath(QLatin1String(saveLockName)));
+    lock.setStaleLockTime(0);
     if (!lock.tryLock())
         return fail(error, tr("Could not lock the project folder for saving."));
     if (QFileInfo(path).isSymLink())
@@ -216,8 +229,6 @@ bool BoardProjectFolder::save(QString const& path, QByteArray const& embedded, Q
 
 bool BoardProjectFolder::assemble(QString const& path, QJsonObject& manifest, QString* error)
 {
-    static QRegularExpression const drawingPath(QStringLiteral(R"(\Aelements/drawings/([0-9a-f]{64})\.ecd\z)"));
-    static QRegularExpression const picturePath(QStringLiteral(R"(\Aelements/pictures/([0-9a-f]{64})\.(?:png|tif)\z)"));
     if (manifest["storage"].toString() != QLatin1String("folder") || !manifest["content"].isObject()
         || (manifest.contains("images") && !manifest["images"].isObject()))
         return fail(error, tr("The project has an invalid folder manifest."));
@@ -228,7 +239,7 @@ bool BoardProjectFolder::assemble(QString const& path, QJsonObject& manifest, QS
         QString const file = it.value().toString();
         if (it.key() != QFileInfo(file).completeBaseName())
             return fail(error, tr("A project image has an invalid identifier."));
-        auto const bytes = assets.get(file, picturePath);
+        auto const bytes = assets.get(file, pictureAssetPattern());
         if (bytes.isEmpty())
             return false;
         if (!consume(budget, ((bytes.size() + 2) / 3) * 4, error))
@@ -242,7 +253,7 @@ bool BoardProjectFolder::assemble(QString const& path, QJsonObject& manifest, QS
         if (layer.contains("drawing"))
             return fail(error, tr("A project layer has conflicting drawing data."));
         QString const file = layer.take("drawingFile").toString();
-        auto const bytes = assets.get(file, drawingPath);
+        auto const bytes = assets.get(file, drawingAssetPattern());
         if (bytes.isEmpty())
             return false;
         if (!consume(budget, bytes.size(), error))
