@@ -25,6 +25,7 @@ cmake --build out --target Eclipse EclipseTool_batch EclipseTool_convert Eclipse
 if exist Release.new rmdir /s /q Release.new
 mkdir Release.new || exit /b 1
 copy /y out\Eclipse.exe Release.new\ >nul || exit /b 1
+copy /y scripts\register_storyboard_file_type.ps1 Release.new\ >nul || exit /b 1
 rem The small programs beside it: the batch program, the converters, information, the Configuration Editor and the Service Launcher.
 for %%t in (batch convert info config services) do copy /y out\eclipse-%%t.exe Release.new\ >nul || exit /b 1
 rem The libraries the program is made of: they must stay beside it.
