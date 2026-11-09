@@ -8,7 +8,9 @@
 #include <QFileInfo>
 #include <QMenu>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QStatusBar>
+#include <QTimer>
 
 bool BoardWindow::openProject(QString const& path)
 {
@@ -25,7 +27,27 @@ bool BoardWindow::loadProject(QString const& path)
     }
     rememberProjectPath();
     selectPanel(0, 0, true);
+    if (m_document.isLegacyProject())
+        QTimer::singleShot(0, this, [this, path = m_document.path()] { offerLegacyConversion(path); });
     return true;
+}
+
+void BoardWindow::offerLegacyConversion(QString const& path)
+{
+    if (m_document.path() != path || !m_document.isLegacyProject())
+        return;
+    QMessageBox prompt(QMessageBox::Question, tr("Convert Legacy Board"),
+        tr("This project uses the older single-file layout. Convert a copy to create a new project folder and leave the original file intact. "
+           "If you open the original, saving it later will update it in place."),
+        QMessageBox::NoButton, this);
+    prompt.setObjectName(QStringLiteral("BoardLegacyConversion"));
+    auto* convert = prompt.addButton(tr("Convert a Copy…"), QMessageBox::AcceptRole);
+    auto* open = prompt.addButton(tr("Open Original"), QMessageBox::RejectRole);
+    prompt.setDefaultButton(open);
+    prompt.setEscapeButton(open);
+    prompt.exec();
+    if (prompt.clickedButton() == convert)
+        convertLegacyProject();
 }
 
 void BoardWindow::rememberProjectPath()
@@ -48,6 +70,7 @@ bool BoardWindow::saveChanges()
         QMessageBox::warning(this, tr("Eclipse Storyboard"), error);
         return false;
     }
+    updateProjectState();
     statusBar()->showMessage(tr("Project saved."), 2500);
     return true;
 }

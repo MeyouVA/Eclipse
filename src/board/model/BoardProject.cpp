@@ -40,7 +40,7 @@ bool validProject(BoardProject const& project)
         && std::isfinite(project.fps) && project.fps >= 1.0 && project.fps <= 240.0;
 }
 
-bool readProject(QByteArray const& bytes, QString const& path, BoardProject& project, QString* error)
+bool readProject(QByteArray const& bytes, QString const& path, BoardProject& project, QString* error, bool* legacy = nullptr)
 {
     if (error)
         error->clear();
@@ -71,6 +71,8 @@ bool readProject(QByteArray const& bytes, QString const& path, BoardProject& pro
     }
     if (!BoardProjectJson::decode(json, loaded, error))
         return false;
+    if (legacy)
+        *legacy = !json.contains("storage");
     project = std::move(loaded);
     return true;
 }
@@ -138,11 +140,16 @@ QByteArray BoardProject::toBytes(QString* error) const
 
 bool BoardProject::open(QString const& path, BoardProject& project, QString* error)
 {
+    return open(path, project, error, nullptr);
+}
+
+bool BoardProject::open(QString const& path, BoardProject& project, QString* error, bool* legacy)
+{
     QFile file(path);
     if (file.open(QIODevice::ReadOnly)) {
         QByteArray const bytes = file.read(kFileLimit + 1);
         if (file.error() == QFile::NoError)
-            return readProject(bytes, path, project, error);
+            return readProject(bytes, path, project, error, legacy);
     }
     if (error)
         *error = file.errorString();

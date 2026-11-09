@@ -19,6 +19,8 @@ public:
     void close();
     bool save(QString* error = nullptr);
     bool saveAs(QString const& path, QString* error = nullptr);
+    bool isLegacyProject() const { return m_legacy; }
+    bool convertLegacyCopy(QString const& directory, QString* error = nullptr);
     QString extractProject(int first, int last, QString const& name, QString const& directory, QString* error = nullptr) const;
     QString splitProject(int firstSceneOfSecondPart, QString const& name, QString const& directory, QString* error = nullptr) const;
     bool insertProject(BoardProject source, QString const& sourceFile, int after, bool useImportedSound, QString* error = nullptr);
@@ -77,10 +79,13 @@ private:
     QString writeSceneRange(int first, int last, QString const& name, QString const& directory, QString* error) const;
     QString uniqueShotName(QString const& base) const;
     QSet<QString> soundAssets() const;
-    void resetProject(BoardProject project, QString path);
+    bool copyTo(QString const& path, QString* error) const;
+    void adoptSavedCopy(QString const& path);
+    void resetProject(BoardProject project, QString path, bool legacy = false);
     void apply(BoardProject project, QString const& label, quint64 session = 0);
 
     BoardProject m_project;
     QString m_path;
     QUndoStack m_undo;
+    bool m_legacy = false;
 };

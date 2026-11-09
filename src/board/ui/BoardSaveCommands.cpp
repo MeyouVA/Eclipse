@@ -8,6 +8,28 @@
 #include <QRegularExpression>
 #include <QStatusBar>
 
+void BoardWindow::convertLegacyProject()
+{
+    if (!m_document.isLegacyProject())
+        return;
+    m_playback->stop();
+    QFileInfo const source(m_document.path());
+    QDir parent = source.absoluteDir();
+    if (parent.dirName().compare(source.completeBaseName(), Qt::CaseInsensitive) == 0)
+        parent.cdUp();
+    QString const directory = QFileDialog::getExistingDirectory(this, tr("Choose a Location for the Converted Project"), parent.absolutePath());
+    if (directory.isEmpty())
+        return;
+    QString error;
+    if (!m_document.convertLegacyCopy(directory, &error)) {
+        QMessageBox::warning(this, tr("Convert Legacy Board"), error);
+        return;
+    }
+    rememberProjectPath();
+    updateProjectState();
+    statusBar()->showMessage(tr("Converted project saved in %1").arg(QDir::toNativeSeparators(QFileInfo(m_document.path()).absolutePath())), 6000);
+}
+
 void BoardWindow::saveProjectAs()
 {
     if (m_document.path().isEmpty())

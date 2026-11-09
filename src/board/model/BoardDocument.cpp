@@ -45,15 +45,16 @@ BoardDocument::BoardDocument(QObject* parent) : QObject(parent)
 bool BoardDocument::open(QString const& path, QString* error)
 {
     BoardProject project;
-    if (!BoardProject::open(path, project, error))
+    bool legacy = false;
+    if (!BoardProject::open(path, project, error, &legacy))
         return false;
-    resetProject(std::move(project), QFileInfo(path).absoluteFilePath());
+    resetProject(std::move(project), QFileInfo(path).absoluteFilePath(), legacy);
     return true;
 }
 
 void BoardDocument::close() { resetProject({}, {}); }
 
-void BoardDocument::resetProject(BoardProject project, QString path)
+void BoardDocument::resetProject(BoardProject project, QString path, bool legacy)
 {
     {
         QSignalBlocker const block(&m_undo);
@@ -61,6 +62,7 @@ void BoardDocument::resetProject(BoardProject project, QString path)
     }
     m_project = std::move(project);
     m_path = std::move(path);
+    m_legacy = legacy;
     emit projectChanged();
 }
 
@@ -73,6 +75,7 @@ bool BoardDocument::save(QString* error)
     }
     if (!m_project.save(m_path, error))
         return false;
+    m_legacy = false;
     m_undo.setClean();
     return true;
 }

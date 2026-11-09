@@ -40,6 +40,7 @@ private slots:
     void saveProject();
     void saveProjectAs();
     void saveNewVersion();
+    void convertLegacyProject();
     void archiveProject(QString const& operation);
     void restoreArchive();
     void transferProject(QString const& operation);
@@ -73,6 +74,7 @@ private slots:
 
 private:
     bool loadProject(QString const& path);
+    void offerLegacyConversion(QString const& path);
     bool saveChanges();
     void saveProjectCopy(QString const& path);
     void extractScenes(bool split);

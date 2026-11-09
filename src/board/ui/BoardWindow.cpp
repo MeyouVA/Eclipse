@@ -77,6 +77,7 @@ void BoardWindow::updateProjectState()
                            "BoardClose", "BoardRefreshThumbnails", "BoardExtract", "BoardInsert", "BoardMerge"})
         enabled(id, loaded);
     enabled("BoardSettings", loaded);
+    enabled("BoardConvertLegacy", m_document.isLegacyProject());
     enabled("BoardUndo", history->canUndo());
     enabled("BoardRedo", history->canRedo());
     updatePanelActions();

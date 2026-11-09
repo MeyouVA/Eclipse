@@ -22,6 +22,7 @@ struct ECLIPSE_BOARD_MODEL_API BoardProject {
     QString create(QString const& directory, QString* error = nullptr) const;
     bool save(QString const& path, QString* error = nullptr) const;
     static bool open(QString const& path, BoardProject& project, QString* error = nullptr);
+    static bool open(QString const& path, BoardProject& project, QString* error, bool* legacy);
     QByteArray toBytes(QString* error = nullptr) const;
     static bool fromBytes(QByteArray const& bytes, BoardProject& project, QString* error = nullptr);
     Storyboard timeline() const;

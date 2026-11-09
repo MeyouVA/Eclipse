@@ -25,6 +25,54 @@ bool sameContents(QString const& source, QString const& destination)
 
 bool BoardDocument::saveAs(QString const& path, QString* error)
 {
+    if (!copyTo(path, error))
+        return false;
+    adoptSavedCopy(path);
+    return true;
+}
+
+void BoardDocument::adoptSavedCopy(QString const& path)
+{
+    m_path = QFileInfo(path).absoluteFilePath();
+    m_legacy = false;
+    m_undo.setClean();
+}
+
+bool BoardDocument::convertLegacyCopy(QString const& directory, QString* error)
+{
+    if (error)
+        error->clear();
+    auto fail = [error](QString const& message) {
+        if (error)
+            *error = message;
+        return false;
+    };
+    QDir parent(directory);
+    if (!m_legacy || directory.isEmpty() || !parent.exists())
+        return fail(tr("Choose an existing destination for the legacy project copy."));
+    QTemporaryDir staged(parent.filePath(QStringLiteral(".board-convert-XXXXXX")));
+    if (!staged.isValid())
+        return fail(tr("Could not prepare the conversion folder: %1").arg(staged.errorString()));
+    QString const filename = m_project.name + QStringLiteral(".ecb");
+    if (!copyTo(staged.filePath(filename), error))
+        return false;
+
+    QLockFile lock(parent.filePath(QStringLiteral(".eclipse-board-convert.lock")));
+    if (!lock.tryLock())
+        return fail(tr("Could not lock the conversion destination."));
+    QString const base = tr("%1 Converted").arg(m_project.name);
+    QString name = base;
+    for (int number = 2; QFileInfo::exists(parent.filePath(name)) || QFileInfo(parent.filePath(name)).isSymLink(); ++number)
+        name = tr("%1 (%2)").arg(base).arg(number);
+    if (!parent.rename(QDir(staged.path()).dirName(), name))
+        return fail(tr("Could not publish the converted project folder."));
+    staged.setAutoRemove(false);
+    adoptSavedCopy(parent.absoluteFilePath(name + QLatin1Char('/') + filename));
+    return true;
+}
+
+bool BoardDocument::copyTo(QString const& path, QString* error) const
+{
     if (error)
         error->clear();
     auto fail = [error](QString const& message) {
@@ -95,7 +143,5 @@ bool BoardDocument::saveAs(QString const& path, QString* error)
         return fail(tr("Could not publish the project copy: %1").arg(copy.errorString()));
 
     rollback.dismiss();
-    m_path = destination.absoluteFilePath();
-    m_undo.setClean();
     return true;
 }

@@ -36,7 +36,7 @@ Movies, extra image formats, USD files and the Python console use the bundled to
 
 Open the `.ecb` file inside its project folder. It holds scenes, panel timing, camera keys, and captions. Panel and Library drawings are stored in `elements/drawings/`, pictures in `elements/pictures/`, and the soundtrack in `audio/`. The folder also includes `frames/` and `palette-library/`.
 
-Move or copy the whole folder to keep its artwork and sound with the project. **File → Save and Pack** creates a portable ZIP. Existing single-file boards open normally and adopt the folder layout on their next save.
+Move or copy the whole folder to keep its artwork and sound with the project. **File → Save and Pack** creates a portable ZIP. When you open an older single-file board, Eclipse offers to convert a copy into a new project folder. If you choose **Open Original**, you can convert a copy later under **File → Project Management** or save the original to update it in place.
 
 ---
 
