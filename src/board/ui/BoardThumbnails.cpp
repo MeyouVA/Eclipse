@@ -82,6 +82,13 @@ public:
         }
     }
 
+    void refreshAll()
+    {
+        m_icons.clear();
+        if (!m_rows.isEmpty())
+            emit dataChanged(index(0), index(int(m_rows.size()) - 1), {Qt::DecorationRole});
+    }
+
     Qt::ItemFlags flags(QModelIndex const& index) const override
     {
         return QAbstractListModel::flags(index) | Qt::ItemIsDropEnabled
@@ -180,6 +187,8 @@ void BoardThumbnails::rebuild()
     QSignalBlocker const block(selectionModel());
     m_panels->rebuild();
 }
+
+void BoardThumbnails::refreshAll() { m_panels->refreshAll(); }
 
 void BoardThumbnails::selectPanel(int shot, int panel)
 {

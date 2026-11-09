@@ -6,6 +6,7 @@
 #include <QAction>
 #include <QCloseEvent>
 #include <QDir>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QTimer>
@@ -52,7 +53,9 @@ void BoardWindow::updateProjectState()
         if (auto* action = m_actions->action(QLatin1String(id)))
             action->setEnabled(on);
     };
-    enabled("BoardSave", loaded);
+    for (auto const* id : {"BoardSave", "BoardSaveAs", "BoardSaveVersion",
+                           "BoardClose", "BoardRefreshThumbnails"})
+        enabled(id, loaded);
     enabled("BoardSettings", loaded);
     enabled("BoardUndo", history->canUndo());
     enabled("BoardRedo", history->canRedo());
@@ -63,10 +66,16 @@ void BoardWindow::updateProjectState()
         qsizetype panels = 0;
         for (auto const& shot : project.shots)
             panels += shot.panels.size();
-        QString const title = project.title.isEmpty() ? project.name : project.title;
+        QString title = project.title.isEmpty() ? project.name : project.title;
+        QString const base = QFileInfo(m_document.path()).completeBaseName();
+        if (base != project.name)
+            title = tr("%1 (%2)").arg(title, base);
         setWindowTitle(tr("%1[*] — Eclipse Storyboard").arg(title));
         statusBar()->showMessage(tr("Scenes: %1  |  Panels: %2  |  %3 × %4  |  %5 fps")
             .arg(project.shots.size()).arg(panels).arg(project.width).arg(project.height).arg(project.fps));
+    } else {
+        setWindowTitle(tr("Eclipse Storyboard"));
+        statusBar()->clearMessage();
     }
 }
 

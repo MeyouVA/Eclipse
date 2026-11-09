@@ -37,6 +37,10 @@ private slots:
     void editPreferences();
     void editShortcuts();
     void saveProject();
+    void saveProjectAs();
+    void saveNewVersion();
+    void closeProject();
+    void regenerateThumbnails();
     void editProjectSettings();
     void undo();
     void redo();
@@ -59,6 +63,8 @@ private slots:
 private:
     bool loadProject(QString const& path);
     bool saveChanges();
+    void saveProjectCopy(QString const& path);
+    void rememberProjectPath();
     bool confirmDiscard();
     void updateProjectState();
     void buildWorkspace();

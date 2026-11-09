@@ -3,6 +3,7 @@
 #include "board/model/BoardProject.h"
 
 #include <QObject>
+#include <QSet>
 #include <QUndoStack>
 
 class ECLIPSE_BOARD_MODEL_API BoardDocument : public QObject {
@@ -15,7 +16,9 @@ public:
     BoardPanel const* panel(int shot, int panel) const;
 
     bool open(QString const& path, QString* error = nullptr);
+    void close();
     bool save(QString* error = nullptr);
+    bool saveAs(QString const& path, QString* error = nullptr);
     bool setTitles(QString const& title, QString const& subtitle);
     bool addShot(QString const& name, int frames, int after = -1);
     bool removeShot(int shot);
@@ -54,6 +57,8 @@ private:
     bool appendPanelAllowed(int frames) const;
     bool canGrow(qsizetype panels, qint64 frames) const;
     QString uniqueShotName(QString const& base) const;
+    QSet<QString> soundAssets() const;
+    void resetProject(BoardProject project, QString path);
     void apply(BoardProject project, QString const& label, quint64 session = 0);
 
     BoardProject m_project;

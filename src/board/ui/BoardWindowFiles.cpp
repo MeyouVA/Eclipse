@@ -23,10 +23,15 @@ bool BoardWindow::loadProject(QString const& path)
                              tr("Could not open %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;
     }
+    rememberProjectPath();
+    selectPanel(0, 0, true);
+    return true;
+}
+
+void BoardWindow::rememberProjectPath()
+{
     QString const absolute = m_document.path();
     setWindowFilePath(absolute);
-    selectPanel(0, 0, true);
-
     QSettings prefs = settings();
     QStringList recent = prefs.value(QStringLiteral("board/recentProjects")).toStringList();
     recent.removeIf([&absolute](QString const& item) { return item.compare(absolute, Qt::CaseInsensitive) == 0; });
@@ -34,7 +39,6 @@ bool BoardWindow::loadProject(QString const& path)
     while (recent.size() > 12)
         recent.removeLast();
     prefs.setValue(QStringLiteral("board/recentProjects"), recent);
-    return true;
 }
 
 bool BoardWindow::saveChanges()
@@ -49,6 +53,16 @@ bool BoardWindow::saveChanges()
 }
 
 void BoardWindow::saveProject() { saveChanges(); }
+
+void BoardWindow::closeProject()
+{
+    if (m_document.path().isEmpty() || !confirmDiscard())
+        return;
+    showCameraPreview(false);
+    m_actions->setChecked(QStringLiteral("BoardCameraPreview"), false);
+    m_document.close();
+    setWindowFilePath(QString());
+}
 
 bool BoardWindow::confirmDiscard()
 {
@@ -81,7 +95,8 @@ void BoardWindow::chooseProject()
 void BoardWindow::showRecent(QMenu* menu)
 {
     menu->clear();
-    for (QString const& path : settings().value(QStringLiteral("board/recentProjects")).toStringList()) {
+    auto const recent = settings().value(QStringLiteral("board/recentProjects")).toStringList();
+    for (QString const& path : recent) {
         QFileInfo const info(path);
         if (info.isFile()) {
             auto* action = menu->addAction(info.completeBaseName().replace(QLatin1String("&"), QLatin1String("&&")));
@@ -91,4 +106,8 @@ void BoardWindow::showRecent(QMenu* menu)
     }
     if (menu->isEmpty())
         menu->addAction(tr("No recent projects"))->setEnabled(false);
+    menu->addSeparator();
+    auto* clear = menu->addAction(tr("Clear Recent Projects"));
+    clear->setEnabled(!recent.isEmpty());
+    connect(clear, &QAction::triggered, this, [] { settings().remove(QStringLiteral("board/recentProjects")); });
 }

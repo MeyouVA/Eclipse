@@ -23,6 +23,12 @@ public:
         return true;
     }
 
+    void collectSoundAssets(QSet<QString>& assets) const
+    {
+        assets.insert(m_before.sound.asset);
+        assets.insert(m_after.sound.asset);
+    }
+
 private:
     BoardProject& m_current;
     BoardProject m_before;
@@ -41,14 +47,21 @@ bool BoardDocument::open(QString const& path, QString* error)
     BoardProject project;
     if (!BoardProject::open(path, project, error))
         return false;
+    resetProject(std::move(project), QFileInfo(path).absoluteFilePath());
+    return true;
+}
+
+void BoardDocument::close() { resetProject({}, {}); }
+
+void BoardDocument::resetProject(BoardProject project, QString path)
+{
     {
         QSignalBlocker const block(&m_undo);
         m_undo.clear();
     }
     m_project = std::move(project);
-    m_path = QFileInfo(path).absoluteFilePath();
+    m_path = std::move(path);
     emit projectChanged();
-    return true;
 }
 
 bool BoardDocument::save(QString* error)
@@ -62,6 +75,16 @@ bool BoardDocument::save(QString* error)
         return false;
     m_undo.setClean();
     return true;
+}
+
+QSet<QString> BoardDocument::soundAssets() const
+{
+    QSet<QString> assets{m_project.sound.asset};
+    for (int i = 0; i < m_undo.count(); ++i)
+        if (auto const* command = dynamic_cast<BoardEdit const*>(m_undo.command(i)))
+            command->collectSoundAssets(assets);
+    assets.remove(QString());
+    return assets;
 }
 
 bool BoardDocument::hasPanel(int shot, int panel) const

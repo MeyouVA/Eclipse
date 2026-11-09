@@ -15,7 +15,11 @@
   <shortcut id="shortcut.boardPlay" text="Play / Pause" value="Ctrl+Return"/>
  </category>
  <category id="board.file" text="File">
+  <shortcut id="shortcut.BoardClose" text="Close Project" value="Ctrl+W"/>
+  <shortcut id="shortcut.BoardSaveAs" text="Save Project As" value="Ctrl+Shift+S"/>
+  <shortcut id="shortcut.BoardSaveVersion" text="Save as New Version" value=""/>
   <shortcut id="shortcut.BoardSettings" text="Project Settings" value=""/>
+  <shortcut id="shortcut.BoardRefreshThumbnails" text="Regenerate Panel Thumbnails" value=""/>
   <shortcut id="shortcut.BoardImportImageLayers" text="Import Images as Layers" value=""/>
   <shortcut id="shortcut.BoardImportImageScenes" text="Import Images as Scenes" value=""/>
   <shortcut id="shortcut.BoardExportFrame" text="Export Current Image" value=""/>

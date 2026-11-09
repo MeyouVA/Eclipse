@@ -5,8 +5,12 @@
    <item id="BoardNew" icon="file/new" text="&amp;New Project..." shortcut="shortcut.new" responder="window" slot="showWelcome()"/>
    <item id="BoardOpen" icon="file/open" text="&amp;Open Project..." shortcut="shortcut.open" responder="window" slot="chooseProject()"/>
    <menu id="BoardRecent" text="Open &amp;Recent" responder="window" aboutToShowSlot="showRecent(QMenu*)"/>
+   <item id="BoardClose" text="&amp;Close Project" shortcut="shortcut.BoardClose" responder="window" slot="closeProject()"/>
    <item id="BoardSave" icon="file/save" text="&amp;Save Project" shortcut="shortcut.save" responder="window" slot="saveProject()"/>
+   <item id="BoardSaveAs" icon="file/saveas" text="Save &amp;As..." shortcut="shortcut.BoardSaveAs" responder="window" slot="saveProjectAs()"/>
+   <item id="BoardSaveVersion" text="Save as New Version" shortcut="shortcut.BoardSaveVersion" responder="window" slot="saveNewVersion()"/>
    <item id="BoardSettings" text="Project Settings..." shortcut="shortcut.BoardSettings" responder="window" slot="editProjectSettings()"/>
+   <item id="BoardRefreshThumbnails" text="Regenerate Panel Thumbnails" shortcut="shortcut.BoardRefreshThumbnails" responder="window" slot="regenerateThumbnails()"/>
    <menu id="BoardImport" text="&amp;Import">
     <item id="BoardImportImageLayers" text="Images as Layers..." shortcut="shortcut.BoardImportImageLayers" responder="window" slot="importBoardImages(QString)" itemParameter="layers"/>
     <item id="BoardImportImageScenes" text="Images as Scenes..." shortcut="shortcut.BoardImportImageScenes" responder="window" slot="importBoardImages(QString)" itemParameter="scenes"/>

@@ -151,6 +151,12 @@ void BoardWindow::chooseStageTool(QString const& tool)
 }
 void BoardWindow::fitStage() { m_stage->fit(); }
 
+void BoardWindow::regenerateThumbnails()
+{
+    m_thumbnails->refreshAll();
+    statusBar()->showMessage(tr("Panel thumbnails refreshed."), 2500);
+}
+
 void BoardWindow::showBoardView(QString const& view)
 {
     if (view == QLatin1String("layers"))

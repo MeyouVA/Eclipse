@@ -10,6 +10,7 @@ class BoardThumbnails : public QListView {
 public:
     explicit BoardThumbnails(BoardDocument* document, QWidget* parent = nullptr);
     void rebuild();
+    void refreshAll();
     void setVertical(bool vertical);
     void setOverview(bool overview);
     void selectPanel(int shot, int panel);
