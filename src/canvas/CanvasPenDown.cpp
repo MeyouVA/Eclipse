@@ -182,7 +182,7 @@ void Canvas::penDownTool(QPointF widgetPos, float pressure, bool panning, Qt::Ke
     if (!scene.layers[m_layer].visible)
         return;
     if (scene.layers[m_layer].locked) {
-        emit message(tr("This layer is locked. Unlock it in the Timeline to draw on it."));
+        emit message(tr("This layer is locked. Unlock it to draw on it."));
         return;
     }
     if (scene.layers[m_layer].morphing(m_frame)) {
