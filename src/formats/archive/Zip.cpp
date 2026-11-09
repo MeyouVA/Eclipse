@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include <array>
+#include <limits>
 #include <vector>
 
 namespace {
@@ -63,8 +64,10 @@ struct Huffman {
         for (int len = 1; len < 16; ++len) {
             code |= in.bit();
             int const count = counts[len];
-            if (code - count < first)
-                return symbols[index + (code - first)];
+            if (code - count < first) {
+                int const offset = index + (code - first);
+                return offset >= 0 && size_t(offset) < symbols.size() ? symbols[offset] : -1;
+            }
             index += count;
             first += count;
             first <<= 1;
@@ -81,13 +84,15 @@ int const kLengthExtra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3,
 int const kDistanceBase[30] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
 int const kDistanceExtra[30] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
-bool block(Input& in, QByteArray& out, Huffman const& lengths, Huffman const& distances)
+bool block(Input& in, QByteArray& out, Huffman const& lengths, Huffman const& distances, qsizetype limit)
 {
     for (;;) {
         int const symbol = lengths.decode(in);
         if (symbol < 0 || in.broken)
             return false;
         if (symbol < 256) {
+            if (out.size() >= limit)
+                return false;
             out.append(char(symbol));
         } else if (symbol == 256) {
             return true;
@@ -100,7 +105,7 @@ bool block(Input& in, QByteArray& out, Huffman const& lengths, Huffman const& di
             if (d < 0 || d >= 30)
                 return false;
             int const distance = kDistanceBase[d] + in.take(kDistanceExtra[d]);
-            if (distance > out.size())
+            if (distance > out.size() || length > limit - out.size())
                 return false;
             qsizetype const from = out.size() - distance;
             for (int i = 0; i < length; ++i)
@@ -121,9 +126,8 @@ quint32 le32(QByteArray const& b, qsizetype at)
 
 }  // namespace
 
-namespace Zip {
-
-QByteArray inflate(QByteArray const& data, bool* ok)
+namespace {
+QByteArray inflateToLimit(QByteArray const& data, bool* ok, qsizetype limit)
 {
     Input in{data};
     QByteArray out;
@@ -145,29 +149,28 @@ QByteArray inflate(QByteArray const& data, bool* ok)
                 break;
             }
             in.pos += 4;
-            if (in.pos + length > data.size()) {
+            if (in.pos + length > data.size() || length > limit - out.size()) {
                 good = false;
                 break;
             }
             out.append(data.mid(in.pos, length));
             in.pos += length;
         } else if (type == 1) {
-            static Huffman fixedLengths, fixedDistances;
-            static bool made = false;
-            if (!made) {
+            static auto const fixed = [] {
+                QPair<Huffman, Huffman> result;
                 int lengths[288];
                 for (int i = 0; i < 144; ++i) lengths[i] = 8;
                 for (int i = 144; i < 256; ++i) lengths[i] = 9;
                 for (int i = 256; i < 280; ++i) lengths[i] = 7;
                 for (int i = 280; i < 288; ++i) lengths[i] = 8;
-                fixedLengths.build(lengths, 288);
+                result.first.build(lengths, 288);
                 int distances[30];
                 for (int& d : distances)
                     d = 5;
-                fixedDistances.build(distances, 30);
-                made = true;
-            }
-            good = block(in, out, fixedLengths, fixedDistances);
+                result.second.build(distances, 30);
+                return result;
+            }();
+            good = block(in, out, fixed.first, fixed.second, limit);
         } else if (type == 2) {
             int const hlit = in.take(5) + 257, hdist = in.take(5) + 1, hclen = in.take(4) + 4;
             static int const order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
@@ -206,7 +209,7 @@ QByteArray inflate(QByteArray const& data, bool* ok)
             Huffman literal, distance;
             literal.build(lengths, hlit);
             distance.build(lengths + hlit, hdist);
-            good = block(in, out, literal, distance);
+            good = block(in, out, literal, distance, limit);
         } else {
             good = false;
         }
@@ -216,6 +219,14 @@ QByteArray inflate(QByteArray const& data, bool* ok)
     if (ok)
         *ok = good;
     return good ? out : QByteArray();
+}
+}
+
+namespace Zip {
+
+QByteArray inflate(QByteArray const& data, bool* ok)
+{
+    return inflateToLimit(data, ok, std::numeric_limits<qsizetype>::max());
 }
 
 quint32 crc32(QByteArray const& bytes)
@@ -296,7 +307,7 @@ QByteArray write(QList<QPair<QString, QByteArray>> const& files, QDateTime modif
     return out;
 }
 
-QHash<QString, QByteArray> read(QByteArray const& archive)
+static QHash<QString, QByteArray> readArchive(QByteArray const& archive, int maxEntries, qsizetype maxBytes, bool strict)
 {
     QHash<QString, QByteArray> files;
     qsizetype directoryEnd = archive.lastIndexOf(QByteArray("PK\x05\x06", 4));
@@ -310,7 +321,10 @@ QHash<QString, QByteArray> read(QByteArray const& archive)
         qsizetype const length = le32(archive, directoryEnd + 12);
         if (directory > directoryEnd || length > directoryEnd - directory)
             return {};
+        qsizetype const startOfDirectory = directory;
         int const entries = le16(archive, directoryEnd + 10);
+        if (strict && (entries > maxEntries || le16(archive, directoryEnd + 8) != entries || directory + length != directoryEnd))
+            return {};
         for (int entry = 0; entry < entries; ++entry) {
             if (directory + 46 > directoryEnd || le32(archive, directory) != 0x02014b50u)
                 return {};
@@ -325,19 +339,30 @@ QHash<QString, QByteArray> read(QByteArray const& archive)
             if (start > archive.size() || compressed > archive.size() - start)
                 return {};
             QString const name = QString::fromUtf8(archive.mid(directory + 46, nameLength));
-            if (!(flags & 1u) && (method == 0 || method == 8)) {
+            bool const supported = !(flags & 1u) && (method == 0 || method == 8);
+            if (strict && (!supported || name.isEmpty() || files.contains(name) || qsizetype(size) > maxBytes
+                           || start > startOfDirectory || compressed > startOfDirectory - start
+                           || le16(archive, local + 6) != flags || le16(archive, local + 8) != method
+                           || le16(archive, local + 26) != nameLength
+                           || archive.mid(local + 30, nameLength) != archive.mid(directory + 46, nameLength)))
+                return {};
+            if (supported) {
                 QByteArray body = archive.mid(start, compressed);
                 bool ok = true;
                 if (method == 8)
-                    body = inflate(body, &ok);
+                    body = inflateToLimit(body, &ok, size);
                 if (!ok || body.size() != size || crc32(body) != crc)
                     return {};
                 files.insert(name, body);
+                if (strict)
+                    maxBytes -= size;
             }
             directory = next;
         }
-        return files;
+        return !strict || directory == directoryEnd ? files : QHash<QString, QByteArray>();
     }
+    if (strict)
+        return {};
     qsizetype p = 0;
     while (p + 30 <= archive.size() && le32(archive, p) == 0x04034b50u) {
         quint16 const flags = le16(archive, p + 6), method = le16(archive, p + 8);
@@ -365,6 +390,16 @@ QHash<QString, QByteArray> read(QByteArray const& archive)
         p = end;
     }
     return files;
+}
+
+QHash<QString, QByteArray> read(QByteArray const& archive)
+{
+    return readArchive(archive, 0, 0, false);
+}
+
+QHash<QString, QByteArray> readChecked(QByteArray const& archive, int maxEntries, qsizetype maxBytes)
+{
+    return readArchive(archive, maxEntries, maxBytes, true);
 }
 
 }

@@ -67,29 +67,52 @@ QString BoardProject::create(QString const& directory, QString* error) const
 
 bool BoardProject::save(QString const& path, QString* error) const
 {
+    QByteArray const bytes = toBytes(error);
+    if (bytes.isEmpty())
+        return false;
+    QSaveFile file(path);
+    if (file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit())
+        return true;
+    if (error)
+        *error = tr("Could not save the project: %1").arg(file.errorString());
+    return false;
+}
+
+QByteArray BoardProject::toBytes(QString* error) const
+{
     if (error)
         error->clear();
     auto fail = [error](QString const& message) {
         if (error)
             *error = message;
-        return false;
+        return QByteArray();
     };
     if (!validProject(*this))
         return fail(tr("Enter a valid project name, title and camera settings."));
     QJsonObject json{{"format", "eclipse-board"}, {"version", 1}, {"name", name}, {"title", title},
                      {"subtitle", subtitle}, {"width", width}, {"height", height}, {"fps", fps}};
     if (!BoardProjectJson::encode(*this, json, error))
-        return false;
+        return {};
     QByteArray const bytes = QJsonDocument(json).toJson(QJsonDocument::Compact);
     if (bytes.size() > kFileLimit)
         return fail(tr("The project exceeds the file size limit."));
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
-        return fail(tr("Could not save the project: %1").arg(file.errorString()));
-    return true;
+    return bytes;
 }
 
 bool BoardProject::open(QString const& path, BoardProject& project, QString* error)
+{
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly)) {
+        QByteArray const bytes = file.read(kFileLimit + 1);
+        if (file.error() == QFile::NoError)
+            return fromBytes(bytes, project, error);
+    }
+    if (error)
+        *error = file.errorString();
+    return false;
+}
+
+bool BoardProject::fromBytes(QByteArray const& bytes, BoardProject& project, QString* error)
 {
     if (error)
         error->clear();
@@ -98,12 +121,6 @@ bool BoardProject::open(QString const& path, BoardProject& project, QString* err
             *error = message;
         return false;
     };
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return fail(file.errorString());
-    QByteArray const bytes = file.read(kFileLimit + 1);
-    if (file.error() != QFile::NoError)
-        return fail(file.errorString());
     if (bytes.size() > kFileLimit)
         return fail(tr("The project exceeds the file size limit."));
 

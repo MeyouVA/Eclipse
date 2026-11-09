@@ -39,6 +39,8 @@ private slots:
     void saveProject();
     void saveProjectAs();
     void saveNewVersion();
+    void archiveProject(QString const& operation);
+    void restoreArchive();
     void closeProject();
     void regenerateThumbnails();
     void editProjectSettings();

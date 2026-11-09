@@ -53,7 +53,7 @@ void BoardWindow::updateProjectState()
         if (auto* action = m_actions->action(QLatin1String(id)))
             action->setEnabled(on);
     };
-    for (auto const* id : {"BoardSave", "BoardSaveAs", "BoardSaveVersion",
+    for (auto const* id : {"BoardSave", "BoardSaveAs", "BoardSaveVersion", "BoardPack", "BoardBackup",
                            "BoardClose", "BoardRefreshThumbnails"})
         enabled(id, loaded);
     enabled("BoardSettings", loaded);

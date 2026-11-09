@@ -74,7 +74,7 @@ target_link_libraries(EclipseCanvas PUBLIC EclipseModel EclipseRender EclipseAct
 
 # The window and all its views.
 eclipse_module(EclipseBoardModel board/model ECLIPSE_BOARD_MODEL_BUILD)
-target_link_libraries(EclipseBoardModel PUBLIC EclipseModel Qt6::Gui)
+target_link_libraries(EclipseBoardModel PUBLIC EclipseModel Qt6::Gui PRIVATE EclipseFormats)
 
 eclipse_module(EclipseLauncher launcher ECLIPSE_LAUNCHER_BUILD)
 target_link_libraries(EclipseLauncher PUBLIC EclipseBoardModel Qt6::Widgets PRIVATE EclipseActions EclipseModel)

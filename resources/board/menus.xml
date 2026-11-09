@@ -9,6 +9,9 @@
    <item id="BoardSave" icon="file/save" text="&amp;Save Project" shortcut="shortcut.save" responder="window" slot="saveProject()"/>
    <item id="BoardSaveAs" icon="file/saveas" text="Save &amp;As..." shortcut="shortcut.BoardSaveAs" responder="window" slot="saveProjectAs()"/>
    <item id="BoardSaveVersion" text="Save as New Version" shortcut="shortcut.BoardSaveVersion" responder="window" slot="saveNewVersion()"/>
+   <item id="BoardPack" text="Save and Pack..." shortcut="shortcut.BoardPack" responder="window" slot="archiveProject(QString)" itemParameter="pack"/>
+   <item id="BoardBackup" text="Back Up Storyboard..." shortcut="shortcut.BoardBackup" responder="window" slot="archiveProject(QString)" itemParameter="backup"/>
+   <item id="BoardRestore" text="Restore and Open Backup..." shortcut="shortcut.BoardRestore" responder="window" slot="restoreArchive()"/>
    <item id="BoardSettings" text="Project Settings..." shortcut="shortcut.BoardSettings" responder="window" slot="editProjectSettings()"/>
    <item id="BoardRefreshThumbnails" text="Regenerate Panel Thumbnails" shortcut="shortcut.BoardRefreshThumbnails" responder="window" slot="regenerateThumbnails()"/>
    <menu id="BoardImport" text="&amp;Import">
