@@ -344,8 +344,32 @@ Stroke Canvas::bentSegment(Stroke line, int segment, double t, QPointF by)
 {
     int const n = int(line.points.size());
     QPointF p0, p1, p2, p3;
-    if (!pieceOf(line, segment, p0, p1, p2, p3) || t <= 0.0 || t >= 1.0)
+    if (by.isNull() || !pieceOf(line, segment, p0, p1, p2, p3) || t <= 0.0 || t >= 1.0)
         return line;
+    int const next = (segment + 1) % n;
+    QPointF const chord = p3 - p0;
+    double const chordLength = QLineF(p0, p3).length();
+    double const tolerance = chordLength * 1e-6;
+    auto defaultHandle = [&](QPointF control, QPointF anchor, double along, bool explicitHandle) {
+        if (!explicitHandle)
+            return distanceToSegment(control, p0, p3) <= tolerance;
+        return control == anchor || QLineF(control, p0 + chord * along).length() <= tolerance;
+    };
+    bool const collapse = chordLength > 1e-9 && (p1 != p0 || p2 != p3)
+        && defaultHandle(p1, p0, 1.0 / 3.0, line.points[segment].handles)
+        && defaultHandle(p2, p3, 2.0 / 3.0, line.points[next].handles);
+    if (collapse) {
+        // Collapsed handles use smoothstep along the chord, so keep the same point under the drag.
+        auto remap = [&](double old) {
+            QPointF const fromStart = cubicAt(p0, p1, p2, p3, old) - p0;
+            double const along = QPointF::dotProduct(fromStart, chord) / (chordLength * chordLength);
+            return 0.5 + std::sin(std::asin(std::clamp(2.0 * along - 1.0, -1.0, 1.0)) / 3.0);
+        };
+        t = std::clamp(remap(t), 1e-9, 1.0 - 1e-9);
+        for (ThicknessPoint& key : line.thickness)
+            if (key.at > segment && key.at < segment + 1)
+                key.at = segment + remap(key.at - segment);
+    }
     // Every point keeps the curve it has now (its handles made its own), so that only this piece changes.
     QVector<QPair<QPointF, QPointF>> kept;
     for (int i = 0; i < n; ++i) {
@@ -370,11 +394,10 @@ Stroke Canvas::bentSegment(Stroke line, int segment, double t, QPointF by)
         weight = 1.0;
     QPointF const first = by * ((1.0 - weight) / (3.0 * t * (1.0 - t) * (1.0 - t)));
     QPointF const second = by * (weight / (3.0 * t * t * (1.0 - t)));
-    int const next = (segment + 1) % n;
     StrokePoint& a = line.points[segment];
     StrokePoint& b = line.points[next];
-    a.out += first;
-    b.in += second;
+    a.out = collapse ? first : a.out + first;
+    b.in = collapse ? second : b.in + second;
     a.corner = true;
     b.corner = true;
     return line;
