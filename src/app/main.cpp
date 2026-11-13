@@ -92,9 +92,10 @@ int main(int argc, char** argv)
     window.show();
     if (args.size() == 1)
         QApplication::processEvents();
-    if (choice == WelcomeDialog::OpenScene)
-        window.openFile(path);
-    else if (choice == WelcomeDialog::CreateScene)
+    if (choice == WelcomeDialog::OpenScene) {
+        if (!window.openFile(path) && args.size() > 1)
+            return 1;
+    } else if (choice == WelcomeDialog::CreateScene)
         window.createScene(path, resolution.width, resolution.height, resolution.fps, resolution.fov);
     else if (choice == WelcomeDialog::ShowHelp)
         window.showHelp(helpTopic == QLatin1String("index.html") ? QString() : helpTopic);
