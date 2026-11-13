@@ -62,6 +62,23 @@ BoardWindow::BoardWindow(QWidget* parent) : QMainWindow(parent), m_actions(new A
     connect(&m_document, &BoardDocument::projectChanged, this, &BoardWindow::updateProjectState);
     connect(&m_document, &BoardDocument::projectChanged, this, &BoardWindow::refreshWorkspace);
     connect(m_document.undoStack(), &QUndoStack::cleanChanged, this, &BoardWindow::updateProjectState);
+    m_recoveryTimer = new QTimer(this);
+    m_recoveryTimer->setObjectName(QStringLiteral("BoardRecoveryTimer"));
+    m_recoveryTimer->setSingleShot(true);
+    m_recoveryTimer->setInterval(60000);
+    connect(&m_document, &BoardDocument::projectChanged, m_recoveryTimer, [this] {
+        if (m_document.path().isEmpty() || m_document.undoStack()->isClean())
+            m_recoveryTimer->stop();
+        else if (!m_recoveryTimer->isActive())
+            m_recoveryTimer->start();
+    });
+    connect(m_recoveryTimer, &QTimer::timeout, this, [this] {
+        QString error;
+        if (!m_document.writeRecovery(&error)) {
+            statusBar()->showMessage(error, 5000);
+            m_recoveryTimer->start();
+        }
+    });
     updateProjectState();
 }
 
@@ -108,6 +125,7 @@ void BoardWindow::closeEvent(QCloseEvent* event)
         return;
     }
     saveWorkspaceSettings();
+    m_document.close();
     QMainWindow::closeEvent(event);
 }
 

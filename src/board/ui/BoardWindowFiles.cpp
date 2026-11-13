@@ -27,8 +27,16 @@ bool BoardWindow::loadProject(QString const& path)
     }
     rememberProjectPath();
     selectPanel(0, 0, true);
-    if (m_document.isLegacyProject())
-        QTimer::singleShot(0, this, [this, path = m_document.path()] { offerLegacyConversion(path); });
+    if (m_document.hasRecovery() || m_document.isLegacyProject()) {
+        QTimer::singleShot(0, this, [this, path = m_document.path()] {
+            if (m_document.path() != path)
+                return;
+            if (m_document.hasRecovery())
+                offerProjectRecovery(path);
+            else
+                offerLegacyConversion(path);
+        });
+    }
     return true;
 }
 

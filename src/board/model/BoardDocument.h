@@ -5,11 +5,15 @@
 #include <QObject>
 #include <QSet>
 #include <QUndoStack>
+#include <memory>
+
+class QLockFile;
 
 class ECLIPSE_BOARD_MODEL_API BoardDocument : public QObject {
     Q_OBJECT
 public:
     explicit BoardDocument(QObject* parent = nullptr);
+    ~BoardDocument() override;
     BoardProject const& project() const { return m_project; }
     QUndoStack* undoStack() { return &m_undo; }
     QString const& path() const { return m_path; }
@@ -19,6 +23,9 @@ public:
     void close();
     bool save(QString* error = nullptr);
     bool saveAs(QString const& path, QString* error = nullptr);
+    bool hasRecovery() const;
+    bool writeRecovery(QString* error = nullptr);
+    bool recover(QString* error = nullptr);
     bool isLegacyProject() const { return m_legacy; }
     qsizetype moveUnusedArtwork(QString& recoveryFolder, QString* error = nullptr) const;
     QString extractProject(int first, int last, QString const& name, QString const& directory, QString* error = nullptr) const;
@@ -79,11 +86,16 @@ private:
     QString writeSceneRange(int first, int last, QString const& name, QString const& directory, QString* error) const;
     QString uniqueShotName(QString const& base) const;
     QSet<QString> soundAssets() const;
+    static std::unique_ptr<QLockFile> lockProject(QString const& path, QString* error);
+    QString recoveryPath() const;
+    void clearRecovery();
     void resetProject(BoardProject project, QString path, bool legacy = false);
     void apply(BoardProject project, QString const& label, quint64 session = 0);
 
     BoardProject m_project;
     QString m_path;
     QUndoStack m_undo;
+    std::unique_ptr<QLockFile> m_projectLock;
     bool m_legacy = false;
+    bool m_wroteRecovery = false;
 };

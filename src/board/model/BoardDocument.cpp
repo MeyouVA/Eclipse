@@ -1,6 +1,7 @@
 #include "board/model/BoardDocument.h"
 
 #include <QFileInfo>
+#include <QLockFile>
 #include <QSignalBlocker>
 #include <QUndoCommand>
 #include <limits>
@@ -40,19 +41,54 @@ BoardDocument::BoardDocument(QObject* parent) : QObject(parent)
 {
     m_undo.setUndoLimit(100);
     connect(&m_undo, &QUndoStack::indexChanged, this, &BoardDocument::projectChanged);
+    connect(&m_undo, &QUndoStack::cleanChanged, this, [this](bool clean) {
+        if (clean && m_wroteRecovery)
+            clearRecovery();
+    });
+}
+
+BoardDocument::~BoardDocument()
+{
+    disconnect(&m_undo, nullptr, this, nullptr);
 }
 
 bool BoardDocument::open(QString const& path, QString* error)
 {
+    QFileInfo const info(path);
+    if (!info.isFile() || info.isSymLink()) {
+        if (error)
+            *error = tr("Choose an existing, regular project file.");
+        return false;
+    }
+    QString const canonical = info.canonicalFilePath();
+    if (canonical.isEmpty()) {
+        if (error)
+            *error = tr("Could not resolve the project file location.");
+        return false;
+    }
+    bool const sameProject = canonical == m_path;
+    auto lock = sameProject ? nullptr : lockProject(canonical, error);
+    if (!sameProject && !lock)
+        return false;
     BoardProject project;
     bool legacy = false;
-    if (!BoardProject::open(path, project, error, &legacy))
+    if (!BoardProject::open(canonical, project, error, &legacy))
         return false;
-    resetProject(std::move(project), QFileInfo(path).absoluteFilePath(), legacy);
+    if (!m_undo.isClean())
+        clearRecovery();
+    if (!sameProject)
+        m_projectLock = std::move(lock);
+    resetProject(std::move(project), canonical, legacy);
     return true;
 }
 
-void BoardDocument::close() { resetProject({}, {}); }
+void BoardDocument::close()
+{
+    if (!m_undo.isClean())
+        clearRecovery();
+    m_projectLock.reset();
+    resetProject({}, {});
+}
 
 void BoardDocument::resetProject(BoardProject project, QString path, bool legacy)
 {
@@ -63,6 +99,7 @@ void BoardDocument::resetProject(BoardProject project, QString path, bool legacy
     m_project = std::move(project);
     m_path = std::move(path);
     m_legacy = legacy;
+    m_wroteRecovery = false;
     emit projectChanged();
 }
 
@@ -76,6 +113,7 @@ bool BoardDocument::save(QString* error)
     if (!m_project.save(m_path, error))
         return false;
     m_legacy = false;
+    clearRecovery();
     m_undo.setClean();
     return true;
 }

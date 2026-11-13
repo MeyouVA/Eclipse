@@ -17,6 +17,7 @@ class QDockWidget;
 class QMenu;
 class QListView;
 class QTabWidget;
+class QTimer;
 
 class ECLIPSE_BOARD_UI_API BoardWindow : public QMainWindow {
     Q_OBJECT
@@ -76,6 +77,7 @@ private slots:
 private:
     bool loadProject(QString const& path);
     void offerLegacyConversion(QString const& path);
+    void offerProjectRecovery(QString const& path);
     bool saveChanges();
     void saveProjectCopy(QString const& path);
     void extractScenes(bool split);
@@ -103,6 +105,7 @@ private:
     void importBoardSound();
     ActionManager* m_actions;
     BoardDocument m_document;
+    QTimer* m_recoveryTimer = nullptr;
     QByteArray m_defaultLayout;
     BoardStage* m_stage = nullptr;
     BoardThumbnails* m_thumbnails = nullptr;

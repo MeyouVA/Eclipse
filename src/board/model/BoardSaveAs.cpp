@@ -47,6 +47,11 @@ bool BoardDocument::saveAs(QString const& path, QString* error)
     if (destination.exists() || destination.isSymLink())
         return fail(tr("A file already exists at that destination. Choose a new filename."));
 
+    QString const targetPath = QDir(folder.canonicalPath()).filePath(destination.fileName());
+    auto projectLock = lockProject(targetPath, error);
+    if (!projectLock)
+        return false;
+
     QDir const sourceFolder = QFileInfo(m_path).absoluteDir();
     bool const copyAudio = sourceFolder.canonicalPath() != folder.canonicalPath();
     QStringList createdFiles;
@@ -95,7 +100,10 @@ bool BoardDocument::saveAs(QString const& path, QString* error)
         return fail(tr("Could not publish the project copy: %1").arg(copy.errorString()));
 
     rollback.dismiss();
-    m_path = destination.absoluteFilePath();
+    if (!m_undo.isClean())
+        clearRecovery();
+    m_path = targetPath;
+    m_projectLock = std::move(projectLock);
     m_legacy = false;
     m_undo.setClean();
     return true;
