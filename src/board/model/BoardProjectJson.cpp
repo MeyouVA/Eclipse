@@ -165,12 +165,17 @@ bool BoardProjectJson::supportedDrawing(Drawing const& drawing)
     return true;
 }
 
+bool BoardProjectJson::validSoundAsset(QString const& asset)
+{
+    static QRegularExpression const assetPattern(QStringLiteral("\\A[0-9a-f]{32}(?:\\.[A-Za-z0-9]{1,12})?\\z"));
+    return assetPattern.match(asset).hasMatch();
+}
+
 bool BoardProjectJson::validSound(BoardSound const& sound)
 {
     if (sound.asset.isEmpty())
         return sound == BoardSound{};
-    static QRegularExpression const assetPattern(QStringLiteral("\\A[0-9a-f]{32}(?:\\.[A-Za-z0-9]{1,12})?\\z"));
-    return assetPattern.match(sound.asset).hasMatch() && !sound.name.trimmed().isEmpty() && sound.name.size() <= 256
+    return validSoundAsset(sound.asset) && !sound.name.trimmed().isEmpty() && sound.name.size() <= 256
         && sound.start >= 0 && sound.sourceOffset >= 0 && sound.length > 0
         && qint64(std::max(sound.start, sound.sourceOffset)) + sound.length <= std::numeric_limits<int>::max();
 }

@@ -12,5 +12,6 @@ inline constexpr qsizetype maxEmbeddedImagesBytes = 512 * 1024 * 1024;
 bool encode(BoardProject const& project, QJsonObject& json, QString* error);
 bool decode(QJsonObject const& json, BoardProject& project, QString* error);
 bool supportedDrawing(Drawing const& drawing);
+bool validSoundAsset(QString const& asset);
 bool validSound(BoardSound const& sound);
 }

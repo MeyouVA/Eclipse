@@ -1,5 +1,6 @@
 #include "board/model/BoardDocument.h"
 #include "board/model/BoardProjectFolder.h"
+#include "board/model/BoardProjectJson.h"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -9,6 +10,7 @@
 #include <QJsonDocument>
 #include <QLockFile>
 #include <QTemporaryDir>
+#include <vector>
 
 namespace {
 using namespace BoardProjectFolder;
@@ -53,6 +55,18 @@ bool recordArtwork(QJsonObject const& manifest, QSet<QString>& used)
     return true;
 }
 
+bool recordSound(QJsonObject const& manifest, QSet<QString>& used)
+{
+    if (!manifest.contains("sound"))
+        return true;
+    auto const sound = manifest.value("sound").toObject();
+    QString const asset = sound.value("asset").toString();
+    if (!BoardProjectJson::validSoundAsset(asset))
+        return false;
+    used.insert(asset.toCaseFolded());
+    return true;
+}
+
 bool isLocalDirectory(QFileInfo const& folder)
 {
     return folder.isDir() && !folder.isSymLink() && !folder.isJunction();
@@ -70,6 +84,16 @@ bool matchesContent(QFileInfo const& info, QString const& digest)
 }
 
 qsizetype BoardDocument::moveUnusedArtwork(QString& recoveryFolder, QString* error) const
+{
+    return moveUnusedFiles(recoveryFolder, error, false);
+}
+
+qsizetype BoardDocument::moveUnusedAssets(QString& recoveryFolder, QString* error) const
+{
+    return moveUnusedFiles(recoveryFolder, error, true);
+}
+
+qsizetype BoardDocument::moveUnusedFiles(QString& recoveryFolder, QString* error, bool includeSound) const
 {
     using namespace BoardProjectFolder;
     recoveryFolder.clear();
@@ -92,21 +116,40 @@ qsizetype BoardDocument::moveUnusedArtwork(QString& recoveryFolder, QString* err
         return fail(tr("The project folder is busy. Try again after the save or copy finishes."));
 
     QSet<QString> used;
+    QSet<QString> usedSound;
+    std::vector<std::unique_ptr<QLockFile>> versionLocks;
+    if (includeSound) {
+        QSet<QString> missingRelinkSources;
+        for (auto const& asset : soundAssets(missingRelinkSources))
+            usedSound.insert(asset.toCaseFolded());
+    }
     bool foundProject = false;
     auto const entries = root.entryInfoList(QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot);
     for (auto const& entry : entries) {
-        if (entry.suffix().compare(QLatin1String("ecb"), Qt::CaseInsensitive) != 0)
+        QString const name = entry.fileName();
+        bool const recovery = includeSound && name.endsWith(QLatin1String(".ecb.recovery"), Qt::CaseInsensitive);
+        if (!recovery && entry.suffix().compare(QLatin1String("ecb"), Qt::CaseInsensitive) != 0)
             continue;
+        if (includeSound && !recovery && entry.canonicalFilePath() != m_path) {
+            auto lock = lockProject(entry.absoluteFilePath(), nullptr);
+            if (!lock)
+                return fail(tr("Close other Storyboard versions in this folder before cleaning up project assets."));
+            versionLocks.push_back(std::move(lock));
+        }
         QFile file(entry.absoluteFilePath());
         if (!entry.isFile() || entry.isSymLink() || !file.open(QIODevice::ReadOnly))
             return fail(tr("Could not inspect the saved project “%1”.").arg(entry.fileName()));
+        if (recovery && file.read(QCryptographicHash::hashLength(QCryptographicHash::Sha256)).size()
+                != QCryptographicHash::hashLength(QCryptographicHash::Sha256))
+            return fail(tr("Could not verify the recovery copy “%1”.").arg(name));
         auto const bytes = file.read(maxProjectBytes + 1);
         auto const json = QJsonDocument::fromJson(bytes).object();
         bool const external = json.contains("storage");
         if (file.error() != QFileDevice::NoError || bytes.size() > maxProjectBytes
             || json.value("format").toString() != QLatin1String("eclipse-board") || json.value("version").toInt() != 1
-            || (external && !recordArtwork(json, used)))
-            return fail(tr("Could not verify the artwork references in “%1”.").arg(entry.fileName()));
+            || (recovery && external) || (external && !recordArtwork(json, used))
+            || (includeSound && !recordSound(json, usedSound)))
+            return fail(tr("Could not verify the asset references in “%1”.").arg(name));
         if (external && entry.fileName().compare(projectFile.fileName(), Qt::CaseInsensitive) == 0)
             foundProject = true;
     }
@@ -131,10 +174,21 @@ qsizetype BoardDocument::moveUnusedArtwork(QString& recoveryFolder, QString* err
     if (!collect(QStringLiteral("elements/drawings"), drawingAssetPattern())
         || !collect(QStringLiteral("elements/pictures"), pictureAssetPattern()))
         return fail(tr("The project artwork folders could not be verified."));
+    if (includeSound) {
+        QFileInfo const audio(root.filePath(QStringLiteral("audio")));
+        if (audio.exists() || audio.isSymLink() || audio.isJunction()) {
+            if (!isLocalDirectory(audio))
+                return fail(tr("The project audio folder could not be verified."));
+            for (auto const& file : QDir(audio.absoluteFilePath()).entryList(QDir::Files | QDir::Hidden | QDir::NoSymLinks)) {
+                if (BoardProjectJson::validSoundAsset(file) && !usedSound.contains(file.toCaseFolded()))
+                    candidates.append(QStringLiteral("audio/") + file);
+            }
+        }
+    }
     if (candidates.isEmpty())
         return 0;
 
-    QTemporaryDir recovery(root.filePath(QStringLiteral("Recovered Artwork-XXXXXX")));
+    QTemporaryDir recovery(root.filePath(includeSound ? QStringLiteral("Recovered Assets-XXXXXX") : QStringLiteral("Recovered Artwork-XXXXXX")));
     if (!recovery.isValid())
         return fail(tr("Could not create the recovery folder: %1").arg(recovery.errorString()));
     QDir const target(recovery.path());

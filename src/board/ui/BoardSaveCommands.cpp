@@ -12,23 +12,24 @@ void BoardWindow::cleanProjectArtwork()
 {
     if (m_document.path().isEmpty() || m_document.isLegacyProject())
         return;
-    QString const title = tr("Clean Up Project Artwork");
+    m_playback->stop();
+    QString const title = tr("Clean Up Project Assets");
     if (QMessageBox::question(this, title,
-            tr("Check all saved Storyboard files in this folder and move unused drawings and pictures to a recovery folder?"),
+            tr("Check saved versions, recovery copies, and undo history before moving unused drawings, pictures, and sound to a recovery folder?"),
             QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel) != QMessageBox::Yes)
         return;
     QString recovery;
     QString error;
-    auto const count = m_document.moveUnusedArtwork(recovery, &error);
+    auto const count = m_document.moveUnusedAssets(recovery, &error);
     if (count < 0) {
         if (!recovery.isEmpty())
             error += QStringLiteral("\n\n") + QDir::toNativeSeparators(recovery);
         QMessageBox::warning(this, title, error);
     } else if (count == 0) {
-        QMessageBox::information(this, title, tr("No unused drawings or pictures were found."));
+        QMessageBox::information(this, title, tr("No unused project assets were found."));
     } else {
         QMessageBox::information(this, title,
-            tr("Moved %n unused artwork file(s) to:\n%1", nullptr, int(count)).arg(QDir::toNativeSeparators(recovery)));
+            tr("Moved %n unused project asset(s) to:\n%1\n\nTo restore a file, copy it to the matching subfolder in the project folder.", nullptr, int(count)).arg(QDir::toNativeSeparators(recovery)));
     }
 }
 

@@ -28,6 +28,7 @@ public:
     bool recover(QString* error = nullptr);
     bool isLegacyProject() const { return m_legacy; }
     qsizetype moveUnusedArtwork(QString& recoveryFolder, QString* error = nullptr) const;
+    qsizetype moveUnusedAssets(QString& recoveryFolder, QString* error = nullptr) const;
     QString extractProject(int first, int last, QString const& name, QString const& directory, QString* error = nullptr) const;
     QString splitProject(int firstSceneOfSecondPart, QString const& name, QString const& directory, QString* error = nullptr) const;
     bool insertProject(BoardProject source, QString const& sourceFile, int after, bool useImportedSound, QString* error = nullptr);
@@ -86,6 +87,7 @@ private:
     bool canGrow(qsizetype panels, qint64 frames) const;
     QString writeSceneRange(int first, int last, QString const& name, QString const& directory, QString* error) const;
     QString uniqueShotName(QString const& base) const;
+    qsizetype moveUnusedFiles(QString& recoveryFolder, QString* error, bool includeSound) const;
     QSet<QString> soundAssets(QSet<QString>& missingRelinkSources) const;
     static std::unique_ptr<QLockFile> lockProject(QString const& path, QString* error);
     QString recoveryPath() const;
