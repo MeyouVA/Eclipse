@@ -79,6 +79,7 @@ void BoardWindow::updatePlaybackActions()
                     "BoardGoToScene", "BoardGoToFrame"})
         enabled(id, active);
     enabled("BoardSoundImport", active);
+    enabled("BoardSoundRelink", active && hasSound);
     enabled("BoardSoundPosition", active && hasSound);
     enabled("BoardSoundMute", active && hasSound);
     enabled("BoardSoundRemove", active && hasSound);

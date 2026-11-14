@@ -8,8 +8,9 @@
 
 class BoardEdit final : public QUndoCommand {
 public:
-    BoardEdit(BoardProject& current, BoardProject next, QString const& label, quint64 session)
-        : QUndoCommand(label), m_current(current), m_before(current), m_after(std::move(next)), m_session(session) {}
+    BoardEdit(BoardProject& current, BoardProject next, QString const& label, quint64 session, QString const& missingRelinkSource)
+        : QUndoCommand(label), m_current(current), m_before(current), m_after(std::move(next)), m_session(session),
+          m_missingRelinkSource(missingRelinkSource) {}
 
     void redo() override { m_current = m_after; }
     void undo() override { m_current = m_before; }
@@ -24,10 +25,12 @@ public:
         return true;
     }
 
-    void collectSoundAssets(QSet<QString>& assets) const
+    void collectSoundAssets(QSet<QString>& assets, QSet<QString>& missingRelinkSources) const
     {
         assets.insert(m_before.sound.asset);
         assets.insert(m_after.sound.asset);
+        if (!m_missingRelinkSource.isEmpty())
+            missingRelinkSources.insert(m_missingRelinkSource);
     }
 
 private:
@@ -35,6 +38,7 @@ private:
     BoardProject m_before;
     BoardProject m_after;
     quint64 m_session;
+    QString m_missingRelinkSource;
 };
 
 BoardDocument::BoardDocument(QObject* parent) : QObject(parent)
@@ -118,12 +122,12 @@ bool BoardDocument::save(QString* error)
     return true;
 }
 
-QSet<QString> BoardDocument::soundAssets() const
+QSet<QString> BoardDocument::soundAssets(QSet<QString>& missingRelinkSources) const
 {
     QSet<QString> assets{m_project.sound.asset};
     for (int i = 0; i < m_undo.count(); ++i)
         if (auto const* command = dynamic_cast<BoardEdit const*>(m_undo.command(i)))
-            command->collectSoundAssets(assets);
+            command->collectSoundAssets(assets, missingRelinkSources);
     assets.remove(QString());
     return assets;
 }
@@ -163,9 +167,9 @@ bool BoardDocument::canGrow(qsizetype panels, qint64 frames) const
     return panels <= 50000 && frames <= std::numeric_limits<int>::max();
 }
 
-void BoardDocument::apply(BoardProject project, QString const& label, quint64 session)
+void BoardDocument::apply(BoardProject project, QString const& label, quint64 session, QString const& missingRelinkSource)
 {
-    m_undo.push(new BoardEdit(m_project, std::move(project), label, session));
+    m_undo.push(new BoardEdit(m_project, std::move(project), label, session, missingRelinkSource));
 }
 
 bool BoardDocument::setTitles(QString const& title, QString const& subtitle)

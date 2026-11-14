@@ -128,6 +128,7 @@
  </category>
  <category id="board.sound" text="Sound">
   <shortcut id="shortcut.BoardSoundImport" text="Import Sound" value=""/>
+  <shortcut id="shortcut.BoardSoundRelink" text="Relink Sound" value=""/>
   <shortcut id="shortcut.BoardSoundPosition" text="Sound Start Frame" value=""/>
   <shortcut id="shortcut.BoardSoundMute" text="Mute Sound" value=""/>
   <shortcut id="shortcut.BoardSoundRemove" text="Remove Sound" value=""/>

@@ -45,6 +45,7 @@ public:
     bool setCameraKey(int shot, int panel, int frame, BoardCameraPose const& pose);
     bool removeCameraKey(int shot, int panel, int frame);
     bool setSound(BoardSound const& sound);
+    bool relinkSound(QString const& asset);
     bool addLayer(int shot, int panel, QString const& name, BoardLayer::Kind kind, int before = -1);
     bool removeLayer(int shot, int panel, int layer);
     bool duplicateLayer(int shot, int panel, int layer);
@@ -85,12 +86,12 @@ private:
     bool canGrow(qsizetype panels, qint64 frames) const;
     QString writeSceneRange(int first, int last, QString const& name, QString const& directory, QString* error) const;
     QString uniqueShotName(QString const& base) const;
-    QSet<QString> soundAssets() const;
+    QSet<QString> soundAssets(QSet<QString>& missingRelinkSources) const;
     static std::unique_ptr<QLockFile> lockProject(QString const& path, QString* error);
     QString recoveryPath() const;
     void clearRecovery();
     void resetProject(BoardProject project, QString path, bool legacy = false);
-    void apply(BoardProject project, QString const& label, quint64 session = 0);
+    void apply(BoardProject project, QString const& label, quint64 session = 0, QString const& missingRelinkSource = {});
 
     BoardProject m_project;
     QString m_path;

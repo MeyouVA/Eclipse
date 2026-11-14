@@ -10,6 +10,7 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QRegularExpression>
+#include <QTemporaryDir>
 #include <QUuid>
 #include <cmath>
 #include <limits>
@@ -17,8 +18,9 @@
 void BoardWindow::editSound(QString const& operation)
 {
     m_playback->stop();
-    if (operation == QLatin1String("import")) {
-        importBoardSound();
+    bool const relink = operation == QLatin1String("relink");
+    if (relink || operation == QLatin1String("import")) {
+        importBoardSound(relink);
         return;
     }
     BoardSound sound = m_document.project().sound;
@@ -41,12 +43,15 @@ void BoardWindow::editSound(QString const& operation)
     }
 }
 
-void BoardWindow::importBoardSound()
+void BoardWindow::importBoardSound(bool relink)
 {
-    if (m_document.path().isEmpty())
+    auto const& project = m_document.project();
+    BoardSound const previous = project.sound;
+    if (m_document.path().isEmpty() || (relink && previous.asset.isEmpty()))
         return;
+    QString const title = relink ? tr("Relink Sound") : tr("Import Sound");
     QDir const folder = QFileInfo(m_document.path()).dir();
-    QString const path = QFileDialog::getOpenFileName(this, tr("Import Sound"), folder.path(), MediaFormats::audioFilter());
+    QString const path = QFileDialog::getOpenFileName(this, title, folder.path(), MediaFormats::audioFilter());
     if (path.isEmpty())
         return;
     QFileInfo const source(path);
@@ -54,21 +59,39 @@ void BoardWindow::importBoardSound()
     static QRegularExpression const extension(QStringLiteral("\\A[A-Za-z0-9]{1,12}\\z"));
     if (extension.match(source.suffix()).hasMatch())
         asset += QLatin1Char('.') + source.suffix();
-    QString const copy = folder.absoluteFilePath(QStringLiteral("audio/") + asset);
-    if (!folder.mkpath(QStringLiteral("audio")) || !QFile::copy(path, copy)) {
-        QMessageBox::warning(this, tr("Import Sound"), tr("Could not copy the sound into the project folder."));
+    QTemporaryDir staged(folder.filePath(QStringLiteral(".board-sound-XXXXXX")));
+    QString const candidate = staged.filePath(asset);
+    auto copyError = [&] { QMessageBox::warning(this, title, tr("Could not copy the sound into the project folder.")); };
+    if (!staged.isValid() || !QFile::copy(path, candidate)) {
+        copyError();
         return;
     }
     QString error;
-    auto const decoded = Sound::load(copy, &error);
-    if (decoded && decoded->frames() > 0) {
-        int const start = m_timeline->frame();
-        int const duration = int(std::clamp(std::ceil(decoded->seconds() * m_document.project().fps),
-                                            1.0, double(std::numeric_limits<int>::max() - start)));
-        QString const name = source.completeBaseName().trimmed().left(256);
-        if (m_document.setSound({asset, name.isEmpty() ? tr("Sound") : name, start, duration, false}))
-            return;
+    auto const decoded = Sound::load(candidate, &error);
+    if (!decoded || decoded->frames() <= 0) {
+        QMessageBox::warning(this, title, error.isEmpty() ? tr("The file does not contain usable audio.") : error);
+        return;
     }
-    QFile::remove(copy);
-    QMessageBox::warning(this, tr("Import Sound"), error.isEmpty() ? tr("The file does not contain usable audio.") : error);
+    double const sourceFrames = std::ceil(decoded->seconds() * project.fps);
+    if (relink && sourceFrames < qint64(previous.sourceOffset) + previous.length) {
+        QMessageBox::warning(this, title, tr("The replacement sound is too short for the clip’s current source range."));
+        return;
+    }
+
+    QFileInfo const audio(folder.filePath(QStringLiteral("audio")));
+    QDir const destination(audio.absoluteFilePath());
+    QString const copy = destination.filePath(asset);
+    if (audio.isSymLink() || audio.isJunction() || !folder.mkpath(QStringLiteral("audio")) || !QFile::rename(candidate, copy)) {
+        copyError();
+        return;
+    }
+    int const start = m_timeline->frame();
+    int const duration = int(std::clamp(sourceFrames, 1.0, double(std::numeric_limits<int>::max() - start)));
+    QString const name = source.completeBaseName().trimmed().left(256);
+    bool const applied = relink ? m_document.relinkSound(asset)
+        : m_document.setSound({asset, name.isEmpty() ? tr("Sound") : name, start, duration, false});
+    if (!applied) {
+        QFile::remove(copy);
+        QMessageBox::warning(this, title, tr("Could not apply the sound to this project."));
+    }
 }

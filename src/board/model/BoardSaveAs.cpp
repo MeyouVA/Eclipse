@@ -62,11 +62,16 @@ bool BoardDocument::saveAs(QString const& path, QString* error)
         if (createdAudioFolder)
             folder.rmdir(QStringLiteral("audio"));
     });
-    for (auto const& asset : soundAssets()) {
+    QSet<QString> missingRelinkSources;
+    auto const assets = soundAssets(missingRelinkSources);
+    for (auto const& asset : assets) {
         QString const relative = QStringLiteral("audio/") + asset;
         QString const source = sourceFolder.filePath(relative);
-        if (!QFileInfo(source).isFile())
+        if (!QFileInfo(source).isFile()) {
+            if (asset != m_project.sound.asset && missingRelinkSources.contains(asset))
+                continue;
             return fail(tr("The project sound file “%1” is missing.").arg(asset));
+        }
         if (!copyAudio)
             continue;
         QFileInfo const audioFolder(folder.filePath(QStringLiteral("audio")));

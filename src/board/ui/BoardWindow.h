@@ -102,7 +102,7 @@ private:
     void updatePlaybackActions();
     void navigateBoard(QString const& operation);
     void updateCameraActions();
-    void importBoardSound();
+    void importBoardSound(bool relink);
     ActionManager* m_actions;
     BoardDocument m_document;
     QTimer* m_recoveryTimer = nullptr;

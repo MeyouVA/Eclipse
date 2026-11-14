@@ -112,6 +112,7 @@
   </menu>
   <menu id="Sound" text="&amp;Sound">
    <item id="BoardSoundImport" icon="timeline/addsound" text="Import Sound..." shortcut="shortcut.BoardSoundImport" responder="window" slot="editSound(QString)" itemParameter="import"/>
+   <item id="BoardSoundRelink" text="Relink Sound..." shortcut="shortcut.BoardSoundRelink" responder="window" slot="editSound(QString)" itemParameter="relink"/>
    <item id="BoardSoundPosition" text="Sound Start Frame..." shortcut="shortcut.BoardSoundPosition" responder="window" slot="editSound(QString)" itemParameter="position"/>
    <item id="BoardSoundMute" icon="play/sound" text="Mute Sound" checkable="true" shortcut="shortcut.BoardSoundMute" responder="window" slot="editSound(QString)" itemParameter="mute"/>
    <item id="BoardSoundRemove" icon="edit/delete" text="Remove Sound" shortcut="shortcut.BoardSoundRemove" responder="window" slot="editSound(QString)" itemParameter="remove"/>

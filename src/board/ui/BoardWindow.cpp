@@ -110,6 +110,10 @@ void BoardWindow::updateProjectState()
         if (base != project.name)
             title = tr("%1 (%2)").arg(title, base);
         setWindowTitle(tr("%1[*] — Eclipse Storyboard").arg(title));
+        if (!project.sound.asset.isEmpty() && !QFileInfo(project.audioPath(m_document.path())).isFile()) {
+            statusBar()->showMessage(tr("Sound file missing for “%1”. Use Sound > Relink Sound to locate a replacement.").arg(project.sound.name));
+            return;
+        }
         statusBar()->showMessage(tr("Scenes: %1  |  Panels: %2  |  %3 × %4  |  %5 fps")
             .arg(project.shots.size()).arg(panels).arg(project.width).arg(project.height).arg(project.fps));
     } else {
