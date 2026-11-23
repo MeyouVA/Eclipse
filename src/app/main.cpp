@@ -61,7 +61,9 @@ int main(int argc, char** argv)
     QStringList const args = QApplication::arguments();
     if (args.size() > 1) {
         path = args[1];
-        storyboard = QFileInfo(path).suffix().compare(QLatin1String("ecb"), Qt::CaseInsensitive) == 0;
+        QString const suffix = QFileInfo(path).suffix();
+        storyboard = suffix.compare(QLatin1String("ecb"), Qt::CaseInsensitive) == 0
+            || suffix.compare(QLatin1String("ecbz"), Qt::CaseInsensitive) == 0;
         choice = storyboard ? WelcomeDialog::OpenBoardProject : WelcomeDialog::OpenScene;
     } else if (prefs.value(QStringLiteral("welcome/hide"), false).toBool()) {
         storyboard = prefs.value(QStringLiteral("welcome/lastApp")).toString() == QLatin1String("board");

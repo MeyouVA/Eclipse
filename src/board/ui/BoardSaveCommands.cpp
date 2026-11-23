@@ -1,5 +1,6 @@
 #include "board/ui/BoardWindow.h"
 #include "board/ui/BoardPlayback.h"
+#include "board/model/BoardPackCache.h"
 
 #include <QDir>
 #include <QFileDialog>
@@ -39,13 +40,34 @@ void BoardWindow::saveProjectAs()
         return;
     m_playback->stop();
     QFileInfo const source(m_document.path());
-    QFileDialog dialog(this, tr("Save Storyboard As"), source.absolutePath(), tr("Eclipse Storyboard (*.ecb)"));
+    QString const folderType = tr("Eclipse Storyboard (*.ecb)");
+    QString const packedType = tr("Packed Eclipse Storyboard (*.ecbz)");
+    QFileDialog dialog(this, tr("Save Storyboard As"), source.absolutePath(), folderType + QStringLiteral(";;") + packedType);
     dialog.setAcceptMode(QFileDialog::AcceptSave);
     dialog.setDefaultSuffix(QStringLiteral("ecb"));
     dialog.setOption(QFileDialog::DontConfirmOverwrite);
-    dialog.selectFile(tr("%1 Copy").arg(source.completeBaseName()) + QStringLiteral(".ecb"));
-    if (dialog.exec() == QDialog::Accepted)
-        saveProjectCopy(dialog.selectedFiles().value(0));
+    QString const base = m_document.packPath().isEmpty() ? source.completeBaseName() : QFileInfo(m_document.packPath()).completeBaseName();
+    dialog.selectFile(tr("%1 Copy").arg(base) + QStringLiteral(".ecb"));
+    connect(&dialog, &QFileDialog::filterSelected, &dialog, [&dialog, packedType](QString const& filter) {
+        dialog.setDefaultSuffix(filter == packedType ? QStringLiteral("ecbz") : QStringLiteral("ecb"));
+    });
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    QString const chosen = dialog.selectedFiles().value(0);
+    if (BoardPackCache::isPack(chosen)) {
+        if (QFileInfo::exists(chosen) && QMessageBox::question(this, tr("Save Storyboard As"),
+                tr("Replace the existing packed project “%1”?").arg(QFileInfo(chosen).fileName())) != QMessageBox::Yes)
+            return;
+        savePacked(chosen);
+        return;
+    }
+    BoardPackCache::Entry drop;
+    if (!settlePack(&drop))
+        return;
+    QString const before = m_document.path();
+    saveProjectCopy(chosen);
+    if (m_document.path() != before)
+        dropPackCache(drop);
 }
 
 void BoardWindow::saveNewVersion()

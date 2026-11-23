@@ -1,4 +1,5 @@
 #include "board/model/BoardDocument.h"
+#include "board/model/BoardPackCache.h"
 
 #include <QFileInfo>
 #include <QLockFile>
@@ -80,8 +81,10 @@ bool BoardDocument::open(QString const& path, QString* error)
         return false;
     if (!m_undo.isClean())
         clearRecovery();
-    if (!sameProject)
+    if (!sameProject) {
+        leavePack();
         m_projectLock = std::move(lock);
+    }
     resetProject(std::move(project), canonical, legacy);
     return true;
 }
@@ -91,6 +94,7 @@ void BoardDocument::close()
     if (!m_undo.isClean())
         clearRecovery();
     m_projectLock.reset();
+    leavePack();
     resetProject({}, {});
 }
 
@@ -119,6 +123,8 @@ bool BoardDocument::save(QString* error)
     m_legacy = false;
     clearRecovery();
     m_undo.setClean();
+    if (!m_pack.isEmpty())
+        BoardPackCache::setCommitted(m_path, false);
     return true;
 }
 

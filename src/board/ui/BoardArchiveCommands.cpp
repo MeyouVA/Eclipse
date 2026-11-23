@@ -17,8 +17,29 @@ void BoardWindow::archiveProject(QString const& operation)
         return;
     m_playback->stop();
     bool const backup = operation == QLatin1String("backup");
+    if (!backup && !m_document.packPath().isEmpty()) {
+        QString error;
+        if (!saveChanges())
+            return;
+        if (!m_document.commitPack(&error)) {
+            QMessageBox::warning(this, tr("Save and Pack"), error);
+            return;
+        }
+        statusBar()->showMessage(tr("Packed into %1").arg(QDir::toNativeSeparators(m_document.packPath())), 6000);
+        return;
+    }
+    if (!backup) {
+        QFileDialog dialog(this, tr("Save as Packed Project"), QFileInfo(current).absoluteDir().absolutePath(),
+                           tr("Packed Eclipse Storyboard (*.ecbz)"));
+        dialog.setAcceptMode(QFileDialog::AcceptSave);
+        dialog.setDefaultSuffix(QStringLiteral("ecbz"));
+        dialog.selectFile(QFileInfo(current).completeBaseName() + QStringLiteral(".ecbz"));
+        if (dialog.exec() == QDialog::Accepted)
+            savePacked(dialog.selectedFiles().value(0));
+        return;
+    }
     QString const title = backup ? tr("Back Up Storyboard") : tr("Save and Pack");
-    QFileInfo const info(current);
+    QFileInfo const info(m_document.packPath().isEmpty() ? current : m_document.packPath());
     QString name = info.completeBaseName();
     if (backup)
         name += tr(" Backup %1").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HHmmss")));
@@ -45,12 +66,13 @@ void BoardWindow::restoreArchive()
     QString const initial = m_document.path().isEmpty()
         ? settings().value(QStringLiteral("board/welcome/directory")).toString()
         : QFileInfo(m_document.path()).absolutePath();
-    QString const archive = QFileDialog::getOpenFileName(this, title, initial, tr("Storyboard ZIP Archive (*.zip)"));
+    QString const archive = QFileDialog::getOpenFileName(this, title, initial, tr("Storyboard Archive (*.zip *.ecbz)"));
     if (archive.isEmpty())
         return;
     QString const parent = QFileDialog::getExistingDirectory(this, tr("Choose a Folder for the Restored Project"),
         QFileInfo(archive).absolutePath());
-    if (parent.isEmpty() || !confirmDiscard())
+    BoardPackCache::Entry drop;
+    if (parent.isEmpty() || !confirmDiscard() || !settlePack(&drop))
         return;
     m_playback->stop();
     QString error;
@@ -59,5 +81,6 @@ void BoardWindow::restoreArchive()
         QMessageBox::warning(this, title, error);
         return;
     }
-    loadProject(restored);
+    if (loadProject(restored))
+        dropPackCache(drop);
 }

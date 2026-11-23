@@ -2,6 +2,7 @@
 
 #include "EclipseExport.h"
 #include "board/model/BoardDocument.h"
+#include "board/model/BoardPackCache.h"
 
 #include <QMainWindow>
 
@@ -76,6 +77,11 @@ private slots:
 
 private:
     bool loadProject(QString const& path);
+    bool loadPack(QString const& pack);
+    bool settlePack(BoardPackCache::Entry* drop = nullptr);
+    void dropPackCache(BoardPackCache::Entry const& entry);
+    void savePacked(QString const& destination);
+    void offerPackRecovery();
     void offerLegacyConversion(QString const& path);
     void offerProjectRecovery(QString const& path);
     bool saveChanges();

@@ -14,13 +14,20 @@
 
 bool BoardWindow::openProject(QString const& path)
 {
-    return confirmDiscard() && loadProject(path);
+    BoardPackCache::Entry drop;
+    if (!confirmDiscard() || !settlePack(&drop) || !loadProject(path))
+        return false;
+    dropPackCache(drop);
+    return true;
 }
 
 bool BoardWindow::loadProject(QString const& path)
 {
     QString error;
-    if (!m_document.open(path, &error)) {
+    if (BoardPackCache::isPack(path)) {
+        if (!loadPack(path))
+            return false;
+    } else if (!m_document.open(path, &error)) {
         QMessageBox::warning(this, tr("Eclipse Storyboard"),
                              tr("Could not open %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;
@@ -66,7 +73,7 @@ void BoardWindow::offerLegacyConversion(QString const& path)
 
 void BoardWindow::rememberProjectPath()
 {
-    QString const absolute = m_document.path();
+    QString const absolute = m_document.packPath().isEmpty() ? m_document.path() : m_document.packPath();
     setWindowFilePath(absolute);
     QSettings prefs = settings();
     QStringList recent = prefs.value(QStringLiteral("board/recentProjects")).toStringList();
@@ -93,11 +100,13 @@ void BoardWindow::saveProject() { saveChanges(); }
 
 void BoardWindow::closeProject()
 {
-    if (m_document.path().isEmpty() || !confirmDiscard())
+    BoardPackCache::Entry drop;
+    if (m_document.path().isEmpty() || !confirmDiscard() || !settlePack(&drop))
         return;
     showCameraPreview(false);
     m_actions->setChecked(QStringLiteral("BoardCameraPreview"), false);
     m_document.close();
+    dropPackCache(drop);
     setWindowFilePath(QString());
 }
 
@@ -112,11 +121,9 @@ bool BoardWindow::confirmDiscard()
 
 void BoardWindow::showWelcome()
 {
-    if (!confirmDiscard())
-        return;
     WelcomeDialog welcome(ActionManager::defaultDirectory(), WelcomeDialog::Mode::Storyboard, this);
     if (welcome.exec() == QDialog::Accepted)
-        loadProject(welcome.path());
+        openProject(welcome.path());
 }
 
 void BoardWindow::chooseProject()
@@ -124,7 +131,7 @@ void BoardWindow::chooseProject()
     QString const directory = windowFilePath().isEmpty()
         ? settings().value(QStringLiteral("board/welcome/directory")).toString()
         : QFileInfo(windowFilePath()).absolutePath();
-    QString const path = QFileDialog::getOpenFileName(this, tr("Open Project"), directory, tr("Eclipse Storyboard (*.ecb)"));
+    QString const path = QFileDialog::getOpenFileName(this, tr("Open Project"), directory, tr("Eclipse Storyboard (*.ecb *.ecbz)"));
     if (!path.isEmpty())
         openProject(path);
 }

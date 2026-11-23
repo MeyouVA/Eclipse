@@ -20,6 +20,10 @@ public:
     BoardPanel const* panel(int shot, int panel) const;
 
     bool open(QString const& path, QString* error = nullptr);
+    bool openPack(QString const& pack, bool keepCache, QString* error = nullptr);
+    QString const& packPath() const { return m_pack; }
+    bool isPackCommitted() const;
+    bool commitPack(QString* error = nullptr);
     void close();
     bool save(QString* error = nullptr);
     bool saveAs(QString const& path, QString* error = nullptr);
@@ -94,6 +98,7 @@ private:
     static std::unique_ptr<QLockFile> lockProject(QString const& path, QString* error);
     QString recoveryPath() const;
     void clearRecovery();
+    void leavePack();
     void resetProject(BoardProject project, QString path, bool legacy = false);
     void apply(BoardProject project, QString const& label, quint64 session = 0, QString const& missingRelinkSource = {});
 
@@ -101,6 +106,8 @@ private:
     QString m_path;
     QUndoStack m_undo;
     std::unique_ptr<QLockFile> m_projectLock;
+    std::unique_ptr<QLockFile> m_packLock;
+    QString m_pack;
     bool m_legacy = false;
     bool m_wroteRecovery = false;
 };

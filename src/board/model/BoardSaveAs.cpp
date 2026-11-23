@@ -109,6 +109,7 @@ bool BoardDocument::saveAs(QString const& path, QString* error)
         clearRecovery();
     m_path = targetPath;
     m_projectLock = std::move(projectLock);
+    leavePack();
     m_legacy = false;
     m_undo.setClean();
     return true;

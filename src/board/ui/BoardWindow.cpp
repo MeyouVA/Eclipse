@@ -62,6 +62,7 @@ BoardWindow::BoardWindow(QWidget* parent) : QMainWindow(parent), m_actions(new A
     connect(&m_document, &BoardDocument::projectChanged, this, &BoardWindow::updateProjectState);
     connect(&m_document, &BoardDocument::projectChanged, this, &BoardWindow::refreshWorkspace);
     connect(m_document.undoStack(), &QUndoStack::cleanChanged, this, &BoardWindow::updateProjectState);
+    QTimer::singleShot(0, this, &BoardWindow::offerPackRecovery);
     m_recoveryTimer = new QTimer(this);
     m_recoveryTimer->setObjectName(QStringLiteral("BoardRecoveryTimer"));
     m_recoveryTimer->setSingleShot(true);
@@ -94,8 +95,9 @@ void BoardWindow::updateProjectState()
                            "BoardClose", "BoardRefreshThumbnails", "BoardExtract", "BoardInsert", "BoardMerge"})
         enabled(id, loaded);
     enabled("BoardSettings", loaded);
+    enabled("BoardSaveVersion", loaded && m_document.packPath().isEmpty());
     enabled("BoardConvertLegacy", m_document.isLegacyProject());
-    enabled("BoardCleanArtwork", loaded && !m_document.isLegacyProject());
+    enabled("BoardCleanArtwork", loaded && !m_document.isLegacyProject() && m_document.packPath().isEmpty());
     enabled("BoardUndo", history->canUndo());
     enabled("BoardRedo", history->canRedo());
     updatePanelActions();
@@ -106,9 +108,11 @@ void BoardWindow::updateProjectState()
         for (auto const& shot : project.shots)
             panels += shot.panels.size();
         QString title = project.title.isEmpty() ? project.name : project.title;
-        QString const base = QFileInfo(m_document.path()).completeBaseName();
+        QString const base = QFileInfo(m_document.packPath().isEmpty() ? m_document.path() : m_document.packPath()).completeBaseName();
         if (base != project.name)
             title = tr("%1 (%2)").arg(title, base);
+        if (!m_document.packPath().isEmpty())
+            title = tr("%1 [packed]").arg(title);
         setWindowTitle(tr("%1[*] — Eclipse Storyboard").arg(title));
         if (!project.sound.asset.isEmpty() && !QFileInfo(project.audioPath(m_document.path())).isFile()) {
             statusBar()->showMessage(tr("Sound file missing for “%1”. Use Sound > Relink Sound to locate a replacement.").arg(project.sound.name));
@@ -124,12 +128,14 @@ void BoardWindow::updateProjectState()
 
 void BoardWindow::closeEvent(QCloseEvent* event)
 {
-    if (!confirmDiscard()) {
+    BoardPackCache::Entry drop;
+    if (!confirmDiscard() || !settlePack(&drop)) {
         event->ignore();
         return;
     }
     saveWorkspaceSettings();
     m_document.close();
+    dropPackCache(drop);
     QMainWindow::closeEvent(event);
 }
 

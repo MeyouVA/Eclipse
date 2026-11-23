@@ -100,7 +100,7 @@ BoardWelcomePage::BoardWelcomePage(QString const& resources, QWidget* parent) : 
     recentLayout->addWidget(open, 0, Qt::AlignRight);
     connect(open, &QPushButton::clicked, this, [this] {
         openProject(QFileDialog::getOpenFileName(this, tr("Open Project"), m_directory->text(),
-                                                tr("Eclipse Storyboard (*.ecb)")));
+                                                tr("Eclipse Storyboard (*.ecb *.ecbz)")));
     });
 
     auto* layout = new QHBoxLayout(this);
@@ -130,7 +130,10 @@ void BoardWelcomePage::openProject(QString const& path)
         return;
     BoardProject project;
     QString error;
-    if (!BoardProject::open(path, project, &error)) {
+    bool const packed = QFileInfo(path).suffix().compare(QLatin1String("ecbz"), Qt::CaseInsensitive) == 0;
+    if (packed ? !QFileInfo(path).isFile() : !BoardProject::open(path, project, &error)) {
+        if (packed)
+            error = tr("The packed project file is missing.");
         QMessageBox::warning(this, tr("Eclipse Storyboard"), tr("Could not open the project:\n%1").arg(error));
         return;
     }

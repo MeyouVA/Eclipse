@@ -38,7 +38,11 @@ Open the `.ecb` file inside its project folder. It holds scenes, panel timing, c
 
 To enable double-click opening in Windows Explorer, run `.\register_storyboard_file_type.ps1` in PowerShell beside the packaged `Eclipse.exe`. In a source checkout, run `.\scripts\register_storyboard_file_type.ps1` after building. Run it again after moving Eclipse so Explorer uses the new location.
 
-Move or copy the whole folder to keep its artwork and sound with the project. **File → Save and Pack** creates a portable ZIP. When you open an older single-file board, **Convert Project** updates the current `.ecb` in place and stores its artwork in the existing folder. If you choose **Open Original**, you can convert it later under **File → Project Management** or update it by saving.
+Move or copy the whole folder to keep its artwork and sound with the project. **File → Save and Pack** turns the board into a single `.ecbz` packed project, and **Back Up Storyboard** writes a dated ZIP copy.
+
+A packed project opens into a private cache. **Save** writes to the cache, and **Save and Pack** commits the cache to the `.ecbz` file. Closing asks you to pack any saved changes. If Eclipse stops before you pack, it offers to recover the cached changes at the next start. Only one editor can open a packed project at a time. **Save As** can also save to the packed type, and **Restore and Open Backup** unpacks a `.ecbz` or ZIP into a normal project folder.
+
+When you open an older single-file board, **Convert Project** updates the current `.ecb` in place and stores its artwork in the existing folder. If you choose **Open Original**, you can convert it later under **File → Project Management** or update it by saving.
 
 **File → Project Management → Clean Up Project Artwork** checks saved boards and versions in the same folder. It moves unused drawings and pictures into a recovery folder, keeping their original relative paths.
 

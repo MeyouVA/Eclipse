@@ -5,7 +5,7 @@ param([string] $Executable)
 $ErrorActionPreference = 'Stop'
 
 if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
-    throw 'This command registers a Windows Explorer file type.'
+    throw 'This command registers Windows Explorer file types.'
 }
 if (-not $Executable) {
     $Executable = Join-Path $PSScriptRoot 'Eclipse.exe'
@@ -21,21 +21,26 @@ if ([IO.Path]::GetFileName($Executable) -ne 'Eclipse.exe') {
     throw 'Choose the Eclipse.exe file you want Explorer to launch.'
 }
 
-$progId = 'Eclipse.Storyboard'
+$types = @(
+    @{ Extension = '.ecb'; ProgId = 'Eclipse.Storyboard'; Name = 'Eclipse Storyboard' },
+    @{ Extension = '.ecbz'; ProgId = 'Eclipse.StoryboardPacked'; Name = 'Packed Eclipse Storyboard' }
+)
 $classes = [Microsoft.Win32.Registry]::ClassesRoot
-$extension = $classes.OpenSubKey('.ecb')
-if ($extension) {
-    try { $existing = $extension.GetValue('') } finally { $extension.Dispose() }
-    if ($existing -and $existing -ne $progId) {
-        throw 'Windows already has a handler for .ecb. Choose Eclipse.exe using Open with in Explorer.'
+foreach ($type in $types) {
+    $extension = $classes.OpenSubKey($type.Extension)
+    if ($extension) {
+        try { $existing = $extension.GetValue('') } finally { $extension.Dispose() }
+        if ($existing -and $existing -ne $type.ProgId) {
+            throw ('Windows already has a handler for {0}. Choose Eclipse.exe using Open with in Explorer.' -f $type.Extension)
+        }
     }
-}
-$userChoice = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
-    'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.ecb\UserChoice')
-if ($userChoice) {
-    try { $choice = $userChoice.GetValue('ProgId') } finally { $userChoice.Dispose() }
-    if ($choice -and $choice -ne $progId) {
-        throw 'Windows has a preferred app for .ecb. Choose Eclipse.exe using Open with in Explorer.'
+    $userChoice = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+        'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\' + $type.Extension + '\UserChoice')
+    if ($userChoice) {
+        try { $choice = $userChoice.GetValue('ProgId') } finally { $userChoice.Dispose() }
+        if ($choice -and $choice -ne $type.ProgId) {
+            throw ('Windows has a preferred app for {0}. Choose Eclipse.exe using Open with in Explorer.' -f $type.Extension)
+        }
     }
 }
 
@@ -61,9 +66,11 @@ function Set-ClassDefault([string] $SubKey, [string] $Value) {
     }
 }
 
-Set-ClassDefault $progId 'Eclipse Storyboard'
-Set-ClassDefault "$progId\DefaultIcon" ('"{0}",0' -f $Executable)
-Set-ClassDefault "$progId\shell\open\command" ('"{0}" "%1"' -f $Executable)
-Set-ClassDefault '.ecb' $progId
+foreach ($type in $types) {
+    Set-ClassDefault $type.ProgId $type.Name
+    Set-ClassDefault "$($type.ProgId)\DefaultIcon" ('"{0}",0' -f $Executable)
+    Set-ClassDefault "$($type.ProgId)\shell\open\command" ('"{0}" "%1"' -f $Executable)
+    Set-ClassDefault $type.Extension $type.ProgId
+}
 [EclipseFileAssociation.Shell]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
-Write-Output "Explorer now opens .ecb files with $Executable"
+Write-Output "Explorer now opens .ecb and .ecbz files with $Executable"
