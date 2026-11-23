@@ -56,7 +56,9 @@ void BoardWindow::exportBoard(QString const& operation)
         Storyboard::Naming naming;
         naming.customPanelNames = true;
         naming.showTotal = false;
-        QByteArray const csv = project.timeline().captionsCsv(project.fps, false, naming);
+        Storyboard board = project.timeline();
+        board.start = project.startFrame;
+        QByteArray const csv = board.captionsCsv(project.fps, false, naming);
         QSaveFile file(output);
         ok = file.open(QIODevice::WriteOnly) && file.write(csv) == csv.size() && file.commit();
         if (!ok)

@@ -50,6 +50,7 @@ struct Storyboard {
     QVector<Shot> shots;
     int start = 0;                      // the scene's frame the first shot starts on
     QString title, subtitle;            // Project Title / Project Subtitle (printed in the PDF's headers and on its cover)
+    QString episode, copyright;         // printed after the subtitle / in the PDF's footer; kept only when set
     QStringList captionFields = defaultCaptionFields();
     static QStringList defaultCaptionFields();
 

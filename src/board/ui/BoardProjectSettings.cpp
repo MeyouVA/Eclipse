@@ -8,6 +8,7 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -44,9 +45,33 @@ void BoardWindow::editProjectSettings()
     subtitle->setObjectName(QStringLiteral("BoardSubtitle"));
     title->setMaxLength(4096);
     subtitle->setMaxLength(4096);
+    auto* episode = new QLineEdit(project.episode, settingsTab);
+    auto* copyright = new QLineEdit(project.copyright, settingsTab);
+    episode->setObjectName(QStringLiteral("BoardEpisode"));
+    copyright->setObjectName(QStringLiteral("BoardCopyright"));
+    episode->setMaxLength(4096);
+    copyright->setMaxLength(4096);
+    episode->setPlaceholderText(tr("For example: Episode 4"));
+    auto* start = new QSpinBox(settingsTab);
+    start->setObjectName(QStringLiteral("BoardStartFrame"));
+    start->setRange(0, BoardProject::maxStartFrame);
+    start->setValue(project.startFrame);
+    start->setToolTip(tr("Offsets frame numbers in the timeline and start times in caption exports. Timing does not move."));
+    auto* startTime = new QLabel(settingsTab);
+    auto showStart = [&project, start, startTime] {
+        startTime->setText(Storyboard::duration(start->value(), project.fps, true));
+    };
+    connect(start, &QSpinBox::valueChanged, startTime, showStart);
+    showStart();
+    auto* startRow = new QHBoxLayout;
+    startRow->addWidget(start);
+    startRow->addWidget(startTime, 1);
     auto* settingsForm = new QFormLayout(settingsTab);
     settingsForm->addRow(tr("Title:"), title);
     settingsForm->addRow(tr("Subtitle:"), subtitle);
+    settingsForm->addRow(tr("Episode:"), episode);
+    settingsForm->addRow(tr("Copyright:"), copyright);
+    settingsForm->addRow(tr("Start Frame:"), startRow);
     tabs->addTab(settingsTab, tr("Settings"));
 
     auto* formatTab = new QWidget(tabs);
@@ -137,11 +162,14 @@ void BoardWindow::editProjectSettings()
         return;
     BoardFormat const next = format();
     bool const titled = title->text() != project.title || subtitle->text() != project.subtitle;
+    bool const detailed = episode->text() != project.episode || copyright->text() != project.copyright
+        || start->value() != project.startFrame;
     bool const reformatted = next.width != project.width || next.height != project.height || next.fps != project.fps;
-    if (!titled && !reformatted)
+    if (!titled && !detailed && !reformatted)
         return;
     m_document.undoStack()->beginMacro(tr("Project Settings"));
     m_document.setTitles(title->text(), subtitle->text());
+    m_document.setDetails(episode->text(), copyright->text(), start->value());
     m_document.setFormat(next);
     m_document.undoStack()->endMacro();
 }

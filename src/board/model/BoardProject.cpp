@@ -41,6 +41,8 @@ namespace {
 bool validProject(BoardProject const& project)
 {
     return BoardProject::validName(project.name) && project.title.size() <= 4096 && project.subtitle.size() <= 4096
+        && project.episode.size() <= 4096 && project.copyright.size() <= 4096
+        && project.startFrame >= 0 && project.startFrame <= BoardProject::maxStartFrame
         && BoardProject::validFormat(project.width, project.height, project.fps);
 }
 
@@ -65,6 +67,12 @@ bool readProject(QByteArray const& bytes, QString const& path, BoardProject& pro
 
     BoardProject loaded{json["name"].toString(), json["title"].toString(), json["subtitle"].toString(),
                         json["width"].toInt(), json["height"].toInt(), json["fps"].toDouble(), {}};
+    if ((json.contains("episode") && !json["episode"].isString()) || (json.contains("copyright") && !json["copyright"].isString())
+        || (json.contains("startFrame") && !json["startFrame"].isDouble()))
+        return fail(tr("The project has invalid title details."));
+    loaded.episode = json["episode"].toString();
+    loaded.copyright = json["copyright"].toString();
+    loaded.startFrame = json.contains("startFrame") ? json["startFrame"].toInt(-1) : 0;
     if (!validProject(loaded))
         return fail(tr("The project has an invalid name or camera settings."));
     if (json.contains("storage")) {
@@ -134,6 +142,12 @@ QByteArray BoardProject::toBytes(QString* error) const
         return fail(tr("Enter a valid project name, title and camera settings."));
     QJsonObject json{{"format", "eclipse-board"}, {"version", 1}, {"name", name}, {"title", title},
                      {"subtitle", subtitle}, {"width", width}, {"height", height}, {"fps", fps}};
+    if (!episode.isEmpty())
+        json["episode"] = episode;
+    if (!copyright.isEmpty())
+        json["copyright"] = copyright;
+    if (startFrame != 0)
+        json["startFrame"] = startFrame;
     if (!BoardProjectJson::encode(*this, json, error))
         return {};
     QByteArray const bytes = QJsonDocument(json).toJson(QJsonDocument::Compact);

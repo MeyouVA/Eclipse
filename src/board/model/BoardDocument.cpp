@@ -184,6 +184,20 @@ bool BoardDocument::setTitles(QString const& title, QString const& subtitle)
     return true;
 }
 
+bool BoardDocument::setDetails(QString const& episode, QString const& copyright, int startFrame)
+{
+    if (m_path.isEmpty() || episode.size() > 4096 || copyright.size() > 4096 || startFrame < 0
+        || startFrame > BoardProject::maxStartFrame
+        || (episode == m_project.episode && copyright == m_project.copyright && startFrame == m_project.startFrame))
+        return false;
+    auto next = m_project;
+    next.episode = episode;
+    next.copyright = copyright;
+    next.startFrame = startFrame;
+    apply(std::move(next), tr("Edit Project Details"));
+    return true;
+}
+
 bool BoardDocument::addShot(QString const& name, int frames, int after)
 {
     if (m_path.isEmpty() || name.trimmed().isEmpty() || !appendPanelAllowed(frames))

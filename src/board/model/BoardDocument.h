@@ -37,6 +37,7 @@ public:
     bool setSceneNamesLocked(int scene, bool locked);
     bool renameSceneGroup(int scene, BoardProject::SceneGroup group, QString const& name);
     bool setTitles(QString const& title, QString const& subtitle);
+    bool setDetails(QString const& episode, QString const& copyright, int startFrame);
     bool setFormat(BoardFormat const& format, QString* error = nullptr);
     bool addShot(QString const& name, int frames, int after = -1);
     bool removeShot(int shot);

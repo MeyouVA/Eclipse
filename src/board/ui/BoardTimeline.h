@@ -42,6 +42,7 @@ private:
     BoardSound m_sound;
     int m_frame = 0;
     int m_length = 0;
+    int m_startFrame = 0;
     double m_scale = 5.0;
     int m_resizeStart = 0;
     int m_resizeLength = 0;

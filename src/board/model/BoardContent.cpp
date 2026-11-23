@@ -31,6 +31,8 @@ Storyboard BoardProject::timeline() const
     Storyboard board;
     board.title = title;
     board.subtitle = subtitle;
+    board.episode = episode;
+    board.copyright = copyright;
     board.captionFields = captionFields;
     for (BoardShot const& shot : shots) {
         Storyboard::Shot timed;

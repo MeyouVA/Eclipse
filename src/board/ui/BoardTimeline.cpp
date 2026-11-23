@@ -46,6 +46,7 @@ void BoardTimeline::setProject(BoardProject const& project)
             m_cameraKeys.append(span.start + key.frame);
     }
     m_sound = project.sound;
+    m_startFrame = project.startFrame;
     m_dissolves.clear();
     for (auto const& shot : project.shots)
         m_dissolves.push_back(shot.dissolve);
@@ -126,7 +127,7 @@ void BoardTimeline::paintEvent(QPaintEvent*)
     painter.fillRect(0, rulerHeight + panelHeight, area.width(), audioHeight, colors.alternateBase());
     painter.setPen(colors.text().color());
     if (m_length > 0)
-        painter.drawText(6, 16, tr("Frame %1").arg(m_frame + 1));
+        painter.drawText(6, 16, tr("Frame %1").arg(qint64(m_startFrame) + m_frame + 1));
     painter.drawText(6, rulerHeight + 25, tr("Panels"));
     painter.drawText(6, rulerHeight + panelHeight + 19, tr("Sound"));
     painter.setClipRect(QRect(gutter, 0, std::max(0, area.width() - gutter), area.height()));
@@ -135,7 +136,7 @@ void BoardTimeline::paintEvent(QPaintEvent*)
     for (qint64 at = (first / step) * qint64(step); at < m_length && xAt(at) < area.width(); at += step) {
         double const x = xAt(at);
         painter.drawLine(QLineF(x, rulerHeight - 5, x, rulerHeight));
-        painter.drawText(QPointF(x + 3, 15), QString::number(at + 1));
+        painter.drawText(QPointF(x + 3, 15), QString::number(m_startFrame + at + 1));
     }
     if (auto const* start = spanAt(first))
         for (auto const* span = start; span != m_spans.constData() + m_spans.size() && xAt(span->start) < area.width(); ++span) {

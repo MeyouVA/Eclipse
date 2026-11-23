@@ -76,6 +76,8 @@ QVector<Option> const& options()
             {"headerFontSize", header, "Header font size", "Selects the header font size.", T::Int, 10, {}, 4, 72},
             {"title", header, "Project title", "Check this to display the Project Title defined in the project's storyboard settings.", T::Bool, true},
             {"subtitle", header, "Project subtitle", "Check this to display the Project Subtitle defined in the project's storyboard settings.", T::Bool, true},
+            {"episode", header, "Project episode", "Check this to display the Project Episode after the subtitle.", T::Bool, true},
+            {"copyright", header, "Project copyright", "Check this to display the Project Copyright in the footer of each page, even when the page footer is off.", T::Bool, true},
             {"pageNumber", header, "Page number", "Check this to display a page number in the header on each page ( except the cover).", T::Bool, true},
             {"totalPages", header, "Total pages", "Check this to display the total number of pages in the header.", T::Bool, true},
             {"pageNumberBox", header, "Box around page number", "Check this to draw a box around the page number.", T::Bool, false},
@@ -391,6 +393,8 @@ struct Painter {
         QStringList lines;
         if (!board.subtitle.isEmpty())
             lines << board.subtitle;
+        if (profile.flag(QStringLiteral("episode")) && !board.episode.isEmpty())
+            lines << board.episode;
         if (profile.flag(QStringLiteral("fileCover")) && !fileName.isEmpty())
             lines << fileName;
         if (profile.flag(QStringLiteral("revisionCover")) && !profile.text(QStringLiteral("revisionNote")).isEmpty())
@@ -421,6 +425,8 @@ struct Painter {
             left << board.title;
         if (profile.flag(QStringLiteral("subtitle")) && !board.subtitle.isEmpty())
             left << board.subtitle;
+        if (profile.flag(QStringLiteral("episode")) && !board.episode.isEmpty())
+            left << board.episode;
         if (profile.flag(QStringLiteral("fileHeader")) && !fileName.isEmpty())
             left << fileName;
         p.drawText(text, Qt::AlignLeft | Qt::AlignVCenter, left.join(QStringLiteral(" - ")));
@@ -466,6 +472,13 @@ struct Painter {
         }
         if (profile.flag(QStringLiteral("fileFooter")) && !fileName.isEmpty())
             p.drawText(text, Qt::AlignLeft | Qt::AlignVCenter, fileName);
+        if (showsCopyright())
+            p.drawText(text, Qt::AlignHCenter | Qt::AlignVCenter, scene.storyboard.copyright);
+    }
+
+    bool showsCopyright() const
+    {
+        return profile.flag(QStringLiteral("copyright")) && !scene.storyboard.copyright.isEmpty();
     }
 
     QString panelHeaderText(Cell const& cell) const
@@ -871,7 +884,7 @@ bool writeWithFrames(Scene const& scene, Profile const& profile, QString const& 
             paint.header(box, start + n, start + int(pages.size()) - 1 + (start == 0 ? 1 : 0), pages[n]);
             area.setTop(box.bottom() + 2 * paint.scale);
         }
-        if (profile.flag(QStringLiteral("footer"))) {
+        if (profile.flag(QStringLiteral("footer")) || paint.showsCopyright()) {
             QRectF const box(area.left(), area.bottom() - paint.unit(QStringLiteral("footerSize")), area.width(), paint.unit(QStringLiteral("footerSize")));
             paint.footer(box);
             area.setBottom(box.top() - 2 * paint.scale);

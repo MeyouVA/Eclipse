@@ -29,6 +29,10 @@ struct ECLIPSE_BOARD_MODEL_API BoardProject {
     QVector<BoardLayer> library = {};
     static constexpr qsizetype maxLibraryItems = 512;
     static constexpr qsizetype maxLibraryName = 128;
+    QString episode = {};
+    QString copyright = {};
+    int startFrame = 0;
+    static constexpr int maxStartFrame = 100000000;
 
     QString create(QString const& directory, QString* error = nullptr) const;
     bool save(QString const& path, QString* error = nullptr) const;

@@ -364,8 +364,13 @@ QJsonObject Storyboard::toJson() const
             s["clip"] = shot.clip;
         shotArray.append(s);
     }
-    return QJsonObject{{"shots", shotArray}, {"start", start}, {"title", title}, {"subtitle", subtitle},
-                       {"captionFields", QJsonArray::fromStringList(captionFields)}};
+    QJsonObject json{{"shots", shotArray}, {"start", start}, {"title", title}, {"subtitle", subtitle},
+                     {"captionFields", QJsonArray::fromStringList(captionFields)}};
+    if (!episode.isEmpty())
+        json["episode"] = episode;
+    if (!copyright.isEmpty())
+        json["copyright"] = copyright;
+    return json;
 }
 
 Storyboard Storyboard::fromJson(QJsonObject const& json)
@@ -374,6 +379,8 @@ Storyboard Storyboard::fromJson(QJsonObject const& json)
     board.start = std::max(0, json["start"].toInt(0));
     board.title = json["title"].toString();
     board.subtitle = json["subtitle"].toString();
+    board.episode = json["episode"].toString();
+    board.copyright = json["copyright"].toString();
     if (json.contains("captionFields")) {
         board.captionFields.clear();
         for (QJsonValue const& f : json["captionFields"].toArray())
