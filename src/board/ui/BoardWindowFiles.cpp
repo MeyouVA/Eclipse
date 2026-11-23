@@ -27,7 +27,7 @@ bool BoardWindow::loadProject(QString const& path)
     if (BoardPackCache::isPack(path)) {
         if (!loadPack(path))
             return false;
-    } else if (!m_document.open(path, &error)) {
+    } else if (!m_document.open(path, &error) && !restoreMissingArtwork(path, error)) {
         QMessageBox::warning(this, tr("Eclipse Storyboard"),
                              tr("Could not open %1:\n%2").arg(QDir::toNativeSeparators(path), error));
         return false;

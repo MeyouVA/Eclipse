@@ -67,11 +67,6 @@ bool recordSound(QJsonObject const& manifest, QSet<QString>& used)
     return true;
 }
 
-bool isLocalDirectory(QFileInfo const& folder)
-{
-    return folder.isDir() && !folder.isSymLink() && !folder.isJunction();
-}
-
 bool matchesContent(QFileInfo const& info, QString const& digest)
 {
     if (!info.isFile() || info.isSymLink() || info.size() <= 0 || info.size() > maxProjectBytes)
@@ -81,6 +76,21 @@ bool matchesContent(QFileInfo const& info, QString const& digest)
     return file.open(QIODevice::ReadOnly) && hash.addData(&file)
         && file.error() == QFileDevice::NoError && QString::fromLatin1(hash.result().toHex()) == digest;
 }
+}
+
+bool BoardProjectFolder::referencedArtwork(QJsonObject const& manifest, QSet<QString>& used)
+{
+    return recordArtwork(manifest, used);
+}
+
+bool BoardProjectFolder::matchesDigest(QFileInfo const& info, QString const& digest)
+{
+    return matchesContent(info, digest);
+}
+
+bool BoardProjectFolder::isLocalDirectory(QFileInfo const& folder)
+{
+    return folder.isDir() && !folder.isSymLink() && !folder.isJunction();
 }
 
 qsizetype BoardDocument::moveUnusedArtwork(QString& recoveryFolder, QString* error) const
@@ -93,7 +103,13 @@ qsizetype BoardDocument::moveUnusedAssets(QString& recoveryFolder, QString* erro
     return moveUnusedFiles(recoveryFolder, error, true);
 }
 
-qsizetype BoardDocument::moveUnusedFiles(QString& recoveryFolder, QString* error, bool includeSound) const
+qsizetype BoardDocument::findUnusedAssets(QStringList& files, QString* error) const
+{
+    QString unused;
+    return moveUnusedFiles(unused, error, true, &files);
+}
+
+qsizetype BoardDocument::moveUnusedFiles(QString& recoveryFolder, QString* error, bool includeSound, QStringList* preview) const
 {
     using namespace BoardProjectFolder;
     recoveryFolder.clear();
@@ -185,8 +201,11 @@ qsizetype BoardDocument::moveUnusedFiles(QString& recoveryFolder, QString* error
             }
         }
     }
-    if (candidates.isEmpty())
-        return 0;
+    candidates.sort(Qt::CaseInsensitive);
+    if (preview)
+        *preview = candidates;
+    if (candidates.isEmpty() || preview)
+        return candidates.size();
 
     QTemporaryDir recovery(root.filePath(includeSound ? QStringLiteral("Recovered Assets-XXXXXX") : QStringLiteral("Recovered Artwork-XXXXXX")));
     if (!recovery.isValid())

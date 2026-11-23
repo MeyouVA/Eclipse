@@ -44,6 +44,7 @@ private slots:
     void saveNewVersion();
     void convertLegacyProject();
     void cleanProjectArtwork();
+    void restoreRecoveredAssets();
     void archiveProject(QString const& operation);
     void restoreArchive();
     void transferProject(QString const& operation);
@@ -84,6 +85,7 @@ private:
     void offerPackRecovery();
     void offerLegacyConversion(QString const& path);
     void offerProjectRecovery(QString const& path);
+    bool restoreMissingArtwork(QString const& path, QString& error);
     bool saveChanges();
     void saveProjectCopy(QString const& path);
     void extractScenes(bool split);

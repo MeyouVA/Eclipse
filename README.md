@@ -44,7 +44,9 @@ A packed project opens into a private cache. **Save** writes to the cache, and *
 
 When you open an older single-file board, **Convert Project** updates the current `.ecb` in place and stores its artwork in the existing folder. If you choose **Open Original**, you can convert it later under **File → Project Management** or update it by saving.
 
-**File → Project Management → Clean Up Project Artwork** checks saved boards and versions in the same folder. It moves unused drawings and pictures into a recovery folder, keeping their original relative paths.
+**File → Project Management → Clean Up Project Assets** checks the open board, its undo history, other saved versions in the same folder and recovery copies. It lists the drawings, pictures and sound files nothing uses, then moves them into a `Recovered Assets` folder inside the project folder, keeping their original relative paths.
+
+**Restore Recovered Assets** in the same menu puts a recovery folder's files back. Files the project already has are kept, and the folder is removed once it is empty. If a board needs a file that cleanup moved, opening it offers to put the file back first.
 
 ---
 

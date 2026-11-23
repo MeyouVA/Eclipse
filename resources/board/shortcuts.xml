@@ -20,6 +20,7 @@
   <shortcut id="shortcut.BoardSaveVersion" text="Save as New Version" value=""/>
   <shortcut id="shortcut.BoardConvertLegacy" text="Convert Legacy Board" value=""/>
   <shortcut id="shortcut.BoardCleanArtwork" text="Clean Up Project Assets" value=""/>
+  <shortcut id="shortcut.BoardRestoreAssets" text="Restore Recovered Assets" value=""/>
   <shortcut id="shortcut.BoardPack" text="Save and Pack" value=""/>
   <shortcut id="shortcut.BoardBackup" text="Back Up Storyboard" value=""/>
   <shortcut id="shortcut.BoardRestore" text="Restore and Open Backup" value=""/>
