@@ -2,10 +2,9 @@
 
 #include <QWidget>
 
-class QDoubleSpinBox;
+class BoardFormatPicker;
 class QLineEdit;
 class QListWidget;
-class QSpinBox;
 
 class BoardWelcomePage : public QWidget {
     Q_OBJECT
@@ -23,7 +22,5 @@ private:
     QLineEdit* m_directory;
     QLineEdit* m_title;
     QLineEdit* m_subtitle;
-    QSpinBox* m_width;
-    QSpinBox* m_height;
-    QDoubleSpinBox* m_fps;
+    BoardFormatPicker* m_format;
 };

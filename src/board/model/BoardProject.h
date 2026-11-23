@@ -3,6 +3,17 @@
 #include "EclipseExport.h"
 #include "board/model/BoardContent.h"
 
+struct BoardFormat {
+    enum class Art { KeepSize, ScaleToFit };
+    enum class Timing { KeepFrames, KeepDuration };
+
+    int width = 1920;
+    int height = 1080;
+    double fps = 24.0;
+    Art art = Art::KeepSize;
+    Timing timing = Timing::KeepDuration;
+};
+
 struct ECLIPSE_BOARD_MODEL_API BoardProject {
     enum class SceneGroup { Sequence, Act };
 
@@ -29,6 +40,8 @@ struct ECLIPSE_BOARD_MODEL_API BoardProject {
     QVector<BoardSpan> spans() const;
     QPair<int, int> groupRange(int scene, SceneGroup group) const;
     QString audioPath(QString const& projectFile) const;
+    bool reformat(BoardFormat const& format, QString* error = nullptr);
+    static bool validFormat(int width, int height, double fps);
     static BoardPanel blankPanel(int frames);
     static bool validName(QString const& name);
 };

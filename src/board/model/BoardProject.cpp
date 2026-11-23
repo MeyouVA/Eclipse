@@ -32,12 +32,16 @@ bool BoardProject::validName(QString const& name)
     return !reserved.match(name).hasMatch();
 }
 
+bool BoardProject::validFormat(int width, int height, double fps)
+{
+    return width >= 1 && width <= 32768 && height >= 1 && height <= 32768 && std::isfinite(fps) && fps >= 1.0 && fps <= 240.0;
+}
+
 namespace {
 bool validProject(BoardProject const& project)
 {
     return BoardProject::validName(project.name) && project.title.size() <= 4096 && project.subtitle.size() <= 4096
-        && project.width >= 1 && project.width <= 32768 && project.height >= 1 && project.height <= 32768
-        && std::isfinite(project.fps) && project.fps >= 1.0 && project.fps <= 240.0;
+        && BoardProject::validFormat(project.width, project.height, project.fps);
 }
 
 bool readProject(QByteArray const& bytes, QString const& path, BoardProject& project, QString* error, bool* legacy = nullptr)

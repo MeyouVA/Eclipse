@@ -1,9 +1,9 @@
 #include "launcher/BoardWelcomePage.h"
 #include "launcher/WelcomeDialog.h"
+#include "launcher/BoardFormatPicker.h"
 #include "actions/theme/AppSettings.h"
 #include "board/model/BoardProject.h"
 
-#include <QComboBox>
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
@@ -16,7 +16,6 @@
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QStandardPaths>
 #include <QVBoxLayout>
@@ -56,43 +55,8 @@ BoardWelcomePage::BoardWelcomePage(QString const& resources, QWidget* parent) : 
             m_directory->setText(QDir::toNativeSeparators(chosen));
     });
 
-    auto* presets = new QComboBox(create);
-    presets->setObjectName(QStringLiteral("BoardCameraSize"));
-    presets->setMaxVisibleItems(10);
-    presets->addItem(tr("Custom"));
-    QString defaultName;
-    QVector<Resolution> const sizes = WelcomeDialog::resolutions(resources, &defaultName, false);
-    int preferred = 1;
-    for (Resolution const& size : sizes) {
-        presets->addItem(size.name);
-        if (size.name == defaultName)
-            preferred = presets->count() - 1;
-    }
-    m_width = new QSpinBox(create);
-    m_width->setObjectName(QStringLiteral("BoardWidth"));
-    m_height = new QSpinBox(create);
-    m_height->setObjectName(QStringLiteral("BoardHeight"));
-    m_fps = new QDoubleSpinBox(create);
-    m_fps->setObjectName(QStringLiteral("BoardFrameRate"));
-    m_width->setRange(1, 32768);
-    m_height->setRange(1, 32768);
-    m_fps->setRange(1.0, 240.0);
-    m_fps->setDecimals(3);
-    auto applyPreset = [this, sizes](int index) {
-        if (index <= 0)
-            return;
-        Resolution const& size = sizes[index - 1];
-        QSignalBlocker const widthBlock(m_width), heightBlock(m_height), fpsBlock(m_fps);
-        m_width->setValue(size.width);
-        m_height->setValue(size.height);
-        m_fps->setValue(size.fps);
-    };
-    connect(presets, &QComboBox::currentIndexChanged, this, applyPreset);
-    auto useCustom = [presets] { presets->setCurrentIndex(0); };
-    connect(m_width, &QSpinBox::valueChanged, this, useCustom);
-    connect(m_height, &QSpinBox::valueChanged, this, useCustom);
-    connect(m_fps, &QDoubleSpinBox::valueChanged, this, useCustom);
-    presets->setCurrentIndex(preferred);
+    m_format = new BoardFormatPicker(resources, create);
+    m_format->selectDefault();
 
     auto* createButton = new QPushButton(tr("Create Project"), create);
     createButton->setObjectName(QStringLiteral("CreateBoardProject"));
@@ -102,10 +66,10 @@ BoardWelcomePage::BoardWelcomePage(QString const& resources, QWidget* parent) : 
     form->addWidget(browse, 1, 2);
     row(2, tr("Title:"), m_title);
     row(3, tr("Subtitle:"), m_subtitle);
-    row(4, tr("Camera Size:"), presets);
-    row(5, tr("Width:"), m_width, Qt::AlignLeft);
-    row(6, tr("Height:"), m_height, Qt::AlignLeft);
-    row(7, tr("Frame Rate:"), m_fps, Qt::AlignLeft);
+    row(4, tr("Camera Size:"), m_format->presetRow());
+    row(5, tr("Width:"), m_format->width(), Qt::AlignLeft);
+    row(6, tr("Height:"), m_format->height(), Qt::AlignLeft);
+    row(7, tr("Frame Rate:"), m_format->fps(), Qt::AlignLeft);
     form->setColumnStretch(1, 1);
     form->setRowStretch(8, 1);
     connect(createButton, &QPushButton::clicked, this, &BoardWelcomePage::createProject);
@@ -148,7 +112,7 @@ BoardWelcomePage::BoardWelcomePage(QString const& resources, QWidget* parent) : 
 void BoardWelcomePage::createProject()
 {
     BoardProject const project{m_name->text().trimmed(), m_title->text(), m_subtitle->text(),
-                               m_width->value(), m_height->value(), m_fps->value()};
+                               m_format->width()->value(), m_format->height()->value(), m_format->fps()->value()};
     QString error;
     QString const directory = m_directory->text().trimmed();
     QString const path = project.create(directory, &error);
