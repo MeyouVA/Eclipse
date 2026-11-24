@@ -114,6 +114,13 @@ public:
     void setDrawingView(bool on);
     QJsonObject viewState() const;
     void restoreViewState(QJsonObject const& state);
+    // The Stage view as a host stores it: zoom, turn, flip and the picture point at the middle of the view.
+    bool viewFitted() const { return m_fitted; }
+    double viewZoom() const { return m_zoom; }
+    double viewRotation() const { return m_viewRotation; }
+    bool viewMirrored() const { return m_mirror; }
+    QPointF viewCentre() const;
+    void showView(double zoom, double rotation, bool mirror, QPointF centre);
     void setPlaneProjection(QTransform const& projection);
     void paintPlane(QPainter& painter);
     void cancelPlaneInput();

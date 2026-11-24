@@ -48,6 +48,12 @@ When you open an older single-file board, **Convert Project** updates the curren
 
 **Restore Recovered Assets** in the same menu puts a recovery folder's files back. Files the project already has are kept, and the folder is removed once it is empty. If a board needs a file that cleanup moved, opening it offers to put the file back first.
 
+## Storyboard workspace
+
+Each view has a title with a **+** menu of its own commands, **Float View** and **Close View**. Double-click a title to float or dock it, and drag views together to tab them. **Windows → Views** turns each view on or off, **Windows → Toolbars** shows, hides and customizes the toolbars, and the **Show** commands open and focus a view even when it is closed or floating. The layout is kept for the next start and is the same for every project. **Restore Default Workspace** puts every view back.
+
+**View** turns the Stage (**V** and **C**), flips it, and resets zoom, rotation, pan or the whole view. These only change how the Stage is shown: drawing, the camera and exports are unaffected. The selected panel and the Stage view are saved with the project when you save, so a project reopens where you left it. Closing without saving keeps the last saved view.
+
 ---
 
 ## ✨ Highlights

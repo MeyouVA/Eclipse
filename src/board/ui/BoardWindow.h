@@ -75,6 +75,11 @@ private slots:
     void editCamera(QString const& operation);
     void showCameraPreview(bool show);
     void showCameraGuide(bool show);
+    void stageView(QString const& command);
+    void mirrorStage(bool mirrored);
+    void toggleBoardView(QString const& view);
+    void populateToolbarMenu(QMenu* menu);
+    void collapseViews(QString const& region);
 
 private:
     bool loadProject(QString const& path);
@@ -94,7 +99,15 @@ private:
     bool confirmDiscard();
     void updateProjectState();
     void buildWorkspace();
+    void buildViewMenus();
+    void revealView(QString const& view, bool focus);
+    QDockWidget* dockFor(QString const& view) const;
+    void storeView();
+    void restoreView();
+    void syncViewActions();
+    void clearCollapsed();
     void sizeReferenceLayout();
+    void sizeDefaultLayoutSoon();
     void loadWorkspaceSettings();
     void saveWorkspaceSettings();
     void loadWorkspace();
@@ -128,6 +141,9 @@ private:
     QDockWidget* m_timelineDock = nullptr;
     QTabWidget* m_inspectorTabs = nullptr;
     QListView* m_outline = nullptr;
+    QWidget* m_toolProperties = nullptr;
+    QList<QDockWidget*> m_collapsedSide;
+    QList<QDockWidget*> m_collapsedBottom;
     bool m_cameraPreview = false;
     bool m_customPanelNames = false;
     bool m_exporting = false;

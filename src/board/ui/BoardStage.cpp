@@ -9,6 +9,10 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QLabel>
+#include <QLocale>
+#include <QMenu>
+#include <QToolButton>
+#include <cmath>
 #include <QPainter>
 #include <QToolBar>
 #include <QStackedLayout>
@@ -54,7 +58,8 @@ Scene boardPanelScene(BoardProject const& project, int shot, int panel, BoardCam
 BoardStage::BoardStage(BoardDocument* document, QWidget* parent)
     : QWidget(parent), m_board(document), m_scratch(new Document),
       m_canvas(new BoardCameraCanvas(m_scratch, this)), m_preview(new BoardPreview(this)), m_stack(new QStackedLayout),
-      m_viewBar(new QToolBar(this)), m_zoomLabel(new QLabel(this)), m_layerLabel(new QLabel(this)),
+      m_viewBar(new QToolBar(this)), m_zoomLabel(new QLabel(this)), m_viewLabel(new QLabel(this)),
+      m_viewMenu(new QToolButton(this)), m_layerLabel(new QLabel(this)),
       m_toolLabel(new QLabel(tr("Brush"), this))
 {
     m_scratch->QObject::setParent(m_canvas);
@@ -66,9 +71,15 @@ BoardStage::BoardStage(BoardDocument* document, QWidget* parent)
     title->setObjectName(QStringLiteral("BoardStageTitle"));
     title->setAlignment(Qt::AlignCenter);
     title->setFixedSize(120, 22);
+    m_viewMenu->setObjectName(QStringLiteral("BoardStageMenu"));
+    m_viewMenu->setText(QStringLiteral("+"));
+    m_viewMenu->setToolTip(tr("Stage View menu"));
+    m_viewMenu->setAutoRaise(true);
+    m_viewMenu->setPopupMode(QToolButton::InstantPopup);
     auto* heading = new QHBoxLayout;
     heading->addStretch();
     heading->addWidget(title);
+    heading->addWidget(m_viewMenu);
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(1, 1, 1, 1);
     layout->setSpacing(0);
@@ -84,6 +95,7 @@ BoardStage::BoardStage(BoardDocument* document, QWidget* parent)
     connect(m_canvas, &Canvas::message, this, &BoardStage::message);
     connect(m_canvas, &Canvas::zoomChanged, this, [this] {
         m_zoomLabel->setText(tr("%1%").arg(qRound(m_canvas->zoomPercent())));
+        updateViewLabel();
     });
     connect(m_canvas, &BoardCameraCanvas::cameraEdited, this, [this](BoardCameraPose const& pose) {
         m_board->setCameraKey(m_panel.first, m_panel.second, m_frame, pose);
@@ -107,6 +119,9 @@ void BoardStage::setViewActions(QList<QAction*> const& actions)
     m_zoomLabel->setContentsMargins(8, 0, 8, 0);
     m_zoomLabel->setText(tr("%1%").arg(qRound(m_canvas->zoomPercent())));
     m_viewBar->addWidget(m_zoomLabel);
+    m_viewLabel->setObjectName(QStringLiteral("BoardStageViewLabel"));
+    m_viewLabel->setContentsMargins(4, 0, 8, 0);
+    m_viewBar->addWidget(m_viewLabel);
     m_layerLabel->setContentsMargins(8, 0, 8, 0);
     m_viewBar->addWidget(m_layerLabel);
     auto* space = new QWidget(m_viewBar);
@@ -195,7 +210,107 @@ void BoardStage::chooseTool(QString const& tool)
     }
 }
 
-void BoardStage::fit() { m_canvas->fitToWindow(); }
+void BoardStage::setViewMenuActions(QList<QAction*> const& actions)
+{
+    auto* menu = new QMenu(m_viewMenu);
+    for (auto* action : actions) {
+        if (action)
+            menu->addAction(action);
+        else
+            menu->addSeparator();
+    }
+    m_viewMenu->setMenu(menu);
+}
+
+bool BoardStage::viewCommand(QString const& command)
+{
+    if (command == QLatin1String("rotate-cw"))
+        m_canvas->rotateView(15.0);
+    else if (command == QLatin1String("rotate-ccw"))
+        m_canvas->rotateView(-15.0);
+    else if (command == QLatin1String("reset-rotation"))
+        m_canvas->onActionResetRotation();
+    else if (command == QLatin1String("reset-zoom"))
+        m_canvas->setZoomPercent(100.0);
+    else if (command == QLatin1String("reset-pan"))
+        m_canvas->onActionResetPan();
+    else if (command == QLatin1String("reset-view")) {
+        m_canvas->onActionMirrorView(false);
+        m_canvas->fitToWindow();
+    } else if (command == QLatin1String("frame-selection"))
+        m_canvas->onActionFrameSelection();
+    else
+        return false;
+    updateViewLabel();
+    emit viewChanged();
+    return true;
+}
+
+void BoardStage::setMirrored(bool mirrored)
+{
+    if (m_canvas->viewMirrored() == mirrored)
+        return;
+    m_canvas->onActionMirrorView(mirrored);
+    updateViewLabel();
+    emit viewChanged();
+}
+
+bool BoardStage::mirrored() const { return m_canvas->viewMirrored(); }
+
+BoardView BoardStage::view() const
+{
+    BoardView view;
+    view.shot = std::max(0, m_panel.first);
+    view.panel = std::max(0, m_panel.second);
+    view.fitted = m_canvas->viewFitted();
+    view.rotation = m_canvas->viewRotation();
+    view.mirror = m_canvas->viewMirrored();
+    if (!view.fitted) {
+        view.zoom = m_canvas->viewZoom();
+        view.centre = m_canvas->viewCentre();
+    }
+    return view;
+}
+
+void BoardStage::applyView(BoardView const& view)
+{
+    m_canvas->onActionMirrorView(false);
+    m_canvas->fitToWindow();
+    if (view.fitted) {
+        if (view.rotation != 0.0)
+            m_canvas->rotateView(view.rotation);
+        if (view.mirror)
+            m_canvas->onActionMirrorView(true);
+    } else {
+        m_canvas->showView(view.zoom, view.rotation, view.mirror, view.centre);
+    }
+    updateViewLabel();
+    emit viewChanged();
+}
+
+void BoardStage::focusCanvas()
+{
+    hidePreview();
+    m_canvas->setFocus(Qt::OtherFocusReason);
+}
+
+void BoardStage::updateViewLabel()
+{
+    QStringList parts;
+    double const turn = m_canvas->viewRotation();
+    if (std::abs(turn) > 1e-6)
+        parts << tr("%1°").arg(QLocale().toString(turn, 'f', std::abs(turn - std::round(turn)) < 1e-6 ? 0 : 1));
+    if (m_canvas->viewMirrored())
+        parts << tr("Flipped");
+    m_viewLabel->setText(parts.join(QStringLiteral("  ")));
+}
+
+void BoardStage::fit()
+{
+    m_canvas->fitToWindow();
+    updateViewLabel();
+    emit viewChanged();
+}
 void BoardStage::zoom(bool in) { m_canvas->zoomBy(in ? 1.25 : 0.8); }
 void BoardStage::setToolLabel(QString const& text) { m_toolLabel->setText(text); }
 

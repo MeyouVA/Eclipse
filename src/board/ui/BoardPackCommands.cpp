@@ -98,6 +98,7 @@ void BoardWindow::savePacked(QString const& destination)
             QMessageBox::warning(this, title, tr("That packed project is open in another editor, or its folder is read-only."));
             return;
         }
+        storeView();
         if (!BoardArchive::pack(m_document.project(), current, destination, &error)) {
             QMessageBox::warning(this, title, error);
             return;

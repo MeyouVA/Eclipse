@@ -51,6 +51,16 @@
    <item id="BoardFitStage" icon="view/resetview" text="Fit Stage" shortcut="shortcut.BoardFitStage" responder="window" slot="fitStage()"/>
    <item id="BoardStageZoomOut" icon="view/zoomout" text="Zoom Out Stage" responder="window" slot="zoomStage(QString)" itemParameter="out"/>
    <item id="BoardStageZoomIn" icon="view/zoomin" text="Zoom In Stage" responder="window" slot="zoomStage(QString)" itemParameter="in"/>
+   <item id="BoardStageResetZoom" icon="view/resetzoom" text="Reset Zoom" shortcut="shortcut.BoardStageResetZoom" responder="window" slot="stageView(QString)" itemParameter="reset-zoom"/>
+   <item id="BoardStageFrameSelection" icon="view/frameselection" text="Frame Selection" shortcut="shortcut.BoardStageFrameSelection" responder="window" slot="stageView(QString)" itemParameter="frame-selection"/>
+   <separator/>
+   <item id="BoardStageRotateCW" icon="view/rotatecw" text="Rotate View Clockwise" shortcut="shortcut.BoardStageRotateCW" responder="window" slot="stageView(QString)" itemParameter="rotate-cw"/>
+   <item id="BoardStageRotateCCW" icon="view/rotateccw" text="Rotate View Counterclockwise" shortcut="shortcut.BoardStageRotateCCW" responder="window" slot="stageView(QString)" itemParameter="rotate-ccw"/>
+   <item id="BoardStageResetRotation" icon="view/resetrotation" text="Reset Rotation" shortcut="shortcut.BoardStageResetRotation" responder="window" slot="stageView(QString)" itemParameter="reset-rotation"/>
+   <item id="BoardStageMirror" icon="view/mirror" text="Flip View Horizontally" checkable="true" shortcut="shortcut.BoardStageMirror" responder="window" slot="mirrorStage(bool)"/>
+   <item id="BoardStageResetPan" icon="view/resetpan" text="Reset Pan" shortcut="shortcut.BoardStageResetPan" responder="window" slot="stageView(QString)" itemParameter="reset-pan"/>
+   <item id="BoardStageResetView" text="Reset View" shortcut="shortcut.BoardStageResetView" responder="window" slot="stageView(QString)" itemParameter="reset-view"/>
+   <separator/>
    <item id="BoardTimelineZoomIn" text="Zoom In Timeline" shortcut="shortcut.BoardTimelineZoomIn" responder="window" slot="editTiming(QString)" itemParameter="zoom-in"/>
    <item id="BoardTimelineZoomOut" text="Zoom Out Timeline" shortcut="shortcut.BoardTimelineZoomOut" responder="window" slot="editTiming(QString)" itemParameter="zoom-out"/>
   </menu>
@@ -159,9 +169,22 @@
    <item id="workspace.timeline" icon="play/views" text="Timeline" checkable="true" group="BoardWorkspaces" shortcut="shortcut.workspace.timeline" responder="window" slot="switchWorkspace(QString)" itemParameter="timeline"/>
    </menu>
    <separator/>
+   <menu id="BoardViewsMenu" text="&amp;Views">
+    <item id="BoardViewThumbnails" text="Thumbnails" checkable="true" checked="true" shortcut="shortcut.BoardViewThumbnails" responder="window" slot="toggleBoardView(QString)" itemParameter="thumbnails"/>
+    <item id="BoardViewLayers" text="Panel Layers" checkable="true" checked="true" shortcut="shortcut.BoardViewLayers" responder="window" slot="toggleBoardView(QString)" itemParameter="layers"/>
+    <item id="BoardViewInspector" text="Inspector" checkable="true" checked="true" shortcut="shortcut.BoardViewInspector" responder="window" slot="toggleBoardView(QString)" itemParameter="inspector"/>
+    <item id="BoardViewTimeline" text="Timeline" checkable="true" checked="true" shortcut="shortcut.BoardViewTimeline" responder="window" slot="toggleBoardView(QString)" itemParameter="timeline"/>
+   </menu>
+   <item id="BoardCollapseSide" text="Collapse Side Views" checkable="true" shortcut="shortcut.BoardCollapseSide" responder="window" slot="collapseViews(QString)" itemParameter="side"/>
+   <item id="BoardCollapseBottom" text="Collapse Bottom Views" checkable="true" shortcut="shortcut.BoardCollapseBottom" responder="window" slot="collapseViews(QString)" itemParameter="bottom"/>
+   <menu id="BoardToolbarsMenu" text="&amp;Toolbars" responder="window" aboutToShowSlot="populateToolbarMenu(QMenu*)"/>
+   <separator/>
+   <item id="BoardStageFocus" text="Go to Stage" shortcut="shortcut.BoardStageFocus" responder="window" slot="showBoardView(QString)" itemParameter="stage"/>
    <item id="BoardThumbnailsShow" text="Show Thumbnails" shortcut="shortcut.BoardThumbnailsShow" responder="window" slot="showBoardView(QString)" itemParameter="thumbnails"/>
    <item id="BoardLayersShow" text="Show Panel Layers" shortcut="shortcut.BoardLayersShow" responder="window" slot="showBoardView(QString)" itemParameter="layers"/>
    <item id="BoardCaptionsShow" text="Show Captions" shortcut="shortcut.BoardCaptionsShow" responder="window" slot="showBoardView(QString)" itemParameter="captions"/>
+   <item id="BoardStoryboardShow" text="Show Storyboard List" shortcut="shortcut.BoardStoryboardShow" responder="window" slot="showBoardView(QString)" itemParameter="storyboard"/>
+   <item id="BoardToolPropertiesShow" text="Show Tool Properties" shortcut="shortcut.BoardToolPropertiesShow" responder="window" slot="showBoardView(QString)" itemParameter="toolproperties"/>
    <item id="BoardLibraryShow" text="Show Library" shortcut="shortcut.BoardLibraryShow" responder="window" slot="showBoardView(QString)" itemParameter="library"/>
    <item id="BoardTimelineShow" text="Show Timeline" shortcut="shortcut.BoardTimelineShow" responder="window" slot="showBoardView(QString)" itemParameter="timeline"/>
    <item id="BoardResetLayout" text="Restore Default Workspace" shortcut="shortcut.BoardResetLayout" responder="window" slot="restoreDefaultLayout()"/>

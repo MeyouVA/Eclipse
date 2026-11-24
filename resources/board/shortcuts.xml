@@ -47,6 +47,14 @@
  </category>
  <category id="board.view" text="View">
   <shortcut id="shortcut.BoardFitStage" text="Fit Stage" value=""/>
+  <shortcut id="shortcut.BoardStageResetZoom" text="Reset Zoom" value="Shift+Z"/>
+  <shortcut id="shortcut.BoardStageFrameSelection" text="Frame Selection" value="Shift+F"/>
+  <shortcut id="shortcut.BoardStageRotateCW" text="Rotate View Clockwise" value="V"/>
+  <shortcut id="shortcut.BoardStageRotateCCW" text="Rotate View Counterclockwise" value="C"/>
+  <shortcut id="shortcut.BoardStageResetRotation" text="Reset Rotation" value="Shift+X"/>
+  <shortcut id="shortcut.BoardStageMirror" text="Flip View Horizontally" value=""/>
+  <shortcut id="shortcut.BoardStageResetPan" text="Reset Pan" value="Shift+N"/>
+  <shortcut id="shortcut.BoardStageResetView" text="Reset View" value="Shift+M"/>
   <shortcut id="shortcut.BoardTimelineZoomIn" text="Zoom In Timeline" value=""/>
   <shortcut id="shortcut.BoardTimelineZoomOut" text="Zoom Out Timeline" value=""/>
  </category>
@@ -140,7 +148,16 @@
   <shortcut id="shortcut.workspace.vertical" text="Vertical" value=""/>
   <shortcut id="shortcut.workspace.drawing" text="Drawing" value=""/>
   <shortcut id="shortcut.workspace.timeline" text="Timeline" value=""/>
+  <shortcut id="shortcut.BoardViewThumbnails" text="Thumbnails View" value=""/>
+  <shortcut id="shortcut.BoardViewLayers" text="Panel Layers View" value=""/>
+  <shortcut id="shortcut.BoardViewInspector" text="Inspector View" value=""/>
+  <shortcut id="shortcut.BoardViewTimeline" text="Timeline View" value=""/>
+  <shortcut id="shortcut.BoardStageFocus" text="Go to Stage" value=""/>
+  <shortcut id="shortcut.BoardCollapseSide" text="Collapse Side Views" value=""/>
+  <shortcut id="shortcut.BoardCollapseBottom" text="Collapse Bottom Views" value=""/>
   <shortcut id="shortcut.BoardThumbnailsShow" text="Show Thumbnails" value=""/>
+  <shortcut id="shortcut.BoardStoryboardShow" text="Show Storyboard List" value=""/>
+  <shortcut id="shortcut.BoardToolPropertiesShow" text="Show Tool Properties" value=""/>
   <shortcut id="shortcut.BoardLayersShow" text="Show Panel Layers" value=""/>
   <shortcut id="shortcut.BoardCaptionsShow" text="Show Captions" value=""/>
   <shortcut id="shortcut.BoardLibraryShow" text="Show Library" value=""/>

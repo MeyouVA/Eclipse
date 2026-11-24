@@ -33,7 +33,7 @@ bool BoardWindow::loadProject(QString const& path)
         return false;
     }
     rememberProjectPath();
-    selectPanel(0, 0, true);
+    restoreView();
     if (m_document.hasRecovery() || m_document.isLegacyProject()) {
         QTimer::singleShot(0, this, [this, path = m_document.path()] {
             if (m_document.path() != path)
@@ -87,6 +87,7 @@ void BoardWindow::rememberProjectPath()
 bool BoardWindow::saveChanges()
 {
     QString error;
+    storeView();
     if (!m_document.save(&error)) {
         QMessageBox::warning(this, tr("Eclipse Storyboard"), error);
         return false;

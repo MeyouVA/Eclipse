@@ -14,6 +14,18 @@ struct BoardFormat {
     Timing timing = Timing::KeepDuration;
 };
 
+// Where the project was last looked at: saved with the project, never part of undo.
+struct BoardView {
+    int shot = 0;
+    int panel = 0;
+    bool fitted = true;
+    double zoom = 1.0;
+    double rotation = 0.0;
+    bool mirror = false;
+    QPointF centre = {};
+    bool operator==(BoardView const&) const = default;
+};
+
 struct ECLIPSE_BOARD_MODEL_API BoardProject {
     enum class SceneGroup { Sequence, Act };
 
@@ -33,6 +45,7 @@ struct ECLIPSE_BOARD_MODEL_API BoardProject {
     QString copyright = {};
     int startFrame = 0;
     static constexpr int maxStartFrame = 100000000;
+    BoardView view = {};
 
     QString create(QString const& directory, QString* error = nullptr) const;
     bool save(QString const& path, QString* error = nullptr) const;

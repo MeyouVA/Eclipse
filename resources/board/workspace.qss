@@ -15,9 +15,23 @@ QMainWindow#BoardWindow::separator {
     padding: 4px 5px;
 }
 
-#BoardStageTitle, #BoardWindow QDockWidget::title {
+#BoardStageTitle, #BoardDockTitleLabel, #BoardWindow QDockWidget::title {
     background-color: palette(button);
     border: 1px solid palette(mid);
+}
+
+#BoardDockTitleLabel {
+    padding: 2px 14px;
+}
+
+#BoardDockMenu, #BoardDockClose, #BoardStageMenu {
+    padding: 0px 3px;
+    font-weight: bold;
+}
+
+#BoardDockMenu::menu-indicator, #BoardStageMenu::menu-indicator {
+    image: none;
+    width: 0px;
 }
 
 #BoardStageFooter, #BoardLayerTools, #BoardInspectorSoundtrack {

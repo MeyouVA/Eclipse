@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QScreen>
 #include <QStatusBar>
 #include <QTimer>
 #include <QToolBar>
@@ -40,9 +41,7 @@ BoardWindow::BoardWindow(QWidget* parent) : QMainWindow(parent), m_actions(new A
             }
         }
         m_actions->installShortcuts(this);
-        m_stage->setViewActions({m_actions->action(QStringLiteral("BoardFitStage")),
-            m_actions->action(QStringLiteral("BoardCameraGuide")), m_actions->action(QStringLiteral("BoardCameraPreview")),
-            m_actions->action(QStringLiteral("BoardStageZoomOut")), m_actions->action(QStringLiteral("BoardStageZoomIn"))});
+        buildViewMenus();
         m_captions->setFindAction(m_actions->action(QStringLiteral("BoardFindCaption")));
         m_captions->setSoundtrackActions({m_actions->action(QStringLiteral("BoardFirstFrame")),
             m_actions->action(QStringLiteral("BoardStop")), m_actions->action(QStringLiteral("BoardPlay")),
@@ -143,20 +142,27 @@ void BoardWindow::closeEvent(QCloseEvent* event)
 void BoardWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
-    if (m_sizeDefaultOnMaximize)
-        QTimer::singleShot(0, this, [this] {
-            if (m_sizeDefaultOnMaximize)
-                sizeReferenceLayout();
-        });
+    sizeDefaultLayoutSoon();
 }
 
 void BoardWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
-    if (m_sizeDefaultOnMaximize && isMaximized()) {
-        m_sizeDefaultOnMaximize = false;
-        QTimer::singleShot(0, this, [this] { sizeReferenceLayout(); });
-    }
+    sizeDefaultLayoutSoon();
+}
+
+void BoardWindow::sizeDefaultLayoutSoon()
+{
+    if (!m_sizeDefaultOnMaximize)
+        return;
+    QTimer::singleShot(0, this, [this] {
+        if (!m_sizeDefaultOnMaximize)
+            return;
+        sizeReferenceLayout();
+        // Done once the window really has its maximized size; until then the next resize sizes it again.
+        if (isMaximized() && screen() && width() >= screen()->availableGeometry().width() - 32)
+            m_sizeDefaultOnMaximize = false;
+    });
 }
 
 void BoardWindow::undo() { m_document.undoStack()->undo(); }

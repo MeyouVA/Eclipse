@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
@@ -46,6 +47,34 @@ bool validProject(BoardProject const& project)
         && BoardProject::validFormat(project.width, project.height, project.fps);
 }
 
+// A damaged or out-of-range view is dropped, never fatal: it is only where the project was last looked at.
+BoardView readView(QJsonValue const& value, BoardProject const& project)
+{
+    if (!value.isObject())
+        return {};
+    auto const json = value.toObject();
+    BoardView view;
+    view.shot = json.value("shot").toInt(-1);
+    view.panel = json.value("panel").toInt(-1);
+    if (view.shot < 0 || view.shot >= project.shots.size() || view.panel < 0 || view.panel >= project.shots[view.shot].panels.size())
+        return {};
+    view.rotation = json.value("rotation").toDouble(0.0);
+    view.mirror = json.value("mirror").toBool(false);
+    if (!std::isfinite(view.rotation) || std::abs(view.rotation) > 360.0)
+        return {};
+    if (json.contains("zoom")) {
+        auto const centre = json.value("centre").toArray();
+        view.fitted = false;
+        view.zoom = json.value("zoom").toDouble(0.0);
+        view.centre = QPointF(centre.at(0).toDouble(NAN), centre.at(1).toDouble(NAN));
+        if (!std::isfinite(view.zoom) || view.zoom < 0.001 || view.zoom > 1000.0 || centre.size() != 2
+            || !std::isfinite(view.centre.x()) || !std::isfinite(view.centre.y())
+            || std::abs(view.centre.x()) > 1e7 || std::abs(view.centre.y()) > 1e7)
+            return {};
+    }
+    return view;
+}
+
 bool readProject(QByteArray const& bytes, QString const& path, BoardProject& project, QString* error, bool* legacy = nullptr)
 {
     if (error)
@@ -83,6 +112,7 @@ bool readProject(QByteArray const& bytes, QString const& path, BoardProject& pro
     }
     if (!BoardProjectJson::decode(json, loaded, error))
         return false;
+    loaded.view = readView(json.value("view"), loaded);
     if (legacy)
         *legacy = !json.contains("storage");
     project = std::move(loaded);
@@ -150,6 +180,18 @@ QByteArray BoardProject::toBytes(QString* error) const
         json["startFrame"] = startFrame;
     if (!BoardProjectJson::encode(*this, json, error))
         return {};
+    if (view != BoardView{}) {
+        QJsonObject stored{{"shot", view.shot}, {"panel", view.panel}};
+        if (!view.fitted) {
+            stored["zoom"] = view.zoom;
+            stored["centre"] = QJsonArray{view.centre.x(), view.centre.y()};
+        }
+        if (view.rotation != 0.0)
+            stored["rotation"] = view.rotation;
+        if (view.mirror)
+            stored["mirror"] = true;
+        json["view"] = stored;
+    }
     QByteArray const bytes = QJsonDocument(json).toJson(QJsonDocument::Compact);
     if (bytes.size() > kFileLimit)
         return fail(tr("The project exceeds the file size limit."));

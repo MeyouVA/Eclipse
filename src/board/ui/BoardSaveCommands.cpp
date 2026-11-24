@@ -75,6 +75,7 @@ void BoardWindow::saveProjectCopy(QString const& path)
         return;
     m_playback->stop();
     QString error;
+    storeView();
     if (!m_document.saveAs(path, &error)) {
         QMessageBox::warning(this, tr("Save Storyboard Copy"), error);
         return;

@@ -44,6 +44,8 @@ public:
     bool setTitles(QString const& title, QString const& subtitle);
     bool setDetails(QString const& episode, QString const& copyright, int startFrame);
     bool setFormat(BoardFormat const& format, QString* error = nullptr);
+    // Records where the project is being looked at for the next explicit save; not an edit.
+    void setView(BoardView const& view) { m_project.view = view; }
     bool addShot(QString const& name, int frames, int after = -1);
     bool removeShot(int shot);
     bool addPanel(int shot, int frames, int after = -1);

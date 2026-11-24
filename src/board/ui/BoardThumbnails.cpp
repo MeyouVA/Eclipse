@@ -13,6 +13,7 @@
 #include <QIcon>
 #include <QMimeData>
 #include <QPainter>
+#include <QStyle>
 #include <QSignalBlocker>
 #include <QStyledItemDelegate>
 #include <cmath>
@@ -219,7 +220,10 @@ void BoardThumbnails::setVertical(bool vertical)
     setFlow(vertical ? QListView::TopToBottom : QListView::LeftToRight);
     bool const grid = m_overview;
     setWrapping(grid);
-    setMinimumSize(vertical ? QSize(gridSize().width() + 16, 100) : QSize(0, 218));
+    // A horizontal strip is always tall enough for a whole card, its margins and the scroll bar.
+    int const strip = gridSize().height() + viewportMargins().top() + viewportMargins().bottom()
+        + style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, this) + 2 * frameWidth();
+    setMinimumSize(vertical ? QSize(gridSize().width() + 16, 100) : QSize(0, strip));
     setHorizontalScrollBarPolicy(vertical || grid ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAlwaysOn);
     setVerticalScrollBarPolicy(vertical || grid ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
     setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);

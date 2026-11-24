@@ -62,6 +62,7 @@ void BoardWindow::loadWorkspace()
         int const tab = prefs.value(workspaceKey(m_workspace) + QStringLiteral("/inspector"), m_inspectorTabs->currentIndex()).toInt();
         m_inspectorTabs->setCurrentIndex(std::clamp(tab, 0, m_inspectorTabs->count() - 1));
     }
+    syncViewActions();
 }
 
 void BoardWindow::restoreDefaultLayout()
@@ -76,11 +77,12 @@ void BoardWindow::restoreDefaultLayout()
 void BoardWindow::applyWorkspacePreset()
 {
     bool const overview = m_workspace == QLatin1String("overview");
+    clearCollapsed();
     restoreState(m_defaultLayout, layoutVersion);
     m_thumbnails->setOverview(overview);
     m_stage->show();
-    showBoardView(QStringLiteral("captions"));
-    showBoardView(QStringLiteral("thumbnails"));
+    revealView(QStringLiteral("captions"), false);
+    revealView(QStringLiteral("thumbnails"), false);
     if (overview) {
         m_stage->hide();
         m_layerDock->hide();
@@ -94,12 +96,13 @@ void BoardWindow::applyWorkspacePreset()
     } else if (m_workspace == QLatin1String("drawing")) {
         m_captionDock->hide();
     } else if (m_workspace == QLatin1String("timeline")) {
-        showBoardView(QStringLiteral("timeline"));
+        revealView(QStringLiteral("timeline"), false);
     }
     sizeReferenceLayout();
     m_sizeDefaultOnMaximize = !isMaximized();
     for (auto const& id : workspaceIds)
         m_actions->setChecked(QStringLiteral("workspace.") + id, id == m_workspace);
+    syncViewActions();
 }
 
 void BoardWindow::sizeReferenceLayout()

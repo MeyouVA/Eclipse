@@ -1,6 +1,7 @@
 #pragma once
 
 #include "board/model/BoardCamera.h"
+#include "board/model/BoardProject.h"
 
 #include <QWidget>
 #include <QPair>
@@ -30,6 +31,14 @@ public:
     void setToolLabel(QString const& text);
     QWidget* createToolProperties(QWidget* parent);
     void setViewActions(QList<QAction*> const& actions);
+    void setViewMenuActions(QList<QAction*> const& actions);
+    // Display-only view changes: they never touch the artwork, the camera or exports.
+    bool viewCommand(QString const& command);
+    void setMirrored(bool mirrored);
+    bool mirrored() const;
+    BoardView view() const;
+    void applyView(BoardView const& view);
+    void focusCanvas();
     void showPreview(QPair<int, int> panel, int frame, QPair<int, int> previous, double mix);
     void hidePreview();
     void setCameraFrame(int frame);
@@ -39,12 +48,14 @@ public:
 
 signals:
     void message(QString const& text);
+    void viewChanged();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
     void captureArtwork();
+    void updateViewLabel();
     BoardDocument* m_board;
     Document* m_scratch;
     BoardCameraCanvas* m_canvas;
@@ -52,6 +63,8 @@ private:
     QStackedLayout* m_stack;
     QToolBar* m_viewBar;
     QLabel* m_zoomLabel;
+    QLabel* m_viewLabel;
+    class QToolButton* m_viewMenu;
     QLabel* m_layerLabel;
     QLabel* m_toolLabel;
     int m_layer = -1;

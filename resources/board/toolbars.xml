@@ -42,6 +42,7 @@
    <item id="BoardToolPerspective"/>
    <item id="BoardToolEditGradient"/>
   </multibutton>
+  <separator/>
   <multibutton id="boardBrushTools">
    <item id="BoardBrush"/>
    <item id="BoardToolStamp"/>
@@ -62,6 +63,7 @@
    <item id="BoardToolCloseGap"/>
   </multibutton>
   <item id="BoardToolDropper"/>
+  <separator/>
   <multibutton id="boardNavigationTools">
    <item id="BoardHand"/>
    <item id="BoardZoom"/>

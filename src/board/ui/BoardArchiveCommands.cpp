@@ -51,6 +51,7 @@ void BoardWindow::archiveProject(QString const& operation)
         return;
     QString const path = dialog.selectedFiles().value(0);
     QString error;
+    storeView();
     if (!BoardArchive::pack(m_document.project(), current, path, &error)) {
         QMessageBox::warning(this, title, error);
         return;

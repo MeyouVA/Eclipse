@@ -57,3 +57,21 @@ void Canvas::restoreViewState(QJsonObject const& state)
     emit onionChanged();
     emit zoomChanged();
 }
+
+QPointF Canvas::viewCentre() const
+{
+    return cameraViewTransform().inverted().map(QPointF(width() / 2.0, height() / 2.0));
+}
+
+void Canvas::showView(double zoom, double rotation, bool mirror, QPointF centre)
+{
+    m_zoom = std::clamp(std::isfinite(zoom) ? zoom : 1.0, m_zoomMin, m_zoomMax);
+    m_viewRotation = std::isfinite(rotation) ? std::remainder(rotation, 360.0) : 0.0;
+    m_mirror = mirror;
+    m_pan = QPointF();
+    if (std::isfinite(centre.x()) && std::isfinite(centre.y()))
+        m_pan = QPointF(width() / 2.0, height() / 2.0) - cameraViewTransform().map(centre);
+    m_fitted = false;
+    emit zoomChanged();
+    update();
+}

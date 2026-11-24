@@ -15,6 +15,8 @@
 
 void BoardWindow::buildWorkspace()
 {
+    setDockOptions(AnimatedDocks | AllowNestedDocks | AllowTabbedDocks | GroupedDragging);
+    setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
     m_stage = new BoardStage(&m_document, this);
     setCentralWidget(m_stage);
     connect(m_stage, &BoardStage::message, this, [this](QString const& text) {
@@ -53,7 +55,9 @@ void BoardWindow::buildWorkspace()
     m_outline->setIconSize(QSize(46, 46));
     m_outline->setUniformItemSizes(true);
     m_inspectorTabs->addTab(m_outline, tr("Storyboard"));
-    m_inspectorTabs->addTab(m_stage->createToolProperties(m_inspectorTabs), tr("Tool Properties"));
+    m_toolProperties = m_stage->createToolProperties(m_inspectorTabs);
+    m_toolProperties->setObjectName(QStringLiteral("BoardToolProperties"));
+    m_inspectorTabs->addTab(m_toolProperties, tr("Tool Properties"));
     m_library = new BoardLibrary(&m_document, m_inspectorTabs);
     m_inspectorTabs->addTab(m_library, tr("Library"));
     m_captionDock->setWidget(m_inspectorTabs);
@@ -177,22 +181,6 @@ void BoardWindow::regenerateThumbnails()
 {
     m_thumbnails->refreshAll();
     statusBar()->showMessage(tr("Panel thumbnails refreshed."), 2500);
-}
-
-void BoardWindow::showBoardView(QString const& view)
-{
-    if (view == QLatin1String("layers"))
-        m_layerDock->show();
-    else if (view == QLatin1String("captions") || view == QLatin1String("library")) {
-        m_captionDock->show();
-        m_inspectorTabs->setCurrentWidget(view == QLatin1String("library") ? static_cast<QWidget*>(m_library) : m_captions);
-    } else if (view == QLatin1String("timeline")) {
-        m_timelineDock->show();
-        m_timelineDock->raise();
-    } else {
-        m_thumbnailDock->show();
-        m_thumbnailDock->raise();
-    }
 }
 
 void BoardWindow::editCaptionFields(QString const& operation)
